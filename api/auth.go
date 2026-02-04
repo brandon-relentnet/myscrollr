@@ -194,22 +194,29 @@ func initiateLogtoAuth(c *fiber.Ctx, mode string) error {
 			Hint:   "LOGTO_ENDPOINT and LOGTO_APP_ID must be set in the environment",
 		})
 	}
-	
+
 	domain := os.Getenv("DOMAIN_NAME")
 	if domain == "" { domain = os.Getenv("COOLIFY_FQDN") }
 	if domain == "" {
 		log.Println("[Security Warning] DOMAIN_NAME or COOLIFY_FQDN not set, redirect_uri may be invalid")
 	}
-	
+
 	redirectURI := fmt.Sprintf("https://%s/callback", strings.TrimPrefix(domain, "https://"))
-	
+
 	// --- CSRF State Generation ---
 	stateBuf := make([]byte, 16)
 	rand.Read(stateBuf)
 	state := hex.EncodeToString(stateBuf)
 
-	// Store state in Redis (consistent with Yahoo flow)
-	err := rdb.Set(context.Background(), "logto_csrf:"+state, "1", 10*time.Minute).Err()
+	// Get the original redirect URL (for cross-domain auth)
+	originalRedirect := c.Query("redirect")
+
+	// Store state in Redis (consistent with Yahoo flow) - include original redirect
+	stateData := "1"
+	if originalRedirect != "" {
+		stateData = originalRedirect
+	}
+	err := rdb.Set(context.Background(), "logto_csrf:"+state, stateData, 10*time.Minute).Err()
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Internal Server Error: Failed to store auth state")
 	}
@@ -347,12 +354,19 @@ func LogtoCallback(c *fiber.Ctx) error {
 		Domain:   "relentnet.dev",
 	})
 
-	frontendURL := os.Getenv("FRONTEND_URL")
-	if frontendURL == "" {
-		frontendURL = "https://myscrollr.com"
+	// Determine redirect URL - use original redirect if provided, otherwise fallback to FRONTEND_URL
+	redirectURL := os.Getenv("FRONTEND_URL")
+	if redirectURL == "" {
+		redirectURL = "https://myscrollr.com"
 	}
 
-	return c.Redirect(frontendURL)
+	// If the state contained a custom redirect URL (for cross-domain auth), use it
+	// val will be "1" for default or a URL for custom redirects
+	if val != "" && val != "1" && strings.HasPrefix(val, "http") {
+		redirectURL = val
+	}
+
+	return c.Redirect(redirectURL)
 }
 
 // LogtoLogout clears the session cookie and redirects to Logto end-session
@@ -369,18 +383,21 @@ func LogtoLogout(c *fiber.Ctx) error {
 		Domain:   "relentnet.dev",
 	})
 
-	// Get frontend URL for redirect
-	frontendURL := os.Getenv("FRONTEND_URL")
-	if frontendURL == "" {
-		frontendURL = "https://myscrollr.com"
+	// Get frontend URL for redirect - use custom redirect if provided
+	redirectURL := c.Query("redirect")
+	if redirectURL == "" {
+		redirectURL = os.Getenv("FRONTEND_URL")
+	}
+	if redirectURL == "" {
+		redirectURL = "https://myscrollr.com"
 	}
 
 	// Optionally redirect to Logto end-session endpoint
 	endpoint := os.Getenv("LOGTO_ENDPOINT")
 	if endpoint != "" {
-		postLogoutURI := url.QueryEscape(frontendURL)
+		postLogoutURI := url.QueryEscape(redirectURL)
 		return c.Redirect(fmt.Sprintf("%s/oidc/sign-out?post_logout_redirect_uri=%s", endpoint, postLogoutURI))
 	}
 
-	return c.Redirect(frontendURL)
+	return c.Redirect(redirectURL)
 }

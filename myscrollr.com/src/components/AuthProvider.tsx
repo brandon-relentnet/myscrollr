@@ -46,11 +46,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [checkAuth])
 
   const login = () => {
-    window.location.href = `${API_URL}/login`
+    // Pass current origin as redirect so auth flow returns to the right domain
+    const redirectParam = encodeURIComponent(window.location.origin)
+    window.location.href = `${API_URL}/login?redirect=${redirectParam}`
   }
 
   const logout = () => {
-    window.location.href = `${API_URL}/logout`
+    // Pass current origin as redirect so logout returns to the right domain
+    const redirectParam = encodeURIComponent(window.location.origin)
+    window.location.href = `${API_URL}/logout?redirect=${redirectParam}`
   }
 
   return (
