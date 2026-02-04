@@ -84,7 +84,7 @@ pub async fn create_tables(pool: Arc<PgPool>) -> Result<()> {
 
 pub async fn get_tracked_symbols(pool: Arc<PgPool>) -> Vec<String> {
     let statement = "SELECT symbol FROM tracked_symbols WHERE is_enabled = TRUE";
-    let res: Result<Vec<(String,)>, _> = async {
+    let res: Result<Vec<(String,)>, sqlx::Error> = async {
         let mut connection = pool.acquire().await?;
         let data = query_as(statement).fetch_all(&mut *connection).await?;
         Ok(data)
@@ -143,7 +143,7 @@ pub async fn get_trades(pool: Arc<PgPool>) -> Vec<DatabaseTradeData> {
         ORDER BY symbol ASC
     ";
 
-    let res: Result<Vec<DatabaseTradeData>, _> = async {
+    let res: Result<Vec<DatabaseTradeData>, sqlx::Error> = async {
         let mut connection = pool.acquire().await?;
         let data = query_as(statement).fetch_all(&mut *connection).await?;
         Ok(data)

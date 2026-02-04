@@ -138,7 +138,7 @@ pub async fn create_tables(pool: &Arc<PgPool>) -> Result<()> {
 
 pub async fn get_tracked_leagues(pool: Arc<PgPool>) -> Vec<LeagueConfigs> {
     let statement = "SELECT name, slug FROM tracked_leagues WHERE is_enabled = TRUE";
-    let res: Result<Vec<LeagueConfigs>, _> = async {
+    let res: Result<Vec<LeagueConfigs>, sqlx::Error> = async {
         let mut connection = pool.acquire().await?;
         let data = query_as(statement).fetch_all(&mut *connection).await?;
         Ok(data)
@@ -190,7 +190,7 @@ pub async fn upsert_game(pool: Arc<PgPool>, game: CleanedData) -> Result<()> {
 
 pub async fn get_live_games(pool: &Arc<PgPool>) -> LiveLeagueList {
     let statement = "SELECT league, COUNT(*) as count FROM games WHERE state = 'in' GROUP BY league";
-    let res: Result<Vec<LiveByLeague>, _> = async {
+    let res: Result<Vec<LiveByLeague>, sqlx::Error> = async {
         let mut connection = pool.acquire().await?;
         let data = query_as(statement).fetch_all(&mut *connection).await?;
         Ok(data)
