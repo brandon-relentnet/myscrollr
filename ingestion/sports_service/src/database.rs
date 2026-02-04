@@ -14,7 +14,17 @@ pub async fn initialize_pool() -> Result<PgPool> {
         .acquire_timeout(Duration::from_secs(10))
         .idle_timeout(Duration::from_millis(30_000));
 
-    if let Ok(database_url) = env::var("DATABASE_URL") {
+    if let Ok(mut database_url) = env::var("DATABASE_URL") {
+        // Clean up the URL: trim whitespace and remove accidental quotes
+        database_url = database_url.trim().trim_matches('"').trim_matches('\'').to_string();
+
+        // Fix missing // after protocol
+        if database_url.starts_with("postgres:") && !database_url.starts_with("postgres://") {
+            database_url = database_url.replacen("postgres:", "postgres://", 1);
+        } else if database_url.starts_with("postgresql:") && !database_url.starts_with("postgresql://") {
+            database_url = database_url.replacen("postgresql:", "postgresql://", 1);
+        }
+
         // Mask password for safe logging
         let masked_url = if let Some(at_idx) = database_url.find('@') {
             if let Some(colon_idx) = database_url[..at_idx].rfind(':') {
@@ -27,11 +37,13 @@ pub async fn initialize_pool() -> Result<PgPool> {
         };
         println!("Attempting to connect to database with URL: {}", masked_url);
 
-        let pool = pool_options
-            .connect(&database_url)
-            .await
-            .context("Failed to connect to the PostgreSQL database via DATABASE_URL")?;
-        return Ok(pool);
+        match pool_options.connect(&database_url).await {
+            Ok(pool) => return Ok(pool),
+            Err(e) => {
+                eprintln!("Detailed connection error: {:?}", e);
+                return Err(anyhow::anyhow!(e).context("Failed to connect to the PostgreSQL database via DATABASE_URL"));
+            }
+        }
     }
 
     let get_env_var = |key: &str| -> Result<String> {
