@@ -114,6 +114,22 @@ func ConnectDB() {
 	if err != nil {
 		log.Printf("Warning: Failed to create yahoo_users table: %v", err)
 	}
+
+	// Ensure profiles table exists
+	_, err = dbPool.Exec(context.Background(), `
+		CREATE TABLE IF NOT EXISTS profiles (
+			user_id VARCHAR(255) PRIMARY KEY,
+			username VARCHAR(30) UNIQUE NOT NULL,
+			display_name VARCHAR(100),
+			bio TEXT,
+			is_public BOOLEAN DEFAULT true,
+			created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+		);
+	`)
+	if err != nil {
+		log.Printf("Warning: Failed to create profiles table: %v", err)
+	}
 }
 
 func UpsertYahooUser(guid, refreshToken string) error {

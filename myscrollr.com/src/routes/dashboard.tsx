@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useLogto, type IdTokenClaims } from '@logto/react'
 import { useEffect, useState } from 'react'
-import { TrendingUp, Trophy, BarChart3, User } from 'lucide-react'
+import { TrendingUp, Trophy, BarChart3, User, Settings } from 'lucide-react'
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
@@ -53,17 +53,29 @@ function DashboardPage() {
             <h1 className="text-3xl font-bold">Dashboard</h1>
             <p className="text-gray-400 mt-2">Your personalized data overview</p>
           </div>
-          {userClaims && (
-            <div className="flex items-center gap-3 bg-gray-900 border border-gray-800 rounded-xl px-4 py-2">
-              <User size={18} className="text-gray-400" />
-              <div className="text-sm">
-                <div className="font-medium">{userClaims.name || userClaims.email}</div>
-                {userClaims.email && userClaims.name && (
-                  <div className="text-gray-500 text-xs">{userClaims.email}</div>
-                )}
-              </div>
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            {userClaims && (
+              <a
+                href="/u/me"
+                className="flex items-center gap-3 bg-gray-900 border border-gray-800 rounded-xl px-4 py-2 hover:border-gray-700 transition-colors"
+              >
+                <User size={18} className="text-gray-400" />
+                <div className="text-sm">
+                  <div className="font-medium">{userClaims.name || userClaims.email}</div>
+                  {userClaims.email && userClaims.name && (
+                    <div className="text-gray-500 text-xs">{userClaims.email}</div>
+                  )}
+                </div>
+              </a>
+            )}
+            <a
+              href="/u/me"
+              className="p-2 bg-gray-900 border border-gray-800 rounded-xl hover:bg-gray-800 transition-colors"
+              title="Edit Profile"
+            >
+              <Settings size={18} className="text-gray-400" />
+            </a>
+          </div>
         </div>
 
         <div className="flex gap-2 mb-6 border-b border-gray-800 pb-4">

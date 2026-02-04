@@ -120,10 +120,11 @@ function AuthenticatedHome({ user }: { user?: IdTokenClaims }) {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <DashboardCard title="Finance" link="/dashboard?tab=finance" />
           <DashboardCard title="Sports" link="/dashboard?tab=sports" />
           <DashboardCard title="Fantasy" link="/dashboard?tab=fantasy" />
+          <DashboardCard title="Profile" link="/u/me" />
         </div>
       </div>
     </div>
