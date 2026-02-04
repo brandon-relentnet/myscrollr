@@ -61,10 +61,10 @@ pub async fn log_writer_task(mut receiver: mpsc::Receiver<LogMessage>, log_file_
         warn!("Continuing, logs will not be stored...");
     }
     
-    let mut backend = match File::create(format!("{}/backend.log", log_file_path)) {
+    let mut yahoo = match File::create(format!("{}/yahoo.log", log_file_path)) {
         Ok(f) => f,
         Err(e) => {
-            eprintln!("Fatal: Could not create log file at {:?}: {}", "backend.log", e);
+            eprintln!("Fatal: Could not create log file at {:?}: {}", "yahoo.log", e);
             return;
         }
     };
@@ -74,7 +74,7 @@ pub async fn log_writer_task(mut receiver: mpsc::Receiver<LogMessage>, log_file_
     while let Some(msg) = receiver.recv().await {
         println!("{}", msg);
 
-        if let Err(e) = backend.write_all(msg.as_bytes()) {
+        if let Err(e) = yahoo.write_all(msg.as_bytes()) {
             eprintln!("Error writing log data to disk: {}", e);
         }
     }

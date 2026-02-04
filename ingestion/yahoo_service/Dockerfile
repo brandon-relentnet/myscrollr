@@ -13,11 +13,11 @@ RUN cargo chef cook --release --recipe-path recipe.json
 
 # Build application
 COPY . .
-RUN cargo build --release --bin scrollr_backend
+RUN cargo build --release --bin yahoo_service
 
 FROM debian:bookworm-slim
 WORKDIR /app
 RUN apt-get update && apt-get install -y ca-certificates libssl-dev curl && rm -rf /var/lib/apt/lists/*
-COPY --from=builder /app/target/release/scrollr_backend .
+COPY --from=builder /app/target/release/yahoo_service .
 
-CMD ["./scrollr_backend"]
+CMD ["./yahoo_service"]

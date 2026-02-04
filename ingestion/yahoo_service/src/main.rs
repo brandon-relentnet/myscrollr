@@ -6,13 +6,13 @@ use axum_server::tls_rustls::RustlsConfig;
 use futures_util::{StreamExt, future::join_all};
 use dotenv::dotenv;
 use rcgen::generate_simple_self_signed;
-use scrollr_backend::{ErrorCodeResponse, RefreshBody, ServerState, get_access_token, update_tokens};
+use yahoo_service::{ErrorCodeResponse, RefreshBody, ServerState, get_access_token, update_tokens};
 use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio_rustls_acme::{AcmeConfig, caches::DirCache, tokio_rustls::rustls::ServerConfig};
 use tower_http::{cors::{self, AllowOrigin, CorsLayer}, set_header::SetRequestHeaderLayer};
-use scrollr_backend::log::{error, info, init_async_logger, warn};
+use yahoo_service::log::{error, info, init_async_logger, warn};
 use yahoo_fantasy::{api::{debug_league_stats, get_league_standings, get_matchups, get_team_roster, get_user_leagues}, exchange_for_token, stats::{BasketballStats, FootballStats, HockeyStats, StatDecode}, types::{LeagueStandings, Roster, Tokens}, yahoo};
 use redis::Cmd;
 

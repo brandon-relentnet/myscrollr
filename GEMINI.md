@@ -7,7 +7,7 @@ MyScrollr is a multi-component service designed to aggregate financial market da
 The project is organized into several top-level directories, representing different parts of the ecosystem:
 
 *   **`ingestion/`**: The core backend, implemented as a Rust workspace.
-    *   **`scrollr_backend`**: The main entry point. An Axum web server that handles HTTP requests, Yahoo OAuth2 flow, and proxies data from the specialized services.
+    *   **`yahoo_service`**: The Yahoo Bridge & Gateway. An Axum web server that handles Yahoo OAuth2 flow, and proxies data from the specialized services.
     *   **`finance_service`**: Fetches and manages financial data using Finnhub (WebSocket and HTTP).
     *   **`sports_service`**: Polls the ESPN API for live sports scores across various leagues (NFL, NBA, NHL, etc.).
     *   **`yahoo_fantasy`**: A library crate that wraps the Yahoo Fantasy Sports API, handling token management and data fetching for leagues, standings, and rosters.

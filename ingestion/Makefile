@@ -1,7 +1,7 @@
 # Image Names
 IMG_FINANCE := scrollr-finance
 IMG_SPORTS := scrollr-sports
-IMG_BACKEND := scrollr-backend
+IMG_YAHOO := scrollr-yahoo
 
 # Build Commands (Run from root context)
 build-finance:
@@ -10,10 +10,10 @@ build-finance:
 build-sports:
 	docker build -f sports_service/Dockerfile -t $(IMG_SPORTS) .
 
-build-backend:
-	docker build -f scrollr_backend/Dockerfile -t $(IMG_BACKEND) .
+build-yahoo:
+	docker build -f yahoo_service/Dockerfile -t $(IMG_YAHOO) .
 
-build-all: build-finance build-sports build-backend
+build-all: build-finance build-sports build-yahoo
 
 # Run Commands (Using host networking to access SSH tunnel)
 run-finance:
@@ -30,13 +30,13 @@ run-sports:
 		--env-file .env \
 		$(IMG_SPORTS)
 
-run-backend:
-	@echo "Starting Scrollr Backend on port 8443..."
+run-yahoo:
+	@echo "Starting Yahoo Service on port 8443..."
 	docker run --rm -it \
 		--network host \
 		--env-file .env \
-		$(IMG_BACKEND)
+		$(IMG_YAHOO)
 
 # Clean up dangling images
 clean:
-	docker rmi $(IMG_FINANCE) $(IMG_SPORTS) $(IMG_BACKEND)
+	docker rmi $(IMG_FINANCE) $(IMG_SPORTS) $(IMG_YAHOO)

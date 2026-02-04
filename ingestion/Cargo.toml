@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "scrollr_backend",
+    "yahoo_service",
     "finance_service",
     "sports_service",
     "yahoo_fantasy"
