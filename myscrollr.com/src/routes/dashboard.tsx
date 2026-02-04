@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useAuth } from '@/components/AuthProvider'
+import { useLogto } from '@logto/react'
 import { useState } from 'react'
 import { TrendingUp, Trophy, BarChart3 } from 'lucide-react'
 
@@ -8,7 +8,7 @@ export const Route = createFileRoute('/dashboard')({
 })
 
 function DashboardPage() {
-  const { isAuthenticated, isLoading, login } = useAuth()
+  const { isAuthenticated, isLoading, signIn } = useLogto()
   const [activeTab, setActiveTab] = useState<'finance' | 'sports' | 'fantasy'>('finance')
 
   if (isLoading) {
@@ -25,7 +25,7 @@ function DashboardPage() {
         <div className="text-center">
           <h1 className="text-3xl font-bold mb-4">Sign in to view your dashboard</h1>
           <button
-            onClick={login}
+            onClick={signIn}
             className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-8 rounded-xl transition-all"
           >
             Sign In

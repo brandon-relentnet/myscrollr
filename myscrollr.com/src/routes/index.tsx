@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useAuth } from '@/components/AuthProvider'
+import { useLogto } from '@logto/react'
 import { ArrowRight, TrendingUp, Trophy, BarChart3 } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
@@ -7,7 +7,7 @@ export const Route = createFileRoute('/')({
 })
 
 function HomePage() {
-  const { isAuthenticated, isLoading, login } = useAuth()
+  const { isAuthenticated, isLoading, signIn } = useLogto()
 
   if (isLoading) {
     return (
@@ -21,7 +21,7 @@ function HomePage() {
     return <AuthenticatedHome />
   }
 
-  return <PublicHome onLogin={login} />
+  return <PublicHome onLogin={signIn} />
 }
 
 function PublicHome({ onLogin }: { onLogin: () => void }) {

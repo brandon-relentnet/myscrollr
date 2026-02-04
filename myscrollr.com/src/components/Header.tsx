@@ -1,16 +1,22 @@
 import { Link, useLocation } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Home, Menu, X, User, LogOut } from 'lucide-react'
-import { useAuth } from './AuthProvider'
+import { useLogto } from '@logto/react'
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
-  const { isAuthenticated, isLoading, login, logout, user } = useAuth()
+  const { signIn, signOut, isAuthenticated, isLoading } = useLogto()
   const location = useLocation()
 
-  console.log('[Header] Render:', { isAuthenticated, isLoading, hasUser: !!user })
-
   const isActive = (path: string) => location.pathname === path
+
+  const handleSignIn = () => {
+    signIn(`${window.location.origin}/callback`)
+  }
+
+  const handleSignOut = () => {
+    signOut(`${window.location.origin}`)
+  }
 
   return (
     <>
@@ -35,10 +41,10 @@ export default function Header() {
             <>
               <div className="hidden sm:flex items-center gap-2 text-sm text-gray-400">
                 <User size={16} />
-                <span>{user?.email || 'User'}</span>
+                <span>User</span>
               </div>
               <button
-                onClick={logout}
+                onClick={handleSignOut}
                 className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors text-sm font-medium"
               >
                 <LogOut size={18} />
@@ -47,7 +53,7 @@ export default function Header() {
             </>
           ) : (
             <button
-              onClick={login}
+              onClick={handleSignIn}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors text-sm font-medium"
             >
               Sign In
@@ -108,7 +114,7 @@ export default function Header() {
           ) : isAuthenticated ? (
             <button
               onClick={() => {
-                logout()
+                handleSignOut()
                 setIsOpen(false)
               }}
               className="w-full flex items-center justify-center gap-2 p-3 bg-red-600 hover:bg-red-700 rounded-lg transition-colors font-medium"
@@ -119,7 +125,7 @@ export default function Header() {
           ) : (
             <button
               onClick={() => {
-                login()
+                handleSignIn()
                 setIsOpen(false)
               }}
               className="w-full p-3 bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors font-medium"
