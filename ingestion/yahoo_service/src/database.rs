@@ -4,6 +4,7 @@ use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 pub use sqlx::PgPool;
 use sqlx::{query, query_as};
 use chrono::{DateTime, Utc};
+use rand::Rng;
 use aes_gcm::{
     aead::{Aead, KeyInit, Payload},
     Aes256Gcm, Nonce
