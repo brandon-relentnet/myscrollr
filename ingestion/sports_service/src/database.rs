@@ -3,7 +3,6 @@ use anyhow::{Context, Result};
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 pub use sqlx::PgPool;
 use sqlx::{FromRow, query, query_as};
-use crate::log::{error, info};
 pub use chrono::Utc;
 use serde::Deserialize;
 

@@ -3,7 +3,7 @@ use std::{sync::Arc, time::Duration, fs};
 use futures_util::future::join_all;
 use reqwest::Client;
 use tokio::{sync::Mutex, time::{self, sleep}};
-use crate::log::{debug, error, info, warn};
+use crate::log::{error, info, warn};
 use crate::database::{PgPool, create_tables, insert_symbol, update_previous_close, update_trade, get_tracked_symbols, seed_tracked_symbols};
 
 use crate::{types::{FinanceHealth, FinanceState, QuoteResponse}, websocket::connect};

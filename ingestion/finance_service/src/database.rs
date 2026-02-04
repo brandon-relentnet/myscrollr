@@ -3,7 +3,6 @@ use anyhow::{Context, Result};
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 pub use sqlx::PgPool;
 use sqlx::{FromRow, query, query_as};
-use crate::log::error;
 pub use chrono::Utc;
 
 pub async fn initialize_pool() -> Result<PgPool> {
@@ -42,7 +41,7 @@ pub async fn initialize_pool() -> Result<PgPool> {
     Ok(pool)
 }
 
-#[derive(FromRow, Clone)]
+#[derive(FromRow, Clone, Debug)]
 pub struct DatabaseTradeData {
     pub symbol: String, 
     pub price: f64, 
@@ -54,7 +53,6 @@ pub struct DatabaseTradeData {
 }
 
 pub async fn create_tables(pool: Arc<PgPool>) {
-    // 1. Create trades table
     let trades_statement = "
         CREATE TABLE IF NOT EXISTS trades (
             id SERIAL PRIMARY KEY,
@@ -69,7 +67,6 @@ pub async fn create_tables(pool: Arc<PgPool>) {
         );
     ";
 
-    // 2. Create tracked_symbols table for dynamic config
     let config_statement = "
         CREATE TABLE IF NOT EXISTS tracked_symbols (
             id SERIAL PRIMARY KEY,
@@ -130,4 +127,28 @@ pub async fn update_trade(pool: Arc<PgPool>, symbol: String, price: f64, price_c
     if let Ok(mut connection) = conn {
         let _ = query(statement).bind(price).bind(price_change).bind(percentage_change).bind(direction).bind(symbol).execute(&mut *connection).await;
     }
+}
+
+pub async fn get_trades(pool: Arc<PgPool>) -> Vec<DatabaseTradeData> {
+    let statement = "
+        SELECT
+            symbol,
+            price::FLOAT8 as price,
+            previous_close::FLOAT8 as previous_close,
+            price_change::FLOAT8 as price_change,
+            percentage_change::FLOAT8 as percentage_change,
+            direction,
+            last_updated
+        FROM trades
+        ORDER BY symbol ASC
+    ";
+
+    let conn = pool.acquire().await;
+    if let Ok(mut connection) = conn {
+        let result: Result<Vec<DatabaseTradeData>, sqlx::Error> = query_as(statement).fetch_all(&mut *connection).await;
+        if let Ok(data) = result {
+            return data;
+        }
+    }
+    Vec::new()
 }

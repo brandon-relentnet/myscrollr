@@ -3,6 +3,7 @@ use reqwest::Client;
 use tokio::sync::Mutex;
 use crate::log::{error, info};
 use crate::database::{PgPool, create_tables, get_tracked_leagues, seed_tracked_leagues, LeagueConfigs, upsert_game};
+pub use crate::types::SportsHealth;
 
 pub mod log;
 pub mod database;
@@ -88,30 +89,4 @@ fn parse_espn_game(event: &serde_json::Value, league_name: &str) -> Option<crate
         short_detail: competition.get("status")?.get("type")?.get("shortDetail")?.as_str()?.to_string(),
         state: competition.get("status")?.get("type")?.get("state")?.as_str()?.to_string(),
     })
-}
-
-#[derive(serde::Serialize)]
-pub struct SportsHealth {
-    pub status: String,
-    pub last_poll: Option<chrono::DateTime<Utc>>,
-    pub error_count: u64,
-    pub last_error: Option<String>,
-}
-
-impl SportsHealth {
-    pub fn new() -> Self {
-        Self { status: "healthy".to_string(), last_poll: None, error_count: 0, last_error: None }
-    }
-    pub fn record_success(&mut self) {
-        self.last_poll = Some(Utc::now());
-        self.status = "healthy".to_string();
-    }
-    pub fn record_error(&mut self, err: String) {
-        self.error_count += 1;
-        self.last_error = Some(err);
-        self.status = "degraded".to_string();
-    }
-    pub fn get_health(&self) -> Self {
-        Self { status: self.status.clone(), last_poll: self.last_poll, error_count: self.error_count, last_error: self.last_error.clone() }
-    }
 }
