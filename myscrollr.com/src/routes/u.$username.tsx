@@ -41,13 +41,14 @@ function ProfilePage() {
   // Get access token on mount
   useEffect(() => {
     async function fetchToken() {
-      if (getAccessToken) {
-        try {
+      try {
+        if (typeof getAccessToken === 'function') {
           const token = await getAccessToken()
           setAccessToken(token ?? null)
-        } catch {
-          setAccessToken(null)
         }
+      } catch {
+        console.error('Failed to get access token')
+        setAccessToken(null)
       }
     }
     fetchToken()
@@ -55,12 +56,18 @@ function ProfilePage() {
 
   useEffect(() => {
     async function fetchProfiles() {
+      // Wait for token if authenticated
+      if (isAuthenticated && !accessToken) {
+        return // Will re-run when accessToken is set
+      }
+
       setLoading(true)
       setError(null)
 
       try {
-        // If viewing "me" and authenticated, fetch own profile directly
+        // Handle "me" route - fetch authenticated user's profile
         if (username === 'me' && isAuthenticated && accessToken) {
+          // User is authenticated, fetch their profile
           const myRes = await fetch('/api/users/me/profile', {
             headers: { Authorization: `Bearer ${accessToken}` }
           })
@@ -75,17 +82,16 @@ function ProfilePage() {
               is_public: myData.is_public,
             })
           } else {
-            // Profile might not exist yet, that's OK
             const errText = await myRes.text()
             try {
               const err = JSON.parse(errText)
-              setError(err.error || 'Profile not found')
+              setError(err.error || 'Failed to load profile')
             } catch {
               setError('Failed to load profile')
             }
           }
-        } else {
-          // Fetch public profile
+        } else if (username !== 'me') {
+          // Fetch public profile by username
           const res = await fetch(`/api/users/${username}`)
           if (!res.ok) {
             const errText = await res.text()
@@ -111,17 +117,22 @@ function ProfilePage() {
                   const myData = await myRes.json()
                   setMyProfile(myData)
                   setIsOwnProfile(myData.username === username)
-                  setFormData({
-                    display_name: myData.display_name || '',
-                    bio: myData.bio || '',
-                    is_public: myData.is_public,
-                  })
+                  if (myData.username === username) {
+                    setFormData({
+                      display_name: myData.display_name || '',
+                      bio: myData.bio || '',
+                      is_public: myData.is_public,
+                    })
+                  }
                 }
               } catch {
-                // Not set up yet, will prompt to set username
+                // Not authenticated properly, ignore
               }
             }
           }
+        } else if (username === 'me') {
+          // User not authenticated visiting /u/me - just show sign-in prompt
+          // Don't make any API call, just stop loading
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load profile')
