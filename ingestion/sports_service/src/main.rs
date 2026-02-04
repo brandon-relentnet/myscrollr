@@ -15,7 +15,20 @@ async fn main() {
     dotenv().ok();
     let _ = init_async_logger("./logs");
 
-    let pool = Arc::new(initialize_pool().await.expect("Failed to init DB"));
+    let mut retries = 5;
+    let pool = loop {
+        match initialize_pool().await {
+            Ok(p) => break Arc::new(p),
+            Err(e) => {
+                if retries == 0 {
+                    panic!("Failed to init DB after retries: {}", e);
+                }
+                println!("Failed to connect to DB, retrying in 2 seconds... ({} attempts left) Error: {}", retries, e);
+                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                retries -= 1;
+            }
+        }
+    };
     let health = Arc::new(Mutex::new(SportsHealth::new()));
 
     // Start the background service (Initial ingest)
