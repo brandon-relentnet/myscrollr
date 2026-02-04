@@ -161,7 +161,9 @@ func LogtoLogin(c *fiber.Ctx) error {
 	redirectURI := fmt.Sprintf("https://%s/callback", strings.TrimPrefix(domain, "https://"))
 	
 	// OIDC Authorization URL
-	authURL := fmt.Sprintf("%s/oidc/auth?client_id=%s&response_type=code&scope=openid+profile+email&redirect_uri=%s&state=mystate", 
+	// We only request 'openid' for now to ensure the flow works. 
+	// You can add +profile+email back once they are enabled in your Logto App settings.
+	authURL := fmt.Sprintf("%s/oidc/auth?client_id=%s&response_type=code&scope=openid&redirect_uri=%s&state=mystate", 
 		endpoint, appID, url.QueryEscape(redirectURI))
 	
 	// Add API Resource if configured
