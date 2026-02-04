@@ -59,36 +59,67 @@ function ProfilePage() {
       setError(null)
 
       try {
-        // Fetch public profile
-        const res = await fetch(`/api/users/${username}`)
-        if (!res.ok) {
-          const err = await res.json()
-          throw new Error(err.error || 'Profile not found')
-        }
-        const data = await res.json()
-        setProfile(data)
-
-        // Check if this is the current user's profile
-        if (isAuthenticated && accessToken) {
-          const claims = await getIdTokenClaims()
-          if (claims?.sub) {
-            // Fetch my profile to compare usernames
+        // If viewing "me" and authenticated, fetch own profile directly
+        if (username === 'me' && isAuthenticated && accessToken) {
+          const myRes = await fetch('/api/users/me/profile', {
+            headers: { Authorization: `Bearer ${accessToken}` }
+          })
+          if (myRes.ok) {
+            const myData = await myRes.json()
+            setMyProfile(myData)
+            setProfile(myData)
+            setIsOwnProfile(true)
+            setFormData({
+              display_name: myData.display_name || '',
+              bio: myData.bio || '',
+              is_public: myData.is_public,
+            })
+          } else {
+            // Profile might not exist yet, that's OK
+            const errText = await myRes.text()
             try {
-              const myRes = await fetch('/api/users/me/profile', {
-                headers: { Authorization: `Bearer ${accessToken}` }
-              })
-              if (myRes.ok) {
-                const myData = await myRes.json()
-                setMyProfile(myData)
-                setIsOwnProfile(myData.username === username)
-                setFormData({
-                  display_name: myData.display_name || '',
-                  bio: myData.bio || '',
-                  is_public: myData.is_public,
-                })
-              }
+              const err = JSON.parse(errText)
+              setError(err.error || 'Profile not found')
             } catch {
-              // Not set up yet, will prompt to set username
+              setError('Failed to load profile')
+            }
+          }
+        } else {
+          // Fetch public profile
+          const res = await fetch(`/api/users/${username}`)
+          if (!res.ok) {
+            const errText = await res.text()
+            try {
+              const err = JSON.parse(errText)
+              throw new Error(err.error || 'Profile not found')
+            } catch {
+              throw new Error('Profile not found')
+            }
+          }
+          const data = await res.json()
+          setProfile(data)
+
+          // Check if this is the current user's profile
+          if (isAuthenticated && accessToken) {
+            const claims = await getIdTokenClaims()
+            if (claims?.sub) {
+              try {
+                const myRes = await fetch('/api/users/me/profile', {
+                  headers: { Authorization: `Bearer ${accessToken}` }
+                })
+                if (myRes.ok) {
+                  const myData = await myRes.json()
+                  setMyProfile(myData)
+                  setIsOwnProfile(myData.username === username)
+                  setFormData({
+                    display_name: myData.display_name || '',
+                    bio: myData.bio || '',
+                    is_public: myData.is_public,
+                  })
+                }
+              } catch {
+                // Not set up yet, will prompt to set username
+              }
             }
           }
         }
