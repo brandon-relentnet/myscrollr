@@ -1,0 +1,9 @@
+{
+  "name": "myscrollr",
+  "private": true,
+  "scripts": {
+    "build": "cd myscrollr.com && npm install && npm run build",
+    "dev": "cd myscrollr.com && npm run dev",
+    "preview": "cd myscrollr.com && npm run preview"
+  }
+}

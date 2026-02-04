@@ -1,0 +1,7 @@
+[build]
+# Build command for the frontend
+buildCommand = "cd myscrollr.com && npm install && npm run build"
+
+[start]
+# Start command
+startCommand = "cd myscrollr.com && npm run preview"
