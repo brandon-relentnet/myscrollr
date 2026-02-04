@@ -9,11 +9,24 @@ use serde::Deserialize;
 
 pub async fn initialize_pool() -> Result<PgPool> {
     let pool_options = PgPoolOptions::new()
-        .max_connections(50)
-        .min_connections(6)
+        .max_connections(20)
+        .min_connections(1)
+        .acquire_timeout(Duration::from_secs(10))
         .idle_timeout(Duration::from_millis(30_000));
 
     if let Ok(database_url) = env::var("DATABASE_URL") {
+        // Mask password for safe logging
+        let masked_url = if let Some(at_idx) = database_url.find('@') {
+            if let Some(colon_idx) = database_url[..at_idx].rfind(':') {
+                format!("{}:****{}", &database_url[..colon_idx], &database_url[at_idx..])
+            } else {
+                database_url.clone()
+            }
+        } else {
+            database_url.clone()
+        };
+        println!("Attempting to connect to database with URL: {}", masked_url);
+
         let pool = pool_options
             .connect(&database_url)
             .await
