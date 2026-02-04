@@ -29,7 +29,7 @@ pub async fn start_finance_services(pool: Arc<PgPool>, health_state: Arc<Mutex<F
         connect(state.subscriptions.clone(), state.api_key.clone(), state.client.clone(), pool.clone(), health_state.clone()).await;
 
         error!("Lost websocket, attempting reconnect in 5 minutes...");
-        sleep(Duration::from_mins(5)).await;
+        sleep(Duration::from_secs(300)).await;
     }
 }
 
