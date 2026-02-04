@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -12,22 +13,29 @@ import (
 )
 
 var (
-	jwks *keyfunc.JWKS
+	jwks       *keyfunc.JWKS
+	apiURL     string // Derived from COOLIFY_FQDN for audience validation
+	logtoURL   string // Derived from COOLIFY_FQDN for issuer validation
 )
 
 func InitAuth() {
-	jwksURL := os.Getenv("LOGTO_JWKS_URL")
-	if jwksURL == "" {
-		log.Println("[Security Warning] LOGTO_JWKS_URL not set, authentication will fail")
+	fqdn := os.Getenv("COOLIFY_FQDN")
+	if fqdn == "" {
+		log.Println("[Security Warning] COOLIFY_FQDN not set, authentication will fail")
 		return
 	}
+	fqdn = strings.TrimPrefix(fqdn, "https://")
+	fqdn = strings.TrimPrefix(fqdn, "http://")
+	fqdn = strings.TrimSuffix(fqdn, "/")
 
-	endpoint := os.Getenv("LOGTO_ENDPOINT")
-	if endpoint == "" {
-		log.Println("[Security Warning] LOGTO_ENDPOINT not set, login redirects will be broken")
-	}
+	// Derive URLs from FQDN
+	apiURL = fmt.Sprintf("https://%s", fqdn)
+	logtoURL = fmt.Sprintf("https://%s/oidc", fqdn)
 
-	// Create the JWKS from the resource at the given URL.
+	// Derive Logto JWKS URL from FQDN
+	jwksURL := fmt.Sprintf("https://%s/oidc/jwks", fqdn)
+
+	log.Printf("[Auth] Initializing with JWKS: %s", jwksURL)
 	var err error
 	jwks, err = keyfunc.Get(jwksURL, keyfunc.Options{
 		RefreshErrorHandler: func(err error) {
@@ -111,25 +119,17 @@ func LogtoAuth(c *fiber.Ctx) error {
 		})
 	}
 
-	// Verify Issuer
-	issuer := os.Getenv("LOGTO_ISSUER")
-	if issuer == "" {
-		log.Println("[Security Warning] LOGTO_ISSUER not set, authentication will fail")
-	}
-	if claims["iss"] != issuer {
+	// Verify Issuer - derived from COOLIFY_FQDN
+	if claims["iss"] != logtoURL {
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "unauthorized",
 			Error:  "Invalid token issuer",
 		})
 	}
 
-	// Verify Audience (API Resource Identifier)
-	audience := os.Getenv("LOGTO_API_RESOURCE")
-	if audience == "" {
-		log.Println("[Security Warning] LOGTO_API_RESOURCE not set, authentication will fail")
-	}
+	// Verify Audience (API Resource Identifier) - derived from COOLIFY_FQDN
 	aud, _ := claims["aud"].(string)
-	if aud != audience {
+	if aud != apiURL {
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "unauthorized",
 			Error:  "Invalid token audience",

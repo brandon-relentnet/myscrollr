@@ -24,14 +24,11 @@ var yahooConfig *oauth2.Config
 func InitYahoo() {
 	clientID := os.Getenv("YAHOO_CLIENT_ID")
 	clientSecret := os.Getenv("YAHOO_CLIENT_SECRET")
-	domain := os.Getenv("DOMAIN_NAME")
-	if domain == "" { domain = os.Getenv("COOLIFY_FQDN") }
+	domain := os.Getenv("COOLIFY_FQDN")
 	domain = strings.TrimPrefix(domain, "https://")
 	domain = strings.TrimPrefix(domain, "http://")
 	domain = strings.TrimSuffix(domain, "/")
-	callbackPath := os.Getenv("YAHOO_CALLBACK_URL")
-	if callbackPath == "" { callbackPath = "/yahoo/callback" }
-	if !strings.HasPrefix(callbackPath, "/") { callbackPath = "/" + callbackPath }
+	callbackPath := "/yahoo/callback"
 	redirectURL := fmt.Sprintf("https://%s%s", domain, callbackPath)
 	log.Printf("[Yahoo Init] Client ID: %s... Redirect URI: %s", clientID[:5], redirectURL)
 
