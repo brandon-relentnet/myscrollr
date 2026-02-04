@@ -21,7 +21,7 @@ RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 RUN cargo build --release --bin yahoo_service
 
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 WORKDIR /app
 
 # Define Build Args
