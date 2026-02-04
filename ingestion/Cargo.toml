@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "scrollr_backend",
+    "finance_service",
+    "sports_service",
+    "yahoo_fantasy"
+]
+resolver = "3"

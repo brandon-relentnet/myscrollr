@@ -1,2 +1,7 @@
 .git
 .env
+target/
+.log
+acme_cache/
+release/
+logs/
