@@ -4,10 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-MyScrollr is a multi-component platform aggregating financial market data (via Finnhub), sports scores (via ESPN), and Yahoo Fantasy Sports integration. It consists of:
-- **Rust ingestion services** (Yahoo, Finance, Sports) - data collection layer
-- **Go Fiber API** - public-facing API serving frontend
-- **PostgreSQL + Redis** - data persistence and caching
+MyScrollr is a multi-component platform aggregating financial market data (via Finnhub), sports scores (via ESPN), and Yahoo Fantasy Sports integration:
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| **Frontend** | React + TanStack Router | User interface at myscrollr.com |
+| **API** | Go + Fiber | Public API server (port 8080) |
+| **Ingestion** | Rust + Axum | Data collection workers |
+| **Database** | PostgreSQL | Data persistence |
+| **Cache** | Redis | Caching and tokens |
 
 ## Build Commands
 
@@ -119,6 +124,34 @@ Copy `ingestion/.env.example` to `.env` (for local dev) or configure in Coolify:
 | `INTERNAL_FINANCE_URL` | Finance service URL |
 | `INTERNAL_SPORTS_URL` | Sports service URL |
 | `INTERNAL_YAHOO_URL` | Yahoo service URL |
+
+### Frontend (`myscrollr.com/`)
+
+| File | Purpose |
+|------|---------|
+| `src/components/AuthProvider.tsx` | Auth state management (checks API cookie) |
+| `src/components/Header.tsx` | Navigation with conditional auth buttons |
+| `src/routes/index.tsx` | Landing page (public vs authenticated views) |
+| `src/routes/dashboard.tsx` | Protected dashboard with tabs |
+
+#### Frontend Build Commands
+
+```bash
+cd myscrollr.com
+
+# Install dependencies
+npm install
+
+# Development server (port 3000)
+npm run dev
+
+# Build for production
+npm run build
+
+# Lint and format
+npm run lint
+npm run format
+```
 
 ## Backend Endpoints (Yahoo Service)
 

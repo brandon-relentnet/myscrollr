@@ -5,3 +5,12 @@ target/
 acme_cache/
 release/
 logs/
+node_modules
+.DS_Store
+dist
+dist-ssr
+*.local
+count.txt
+.nitro
+.tanstack
+.wrangler
