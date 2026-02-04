@@ -30,7 +30,10 @@ pub async fn start_active_sync(state: YahooWorkerState) {
     info!("Starting Yahoo Active Sync worker...");
     
     // Ensure tables exist
-    database::create_tables(&state.db_pool).await;
+    if let Err(e) = database::create_tables(&state.db_pool).await {
+        error!("Failed to create database tables: {}", e);
+        return;
+    }
 
     let client_id = std::env::var("YAHOO_CLIENT_ID").expect("YAHOO_CLIENT_ID must be set");
     let client_secret = std::env::var("YAHOO_CLIENT_SECRET").expect("YAHOO_CLIENT_SECRET must be set");

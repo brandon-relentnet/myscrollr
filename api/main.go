@@ -129,19 +129,21 @@ func main() {
 	app.Get("/", LandingPage)
 
 	// --- Protected Routes (Logto) ---
-	api := app.Group("/", LogtoAuth)
+	// We apply LogtoAuth individually to routes to ensure 404s for unknown routes
+	// instead of a 401 triggered by the group-level middleware prefix match.
+	api := app.Group("/")
 
 	// Data Routes
-	api.Get("/sports", GetSports)
-	api.Get("/finance", GetFinance)
-	api.Get("/dashboard", GetDashboard)
+	api.Get("/sports", LogtoAuth, GetSports)
+	api.Get("/finance", LogtoAuth, GetFinance)
+	api.Get("/dashboard", LogtoAuth, GetDashboard)
 
 	// Yahoo OAuth & Data
-	api.Get("/yahoo/start", YahooStart)
-	api.Get("/yahoo/leagues", YahooLeagues)
-	api.Get("/yahoo/league/:league_key/standings", YahooStandings)
-	api.Get("/yahoo/team/:team_key/matchups", YahooMatchups)
-	api.Get("/yahoo/team/:team_key/roster", YahooRoster)
+	api.Get("/yahoo/start", LogtoAuth, YahooStart)
+	api.Get("/yahoo/leagues", LogtoAuth, YahooLeagues)
+	api.Get("/yahoo/league/:league_key/standings", LogtoAuth, YahooStandings)
+	api.Get("/yahoo/team/:team_key/matchups", LogtoAuth, YahooMatchups)
+	api.Get("/yahoo/team/:team_key/roster", LogtoAuth, YahooRoster)
 
 	port := os.Getenv("PORT")
 	if port == "" {

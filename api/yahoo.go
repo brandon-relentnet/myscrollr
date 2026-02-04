@@ -60,7 +60,11 @@ func getToken(c *fiber.Ctx) string {
 func getGuid(c *fiber.Ctx) string {
 	token := getToken(c)
 	if token == "" { return "" }
-	guid, _ := rdb.Get(context.Background(), "token_to_guid:"+token).Result()
+	
+	h := sha256.Sum256([]byte(token))
+	tokenHash := hex.EncodeToString(h[:])
+	
+	guid, _ := rdb.Get(context.Background(), "token_to_guid:"+tokenHash).Result()
 	return guid
 }
 
@@ -148,18 +152,20 @@ func YahooCallback(c *fiber.Ctx) error {
 						UpsertYahooUser(guid, refreshToken)
 						log.Printf("[Yahoo Sync] Registered user %s for active sync", guid)
 						
-						// Note: we can't set cookie from goroutine, but we can store in Redis
-						rdb.Set(context.Background(), "token_to_guid:"+accessToken, guid, 24*time.Hour)
+						// Hash token for Redis key
+						h := sha256.Sum256([]byte(accessToken))
+						tokenHash := hex.EncodeToString(h[:])
+						
+						rdb.Set(context.Background(), "token_to_guid:"+tokenHash, guid, 24*time.Hour)
 					}
 				}
 			}
 		}(token.AccessToken, token.RefreshToken)
 	}
 
-	frontendURL := validateURL(os.Getenv("FRONTEND_URL"), "")
-	if frontendURL == "" {
-		log.Println("[Security Warning] FRONTEND_URL not set, authentication callback might fail to notify opener")
-		// We don't set a hardcoded fallback here anymore
+	frontendURL := validateURL(os.Getenv("FRONTEND_URL"), "https://myscrollr.com")
+	if os.Getenv("FRONTEND_URL") == "" {
+		log.Println("[Security Warning] FRONTEND_URL not set, defaulting to https://myscrollr.com for postMessage")
 	}
 
 	html := fmt.Sprintf(`<!doctype html><html><head><meta charset="utf-8"><title>Auth Complete</title></head>

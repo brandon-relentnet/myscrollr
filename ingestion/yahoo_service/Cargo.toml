@@ -18,3 +18,6 @@ reqwest = { version = "0.12", features = ["json"] }
 yahoo_fantasy = { path = "./yahoo_fantasy" }
 secrecy = "0.10"
 futures-util = "0.3"
+aes-gcm = "0.10"
+base64 = "0.22"
+rand = "0.8"

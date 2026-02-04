@@ -98,7 +98,7 @@ impl Display for LiveByLeague {
     }
 }
 
-pub async fn create_tables(pool: &Arc<PgPool>) {
+pub async fn create_tables(pool: &Arc<PgPool>) -> Result<()> {
     let games_statement = "
         CREATE TABLE IF NOT EXISTS games (
             id SERIAL PRIMARY KEY,
@@ -130,54 +130,77 @@ pub async fn create_tables(pool: &Arc<PgPool>) {
         );
     ";
 
-    let conn = pool.acquire().await;
-    if let Ok(mut connection) = conn {
-        let _ = query(games_statement).execute(&mut *connection).await;
-        let _ = query(config_statement).execute(&mut *connection).await;
-    }
+    let mut connection = pool.acquire().await?;
+    query(games_statement).execute(&mut *connection).await?;
+    query(config_statement).execute(&mut *connection).await?;
+    Ok(())
 }
 
 pub async fn get_tracked_leagues(pool: Arc<PgPool>) -> Vec<LeagueConfigs> {
     let statement = "SELECT name, slug FROM tracked_leagues WHERE is_enabled = TRUE";
-    let conn = pool.acquire().await;
-    if let Ok(mut connection) = conn {
-        let result: Result<Vec<LeagueConfigs>, sqlx::Error> = query_as(statement).fetch_all(&mut *connection).await;
-        if let Ok(data) = result {
-            return data;
+    let res: Result<Vec<LeagueConfigs>, _> = async {
+        let mut connection = pool.acquire().await?;
+        let data = query_as(statement).fetch_all(&mut *connection).await?;
+        Ok(data)
+    }.await;
+
+    match res {
+        Ok(data) => data,
+        Err(e) => {
+            log::error!("Failed to get tracked leagues: {}", e);
+            Vec::new()
         }
     }
-    Vec::new()
 }
 
-pub async fn seed_tracked_leagues(pool: Arc<PgPool>, leagues: Vec<LeagueConfigs>) {
+pub async fn seed_tracked_leagues(pool: Arc<PgPool>, leagues: Vec<LeagueConfigs>) -> Result<()> {
     let statement = "INSERT INTO tracked_leagues (name, slug) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING";
-    let conn = pool.acquire().await;
-    if let Ok(mut connection) = conn {
-        for league in leagues {
-            let _ = query(statement).bind(league.name).bind(league.slug).execute(&mut *connection).await;
-        }
+    let mut connection = pool.acquire().await?;
+    for league in leagues {
+        query(statement).bind(league.name).bind(league.slug).execute(&mut *connection).await?;
     }
+    Ok(())
 }
 
-pub async fn upsert_game(pool: Arc<PgPool>, game: CleanedData) {
+pub async fn upsert_game(pool: Arc<PgPool>, game: CleanedData) -> Result<()> {
     let statement = "
         INSERT INTO games (league, external_game_id, link, home_team_name, home_team_logo, home_team_score, away_team_name, away_team_logo, away_team_score, start_time, short_detail, state)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         ON CONFLICT (league, external_game_id)
         DO UPDATE SET link = EXCLUDED.link, home_team_name = EXCLUDED.home_team_name, home_team_logo = EXCLUDED.home_team_logo, home_team_score = EXCLUDED.home_team_score, away_team_name = EXCLUDED.away_team_name, away_team_logo = EXCLUDED.away_team_logo, away_team_score = EXCLUDED.away_team_score, start_time = EXCLUDED.start_time, short_detail = EXCLUDED.short_detail, state = EXCLUDED.state, updated_at = CURRENT_TIMESTAMP;
     ";
-    let conn = pool.acquire().await;
-    if let Ok(mut connection) = conn {
-        let _ = query(statement).bind(&game.league).bind(game.external_game_id).bind(game.link).bind(game.home_team.name).bind(game.home_team.logo).bind(game.home_team.score).bind(game.away_team.name).bind(game.away_team.logo).bind(game.away_team.score).bind(game.start_time).bind(game.short_detail).bind(game.state).execute(&mut *connection).await;
-    }
+    let mut connection = pool.acquire().await?;
+    query(statement)
+        .bind(&game.league)
+        .bind(game.external_game_id)
+        .bind(game.link)
+        .bind(game.home_team.name)
+        .bind(game.home_team.logo)
+        .bind(game.home_team.score)
+        .bind(game.away_team.name)
+        .bind(game.away_team.logo)
+        .bind(game.away_team.score)
+        .bind(game.start_time)
+        .bind(game.short_detail)
+        .bind(game.state)
+        .execute(&mut *connection)
+        .await?;
+    Ok(())
 }
 
 pub async fn get_live_games(pool: &Arc<PgPool>) -> LiveLeagueList {
     let statement = "SELECT league, COUNT(*) as count FROM games WHERE state = 'in' GROUP BY league";
-    let conn = pool.acquire().await;
-    if let Ok(mut connection) = conn {
-        let result: Result<Vec<LiveByLeague>, sqlx::Error>= query_as(statement).fetch_all(&mut *connection).await;
-        if let Ok(data) = result { return LiveLeagueList::new(data); }
+    let res: Result<Vec<LiveByLeague>, _> = async {
+        let mut connection = pool.acquire().await?;
+        let data = query_as(statement).fetch_all(&mut *connection).await?;
+        Ok(data)
+    }.await;
+
+    match res {
+        Ok(data) => LiveLeagueList::new(data),
+        Err(e) => {
+            log::error!("Failed to get live games: {}", e);
+            LiveLeagueList::new(Vec::new())
+        }
     }
-    LiveLeagueList::new(Vec::new())
 }

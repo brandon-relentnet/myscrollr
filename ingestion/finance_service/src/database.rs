@@ -52,7 +52,7 @@ pub struct DatabaseTradeData {
     pub last_updated: chrono::DateTime<Utc>
 }
 
-pub async fn create_tables(pool: Arc<PgPool>) {
+pub async fn create_tables(pool: Arc<PgPool>) -> Result<()> {
     let trades_statement = "
         CREATE TABLE IF NOT EXISTS trades (
             id SERIAL PRIMARY KEY,
@@ -76,57 +76,57 @@ pub async fn create_tables(pool: Arc<PgPool>) {
         );
     ";
 
-    let conn = pool.acquire().await;
-    if let Ok(mut connection) = conn {
-        let _ = query(trades_statement).execute(&mut *connection).await;
-        let _ = query(config_statement).execute(&mut *connection).await;
-    }
+    let mut connection = pool.acquire().await?;
+    query(trades_statement).execute(&mut *connection).await?;
+    query(config_statement).execute(&mut *connection).await?;
+    Ok(())
 }
 
 pub async fn get_tracked_symbols(pool: Arc<PgPool>) -> Vec<String> {
     let statement = "SELECT symbol FROM tracked_symbols WHERE is_enabled = TRUE";
-    let conn = pool.acquire().await;
-    if let Ok(mut connection) = conn {
-        let result: Result<Vec<(String,)>, sqlx::Error> = query_as(statement).fetch_all(&mut *connection).await;
-        if let Ok(data) = result {
-            return data.into_iter().map(|(s,)| s).collect();
+    let res: Result<Vec<(String,)>, _> = async {
+        let mut connection = pool.acquire().await?;
+        let data = query_as(statement).fetch_all(&mut *connection).await?;
+        Ok(data)
+    }.await;
+
+    match res {
+        Ok(data) => data.into_iter().map(|(s,)| s).collect(),
+        Err(e) => {
+            log::error!("Failed to get tracked symbols: {}", e);
+            Vec::new()
         }
     }
-    Vec::new()
 }
 
-pub async fn seed_tracked_symbols(pool: Arc<PgPool>, symbols: Vec<String>) {
+pub async fn seed_tracked_symbols(pool: Arc<PgPool>, symbols: Vec<String>) -> Result<()> {
     let statement = "INSERT INTO tracked_symbols (symbol) VALUES ($1) ON CONFLICT (symbol) DO NOTHING";
-    let conn = pool.acquire().await;
-    if let Ok(mut connection) = conn {
-        for symbol in symbols {
-            let _ = query(statement).bind(symbol).execute(&mut *connection).await;
-        }
+    let mut connection = pool.acquire().await?;
+    for symbol in symbols {
+        query(statement).bind(symbol).execute(&mut *connection).await?;
     }
+    Ok(())
 }
 
-pub async fn insert_symbol(pool: Arc<PgPool>, symbol: String) {
+pub async fn insert_symbol(pool: Arc<PgPool>, symbol: String) -> Result<()> {
     let statement = "INSERT INTO trades (symbol) VALUES ($1) ON CONFLICT (symbol) DO NOTHING";
-    let conn = pool.acquire().await;
-    if let Ok(mut connection) = conn {
-        let _ = query(statement).bind(symbol).execute(&mut *connection).await;
-    }
+    let mut connection = pool.acquire().await?;
+    query(statement).bind(symbol).execute(&mut *connection).await?;
+    Ok(())
 }
 
-pub async fn update_previous_close(pool: Arc<PgPool>, symbol: String, prev_close: f64) {
+pub async fn update_previous_close(pool: Arc<PgPool>, symbol: String, prev_close: f64) -> Result<()> {
     let statement = "UPDATE trades SET previous_close = $1 WHERE symbol = $2";
-    let conn = pool.acquire().await;
-    if let Ok(mut connection) = conn {
-        let _ = query(statement).bind(prev_close).bind(symbol).execute(&mut *connection).await;
-    }
+    let mut connection = pool.acquire().await?;
+    query(statement).bind(prev_close).bind(symbol).execute(&mut *connection).await?;
+    Ok(())
 }
 
-pub async fn update_trade(pool: Arc<PgPool>, symbol: String, price: f64, price_change: f64, percentage_change: f64, direction: &str) {
+pub async fn update_trade(pool: Arc<PgPool>, symbol: String, price: f64, price_change: f64, percentage_change: f64, direction: &str) -> Result<()> {
     let statement = "UPDATE trades SET price = $1, price_change = $2, percentage_change = $3, direction = $4, last_updated = CURRENT_TIMESTAMP WHERE symbol = $5";
-    let conn = pool.acquire().await;
-    if let Ok(mut connection) = conn {
-        let _ = query(statement).bind(price).bind(price_change).bind(percentage_change).bind(direction).bind(symbol).execute(&mut *connection).await;
-    }
+    let mut connection = pool.acquire().await?;
+    query(statement).bind(price).bind(price_change).bind(percentage_change).bind(direction).bind(symbol).execute(&mut *connection).await?;
+    Ok(())
 }
 
 pub async fn get_trades(pool: Arc<PgPool>) -> Vec<DatabaseTradeData> {
@@ -143,12 +143,17 @@ pub async fn get_trades(pool: Arc<PgPool>) -> Vec<DatabaseTradeData> {
         ORDER BY symbol ASC
     ";
 
-    let conn = pool.acquire().await;
-    if let Ok(mut connection) = conn {
-        let result: Result<Vec<DatabaseTradeData>, sqlx::Error> = query_as(statement).fetch_all(&mut *connection).await;
-        if let Ok(data) = result {
-            return data;
+    let res: Result<Vec<DatabaseTradeData>, _> = async {
+        let mut connection = pool.acquire().await?;
+        let data = query_as(statement).fetch_all(&mut *connection).await?;
+        Ok(data)
+    }.await;
+
+    match res {
+        Ok(data) => data,
+        Err(e) => {
+            log::error!("Failed to get trades: {}", e);
+            Vec::new()
         }
     }
-    Vec::new()
 }

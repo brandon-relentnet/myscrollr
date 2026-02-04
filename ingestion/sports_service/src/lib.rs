@@ -11,7 +11,10 @@ pub mod types;
 
 pub async fn start_sports_service(pool: Arc<PgPool>, health_state: Arc<Mutex<SportsHealth>>) {
     info!("Starting sports service...");
-    create_tables(&pool).await;
+    if let Err(e) = create_tables(&pool).await {
+        error!("Failed to create database tables: {}", e);
+        return;
+    }
 
     // Seed from JSON if database is empty
     let existing = get_tracked_leagues(pool.clone()).await;
@@ -19,7 +22,7 @@ pub async fn start_sports_service(pool: Arc<PgPool>, health_state: Arc<Mutex<Spo
         info!("Database tracked_leagues is empty, seeding from local config...");
         if let Ok(file_contents) = fs::read_to_string("./configs/leagues.json") {
             if let Ok(config) = serde_json::from_str::<Vec<LeagueConfigs>>(&file_contents) {
-                seed_tracked_leagues(pool.clone(), config.clone()).await;
+                let _ = seed_tracked_leagues(pool.clone(), config.clone()).await;
                 config
             } else { Vec::new() }
         } else { Vec::new() }
@@ -39,7 +42,7 @@ pub async fn start_sports_service(pool: Arc<PgPool>, health_state: Arc<Mutex<Spo
         match poll_league(&client, &league).await {
             Ok(games) => {
                 for game in games {
-                    upsert_game(pool.clone(), game).await;
+                    let _ = upsert_game(pool.clone(), game).await;
                 }
                 health_state.lock().await.record_success();
             }

@@ -2,7 +2,12 @@ package main
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -12,6 +17,39 @@ import (
 )
 
 var dbPool *pgxpool.Pool
+
+func getEncryptionKey() []byte {
+	key := os.Getenv("ENCRYPTION_KEY")
+	if key == "" {
+		log.Fatal("ENCRYPTION_KEY must be set for secure token storage")
+	}
+	// Key must be 32 bytes for AES-256
+	decodedKey, err := base64.StdEncoding.DecodeString(key)
+	if err != nil || len(decodedKey) != 32 {
+		log.Fatal("ENCRYPTION_KEY must be a 32-byte base64 encoded string")
+	}
+	return decodedKey
+}
+
+func encrypt(plaintext string) (string, error) {
+	block, err := aes.NewCipher(getEncryptionKey())
+	if err != nil {
+		return "", err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", err
+	}
+
+	ciphertext := gcm.Seal(nonce, nonce, []byte(plaintext), nil)
+	return base64.StdEncoding.EncodeToString(ciphertext), nil
+}
 
 func ConnectDB() {
 	databaseURL := os.Getenv("DATABASE_URL")
@@ -79,11 +117,32 @@ func ConnectDB() {
 }
 
 func UpsertYahooUser(guid, refreshToken string) error {
-	_, err := dbPool.Exec(context.Background(), `
+
+	encryptedToken, err := encrypt(refreshToken)
+
+	if err != nil {
+
+		log.Printf("[Security Error] Failed to encrypt refresh token for user %s: %v", guid, err)
+
+		return err
+
+	}
+
+
+
+	_, err = dbPool.Exec(context.Background(), `
+
 		INSERT INTO yahoo_users (guid, refresh_token)
-		VALUES ($1, $2)
+
+		VALUES (
+, $2)
+
 		ON CONFLICT (guid) DO UPDATE
+
 		SET refresh_token = EXCLUDED.refresh_token;
-	`, guid, refreshToken)
+
+	`, guid, encryptedToken)
+
 	return err
+
 }

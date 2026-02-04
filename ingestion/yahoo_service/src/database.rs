@@ -1,9 +1,61 @@
 use std::{env, time::Duration};
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 pub use sqlx::PgPool;
 use sqlx::{query, query_as};
 use chrono::{DateTime, Utc};
+use aes_gcm::{
+    aead::{Aead, KeyInit, Payload},
+    Aes256Gcm, Nonce
+};
+use base64::{Engine as _, engine::general_purpose};
+
+fn get_encryption_key() -> Result<[u8; 32]> {
+    let key_b64 = env::var("ENCRYPTION_KEY").context("ENCRYPTION_KEY must be set")?;
+    let key_vec = general_purpose::STANDARD.decode(key_b64).context("ENCRYPTION_KEY must be valid base64")?;
+    if key_vec.len() != 32 {
+        return Err(anyhow!("ENCRYPTION_KEY must be 32 bytes (after base64 decoding)"));
+    }
+    let mut key = [0u8; 32];
+    key.copy_from_slice(&key_vec);
+    Ok(key)
+}
+
+fn encrypt(plaintext: &str) -> Result<String> {
+    let key = get_encryption_key()?;
+    let cipher = Aes256Gcm::new_from_slice(&key).map_err(|_| anyhow!("Failed to create cipher"))?;
+    
+    let mut nonce_bytes = [0u8; 12];
+    rand::thread_rng().fill(&mut nonce_bytes);
+    let nonce = Nonce::from_slice(&nonce_bytes);
+
+    let ciphertext = cipher.encrypt(nonce, plaintext.as_bytes())
+        .map_err(|e| anyhow!("Encryption failed: {}", e))?;
+
+    let mut result = Vec::with_capacity(nonce_bytes.len() + ciphertext.len());
+    result.extend_from_slice(&nonce_bytes);
+    result.extend_from_slice(&ciphertext);
+
+    Ok(general_purpose::STANDARD.encode(result))
+}
+
+fn decrypt(encrypted: &str) -> Result<String> {
+    let key = get_encryption_key()?;
+    let cipher = Aes256Gcm::new_from_slice(&key).map_err(|_| anyhow!("Failed to create cipher"))?;
+    
+    let encrypted_bytes = general_purpose::STANDARD.decode(encrypted).context("Failed to decode base64")?;
+    if encrypted_bytes.len() < 12 {
+        return Err(anyhow!("Encrypted data too short"));
+    }
+
+    let (nonce_bytes, ciphertext) = encrypted_bytes.split_at(12);
+    let nonce = Nonce::from_slice(nonce_bytes);
+
+    let plaintext_bytes = cipher.decrypt(nonce, ciphertext)
+        .map_err(|e| anyhow!("Decryption failed: {}", e))?;
+
+    String::from_utf8(plaintext_bytes).context("Plaintext is not valid UTF-8")
+}
 
 pub async fn initialize_pool() -> Result<PgPool> {
     let pool_options = PgPoolOptions::new()
@@ -49,7 +101,7 @@ pub struct YahooUser {
     pub created_at: DateTime<Utc>,
 }
 
-pub async fn create_tables(pool: &PgPool) {
+pub async fn create_tables(pool: &PgPool) -> Result<()> {
     let users_statement = "
         CREATE TABLE IF NOT EXISTS yahoo_users (
             guid VARCHAR(100) PRIMARY KEY,
@@ -96,11 +148,13 @@ pub async fn create_tables(pool: &PgPool) {
         );
     ";
 
-    let _ = query(users_statement).execute(pool).await;
-    let _ = query(leagues_statement).execute(pool).await;
-    let _ = query(standings_statement).execute(pool).await;
-    let _ = query(rosters_statement).execute(pool).await;
-    let _ = query(matchups_statement).execute(pool).await;
+    query(users_statement).execute(pool).await?;
+    query(leagues_statement).execute(pool).await?;
+    query(standings_statement).execute(pool).await?;
+    query(rosters_statement).execute(pool).await?;
+    query(matchups_statement).execute(pool).await?;
+
+    Ok(())
 }
 
 pub async fn upsert_yahoo_matchups(pool: &PgPool, team_key: &str, data: serde_json::Value) -> Result<()> {
@@ -169,6 +223,7 @@ pub async fn upsert_yahoo_roster(pool: &PgPool, team_key: &str, league_key: &str
 }
 
 pub async fn upsert_yahoo_user(pool: &PgPool, guid: String, refresh_token: String) -> Result<()> {
+    let encrypted_token = encrypt(&refresh_token).context("Failed to encrypt refresh token")?;
     let statement = "
         INSERT INTO yahoo_users (guid, refresh_token)
         VALUES ($1, $2)
@@ -177,7 +232,7 @@ pub async fn upsert_yahoo_user(pool: &PgPool, guid: String, refresh_token: Strin
     ";
     query(statement)
         .bind(guid)
-        .bind(refresh_token)
+        .bind(encrypted_token)
         .execute(pool)
         .await?;
     Ok(())
@@ -185,9 +240,14 @@ pub async fn upsert_yahoo_user(pool: &PgPool, guid: String, refresh_token: Strin
 
 pub async fn get_all_yahoo_users(pool: &PgPool) -> Result<Vec<YahooUser>> {
     let statement = "SELECT guid, refresh_token, last_sync, created_at FROM yahoo_users";
-    let users = query_as::<_, YahooUser>(statement)
+    let mut users = query_as::<_, YahooUser>(statement)
         .fetch_all(pool)
         .await?;
+
+    for user in &mut users {
+        user.refresh_token = decrypt(&user.refresh_token).context("Failed to decrypt refresh token")?;
+    }
+
     Ok(users)
 }
 

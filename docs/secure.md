@@ -1,56 +1,61 @@
 # SECURE Audit Report
 
-## Executive Summary (Health Score: 8/10)
+## Executive Summary (Health Score: 6/10)
 
-MyScrollr demonstrates a high level of security awareness for a multi-component data aggregation service. The implementation of OIDC via Logto, combined with PKCE and robust CSRF protection for Yahoo OAuth flows, provides a solid authentication foundation. Secure cookie practices are consistently applied across both Go and Rust services.
+The MyScrollr project demonstrates a solid understanding of modern authentication flows (OIDC, OAuth2 with PKCE/CSRF) and secure database interaction (parameterized queries). However, the **storage of long-lived refresh tokens in plaintext** and some loose configurations in CSP and cross-origin communication represent significant risks that must be addressed to ensure production readiness.
 
 ## Critical Findings (Immediate Action)
 
-- **None Identified**: No critical vulnerabilities (e.g., SQL injection, open redirects, or hardcoded secrets) were found in the current codebase.
+### 1. Plaintext Refresh Token Storage
+
+- **Location**: `yahoo_users` table, managed by both Go API (`api/database.go`) and Rust Ingestion (`ingestion/yahoo_service/src/database.rs`).
+- **Issue**: Yahoo OAuth2 refresh tokens are stored as `TEXT NOT NULL` without encryption. These tokens are long-lived and grant persistent access to user data.
+- **Risk**: A database leak would compromise all connected Yahoo Fantasy accounts indefinitely until tokens are manually revoked.
+- **Recommendation**: Implement AES-256-GCM encryption for the `refresh_token` column using a key derived from an environment variable (e.g., `ENCRYPTION_KEY`).
+
+### 2. Loose `postMessage` Target Origin
+
+- **Location**: `api/yahoo.go` - `YahooCallback` function.
+- **Issue**: The `postMessage` call uses `frontendURL` as the target origin. If `FRONTEND_URL` is not configured, it may default to an empty string, which some browsers might interpret as `*` or fail silently.
+- **Risk**: Sensitive auth completion events could be intercepted by malicious sites if the user is tricked into opening the auth flow from a different origin.
+- **Recommendation**: Hardcode a default origin or enforce a strict check that `frontendURL` is set and valid before sending the message.
+
+### 3. Sensitive Data in Redis Keys
+
+- **Location**: `api/yahoo.go` - `getGuid` and `YahooCallback`.
+- **Issue**: Yahoo access tokens are used directly in Redis keys (e.g., `"token_to_guid:"+accessToken`).
+- **Risk**: Redis logs or `MONITOR` commands could leak active access tokens.
+- **Recommendation**: Hash the access token (e.g., SHA-256) before using it as a Redis key.
 
 ## Optimization Suggestions (Long-term)
 
-### 1. Missing Security Headers (API)
+### 1. Hardened CSP
 
-The Go Fiber API currently lacks several standard security headers that protect against common web attacks.
+- **Issue**: The current CSP allows `https://cdn.tailwindcss.com` and `unsafe-inline` styles.
+- **Recommendation**: For production, move to a build-step Tailwind process, remove the CDN script, and use nonces or hashes for any required inline styles.
 
-- **Action**: Implement `github.com/gofiber/fiber/v2/middleware/helmet` or manually set:
-  - `Strict-Transport-Security` (HSTS)
-  - `Content-Security-Policy` (CSP)
-  - `X-Frame-Options` (DENY/SAMEORIGIN)
-  - `X-Content-Type-Options` (nosniff)
+### 2. Strict Audience Verification
 
-### 2. Error Information Leakage
+- **Issue**: Logto audience verification is skipped if `LOGTO_API_RESOURCE` is missing.
+- **Recommendation**: Make `LOGTO_API_RESOURCE` a required environment variable in production to prevent token misuse across different applications.
 
-Several API endpoints return raw error messages from internal libraries (e.g., `fmt.Sprintf("Invalid token: %s", err.Error())`). This can leak information about the underlying infrastructure or library versions.
+### 3. Database Error Handling
 
-- **Action**: Sanitize error responses. Log the detailed error internally but return generic, user-friendly messages to the client.
-
-### 3. Hardcoded Fallbacks
-
-The `api/auth.go` and `api/yahoo.go` files contain hardcoded fallback URLs for OIDC endpoints and redirect URIs.
-
-- **Action**: Ensure production environments rely strictly on environment variables and remove hardcoded local/dev fallbacks to prevent accidental misconfiguration in production.
-
-### 4. SameSite Cookie Policy
-
-The `access_token` cookie is set to `SameSite: Lax`.
-
-- **Action**: If the API is not intended to be called from cross-site contexts (e.g., from a different domain via a standard link), consider setting this to `Strict` to further mitigate CSRF risks.
-
-### 5. Finnhub Token in URL
-
-The `finance_service` connects to Finnhub via WebSockets using the API key in the query string.
-
-- **Action**: While often required by providers, ensure that internal logging for the `finance_service` explicitly redacts the full WebSocket URL to prevent the token from appearing in log aggregators.
+- **Issue**: Multiple locations in Rust ingestion use `let _ = query(...).execute(pool).await;`, ignoring potential database failures.
+- **Recommendation**: Use `?` or explicit error logging to ensure database failures are visible and don't lead to silent data desynchronization.
 
 ## Progress Checklist
 
-- [x] Audit Secret Management (Environment variables vs. Hardcoding)
-- [x] Audit Authentication Flows (Logto OIDC + PKCE)
-- [x] Audit OAuth Security (State/CSRF validation)
-- [x] Audit Database Interactions (SQLx/Pgx parameterization)
-- [x] Audit Cookie Security (HttpOnly, Secure, SameSite)
-- [x] Implement Security Headers (Fiber Helmet)
-- [x] Sanitize API Error Responses
-- [x] Redact Secrets from Internal Logs
+- [x] Encrypt `refresh_token` in `yahoo_users` table.
+
+- [x] Hash access tokens used in Redis keys.
+
+- [x] Enforce strict origin in `postMessage` for Yahoo callback.
+
+- [x] Require `LOGTO_API_RESOURCE` for JWT validation.
+
+- [ ] Refactor CSP to remove external CDNs and `unsafe-inline`.
+
+- [x] Implement robust error handling for all database operations in ingestion services.
+
+
