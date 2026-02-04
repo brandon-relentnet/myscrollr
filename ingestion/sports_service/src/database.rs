@@ -25,17 +25,8 @@ pub async fn initialize_pool() -> Result<PgPool> {
             database_url = database_url.replacen("postgresql:", "postgresql://", 1);
         }
 
-        // Diagnostic: Parse options to see what we are actually using
-        let options: PgConnectOptions = database_url.parse()
-            .context("Failed to parse DATABASE_URL")?;
-        
-        println!("Diagnostic Info:");
-        println!("  Target Host: {}", options.get_host());
-        println!("  Target User: {}", options.get_username());
-        // Do not log password!
-
         let pool = pool_options
-            .connect_with(options)
+            .connect(&database_url)
             .await
             .context("Failed to connect to the PostgreSQL database via DATABASE_URL")?;
         return Ok(pool);

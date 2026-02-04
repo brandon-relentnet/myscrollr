@@ -31,11 +31,15 @@ async fn main() {
     };
     let health = Arc::new(Mutex::new(SportsHealth::new()));
 
-    // Start the background service (Initial ingest)
+    // Start the background service (Periodic ingest)
     let pool_clone = pool.clone();
     let health_clone = health.clone();
     tokio::spawn(async move {
-        start_sports_service(pool_clone, health_clone).await;
+        println!("Starting periodic sports ingest loop (5 minute interval)...");
+        loop {
+            start_sports_service(pool_clone.clone(), health_clone.clone()).await;
+            tokio::time::sleep(std::time::Duration::from_secs(300)).await;
+        }
     });
 
     let state = AppState {
@@ -45,7 +49,6 @@ async fn main() {
 
     let app = Router::new()
         .route("/health", get(health_handler))
-        .route("/trigger", post(trigger_handler))
         .with_state(state);
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3002".to_string());
@@ -58,33 +61,4 @@ async fn main() {
 async fn health_handler(State(state): State<AppState>) -> Json<SportsHealth> {
     let health = state.health.lock().await.get_health();
     Json(health)
-}
-
-#[derive(serde::Deserialize)]
-struct TriggerPayload {
-    data: Vec<String>,
-}
-
-async fn trigger_handler(State(state): State<AppState>, Json(payload): Json<TriggerPayload>) -> StatusCode {
-    let pool = state.pool.clone();
-    let health = state.health.clone();
-
-    tokio::spawn(async move {
-        let mut leagues = Vec::new();
-        // Assuming configs are mapped to /app/configs in Docker
-        let file_contents = fs::read_to_string("./configs/leagues.json").unwrap_or_else(|_| "[]".to_string());
-        let leagues_to_ingest: Vec<LeagueConfigs> = serde_json::from_str(&file_contents).unwrap_or_default();
-
-        if payload.data.is_empty() {
-            leagues = leagues_to_ingest;
-        } else {
-            for league in leagues_to_ingest {
-                if payload.data.contains(&league.name) {
-                    leagues.push(league);
-                }
-            }
-        }
-        poll_sports(leagues, &pool, health).await;
-    });
-    StatusCode::ACCEPTED
 }
