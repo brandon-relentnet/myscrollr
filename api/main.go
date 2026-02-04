@@ -120,15 +120,11 @@ func main() {
 
 	// --- Public Routes ---
 	app.Get("/health", HealthCheck)
-	app.Get("/auth/status", AuthStatus) // Check auth status from cookie
 	app.Get("/sports/health", SportsHealth)
 	app.Get("/finance/health", FinanceHealth)
 	app.Get("/yahoo/health", YahooHealth)
 	app.Get("/yahoo/callback", YahooCallback)
-	app.Get("/login", LogtoLogin)
-	app.Get("/signup", LogtoSignup)
-	app.Get("/logout", LogtoLogout)
-	app.Get("/callback", LogtoCallback)
+	// Old Logto auth routes removed - frontend now uses Logto SDK directly
 	app.Get("/", LandingPage)
 
 	// --- Protected Routes (Logto) ---
