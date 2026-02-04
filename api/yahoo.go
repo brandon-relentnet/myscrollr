@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/xml"
 	"fmt"
 	"io"
 	"log"
@@ -22,13 +23,11 @@ func InitYahoo() {
 	clientID := os.Getenv("YAHOO_CLIENT_ID")
 	clientSecret := os.Getenv("YAHOO_CLIENT_SECRET")
 	
-	// Try DOMAIN_NAME first, then fall back to COOLIFY_FQDN
 	domain := os.Getenv("DOMAIN_NAME")
 	if domain == "" {
 		domain = os.Getenv("COOLIFY_FQDN")
 	}
 
-	// Clean up domain: strip protocol if user accidentally included it
 	domain = strings.TrimPrefix(domain, "https://")
 	domain = strings.TrimPrefix(domain, "http://")
 	domain = strings.TrimSuffix(domain, "/")
@@ -38,13 +37,8 @@ func InitYahoo() {
 		callbackPath = "/yahoo/callback"
 	}
 
-	// Ensure callback path starts with /
 	if !strings.HasPrefix(callbackPath, "/") {
 		callbackPath = "/" + callbackPath
-	}
-
-	if domain == "" {
-		log.Println("[Yahoo Warning] No domain found in DOMAIN_NAME or COOLIFY_FQDN. Redirects will fail.")
 	}
 
 	redirectURL := fmt.Sprintf("https://%s%s", domain, callbackPath)
@@ -81,8 +75,6 @@ func YahooStart(c *fiber.Ctx) error {
 	}
 
 	url := yahooConfig.AuthCodeURL(state)
-	log.Printf("[Yahoo Auth] Generating URL: %s", url)
-	
 	return c.Redirect(url, fiber.StatusTemporaryRedirect)
 }
 
@@ -98,21 +90,16 @@ func YahooCallback(c *fiber.Ctx) error {
 	state := c.Query("state")
 	code := c.Query("code")
 
-	log.Printf("[Yahoo Callback] Received state: %s, code length: %d", state, len(code))
-
 	val, err := rdb.GetDel(context.Background(), "csrf:"+state).Result()
 	if err != nil || val == "" {
-		log.Printf("[Yahoo Error] State validation failed for: %s", state)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid or expired state"})
 	}
 
 	token, err := yahooConfig.Exchange(context.Background(), code)
 	if err != nil {
-		log.Printf("[Yahoo Error] Token exchange failed: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to exchange code"})
 	}
 
-	// Set Cookies for browser testing
 	c.Cookie(&fiber.Cookie{
 		Name:     "yahoo-auth",
 		Value:    token.AccessToken,
@@ -153,7 +140,7 @@ func YahooCallback(c *fiber.Ctx) error {
                     setTimeout(function(){ window.close(); }, 1500);
                 })();
                 </script>
-                <p>Authentication successful. Cookies set. You can close this window or go to /yahoo/leagues.</p>
+                <p>Authentication successful. You can close this window.</p>
             </body></html>`, token.AccessToken, token.RefreshToken)
 
 	c.Set("Content-Type", "text/html")
@@ -162,9 +149,9 @@ func YahooCallback(c *fiber.Ctx) error {
 
 // YahooLeagues godoc
 // @Summary Get Yahoo user leagues.
-// @Description Fetches the authenticated user's leagues from Yahoo.
+// @Description Fetches and parses the authenticated user's leagues from Yahoo.
 // @Tags Yahoo
-// @Success 200 {string} string "XML response from Yahoo"
+// @Success 200 {object} FantasyContent
 // @Router /yahoo/leagues [get]
 func YahooLeagues(c *fiber.Ctx) error {
 	token := c.Cookies("yahoo-auth")
@@ -191,6 +178,11 @@ func YahooLeagues(c *fiber.Ctx) error {
 
 	body, _ := io.ReadAll(resp.Body)
 	
-	c.Set("Content-Type", "application/xml")
-	return c.Send(body)
+	var content FantasyContent
+	if err := xml.Unmarshal(body, &content); err != nil {
+		log.Printf("[Yahoo Error] XML Unmarshal failed: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to parse Yahoo data"})
+	}
+
+	return c.JSON(content)
 }
