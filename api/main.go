@@ -264,6 +264,13 @@ func HealthCheck(c *fiber.Ctx) error {
 
 // --- Data Handlers with Caching ---
 
+// GetSports retrieves the latest sports games
+// @Summary Get latest sports games
+// @Description Fetches latest 50 games with 30s caching
+// @Tags Data
+// @Produce json
+// @Success 200 {array} Game
+// @Router /sports [get]
 func GetSports(c *fiber.Ctx) error {
 	var games []Game
 	if GetCache("cache:sports", &games) {
@@ -292,6 +299,13 @@ func GetSports(c *fiber.Ctx) error {
 	return c.JSON(games)
 }
 
+// GetFinance retrieves the latest financial trades
+// @Summary Get latest finance trades
+// @Description Fetches latest stock/crypto trades with 30s caching
+// @Tags Data
+// @Produce json
+// @Success 200 {array} Trade
+// @Router /finance [get]
 func GetFinance(c *fiber.Ctx) error {
 	var trades []Trade
 	if GetCache("cache:finance", &trades) {
@@ -320,6 +334,13 @@ func GetFinance(c *fiber.Ctx) error {
 	return c.JSON(trades)
 }
 
+// GetDashboard retrieves aggregated data for the user dashboard
+// @Summary Get aggregated dashboard data
+// @Description Combines Finance, Sports, and user Yahoo data in one call
+// @Tags Data
+// @Produce json
+// @Success 200 {object} DashboardResponse
+// @Router /dashboard [get]
 func GetDashboard(c *fiber.Ctx) error {
 	res := DashboardResponse{
 		Finance: make([]Trade, 0),

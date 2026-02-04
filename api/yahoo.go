@@ -97,6 +97,12 @@ func fetchYahoo(c *fiber.Ctx, url string) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
+// YahooStart initiates the Yahoo OAuth flow
+// @Summary Start Yahoo OAuth
+// @Description Redirects user to Yahoo login page
+// @Tags Yahoo
+// @Success 307
+// @Router /yahoo/start [get]
 func YahooStart(c *fiber.Ctx) error {
 	b := make([]byte, 16)
 	rand.Read(b)
@@ -106,6 +112,14 @@ func YahooStart(c *fiber.Ctx) error {
 	return c.Redirect(yahooConfig.AuthCodeURL(state), fiber.StatusTemporaryRedirect)
 }
 
+// YahooCallback handles the Yahoo OAuth callback
+// @Summary Yahoo OAuth callback
+// @Description Exchanges auth code for tokens and registers user
+// @Tags Yahoo
+// @Param state query string true "OAuth state"
+// @Param code query string true "OAuth code"
+// @Success 200 {string} string "HTML response"
+// @Router /yahoo/callback [get]
 func YahooCallback(c *fiber.Ctx) error {
 	state, code := c.Query("state"), c.Query("code")
 	val, err := rdb.GetDel(context.Background(), "csrf:"+state).Result()
@@ -148,6 +162,12 @@ func YahooCallback(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).SendString(html)
 }
 
+// YahooLeagues retrieves the authenticated user's leagues
+// @Summary Get user leagues
+// @Description Fetches user's fantasy leagues with 5m caching. Uses Active Sync data if available.
+// @Tags Yahoo
+// @Success 200 {object} FantasyContent
+// @Router /yahoo/leagues [get]
 func YahooLeagues(c *fiber.Ctx) error {
 	guid := getGuid(c)
 	cacheKey := "cache:yahoo:leagues:" + guid
@@ -185,6 +205,13 @@ func YahooLeagues(c *fiber.Ctx) error {
 	return c.JSON(content)
 }
 
+// YahooStandings retrieves standings for a league
+// @Summary Get league standings
+// @Description Fetches standings for a specific league key
+// @Tags Yahoo
+// @Param league_key path string true "League Key"
+// @Success 200 {object} FantasyContent
+// @Router /yahoo/league/{league_key}/standings [get]
 func YahooStandings(c *fiber.Ctx) error {
 	leagueKey := c.Params("league_key")
 	cacheKey := "cache:yahoo:standings:" + leagueKey
@@ -203,6 +230,13 @@ func YahooStandings(c *fiber.Ctx) error {
 	return c.JSON(content)
 }
 
+// YahooMatchups retrieves matchups for a team
+// @Summary Get team matchups
+// @Description Fetches matchups for a specific team key
+// @Tags Yahoo
+// @Param team_key path string true "Team Key"
+// @Success 200 {object} FantasyContent
+// @Router /yahoo/team/{team_key}/matchups [get]
 func YahooMatchups(c *fiber.Ctx) error {
 	teamKey := c.Params("team_key")
 	cacheKey := "cache:yahoo:matchups:" + teamKey
@@ -221,6 +255,13 @@ func YahooMatchups(c *fiber.Ctx) error {
 	return c.JSON(content)
 }
 
+// YahooRoster retrieves roster for a team
+// @Summary Get team roster
+// @Description Fetches roster for a specific team key
+// @Tags Yahoo
+// @Param team_key path string true "Team Key"
+// @Success 200 {object} FantasyContent
+// @Router /yahoo/team/{team_key}/roster [get]
 func YahooRoster(c *fiber.Ctx) error {
 	teamKey := c.Params("team_key")
 	cacheKey := "cache:yahoo:roster:" + teamKey
