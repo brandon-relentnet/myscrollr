@@ -19,7 +19,7 @@ FROM debian:bookworm-slim
 WORKDIR /app
 RUN apt-get update && apt-get install -y ca-certificates libssl-dev curl && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/target/release/finance_service .
-# Copy config from the service directory (relative to build context)
-COPY --from=builder /app/configs ./configs
+# Assuming build context is 'ingestion/'
+COPY --from=builder /app/finance_service/configs ./configs
 
 CMD ["./finance_service"]

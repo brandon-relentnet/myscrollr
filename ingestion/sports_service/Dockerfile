@@ -19,7 +19,7 @@ FROM debian:bookworm-slim
 WORKDIR /app
 RUN apt-get update && apt-get install -y ca-certificates libssl-dev curl && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/target/release/sports_service .
-# Path is relative to the build context root
-COPY --from=builder /app/configs ./configs
+# Assuming build context is 'ingestion/'
+COPY --from=builder /app/sports_service/configs ./configs
 
 CMD ["./sports_service"]
