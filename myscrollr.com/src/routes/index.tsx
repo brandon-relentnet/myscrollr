@@ -21,7 +21,11 @@ function HomePage() {
     return <AuthenticatedHome />
   }
 
-  return <PublicHome onLogin={signIn} />
+  const handleSignIn = () => {
+    signIn(`${window.location.origin}/callback`)
+  }
+
+  return <PublicHome onLogin={handleSignIn} />
 }
 
 function PublicHome({ onLogin }: { onLogin: () => void }) {
