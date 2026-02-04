@@ -2,7 +2,6 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useLogto } from '@logto/react'
 import { useEffect, useState } from 'react'
 import { Settings, Shield, Link as LinkIcon, Check, AlertCircle, Loader2 } from 'lucide-react'
-import { profileApi, getAccessToken } from '@/api/client'
 
 export const Route = createFileRoute('/u/$username')({
   component: ProfilePage,
@@ -19,7 +18,7 @@ interface ProfileData {
 
 function ProfilePage() {
   const { username } = Route.useParams()
-  const { isAuthenticated, getIdTokenClaims } = useLogto()
+  const { isAuthenticated, getIdTokenClaims, logtoClient } = useLogto()
   const [profile, setProfile] = useState<ProfileData | null>(null)
   const [myProfile, setMyProfile] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -41,8 +40,18 @@ function ProfilePage() {
 
   // Get access token on mount
   useEffect(() => {
-    getAccessToken().then(setAccessToken)
-  }, [])
+    async function fetchToken() {
+      if (logtoClient) {
+        try {
+          const token = await logtoClient.getAccessToken()
+          setAccessToken(token ?? null)
+        } catch {
+          setAccessToken(null)
+        }
+      }
+    }
+    fetchToken()
+  }, [logtoClient])
 
   useEffect(() => {
     async function fetchProfiles() {
@@ -50,24 +59,34 @@ function ProfilePage() {
       setError(null)
 
       try {
-        // Try to fetch the profile
-        const data = await profileApi.get(username)
+        // Fetch public profile
+        const res = await fetch(`/api/users/${username}`)
+        if (!res.ok) {
+          const err = await res.json()
+          throw new Error(err.error || 'Profile not found')
+        }
+        const data = await res.json()
         setProfile(data)
 
         // Check if this is the current user's profile
-        if (isAuthenticated) {
+        if (isAuthenticated && accessToken) {
           const claims = await getIdTokenClaims()
-          if (claims?.sub && accessToken) {
-            // We need to fetch my profile to compare usernames
+          if (claims?.sub) {
+            // Fetch my profile to compare usernames
             try {
-              const myData = await profileApi.getMyProfile(accessToken)
-              setMyProfile(myData)
-              setIsOwnProfile(myData.username === username)
-              setFormData({
-                display_name: myData.display_name || '',
-                bio: myData.bio || '',
-                is_public: myData.is_public,
+              const myRes = await fetch('/api/users/me/profile', {
+                headers: { Authorization: `Bearer ${accessToken}` }
               })
+              if (myRes.ok) {
+                const myData = await myRes.json()
+                setMyProfile(myData)
+                setIsOwnProfile(myData.username === username)
+                setFormData({
+                  display_name: myData.display_name || '',
+                  bio: myData.bio || '',
+                  is_public: myData.is_public,
+                })
+              }
             } catch {
               // Not set up yet, will prompt to set username
             }
@@ -81,7 +100,7 @@ function ProfilePage() {
     }
 
     fetchProfiles()
-  }, [username, isAuthenticated, getIdTokenClaims, accessToken])
+  }, [username, isAuthenticated, accessToken])
 
   const handleSaveSettings = async () => {
     if (!accessToken) return
@@ -89,7 +108,18 @@ function ProfilePage() {
     setError(null)
 
     try {
-      await profileApi.update(accessToken, formData)
+      const res = await fetch('/api/users/me/profile', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(formData),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Failed to save')
+      }
       setMyProfile(prev => prev ? { ...prev, ...formData } : null)
       setProfile(prev => prev ? { ...prev, ...formData } : null)
       setEditing(false)
@@ -110,11 +140,27 @@ function ProfilePage() {
     setUsernameError(null)
 
     try {
-      await profileApi.setUsername(accessToken, usernameForm)
-      const myData = await profileApi.getMyProfile(accessToken)
-      setMyProfile(myData)
-      setIsOwnProfile(myData.username === username)
-      setProfile(myData)
+      const res = await fetch('/api/users/me/username', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ username: usernameForm }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Failed to set username')
+      }
+      const myRes = await fetch('/api/users/me/profile', {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      })
+      if (myRes.ok) {
+        const myData = await myRes.json()
+        setMyProfile(myData)
+        setIsOwnProfile(myData.username === username)
+        setProfile(myData)
+      }
     } catch (err) {
       setUsernameError(err instanceof Error ? err.message : 'Failed to set username')
     } finally {
@@ -129,7 +175,14 @@ function ProfilePage() {
     }
 
     try {
-      await profileApi.disconnectYahoo(accessToken)
+      const res = await fetch('/api/users/me/disconnect/yahoo', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` }
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Failed to disconnect')
+      }
       setMyProfile(prev => prev ? { ...prev, connected_yahoo: false } : null)
       setProfile(prev => prev ? { ...prev, connected_yahoo: false } : null)
     } catch (err) {
