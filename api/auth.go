@@ -147,26 +147,34 @@ func getLogtoEmail(c *fiber.Ctx) string {
 
 // LogtoLogin redirects the user to the Logto sign-in page
 func LogtoLogin(c *fiber.Ctx) error {
+	return initiateLogtoAuth(c, "signIn")
+}
+
+// LogtoSignup redirects the user to the Logto sign-up page
+func LogtoSignup(c *fiber.Ctx) error {
+	return initiateLogtoAuth(c, "signUp")
+}
+
+func initiateLogtoAuth(c *fiber.Ctx, mode string) error {
 	endpoint := os.Getenv("LOGTO_ENDPOINT")
 	if endpoint == "" {
 		endpoint = "https://auth.myscrollr.relentnet.dev"
 	}
 	appID := os.Getenv("LOGTO_APP_ID")
 	
-	// Construct the redirect URI (this API's callback)
 	domain := os.Getenv("DOMAIN_NAME")
 	if domain == "" { domain = os.Getenv("COOLIFY_FQDN") }
-	if domain == "" { domain = "api.myscrollr.relentnet.dev" } // fallback
+	if domain == "" { domain = "api.myscrollr.relentnet.dev" }
 	
 	redirectURI := fmt.Sprintf("https://%s/callback", strings.TrimPrefix(domain, "https://"))
 	
-	// OIDC Authorization URL
-	// We only request 'openid' for now to ensure the flow works. 
-	// You can add +profile+email back once they are enabled in your Logto App settings.
+	// Base OIDC URL
 	authURL := fmt.Sprintf("%s/oidc/auth?client_id=%s&response_type=code&scope=openid&redirect_uri=%s&state=mystate", 
 		endpoint, appID, url.QueryEscape(redirectURI))
 	
-	// Add API Resource if configured
+	// Add mode (signIn or signUp)
+	authURL = fmt.Sprintf("%s&mode=%s", authURL, mode)
+	
 	resource := os.Getenv("LOGTO_API_RESOURCE")
 	if resource != "" {
 		authURL = fmt.Sprintf("%s&resource=%s", authURL, resource)
@@ -175,14 +183,14 @@ func LogtoLogin(c *fiber.Ctx) error {
 	return c.Redirect(authURL)
 }
 
-// LogtoCallback handles the redirect from Logto and displays the tokens (for testing)
+// LogtoCallback handles the redirect from Logto and displays the code (for testing)
 func LogtoCallback(c *fiber.Ctx) error {
 	code := c.Query("code")
 	if code == "" {
-		return c.Status(fiber.StatusBadRequest).SendString("Missing code")
+		errorMsg := c.Query("error")
+		desc := c.Query("error_description")
+		return c.Status(fiber.StatusBadRequest).SendString(fmt.Sprintf("Auth Failed: %s - %s", errorMsg, desc))
 	}
 
-	// In a real app, the frontend would exchange this code.
-	// For testing, we just show the code.
-	return c.SendString(fmt.Sprintf("Login Successful! Code: %s\n\nYou can now use this code to get an Access Token, or if your frontend is setup, it will handle this.", code))
+	return c.SendString(fmt.Sprintf("Success! Logto returned a code: %s\n\nYour API is now ready to receive JWTs from your frontend.", code))
 }

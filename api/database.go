@@ -64,45 +64,18 @@ func ConnectDB() {
 	dbPool = pool
 	log.Println("Successfully connected to PostgreSQL database")
 
-	// Ensure tables exist
+	// Ensure yahoo_users table exists
 	_, err = dbPool.Exec(context.Background(), `
-		CREATE TABLE IF NOT EXISTS users (
-			id VARCHAR(100) PRIMARY KEY,
-			email VARCHAR(255),
-			created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-		);
-
 		CREATE TABLE IF NOT EXISTS yahoo_users (
 			guid VARCHAR(100) PRIMARY KEY,
-			user_id VARCHAR(100) REFERENCES users(id) ON DELETE CASCADE,
 			refresh_token TEXT NOT NULL,
 			last_sync TIMESTAMP WITH TIME ZONE,
 			created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 		);
 	`)
 	if err != nil {
-		log.Printf("Warning: Failed to create tables: %v", err)
+		log.Printf("Warning: Failed to create yahoo_users table: %v", err)
 	}
-}
-
-func UpsertUser(id, email string) error {
-	_, err := dbPool.Exec(context.Background(), `
-		INSERT INTO users (id, email)
-		VALUES ($1, $2)
-		ON CONFLICT (id) DO UPDATE
-		SET email = EXCLUDED.email;
-	`, id, email)
-	return err
-}
-
-func LinkYahooUser(guid, userId, refreshToken string) error {
-	_, err := dbPool.Exec(context.Background(), `
-		INSERT INTO yahoo_users (guid, user_id, refresh_token)
-		VALUES ($1, $2, $3)
-		ON CONFLICT (guid) DO UPDATE
-		SET user_id = EXCLUDED.user_id, refresh_token = EXCLUDED.refresh_token;
-	`, guid, userId, refreshToken)
-	return err
 }
 
 func UpsertYahooUser(guid, refreshToken string) error {

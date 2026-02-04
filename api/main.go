@@ -69,6 +69,7 @@ func main() {
 	app.Get("/yahoo/health", YahooHealth)
 	app.Get("/yahoo/callback", YahooCallback)
 	app.Get("/login", LogtoLogin)
+	app.Get("/signup", LogtoSignup)
 	app.Get("/callback", LogtoCallback)
 	app.Get("/", LandingPage)
 
@@ -164,11 +165,11 @@ func LandingPage(c *fiber.Ctx) error {
 
         <!-- Call to Actions -->
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="/login" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-8 rounded-xl transition-all text-center shadow-lg shadow-indigo-500/20">
-                Sign In with Scrollr
+            <a href="/login" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-10 rounded-xl transition-all text-center shadow-lg shadow-indigo-500/20">
+                Sign In
             </a>
-            <a href="/swagger/index.html" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-8 rounded-xl transition-all text-center border border-slate-700">
-                Explore Documentation
+            <a href="/signup" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-10 rounded-xl transition-all text-center border border-slate-700">
+                Sign Up
             </a>
         </div>
 

@@ -58,25 +58,13 @@ func getToken(c *fiber.Ctx) string {
 }
 
 func getGuid(c *fiber.Ctx) string {
-	// First check if we have a Logto user ID from the middleware
-	userId := getLogtoUserId(c)
-	if userId != "" {
-		var guid string
-		err := dbPool.QueryRow(context.Background(), "SELECT guid FROM yahoo_users WHERE user_id = $1 LIMIT 1", userId).Scan(&guid)
-		if err == nil {
-			return guid
-		}
-	}
-
-	// Fallback to old token-based lookup if needed (backward compatibility)
 	token := getToken(c)
 	if token == "" { return "" }
 	guid, _ := rdb.Get(context.Background(), "token_to_guid:"+token).Result()
 	return guid
 }
 
-func fetchYahoo(c *fiber.Ctx, url string) ([]byte, error) {
-	// ... (rest of fetchYahoo remains same)
+func fetchYahoo(c *fiber.Ctx) error {
 	token := getToken(c)
 	if token == "" { return nil, fmt.Errorf("unauthorized") }
 
@@ -119,15 +107,7 @@ func YahooStart(c *fiber.Ctx) error {
 	b := make([]byte, 16)
 	rand.Read(b)
 	state := hex.EncodeToString(b)
-	
-	// If user is logged in with Logto, attach their ID to state for linking
-	userId := getLogtoUserId(c)
-	originalState := state
-	if userId != "" {
-		state = fmt.Sprintf("%s:%s", state, userId)
-	}
-
-	err := rdb.Set(context.Background(), "csrf:"+originalState, "1", 10*time.Minute).Err()
+	err := rdb.Set(context.Background(), "csrf:"+state, "1", 10*time.Minute).Err()
 	if err != nil { return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to store state"}) }
 	return c.Redirect(yahooConfig.AuthCodeURL(state), fiber.StatusTemporaryRedirect)
 }
@@ -142,19 +122,8 @@ func YahooStart(c *fiber.Ctx) error {
 // @Router /yahoo/callback [get]
 func YahooCallback(c *fiber.Ctx) error {
 	state, code := c.Query("state"), c.Query("code")
-	
-	// Recover original user_id if it was passed through state
-	// Format was likely: state_hash:user_id
-	originalUserId := ""
-	if strings.Contains(state, ":") {
-		parts := strings.Split(state, ":")
-		state = parts[0]
-		originalUserId = parts[1]
-	}
-
 	val, err := rdb.GetDel(context.Background(), "csrf:"+state).Result()
 	if err != nil || val == "" { return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Status: "error", Error: "Invalid or expired state"}) }
-	
 	token, err := yahooConfig.Exchange(context.Background(), code)
 	if err != nil { return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to exchange code"}) }
 
@@ -162,8 +131,8 @@ func YahooCallback(c *fiber.Ctx) error {
 	if token.RefreshToken != "" {
 		c.Cookie(&fiber.Cookie{Name: "yahoo-refresh", Value: token.RefreshToken, Expires: time.Now().Add(30 * 24 * time.Hour), HTTPOnly: true, Secure: true, SameSite: "Lax", Path: "/"})
 		
-		// Fetch GUID and link to Logto User
-		go func(accessToken, refreshToken, userId string) {
+		// Fetch GUID and persist for Active Sync
+		go func(accessToken, refreshToken string) {
 			client := &http.Client{}
 			req, _ := http.NewRequest("GET", "https://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1", nil)
 			req.Header.Set("Authorization", "Bearer "+accessToken)
@@ -175,17 +144,15 @@ func YahooCallback(c *fiber.Ctx) error {
 				if err := xml.Unmarshal(body, &content); err == nil && content.Users != nil && len(content.Users.User) > 0 {
 					guid := content.Users.User[0].Guid
 					if guid != "" {
-						if userId != "" {
-							LinkYahooUser(guid, userId, refreshToken)
-						} else {
-							UpsertYahooUser(guid, refreshToken)
-						}
-						log.Printf("[Yahoo Sync] Registered user %s (Linked to: %s)", guid, userId)
+						UpsertYahooUser(guid, refreshToken)
+						log.Printf("[Yahoo Sync] Registered user %s for active sync", guid)
+						
+						// Note: we can't set cookie from goroutine, but we can store in Redis
 						rdb.Set(context.Background(), "token_to_guid:"+accessToken, guid, 24*time.Hour)
 					}
 				}
 			}
-		}(token.AccessToken, token.RefreshToken, originalUserId)
+		}(token.AccessToken, token.RefreshToken)
 	}
 
 	html := fmt.Sprintf(`<!doctype html><html><head><meta charset="utf-8"><title>Auth Complete</title></head>
