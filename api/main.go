@@ -27,10 +27,26 @@ type HealthResponse struct {
 	Services map[string]string `json:"services"`
 }
 
+// ErrorResponse represents a standard API error
+type ErrorResponse struct {
+	Status  string `json:"status"`
+	Error   string `json:"error"`
+	Hint    string `json:"hint,omitempty"`
+	Target  string `json:"target,omitempty"`
+}
+
 // @title Scrollr API
 // @version 1.0
 // @description High-performance data API for Scrollr finance and sports.
-// @host localhost:8080
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.email admin@relentnet.com
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host api.myscrollr.relentnet.dev
 // @BasePath /
 func main() {
 	_ = godotenv.Load()
@@ -97,32 +113,30 @@ func buildHealthURL(baseURL string) string {
 
 func proxyInternalHealth(c *fiber.Ctx, internalURL string) error {
 	if internalURL == "" {
-		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"status": "unknown", "error": "Internal URL not configured"})
+		return c.Status(fiber.StatusServiceUnavailable).JSON(ErrorResponse{Status: "unknown", Error: "Internal URL not configured"})
 	}
 
 	targetURL := buildHealthURL(internalURL)
-	httpClient := &http.Client{Timeout: 5 * time.Second} // Increased timeout for DNS
+	httpClient := &http.Client{Timeout: 5 * time.Second}
 	resp, err := httpClient.Get(targetURL)
 	if err != nil {
 		log.Printf("[Health Error] Failed to reach %s: %v", targetURL, err)
-		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
-			"status": "down", 
-			"error": err.Error(), 
-			"target": targetURL,
-			"hint": "Check if the hostname is correct and the service is on the same Docker network.",
+		return c.Status(fiber.StatusServiceUnavailable).JSON(ErrorResponse{
+			Status: "down", 
+			Error: err.Error(), 
+			Target: targetURL,
+			Hint: "Check if the hostname is correct and the service is on the same Docker network.",
 		})
 	}
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
 	
-	// Check if response is actually JSON
 	contentType := resp.Header.Get("Content-Type")
 	if !strings.Contains(contentType, "application/json") && !strings.HasPrefix(string(body), "{") {
-		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
-			"status": "error", 
-			"error": "Internal service returned non-JSON response. Check if you are hitting the correct PORT.",
-			"body": string(body),
+		return c.Status(fiber.StatusBadGateway).JSON(ErrorResponse{
+			Status: "error", 
+			Error: "Internal service returned non-JSON response. Check if you are hitting the correct PORT.",
 		})
 	}
 
@@ -130,18 +144,49 @@ func proxyInternalHealth(c *fiber.Ctx, internalURL string) error {
 	return c.Status(resp.StatusCode).Send(body)
 }
 
+// SportsHealth godoc
+// @Summary Check sports ingestion health.
+// @Description Proxies the internal health check from the Sports Rust worker.
+// @Tags Health
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 503 {object} ErrorResponse
+// @Router /sports/health [get]
 func SportsHealth(c *fiber.Ctx) error {
 	return proxyInternalHealth(c, os.Getenv("INTERNAL_SPORTS_URL"))
 }
 
+// FinanceHealth godoc
+// @Summary Check finance ingestion health.
+// @Description Proxies the internal health check from the Finance Rust worker.
+// @Tags Health
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 503 {object} ErrorResponse
+// @Router /finance/health [get]
 func FinanceHealth(c *fiber.Ctx) error {
 	return proxyInternalHealth(c, os.Getenv("INTERNAL_FINANCE_URL"))
 }
 
+// YahooHealth godoc
+// @Summary Check yahoo worker health.
+// @Description Proxies the internal health check from the Yahoo Rust worker.
+// @Tags Health
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 503 {object} ErrorResponse
+// @Router /yahoo/health [get]
 func YahooHealth(c *fiber.Ctx) error {
 	return proxyInternalHealth(c, os.Getenv("INTERNAL_YAHOO_URL"))
 }
 
+// HealthCheck godoc
+// @Summary Check system health.
+// @Description returns status of API, DB, Redis, and background workers.
+// @Tags Health
+// @Produce json
+// @Success 200 {object} HealthResponse
+// @Router /health [get]
 func HealthCheck(c *fiber.Ctx) error {
 	res := HealthResponse{
 		Status:   "healthy",
@@ -188,13 +233,20 @@ func HealthCheck(c *fiber.Ctx) error {
 	return c.JSON(res)
 }
 
-// --- Data Handlers ---
-
+// GetSports godoc
+// @Summary Get latest sports games.
+// @Description fetch the latest 50 sports games from the database.
+// @Tags Sports
+// @Accept json
+// @Produce json
+// @Success 200 {array} Game
+// @Failure 500 {object} ErrorResponse
+// @Router /sports [get]
 func GetSports(c *fiber.Ctx) error {
 	rows, err := dbPool.Query(context.Background(),
 		"SELECT id, league, external_game_id, link, home_team_name, home_team_logo, home_team_score, away_team_name, away_team_logo, away_team_score, start_time, short_detail, state FROM games ORDER BY start_time DESC LIMIT 50")
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: err.Error()})
 	}
 	defer rows.Close()
 
@@ -203,7 +255,7 @@ func GetSports(c *fiber.Ctx) error {
 		var g Game
 		err := rows.Scan(&g.ID, &g.League, &g.ExternalGameID, &g.Link, &g.HomeTeamName, &g.HomeTeamLogo, &g.HomeTeamScore, &g.AwayTeamName, &g.AwayTeamLogo, &g.AwayTeamScore, &g.StartTime, &g.ShortDetail, &g.State)
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: err.Error()})
 		}
 		games = append(games, g)
 	}
@@ -211,11 +263,20 @@ func GetSports(c *fiber.Ctx) error {
 	return c.JSON(games)
 }
 
+// GetFinance godoc
+// @Summary Get latest market data.
+// @Description fetch all tracked market data (trades) from the database.
+// @Tags Finance
+// @Accept json
+// @Produce json
+// @Success 200 {array} Trade
+// @Failure 500 {object} ErrorResponse
+// @Router /finance [get]
 func GetFinance(c *fiber.Ctx) error {
 	rows, err := dbPool.Query(context.Background(),
 		"SELECT symbol, price, previous_close, price_change, percentage_change, direction, last_updated FROM trades ORDER BY symbol ASC")
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: err.Error()})
 	}
 	defer rows.Close()
 
@@ -224,7 +285,7 @@ func GetFinance(c *fiber.Ctx) error {
 		var t Trade
 		err := rows.Scan(&t.Symbol, &t.Price, &t.PreviousClose, &t.PriceChange, &t.PercentageChange, &t.Direction, &t.LastUpdated)
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: err.Error()})
 		}
 		trades = append(trades, t)
 	}
