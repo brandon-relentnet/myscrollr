@@ -309,7 +309,11 @@ func LandingPage(c *fiber.Ctx) error {
 
 // AuthStatus returns the current authentication status based on access_token cookie
 func AuthStatus(c *fiber.Ctx) error {
+	log.Println("[AuthStatus] Checking auth status")
+	log.Printf("[AuthStatus] Cookies: %v", c.Cookies("access_token"))
+
 	tokenString := c.Cookies("access_token")
+	log.Printf("[AuthStatus] Token present: %v", tokenString != "")
 
 	if tokenString == "" {
 		return c.JSON(fiber.Map{
@@ -319,14 +323,19 @@ func AuthStatus(c *fiber.Ctx) error {
 
 	// Validate the token using JWKS
 	if jwks == nil {
+		log.Println("[AuthStatus] JWKS not initialized")
 		return c.JSON(fiber.Map{
 			"status": "error",
 			"error":  "Auth system not initialized",
 		})
 	}
 
+	log.Println("[AuthStatus] Parsing token...")
 	token, err := jwt.Parse(tokenString, jwks.Keyfunc)
+	log.Printf("[AuthStatus] Token parsed: valid=%v, err=%v", token.Valid, err)
+
 	if err != nil || !token.Valid {
+		log.Printf("[AuthStatus] Token invalid: %v", err)
 		return c.JSON(fiber.Map{
 			"status": "unauthenticated",
 		})
@@ -334,6 +343,8 @@ func AuthStatus(c *fiber.Ctx) error {
 
 	// Extract claims
 	claims, ok := token.Claims.(jwt.MapClaims)
+	log.Printf("[AuthStatus] Claims ok: %v, claims: %v", ok, claims)
+
 	if !ok {
 		return c.JSON(fiber.Map{
 			"status": "error",
@@ -341,6 +352,7 @@ func AuthStatus(c *fiber.Ctx) error {
 		})
 	}
 
+	log.Println("[AuthStatus] User authenticated!")
 	return c.JSON(fiber.Map{
 		"status": "authenticated",
 		"email":  claims["email"],
