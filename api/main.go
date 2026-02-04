@@ -146,3 +146,61 @@ func HealthCheck(c *fiber.Ctx) error {
 
 	return c.JSON(res)
 }
+
+// GetSports godoc
+// @Summary Get latest sports games.
+// @Description fetch the latest 50 sports games from the database.
+// @Tags Sports
+// @Accept json
+// @Produce json
+// @Success 200 {array} Game
+// @Router /sports [get]
+func GetSports(c *fiber.Ctx) error {
+	rows, err := dbPool.Query(context.Background(),
+		"SELECT id, league, external_game_id, link, home_team_name, home_team_logo, home_team_score, away_team_name, away_team_logo, away_team_score, start_time, short_detail, state FROM games ORDER BY start_time DESC LIMIT 50")
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	defer rows.Close()
+
+	var games []Game
+	for rows.Next() {
+		var g Game
+		err := rows.Scan(&g.ID, &g.League, &g.ExternalGameID, &g.Link, &g.HomeTeamName, &g.HomeTeamLogo, &g.HomeTeamScore, &g.AwayTeamName, &g.AwayTeamLogo, &g.AwayTeamScore, &g.StartTime, &g.ShortDetail, &g.State)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+		games = append(games, g)
+	}
+
+	return c.JSON(games)
+}
+
+// GetFinance godoc
+// @Summary Get latest market data.
+// @Description fetch all tracked market data (trades) from the database.
+// @Tags Finance
+// @Accept json
+// @Produce json
+// @Success 200 {array} Trade
+// @Router /finance [get]
+func GetFinance(c *fiber.Ctx) error {
+	rows, err := dbPool.Query(context.Background(),
+		"SELECT symbol, price, previous_close, price_change, percentage_change, direction, last_updated FROM trades ORDER BY symbol ASC")
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	defer rows.Close()
+
+	var trades []Trade
+	for rows.Next() {
+		var t Trade
+		err := rows.Scan(&t.Symbol, &t.Price, &t.PreviousClose, &t.PriceChange, &t.PercentageChange, &t.Direction, &t.LastUpdated)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+		trades = append(trades, t)
+	}
+
+	return c.JSON(trades)
+}
