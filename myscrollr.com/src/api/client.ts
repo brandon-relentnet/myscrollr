@@ -1,6 +1,6 @@
 // API client for the Scrollr API
 
-const API_BASE = import.meta.env.VITE_API_URL || ''
+export const API_BASE = import.meta.env.VITE_API_URL || ''
 
 interface RequestOptions extends RequestInit {
   requiresAuth?: boolean

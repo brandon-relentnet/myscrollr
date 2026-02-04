@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useLogto } from '@logto/react'
 import { useEffect, useState } from 'react'
 import { Settings, Shield, Link as LinkIcon, Check, AlertCircle, Loader2 } from 'lucide-react'
+import { API_BASE } from '../api/client'
 
 export const Route = createFileRoute('/u/$username')({
   component: ProfilePage,
@@ -54,7 +55,7 @@ function ProfilePage() {
           if (userId) {
             // Fetch user profile to get their username
             const token = claims.__raw
-            const res = await fetch('/users/me/profile', {
+            const res = await fetch(`${API_BASE}/users/me/profile`, {
               headers: { Authorization: `Bearer ${token}` }
             })
             if (res.ok) {
@@ -78,7 +79,7 @@ function ProfilePage() {
 
       // Fetch public profile by username
       try {
-        const res = await fetch(`/users/${username}`)
+        const res = await fetch(`${API_BASE}/users/${username}`)
         if (!res.ok) {
           const err = await res.json().catch(() => ({ error: 'Profile not found' }))
           throw new Error(err.error || 'Profile not found')
@@ -117,7 +118,7 @@ function ProfilePage() {
       const claims = await getIdTokenClaims()
       const token = await claims?.__raw
 
-      const res = await fetch('/users/me/profile', {
+      const res = await fetch(`${API_BASE}/users/me/profile`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -151,7 +152,7 @@ function ProfilePage() {
       const claims = await getIdTokenClaims()
       const token = claims?.__raw
 
-      const res = await fetch('/users/me/username', {
+      const res = await fetch('${API_BASE}/users/me/username', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -180,7 +181,7 @@ function ProfilePage() {
       const claims = await getIdTokenClaims()
       const token = claims?.__raw
 
-      const res = await fetch('/users/me/disconnect/yahoo', {
+      const res = await fetch('${API_BASE}/users/me/disconnect/yahoo', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       })
