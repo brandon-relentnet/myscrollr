@@ -54,7 +54,7 @@ function ProfilePage() {
           if (userId) {
             // Fetch user profile to get their username
             const token = claims.__raw
-            const res = await fetch('/api/users/me/profile', {
+            const res = await fetch('/users/me/profile', {
               headers: { Authorization: `Bearer ${token}` }
             })
             if (res.ok) {
@@ -78,7 +78,7 @@ function ProfilePage() {
 
       // Fetch public profile by username
       try {
-        const res = await fetch(`/api/users/${username}`)
+        const res = await fetch(`/users/${username}`)
         if (!res.ok) {
           const err = await res.json().catch(() => ({ error: 'Profile not found' }))
           throw new Error(err.error || 'Profile not found')
@@ -117,7 +117,7 @@ function ProfilePage() {
       const claims = await getIdTokenClaims()
       const token = await claims?.__raw
 
-      const res = await fetch('/api/users/me/profile', {
+      const res = await fetch('/users/me/profile', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -151,7 +151,7 @@ function ProfilePage() {
       const claims = await getIdTokenClaims()
       const token = claims?.__raw
 
-      const res = await fetch('/api/users/me/username', {
+      const res = await fetch('/users/me/username', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -180,7 +180,7 @@ function ProfilePage() {
       const claims = await getIdTokenClaims()
       const token = claims?.__raw
 
-      const res = await fetch('/api/users/me/disconnect/yahoo', {
+      const res = await fetch('/users/me/disconnect/yahoo', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       })
