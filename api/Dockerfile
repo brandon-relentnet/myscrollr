@@ -5,15 +5,15 @@ WORKDIR /app
 # Install git for fetching dependencies
 RUN apk add --no-cache git
 
-# Copy go mod and sum files
+# Copy the module files
 COPY go.mod ./
-# COPY go.sum ./ # Uncomment when we have dependencies and a go.sum
 
-# Download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
-RUN go mod tidy && go mod download
-
-# Copy the source from the current directory to the Working Directory inside the container
+# Copy the source code first so 'go mod tidy' can see the imports
 COPY . .
+
+# Fetch dependencies and generate go.sum inside the builder
+RUN go mod tidy
+RUN go mod download
 
 # Build the Go app
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
