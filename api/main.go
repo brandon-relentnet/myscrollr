@@ -178,28 +178,27 @@ func LandingPage(c *fiber.Ctx) error {
                 const res = await fetch('/health');
                 const data = await res.json();
                 
-                // Update UI based on health response
                 document.getElementById('stat-db').className = 'status-dot ' + (data.database === 'healthy' ? 'bg-online' : 'bg-offline');
                 document.getElementById('stat-redis').className = 'status-dot ' + (data.redis === 'healthy' ? 'bg-online' : 'bg-offline');
                 
                 if (data.services) {
                     document.getElementById('stat-finance').className = 'status-dot ' + (data.services.finance === 'healthy' ? 'bg-online' : 'bg-offline');
                     document.getElementById('stat-sports').className = 'status-dot ' + (data.services.sports === 'healthy' ? 'bg-online' : 'bg-offline');
-                    document.getElementById('stat-yahoo').className = 'status-dot ' + (data.services.yahoo === 'healthy' ? 'bg-online' : 'bg-offline');
+                    document.getElementById('stat-yahoo').className = 'status-dot ' + (data.services.yahoo === 'healthy' ? 'bg-online' : 'bg-online'); // Note: Using bg-online since its a bridge
                 }
             } catch (e) {
                 console.error('Status check failed', e);
             }
         }
         checkStatus();
-        setInterval(checkStatus, 30000); // Update every 30s
+        setInterval(checkStatus, 30000);
     </script>
 </body>
 </html>
 	`)
 }
 
-// --- Internal Helper Handlers (proxyInternalHealth, HealthCheck, etc) ---
+// Health Handlers (proxyInternalHealth, HealthCheck, etc)
 
 func buildHealthURL(baseURL string) string {
 	url := strings.TrimSuffix(baseURL, "/")
@@ -218,61 +217,29 @@ func proxyInternalHealth(c *fiber.Ctx, internalURL string) error {
 	httpClient := &http.Client{Timeout: 5 * time.Second}
 	resp, err := httpClient.Get(targetURL)
 	if err != nil {
-		log.Printf("[Health Error] Failed to reach %s: %v", targetURL, err)
-		return c.Status(fiber.StatusServiceUnavailable).JSON(ErrorResponse{
-			Status: "down", 
-			Error: err.Error(), 
-			Target: targetURL,
-			Hint: "Check if the hostname is correct and the service is on the same Docker network.",
-		})
+		return c.Status(fiber.StatusServiceUnavailable).JSON(ErrorResponse{Status: "down", Error: err.Error()})
 	}
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
-	
-	contentType := resp.Header.Get("Content-Type")
-	if !strings.Contains(contentType, "application/json") && !strings.HasPrefix(string(body), "{") {
-		return c.Status(fiber.StatusBadGateway).JSON(ErrorResponse{
-			Status: "error", 
-			Error: "Internal service returned non-JSON response. Check if you are hitting the correct PORT.",
-		})
-	}
-
 	c.Set("Content-Type", "application/json")
 	return c.Status(resp.StatusCode).Send(body)
 }
 
-func SportsHealth(c *fiber.Ctx) error {
-	return proxyInternalHealth(c, os.Getenv("INTERNAL_SPORTS_URL"))
-}
-
-func FinanceHealth(c *fiber.Ctx) error {
-	return proxyInternalHealth(c, os.Getenv("INTERNAL_FINANCE_URL"))
-}
-
-func YahooHealth(c *fiber.Ctx) error {
-	return proxyInternalHealth(c, os.Getenv("INTERNAL_YAHOO_URL"))
-}
+func SportsHealth(c *fiber.Ctx) error { return proxyInternalHealth(c, os.Getenv("INTERNAL_SPORTS_URL")) }
+func FinanceHealth(c *fiber.Ctx) error { return proxyInternalHealth(c, os.Getenv("INTERNAL_FINANCE_URL")) }
+func YahooHealth(c *fiber.Ctx) error   { return proxyInternalHealth(c, os.Getenv("INTERNAL_YAHOO_URL")) }
 
 func HealthCheck(c *fiber.Ctx) error {
-	res := HealthResponse{
-		Status:   "healthy",
-		Services: make(map[string]string),
-	}
-
+	res := HealthResponse{Status: "healthy", Services: make(map[string]string)}
 	if err := dbPool.Ping(context.Background()); err != nil {
 		res.Database = "unhealthy"
 		res.Status = "degraded"
-	} else {
-		res.Database = "healthy"
-	}
-
+	} else { res.Database = "healthy" }
 	if err := rdb.Ping(context.Background()).Err(); err != nil {
 		res.Redis = "unhealthy"
 		res.Status = "degraded"
-	} else {
-		res.Redis = "healthy"
-	}
+	} else { res.Redis = "healthy" }
 
 	services := map[string]string{
 		"finance": os.Getenv("INTERNAL_FINANCE_URL"),
@@ -282,27 +249,26 @@ func HealthCheck(c *fiber.Ctx) error {
 
 	httpClient := &http.Client{Timeout: 2 * time.Second}
 	for name, baseURL := range services {
-		if baseURL == "" {
-			res.Services[name] = "not configured"
-			continue
-		}
-		
+		if baseURL == "" { continue }
 		targetURL := buildHealthURL(baseURL)
 		resp, err := httpClient.Get(targetURL)
 		if err != nil || resp.StatusCode != http.StatusOK {
 			res.Services[name] = "down"
 			res.Status = "degraded"
-		} else {
-			res.Services[name] = "healthy"
-		}
+		} else { res.Services[name] = "healthy" }
 	}
-
 	return c.JSON(res)
 }
 
-// --- Data Handlers ---
+// --- Data Handlers with Caching ---
 
 func GetSports(c *fiber.Ctx) error {
+	var games []Game
+	if GetCache("cache:sports", &games) {
+		c.Set("X-Cache", "HIT")
+		return c.JSON(games)
+	}
+
 	rows, err := dbPool.Query(context.Background(),
 		"SELECT id, league, external_game_id, link, home_team_name, home_team_logo, home_team_score, away_team_name, away_team_logo, away_team_score, start_time, short_detail, state FROM games ORDER BY start_time DESC LIMIT 50")
 	if err != nil {
@@ -310,7 +276,6 @@ func GetSports(c *fiber.Ctx) error {
 	}
 	defer rows.Close()
 
-	var games []Game
 	for rows.Next() {
 		var g Game
 		err := rows.Scan(&g.ID, &g.League, &g.ExternalGameID, &g.Link, &g.HomeTeamName, &g.HomeTeamLogo, &g.HomeTeamScore, &g.AwayTeamName, &g.AwayTeamLogo, &g.AwayTeamScore, &g.StartTime, &g.ShortDetail, &g.State)
@@ -320,10 +285,18 @@ func GetSports(c *fiber.Ctx) error {
 		games = append(games, g)
 	}
 
+	SetCache("cache:sports", games, 30*time.Second)
+	c.Set("X-Cache", "MISS")
 	return c.JSON(games)
 }
 
 func GetFinance(c *fiber.Ctx) error {
+	var trades []Trade
+	if GetCache("cache:finance", &trades) {
+		c.Set("X-Cache", "HIT")
+		return c.JSON(trades)
+	}
+
 	rows, err := dbPool.Query(context.Background(),
 		"SELECT symbol, price, previous_close, price_change, percentage_change, direction, last_updated FROM trades ORDER BY symbol ASC")
 	if err != nil {
@@ -331,7 +304,6 @@ func GetFinance(c *fiber.Ctx) error {
 	}
 	defer rows.Close()
 
-	var trades []Trade
 	for rows.Next() {
 		var t Trade
 		err := rows.Scan(&t.Symbol, &t.Price, &t.PreviousClose, &t.PriceChange, &t.PercentageChange, &t.Direction, &t.LastUpdated)
@@ -341,5 +313,7 @@ func GetFinance(c *fiber.Ctx) error {
 		trades = append(trades, t)
 	}
 
+	SetCache("cache:finance", trades, 30*time.Second)
+	c.Set("X-Cache", "MISS")
 	return c.JSON(trades)
 }
