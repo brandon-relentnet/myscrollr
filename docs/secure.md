@@ -1,34 +1,50 @@
 # SECURE Audit Report
 
-## Executive Summary (Health Score: 9/10)
-The MyScrollr project has significantly improved its security posture. Critical vulnerabilities regarding authorization code leakage and raw token exposure have been resolved. Authentication is now handled server-side with secure, HttpOnly cookie-based sessions.
+## Executive Summary (Health Score: 6/10)
 
-## Critical Findings (Resolved)
+The MyScrollr project demonstrates a strong foundation in security best practices, particularly regarding authentication and session management. The use of Logto with OIDC/PKCE, CSRF protection via Redis, and secure, HTTPOnly cookies is commendable. However, a **CRITICAL** finding regarding the storage of Yahoo refresh tokens in plain text significantly impacts the overall health score. Addressing this, along with improving input sanitization and logging hygiene, will substantially harden the system.
 
-### 1. Authorization Code Leakage (Logto) - FIXED
-The `LogtoCallback` now performs a server-side exchange of the authorization code for JWTs, utilizing PKCE verifiers stored in secure cookies. Codes are never exposed to the client response.
+## Critical Findings (Immediate Action)
 
-### 2. Sensitive Token Exposure in HTML Script - FIXED
-`YahooCallback` no longer transmits tokens via `postMessage`. Tokens are set as `HttpOnly`, `Secure`, `SameSite=Strict` cookies, and the callback only sends a completion signal.
+### 1. Plain-text Refresh Tokens in Database
 
-### 3. Incomplete OIDC Implementation - COMPLETED
-The OIDC flow is fully implemented, including token exchange and middleware support for cookie-based authentication.
+- **Location**: `ingestion/yahoo_service/src/database.rs` -> `yahoo_users` table.
+- **Issue**: Yahoo OAuth2 `refresh_token` values are stored as plain text. If the database is compromised, an attacker gains permanent access to all users' Yahoo Fantasy data.
+- **Recommendation**: Implement AES-256-GCM encryption for the `refresh_token` column. Use a Pepper/Master Key stored in an HSM or a secure environment variable (managed via secret manager like HashiCorp Vault or AWS KMS).
 
-## Optimization Suggestions (Ongoing)
+### 2. PostMessage Origin Security
 
-### 1. WebSocket Secret Masking
-(Status: Ongoing) Internal proxies should still be audited for URL logging.
+- **Location**: `api/yahoo.go` -> `YahooCallback` function.
+- **Issue**: The `postMessage` target origin uses `frontendURL`, which defaults to the API's own domain or a potentially insecure fallback if `FRONTEND_URL` is not set.
+- **Recommendation**: Ensure `FRONTEND_URL` is strictly validated against a whitelist and never defaults to a wildcard or the current request's domain without verification.
 
-### 2. Hardened Environment Variable Validation - IMPROVED
-`validateURL` helper implemented in `api/main.go` to normalize and sanitize origins and redirect targets.
+## Optimization Suggestions (Long-term)
 
-### 3. Logto Verifier Cleanup - FIXED
-PKCE verifiers are explicitly cleared from cookies after use in `LogtoCallback`.
+### 1. Database Column Encryption (PG-Crypto)
+
+Consider using PostgreSQL's `pgcrypto` extension for transparent or application-level encryption of sensitive data beyond just refresh tokens, such as user identifiers if PII concerns arise.
+
+### 2. Input Sanitization & Type Safety
+
+- **Location**: `api/yahoo.go` (`league_key`, `team_key`)
+- **Issue**: Route parameters are injected directly into Yahoo API URLs.
+- **Recommendation**: Implement regex validation for Yahoo-specific identifiers (e.g., `^\d+\.l\.\d+$`) before using them in upstream requests to prevent potential URL injection or unexpected API behavior.
+
+### 3. WebSocket URL Masking
+
+- **Location**: `ingestion/finance_service/src/websocket.rs`
+- **Issue**: Finnhub API Key is passed as a query parameter in the WebSocket URL.
+- **Recommendation**: Ensure the logging middleware specifically redacts the `token` query parameter from any "connecting to..." log messages.
+
+### 4. Content Security Policy (CSP)
+
+The `LandingPage` in `api/main.go` serves inline scripts and styles. Implementing a strict CSP would mitigate XSS risks, especially as the application grows.
 
 ## Progress Checklist
-- [x] Fix: Move Logto auth code exchange to server-side in `api/auth.go`.
-- [x] Fix: Remove raw tokens from `YahooCallback` HTML response.
-- [x] Implement: Proper session management after OAuth exchange.
-- [x] Audit: Review all error paths in `api/database.go` to ensure no connection strings are leaked.
-- [ ] Security: Add a security scan (e.g., `gosec` or `cargo-audit`) to the CI pipeline.
-- [ ] Documentation: Define a clear secret rotation policy for `YAHOO_CLIENT_SECRET` and `FINNHUB_API_KEY`.
+
+- [ ] Implement encryption for `yahoo_users.refresh_token`.
+- [ ] Add regex validation for `league_key` and `team_key` in API routes.
+- [ ] Audit all logs for potential secret leakage (Finnhub tokens, etc.).
+- [ ] Verify `FRONTEND_URL` configuration in all production environments.
+- [ ] Implement Content Security Policy (CSP) headers in Fiber middleware.
+- [ ] Rotate `YAHOO_CLIENT_SECRET` after implementing DB encryption.
