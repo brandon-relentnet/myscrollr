@@ -23,7 +23,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuth = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/auth/status`)
+      const response = await fetch(`${API_URL}/auth/status`, {
+        credentials: 'include',
+      })
       const data = await response.json()
 
       if (data.status === "authenticated") {
