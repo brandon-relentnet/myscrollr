@@ -335,14 +335,16 @@ func LogtoCallback(c *fiber.Ctx) error {
 	}
 
 	// Set the access token in a secure, HttpOnly cookie
+	// Use parent domain so it's accessible by frontend on different subdomain
 	c.Cookie(&fiber.Cookie{
 		Name:     "access_token",
 		Value:    tokenRes.AccessToken,
 		Expires:  time.Now().Add(time.Duration(tokenRes.ExpiresIn) * time.Second),
 		HTTPOnly: true,
 		Secure:   true,
-		SameSite: "Strict",
+		SameSite: "None",
 		Path:     "/",
+		Domain:   "relentnet.dev",
 	})
 
 	frontendURL := os.Getenv("FRONTEND_URL")
@@ -355,15 +357,16 @@ func LogtoCallback(c *fiber.Ctx) error {
 
 // LogtoLogout clears the session cookie and redirects to Logto end-session
 func LogtoLogout(c *fiber.Ctx) error {
-	// Clear the access token cookie
+	// Clear the access token cookie (must match the domain settings from login)
 	c.Cookie(&fiber.Cookie{
 		Name:     "access_token",
 		Value:    "",
 		Expires:  time.Now().Add(-1 * time.Hour),
 		HTTPOnly: true,
 		Secure:   true,
-		SameSite: "Strict",
+		SameSite: "None",
 		Path:     "/",
+		Domain:   "relentnet.dev",
 	})
 
 	// Get frontend URL for redirect
