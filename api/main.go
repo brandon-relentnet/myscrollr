@@ -119,6 +119,7 @@ func main() {
 
 	// --- Public Routes ---
 	app.Get("/health", HealthCheck)
+	app.Get("/auth/status", AuthStatus) // Check auth status from cookie
 	app.Get("/sports/health", SportsHealth)
 	app.Get("/finance/health", FinanceHealth)
 	app.Get("/yahoo/health", YahooHealth)
@@ -303,6 +304,47 @@ func LandingPage(c *fiber.Ctx) error {
 </body>
 </html>
 	`)
+}
+
+// AuthStatus returns the current authentication status based on access_token cookie
+func AuthStatus(c *fiber.Ctx) error {
+	tokenString := c.Cookies("access_token")
+
+	if tokenString == "" {
+		return c.JSON(fiber.Map{
+			"status": "unauthenticated",
+		})
+	}
+
+	// Validate the token using JWKS
+	if jwks == nil {
+		return c.JSON(fiber.Map{
+			"status": "error",
+			"error":  "Auth system not initialized",
+		})
+	}
+
+	token, err := jwt.Parse(tokenString, jwks.Keyfunc)
+	if err != nil || !token.Valid {
+		return c.JSON(fiber.Map{
+			"status": "unauthenticated",
+		})
+	}
+
+	// Extract claims
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return c.JSON(fiber.Map{
+			"status": "error",
+			"error":  "Invalid token claims",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"status": "authenticated",
+		"email":  claims["email"],
+		"sub":    claims["sub"],
+	})
 }
 
 // Health Handlers (proxyInternalHealth, HealthCheck, etc)

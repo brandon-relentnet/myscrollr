@@ -23,12 +23,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuth = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/health`)
-      if (response.ok) {
-        const data = await response.json()
-        // Check for access token cookie - the API sets it on login
+      const response = await fetch(`${API_URL}/auth/status`)
+      const data = await response.json()
+
+      if (data.status === "authenticated") {
         setIsAuthenticated(true)
-        setUser({ email: (data as { email?: string })?.email })
+        setUser({ email: data.email })
       } else {
         setIsAuthenticated(false)
         setUser(null)
