@@ -2,7 +2,7 @@ use axum::{routing::get, Router, Json, extract::State};
 use dotenv::dotenv;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use sports_service::{start_sports_service, SportsHealth, log::init_async_logger, database::initialize_pool, database::PgPool};
+use sports_service::{start_sports_service, SportsHealth, log::init_async_logger, database::initialize_pool};
 
 #[derive(Clone)]
 struct AppState {

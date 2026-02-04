@@ -2,7 +2,7 @@ use axum::{routing::get, Router, Json, extract::State};
 use dotenv::dotenv;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use finance_service::{start_finance_services, types::FinanceHealth, log::init_async_logger, database::initialize_pool, database::PgPool};
+use finance_service::{start_finance_services, types::FinanceHealth, log::init_async_logger, database::initialize_pool};
 
 #[derive(Clone)]
 struct AppState {
