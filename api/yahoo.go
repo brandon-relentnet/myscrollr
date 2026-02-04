@@ -57,6 +57,74 @@ func InitYahoo() {
 	}
 }
 
+// Helper to get token from cookie or header
+func getToken(c *fiber.Ctx) string {
+	token := c.Cookies("yahoo-auth")
+	if token == "" {
+		authHeader := c.Get("Authorization")
+		if len(authHeader) > 7 && strings.EqualFold(authHeader[:7], "Bearer ") {
+			token = authHeader[7:]
+		}
+	}
+	return token
+}
+
+// Helper to fetch from Yahoo with auto-refresh
+func fetchYahoo(c *fiber.Ctx, url string) ([]byte, error) {
+	token := getToken(c)
+	if token == "" {
+		return nil, fmt.Errorf("unauthorized")
+	}
+
+	client := &http.Client{}
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		// Try to refresh
+		refreshToken := c.Cookies("yahoo-refresh")
+		if refreshToken == "" {
+			return nil, fmt.Errorf("unauthorized")
+		}
+
+		ctx := context.Background()
+		t := &oauth2.Token{
+			RefreshToken: refreshToken,
+		}
+		newToken, err := yahooConfig.TokenSource(ctx, t).Token()
+		if err != nil {
+			return nil, fmt.Errorf("refresh failed")
+		}
+
+		// Set new cookies
+		c.Cookie(&fiber.Cookie{
+			Name:     "yahoo-auth",
+			Value:    newToken.AccessToken,
+			Expires:  time.Now().Add(24 * time.Hour),
+			HTTPOnly: true,
+			Secure:   true,
+			SameSite: "Lax",
+			Path:     "/",
+		})
+
+		// Retry request with new token
+		req.Header.Set("Authorization", "Bearer "+newToken.AccessToken)
+		resp, err = client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+	}
+
+	return io.ReadAll(resp.Body)
+}
+
 // YahooStart godoc
 // @Summary Start Yahoo OAuth2 flow.
 // @Description Redirects the user to Yahoo for authentication.
@@ -70,7 +138,6 @@ func YahooStart(c *fiber.Ctx) error {
 
 	err := rdb.Set(context.Background(), "csrf:"+state, "1", 10*time.Minute).Err()
 	if err != nil {
-		log.Printf("[Yahoo Error] Redis storage failed: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to store state"})
 	}
 
@@ -154,33 +221,79 @@ func YahooCallback(c *fiber.Ctx) error {
 // @Success 200 {object} FantasyContent
 // @Router /yahoo/leagues [get]
 func YahooLeagues(c *fiber.Ctx) error {
-	token := c.Cookies("yahoo-auth")
-	if token == "" {
-		authHeader := c.Get("Authorization")
-		if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
-			token = authHeader[7:]
-		}
-	}
-
-	if token == "" {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized, missing token"})
-	}
-
-	client := &http.Client{}
-	req, _ := http.NewRequest("GET", "https://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1/games;game_keys=nfl,nba,nhl/leagues", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	resp, err := client.Do(req)
+	body, err := fetchYahoo(c, "https://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1/games;game_keys=nfl,nba,nhl/leagues")
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch from Yahoo"})
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": err.Error()})
 	}
-	defer resp.Body.Close()
-
-	body, _ := io.ReadAll(resp.Body)
 	
 	var content FantasyContent
 	if err := xml.Unmarshal(body, &content); err != nil {
-		log.Printf("[Yahoo Error] XML Unmarshal failed: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to parse Yahoo data"})
+	}
+
+	return c.JSON(content)
+}
+
+// YahooStandings godoc
+// @Summary Get Yahoo league standings.
+// @Description Fetches and parses standings for a specific league.
+// @Tags Yahoo
+// @Param league_key path string true "League Key"
+// @Success 200 {object} FantasyContent
+// @Router /yahoo/league/{league_key}/standings [get]
+func YahooStandings(c *fiber.Ctx) error {
+	leagueKey := c.Params("league_key")
+	body, err := fetchYahoo(c, fmt.Sprintf("https://fantasysports.yahooapis.com/fantasy/v2/league/%s/standings", leagueKey))
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	var content FantasyContent
+	if err := xml.Unmarshal(body, &content); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to parse Yahoo data"})
+	}
+
+	return c.JSON(content)
+}
+
+// YahooMatchups godoc
+// @Summary Get Yahoo team matchups.
+// @Description Fetches and parses matchups for a specific team.
+// @Tags Yahoo
+// @Param team_key path string true "Team Key"
+// @Success 200 {object} FantasyContent
+// @Router /yahoo/team/{team_key}/matchups [get]
+func YahooMatchups(c *fiber.Ctx) error {
+	teamKey := c.Params("team_key")
+	body, err := fetchYahoo(c, fmt.Sprintf("https://fantasysports.yahooapis.com/fantasy/v2/team/%s/matchups", teamKey))
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	var content FantasyContent
+	if err := xml.Unmarshal(body, &content); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to parse Yahoo data"})
+	}
+
+	return c.JSON(content)
+}
+
+// YahooRoster godoc
+// @Summary Get Yahoo team roster.
+// @Description Fetches and parses roster for a specific team.
+// @Tags Yahoo
+// @Param team_key path string true "Team Key"
+// @Success 200 {object} FantasyContent
+// @Router /yahoo/team/{team_key}/roster [get]
+func YahooRoster(c *fiber.Ctx) error {
+	teamKey := c.Params("team_key")
+	body, err := fetchYahoo(c, fmt.Sprintf("https://fantasysports.yahooapis.com/fantasy/v2/team/%s/roster", teamKey))
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	var content FantasyContent
+	if err := xml.Unmarshal(body, &content); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to parse Yahoo data"})
 	}
 

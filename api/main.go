@@ -62,6 +62,9 @@ func main() {
 	app.Get("/yahoo/start", YahooStart)
 	app.Get("/yahoo/callback", YahooCallback)
 	app.Get("/yahoo/leagues", YahooLeagues)
+	app.Get("/yahoo/league/:league_key/standings", YahooStandings)
+	app.Get("/yahoo/team/:team_key/matchups", YahooMatchups)
+	app.Get("/yahoo/team/:team_key/roster", YahooRoster)
 
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Welcome to Scrollr API. Visit /swagger for documentation.")
