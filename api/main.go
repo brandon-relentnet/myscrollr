@@ -101,10 +101,16 @@ func proxyInternalHealth(c *fiber.Ctx, internalURL string) error {
 	}
 
 	targetURL := buildHealthURL(internalURL)
-	httpClient := &http.Client{Timeout: 3 * time.Second}
+	httpClient := &http.Client{Timeout: 5 * time.Second} // Increased timeout for DNS
 	resp, err := httpClient.Get(targetURL)
 	if err != nil {
-		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"status": "down", "error": err.Error(), "target": targetURL})
+		log.Printf("[Health Error] Failed to reach %s: %v", targetURL, err)
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+			"status": "down", 
+			"error": err.Error(), 
+			"target": targetURL,
+			"hint": "Check if the hostname is correct and the service is on the same Docker network.",
+		})
 	}
 	defer resp.Body.Close()
 
@@ -115,7 +121,7 @@ func proxyInternalHealth(c *fiber.Ctx, internalURL string) error {
 	if !strings.Contains(contentType, "application/json") && !strings.HasPrefix(string(body), "{") {
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
 			"status": "error", 
-			"error": "Internal service returned non-JSON response",
+			"error": "Internal service returned non-JSON response. Check if you are hitting the correct PORT.",
 			"body": string(body),
 		})
 	}
@@ -162,7 +168,7 @@ func HealthCheck(c *fiber.Ctx) error {
 		"yahoo":   os.Getenv("INTERNAL_YAHOO_URL"),
 	}
 
-	httpClient := &http.Client{Timeout: 1 * time.Second}
+	httpClient := &http.Client{Timeout: 2 * time.Second}
 	for name, baseURL := range services {
 		if baseURL == "" {
 			res.Services[name] = "not configured"
@@ -182,7 +188,8 @@ func HealthCheck(c *fiber.Ctx) error {
 	return c.JSON(res)
 }
 
-// --- Data Handlers (GetSports, GetFinance) omitted for brevity but remain in file ---
+// --- Data Handlers ---
+
 func GetSports(c *fiber.Ctx) error {
 	rows, err := dbPool.Query(context.Background(),
 		"SELECT id, league, external_game_id, link, home_team_name, home_team_logo, home_team_score, away_team_name, away_team_logo, away_team_score, start_time, short_detail, state FROM games ORDER BY start_time DESC LIMIT 50")
