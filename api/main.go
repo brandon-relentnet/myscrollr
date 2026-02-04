@@ -125,6 +125,7 @@ func main() {
 	app.Get("/yahoo/callback", YahooCallback)
 	app.Get("/login", LogtoLogin)
 	app.Get("/signup", LogtoSignup)
+	app.Get("/logout", LogtoLogout)
 	app.Get("/callback", LogtoCallback)
 	app.Get("/", LandingPage)
 
@@ -158,6 +159,24 @@ func main() {
 
 func LandingPage(c *fiber.Ctx) error {
 	c.Set("Content-Type", "text/html")
+	isAuthenticated := c.Cookies("access_token") != ""
+
+	authButtons := ``
+	if isAuthenticated {
+		authButtons = `
+            <a href="/logout" class="bg-red-600 hover:bg-red-500 text-white font-semibold py-3 px-10 rounded-xl transition-all text-center shadow-lg shadow-red-500/20">
+                Sign Out
+            </a>`
+	} else {
+		authButtons = `
+            <a href="/login" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-10 rounded-xl transition-all text-center shadow-lg shadow-indigo-500/20">
+                Sign In
+            </a>
+            <a href="/signup" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-10 rounded-xl transition-all text-center border border-slate-700">
+                Sign Up
+            </a>`
+	}
+
 	return c.SendString(`
 <!DOCTYPE html>
 <html lang="en">
@@ -222,12 +241,7 @@ func LandingPage(c *fiber.Ctx) error {
 
         <!-- Call to Actions -->
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="/login" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-10 rounded-xl transition-all text-center shadow-lg shadow-indigo-500/20">
-                Sign In
-            </a>
-            <a href="/signup" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-10 rounded-xl transition-all text-center border border-slate-700">
-                Sign Up
-            </a>
+            ` + authButtons + `
             <a href="/swagger/index.html" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-8 rounded-xl transition-all text-center border border-slate-700">
                 Explore Documentation
             </a>
@@ -248,6 +262,32 @@ func LandingPage(c *fiber.Ctx) error {
                 document.getElementById('stat-db').className = 'status-dot ' + (data.database === 'healthy' ? 'bg-online' : 'bg-offline');
                 document.getElementById('stat-redis').className = 'status-dot ' + (data.redis === 'healthy' ? 'bg-online' : 'bg-offline');
                 
+                if (data.services) {
+                    document.getElementById('stat-finance').className = 'status-dot ' + (data.services.finance === 'healthy' ? 'bg-online' : 'bg-offline');
+                    document.getElementById('stat-sports').className = 'status-dot ' + (data.services.sports === 'healthy' ? 'bg-online' : 'bg-offline');
+                    document.getElementById('stat-yahoo').className = 'status-dot ' + (data.services.yahoo === 'healthy' ? 'bg-online' : 'bg-online'); // Note: Using bg-online since its a bridge
+                }
+            } catch (e) {
+                console.error('Status check failed', e);
+            }
+        }
+        checkStatus();
+        setInterval(checkStatus, 30000);
+    </script>
+</body>
+</html>
+	` + authButtons + `
+    </div>
+
+    <script>
+        async function checkStatus() {
+            try {
+                const res = await fetch('/health');
+                const data = await res.json();
+
+                document.getElementById('stat-db').className = 'status-dot ' + (data.database === 'healthy' ? 'bg-online' : 'bg-offline');
+                document.getElementById('stat-redis').className = 'status-dot ' + (data.redis === 'healthy' ? 'bg-online' : 'bg-offline');
+
                 if (data.services) {
                     document.getElementById('stat-finance').className = 'status-dot ' + (data.services.finance === 'healthy' ? 'bg-online' : 'bg-offline');
                     document.getElementById('stat-sports').className = 'status-dot ' + (data.services.sports === 'healthy' ? 'bg-online' : 'bg-offline');

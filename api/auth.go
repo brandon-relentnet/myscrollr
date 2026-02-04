@@ -352,3 +352,32 @@ func LogtoCallback(c *fiber.Ctx) error {
 
 	return c.Redirect(frontendURL)
 }
+
+// LogtoLogout clears the session cookie and redirects to Logto end-session
+func LogtoLogout(c *fiber.Ctx) error {
+	// Clear the access token cookie
+	c.Cookie(&fiber.Cookie{
+		Name:     "access_token",
+		Value:    "",
+		Expires:  time.Now().Add(-1 * time.Hour),
+		HTTPOnly: true,
+		Secure:   true,
+		SameSite: "Strict",
+		Path:     "/",
+	})
+
+	// Get frontend URL for redirect
+	frontendURL := os.Getenv("FRONTEND_URL")
+	if frontendURL == "" {
+		frontendURL = "https://myscrollr.com"
+	}
+
+	// Optionally redirect to Logto end-session endpoint
+	endpoint := os.Getenv("LOGTO_ENDPOINT")
+	if endpoint != "" {
+		postLogoutURI := url.QueryEscape(frontendURL)
+		return c.Redirect(fmt.Sprintf("%s/oidc/sign-out?post_logout_redirect_uri=%s", endpoint, postLogoutURI))
+	}
+
+	return c.Redirect(frontendURL)
+}
