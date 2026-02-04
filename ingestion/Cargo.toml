@@ -3,6 +3,6 @@ members = [
     "yahoo_service",
     "finance_service",
     "sports_service",
-    "yahoo_fantasy"
+    "yahoo_service/yahoo_fantasy"
 ]
 resolver = "3"

@@ -24,4 +24,4 @@ sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres",
 redis = { version = "0.28", features = ["tokio-rustls-comp"] }
 deadpool-redis = "0.19"
 
-yahoo_fantasy = { path = "../yahoo_fantasy" }
+yahoo_fantasy = { path = "./yahoo_fantasy" }
