@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y ca-certificates libssl-dev && rm -rf /v
 
 COPY --from=builder /app/target/release/sports_service .
 
-# Copy config from the service directory
-COPY --from=builder /app/sports_service/configs ./configs
+# Fixed path: source is /app/configs because sports_service is the root of this build context
+COPY --from=builder /app/configs ./configs
 
 CMD ["./sports_service"]
