@@ -117,21 +117,23 @@ Copy `ingestion/.env.example` to `.env` (for local dev) or configure in Coolify:
 
 | Variable | Purpose |
 |----------|---------|
+| `COOLIFY_FQDN` | Production domain (single source of truth) |
 | `DATABASE_URL` | PostgreSQL connection |
 | `REDIS_URL` | Redis connection |
-| `DOMAIN_NAME` | Production domain |
-| `FRONTEND_URL` | Frontend origin for CORS |
+| `ENCRYPTION_KEY` | AES key for token encryption |
+| `ALLOWED_ORIGINS` | CORS origins |
+| `FRONTEND_URL` | Frontend origin for Yahoo redirect |
 | `FINNHUB_API_KEY` | Finnhub market data API |
 | `YAHOO_CLIENT_ID/SECRET` | Yahoo OAuth credentials |
-| `YAHOO_CALLBACK_URL` | Yahoo OAuth callback |
-| `LOGTO_ENDPOINT` | Logto OIDC endpoint |
-| `LOGTO_ISSUER` | Logto issuer URL |
-| `LOGTO_JWKS_URL` | Logto JWKS for token validation |
-| `LOGTO_APP_ID/SECRET` | Logto application credentials |
-| `LOGTO_API_RESOURCE` | Logto API resource identifier |
 | `INTERNAL_FINANCE_URL` | Finance service URL |
 | `INTERNAL_SPORTS_URL` | Sports service URL |
 | `INTERNAL_YAHOO_URL` | Yahoo service URL |
+
+All URLs derived from `COOLIFY_FQDN`:
+- API: `https://{COOLIFY_FQDN}`
+- Logto: `https://{COOLIFY_FQDN}/oidc`
+- JWKS: `https://{COOLIFY_FQDN}/oidc/jwks`
+- Yahoo callback: `https://{COOLIFY_FQDN}/yahoo/callback`
 
 ### Frontend (`myscrollr.com/`)
 
