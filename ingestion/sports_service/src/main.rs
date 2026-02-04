@@ -1,13 +1,12 @@
-use axum::{routing::{get, post}, Router, Json, extract::State, http::StatusCode};
+use axum::{routing::get, Router, Json, extract::State};
 use dotenv::dotenv;
-use std::{sync::Arc, fs};
+use std::sync::Arc;
 use tokio::sync::Mutex;
-use sports_service::{start_sports_service, poll_sports, SportsHealth, log::init_async_logger, database::initialize_pool, database::PgPool, database::LeagueConfigs};
+use sports_service::{start_sports_service, SportsHealth, log::init_async_logger, database::initialize_pool, database::PgPool};
 
 #[derive(Clone)]
 struct AppState {
     health: Arc<Mutex<SportsHealth>>,
-    pool: Arc<PgPool>,
 }
 
 #[tokio::main]
@@ -44,7 +43,6 @@ async fn main() {
 
     let state = AppState {
         health,
-        pool,
     };
 
     let app = Router::new()

@@ -1,13 +1,12 @@
-use axum::{routing::{get, post}, Router, Json, extract::State, http::StatusCode};
+use axum::{routing::get, Router, Json, extract::State};
 use dotenv::dotenv;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use finance_service::{start_finance_services, update_all_previous_closes, types::{FinanceHealth, FinanceState}, log::init_async_logger, database::initialize_pool, database::PgPool};
+use finance_service::{start_finance_services, types::FinanceHealth, log::init_async_logger, database::initialize_pool, database::PgPool};
 
 #[derive(Clone)]
 struct AppState {
     health: Arc<Mutex<FinanceHealth>>,
-    pool: Arc<PgPool>,
 }
 
 #[tokio::main]
@@ -42,12 +41,10 @@ async fn main() {
 
     let state = AppState {
         health,
-        pool,
     };
 
     let app = Router::new()
         .route("/health", get(health_handler))
-        .route("/trigger", post(trigger_handler))
         .with_state(state);
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3001".to_string());
@@ -60,12 +57,4 @@ async fn main() {
 async fn health_handler(State(state): State<AppState>) -> Json<FinanceHealth> {
     let health = state.health.lock().await.get_health();
     Json(health)
-}
-
-async fn trigger_handler(State(state): State<AppState>) -> StatusCode {
-    let finance_state = FinanceState::new(state.pool.clone());
-    tokio::spawn(async move {
-        update_all_previous_closes(finance_state).await;
-    });
-    StatusCode::ACCEPTED
 }
