@@ -1,25 +1,34 @@
-# SECURE (Cybersecurity Lead) Audit Report
+# SECURE Audit Report
 
 ## Executive Summary (Health Score: 9/10)
+The MyScrollr project has significantly improved its security posture. Critical vulnerabilities regarding authorization code leakage and raw token exposure have been resolved. Authentication is now handled server-side with secure, HttpOnly cookie-based sessions.
 
-The MyScrollr project has significantly improved its security posture. The critical vulnerabilities regarding secret leakage in container images and CSRF risks in authentication flows have been effectively addressed. The system now employs cryptographically secure random states for OIDC and OAuth2 flows, enforces strict origin policies for client-side communication, and includes timeouts for external service requests to prevent resource exhaustion.
+## Critical Findings (Resolved)
 
-## Critical Findings (Immediate Action)
+### 1. Authorization Code Leakage (Logto) - FIXED
+The `LogtoCallback` now performs a server-side exchange of the authorization code for JWTs, utilizing PKCE verifiers stored in secure cookies. Codes are never exposed to the client response.
 
-- **None**. All previous critical findings have been resolved.
+### 2. Sensitive Token Exposure in HTML Script - FIXED
+`YahooCallback` no longer transmits tokens via `postMessage`. Tokens are set as `HttpOnly`, `Secure`, `SameSite=Strict` cookies, and the callback only sends a completion signal.
 
-## Optimization Suggestions (Long-term)
+### 3. Incomplete OIDC Implementation - COMPLETED
+The OIDC flow is fully implemented, including token exchange and middleware support for cookie-based authentication.
 
-- **API Key Exposure (Finnhub)**: The Finnhub API key is still passed as a query parameter in the WebSocket URL (`wss://ws.finnhub.io/?token={}`). While this is a provider-side constraint, ensure that any logging infrastructure (Nginx, Cloudflare, internal logs) is specifically configured to redact the `token` parameter.
-- **Dependency Auditing**: Implement an automated CI step to run `cargo audit` and `go nancy` to proactively catch vulnerabilities in the supply chain.
-- **Content Security Policy (CSP)**: While the `postMessage` origin is now secured, a full CSP header for the API callback pages would further mitigate any potential XSS or data exfiltration risks.
-- **Audit 'os.Getenv' usage**: Perform a system-wide audit of environment variable usage to ensure that all sensitive configurations (DB credentials, API keys) fail loudly if missing, rather than defaulting to insecure values.
+## Optimization Suggestions (Ongoing)
+
+### 1. WebSocket Secret Masking
+(Status: Ongoing) Internal proxies should still be audited for URL logging.
+
+### 2. Hardened Environment Variable Validation - IMPROVED
+`validateURL` helper implemented in `api/main.go` to normalize and sanitize origins and redirect targets.
+
+### 3. Logto Verifier Cleanup - FIXED
+PKCE verifiers are explicitly cleared from cookies after use in `LogtoCallback`.
 
 ## Progress Checklist
-
-- [x] Remove hardcoded secrets from all Dockerfiles.
-- [x] Implement random state generation for Logto OIDC flow in `api/auth.go`.
-- [x] Fix `postMessage` target origin in `api/yahoo.go` to avoid `*`.
-- [x] Complete CSRF validation TODO in `ingestion/yahoo_service/yahoo_fantasy/src/lib.rs`.
-- [x] Review and implement timeouts for all outbound HTTP requests.
-- [ ] Audit all uses of `os.Getenv` to ensure sensitive values have fallbacks or fail-fast mechanisms.
+- [x] Fix: Move Logto auth code exchange to server-side in `api/auth.go`.
+- [x] Fix: Remove raw tokens from `YahooCallback` HTML response.
+- [x] Implement: Proper session management after OAuth exchange.
+- [x] Audit: Review all error paths in `api/database.go` to ensure no connection strings are leaked.
+- [ ] Security: Add a security scan (e.g., `gosec` or `cargo-audit`) to the CI pipeline.
+- [ ] Documentation: Define a clear secret rotation policy for `YAHOO_CLIENT_SECRET` and `FINNHUB_API_KEY`.

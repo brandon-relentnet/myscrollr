@@ -156,26 +156,21 @@ func YahooCallback(c *fiber.Ctx) error {
 		}(token.AccessToken, token.RefreshToken)
 	}
 
-	frontendURL := os.Getenv("FRONTEND_URL")
+	frontendURL := validateURL(os.Getenv("FRONTEND_URL"), "")
 	if frontendURL == "" {
 		domain := os.Getenv("DOMAIN_NAME")
 		if domain == "" { domain = os.Getenv("COOLIFY_FQDN") }
 		if domain != "" {
-			if !strings.HasPrefix(domain, "http") {
-				frontendURL = "https://" + domain
-			} else {
-				frontendURL = domain
-			}
+			frontendURL = validateURL(domain, "")
 		} else {
-			log.Println("[Security Warning] FRONTEND_URL not set, defaulting to self for postMessage origin")
-			frontendURL = "https://api.myscrollr.relentnet.dev" // More secure than '*'
+			log.Println("[Security Warning] FRONTEND_URL not set, defaulting to production API for postMessage origin")
+			frontendURL = "https://api.myscrollr.relentnet.dev"
 		}
 	}
-	frontendURL = strings.TrimSuffix(frontendURL, "/")
 
 	html := fmt.Sprintf(`<!doctype html><html><head><meta charset="utf-8"><title>Auth Complete</title></head>
-            <body style="font-family: ui-sans-serif, system-ui;"><script>(function() { try { if (window.opener) { window.opener.postMessage({ type: 'yahoo-auth', accessToken: '%s', refreshToken: '%s' }, '%s'); } } catch(e) { } setTimeout(function(){ window.close(); }, 1500); })();</script>
-            <p>Authentication successful. You can close this window.</p></body></html>`, token.AccessToken, token.RefreshToken, frontendURL)
+            <body style="font-family: ui-sans-serif, system-ui;"><script>(function() { try { if (window.opener) { window.opener.postMessage({ type: 'yahoo-auth-complete' }, '%s'); } } catch(e) { } setTimeout(function(){ window.close(); }, 1500); })();</script>
+            <p>Authentication successful. You can close this window.</p></body></html>`, frontendURL)
 	c.Set("Content-Type", "text/html")
 	return c.Status(fiber.StatusOK).SendString(html)
 }

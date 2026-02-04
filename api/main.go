@@ -46,6 +46,17 @@ type ErrorResponse struct {
 // @in header
 // @name Authorization
 // @description Type 'Bearer ' followed by your Logto JWT.
+func validateURL(urlStr, fallback string) string {
+	if urlStr == "" {
+		return fallback
+	}
+	urlStr = strings.TrimSpace(urlStr)
+	if !strings.HasPrefix(urlStr, "http://") && !strings.HasPrefix(urlStr, "https://") {
+		urlStr = "https://" + urlStr
+	}
+	return strings.TrimSuffix(urlStr, "/")
+}
+
 func main() {
 	_ = godotenv.Load()
 
@@ -68,7 +79,15 @@ func main() {
 	allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
 	if allowedOrigins == "" {
 		allowedOrigins = "https://myscrollr.com,https://api.myscrollr.relentnet.dev"
+	} else {
+		// Clean and validate provided origins
+		origins := strings.Split(allowedOrigins, ",")
+		for i, o := range origins {
+			origins[i] = validateURL(o, "")
+		}
+		allowedOrigins = strings.Join(origins, ",")
 	}
+
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     allowedOrigins,
 		AllowCredentials: true,

@@ -48,23 +48,27 @@ func InitAuth() {
 
 // LogtoAuth is the middleware that validates the Logto JWT
 func LogtoAuth(c *fiber.Ctx) error {
+	tokenString := ""
 	authHeader := c.Get("Authorization")
-	if authHeader == "" {
-		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
-			Status: "unauthorized",
-			Error:  "Missing Authorization header",
-		})
+	
+	if authHeader != "" {
+		parts := strings.Split(authHeader, " ")
+		if len(parts) == 2 && strings.ToLower(parts[0]) == "bearer" {
+			tokenString = parts[1]
+		}
 	}
 
-	parts := strings.Split(authHeader, " ")
-	if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
-			Status: "unauthorized",
-			Error:  "Invalid Authorization header format",
-		})
+	// Fallback to cookie
+	if tokenString == "" {
+		tokenString = c.Cookies("access_token")
 	}
 
-	tokenString := parts[1]
+	if tokenString == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Status: "unauthorized",
+			Error:  "Missing authentication",
+		})
+	}
 
 	// Parse the token.
 	token, err := jwt.Parse(tokenString, jwks.Keyfunc)
@@ -220,25 +224,102 @@ func initiateLogtoAuth(c *fiber.Ctx, mode string) error {
 	return c.Redirect(authURL)
 }
 
-// LogtoCallback handles the redirect from Logto and displays the code (for testing)
+// LogtoCallback handles the redirect from Logto, exchanges the code for tokens, and sets a secure cookie
 func LogtoCallback(c *fiber.Ctx) error {
 	state := c.Query("state")
 	if state == "" {
-		return c.Status(fiber.StatusBadRequest).SendString("Auth Failed: Missing state")
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Status: "error", Error: "Auth Failed: Missing state"})
 	}
 
 	// Validate state against Redis
 	val, err := rdb.GetDel(context.Background(), "logto_csrf:"+state).Result()
 	if err != nil || val == "" {
-		return c.Status(fiber.StatusForbidden).SendString("Auth Failed: Invalid or expired state")
+		return c.Status(fiber.StatusForbidden).JSON(ErrorResponse{Status: "error", Error: "Auth Failed: Invalid or expired state"})
 	}
 
 	code := c.Query("code")
 	if code == "" {
 		errorMsg := c.Query("error")
 		desc := c.Query("error_description")
-		return c.Status(fiber.StatusBadRequest).SendString(fmt.Sprintf("Auth Failed: %s - %s", errorMsg, desc))
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Status: "error", Error: fmt.Sprintf("%s - %s", errorMsg, desc)})
 	}
 
-	return c.SendString(fmt.Sprintf("Success! Logto returned a code: %s\n\nYour API is now ready to receive JWTs from your frontend.", code))
+	// Get verifier from cookie
+	verifier := c.Cookies("logto_verifier")
+	if verifier == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Status: "error", Error: "Auth Failed: Missing verifier"})
+	}
+
+	// Clear the verifier cookie immediately
+	c.Cookie(&fiber.Cookie{
+		Name:     "logto_verifier",
+		Value:    "",
+		Expires:  time.Now().Add(-1 * time.Hour),
+		HTTPOnly: true,
+		Secure:   true,
+		SameSite: "Lax",
+		Path:     "/",
+	})
+
+	// Exchange code for tokens
+	endpoint := os.Getenv("LOGTO_ENDPOINT")
+	if endpoint == "" {
+		endpoint = "https://auth.myscrollr.relentnet.dev"
+	}
+	appID := os.Getenv("LOGTO_APP_ID")
+	appSecret := os.Getenv("LOGTO_APP_SECRET") // Optional, but recommended for backend
+
+	domain := os.Getenv("DOMAIN_NAME")
+	if domain == "" { domain = os.Getenv("COOLIFY_FQDN") }
+	if domain == "" { domain = "api.myscrollr.relentnet.dev" }
+	redirectURI := fmt.Sprintf("https://%s/callback", strings.TrimPrefix(domain, "https://"))
+
+	data := url.Values{}
+	data.Set("grant_type", "authorization_code")
+	data.Set("code", code)
+	data.Set("redirect_uri", redirectURI)
+	data.Set("client_id", appID)
+	data.Set("code_verifier", verifier)
+	if appSecret != "" {
+		data.Set("client_secret", appSecret)
+	}
+
+	tokenEndpoint := fmt.Sprintf("%s/oidc/token", strings.TrimSuffix(endpoint, "/"))
+	resp, err := http.PostForm(tokenEndpoint, data)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to exchange token"})
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Logto token exchange failed", Hint: string(body)})
+	}
+
+	var tokenRes struct {
+		AccessToken string `json:"access_token"`
+		IDToken     string `json:"id_token"`
+		ExpiresIn   int    `json:"expires_in"`
+	}
+	if err := json.Unmarshal(body, &tokenRes); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to parse token response"})
+	}
+
+	// Set the access token in a secure, HttpOnly cookie
+	c.Cookie(&fiber.Cookie{
+		Name:     "access_token",
+		Value:    tokenRes.AccessToken,
+		Expires:  time.Now().Add(time.Duration(tokenRes.ExpiresIn) * time.Second),
+		HTTPOnly: true,
+		Secure:   true,
+		SameSite: "Lax",
+		Path:     "/",
+	})
+
+	frontendURL := os.Getenv("FRONTEND_URL")
+	if frontendURL == "" {
+		frontendURL = "https://myscrollr.com"
+	}
+
+	return c.Redirect(frontendURL)
 }
