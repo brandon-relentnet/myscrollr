@@ -15,6 +15,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/swagger"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/joho/godotenv"
 
 	// Import generated docs
