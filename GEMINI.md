@@ -12,7 +12,9 @@ The project is organized into several top-level directories, representing differ
     *   **`sports_service`**: Polls the ESPN API for live sports scores across various leagues (NFL, NBA, NHL, etc.).
     *   **`yahoo_fantasy`**: A library crate that wraps the Yahoo Fantasy Sports API, handling token management and data fetching for leagues, standings, and rosters.
     *   **`utils`**: Shared utilities for database management (SQLx/PostgreSQL) and logging.
-*   **`api/`**: (Placeholder) Intended for future public-facing API definitions or services.
+*   **`api/`**: The high-performance public API, built with **Go** and **Fiber**.
+    *   Designed for low-latency responses to the frontend.
+    *   Connects to the shared PostgreSQL database populated by the ingestion services.
 *   **`extension/`**: (Placeholder) Intended for a browser extension.
 *   **`myscrollr.com/`**: (Placeholder) The planned frontend application.
 *   **`docs/`**: General project documentation.
