@@ -1,15 +1,22 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useLogto } from '@logto/react'
-import { useState } from 'react'
-import { TrendingUp, Trophy, BarChart3 } from 'lucide-react'
+import { useLogto, type IdTokenClaims } from '@logto/react'
+import { useEffect, useState } from 'react'
+import { TrendingUp, Trophy, BarChart3, User } from 'lucide-react'
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
 })
 
 function DashboardPage() {
-  const { isAuthenticated, isLoading, signIn } = useLogto()
+  const { isAuthenticated, isLoading, signIn, getIdTokenClaims } = useLogto()
   const [activeTab, setActiveTab] = useState<'finance' | 'sports' | 'fantasy'>('finance')
+  const [userClaims, setUserClaims] = useState<IdTokenClaims>()
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      getIdTokenClaims().then(setUserClaims)
+    }
+  }, [isAuthenticated, getIdTokenClaims])
 
   if (isLoading) {
     return (
@@ -41,9 +48,22 @@ function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-950 text-white p-6">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-gray-400 mt-2">Your personalized data overview</p>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold">Dashboard</h1>
+            <p className="text-gray-400 mt-2">Your personalized data overview</p>
+          </div>
+          {userClaims && (
+            <div className="flex items-center gap-3 bg-gray-900 border border-gray-800 rounded-xl px-4 py-2">
+              <User size={18} className="text-gray-400" />
+              <div className="text-sm">
+                <div className="font-medium">{userClaims.name || userClaims.email}</div>
+                {userClaims.email && userClaims.name && (
+                  <div className="text-gray-500 text-xs">{userClaims.email}</div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2 mb-6 border-b border-gray-800 pb-4">
