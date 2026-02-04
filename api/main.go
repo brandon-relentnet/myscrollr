@@ -38,14 +38,6 @@ type ErrorResponse struct {
 // @title Scrollr API
 // @version 1.0
 // @description High-performance data API for Scrollr finance and sports.
-// @termsOfService http://swagger.io/terms/
-
-// @contact.name API Support
-// @contact.email admin@relentnet.com
-
-// @license.name Apache 2.0
-// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
-
 // @host api.myscrollr.relentnet.dev
 // @BasePath /
 func main() {
@@ -86,9 +78,8 @@ func main() {
 	app.Get("/yahoo/team/:team_key/matchups", YahooMatchups)
 	app.Get("/yahoo/team/:team_key/roster", YahooRoster)
 
-	app.Get("/", func(c *fiber.Ctx) error {
-		return c.SendString("Welcome to Scrollr API. Visit /swagger for documentation.")
-	})
+	// --- Root Landing Page ---
+	app.Get("/", LandingPage)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -101,7 +92,114 @@ func main() {
 	}
 }
 
-// --- Health Handlers ---
+func LandingPage(c *fiber.Ctx) error {
+	c.Set("Content-Type", "text/html")
+	return c.SendString(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrollr API | Status</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; }
+        .bg-pending { background-color: #9ca3af; }
+        .bg-online { background-color: #10b981; box-shadow: 0 0 8px #10b981; }
+        .bg-offline { background-color: #ef4444; box-shadow: 0 0 8px #ef4444; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen flex flex-col items-center justify-center p-6">
+    <div class="max-w-3xl w-full">
+        <!-- Header -->
+        <div class="mb-12 text-center">
+            <h1 class="text-5xl font-bold text-white mb-4 tracking-tight">Scrollr <span class="text-indigo-500">API</span></h1>
+            <p class="text-slate-400 text-lg">High-performance data aggregator for finance, sports, and fantasy.</p>
+        </div>
+
+        <!-- Status Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
+            <!-- Core Infra -->
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Infrastructure</h2>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span>PostgreSQL</span>
+                        <span id="stat-db" class="status-dot bg-pending"></span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Redis Cache</span>
+                        <span id="stat-redis" class="status-dot bg-pending"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ingestion Services -->
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Ingestion Workers</h2>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span>Finance (Finnhub)</span>
+                        <span id="stat-finance" class="status-dot bg-pending"></span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Sports (ESPN)</span>
+                        <span id="stat-sports" class="status-dot bg-pending"></span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Yahoo Bridge</span>
+                        <span id="stat-yahoo" class="status-dot bg-pending"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Call to Actions -->
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="/swagger/index.html" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-8 rounded-xl transition-all text-center shadow-lg shadow-indigo-500/20">
+                Explore Documentation
+            </a>
+            <a href="/health" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-8 rounded-xl transition-all text-center border border-slate-700">
+                View Raw Health
+            </a>
+        </div>
+
+        <!-- Footer -->
+        <div class="mt-16 text-center text-slate-600 text-sm">
+            &copy; 2026 Relentnet. All systems operational.
+        </div>
+    </div>
+
+    <script>
+        async function checkStatus() {
+            try {
+                const res = await fetch('/health');
+                const data = await res.json();
+                
+                // Update UI based on health response
+                document.getElementById('stat-db').className = 'status-dot ' + (data.database === 'healthy' ? 'bg-online' : 'bg-offline');
+                document.getElementById('stat-redis').className = 'status-dot ' + (data.redis === 'healthy' ? 'bg-online' : 'bg-offline');
+                
+                if (data.services) {
+                    document.getElementById('stat-finance').className = 'status-dot ' + (data.services.finance === 'healthy' ? 'bg-online' : 'bg-offline');
+                    document.getElementById('stat-sports').className = 'status-dot ' + (data.services.sports === 'healthy' ? 'bg-online' : 'bg-offline');
+                    document.getElementById('stat-yahoo').className = 'status-dot ' + (data.services.yahoo === 'healthy' ? 'bg-online' : 'bg-offline');
+                }
+            } catch (e) {
+                console.error('Status check failed', e);
+            }
+        }
+        checkStatus();
+        setInterval(checkStatus, 30000); // Update every 30s
+    </script>
+</body>
+</html>
+	`)
+}
+
+// --- Internal Helper Handlers (proxyInternalHealth, HealthCheck, etc) ---
 
 func buildHealthURL(baseURL string) string {
 	url := strings.TrimSuffix(baseURL, "/")
@@ -144,49 +242,18 @@ func proxyInternalHealth(c *fiber.Ctx, internalURL string) error {
 	return c.Status(resp.StatusCode).Send(body)
 }
 
-// SportsHealth godoc
-// @Summary Check sports ingestion health.
-// @Description Proxies the internal health check from the Sports Rust worker.
-// @Tags Health
-// @Produce json
-// @Success 200 {object} map[string]interface{}
-// @Failure 503 {object} ErrorResponse
-// @Router /sports/health [get]
 func SportsHealth(c *fiber.Ctx) error {
 	return proxyInternalHealth(c, os.Getenv("INTERNAL_SPORTS_URL"))
 }
 
-// FinanceHealth godoc
-// @Summary Check finance ingestion health.
-// @Description Proxies the internal health check from the Finance Rust worker.
-// @Tags Health
-// @Produce json
-// @Success 200 {object} map[string]interface{}
-// @Failure 503 {object} ErrorResponse
-// @Router /finance/health [get]
 func FinanceHealth(c *fiber.Ctx) error {
 	return proxyInternalHealth(c, os.Getenv("INTERNAL_FINANCE_URL"))
 }
 
-// YahooHealth godoc
-// @Summary Check yahoo worker health.
-// @Description Proxies the internal health check from the Yahoo Rust worker.
-// @Tags Health
-// @Produce json
-// @Success 200 {object} map[string]interface{}
-// @Failure 503 {object} ErrorResponse
-// @Router /yahoo/health [get]
 func YahooHealth(c *fiber.Ctx) error {
 	return proxyInternalHealth(c, os.Getenv("INTERNAL_YAHOO_URL"))
 }
 
-// HealthCheck godoc
-// @Summary Check system health.
-// @Description returns status of API, DB, Redis, and background workers.
-// @Tags Health
-// @Produce json
-// @Success 200 {object} HealthResponse
-// @Router /health [get]
 func HealthCheck(c *fiber.Ctx) error {
 	res := HealthResponse{
 		Status:   "healthy",
@@ -233,15 +300,8 @@ func HealthCheck(c *fiber.Ctx) error {
 	return c.JSON(res)
 }
 
-// GetSports godoc
-// @Summary Get latest sports games.
-// @Description fetch the latest 50 sports games from the database.
-// @Tags Sports
-// @Accept json
-// @Produce json
-// @Success 200 {array} Game
-// @Failure 500 {object} ErrorResponse
-// @Router /sports [get]
+// --- Data Handlers ---
+
 func GetSports(c *fiber.Ctx) error {
 	rows, err := dbPool.Query(context.Background(),
 		"SELECT id, league, external_game_id, link, home_team_name, home_team_logo, home_team_score, away_team_name, away_team_logo, away_team_score, start_time, short_detail, state FROM games ORDER BY start_time DESC LIMIT 50")
@@ -263,15 +323,6 @@ func GetSports(c *fiber.Ctx) error {
 	return c.JSON(games)
 }
 
-// GetFinance godoc
-// @Summary Get latest market data.
-// @Description fetch all tracked market data (trades) from the database.
-// @Tags Finance
-// @Accept json
-// @Produce json
-// @Success 200 {array} Trade
-// @Failure 500 {object} ErrorResponse
-// @Router /finance [get]
 func GetFinance(c *fiber.Ctx) error {
 	rows, err := dbPool.Query(context.Background(),
 		"SELECT symbol, price, previous_close, price_change, percentage_change, direction, last_updated FROM trades ORDER BY symbol ASC")
