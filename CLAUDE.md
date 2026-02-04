@@ -90,7 +90,7 @@ go build -o scrollr_api
 | File | Purpose |
 |------|---------|
 | `main.go` | Fiber app init, middleware, routing |
-| `auth.go` | Logto JWT validation, OIDC integration |
+| `auth.go` | Logto JWT validation middleware for API routes |
 | `database.go` | PostgreSQL (pgx) connection pool |
 | `redis.go` | Redis client for token caching |
 | `yahoo.go` | Yahoo OAuth callback, token provisioning |
@@ -106,6 +106,14 @@ go build -o scrollr_api
 ## Configuration
 
 Copy `ingestion/.env.example` to `.env` (for local dev) or configure in Coolify:
+
+### Authentication
+
+**Frontend**: Uses official `@logto/react` SDK with PKCE flow. Sign-in redirects to Logto, callback handled by `/callback` route.
+
+**Backend API**: Uses `LogtoAuth` middleware for protected routes. Validates JWT access tokens from Logto (Bearer header or cookie).
+
+**Yahoo Integration**: Separate OAuth flow at `/yahoo/start` with tokens stored encrypted in Redis.
 
 | Variable | Purpose |
 |----------|---------|
@@ -129,8 +137,9 @@ Copy `ingestion/.env.example` to `.env` (for local dev) or configure in Coolify:
 
 | File | Purpose |
 |------|---------|
-| `src/components/AuthProvider.tsx` | Auth state management (checks API cookie) |
-| `src/components/Header.tsx` | Navigation with conditional auth buttons |
+| `src/main.tsx` | LogtoProvider wraps RouterProvider for OIDC auth |
+| `src/routes/callback.tsx` | OAuth callback handler (uses useHandleSignInCallback) |
+| `src/components/Header.tsx` | Navigation with Sign In/Sign Out using useLogto hook |
 | `src/routes/index.tsx` | Landing page (public vs authenticated views) |
 | `src/routes/dashboard.tsx` | Protected dashboard with tabs |
 
