@@ -32,9 +32,14 @@ func main() {
 	// Load .env if present
 	_ = godotenv.Load()
 
-	// Initialize database connection
+	// Initialize connections
 	ConnectDB()
 	defer dbPool.Close()
+
+	ConnectRedis()
+	defer rdb.Close()
+
+	InitYahoo()
 
 	// Initialize Fiber app
 	app := fiber.New(fiber.Config{
@@ -52,6 +57,10 @@ func main() {
 	app.Get("/health", HealthCheck)
 	app.Get("/sports", GetSports)
 	app.Get("/finance", GetFinance)
+
+	// Yahoo OAuth Routes
+	app.Get("/yahoo/start", YahooStart)
+	app.Get("/yahoo/callback", YahooCallback)
 
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Welcome to Scrollr API. Visit /swagger for documentation.")
