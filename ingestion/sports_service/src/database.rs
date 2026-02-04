@@ -25,25 +25,11 @@ pub async fn initialize_pool() -> Result<PgPool> {
             database_url = database_url.replacen("postgresql:", "postgresql://", 1);
         }
 
-        // Mask password for safe logging
-        let masked_url = if let Some(at_idx) = database_url.find('@') {
-            if let Some(colon_idx) = database_url[..at_idx].rfind(':') {
-                format!("{}:****{}", &database_url[..colon_idx], &database_url[at_idx..])
-            } else {
-                database_url.clone()
-            }
-        } else {
-            database_url.clone()
-        };
-        println!("Attempting to connect to database with URL: {}", masked_url);
-
-        match pool_options.connect(&database_url).await {
-            Ok(pool) => return Ok(pool),
-            Err(e) => {
-                eprintln!("Detailed connection error: {:?}", e);
-                return Err(anyhow::anyhow!(e).context("Failed to connect to the PostgreSQL database via DATABASE_URL"));
-            }
-        }
+        let pool = pool_options
+            .connect(&database_url)
+            .await
+            .context("Failed to connect to the PostgreSQL database via DATABASE_URL")?;
+        return Ok(pool);
     }
 
     let get_env_var = |key: &str| -> Result<String> {
