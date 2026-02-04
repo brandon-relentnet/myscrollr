@@ -27,12 +27,27 @@ FROM alpine:latest
 
 WORKDIR /root/
 
+# Define Build Args
+ARG DATABASE_URL
+ARG REDIS_URL
+ARG YAHOO_CLIENT_ID
+ARG YAHOO_CLIENT_SECRET
+ARG YAHOO_CALLBACK_URL
+ARG DOMAIN_NAME
+
+# Set Envs for Runtime
+ENV DATABASE_URL=$DATABASE_URL
+ENV REDIS_URL=$REDIS_URL
+ENV YAHOO_CLIENT_ID=$YAHOO_CLIENT_ID
+ENV YAHOO_CLIENT_SECRET=$YAHOO_CLIENT_SECRET
+ENV YAHOO_CALLBACK_URL=$YAHOO_CALLBACK_URL
+ENV DOMAIN_NAME=$DOMAIN_NAME
+
 # Install curl for health checks
 RUN apk --no-cache add curl
 
 # Copy the Pre-built binary from the previous stage
 COPY --from=builder /app/main .
-# Copy generated docs just in case, though they are usually compiled in
 COPY --from=builder /app/docs ./docs
 
 # Expose port 8080 to the outside world
