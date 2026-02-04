@@ -59,8 +59,23 @@ impl ServerState {
         let redis_cfg = Config::from_url(redis_url);
         let redis_pool = redis_cfg.create_pool(Some(Runtime::Tokio1)).expect("Failed to create Redis pool");
 
+        let mut retries = 5;
+        let pool = loop {
+            match initialize_pool().await {
+                Ok(p) => break p,
+                Err(e) => {
+                    if retries == 0 {
+                        panic!("Failed to initialize database pool after retries: {}", e);
+                    }
+                    println!("Failed to connect to DB, retrying in 2 seconds... ({} attempts left) Error: {}", retries, e);
+                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                    retries -= 1;
+                }
+            }
+        };
+
         Self {
-            db_pool: Arc::new(initialize_pool().await.expect("Failed to initialize database pool")),
+            db_pool: Arc::new(pool),
             redis_pool,
             client_id: env::var("YAHOO_CLIENT_ID").expect("Yahoo client ID must be set in .env"),
             client_secret: SecretString::new(

@@ -8,11 +8,22 @@ pub use chrono::Utc;
 
 pub async fn initialize_pool() -> Result<PgPool> {
     let pool_options = PgPoolOptions::new()
-        .max_connections(50)
-        .min_connections(6)
+        .max_connections(20)
+        .min_connections(1)
+        .acquire_timeout(Duration::from_secs(10))
         .idle_timeout(Duration::from_millis(30_000));
 
-    if let Ok(database_url) = env::var("DATABASE_URL") {
+    if let Ok(mut database_url) = env::var("DATABASE_URL") {
+        // Clean up the URL: trim whitespace and remove accidental quotes
+        database_url = database_url.trim().trim_matches('"').trim_matches('\'').to_string();
+
+        // Fix missing // after protocol
+        if database_url.starts_with("postgres:") && !database_url.starts_with("postgres://") {
+            database_url = database_url.replacen("postgres:", "postgres://", 1);
+        } else if database_url.starts_with("postgresql:") && !database_url.starts_with("postgresql://") {
+            database_url = database_url.replacen("postgresql:", "postgresql://", 1);
+        }
+
         let pool = pool_options
             .connect(&database_url)
             .await
