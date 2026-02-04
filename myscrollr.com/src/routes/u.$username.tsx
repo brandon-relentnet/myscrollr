@@ -18,13 +18,11 @@ interface ProfileData {
 
 function ProfilePage() {
   const { username } = Route.useParams()
-  const { isAuthenticated, getIdTokenClaims, getAccessToken } = useLogto()
+  const { isAuthenticated, getIdTokenClaims } = useLogto()
   const [profile, setProfile] = useState<ProfileData | null>(null)
-  const [myProfile, setMyProfile] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isOwnProfile, setIsOwnProfile] = useState(false)
-  const [accessToken, setAccessToken] = useState<string | null>(null)
 
   // Settings form state
   const [editing, setEditing] = useState(false)
@@ -38,101 +36,67 @@ function ProfilePage() {
   const [usernameSaving, setUsernameSaving] = useState(false)
   const [usernameError, setUsernameError] = useState<string | null>(null)
 
-  // Get access token on mount
   useEffect(() => {
-    async function fetchToken() {
-      try {
-        if (typeof getAccessToken === 'function') {
-          const token = await getAccessToken()
-          setAccessToken(token ?? null)
-        }
-      } catch {
-        console.error('Failed to get access token')
-        setAccessToken(null)
-      }
-    }
-    fetchToken()
-  }, [getAccessToken])
-
-  useEffect(() => {
-    async function fetchProfiles() {
-      // Wait for token if authenticated
-      if (isAuthenticated && !accessToken) {
-        return // Will re-run when accessToken is set
-      }
-
+    async function fetchProfile() {
       setLoading(true)
       setError(null)
 
-      try {
-        // Handle "me" route - fetch authenticated user's profile
-        if (username === 'me' && isAuthenticated && accessToken) {
-          // User is authenticated, fetch their profile
-          const myRes = await fetch('/api/users/me/profile', {
-            headers: { Authorization: `Bearer ${accessToken}` }
-          })
-          if (myRes.ok) {
-            const myData = await myRes.json()
-            setMyProfile(myData)
-            setProfile(myData)
-            setIsOwnProfile(true)
-            setFormData({
-              display_name: myData.display_name || '',
-              bio: myData.bio || '',
-              is_public: myData.is_public,
-            })
-          } else {
-            const errText = await myRes.text()
-            try {
-              const err = JSON.parse(errText)
-              setError(err.error || 'Failed to load profile')
-            } catch {
-              setError('Failed to load profile')
-            }
-          }
-        } else if (username !== 'me') {
-          // Fetch public profile by username
-          const res = await fetch(`/api/users/${username}`)
-          if (!res.ok) {
-            const errText = await res.text()
-            try {
-              const err = JSON.parse(errText)
-              throw new Error(err.error || 'Profile not found')
-            } catch {
-              throw new Error('Profile not found')
-            }
-          }
-          const data = await res.json()
-          setProfile(data)
+      // Handle /u/me redirect - fetch user profile and redirect
+      if (username === 'me') {
+        if (!isAuthenticated) {
+          setLoading(false)
+          return
+        }
 
-          // Check if this is the current user's profile
-          if (isAuthenticated && accessToken) {
-            const claims = await getIdTokenClaims()
-            if (claims?.sub) {
-              try {
-                const myRes = await fetch('/api/users/me/profile', {
-                  headers: { Authorization: `Bearer ${accessToken}` }
-                })
-                if (myRes.ok) {
-                  const myData = await myRes.json()
-                  setMyProfile(myData)
-                  setIsOwnProfile(myData.username === username)
-                  if (myData.username === username) {
-                    setFormData({
-                      display_name: myData.display_name || '',
-                      bio: myData.bio || '',
-                      is_public: myData.is_public,
-                    })
-                  }
-                }
-              } catch {
-                // Not authenticated properly, ignore
+        try {
+          const claims = await getIdTokenClaims()
+          const userId = claims?.sub
+          if (userId) {
+            // Fetch user profile to get their username
+            const token = claims.__raw
+            const res = await fetch('/api/users/me/profile', {
+              headers: { Authorization: `Bearer ${token}` }
+            })
+            if (res.ok) {
+              const data = await res.json()
+              if (data.username) {
+                // Redirect to actual username
+                window.location.href = `/u/${data.username}`
+                return
               }
             }
+            // No username set yet - stay on /u/me to show setup UI
+            setProfile({ username: '', display_name: '', bio: '', is_public: true, connected_yahoo: false })
+            setIsOwnProfile(true)
           }
-        } else if (username === 'me') {
-          // User not authenticated visiting /u/me - just show sign-in prompt
-          // Don't make any API call, just stop loading
+        } catch {
+          setError('Failed to load profile')
+        }
+        setLoading(false)
+        return
+      }
+
+      // Fetch public profile by username
+      try {
+        const res = await fetch(`/api/users/${username}`)
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Profile not found' }))
+          throw new Error(err.error || 'Profile not found')
+        }
+        const data = await res.json()
+        setProfile(data)
+
+        // Check if this is the current user's profile
+        if (isAuthenticated) {
+          const claims = await getIdTokenClaims()
+          if (claims?.sub && claims.username === username) {
+            setIsOwnProfile(true)
+            setFormData({
+              display_name: data.display_name || '',
+              bio: data.bio || '',
+              is_public: data.is_public,
+            })
+          }
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load profile')
@@ -141,20 +105,23 @@ function ProfilePage() {
       }
     }
 
-    fetchProfiles()
-  }, [username, isAuthenticated, accessToken])
+    fetchProfile()
+  }, [username, isAuthenticated])
 
   const handleSaveSettings = async () => {
-    if (!accessToken) return
+    if (!isAuthenticated) return
     setSaving(true)
     setError(null)
 
     try {
+      const claims = await getIdTokenClaims()
+      const token = await claims?.__raw
+
       const res = await fetch('/api/users/me/profile', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(formData),
       })
@@ -162,7 +129,6 @@ function ProfilePage() {
         const err = await res.json()
         throw new Error(err.error || 'Failed to save')
       }
-      setMyProfile(prev => prev ? { ...prev, ...formData } : null)
       setProfile(prev => prev ? { ...prev, ...formData } : null)
       setEditing(false)
     } catch (err) {
@@ -173,7 +139,7 @@ function ProfilePage() {
   }
 
   const handleSetUsername = async () => {
-    if (!accessToken || !usernameForm || usernameForm.length < 3) {
+    if (!isAuthenticated || !usernameForm || usernameForm.length < 3) {
       setUsernameError('Username must be at least 3 characters')
       return
     }
@@ -182,11 +148,14 @@ function ProfilePage() {
     setUsernameError(null)
 
     try {
+      const claims = await getIdTokenClaims()
+      const token = claims?.__raw
+
       const res = await fetch('/api/users/me/username', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ username: usernameForm }),
       })
@@ -194,15 +163,8 @@ function ProfilePage() {
         const err = await res.json()
         throw new Error(err.error || 'Failed to set username')
       }
-      const myRes = await fetch('/api/users/me/profile', {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      })
-      if (myRes.ok) {
-        const myData = await myRes.json()
-        setMyProfile(myData)
-        setIsOwnProfile(myData.username === username)
-        setProfile(myData)
-      }
+      // Redirect to new profile
+      window.location.href = `/u/${usernameForm}`
     } catch (err) {
       setUsernameError(err instanceof Error ? err.message : 'Failed to set username')
     } finally {
@@ -211,21 +173,21 @@ function ProfilePage() {
   }
 
   const handleDisconnectYahoo = async () => {
-    if (!accessToken) return
-    if (!confirm('Are you sure you want to disconnect your Yahoo account? This will remove all your fantasy data.')) {
-      return
-    }
+    if (!isAuthenticated) return
+    if (!confirm('Are you sure you want to disconnect your Yahoo account?')) return
 
     try {
+      const claims = await getIdTokenClaims()
+      const token = claims?.__raw
+
       const res = await fetch('/api/users/me/disconnect/yahoo', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${accessToken}` }
+        headers: { Authorization: `Bearer ${token}` }
       })
       if (!res.ok) {
         const err = await res.json()
         throw new Error(err.error || 'Failed to disconnect')
       }
-      setMyProfile(prev => prev ? { ...prev, connected_yahoo: false } : null)
       setProfile(prev => prev ? { ...prev, connected_yahoo: false } : null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to disconnect Yahoo')
@@ -248,10 +210,7 @@ function ProfilePage() {
           <h1 className="text-2xl font-bold mb-2">Profile Not Found</h1>
           <p className="text-gray-400 mb-6">{error}</p>
           {isAuthenticated && (
-            <a
-              href="/dashboard"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-8 rounded-xl transition-all"
-            >
+            <a href="/dashboard" className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-8 rounded-xl transition-all">
               Go to Dashboard
             </a>
           )}
@@ -260,8 +219,23 @@ function ProfilePage() {
     )
   }
 
-  const displayProfile = profile || myProfile
-  if (!displayProfile) return null
+  // Show sign-in prompt for unauthenticated /u/me
+  if (username === 'me' && !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-6">
+        <div className="text-center">
+          <AlertCircle className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold mb-2">Sign In Required</h1>
+          <p className="text-gray-400 mb-6">Sign in to view your profile</p>
+          <a href={`${window.location.origin}/callback`} className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-8 rounded-xl transition-all">
+            Sign In
+          </a>
+        </div>
+      </div>
+    )
+  }
+
+  if (!profile) return null
 
   return (
     <div className="min-h-screen bg-gray-950 text-white p-6">
@@ -270,12 +244,12 @@ function ProfilePage() {
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 mb-6">
           <div className="flex items-start gap-6">
             <div className="h-24 w-24 rounded-full bg-indigo-600 flex items-center justify-center text-3xl font-bold">
-              {displayProfile.username[0].toUpperCase()}
+              {profile.username[0].toUpperCase()}
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-3xl font-bold">@{displayProfile.username}</h1>
-                {displayProfile.is_public ? (
+                <h1 className="text-3xl font-bold">@{profile.username}</h1>
+                {profile.is_public ? (
                   <span className="px-2 py-1 bg-green-900/50 text-green-400 text-xs rounded-full flex items-center gap-1">
                     <Shield size={12} /> Public
                   </span>
@@ -285,11 +259,11 @@ function ProfilePage() {
                   </span>
                 )}
               </div>
-              {displayProfile.display_name && (
-                <p className="text-xl text-gray-300 mb-2">{displayProfile.display_name}</p>
+              {profile.display_name && (
+                <p className="text-xl text-gray-300 mb-2">{profile.display_name}</p>
               )}
-              {displayProfile.bio && (
-                <p className="text-gray-400">{displayProfile.bio}</p>
+              {profile.bio && (
+                <p className="text-gray-400">{profile.bio}</p>
               )}
             </div>
             {isOwnProfile && (
@@ -311,7 +285,6 @@ function ProfilePage() {
             Connected Accounts
           </h2>
           <div className="space-y-4">
-            {/* Yahoo */}
             <div className="flex items-center justify-between p-4 bg-gray-800 rounded-xl">
               <div className="flex items-center gap-4">
                 <div className="h-12 w-12 rounded-lg bg-purple-600 flex items-center justify-center">
@@ -319,7 +292,7 @@ function ProfilePage() {
                 </div>
                 <div>
                   <p className="font-medium">Yahoo Fantasy</p>
-                  {displayProfile.connected_yahoo ? (
+                  {profile.connected_yahoo ? (
                     <p className="text-sm text-green-400 flex items-center gap-1">
                       <Check size={14} /> Connected
                     </p>
@@ -330,7 +303,7 @@ function ProfilePage() {
               </div>
               {isOwnProfile && (
                 <div>
-                  {displayProfile.connected_yahoo ? (
+                  {profile.connected_yahoo ? (
                     <button
                       onClick={handleDisconnectYahoo}
                       className="px-4 py-2 bg-red-900/50 text-red-400 hover:bg-red-900 rounded-lg transition-colors text-sm"
@@ -338,10 +311,7 @@ function ProfilePage() {
                       Disconnect
                     </button>
                   ) : (
-                    <a
-                      href="/dashboard"
-                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors text-sm"
-                    >
+                    <a href="/dashboard" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors text-sm">
                       Connect
                     </a>
                   )}
@@ -354,13 +324,7 @@ function ProfilePage() {
         {/* Not your profile message */}
         {!isOwnProfile && isAuthenticated && (
           <div className="text-center py-8">
-            <p className="text-gray-400 mb-4">This is {displayProfile.username}&apos;s profile</p>
-            <a
-              href="/u/me"
-              className="text-indigo-400 hover:text-indigo-300"
-            >
-              View your own profile
-            </a>
+            <p className="text-gray-400 mb-4">This is {profile.username}&apos;s profile</p>
           </div>
         )}
 
@@ -368,13 +332,9 @@ function ProfilePage() {
         {!isAuthenticated && (
           <div className="text-center py-8">
             <p className="text-gray-400 mb-4">
-              <a
-                href={`${window.location.origin}/callback`}
-                className="text-indigo-400 hover:text-indigo-300"
-              >
+              <a href={`${window.location.origin}/callback`} className="text-indigo-400 hover:text-indigo-300">
                 Sign in
-              </a>{' '}
-              to view your own profile
+              </a> to view your own profile
             </p>
           </div>
         )}
@@ -387,7 +347,7 @@ function ProfilePage() {
             <h2 className="text-2xl font-bold mb-6">Edit Profile</h2>
 
             {/* Username section - show if no username yet */}
-            {!myProfile?.username && (
+            {!profile?.username && (
               <div className="mb-6 p-4 bg-indigo-900/30 border border-indigo-500/30 rounded-xl">
                 <p className="text-sm text-indigo-300 mb-3">
                   Set your username to create your profile URL (e.g., /u/yourname)
@@ -446,7 +406,7 @@ function ProfilePage() {
                   className="h-5 w-5 rounded bg-gray-800 border-gray-700"
                 />
                 <label htmlFor="is_public" className="text-sm text-gray-300">
-                  Make profile public (default: public)
+                  Make profile public
                 </label>
               </div>
             </div>
@@ -472,3 +432,5 @@ function ProfilePage() {
     </div>
   )
 }
+
+export default ProfilePage
