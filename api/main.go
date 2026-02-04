@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -50,12 +51,17 @@ func main() {
 
 	app.Get("/swagger/*", swagger.HandlerDefault)
 
-	// Aggregated Health Route
+	// --- Health Routes ---
 	app.Get("/health", HealthCheck)
+	app.Get("/sports/health", SportsHealth)
+	app.Get("/finance/health", FinanceHealth)
+	app.Get("/yahoo/health", YahooHealth)
 
+	// --- Data Routes ---
 	app.Get("/sports", GetSports)
 	app.Get("/finance", GetFinance)
 
+	// --- Yahoo OAuth & Data ---
 	app.Get("/yahoo/start", YahooStart)
 	app.Get("/yahoo/callback", YahooCallback)
 	app.Get("/yahoo/leagues", YahooLeagues)
@@ -78,17 +84,57 @@ func main() {
 	}
 }
 
+// --- Health Handlers ---
+
+func proxyInternalHealth(c *fiber.Ctx, internalURL string) error {
+	if internalURL == "" {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"status": "unknown", "error": "Internal URL not configured"})
+	}
+
+	httpClient := &http.Client{Timeout: 2 * time.Second}
+	resp, err := httpClient.Get(internalURL + "/health")
+	if err != nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"status": "down", "error": err.Error()})
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	c.Set("Content-Type", "application/json")
+	return c.Status(resp.StatusCode).Send(body)
+}
+
+// SportsHealth godoc
+// @Summary Check sports ingestion health.
+// @Tags Health
+// @Router /sports/health [get]
+func SportsHealth(c *fiber.Ctx) error {
+	return proxyInternalHealth(c, os.Getenv("INTERNAL_SPORTS_URL"))
+}
+
+// FinanceHealth godoc
+// @Summary Check finance ingestion health.
+// @Tags Health
+// @Router /finance/health [get]
+func FinanceHealth(c *fiber.Ctx) error {
+	return proxyInternalHealth(c, os.Getenv("INTERNAL_FINANCE_URL"))
+}
+
+// YahooHealth godoc
+// @Summary Check yahoo worker health.
+// @Tags Health
+// @Router /yahoo/health [get]
+func YahooHealth(c *fiber.Ctx) error {
+	return proxyInternalHealth(c, os.Getenv("INTERNAL_YAHOO_URL"))
+}
+
 // HealthCheck godoc
 // @Summary Check system health.
-// @Description returns status of API, DB, Redis, and background workers. Use ?service=finance to filter.
+// @Description returns status of API, DB, Redis, and background workers.
 // @Tags General
-// @Param service query string false "Specific service to check (finance, sports, yahoo)"
 // @Produce json
 // @Success 200 {object} HealthResponse
 // @Router /health [get]
 func HealthCheck(c *fiber.Ctx) error {
-	specificService := c.Query("service")
-
 	res := HealthResponse{
 		Status:   "healthy",
 		Services: make(map[string]string),
@@ -96,7 +142,7 @@ func HealthCheck(c *fiber.Ctx) error {
 
 	// 1. Check DB
 	if err := dbPool.Ping(context.Background()); err != nil {
-		res.Database = "unhealthy: " + err.Error()
+		res.Database = "unhealthy"
 		res.Status = "degraded"
 	} else {
 		res.Database = "healthy"
@@ -104,7 +150,7 @@ func HealthCheck(c *fiber.Ctx) error {
 
 	// 2. Check Redis
 	if err := rdb.Ping(context.Background()).Err(); err != nil {
-		res.Redis = "unhealthy: " + err.Error()
+		res.Redis = "unhealthy"
 		res.Status = "degraded"
 	} else {
 		res.Redis = "healthy"
@@ -117,19 +163,12 @@ func HealthCheck(c *fiber.Ctx) error {
 		"yahoo":   os.Getenv("INTERNAL_YAHOO_URL"),
 	}
 
-	httpClient := &http.Client{Timeout: 2 * time.Second}
-
+	httpClient := &http.Client{Timeout: 1 * time.Second}
 	for name, url := range services {
-		// Skip if we only want one specific service and this isn't it
-		if specificService != "" && specificService != name {
-			continue
-		}
-
 		if url == "" {
-			res.Services[name] = "unknown: URL not set"
+			res.Services[name] = "not configured"
 			continue
 		}
-
 		resp, err := httpClient.Get(url + "/health")
 		if err != nil || resp.StatusCode != http.StatusOK {
 			res.Services[name] = "down"
@@ -139,13 +178,10 @@ func HealthCheck(c *fiber.Ctx) error {
 		}
 	}
 
-	// If a specific service was requested and it's down, return 503
-	if specificService != "" && res.Services[specificService] != "healthy" {
-		return c.Status(fiber.StatusServiceUnavailable).JSON(res)
-	}
-
 	return c.JSON(res)
 }
+
+// --- Data Handlers ---
 
 // GetSports godoc
 // @Summary Get latest sports games.
