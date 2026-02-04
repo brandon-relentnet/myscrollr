@@ -102,6 +102,7 @@ func fetchYahoo(c *fiber.Ctx, url string) ([]byte, error) {
 // @Description Redirects user to Yahoo login page
 // @Tags Yahoo
 // @Success 307
+// @Security LogtoAuth
 // @Router /yahoo/start [get]
 func YahooStart(c *fiber.Ctx) error {
 	b := make([]byte, 16)
@@ -167,6 +168,7 @@ func YahooCallback(c *fiber.Ctx) error {
 // @Description Fetches user's fantasy leagues with 5m caching. Uses Active Sync data if available.
 // @Tags Yahoo
 // @Success 200 {object} FantasyContent
+// @Security LogtoAuth
 // @Router /yahoo/leagues [get]
 func YahooLeagues(c *fiber.Ctx) error {
 	guid := getGuid(c)
@@ -211,6 +213,7 @@ func YahooLeagues(c *fiber.Ctx) error {
 // @Tags Yahoo
 // @Param league_key path string true "League Key"
 // @Success 200 {object} FantasyContent
+// @Security LogtoAuth
 // @Router /yahoo/league/{league_key}/standings [get]
 func YahooStandings(c *fiber.Ctx) error {
 	leagueKey := c.Params("league_key")
@@ -236,6 +239,7 @@ func YahooStandings(c *fiber.Ctx) error {
 // @Tags Yahoo
 // @Param team_key path string true "Team Key"
 // @Success 200 {object} FantasyContent
+// @Security LogtoAuth
 // @Router /yahoo/team/{team_key}/matchups [get]
 func YahooMatchups(c *fiber.Ctx) error {
 	teamKey := c.Params("team_key")
@@ -261,6 +265,7 @@ func YahooMatchups(c *fiber.Ctx) error {
 // @Tags Yahoo
 // @Param team_key path string true "Team Key"
 // @Success 200 {object} FantasyContent
+// @Security LogtoAuth
 // @Router /yahoo/team/{team_key}/roster [get]
 func YahooRoster(c *fiber.Ctx) error {
 	teamKey := c.Params("team_key")

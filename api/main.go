@@ -41,6 +41,10 @@ type ErrorResponse struct {
 // @description High-performance data API for Scrollr finance and sports.
 // @host api.myscrollr.relentnet.dev
 // @BasePath /
+// @securityDefinitions.apikey LogtoAuth
+// @in header
+// @name Authorization
+// @description Type 'Bearer ' followed by your Logto JWT.
 func main() {
 	_ = godotenv.Load()
 
@@ -171,6 +175,9 @@ func LandingPage(c *fiber.Ctx) error {
             <a href="/signup" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-10 rounded-xl transition-all text-center border border-slate-700">
                 Sign Up
             </a>
+            <a href="/swagger/index.html" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-8 rounded-xl transition-all text-center border border-slate-700">
+                Explore Documentation
+            </a>
         </div>
 
         <!-- Footer -->
@@ -275,6 +282,7 @@ func HealthCheck(c *fiber.Ctx) error {
 // @Tags Data
 // @Produce json
 // @Success 200 {array} Game
+// @Security LogtoAuth
 // @Router /sports [get]
 func GetSports(c *fiber.Ctx) error {
 	var games []Game
@@ -310,6 +318,7 @@ func GetSports(c *fiber.Ctx) error {
 // @Tags Data
 // @Produce json
 // @Success 200 {array} Trade
+// @Security LogtoAuth
 // @Router /finance [get]
 func GetFinance(c *fiber.Ctx) error {
 	var trades []Trade
@@ -345,6 +354,7 @@ func GetFinance(c *fiber.Ctx) error {
 // @Tags Data
 // @Produce json
 // @Success 200 {object} DashboardResponse
+// @Security LogtoAuth
 // @Router /dashboard [get]
 func GetDashboard(c *fiber.Ctx) error {
 	res := DashboardResponse{
