@@ -64,7 +64,7 @@ func getGuid(c *fiber.Ctx) string {
 	return guid
 }
 
-func fetchYahoo(c *fiber.Ctx) error {
+func fetchYahoo(c *fiber.Ctx, url string) ([]byte, error) {
 	token := getToken(c)
 	if token == "" { return nil, fmt.Errorf("unauthorized") }
 
