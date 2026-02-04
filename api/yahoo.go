@@ -6,8 +6,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -17,15 +19,29 @@ import (
 var yahooConfig *oauth2.Config
 
 func InitYahoo() {
+	clientID := os.Getenv("YAHOO_CLIENT_ID")
+	clientSecret := os.Getenv("YAHOO_CLIENT_SECRET")
+	domain := os.Getenv("DOMAIN_NAME")
+	callbackPath := os.Getenv("YAHOO_CALLBACK_URL")
+
+	// Ensure callback path starts with /
+	if !strings.HasPrefix(callbackPath, "/") {
+		callbackPath = "/" + callbackPath
+	}
+
+	redirectURL := fmt.Sprintf("https://%s%s", domain, callbackPath)
+
+	log.Printf("[Yahoo Init] Client ID: %s... Redirect URI: %s", clientID[:5], redirectURL)
+
 	yahooConfig = &oauth2.Config{
-		ClientID:     os.Getenv("YAHOO_CLIENT_ID"),
-		ClientSecret: os.Getenv("YAHOO_CLIENT_SECRET"),
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
 		Scopes:       []string{"fspt-r"},
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  "https://api.login.yahoo.com/oauth2/request_auth",
 			TokenURL: "https://api.login.yahoo.com/oauth2/get_token",
 		},
-		RedirectURL: fmt.Sprintf("https://%s%s", os.Getenv("DOMAIN_NAME"), os.Getenv("YAHOO_CALLBACK_URL")),
+		RedirectURL: redirectURL,
 	}
 }
 
@@ -42,10 +58,13 @@ func YahooStart(c *fiber.Ctx) error {
 
 	err := rdb.Set(context.Background(), "csrf:"+state, "1", 10*time.Minute).Err()
 	if err != nil {
+		log.Printf("[Yahoo Error] Redis storage failed: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to store state"})
 	}
 
 	url := yahooConfig.AuthCodeURL(state)
+	log.Printf("[Yahoo Auth] Generating URL: %s", url)
+	
 	return c.Redirect(url, fiber.StatusTemporaryRedirect)
 }
 
@@ -61,13 +80,17 @@ func YahooCallback(c *fiber.Ctx) error {
 	state := c.Query("state")
 	code := c.Query("code")
 
+	log.Printf("[Yahoo Callback] Received state: %s, code length: %d", state, len(code))
+
 	val, err := rdb.GetDel(context.Background(), "csrf:"+state).Result()
 	if err != nil || val == "" {
+		log.Printf("[Yahoo Error] State validation failed for: %s", state)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid or expired state"})
 	}
 
 	token, err := yahooConfig.Exchange(context.Background(), code)
 	if err != nil {
+		log.Printf("[Yahoo Error] Token exchange failed: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to exchange code"})
 	}
 
@@ -107,7 +130,7 @@ func YahooCallback(c *fiber.Ctx) error {
                             }, '*'); 
                         }
                     } catch(e) { 
-                        console.error("Error sending token:", e);
+                        log.error("Error sending token:", e);
                     }
                     setTimeout(function(){ window.close(); }, 1500);
                 })();
@@ -128,7 +151,6 @@ func YahooCallback(c *fiber.Ctx) error {
 func YahooLeagues(c *fiber.Ctx) error {
 	token := c.Cookies("yahoo-auth")
 	if token == "" {
-		// Also check Authorization header
 		authHeader := c.Get("Authorization")
 		if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
 			token = authHeader[7:]
@@ -139,7 +161,6 @@ func YahooLeagues(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized, missing token"})
 	}
 
-	// Fetch from Yahoo API
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", "https://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1/games;game_keys=nfl,nba,nhl/leagues", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
@@ -152,7 +173,6 @@ func YahooLeagues(c *fiber.Ctx) error {
 
 	body, _ := io.ReadAll(resp.Body)
 	
-	// For now, return raw XML to prove it works
 	c.Set("Content-Type", "application/xml")
 	return c.Send(body)
 }
