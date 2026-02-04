@@ -8,6 +8,8 @@ export default function Header() {
   const { isAuthenticated, isLoading, login, logout, user } = useAuth()
   const location = useLocation()
 
+  console.log('[Header] Render:', { isAuthenticated, isLoading, hasUser: !!user })
+
   const isActive = (path: string) => location.pathname === path
 
   return (
