@@ -16,6 +16,9 @@ const LOG_THROTTLE_INTERVAL: Duration = Duration::from_secs(5);
 
 pub(crate) async fn connect(subscriptions: Vec<String>, api_key: String, client: Arc<Client>, pool: Arc<PgPool>, health_state: Arc<Mutex<FinanceHealth>>) {
     let state = Arc::new(RwLock::new(WebSocketState::new()));
+    
+    // Security Note: Finnhub usually requires token as a query parameter for WebSockets.
+    // If infrastructure allows, redacting this parameter from logs is recommended.
     let url = format!("wss://ws.finnhub.io/?token={}", api_key);
 
     let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");

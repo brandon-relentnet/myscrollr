@@ -18,14 +18,6 @@ RUN cargo build --release --bin finance_service
 FROM debian:trixie-slim
 WORKDIR /app
 
-# Define Build Args
-ARG DATABASE_URL
-ARG FINNHUB_API_KEY
-
-# Set Envs for Runtime
-ENV DATABASE_URL=$DATABASE_URL
-ENV FINNHUB_API_KEY=$FINNHUB_API_KEY
-
 RUN apt-get update && apt-get install -y ca-certificates libssl-dev curl && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/target/release/finance_service .
 COPY --from=builder /app/configs ./configs

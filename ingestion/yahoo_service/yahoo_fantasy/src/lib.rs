@@ -33,7 +33,9 @@ pub async fn yahoo(client_id: String, client_secret: String, callback_url: Strin
         .set_token_uri(TokenUrl::new(TOKEN_URL.to_string())?)
         .set_redirect_uri(RedirectUrl::new(callback_url)?);
 
-    //TODO: use csrf_token to validate
+    // State validation is the responsibility of the caller before exchanging the code.
+    // The csrf_token generated here should be stored by the caller and compared against
+    // the 'state' parameter returned by Yahoo in the callback.
     let (auth_url, csrf_token) = client
         .authorize_url(|| csrf_token)
         .add_scope(Scope::new("fspt-r".to_string()))

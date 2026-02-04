@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"net/url"
@@ -171,6 +173,17 @@ func initiateLogtoAuth(c *fiber.Ctx, mode string) error {
 	
 	redirectURI := fmt.Sprintf("https://%s/callback", strings.TrimPrefix(domain, "https://"))
 	
+	// --- CSRF State Generation ---
+	stateBuf := make([]byte, 16)
+	rand.Read(stateBuf)
+	state := hex.EncodeToString(stateBuf)
+
+	// Store state in Redis (consistent with Yahoo flow)
+	err := rdb.Set(context.Background(), "logto_csrf:"+state, "1", 10*time.Minute).Err()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString("Internal Server Error: Failed to store auth state")
+	}
+
 	// --- PKCE Generation ---
 	// 1. Generate Verifier
 	verifierBuf := make([]byte, 32)
@@ -193,8 +206,8 @@ func initiateLogtoAuth(c *fiber.Ctx, mode string) error {
 	})
 
 	// Base OIDC URL
-	authURL := fmt.Sprintf("%s/oidc/auth?client_id=%s&response_type=code&scope=openid&redirect_uri=%s&state=mystate&code_challenge=%s&code_challenge_method=S256", 
-		endpoint, appID, url.QueryEscape(redirectURI), challenge)
+	authURL := fmt.Sprintf("%s/oidc/auth?client_id=%s&response_type=code&scope=openid&redirect_uri=%s&state=%s&code_challenge=%s&code_challenge_method=S256", 
+		endpoint, appID, url.QueryEscape(redirectURI), state, challenge)
 	
 	// Add mode (signIn or signUp)
 	authURL = fmt.Sprintf("%s&mode=%s", authURL, mode)
@@ -209,6 +222,17 @@ func initiateLogtoAuth(c *fiber.Ctx, mode string) error {
 
 // LogtoCallback handles the redirect from Logto and displays the code (for testing)
 func LogtoCallback(c *fiber.Ctx) error {
+	state := c.Query("state")
+	if state == "" {
+		return c.Status(fiber.StatusBadRequest).SendString("Auth Failed: Missing state")
+	}
+
+	// Validate state against Redis
+	val, err := rdb.GetDel(context.Background(), "logto_csrf:"+state).Result()
+	if err != nil || val == "" {
+		return c.Status(fiber.StatusForbidden).SendString("Auth Failed: Invalid or expired state")
+	}
+
 	code := c.Query("code")
 	if code == "" {
 		errorMsg := c.Query("error")

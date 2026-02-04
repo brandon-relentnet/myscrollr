@@ -68,7 +68,7 @@ func fetchYahoo(c *fiber.Ctx, url string) ([]byte, error) {
 	token := getToken(c)
 	if token == "" { return nil, fmt.Errorf("unauthorized") }
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 10 * time.Second}
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 
@@ -134,7 +134,7 @@ func YahooCallback(c *fiber.Ctx) error {
 		
 		// Fetch GUID and persist for Active Sync
 		go func(accessToken, refreshToken string) {
-			client := &http.Client{}
+			client := &http.Client{Timeout: 10 * time.Second}
 			req, _ := http.NewRequest("GET", "https://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1", nil)
 			req.Header.Set("Authorization", "Bearer "+accessToken)
 			resp, err := client.Do(req)
@@ -167,7 +167,8 @@ func YahooCallback(c *fiber.Ctx) error {
 				frontendURL = domain
 			}
 		} else {
-			frontendURL = "*" // Fallback, but should be avoided in prod
+			log.Println("[Security Warning] FRONTEND_URL not set, defaulting to self for postMessage origin")
+			frontendURL = "https://api.myscrollr.relentnet.dev" // More secure than '*'
 		}
 	}
 	frontendURL = strings.TrimSuffix(frontendURL, "/")
