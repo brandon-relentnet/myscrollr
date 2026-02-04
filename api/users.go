@@ -106,7 +106,7 @@ func GetProfileByUsername(c *fiber.Ctx) error {
 	// Check if profile is private
 	if !profile.IsPublic {
 		// Get current user ID from auth
-		currentUserID := getLogtoUserId(c)
+		currentUserID := getUserID(c)
 		if currentUserID != profile.UserID {
 			return c.Status(http.StatusForbidden).JSON(ErrorResponse{
 				Status: "error",
@@ -138,7 +138,7 @@ func GetProfileByUsername(c *fiber.Ctx) error {
 
 // GetMyProfile returns the current user's full profile
 func GetMyProfile(c *fiber.Ctx) error {
-	userID := getLogtoUserId(c)
+	userID := getUserID(c)
 	if userID == "" {
 		return c.Status(http.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "error",
@@ -165,7 +165,7 @@ func GetMyProfile(c *fiber.Ctx) error {
 	// If no profile exists, create a placeholder one
 	if err == sql.ErrNoRows {
 		// Get email from JWT claims
-		email := getLogtoEmail(c)
+		email := getUserEmail(c)
 
 		// Generate initial username from email (before @)
 		initialUsername := ""
@@ -242,7 +242,7 @@ func GetMyProfile(c *fiber.Ctx) error {
 
 // UpdateMyProfile updates the current user's profile
 func UpdateMyProfile(c *fiber.Ctx) error {
-	userID := getLogtoUserId(c)
+	userID := getUserID(c)
 	if userID == "" {
 		return c.Status(http.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "error",
@@ -323,7 +323,7 @@ func UpdateMyProfile(c *fiber.Ctx) error {
 
 // SetUsername sets the username for the current user (can only be done once)
 func SetUsername(c *fiber.Ctx) error {
-	userID := getLogtoUserId(c)
+	userID := getUserID(c)
 	if userID == "" {
 		return c.Status(http.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "error",
@@ -416,7 +416,7 @@ func SetUsername(c *fiber.Ctx) error {
 
 // DisconnectYahoo removes Yahoo connection for the current user
 func DisconnectYahoo(c *fiber.Ctx) error {
-	userID := getLogtoUserId(c)
+	userID := getUserID(c)
 	if userID == "" {
 		return c.Status(http.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "error",
@@ -452,4 +452,20 @@ func isValidUsername(username string) bool {
 		}
 	}
 	return true
+}
+
+// getUserID extracts the user ID from the Fiber context (set by LogtoAuth middleware)
+func getUserID(c *fiber.Ctx) string {
+	if userID, ok := c.Locals("user_id").(string); ok {
+		return userID
+	}
+	return ""
+}
+
+// getUserEmail extracts the user email from the Fiber context (set by LogtoAuth middleware)
+func getUserEmail(c *fiber.Ctx) string {
+	if email, ok := c.Locals("user_email").(string); ok {
+		return email
+	}
+	return ""
 }

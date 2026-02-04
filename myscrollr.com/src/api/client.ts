@@ -6,18 +6,6 @@ interface RequestOptions extends RequestInit {
   requiresAuth?: boolean
 }
 
-// Get access token - call this from a component that uses useLogto
-export async function getAccessToken(): Promise<string | null> {
-  try {
-    const { useLogto } = await import('@logto/react')
-    // useLogto is a hook, can't call it outside component
-    // This function should only be called from within a React component
-    return null
-  } catch {
-    return null
-  }
-}
-
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { ...fetchOptions } = options
 

@@ -18,7 +18,7 @@ interface ProfileData {
 
 function ProfilePage() {
   const { username } = Route.useParams()
-  const { isAuthenticated, getIdTokenClaims, logtoClient } = useLogto()
+  const { isAuthenticated, getIdTokenClaims, getAccessToken } = useLogto()
   const [profile, setProfile] = useState<ProfileData | null>(null)
   const [myProfile, setMyProfile] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -41,9 +41,9 @@ function ProfilePage() {
   // Get access token on mount
   useEffect(() => {
     async function fetchToken() {
-      if (logtoClient) {
+      if (getAccessToken) {
         try {
-          const token = await logtoClient.getAccessToken()
+          const token = await getAccessToken()
           setAccessToken(token ?? null)
         } catch {
           setAccessToken(null)
@@ -51,7 +51,7 @@ function ProfilePage() {
       }
     }
     fetchToken()
-  }, [logtoClient])
+  }, [getAccessToken])
 
   useEffect(() => {
     async function fetchProfiles() {
