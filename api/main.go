@@ -61,6 +61,7 @@ func main() {
 	// Yahoo OAuth Routes
 	app.Get("/yahoo/start", YahooStart)
 	app.Get("/yahoo/callback", YahooCallback)
+	app.Get("/yahoo/leagues", YahooLeagues)
 
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Welcome to Scrollr API. Visit /swagger for documentation.")
