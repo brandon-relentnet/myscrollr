@@ -28,14 +28,13 @@ FROM alpine:latest
 WORKDIR /root/
 
 # Define Build Args
-ARG YAHOO_CALLBACK_URL
-ARG DOMAIN_NAME
 ARG COOLIFY_FQDN
 
-# Set Envs for Runtime
-ENV YAHOO_CALLBACK_URL=$YAHOO_CALLBACK_URL
-ENV DOMAIN_NAME=$DOMAIN_NAME
-ENV COOLIFY_FQDN=$COOLIFY_FQDN
+# Derive all URLs from COOLIFY_FQDN
+ENV API_URL=https://${COOLIFY_FQDN}
+ENV LOGTO_URL=https://${COOLIFY_FQDN}/oidc
+ENV LOGTO_JWKS_URL=https://${COOLIFY_FQDN}/oidc/jwks
+ENV YAHOO_CALLBACK_URL=https://${COOLIFY_FQDN}/yahoo/callback
 
 # Install curl for health checks
 RUN apk --no-cache add curl

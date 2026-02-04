@@ -24,12 +24,19 @@ var yahooConfig *oauth2.Config
 func InitYahoo() {
 	clientID := os.Getenv("YAHOO_CLIENT_ID")
 	clientSecret := os.Getenv("YAHOO_CLIENT_SECRET")
-	domain := os.Getenv("COOLIFY_FQDN")
-	domain = strings.TrimPrefix(domain, "https://")
-	domain = strings.TrimPrefix(domain, "http://")
-	domain = strings.TrimSuffix(domain, "/")
-	callbackPath := "/yahoo/callback"
-	redirectURL := fmt.Sprintf("https://%s%s", domain, callbackPath)
+
+	// Use pre-derived YAHOO_CALLBACK_URL from Dockerfile, or fallback to derivation
+	redirectURL := os.Getenv("YAHOO_CALLBACK_URL")
+	if redirectURL == "" {
+		// Fallback: derive from COOLIFY_FQDN
+		domain := os.Getenv("COOLIFY_FQDN")
+		if domain != "" {
+			domain = strings.TrimPrefix(domain, "https://")
+			domain = strings.TrimPrefix(domain, "http://")
+			domain = strings.TrimSuffix(domain, "/")
+			redirectURL = fmt.Sprintf("https://%s/yahoo/callback", domain)
+		}
+	}
 	log.Printf("[Yahoo Init] Client ID: %s... Redirect URI: %s", clientID[:5], redirectURL)
 
 	yahooConfig = &oauth2.Config{

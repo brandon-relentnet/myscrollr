@@ -13,27 +13,24 @@ import (
 )
 
 var (
-	jwks       *keyfunc.JWKS
-	apiURL     string // Derived from COOLIFY_FQDN for audience validation
-	logtoURL   string // Derived from COOLIFY_FQDN for issuer validation
+	jwks *keyfunc.JWKS
 )
 
 func InitAuth() {
-	fqdn := os.Getenv("COOLIFY_FQDN")
-	if fqdn == "" {
-		log.Println("[Security Warning] COOLIFY_FQDN not set, authentication will fail")
-		return
+	// Use pre-derived ENV from Dockerfile (or direct COOLIFY_FQDN fallback)
+	jwksURL := os.Getenv("LOGTO_JWKS_URL")
+	if jwksURL == "" {
+		// Fallback: derive from COOLIFY_FQDN
+		fqdn := os.Getenv("COOLIFY_FQDN")
+		if fqdn == "" {
+			log.Println("[Security Warning] COOLIFY_FQDN not set, authentication will fail")
+			return
+		}
+		fqdn = strings.TrimPrefix(fqdn, "https://")
+		fqdn = strings.TrimPrefix(fqdn, "http://")
+		fqdn = strings.TrimSuffix(fqdn, "/")
+		jwksURL = fmt.Sprintf("https://%s/oidc/jwks", fqdn)
 	}
-	fqdn = strings.TrimPrefix(fqdn, "https://")
-	fqdn = strings.TrimPrefix(fqdn, "http://")
-	fqdn = strings.TrimSuffix(fqdn, "/")
-
-	// Derive URLs from FQDN
-	apiURL = fmt.Sprintf("https://%s", fqdn)
-	logtoURL = fmt.Sprintf("https://%s/oidc", fqdn)
-
-	// Derive Logto JWKS URL from FQDN
-	jwksURL := fmt.Sprintf("https://%s/oidc/jwks", fqdn)
 
 	log.Printf("[Auth] Initializing with JWKS: %s", jwksURL)
 	var err error
@@ -119,17 +116,37 @@ func LogtoAuth(c *fiber.Ctx) error {
 		})
 	}
 
-	// Verify Issuer - derived from COOLIFY_FQDN
-	if claims["iss"] != logtoURL {
+	// Verify Issuer - use pre-derived LOGTO_URL or derive from COOLIFY_FQDN
+	expectedIssuer := os.Getenv("LOGTO_URL")
+	if expectedIssuer == "" {
+		fqdn := os.Getenv("COOLIFY_FQDN")
+		if fqdn != "" {
+			fqdn = strings.TrimPrefix(fqdn, "https://")
+			fqdn = strings.TrimPrefix(fqdn, "http://")
+			fqdn = strings.TrimSuffix(fqdn, "/")
+			expectedIssuer = fmt.Sprintf("https://%s/oidc", fqdn)
+		}
+	}
+	if expectedIssuer != "" && claims["iss"] != expectedIssuer {
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "unauthorized",
 			Error:  "Invalid token issuer",
 		})
 	}
 
-	// Verify Audience (API Resource Identifier) - derived from COOLIFY_FQDN
+	// Verify Audience (API Resource Identifier) - use pre-derived API_URL
+	expectedAudience := os.Getenv("API_URL")
+	if expectedAudience == "" {
+		fqdn := os.Getenv("COOLIFY_FQDN")
+		if fqdn != "" {
+			fqdn = strings.TrimPrefix(fqdn, "https://")
+			fqdn = strings.TrimPrefix(fqdn, "http://")
+			fqdn = strings.TrimSuffix(fqdn, "/")
+			expectedAudience = fmt.Sprintf("https://%s", fqdn)
+		}
+	}
 	aud, _ := claims["aud"].(string)
-	if aud != apiURL {
+	if expectedAudience != "" && aud != expectedAudience {
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "unauthorized",
 			Error:  "Invalid token audience",
