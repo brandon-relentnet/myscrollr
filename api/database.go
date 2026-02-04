@@ -21,7 +21,8 @@ func ConnectDB() {
 
 	// Clean up URL: trim whitespace and remove accidental quotes
 	databaseURL = strings.TrimSpace(databaseURL)
-	databaseURL = strings.Trim(databaseURL, ""'")
+	databaseURL = strings.Trim(databaseURL, "\"")
+	databaseURL = strings.Trim(databaseURL, "'")
 
 	// Fix missing // after protocol (consistent with Rust logic)
 	if strings.HasPrefix(databaseURL, "postgres:") && !strings.HasPrefix(databaseURL, "postgres://") {
@@ -52,8 +53,7 @@ func ConnectDB() {
 			}
 		}
 
-		fmt.Printf("Failed to connect to DB, retrying in 2 seconds... (%d attempts left) Error: %v
-", retries-i-1, err)
+		fmt.Printf("Failed to connect to DB, retrying in 2 seconds... (%d attempts left) Error: %v\n", retries-i-1, err)
 		time.Sleep(2 * time.Second)
 	}
 
