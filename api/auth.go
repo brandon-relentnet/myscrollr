@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -161,7 +162,7 @@ func LogtoLogin(c *fiber.Ctx) error {
 	
 	// OIDC Authorization URL
 	authURL := fmt.Sprintf("%s/oidc/auth?client_id=%s&response_type=code&scope=openid+profile+email&redirect_uri=%s&state=mystate", 
-		endpoint, appID, redirectURI)
+		endpoint, appID, url.QueryEscape(redirectURI))
 	
 	// Add API Resource if configured
 	resource := os.Getenv("LOGTO_API_RESOURCE")
