@@ -85,7 +85,7 @@ func fetchYahoo(c *fiber.Ctx, url string) ([]byte, error) {
 		if err != nil { return nil, fmt.Errorf("refresh failed") }
 
 		c.Cookie(&fiber.Cookie{
-			Name: "yahoo-auth", Value: newToken.AccessToken, Expires: time.Now().Add(24 * time.Hour), HTTPOnly: true, Secure: true, SameSite: "Lax", Path: "/",
+			Name: "yahoo-auth", Value: newToken.AccessToken, Expires: time.Now().Add(24 * time.Hour), HTTPOnly: true, Secure: true, SameSite: "Strict", Path: "/",
 		})
 
 		req.Header.Set("Authorization", "Bearer "+newToken.AccessToken)
@@ -128,9 +128,9 @@ func YahooCallback(c *fiber.Ctx) error {
 	token, err := yahooConfig.Exchange(context.Background(), code)
 	if err != nil { return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to exchange code"}) }
 
-	c.Cookie(&fiber.Cookie{Name: "yahoo-auth", Value: token.AccessToken, Expires: time.Now().Add(24 * time.Hour), HTTPOnly: true, Secure: true, SameSite: "Lax", Path: "/"})
+	c.Cookie(&fiber.Cookie{Name: "yahoo-auth", Value: token.AccessToken, Expires: time.Now().Add(24 * time.Hour), HTTPOnly: true, Secure: true, SameSite: "Strict", Path: "/"})
 	if token.RefreshToken != "" {
-		c.Cookie(&fiber.Cookie{Name: "yahoo-refresh", Value: token.RefreshToken, Expires: time.Now().Add(30 * 24 * time.Hour), HTTPOnly: true, Secure: true, SameSite: "Lax", Path: "/"})
+		c.Cookie(&fiber.Cookie{Name: "yahoo-refresh", Value: token.RefreshToken, Expires: time.Now().Add(30 * 24 * time.Hour), HTTPOnly: true, Secure: true, SameSite: "Strict", Path: "/"})
 		
 		// Fetch GUID and persist for Active Sync
 		go func(accessToken, refreshToken string) {

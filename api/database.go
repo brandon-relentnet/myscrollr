@@ -33,7 +33,7 @@ func ConnectDB() {
 
 	config, err := pgxpool.ParseConfig(databaseURL)
 	if err != nil {
-		log.Fatalf("Unable to parse DATABASE_URL: %v", err)
+		log.Fatalf("Unable to parse DATABASE_URL (redacted)")
 	}
 
 	// Pool configuration for low latency/high performance
@@ -53,12 +53,12 @@ func ConnectDB() {
 			}
 		}
 
-		fmt.Printf("Failed to connect to DB, retrying in 2 seconds... (%d attempts left) Error: %v\n", retries-i-1, err)
+		fmt.Printf("Failed to connect to DB, retrying in 2 seconds... (%d attempts left)\n", retries-i-1)
 		time.Sleep(2 * time.Second)
 	}
 
 	if err != nil {
-		log.Fatalf("Unable to connect to database after retries: %v", err)
+		log.Fatalf("Unable to connect to database after retries")
 	}
 
 	dbPool = pool

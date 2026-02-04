@@ -19,7 +19,7 @@ pub async fn initialize_pool() -> Result<PgPool> {
         } else if database_url.starts_with("postgresql:") && !database_url.starts_with("postgresql://") {
             database_url = database_url.replacen("postgresql:", "postgresql://", 1);
         }
-        let pool = pool_options.connect(&database_url).await.context("Failed to connect to the PostgreSQL database via DATABASE_URL")?;
+        let pool = pool_options.connect(&database_url).await.context("Failed to connect to the PostgreSQL database via DATABASE_URL (redacted)")?;
         return Ok(pool);
     }
 
@@ -37,7 +37,7 @@ pub async fn initialize_pool() -> Result<PgPool> {
     let port: u16 = port_str.parse().context("DB_PORT must be a valid u16 integer")?;
 
     let connect_options = PgConnectOptions::new().host(host).port(port).username(&user).password(&password).database(&database);
-    let pool = pool_options.connect_with(connect_options).await.context("Failed to connect to the PostgreSQL database")?;
+    let pool = pool_options.connect_with(connect_options).await.context("Failed to connect to the PostgreSQL database (redacted)")?;
     Ok(pool)
 }
 
