@@ -28,8 +28,7 @@ var (
 func InitAuth() {
 	jwksURL := os.Getenv("LOGTO_JWKS_URL")
 	if jwksURL == "" {
-		// Fallback to your specific instance
-		jwksURL = "https://auth.myscrollr.relentnet.dev/oidc/jwks"
+		log.Fatal("LOGTO_JWKS_URL environment variable is not set")
 	}
 
 	// Create the JWKS from the resource at the given URL.
@@ -76,9 +75,10 @@ func LogtoAuth(c *fiber.Ctx) error {
 	// Parse the token.
 	token, err := jwt.Parse(tokenString, jwks.Keyfunc)
 	if err != nil {
+		log.Printf("[Auth Error] JWT Parse failed: %v", err)
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "unauthorized",
-			Error:  fmt.Sprintf("Invalid token: %s", err.Error()),
+			Error:  "Invalid or expired token",
 		})
 	}
 
@@ -109,7 +109,7 @@ func LogtoAuth(c *fiber.Ctx) error {
 	// Verify Issuer
 	issuer := os.Getenv("LOGTO_ISSUER")
 	if issuer == "" {
-		issuer = "https://auth.myscrollr.relentnet.dev/oidc"
+		log.Println("[Security Warning] LOGTO_ISSUER not set, authentication will fail")
 	}
 	if claims["iss"] != issuer {
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
@@ -170,13 +170,15 @@ func LogtoSignup(c *fiber.Ctx) error {
 func initiateLogtoAuth(c *fiber.Ctx, mode string) error {
 	endpoint := os.Getenv("LOGTO_ENDPOINT")
 	if endpoint == "" {
-		endpoint = "https://auth.myscrollr.relentnet.dev"
+		log.Println("[Security Warning] LOGTO_ENDPOINT not set")
 	}
 	appID := os.Getenv("LOGTO_APP_ID")
 	
 	domain := os.Getenv("DOMAIN_NAME")
 	if domain == "" { domain = os.Getenv("COOLIFY_FQDN") }
-	if domain == "" { domain = "api.myscrollr.relentnet.dev" }
+	if domain == "" {
+		log.Println("[Security Warning] DOMAIN_NAME or COOLIFY_FQDN not set, redirect_uri may be invalid")
+	}
 	
 	redirectURI := fmt.Sprintf("https://%s/callback", strings.TrimPrefix(domain, "https://"))
 	
@@ -267,14 +269,16 @@ func LogtoCallback(c *fiber.Ctx) error {
 	// Exchange code for tokens
 	endpoint := os.Getenv("LOGTO_ENDPOINT")
 	if endpoint == "" {
-		endpoint = "https://auth.myscrollr.relentnet.dev"
+		log.Println("[Security Warning] LOGTO_ENDPOINT not set during callback")
 	}
 	appID := os.Getenv("LOGTO_APP_ID")
 	appSecret := os.Getenv("LOGTO_APP_SECRET") // Optional, but recommended for backend
 
 	domain := os.Getenv("DOMAIN_NAME")
 	if domain == "" { domain = os.Getenv("COOLIFY_FQDN") }
-	if domain == "" { domain = "api.myscrollr.relentnet.dev" }
+	if domain == "" {
+		log.Println("[Security Warning] DOMAIN_NAME or COOLIFY_FQDN not set during callback")
+	}
 	redirectURI := fmt.Sprintf("https://%s/callback", strings.TrimPrefix(domain, "https://"))
 
 	data := url.Values{}
@@ -296,7 +300,8 @@ func LogtoCallback(c *fiber.Ctx) error {
 
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
-		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Logto token exchange failed", Hint: string(body)})
+		log.Printf("[Auth Error] Logto token exchange failed: %s", string(body))
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Authentication failed during token exchange"})
 	}
 
 	var tokenRes struct {
@@ -315,7 +320,7 @@ func LogtoCallback(c *fiber.Ctx) error {
 		Expires:  time.Now().Add(time.Duration(tokenRes.ExpiresIn) * time.Second),
 		HTTPOnly: true,
 		Secure:   true,
-		SameSite: "Lax",
+		SameSite: "Strict",
 		Path:     "/",
 	})
 

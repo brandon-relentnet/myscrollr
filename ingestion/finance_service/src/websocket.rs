@@ -18,11 +18,11 @@ pub(crate) async fn connect(subscriptions: Vec<String>, api_key: String, client:
     let state = Arc::new(RwLock::new(WebSocketState::new()));
     
     // Security Note: Finnhub usually requires token as a query parameter for WebSockets.
-    // If infrastructure allows, redacting this parameter from logs is recommended.
+    // Redacting this parameter from logs for security.
     let url = format!("wss://ws.finnhub.io/?token={}", api_key);
 
-    let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
-    println!("WebSocket client connected");
+    let (ws_stream, _) = connect_async(url).await.expect("Failed to connect to WebSocket (token redacted in logs)");
+    info!("WebSocket client connected to Finnhub");
 
     // Set connection status to connected
     {

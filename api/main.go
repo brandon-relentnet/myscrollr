@@ -75,6 +75,18 @@ func main() {
 
 	app.Use(logger.New())
 
+	// Security Headers
+	app.Use(func(c *fiber.Ctx) error {
+		c.Set("X-XSS-Protection", "1; mode=block")
+		c.Set("X-Content-Type-Options", "nosniff")
+		c.Set("X-Download-Options", "noopen")
+		c.Set("Strict-Transport-Security", "max-age=5184000; includeSubDomains")
+		c.Set("X-Frame-Options", "SAMEORIGIN")
+		c.Set("X-DNS-Prefetch-Control", "off")
+		c.Set("Content-Security-Policy", "default-src 'self'; script-src 'self' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'")
+		return c.Next()
+	})
+
 	// Hardened CORS
 	allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
 	if allowedOrigins == "" {
@@ -333,7 +345,8 @@ func GetSports(c *fiber.Ctx) error {
 	rows, err := dbPool.Query(context.Background(),
 		"SELECT id, league, external_game_id, link, home_team_name, home_team_logo, home_team_score, away_team_name, away_team_logo, away_team_score, start_time, short_detail, state FROM games ORDER BY start_time DESC LIMIT 50")
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: err.Error()})
+		log.Printf("[Database Error] GetSports query failed: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Internal server error"})
 	}
 	defer rows.Close()
 
@@ -341,7 +354,8 @@ func GetSports(c *fiber.Ctx) error {
 		var g Game
 		err := rows.Scan(&g.ID, &g.League, &g.ExternalGameID, &g.Link, &g.HomeTeamName, &g.HomeTeamLogo, &g.HomeTeamScore, &g.AwayTeamName, &g.AwayTeamLogo, &g.AwayTeamScore, &g.StartTime, &g.ShortDetail, &g.State)
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: err.Error()})
+			log.Printf("[Database Error] GetSports scan failed: %v", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Internal server error"})
 		}
 		games = append(games, g)
 	}
@@ -369,7 +383,8 @@ func GetFinance(c *fiber.Ctx) error {
 	rows, err := dbPool.Query(context.Background(),
 		"SELECT symbol, price, previous_close, price_change, percentage_change, direction, last_updated FROM trades ORDER BY symbol ASC")
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: err.Error()})
+		log.Printf("[Database Error] GetFinance query failed: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Internal server error"})
 	}
 	defer rows.Close()
 
@@ -377,7 +392,8 @@ func GetFinance(c *fiber.Ctx) error {
 		var t Trade
 		err := rows.Scan(&t.Symbol, &t.Price, &t.PreviousClose, &t.PriceChange, &t.PercentageChange, &t.Direction, &t.LastUpdated)
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: err.Error()})
+			log.Printf("[Database Error] GetFinance scan failed: %v", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Internal server error"})
 		}
 		trades = append(trades, t)
 	}

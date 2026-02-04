@@ -158,14 +158,8 @@ func YahooCallback(c *fiber.Ctx) error {
 
 	frontendURL := validateURL(os.Getenv("FRONTEND_URL"), "")
 	if frontendURL == "" {
-		domain := os.Getenv("DOMAIN_NAME")
-		if domain == "" { domain = os.Getenv("COOLIFY_FQDN") }
-		if domain != "" {
-			frontendURL = validateURL(domain, "")
-		} else {
-			log.Println("[Security Warning] FRONTEND_URL not set, defaulting to production API for postMessage origin")
-			frontendURL = "https://api.myscrollr.relentnet.dev"
-		}
+		log.Println("[Security Warning] FRONTEND_URL not set, authentication callback might fail to notify opener")
+		// We don't set a hardcoded fallback here anymore
 	}
 
 	html := fmt.Sprintf(`<!doctype html><html><head><meta charset="utf-8"><title>Auth Complete</title></head>
@@ -211,8 +205,14 @@ func YahooLeagues(c *fiber.Ctx) error {
 
 	// Fallback to Live API
 	body, err := fetchYahoo(c, "https://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1/games;game_keys=nfl,nba,nhl/leagues")
-	if err != nil { return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Status: "unauthorized", Error: err.Error()}) }
-	if err := xml.Unmarshal(body, &content); err != nil { return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to parse Yahoo data"}) }
+	if err != nil { 
+		log.Printf("[Yahoo Error] Fetch failed: %v", err)
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Status: "unauthorized", Error: "Failed to fetch data from Yahoo"}) 
+	}
+	if err := xml.Unmarshal(body, &content); err != nil { 
+		log.Printf("[Yahoo Error] Unmarshal failed: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to process Yahoo data"}) 
+	}
 
 	SetCache(cacheKey, content, 5*time.Minute)
 	c.Set("X-Cache", "MISS")
@@ -237,8 +237,14 @@ func YahooStandings(c *fiber.Ctx) error {
 	}
 
 	body, err := fetchYahoo(c, fmt.Sprintf("https://fantasysports.yahooapis.com/fantasy/v2/league/%s/standings", leagueKey))
-	if err != nil { return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Status: "unauthorized", Error: err.Error()}) }
-	if err := xml.Unmarshal(body, &content); err != nil { return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to parse Yahoo data"}) }
+	if err != nil { 
+		log.Printf("[Yahoo Error] Fetch standings failed for %s: %v", leagueKey, err)
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Status: "unauthorized", Error: "Failed to fetch standings"}) 
+	}
+	if err := xml.Unmarshal(body, &content); err != nil { 
+		log.Printf("[Yahoo Error] Unmarshal standings failed for %s: %v", leagueKey, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to process standings data"}) 
+	}
 
 	SetCache(cacheKey, content, 5*time.Minute)
 	c.Set("X-Cache", "MISS")
@@ -263,8 +269,14 @@ func YahooMatchups(c *fiber.Ctx) error {
 	}
 
 	body, err := fetchYahoo(c, fmt.Sprintf("https://fantasysports.yahooapis.com/fantasy/v2/team/%s/matchups", teamKey))
-	if err != nil { return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Status: "unauthorized", Error: err.Error()}) }
-	if err := xml.Unmarshal(body, &content); err != nil { return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to parse Yahoo data"}) }
+	if err != nil { 
+		log.Printf("[Yahoo Error] Fetch matchups failed for %s: %v", teamKey, err)
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Status: "unauthorized", Error: "Failed to fetch matchups"}) 
+	}
+	if err := xml.Unmarshal(body, &content); err != nil { 
+		log.Printf("[Yahoo Error] Unmarshal matchups failed for %s: %v", teamKey, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to process matchups data"}) 
+	}
 
 	SetCache(cacheKey, content, 5*time.Minute)
 	c.Set("X-Cache", "MISS")
@@ -289,8 +301,14 @@ func YahooRoster(c *fiber.Ctx) error {
 	}
 
 	body, err := fetchYahoo(c, fmt.Sprintf("https://fantasysports.yahooapis.com/fantasy/v2/team/%s/roster", teamKey))
-	if err != nil { return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Status: "unauthorized", Error: err.Error()}) }
-	if err := xml.Unmarshal(body, &content); err != nil { return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to parse Yahoo data"}) }
+	if err != nil { 
+		log.Printf("[Yahoo Error] Fetch roster failed for %s: %v", teamKey, err)
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Status: "unauthorized", Error: "Failed to fetch roster"}) 
+	}
+	if err := xml.Unmarshal(body, &content); err != nil { 
+		log.Printf("[Yahoo Error] Unmarshal roster failed for %s: %v", teamKey, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to process roster data"}) 
+	}
 
 	SetCache(cacheKey, content, 5*time.Minute)
 	c.Set("X-Cache", "MISS")
