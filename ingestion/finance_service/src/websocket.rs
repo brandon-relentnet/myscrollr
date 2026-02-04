@@ -150,6 +150,11 @@ async fn handle_trade_update_batch(trades: Vec<TradeData>, state_arc: &Arc<RwLoc
     let mut new_trades = 0;
 
     for trade in trades.iter() {
+        // Validation: Ignore suspiciously long symbols
+        if trade.symbol.len() > 20 {
+            continue;
+        }
+
         let ref_in_queue = state.update_queue.get(&trade.symbol);
 
         if let Some(trade_in_queue) = ref_in_queue {

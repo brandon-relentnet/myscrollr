@@ -156,9 +156,25 @@ func YahooCallback(c *fiber.Ctx) error {
 		}(token.AccessToken, token.RefreshToken)
 	}
 
+	frontendURL := os.Getenv("FRONTEND_URL")
+	if frontendURL == "" {
+		domain := os.Getenv("DOMAIN_NAME")
+		if domain == "" { domain = os.Getenv("COOLIFY_FQDN") }
+		if domain != "" {
+			if !strings.HasPrefix(domain, "http") {
+				frontendURL = "https://" + domain
+			} else {
+				frontendURL = domain
+			}
+		} else {
+			frontendURL = "*" // Fallback, but should be avoided in prod
+		}
+	}
+	frontendURL = strings.TrimSuffix(frontendURL, "/")
+
 	html := fmt.Sprintf(`<!doctype html><html><head><meta charset="utf-8"><title>Auth Complete</title></head>
-            <body style="font-family: ui-sans-serif, system-ui;"><script>(function() { try { if (window.opener) { window.opener.postMessage({ type: 'yahoo-auth', accessToken: '%s', refreshToken: '%s' }, '*'); } } catch(e) { } setTimeout(function(){ window.close(); }, 1500); })();</script>
-            <p>Authentication successful. You can close this window.</p></body></html>`, token.AccessToken, token.RefreshToken)
+            <body style="font-family: ui-sans-serif, system-ui;"><script>(function() { try { if (window.opener) { window.opener.postMessage({ type: 'yahoo-auth', accessToken: '%s', refreshToken: '%s' }, '%s'); } } catch(e) { } setTimeout(function(){ window.close(); }, 1500); })();</script>
+            <p>Authentication successful. You can close this window.</p></body></html>`, token.AccessToken, token.RefreshToken, frontendURL)
 	c.Set("Content-Type", "text/html")
 	return c.Status(fiber.StatusOK).SendString(html)
 }

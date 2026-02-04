@@ -68,21 +68,33 @@ async fn poll_league(client: &Client, league: &LeagueConfigs) -> anyhow::Result<
 
 fn parse_espn_game(event: &serde_json::Value, league_name: &str) -> Option<crate::database::CleanedData> {
     let competition = event.get("competitions")?.get(0)?;
-    let home_team_node = competition.get("competitors")?.get(0)?;
-    let away_team_node = competition.get("competitors")?.get(1)?;
+    let competitors = competition.get("competitors")?.as_array()?;
+    if competitors.len() < 2 { return None; }
+    
+    let home_team_node = competitors.get(0)?;
+    let away_team_node = competitors.get(1)?;
+
+    let id = event.get("id")?.as_str()?;
+    if id.len() > 50 { return None; } // Sanity check on ID length
+
+    let home_name = home_team_node.get("team")?.get("displayName")?.as_str()?;
+    let away_name = away_team_node.get("team")?.get("displayName")?.as_str()?;
+    
+    // Validation: Ensure names aren't suspiciously long
+    if home_name.len() > 100 || away_name.len() > 100 { return None; }
 
     Some(crate::database::CleanedData {
         league: league_name.to_string(),
-        external_game_id: event.get("id")?.as_str()?.to_string(),
+        external_game_id: id.to_string(),
         link: event.get("links")?.get(0)?.get("href")?.as_str()?.to_string(),
         home_team: crate::database::Team {
-            name: home_team_node.get("team")?.get("displayName")?.as_str()?.to_string(),
-            logo: home_team_node.get("team")?.get("logo")?.as_str()?.to_string(),
+            name: home_name.to_string(),
+            logo: home_team_node.get("team")?.get("logo")?.as_str().unwrap_or("").to_string(),
             score: home_team_node.get("score")?.as_str()?.parse().unwrap_or(0),
         },
         away_team: crate::database::Team {
-            name: away_team_node.get("team")?.get("displayName")?.as_str()?.to_string(),
-            logo: away_team_node.get("team")?.get("logo")?.as_str()?.to_string(),
+            name: away_name.to_string(),
+            logo: away_team_node.get("team")?.get("logo")?.as_str().unwrap_or("").to_string(),
             score: away_team_node.get("score")?.as_str()?.parse().unwrap_or(0),
         },
         start_time: chrono::DateTime::parse_from_rfc3339(event.get("date")?.as_str()?).ok()?.with_timezone(&chrono::Utc),

@@ -12,6 +12,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/swagger"
 	"github.com/joho/godotenv"
@@ -62,7 +63,26 @@ func main() {
 	})
 
 	app.Use(logger.New())
-	app.Use(cors.New())
+
+	// Hardened CORS
+	allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
+	if allowedOrigins == "" {
+		allowedOrigins = "https://myscrollr.com,https://api.myscrollr.relentnet.dev"
+	}
+	app.Use(cors.New(cors.Config{
+		AllowOrigins:     allowedOrigins,
+		AllowCredentials: true,
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
+	}))
+
+	// Rate Limiting
+	app.Use(limiter.New(limiter.Config{
+		Max:        60,
+		Expiration: 1 * time.Minute,
+		KeyGenerator: func(c *fiber.Ctx) string {
+			return c.IP()
+		},
+	}))
 
 	app.Get("/swagger/*", swagger.HandlerDefault)
 
