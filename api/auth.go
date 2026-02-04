@@ -1,6 +1,9 @@
 package main
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"net/url"
@@ -168,9 +171,30 @@ func initiateLogtoAuth(c *fiber.Ctx, mode string) error {
 	
 	redirectURI := fmt.Sprintf("https://%s/callback", strings.TrimPrefix(domain, "https://"))
 	
+	// --- PKCE Generation ---
+	// 1. Generate Verifier
+	verifierBuf := make([]byte, 32)
+	rand.Read(verifierBuf)
+	verifier := base64.RawURLEncoding.EncodeToString(verifierBuf)
+
+	// 2. Generate Challenge (S256)
+	hash := sha256.Sum256([]byte(verifier))
+	challenge := base64.RawURLEncoding.EncodeToString(hash[:])
+
+	// 3. Store verifier in cookie for the callback
+	c.Cookie(&fiber.Cookie{
+		Name:     "logto_verifier",
+		Value:    verifier,
+		Expires:  time.Now().Add(10 * time.Minute),
+		HTTPOnly: true,
+		Secure:   true,
+		SameSite: "Lax",
+		Path:     "/",
+	})
+
 	// Base OIDC URL
-	authURL := fmt.Sprintf("%s/oidc/auth?client_id=%s&response_type=code&scope=openid&redirect_uri=%s&state=mystate", 
-		endpoint, appID, url.QueryEscape(redirectURI))
+	authURL := fmt.Sprintf("%s/oidc/auth?client_id=%s&response_type=code&scope=openid&redirect_uri=%s&state=mystate&code_challenge=%s&code_challenge_method=S256", 
+		endpoint, appID, url.QueryEscape(redirectURI), challenge)
 	
 	// Add mode (signIn or signUp)
 	authURL = fmt.Sprintf("%s&mode=%s", authURL, mode)
