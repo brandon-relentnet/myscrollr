@@ -15,20 +15,13 @@ pub async fn initialize_pool() -> Result<PgPool> {
         .idle_timeout(Duration::from_millis(30_000));
 
     if let Ok(mut database_url) = env::var("DATABASE_URL") {
-        // Clean up the URL: trim whitespace and remove accidental quotes
         database_url = database_url.trim().trim_matches('"').trim_matches('\'').to_string();
-
-        // Fix missing // after protocol
         if database_url.starts_with("postgres:") && !database_url.starts_with("postgres://") {
             database_url = database_url.replacen("postgres:", "postgres://", 1);
         } else if database_url.starts_with("postgresql:") && !database_url.starts_with("postgresql://") {
             database_url = database_url.replacen("postgresql:", "postgresql://", 1);
         }
-
-        let pool = pool_options
-            .connect(&database_url)
-            .await
-            .context("Failed to connect to the PostgreSQL database via DATABASE_URL")?;
+        let pool = pool_options.connect(&database_url).await.context("Failed to connect to the PostgreSQL database via DATABASE_URL")?;
         return Ok(pool);
     }
 
@@ -42,30 +35,15 @@ pub async fn initialize_pool() -> Result<PgPool> {
     let password = get_env_var("DB_PASSWORD")?;
     let database = get_env_var("DB_DATABASE")?;
 
-    let host = if let Some(fixed) = raw_host.strip_prefix("db.") {
-        fixed
-    } else {
-        &raw_host
-    };
-
+    let host = if let Some(fixed) = raw_host.strip_prefix("db.") { fixed } else { &raw_host };
     let port: u16 = port_str.parse().context("DB_PORT must be a valid u16 integer")?;
 
-    let connect_options = PgConnectOptions::new()
-        .host(host)
-        .port(port)
-        .username(&user)
-        .password(&password)
-        .database(&database);
-
-    let pool = pool_options
-        .connect_with(connect_options)
-        .await
-        .context("Failed to connect to the PostgreSQL database")?;
-
+    let connect_options = PgConnectOptions::new().host(host).port(port).username(&user).password(&password).database(&database);
+    let pool = pool_options.connect_with(connect_options).await.context("Failed to connect to the PostgreSQL database")?;
     Ok(pool)
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, FromRow)]
 pub struct LeagueConfigs {
     pub name: String,
     pub slug: String,
@@ -105,7 +83,6 @@ impl Display for LiveLeagueList  {
         for item in self.data.iter() {
             write!(f, "{} ", item)?;
         }
-
         Ok(())
     }
 }
@@ -123,7 +100,7 @@ impl Display for LiveByLeague {
 }
 
 pub async fn create_tables(pool: &Arc<PgPool>) {
-    let statement = "
+    let games_statement = "
         CREATE TABLE IF NOT EXISTS games (
             id SERIAL PRIMARY KEY,
             league VARCHAR(50) NOT NULL,
@@ -144,132 +121,64 @@ pub async fn create_tables(pool: &Arc<PgPool>) {
         );
     ";
 
-    let conn = pool.acquire().await;
+    let config_statement = "
+        CREATE TABLE IF NOT EXISTS tracked_leagues (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(50) UNIQUE NOT NULL,
+            slug VARCHAR(100) NOT NULL,
+            is_enabled BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+    ";
 
+    let conn = pool.acquire().await;
     if let Ok(mut connection) = conn {
-        let _ = query(statement)
-            .execute(&mut *connection)
-            .await
-            .inspect_err(|e| error!("Execution Error: {}", e));
-    } else {
-        error!("Connection Error: Failed to acquire a connection from the pool");
+        let _ = query(games_statement).execute(&mut *connection).await;
+        let _ = query(config_statement).execute(&mut *connection).await;
     }
 }
 
-pub async fn clear_tables(pool: Arc<PgPool>, leagues: Vec<LeagueConfigs>) {
-    let league_names: Vec<String> = leagues.iter().map(|league| league.name.clone()).collect();
-
-    if league_names.is_empty() {
-        return;
-    }
-
-    let placeholders = (1..=league_names.len())
-        .map(|i| format!("${}", i))
-        .collect::<Vec<String>>()
-        .join(", ");
-
+pub async fn get_tracked_leagues(pool: Arc<PgPool>) -> Vec<LeagueConfigs> {
+    let statement = "SELECT name, slug FROM tracked_leagues WHERE is_enabled = TRUE";
     let conn = pool.acquire().await;
-
-    let statement = format!("DELETE FROM games WHERE league IN ({});", placeholders);
-
     if let Ok(mut connection) = conn {
-        let mut db_query = query(&statement);
-
-        for name in &league_names {
-            db_query = db_query.bind(name);
+        let result: Result<Vec<LeagueConfigs>, sqlx::Error> = query_as(statement).fetch_all(&mut *connection).await;
+        if let Ok(data) = result {
+            return data;
         }
+    }
+    Vec::new()
+}
 
-        let _ = db_query
-            .execute(&mut *connection)
-            .await
-            .inspect_err(|e| error!("Execution Error: {}", e));
-
-        info!("All rows with league_type {:?} have been deleted", league_names);
-    } else {
-        error!("Connection Error: Failed to acquire a connection from the pool");
+pub async fn seed_tracked_leagues(pool: Arc<PgPool>, leagues: Vec<LeagueConfigs>) {
+    let statement = "INSERT INTO tracked_leagues (name, slug) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING";
+    let conn = pool.acquire().await;
+    if let Ok(mut connection) = conn {
+        for league in leagues {
+            let _ = query(statement).bind(league.name).bind(league.slug).execute(&mut *connection).await;
+        }
     }
 }
 
 pub async fn upsert_game(pool: Arc<PgPool>, game: CleanedData) {
     let statement = "
-        INSERT INTO games (
-            league,
-            external_game_id,
-            link,
-            home_team_name,
-            home_team_logo,
-            home_team_score,
-            away_team_name,
-            away_team_logo,
-            away_team_score,
-            start_time,
-            short_detail,
-            state
-        )
+        INSERT INTO games (league, external_game_id, link, home_team_name, home_team_logo, home_team_score, away_team_name, away_team_logo, away_team_score, start_time, short_detail, state)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         ON CONFLICT (league, external_game_id)
-        DO UPDATE
-            SET link             = EXCLUDED.link,
-                home_team_name   = EXCLUDED.home_team_name,
-                home_team_logo   = EXCLUDED.home_team_logo,
-                home_team_score  = EXCLUDED.home_team_score,
-                away_team_name   = EXCLUDED.away_team_name,
-                away_team_logo   = EXCLUDED.away_team_logo,
-                away_team_score  = EXCLUDED.away_team_score,
-                start_time       = EXCLUDED.start_time,
-                short_detail     = EXCLUDED.short_detail,
-                state            = EXCLUDED.state,
-                updated_at       = CURRENT_TIMESTAMP;
+        DO UPDATE SET link = EXCLUDED.link, home_team_name = EXCLUDED.home_team_name, home_team_logo = EXCLUDED.home_team_logo, home_team_score = EXCLUDED.home_team_score, away_team_name = EXCLUDED.away_team_name, away_team_logo = EXCLUDED.away_team_logo, away_team_score = EXCLUDED.away_team_score, start_time = EXCLUDED.start_time, short_detail = EXCLUDED.short_detail, state = EXCLUDED.state, updated_at = CURRENT_TIMESTAMP;
     ";
-
     let conn = pool.acquire().await;
-
     if let Ok(mut connection) = conn {
-        let _ = query(statement)
-            .bind(&game.league)
-            .bind(game.external_game_id)
-            .bind(game.link)
-            .bind(game.home_team.name)
-            .bind(game.home_team.logo)
-            .bind(game.home_team.score)
-            .bind(game.away_team.name)
-            .bind(game.away_team.logo)
-            .bind(game.away_team.score)
-            .bind(game.start_time)
-            .bind(game.short_detail)
-            .bind(game.state)
-            .execute(&mut *connection)
-            .await
-            .inspect_err(|e| error!("Execution Error: {}", e));
-    } else {
-        error!("Connection Error: Failed to acquire a connection from the pool");
+        let _ = query(statement).bind(&game.league).bind(game.external_game_id).bind(game.link).bind(game.home_team.name).bind(game.home_team.logo).bind(game.home_team.score).bind(game.away_team.name).bind(game.away_team.logo).bind(game.away_team.score).bind(game.start_time).bind(game.short_detail).bind(game.state).execute(&mut *connection).await;
     }
 }
 
 pub async fn get_live_games(pool: &Arc<PgPool>) -> LiveLeagueList {
-    //TODO: This should be be pre! Testing only
-    let statement = "
-        SELECT league, COUNT(*) as count
-        FROM games
-        WHERE state = 'in'
-        GROUP BY league;
-    ";
-
+    let statement = "SELECT league, COUNT(*) as count FROM games WHERE state = 'in' GROUP BY league";
     let conn = pool.acquire().await;
-
     if let Ok(mut connection) = conn {
-        let result: Result<Vec<LiveByLeague>, sqlx::Error>= query_as(statement)
-            .fetch_all(&mut *connection)
-            .await
-            .inspect_err(|e| error!("Execution Error: {}", e));
-
-        if let Ok(data) = result {
-            return LiveLeagueList::new(data);
-        } else {
-            return LiveLeagueList::new(Vec::new());
-        }
-    } else {
-        error!("Connection Error: Failed to acquire a connection from the pool");
-        return LiveLeagueList::new(Vec::new());
+        let result: Result<Vec<LiveByLeague>, sqlx::Error>= query_as(statement).fetch_all(&mut *connection).await;
+        if let Ok(data) = result { return LiveLeagueList::new(data); }
     }
+    LiveLeagueList::new(Vec::new())
 }

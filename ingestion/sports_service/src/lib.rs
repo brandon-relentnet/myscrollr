@@ -1,134 +1,117 @@
-use std::{fs, sync::Arc};
-use chrono::NaiveDateTime;
+use std::{sync::Arc, fs};
 use reqwest::Client;
 use tokio::sync::Mutex;
-use crate::log::{info, warn};
-use crate::database::{PgPool, LeagueConfigs, CleanedData, Team, clear_tables, create_tables, get_live_games, upsert_game};
+use crate::log::{error, info};
+use crate::database::{PgPool, create_tables, get_tracked_leagues, seed_tracked_leagues, LeagueConfigs, upsert_game};
 
-use crate::types::ScoreboardResponse;
-
-mod types;
 pub mod log;
 pub mod database;
-
-pub use types::SportsHealth;
+pub mod types;
 
 pub async fn start_sports_service(pool: Arc<PgPool>, health_state: Arc<Mutex<SportsHealth>>) {
     info!("Starting sports service...");
-
-    info!("Creating sports tables...");
     create_tables(&pool).await;
 
-    let file_contents = fs::read_to_string("./configs/leagues.json").unwrap();
-    let leagues_to_ingest: Vec<LeagueConfigs> = serde_json::from_str(&file_contents).unwrap();
+    // Seed from JSON if database is empty
+    let existing = get_tracked_leagues(pool.clone()).await;
+    let leagues = if existing.is_empty() {
+        info!("Database tracked_leagues is empty, seeding from local config...");
+        if let Ok(file_contents) = fs::read_to_string("./configs/leagues.json") {
+            if let Ok(config) = serde_json::from_str::<Vec<LeagueConfigs>>(&file_contents) {
+                seed_tracked_leagues(pool.clone(), config.clone()).await;
+                config
+            } else { Vec::new() }
+        } else { Vec::new() }
+    } else {
+        existing
+    };
 
-    info!("Beginning league ingest");
-    ingest_data(leagues_to_ingest, &pool, health_state).await;
+    if leagues.is_empty() {
+        error!("No leagues to track. Sports service idling.");
+        return;
+    }
 
-    let live_games = get_live_games(&pool).await;
-    info!("Current live games by league: {}", live_games);
-}
-
-pub async fn poll_sports(leagues: Vec<LeagueConfigs>, pool: &Arc<PgPool>, health_state: Arc<Mutex<SportsHealth>>) {
-    info!("Frequent poll called for: {:?}", leagues);
-    ingest_data(leagues, pool, health_state).await;
-}
-
-async fn ingest_data(leagues: Vec<LeagueConfigs>, pool: &Arc<PgPool>, health_state: Arc<Mutex<SportsHealth>>) {
-    clear_tables(pool.clone(), leagues.clone()).await;
-
+    info!("Polling sports data for {} leagues...", leagues.len());
     let client = Client::new();
-    let mut total_games = 0u64;
-    let league_names: Vec<String> = leagues.iter().map(|l| l.name.clone()).collect();
 
     for league in leagues {
-        let (name, slug) = (league.name, league.slug);
-
-        let url = format!("https://site.api.espn.com/apis/site/v2/sports/{slug}/scoreboard");
-        info!("Fetching data for {name} ({slug})");
-
-        let request_result = client.get(url).build();
-
-        match request_result {
-            Ok(request) => {
-                match client.execute(request).await {
-                    Ok(res) => {
-                        match res.json::<ScoreboardResponse>().await {
-                            Ok(scoreboard) => {
-                                let games = scoreboard.events;
-                                info!("Fetched {} games for {name}", games.len());
-
-                                let cleaned_data: Result<Vec<CleanedData>, String> = games.iter().map(|game| {
-                                    let competition = &game.competitions[0];
-                                    let team_one = &competition.competitors[0];
-                                    let team_two = &competition.competitors[1];
-                                    let format = "%Y-%m-%dT%H:%M%Z";
-
-                                    let datetime_utc = NaiveDateTime::parse_from_str(&game.date, format)
-                                        .map_err(|e| format!("Date parse error for game {}: {}", game.id, e))?
-                                        .and_utc();
-
-                                    let score_one = team_one.score.parse::<i32>()
-                                        .map_err(|e| format!("Score parse error for team {}: {}", team_one.team.short_display_name, e))?;
-                                    let score_two = team_two.score.parse::<i32>()
-                                        .map_err(|e| format!("Score parse error for team {}: {}", team_two.team.short_display_name, e))?;
-
-                                    Ok(CleanedData {
-                                        league: name.clone(),
-                                        external_game_id: game.id.clone(),
-                                        link: game.links[0].href.clone(),
-                                        home_team: Team {
-                                            name: team_one.team.short_display_name.clone(),
-                                            logo: team_one.team.logo.clone(),
-                                            score: score_one
-                                        },
-                                        away_team: Team {
-                                            name: team_two.team.short_display_name.clone(),
-                                            logo: team_two.team.logo.clone(),
-                                            score: score_two,
-                                        },
-                                        start_time: datetime_utc,
-                                        short_detail: game.status.status_type.short_detail.clone(),
-                                        state: game.status.status_type.state.clone(),
-                                    })
-                                }).collect();
-
-                                match cleaned_data {
-                                    Ok(data) => {
-                                        let data_len = data.len();
-                                        for game in data {
-                                            upsert_game(pool.clone(), game).await;
-                                        }
-                                        total_games += data_len as u64;
-                                        info!("Upserted {} games for league {name}.", data_len);
-                                    }
-                                    Err(e) => {
-                                        warn!("Error processing games for {name}: {}", e);
-                                        health_state.lock().await.record_error(format!("Processing error for {}: {}", name, e));
-                                    }
-                                }
-                            }
-                            Err(e) => {
-                                warn!("Failed to parse response for {name}: {}", e);
-                                health_state.lock().await.record_error(format!("Parse error for {}: {}", name, e));
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        warn!("Failed to execute request for {name}: {}", e);
-                        health_state.lock().await.record_error(format!("Request error for {}: {}", name, e));
-                    }
+        match poll_league(&client, &league).await {
+            Ok(games) => {
+                for game in games {
+                    upsert_game(pool.clone(), game).await;
                 }
+                health_state.lock().await.record_success();
             }
             Err(e) => {
-                warn!("Failed to build request for {name}: {}", e);
-                health_state.lock().await.record_error(format!("Build error for {}: {}", name, e));
+                error!("Error polling league {}: {}", league.name, e);
+                health_state.lock().await.record_error(e.to_string());
             }
         }
     }
-
-    // Update health after successful poll
-    health_state.lock().await.update_poll(total_games, league_names);
 }
 
+async fn poll_league(client: &Client, league: &LeagueConfigs) -> anyhow::Result<Vec<crate::database::CleanedData>> {
+    let url = format!("https://site.api.espn.com/apis/site/v2/sports/{}/{}/scoreboard", league.slug.split('/').next().unwrap_or("football"), league.slug.split('/').last().unwrap_or("nfl"));
+    let resp = client.get(url).send().await?.json::<serde_json::Value>().await?;
+    
+    let mut cleaned_games = Vec::new();
+    if let Some(events) = resp.get("events").and_then(|e| e.as_array()) {
+        for event in events {
+            if let Some(game) = parse_espn_game(event, &league.name) {
+                cleaned_games.push(game);
+            }
+        }
+    }
+    Ok(cleaned_games)
+}
 
+fn parse_espn_game(event: &serde_json::Value, league_name: &str) -> Option<crate::database::CleanedData> {
+    let competition = event.get("competitions")?.get(0)?;
+    let home_team_node = competition.get("competitors")?.get(0)?;
+    let away_team_node = competition.get("competitors")?.get(1)?;
+
+    Some(crate::database::CleanedData {
+        league: league_name.to_string(),
+        external_game_id: event.get("id")?.as_str()?.to_string(),
+        link: event.get("links")?.get(0)?.get("href")?.as_str()?.to_string(),
+        home_team: crate::database::Team {
+            name: home_team_node.get("team")?.get("displayName")?.as_str()?.to_string(),
+            logo: home_team_node.get("team")?.get("logo")?.as_str()?.to_string(),
+            score: home_team_node.get("score")?.as_str()?.parse().unwrap_or(0),
+        },
+        away_team: crate::database::Team {
+            name: away_team_node.get("team")?.get("displayName")?.as_str()?.to_string(),
+            logo: away_team_node.get("team")?.get("logo")?.as_str()?.to_string(),
+            score: away_team_node.get("score")?.as_str()?.parse().unwrap_or(0),
+        },
+        start_time: chrono::DateTime::parse_from_rfc3339(event.get("date")?.as_str()?).ok()?.with_timezone(&chrono::Utc),
+        short_detail: competition.get("status")?.get("type")?.get("shortDetail")?.as_str()?.to_string(),
+        state: competition.get("status")?.get("type")?.get("state")?.as_str()?.to_string(),
+    })
+}
+
+#[derive(serde::Serialize)]
+pub struct SportsHealth {
+    pub status: String,
+    pub last_poll: Option<chrono::DateTime<Utc>>,
+    pub error_count: u64,
+    pub last_error: Option<String>,
+}
+
+impl SportsHealth {
+    pub fn new() -> Self {
+        Self { status: "healthy".to_string(), last_poll: None, error_count: 0, last_error: None }
+    }
+    pub fn record_success(&mut self) {
+        self.last_poll = Some(Utc::now());
+        self.status = "healthy".to_string();
+    }
+    pub fn record_error(&mut self, err: String) {
+        self.error_count += 1;
+        self.last_error = Some(err);
+        self.status = "degraded".to_string();
+    }
+    pub fn get_health(&self) -> Self {
+        Self { status: self.status.clone(), last_poll: self.last_poll, error_count: self.error_count, last_error: self.last_error.clone() }
+    }
+}

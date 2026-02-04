@@ -14,20 +14,13 @@ pub async fn initialize_pool() -> Result<PgPool> {
         .idle_timeout(Duration::from_millis(30_000));
 
     if let Ok(mut database_url) = env::var("DATABASE_URL") {
-        // Clean up the URL: trim whitespace and remove accidental quotes
         database_url = database_url.trim().trim_matches('"').trim_matches('\'').to_string();
-
-        // Fix missing // after protocol
         if database_url.starts_with("postgres:") && !database_url.starts_with("postgres://") {
             database_url = database_url.replacen("postgres:", "postgres://", 1);
         } else if database_url.starts_with("postgresql:") && !database_url.starts_with("postgresql://") {
             database_url = database_url.replacen("postgresql:", "postgresql://", 1);
         }
-
-        let pool = pool_options
-            .connect(&database_url)
-            .await
-            .context("Failed to connect to the PostgreSQL database via DATABASE_URL")?;
+        let pool = pool_options.connect(&database_url).await.context("Failed to connect to the PostgreSQL database via DATABASE_URL")?;
         return Ok(pool);
     }
 
@@ -41,26 +34,11 @@ pub async fn initialize_pool() -> Result<PgPool> {
     let password = get_env_var("DB_PASSWORD")?;
     let database = get_env_var("DB_DATABASE")?;
 
-    let host = if let Some(fixed) = raw_host.strip_prefix("db.") {
-        fixed
-    } else {
-        &raw_host
-    };
-
+    let host = if let Some(fixed) = raw_host.strip_prefix("db.") { fixed } else { &raw_host };
     let port: u16 = port_str.parse().context("DB_PORT must be a valid u16 integer")?;
 
-    let connect_options = PgConnectOptions::new()
-        .host(host)
-        .port(port)
-        .username(&user)
-        .password(&password)
-        .database(&database);
-
-    let pool = pool_options
-        .connect_with(connect_options)
-        .await
-        .context("Failed to connect to the PostgreSQL database")?;
-
+    let connect_options = PgConnectOptions::new().host(host).port(port).username(&user).password(&password).database(&database);
+    let pool = pool_options.connect_with(connect_options).await.context("Failed to connect to the PostgreSQL database")?;
     Ok(pool)
 }
 
@@ -76,7 +54,8 @@ pub struct DatabaseTradeData {
 }
 
 pub async fn create_tables(pool: Arc<PgPool>) {
-    let statement = "
+    // 1. Create trades table
+    let trades_statement = "
         CREATE TABLE IF NOT EXISTS trades (
             id SERIAL PRIMARY KEY,
             symbol VARCHAR(30) UNIQUE NOT NULL,
@@ -90,116 +69,65 @@ pub async fn create_tables(pool: Arc<PgPool>) {
         );
     ";
 
-    let conn = pool.acquire().await;
+    // 2. Create tracked_symbols table for dynamic config
+    let config_statement = "
+        CREATE TABLE IF NOT EXISTS tracked_symbols (
+            id SERIAL PRIMARY KEY,
+            symbol VARCHAR(30) UNIQUE NOT NULL,
+            is_enabled BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+    ";
 
+    let conn = pool.acquire().await;
     if let Ok(mut connection) = conn {
-        let _ = query(statement)
-            .execute(&mut *connection)
-            .await
-            .inspect_err(|e| error!("Execution Error: {}", e));
-    } else {
-        error!("Connection Error: Failed to acquire a connection from the pool");
+        let _ = query(trades_statement).execute(&mut *connection).await;
+        let _ = query(config_statement).execute(&mut *connection).await;
+    }
+}
+
+pub async fn get_tracked_symbols(pool: Arc<PgPool>) -> Vec<String> {
+    let statement = "SELECT symbol FROM tracked_symbols WHERE is_enabled = TRUE";
+    let conn = pool.acquire().await;
+    if let Ok(mut connection) = conn {
+        let result: Result<Vec<(String,)>, sqlx::Error> = query_as(statement).fetch_all(&mut *connection).await;
+        if let Ok(data) = result {
+            return data.into_iter().map(|(s,)| s).collect();
+        }
+    }
+    Vec::new()
+}
+
+pub async fn seed_tracked_symbols(pool: Arc<PgPool>, symbols: Vec<String>) {
+    let statement = "INSERT INTO tracked_symbols (symbol) VALUES ($1) ON CONFLICT (symbol) DO NOTHING";
+    let conn = pool.acquire().await;
+    if let Ok(mut connection) = conn {
+        for symbol in symbols {
+            let _ = query(statement).bind(symbol).execute(&mut *connection).await;
+        }
     }
 }
 
 pub async fn insert_symbol(pool: Arc<PgPool>, symbol: String) {
-    let statement = "
-        INSERT INTO trades (symbol)
-            VALUES ($1)
-        ON CONFLICT (symbol) DO NOTHING
-    ";
-
+    let statement = "INSERT INTO trades (symbol) VALUES ($1) ON CONFLICT (symbol) DO NOTHING";
     let conn = pool.acquire().await;
-
     if let Ok(mut connection) = conn {
-        let _ = query(statement)
-            .bind(symbol)
-            .execute(&mut *connection)
-            .await
-            .inspect_err(|e| error!("Execution Error: {}", e));
-    } else {
-        error!("Connection Error: Failed to acquire a connection from the pool");
+        let _ = query(statement).bind(symbol).execute(&mut *connection).await;
     }
 }
 
 pub async fn update_previous_close(pool: Arc<PgPool>, symbol: String, prev_close: f64) {
-    let statement = "
-        UPDATE trades
-            SET previous_close = $1
-            WHERE symbol = $2
-    ";
-
+    let statement = "UPDATE trades SET previous_close = $1 WHERE symbol = $2";
     let conn = pool.acquire().await;
-
     if let Ok(mut connection) = conn {
-        let _ = query(statement)
-            .bind(prev_close)
-            .bind(symbol)
-            .execute(&mut *connection)
-            .await
-            .inspect_err(|e| error!("Execution Error: {}", e));
-    } else {
-        error!("Connection Error: Failed to acquire a connection from the pool");
+        let _ = query(statement).bind(prev_close).bind(symbol).execute(&mut *connection).await;
     }
 }
 
 pub async fn update_trade(pool: Arc<PgPool>, symbol: String, price: f64, price_change: f64, percentage_change: f64, direction: &str) {
-    let statement = "
-        UPDATE trades
-            SET price = $1,
-                price_change = $2,
-                percentage_change = $3,
-                direction = $4,
-                last_updated = CURRENT_TIMESTAMP
-            WHERE symbol = $5
-    ";
-
+    let statement = "UPDATE trades SET price = $1, price_change = $2, percentage_change = $3, direction = $4, last_updated = CURRENT_TIMESTAMP WHERE symbol = $5";
     let conn = pool.acquire().await;
-
     if let Ok(mut connection) = conn {
-        let _ = query(statement)
-            .bind(price)
-            .bind(price_change)
-            .bind(percentage_change)
-            .bind(direction)
-            .bind(symbol)
-            .execute(&mut *connection)
-            .await
-            .inspect_err(|e| error!("Execution Error: {}", e));
-    } else {
-        error!("Connection Error: Failed to acquire a connection from the pool");
-    }
-}
-
-pub async fn get_trades(pool: Arc<PgPool>) -> Vec<DatabaseTradeData> {
-    let statement = "
-        SELECT
-            symbol,
-            price::FLOAT8 as price,
-            previous_close::FLOAT8 as previous_close,
-            price_change::FLOAT8 as price_change,
-            percentage_change::FLOAT8 as percentage_change,
-            direction,
-            last_updated
-        FROM trades
-        ORDER BY symbol ASC
-    ";
-
-    let conn = pool.acquire().await;
-
-    if let Ok(mut connection) = conn {
-        let result: Result<Vec<DatabaseTradeData>, sqlx::Error> = query_as(statement)
-            .fetch_all(&mut *connection)
-            .await
-            .inspect_err(|e| error!("Execution Error: {}", e));
-
-        if let Ok(data) = result {
-            return data;
-        } else {
-            return Vec::new();
-        }
-    } else {
-        error!("Connection Error: Failed to acquire a connection from the pool");
-        return Vec::new();
+        let _ = query(statement).bind(price).bind(price_change).bind(percentage_change).bind(direction).bind(symbol).execute(&mut *connection).await;
     }
 }

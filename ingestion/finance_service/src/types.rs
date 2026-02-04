@@ -72,10 +72,7 @@ pub struct FinanceState {
 }
 
 impl FinanceState {
-    pub fn new(pool: Arc<PgPool>) -> Self {
-        let file_contents = fs::read_to_string("./configs/subscriptions.json").expect("Finance configs missing...");
-        let subscriptions = serde_json::from_str(&file_contents).expect("Failed parsing finance configs as Json");
-
+    pub async fn new(pool: Arc<PgPool>) -> Self {
         let api_key = env::var("FINNHUB_API_KEY").expect("Finnhub API key needs to be set in .env");
 
         let mut headers: HeaderMap = HeaderMap::new();
@@ -85,6 +82,9 @@ impl FinanceState {
             .default_headers(headers)
             .timeout(Duration::from_millis(10_000))
             .build().expect("Failed creating finance Reqwest Client");
+
+        // Load symbols from database instead of file
+        let subscriptions = crate::database::get_tracked_symbols(pool.clone()).await;
 
         Self {
             api_key,
