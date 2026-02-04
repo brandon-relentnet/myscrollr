@@ -1,3 +1,4 @@
+use axum::{routing::get, Router, Json};
 use dotenv::dotenv;
 use std::time::Duration;
 use tokio::time::sleep;
@@ -13,12 +14,25 @@ async fn main() {
 
     let _state = YahooWorkerState::new().await;
 
+    // Start a tiny health server
+    let app = Router::new()
+        .route("/health", get(|| async { 
+            Json(serde_json::json!({ "status": "healthy", "service": "yahoo_worker" })) 
+        }));
+
+    let port = std::env::var("PORT").unwrap_or_else(|_| "3003".to_string());
+    let addr = format!("0.0.0.0:{}", port);
+    
+    tokio::spawn(async move {
+        let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
+        println!("Yahoo Health Server listening on {}", addr);
+        axum::serve(listener, app).await.unwrap();
+    });
+
     println!("Yahoo Worker is now running in background mode.");
 
     loop {
-        // This is where future background tasks (like refreshing league data for active users) will go.
-        // For now, we just keep the process alive to match the worker pattern.
-        
+        // Future background tasks go here
         sleep(Duration::from_secs(3600)).await;
     }
 }
