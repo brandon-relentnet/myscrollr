@@ -21,12 +21,30 @@ var yahooConfig *oauth2.Config
 func InitYahoo() {
 	clientID := os.Getenv("YAHOO_CLIENT_ID")
 	clientSecret := os.Getenv("YAHOO_CLIENT_SECRET")
+	
+	// Try DOMAIN_NAME first, then fall back to COOLIFY_FQDN
 	domain := os.Getenv("DOMAIN_NAME")
+	if domain == "" {
+		domain = os.Getenv("COOLIFY_FQDN")
+	}
+
+	// Clean up domain: strip protocol if user accidentally included it
+	domain = strings.TrimPrefix(domain, "https://")
+	domain = strings.TrimPrefix(domain, "http://")
+	domain = strings.TrimSuffix(domain, "/")
+
 	callbackPath := os.Getenv("YAHOO_CALLBACK_URL")
+	if callbackPath == "" {
+		callbackPath = "/yahoo/callback"
+	}
 
 	// Ensure callback path starts with /
 	if !strings.HasPrefix(callbackPath, "/") {
 		callbackPath = "/" + callbackPath
+	}
+
+	if domain == "" {
+		log.Println("[Yahoo Warning] No domain found in DOMAIN_NAME or COOLIFY_FQDN. Redirects will fail.")
 	}
 
 	redirectURL := fmt.Sprintf("https://%s%s", domain, callbackPath)
