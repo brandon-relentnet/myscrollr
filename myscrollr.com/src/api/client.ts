@@ -6,20 +6,26 @@ interface RequestOptions extends RequestInit {
   requiresAuth?: boolean
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+// Get access token - call this from a component that uses useLogto
+export async function getAccessToken(): Promise<string | null> {
+  try {
+    const { fetchAccessToken } = await import('@logto/react')
+    const result = await fetchAccessToken()
+    return result?.accessToken || null
+  } catch {
+    return null
+  }
+}
+
+async function request<T>(path: string, options: RequestOptions = {}, token?: string): Promise<T> {
   const { requiresAuth = false, ...fetchOptions } = options
 
   const headers: HeadersInit = {
     ...options.headers,
   }
 
-  if (requiresAuth) {
-    // Get access token from Logto
-    const { getAccessToken } = await import('@logto/react')
-    const token = await getAccessToken()
-    if (token) {
-      (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
-    }
+  if (requiresAuth && token) {
+    (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
   }
 
   const response = await fetch(`${API_BASE}${path}`, {
@@ -48,17 +54,17 @@ export const profileApi = {
   }>(`/users/${username}`),
 
   // Get current user's full profile
-  getMyProfile: () => request<{
+  getMyProfile: (token: string) => request<{
     username: string
     display_name?: string
     bio?: string
     is_public: boolean
     connected_yahoo: boolean
     last_sync?: string
-  }>('/users/me/profile', { requiresAuth: true }),
+  }>('/users/me/profile', { requiresAuth: true }, token),
 
   // Update profile
-  update: (data: {
+  update: (token: string, data: {
     display_name?: string
     bio?: string
     is_public?: boolean
@@ -66,25 +72,25 @@ export const profileApi = {
     method: 'PATCH',
     body: JSON.stringify(data),
     requiresAuth: true,
-  }),
+  }, token),
 
   // Set username (can only be done once)
-  setUsername: (username: string) => request('/users/me/username', {
+  setUsername: (token: string, username: string) => request('/users/me/username', {
     method: 'POST',
     body: JSON.stringify({ username }),
     requiresAuth: true,
-  }),
+  }, token),
 
   // Disconnect Yahoo account
-  disconnectYahoo: () => request('/users/me/disconnect/yahoo', {
+  disconnectYahoo: (token: string) => request('/users/me/disconnect/yahoo', {
     method: 'POST',
     requiresAuth: true,
-  }),
+  }, token),
 }
 
 // Dashboard API (for fetching user data)
 export const dashboardApi = {
-  get: () => request<{
+  get: (token: string) => request<{
     finance: Array<{
       symbol: string
       price: number
@@ -113,11 +119,11 @@ export const dashboardApi = {
       // Yahoo fantasy content structure
       [key: string]: unknown
     }
-  }>('/dashboard', { requiresAuth: true }),
+  }>('/dashboard', { requiresAuth: true }, token),
 }
 
 // Yahoo API
 export const yahooApi = {
-  startOAuth: () => request<{ url: string }>('/yahoo/start', { requiresAuth: true }),
-  getLeagues: () => request<unknown>('/yahoo/leagues', { requiresAuth: true }),
+  startOAuth: (token: string) => request<{ url: string }>('/yahoo/start', { requiresAuth: true }, token),
+  getLeagues: (token: string) => request<unknown>('/yahoo/leagues', { requiresAuth: true }, token),
 }

@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useLogto, type IdTokenClaims } from '@logto/react'
+import { useLogto } from '@logto/react'
 import { useEffect, useState } from 'react'
-import { User, Settings, Shield, Link as LinkIcon, Check, X, AlertCircle, Loader2 } from 'lucide-react'
-import { profileApi } from '@/api/client'
+import { Settings, Shield, Link as LinkIcon, Check, AlertCircle, Loader2 } from 'lucide-react'
+import { profileApi, getAccessToken } from '@/api/client'
 
 export const Route = createFileRoute('/u/$username')({
   component: ProfilePage,
@@ -19,12 +19,13 @@ interface ProfileData {
 
 function ProfilePage() {
   const { username } = Route.useParams()
-  const { isAuthenticated, isLoading, getIdTokenClaims } = useLogto()
+  const { isAuthenticated, getIdTokenClaims } = useLogto()
   const [profile, setProfile] = useState<ProfileData | null>(null)
   const [myProfile, setMyProfile] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isOwnProfile, setIsOwnProfile] = useState(false)
+  const [accessToken, setAccessToken] = useState<string | null>(null)
 
   // Settings form state
   const [editing, setEditing] = useState(false)
@@ -35,9 +36,13 @@ function ProfilePage() {
     is_public: true,
   })
   const [usernameForm, setUsernameForm] = useState('')
-  const [showUsernameModal, setShowUsernameModal] = useState(false)
   const [usernameSaving, setUsernameSaving] = useState(false)
   const [usernameError, setUsernameError] = useState<string | null>(null)
+
+  // Get access token on mount
+  useEffect(() => {
+    getAccessToken().then(setAccessToken)
+  }, [])
 
   useEffect(() => {
     async function fetchProfiles() {
@@ -52,10 +57,10 @@ function ProfilePage() {
         // Check if this is the current user's profile
         if (isAuthenticated) {
           const claims = await getIdTokenClaims()
-          if (claims?.sub) {
+          if (claims?.sub && accessToken) {
             // We need to fetch my profile to compare usernames
             try {
-              const myData = await profileApi.getMyProfile()
+              const myData = await profileApi.getMyProfile(accessToken)
               setMyProfile(myData)
               setIsOwnProfile(myData.username === username)
               setFormData({
@@ -76,14 +81,15 @@ function ProfilePage() {
     }
 
     fetchProfiles()
-  }, [username, isAuthenticated, getIdTokenClaims])
+  }, [username, isAuthenticated, getIdTokenClaims, accessToken])
 
   const handleSaveSettings = async () => {
+    if (!accessToken) return
     setSaving(true)
     setError(null)
 
     try {
-      await profileApi.update(formData)
+      await profileApi.update(accessToken, formData)
       setMyProfile(prev => prev ? { ...prev, ...formData } : null)
       setProfile(prev => prev ? { ...prev, ...formData } : null)
       setEditing(false)
@@ -95,7 +101,7 @@ function ProfilePage() {
   }
 
   const handleSetUsername = async () => {
-    if (!usernameForm || usernameForm.length < 3) {
+    if (!accessToken || !usernameForm || usernameForm.length < 3) {
       setUsernameError('Username must be at least 3 characters')
       return
     }
@@ -104,11 +110,10 @@ function ProfilePage() {
     setUsernameError(null)
 
     try {
-      await profileApi.setUsername(usernameForm)
-      const myData = await profileApi.getMyProfile()
+      await profileApi.setUsername(accessToken, usernameForm)
+      const myData = await profileApi.getMyProfile(accessToken)
       setMyProfile(myData)
       setIsOwnProfile(myData.username === username)
-      setShowUsernameModal(false)
       setProfile(myData)
     } catch (err) {
       setUsernameError(err instanceof Error ? err.message : 'Failed to set username')
@@ -118,12 +123,13 @@ function ProfilePage() {
   }
 
   const handleDisconnectYahoo = async () => {
+    if (!accessToken) return
     if (!confirm('Are you sure you want to disconnect your Yahoo account? This will remove all your fantasy data.')) {
       return
     }
 
     try {
-      await profileApi.disconnectYahoo()
+      await profileApi.disconnectYahoo(accessToken)
       setMyProfile(prev => prev ? { ...prev, connected_yahoo: false } : null)
       setProfile(prev => prev ? { ...prev, connected_yahoo: false } : null)
     } catch (err) {
@@ -253,7 +259,7 @@ function ProfilePage() {
         {/* Not your profile message */}
         {!isOwnProfile && isAuthenticated && (
           <div className="text-center py-8">
-            <p className="text-gray-400 mb-4">This is {displayProfile.username}'s profile</p>
+            <p className="text-gray-400 mb-4">This is {displayProfile.username}&apos;s profile</p>
             <a
               href="/u/me"
               className="text-indigo-400 hover:text-indigo-300"
