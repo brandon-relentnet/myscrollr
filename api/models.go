@@ -30,3 +30,9 @@ type Trade struct {
 	Direction        string    `json:"direction"`
 	LastUpdated      time.Time `json:"last_updated"`
 }
+
+type DashboardResponse struct {
+	Finance []Trade         `json:"finance"`
+	Sports  []Game          `json:"sports"`
+	Yahoo   *FantasyContent `json:"yahoo,omitempty"`
+}

@@ -14,14 +14,14 @@ pub struct Tokens {
     pub access_type: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct Leagues {
     pub nba: Vec<UserLeague>,
     pub nfl: Vec<UserLeague>,
     pub nhl: Vec<UserLeague>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct UserLeague {
     pub league_key: String,
     pub league_id: u32,

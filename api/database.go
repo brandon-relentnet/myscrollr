@@ -63,4 +63,27 @@ func ConnectDB() {
 
 	dbPool = pool
 	log.Println("Successfully connected to PostgreSQL database")
+
+	// Ensure yahoo_users table exists
+	_, err = dbPool.Exec(context.Background(), `
+		CREATE TABLE IF NOT EXISTS yahoo_users (
+			guid VARCHAR(100) PRIMARY KEY,
+			refresh_token TEXT NOT NULL,
+			last_sync TIMESTAMP WITH TIME ZONE,
+			created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+		);
+	`)
+	if err != nil {
+		log.Printf("Warning: Failed to create yahoo_users table: %v", err)
+	}
+}
+
+func UpsertYahooUser(guid, refreshToken string) error {
+	_, err := dbPool.Exec(context.Background(), `
+		INSERT INTO yahoo_users (guid, refresh_token)
+		VALUES ($1, $2)
+		ON CONFLICT (guid) DO UPDATE
+		SET refresh_token = EXCLUDED.refresh_token;
+	`, guid, refreshToken)
+	return err
 }

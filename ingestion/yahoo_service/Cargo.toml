@@ -13,4 +13,8 @@ log = "0.4"
 anyhow = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "macros", "chrono"] }
+redis = { version = "0.28", features = ["tokio-comp"] }
+reqwest = { version = "0.12", features = ["json"] }
 yahoo_fantasy = { path = "./yahoo_fantasy" }
+secrecy = "0.10"
+futures-util = "0.3"

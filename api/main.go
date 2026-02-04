@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"log"
 	"net/http"
@@ -69,6 +70,7 @@ func main() {
 	// --- Data Routes ---
 	app.Get("/sports", GetSports)
 	app.Get("/finance", GetFinance)
+	app.Get("/dashboard", GetDashboard)
 
 	// --- Yahoo OAuth & Data ---
 	app.Get("/yahoo/start", YahooStart)
@@ -316,4 +318,62 @@ func GetFinance(c *fiber.Ctx) error {
 	SetCache("cache:finance", trades, 30*time.Second)
 	c.Set("X-Cache", "MISS")
 	return c.JSON(trades)
+}
+
+func GetDashboard(c *fiber.Ctx) error {
+	res := DashboardResponse{
+		Finance: make([]Trade, 0),
+		Sports:  make([]Game, 0),
+	}
+
+	// 1. Finance (from cache or DB)
+	if !GetCache("cache:finance", &res.Finance) {
+		rows, err := dbPool.Query(context.Background(), "SELECT symbol, price, previous_close, price_change, percentage_change, direction, last_updated FROM trades ORDER BY symbol ASC")
+		if err == nil {
+			for rows.Next() {
+				var t Trade
+				if err := rows.Scan(&t.Symbol, &t.Price, &t.PreviousClose, &t.PriceChange, &t.PercentageChange, &t.Direction, &t.LastUpdated); err == nil {
+					res.Finance = append(res.Finance, t)
+				}
+			}
+			rows.Close()
+			SetCache("cache:finance", res.Finance, 30*time.Second)
+		}
+	}
+
+	// 2. Sports (from cache or DB)
+	if !GetCache("cache:sports", &res.Sports) {
+		rows, err := dbPool.Query(context.Background(), "SELECT id, league, external_game_id, link, home_team_name, home_team_logo, home_team_score, away_team_name, away_team_logo, away_team_score, start_time, short_detail, state FROM games ORDER BY start_time DESC LIMIT 20")
+		if err == nil {
+			for rows.Next() {
+				var g Game
+				if err := rows.Scan(&g.ID, &g.League, &g.ExternalGameID, &g.Link, &g.HomeTeamName, &g.HomeTeamLogo, &g.HomeTeamScore, &g.AwayTeamName, &g.AwayTeamLogo, &g.AwayTeamScore, &g.StartTime, &g.ShortDetail, &g.State); err == nil {
+					res.Sports = append(res.Sports, g)
+				}
+			}
+			rows.Close()
+			SetCache("cache:sports", res.Sports, 30*time.Second)
+		}
+	}
+
+	// 3. Yahoo (Optional, only if authenticated)
+	guid := getGuid(c)
+	if guid != "" {
+		cacheKey := "cache:yahoo:leagues:" + guid
+		var yahooContent FantasyContent
+		if GetCache(cacheKey, &yahooContent) {
+			res.Yahoo = &yahooContent
+		} else {
+			var data []byte
+			err := dbPool.QueryRow(context.Background(), "SELECT data FROM yahoo_leagues WHERE guid = $1 LIMIT 1", guid).Scan(&data)
+			if err == nil {
+				if err := json.Unmarshal(data, &yahooContent); err == nil {
+					res.Yahoo = &yahooContent
+					SetCache(cacheKey, yahooContent, 5*time.Minute)
+				}
+			}
+		}
+	}
+
+	return c.JSON(res)
 }

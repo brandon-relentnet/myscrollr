@@ -16,7 +16,8 @@ type Users struct {
 }
 
 type User struct {
-	Games Games `xml:"games" json:"games"`
+	Guid  string `xml:"guid" json:"guid"`
+	Games Games  `xml:"games" json:"games"`
 }
 
 type Games struct {

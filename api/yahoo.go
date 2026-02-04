@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -54,6 +55,13 @@ func getToken(c *fiber.Ctx) string {
 		}
 	}
 	return token
+}
+
+func getGuid(c *fiber.Ctx) string {
+	token := getToken(c)
+	if token == "" { return "" }
+	guid, _ := rdb.Get(context.Background(), "token_to_guid:"+token).Result()
+	return guid
 }
 
 func fetchYahoo(c *fiber.Ctx, url string) ([]byte, error) {
@@ -108,6 +116,29 @@ func YahooCallback(c *fiber.Ctx) error {
 	c.Cookie(&fiber.Cookie{Name: "yahoo-auth", Value: token.AccessToken, Expires: time.Now().Add(24 * time.Hour), HTTPOnly: true, Secure: true, SameSite: "Lax", Path: "/"})
 	if token.RefreshToken != "" {
 		c.Cookie(&fiber.Cookie{Name: "yahoo-refresh", Value: token.RefreshToken, Expires: time.Now().Add(30 * 24 * time.Hour), HTTPOnly: true, Secure: true, SameSite: "Lax", Path: "/"})
+		
+		// Fetch GUID and persist for Active Sync
+		go func(accessToken, refreshToken string) {
+			client := &http.Client{}
+			req, _ := http.NewRequest("GET", "https://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1", nil)
+			req.Header.Set("Authorization", "Bearer "+accessToken)
+			resp, err := client.Do(req)
+			if err == nil {
+				defer resp.Body.Close()
+				body, _ := io.ReadAll(resp.Body)
+				var content FantasyContent
+				if err := xml.Unmarshal(body, &content); err == nil && content.Users != nil && len(content.Users.User) > 0 {
+					guid := content.Users.User[0].Guid
+					if guid != "" {
+						UpsertYahooUser(guid, refreshToken)
+						log.Printf("[Yahoo Sync] Registered user %s for active sync", guid)
+						
+						// Note: we can't set cookie from goroutine, but we can store in Redis
+						rdb.Set(context.Background(), "token_to_guid:"+accessToken, guid, 24*time.Hour)
+					}
+				}
+			}
+		}(token.AccessToken, token.RefreshToken)
 	}
 
 	html := fmt.Sprintf(`<!doctype html><html><head><meta charset="utf-8"><title>Auth Complete</title></head>
@@ -118,14 +149,33 @@ func YahooCallback(c *fiber.Ctx) error {
 }
 
 func YahooLeagues(c *fiber.Ctx) error {
-	token := getToken(c)
-	cacheKey := "cache:yahoo:leagues:" + token[:10]
+	guid := getGuid(c)
+	cacheKey := "cache:yahoo:leagues:" + guid
+	if guid == "" {
+		token := getToken(c)
+		if token != "" { cacheKey = "cache:yahoo:leagues:" + token[:10] }
+	}
+
 	var content FantasyContent
 	if GetCache(cacheKey, &content) {
 		c.Set("X-Cache", "HIT")
 		return c.JSON(content)
 	}
 
+	// Try Database (Active Sync)
+	if guid != "" {
+		var data []byte
+		err := dbPool.QueryRow(context.Background(), "SELECT data FROM yahoo_leagues WHERE guid = $1 LIMIT 1", guid).Scan(&data)
+		if err == nil {
+			if err := json.Unmarshal(data, &content); err == nil {
+				SetCache(cacheKey, content, 5*time.Minute)
+				c.Set("X-Cache", "DB-HIT")
+				return c.JSON(content)
+			}
+		}
+	}
+
+	// Fallback to Live API
 	body, err := fetchYahoo(c, "https://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1/games;game_keys=nfl,nba,nhl/leagues")
 	if err != nil { return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Status: "unauthorized", Error: err.Error()}) }
 	if err := xml.Unmarshal(body, &content); err != nil { return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to parse Yahoo data"}) }

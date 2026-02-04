@@ -1,8 +1,6 @@
-use axum::{routing::get, Router, Json};
+use axum::{routing::get, Router, Json, extract::State};
 use dotenv::dotenv;
-use std::time::Duration;
-use tokio::time::sleep;
-use yahoo_service::{log::init_async_logger, YahooWorkerState};
+use yahoo_service::{log::init_async_logger, YahooWorkerState, start_active_sync};
 
 #[tokio::main]
 async fn main() {
@@ -12,13 +10,13 @@ async fn main() {
     let _ = init_async_logger("./logs");
     println!("Yahoo Worker Service starting...");
 
-    let _state = YahooWorkerState::new().await;
+    let state = YahooWorkerState::new().await;
 
     // Start a tiny health server
+    let health_state = state.clone();
     let app = Router::new()
-        .route("/health", get(|| async { 
-            Json(serde_json::json!({ "status": "healthy", "service": "yahoo_worker" })) 
-        }));
+        .route("/health", get(health_handler))
+        .with_state(health_state);
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3003".to_string());
     let addr = format!("0.0.0.0:{}", port);
@@ -29,10 +27,11 @@ async fn main() {
         axum::serve(listener, app).await.unwrap();
     });
 
-    println!("Yahoo Worker is now running in background mode.");
+    // Start the active sync loop
+    start_active_sync(state).await;
+}
 
-    loop {
-        // Future background tasks go here
-        sleep(Duration::from_secs(3600)).await;
-    }
+async fn health_handler(State(state): State<YahooWorkerState>) -> Json<yahoo_fantasy::types::YahooHealth> {
+    let health = state.health.lock().await.get_health();
+    Json(health)
 }
