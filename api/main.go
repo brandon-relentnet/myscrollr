@@ -51,6 +51,7 @@ func main() {
 	defer rdb.Close()
 
 	InitYahoo()
+	InitAuth()
 
 	app := fiber.New(fiber.Config{
 		AppName: "Scrollr API",
@@ -61,27 +62,30 @@ func main() {
 
 	app.Get("/swagger/*", swagger.HandlerDefault)
 
-	// --- Health Routes ---
+	// --- Public Routes ---
 	app.Get("/health", HealthCheck)
 	app.Get("/sports/health", SportsHealth)
 	app.Get("/finance/health", FinanceHealth)
 	app.Get("/yahoo/health", YahooHealth)
-
-	// --- Data Routes ---
-	app.Get("/sports", GetSports)
-	app.Get("/finance", GetFinance)
-	app.Get("/dashboard", GetDashboard)
-
-	// --- Yahoo OAuth & Data ---
-	app.Get("/yahoo/start", YahooStart)
 	app.Get("/yahoo/callback", YahooCallback)
-	app.Get("/yahoo/leagues", YahooLeagues)
-	app.Get("/yahoo/league/:league_key/standings", YahooStandings)
-	app.Get("/yahoo/team/:team_key/matchups", YahooMatchups)
-	app.Get("/yahoo/team/:team_key/roster", YahooRoster)
-
-	// --- Root Landing Page ---
+	app.Get("/login", LogtoLogin)
+	app.Get("/callback", LogtoCallback)
 	app.Get("/", LandingPage)
+
+	// --- Protected Routes (Logto) ---
+	api := app.Group("/", LogtoAuth)
+
+	// Data Routes
+	api.Get("/sports", GetSports)
+	api.Get("/finance", GetFinance)
+	api.Get("/dashboard", GetDashboard)
+
+	// Yahoo OAuth & Data
+	api.Get("/yahoo/start", YahooStart)
+	api.Get("/yahoo/leagues", YahooLeagues)
+	api.Get("/yahoo/league/:league_key/standings", YahooStandings)
+	api.Get("/yahoo/team/:team_key/matchups", YahooMatchups)
+	api.Get("/yahoo/team/:team_key/roster", YahooRoster)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -160,11 +164,11 @@ func LandingPage(c *fiber.Ctx) error {
 
         <!-- Call to Actions -->
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="/swagger/index.html" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-8 rounded-xl transition-all text-center shadow-lg shadow-indigo-500/20">
-                Explore Documentation
+            <a href="/login" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-8 rounded-xl transition-all text-center shadow-lg shadow-indigo-500/20">
+                Sign In with Scrollr
             </a>
-            <a href="/health" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-8 rounded-xl transition-all text-center border border-slate-700">
-                View Raw Health
+            <a href="/swagger/index.html" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-8 rounded-xl transition-all text-center border border-slate-700">
+                Explore Documentation
             </a>
         </div>
 
