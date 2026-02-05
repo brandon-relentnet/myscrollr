@@ -74,19 +74,22 @@ func GetProfileByUsername(c *fiber.Ctx) error {
 	}
 
 	var profile Profile
+	var displayName, bio sql.NullString
 	err := dbPool.QueryRow(context.Background(), `
-		SELECT user_id, username, display_name, bio, is_public, created_at, updated_at
+		SELECT user_id, username, COALESCE(display_name, ''), COALESCE(bio, ''), is_public, created_at, updated_at
 		FROM profiles
 		WHERE username = $1
 	`, username).Scan(
 		&profile.UserID,
 		&profile.Username,
-		&profile.DisplayName,
-		&profile.Bio,
+		&displayName,
+		&bio,
 		&profile.IsPublic,
 		&profile.CreatedAt,
 		&profile.UpdatedAt,
 	)
+	profile.DisplayName = displayName.String
+	profile.Bio = bio.String
 
 	if err == sql.ErrNoRows {
 		return c.Status(http.StatusNotFound).JSON(ErrorResponse{
@@ -147,19 +150,22 @@ func GetMyProfile(c *fiber.Ctx) error {
 
 	// First check if profile exists
 	var profile Profile
+	var displayName, bio sql.NullString
 	err := dbPool.QueryRow(context.Background(), `
-		SELECT user_id, username, display_name, bio, is_public, created_at, updated_at
+		SELECT user_id, username, COALESCE(display_name, ''), COALESCE(bio, ''), is_public, created_at, updated_at
 		FROM profiles
 		WHERE user_id = $1
 	`, userID).Scan(
 		&profile.UserID,
 		&profile.Username,
-		&profile.DisplayName,
-		&profile.Bio,
+		&displayName,
+		&bio,
 		&profile.IsPublic,
 		&profile.CreatedAt,
 		&profile.UpdatedAt,
 	)
+	profile.DisplayName = displayName.String
+	profile.Bio = bio.String
 
 	// If no profile exists, create a placeholder one
 	if err == sql.ErrNoRows {
