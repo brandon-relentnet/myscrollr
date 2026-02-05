@@ -33,7 +33,11 @@ export function HeroSection() {
                   scale: [1, 1.02, 1],
                   rotate: [0, 0.3, 0, -0.3, 0],
                 }}
-                transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+                transition={{
+                  duration: 8,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
                 className="relative"
               >
                 <ScrollrSVG
@@ -112,7 +116,8 @@ export function HeroSection() {
                 transition={{ duration: 0.5, delay: 1 }}
                 className="mt-8 text-lg sm:text-xl text-base-content/60 max-w-md leading-relaxed"
               >
-                Pin live sports scores, crypto prices, and custom feeds over any tab.{' '}
+                Pin live sports scores, crypto prices, and custom feeds over any
+                tab.{' '}
                 <span className="text-primary font-medium">
                   Never alt-tab again.
                 </span>
@@ -163,7 +168,7 @@ export function HeroSection() {
         </motion.div>
       </section>
 
-        {/* Welcome Section */}
+      {/* Welcome Section */}
       <section className="container scroll-m-75" id="welcome">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -190,18 +195,21 @@ export function HeroSection() {
             </motion.div>
 
             <h1 className="font-extrabold text-4xl sm:text-5xl text-balance tracking-tight">
-              Your Data, <span className="text-gradient-primary">Always Visible</span>
+              Your Data,{' '}
+              <span className="text-gradient-primary">Always Visible</span>
             </h1>
 
             <p className="mt-5 text-lg max-w-prose text-base-content/70 leading-relaxed">
-              Tickers dominate our screens but haven't evolved in years. They talk at you, not with you.
+              Tickers dominate our screens but haven't evolved in years. They
+              talk at you, not with you.
             </p>
             <p className="mt-5 max-w-prose text-2xl italic font-semibold text-base-content/80">
               Scrollr brings them to life.
             </p>
             <p className="mt-5 max-w-prose text-lg text-base-content/70 leading-relaxed">
-              An interactive, personalized ticker experience built for multitaskers. 
-              Follow your fantasy teams, track markets, and stay updated—without leaving what you're doing.
+              An interactive, personalized ticker experience built for
+              multitaskers. Follow your fantasy teams, track markets, and stay
+              updated—without leaving what you're doing.
             </p>
 
             <div className="flex flex-wrap gap-3 mt-8 justify-center lg:justify-start items-center">

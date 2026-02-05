@@ -59,7 +59,7 @@ export default function InstallButton({ className = '' }: InstallButtonProps) {
   const baseClasses =
     'btn-pulse inline-flex items-center justify-center gap-2 px-6 py-3 font-semibold text-sm uppercase tracking-wider'
   const disabledClasses = browserCTA.disabled
-    ? 'cursor-not-allowed opacity-50 grayscale'
+    ? 'cursor-not-allowed text-white opacity-50 grayscale'
     : ''
   const composedClassName = [baseClasses, disabledClasses, className]
     .filter(Boolean)

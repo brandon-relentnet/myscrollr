@@ -75,7 +75,9 @@
    BASE - Refined Foundation
    ========================================================================== */
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
@@ -99,50 +101,90 @@ body {
   /* Primary Background - Deep Space */
   background-image:
     /* Subtle radial vignette */
-    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(191, 255, 0, 0.03) 0%, transparent 50%),
+    radial-gradient(
+      ellipse 80% 50% at 50% 0%,
+      rgba(191, 255, 0, 0.03) 0%,
+      transparent 50%
+    ),
     /* Subtle Grid Nodes */
-    radial-gradient(circle at 1px 1px, rgba(191, 255, 0, 0.15) 1px, transparent 0),
+      radial-gradient(
+        circle at 1px 1px,
+        rgba(191, 255, 0, 0.15) 1px,
+        transparent 0
+      ),
     /* Minimal grid - 60px for cleaner look */
-    linear-gradient(rgba(191, 255, 0, 0.03) 1px, transparent 1px),
+      linear-gradient(rgba(191, 255, 0, 0.03) 1px, transparent 1px),
     linear-gradient(90deg, rgba(191, 255, 0, 0.03) 1px, transparent 1px);
-  background-size: 100% 100%, 60px 60px, 60px 60px, 60px 60px;
+  background-size:
+    100% 100%,
+    60px 60px,
+    60px 60px,
+    60px 60px;
   background-attachment: fixed;
   position: relative;
 }
 
 /* Enhanced Nebula Layers */
 body::before {
-  content: "";
+  content: '';
   position: fixed;
   inset: 0;
   background:
     /* Primary glow - top center */
-    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(191, 255, 0, 0.05) 0%, transparent 60%),
+    radial-gradient(
+      ellipse 60% 40% at 50% 0%,
+      rgba(191, 255, 0, 0.05) 0%,
+      transparent 60%
+    ),
     /* Info accent - top right */
-    radial-gradient(ellipse 50% 50% at 85% 10%, rgba(0, 212, 255, 0.04) 0%, transparent 50%),
+      radial-gradient(
+        ellipse 50% 50% at 85% 10%,
+        rgba(0, 212, 255, 0.04) 0%,
+        transparent 50%
+      ),
     /* Secondary accent - bottom left */
-    radial-gradient(ellipse 50% 50% at 15% 85%, rgba(255, 71, 87, 0.03) 0%, transparent 50%),
+      radial-gradient(
+        ellipse 50% 50% at 15% 85%,
+        rgba(255, 71, 87, 0.03) 0%,
+        transparent 50%
+      ),
     /* Purple depth - right edge */
-    radial-gradient(ellipse 50% 80% at 90% 50%, rgba(168, 85, 247, 0.03) 0%, transparent 50%),
+      radial-gradient(
+        ellipse 50% 80% at 90% 50%,
+        rgba(168, 85, 247, 0.03) 0%,
+        transparent 50%
+      ),
     /* Cyan wash - left edge */
-    radial-gradient(ellipse 50% 80% at 10% 50%, rgba(0, 212, 255, 0.02) 0%, transparent 50%);
+      radial-gradient(
+        ellipse 50% 80% at 10% 50%,
+        rgba(0, 212, 255, 0.02) 0%,
+        transparent 50%
+      );
   pointer-events: none;
   z-index: -1;
   animation: nebula-breathe 15s ease-in-out infinite alternate;
 }
 
 @keyframes nebula-breathe {
-  0% { opacity: 0.85; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 /* Deep Vignette */
 body::after {
-  content: "";
+  content: '';
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse 60% 50% at 50% 0%, transparent 40%, rgba(8, 8, 12, 0.3) 100%),
+    radial-gradient(
+      ellipse 60% 50% at 50% 0%,
+      transparent 40%,
+      rgba(8, 8, 12, 0.3) 100%
+    ),
     radial-gradient(circle at center, transparent 0%, rgba(8, 8, 12, 0.5) 100%);
   pointer-events: none;
   z-index: -1;
@@ -168,16 +210,29 @@ body::after {
    TYPOGRAPHY - Refined Scale
    ========================================================================== */
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: -0.02em;
 }
 
-h1 { font-size: clamp(2.5rem, 5vw, 4.5rem); }
-h2 { font-size: clamp(2rem, 4vw, 3rem); }
-h3 { font-size: clamp(1.5rem, 3vw, 2rem); }
-h4 { font-size: clamp(1.25rem, 2vw, 1.5rem); }
+h1 {
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+}
+h2 {
+  font-size: clamp(2rem, 4vw, 3rem);
+}
+h3 {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+}
+h4 {
+  font-size: clamp(1.25rem, 2vw, 1.5rem);
+}
 
 p {
   margin: 0;
@@ -195,27 +250,47 @@ p {
    UTILITIES
    ========================================================================== */
 
-code, pre, .font-mono {
+code,
+pre,
+.font-mono {
   font-family: var(--font-mono);
 }
 
 /* Text Gradients */
 .text-gradient-primary {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-info) 50%, var(--color-secondary) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-primary) 0%,
+    var(--color-info) 50%,
+    var(--color-secondary) 100%
+  );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .text-gradient-warm {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-primary) 0%,
+    var(--color-secondary) 100%
+  );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .text-rainbow {
-  background: linear-gradient(90deg, #ff6b6b 0%, #feca57 16%, #48dbfb 33%, #1dd1a1 50%, #5f27cd 66%, #ff9ff3 83%, #ff6b6b 100%);
+  background: linear-gradient(
+    90deg,
+    #ff6b6b 0%,
+    #feca57 16%,
+    #48dbfb 33%,
+    #1dd1a1 50%,
+    #5f27cd 66%,
+    #ff9ff3 83%,
+    #ff6b6b 100%
+  );
   background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -224,8 +299,12 @@ code, pre, .font-mono {
 }
 
 @keyframes rainbow-shift {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 200% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
 }
 
 /* Glow Effects */
@@ -248,7 +327,9 @@ code, pre, .font-mono {
 /* Border Glow */
 .border-glow-primary {
   border-color: var(--color-primary);
-  box-shadow: 0 0 15px var(--color-primary/20), inset 0 0 20px var(--color-primary/5);
+  box-shadow:
+    0 0 15px var(--color-primary/20),
+    inset 0 0 20px var(--color-primary/5);
 }
 
 /* Inner Glow */
@@ -338,15 +419,14 @@ code, pre, .font-mono {
 
   /* The Signature "Pulse" Button */
   .btn-pulse {
-    @apply bg-primary font-semibold px-6 py-3 transition-all duration-200 shadow-[0_0_20px_rgba(191,255,0,0.25)];
+    @apply bg-primary text-primary-content! font-semibold px-6 py-3 transition-all duration-200 shadow-[0_0_20px_rgba(191,255,0,0.25)];
     font-family: var(--font-display);
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: #000000;
   }
 
   .btn-pulse:hover:not(:disabled) {
-    @apply bg-primary/90;
+    @apply bg-primary/90 text-primary-content!;
     box-shadow: 0 0 40px rgba(191, 255, 0, 0.5);
     transform: translateY(-2px);
   }
@@ -501,8 +581,12 @@ code, pre, .font-mono {
    ========================================================================== */
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes fadeInUp {
@@ -561,7 +645,8 @@ code, pre, .font-mono {
 }
 
 @keyframes pulse-glow {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
@@ -572,7 +657,8 @@ code, pre, .font-mono {
 }
 
 @keyframes pulse-soft {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.6;
   }
   50% {
@@ -590,10 +676,12 @@ code, pre, .font-mono {
 }
 
 @keyframes blink {
-  0%, 50% {
+  0%,
+  50% {
     opacity: 1;
   }
-  51%, 100% {
+  51%,
+  100% {
     opacity: 0;
   }
 }
@@ -641,7 +729,12 @@ code, pre, .font-mono {
 }
 
 .animate-shimmer {
-  background: linear-gradient(90deg, transparent, rgba(191,255,0,0.1), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(191, 255, 0, 0.1),
+    transparent
+  );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
@@ -651,12 +744,24 @@ code, pre, .font-mono {
 }
 
 /* Stagger Animation Delays */
-.stagger-1 { animation-delay: 0.1s; }
-.stagger-2 { animation-delay: 0.2s; }
-.stagger-3 { animation-delay: 0.3s; }
-.stagger-4 { animation-delay: 0.4s; }
-.stagger-5 { animation-delay: 0.5s; }
-.stagger-6 { animation-delay: 0.6s; }
+.stagger-1 {
+  animation-delay: 0.1s;
+}
+.stagger-2 {
+  animation-delay: 0.2s;
+}
+.stagger-3 {
+  animation-delay: 0.3s;
+}
+.stagger-4 {
+  animation-delay: 0.4s;
+}
+.stagger-5 {
+  animation-delay: 0.5s;
+}
+.stagger-6 {
+  animation-delay: 0.6s;
+}
 
 /* ==========================================================================
    SCROLLBAR - Refined
