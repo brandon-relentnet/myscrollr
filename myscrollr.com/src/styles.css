@@ -322,7 +322,8 @@ code, pre, .font-mono {
 
   /* The Signature "Pulse" Button */
   .btn-pulse {
-    @apply bg-primary text-base-100 font-semibold px-6 py-3 transition-all duration-200 shadow-[0_0_20px_rgba(191,255,0,0.25)] font-family: var(--font-display);
+    @apply bg-primary text-base-100 font-semibold px-6 py-3 transition-all duration-200 shadow-[0_0_20px_rgba(191,255,0,0.25)];
+    font-family: var(--font-display);
     text-transform: uppercase;
     letter-spacing: 0.08em;
   }
