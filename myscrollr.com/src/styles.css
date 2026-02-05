@@ -214,6 +214,20 @@ code, pre, .font-mono {
   background-clip: text;
 }
 
+.text-rainbow {
+  background: linear-gradient(90deg, #ff6b6b 0%, #feca57 16%, #48dbfb 33%, #1dd1a1 50%, #5f27cd 66%, #ff9ff3 83%, #ff6b6b 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: rainbow-shift 4s linear infinite;
+}
+
+@keyframes rainbow-shift {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
 /* Glow Effects */
 .glow-primary-sm {
   box-shadow: var(--shadow-glow-sm);
@@ -324,7 +338,7 @@ code, pre, .font-mono {
 
   /* The Signature "Pulse" Button */
   .btn-pulse {
-    @apply bg-primary text-base-100 font-semibold px-6 py-3 transition-all duration-200 shadow-[0_0_20px_rgba(191,255,0,0.25)];
+    @apply bg-primary text-primary-content font-semibold px-6 py-3 transition-all duration-200 shadow-[0_0_20px_rgba(191,255,0,0.25)];
     font-family: var(--font-display);
     text-transform: uppercase;
     letter-spacing: 0.08em;

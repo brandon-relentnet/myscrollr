@@ -28,7 +28,7 @@ export default function TypewriterChangeContentExample() {
         transition={{ duration: 0.6, delay: 0.4, ease: 'easeOut' }}
         className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-none mt-2"
       >
-        <span className="gradient-text-pulse relative inline-block">
+        <span className="text-rainbow relative inline-block">
           Uninterrupted.
           <motion.span
             animate={{
