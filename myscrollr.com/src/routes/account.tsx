@@ -10,11 +10,32 @@ import {
   ShieldCheck,
   TrendingUp,
 } from 'lucide-react'
+import { motion } from 'motion/react'
 import type { IdTokenClaims } from '@logto/react'
 
 export const Route = createFileRoute('/account')({
   component: AccountHub,
 })
+
+const pageVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.1,
+    },
+  },
+}
+
+const sectionVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { type: 'spring', stiffness: 300, damping: 24 } as const,
+  },
+}
 
 function AccountHub() {
   const { isAuthenticated, isLoading, getIdTokenClaims } = useLogto()
@@ -41,11 +62,16 @@ function AccountHub() {
   if (!isAuthenticated) return null
 
   return (
-    <main className="min-h-screen pt-20">
+    <motion.main
+      className="min-h-screen pt-20"
+      variants={pageVariants}
+      initial="hidden"
+      animate="visible"
+    >
       {/* Personalized Hero */}
       <section className="relative pt-24 pb-16 overflow-hidden border-b border-base-300 bg-base-200/30">
         <div className="container relative z-10">
-          <div className="max-w-4xl">
+          <motion.div className="max-w-4xl" variants={sectionVariants}>
             <div className="flex items-center gap-3 mb-6">
               <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded-md border border-primary/20 uppercase tracking-[0.2em] flex items-center gap-2">
                 <ShieldCheck size={14} /> session_active
@@ -68,13 +94,16 @@ function AccountHub() {
               Your personal data streams are ready for orchestration. Sync your
               leagues, track your assets, and stay in the flow.
             </p>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Hub Grid */}
       <section className="container py-16">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-3 gap-6"
+          variants={sectionVariants}
+        >
           {/* Main Terminal */}
           <HubCard
             title="Data Terminal"
@@ -103,10 +132,13 @@ function AccountHub() {
             accent="secondary"
             disabled
           />
-        </div>
+        </motion.div>
 
         {/* Detailed Stats / Status */}
-        <div className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <motion.div
+          className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-8"
+          variants={sectionVariants}
+        >
           <div className="bg-base-200 border border-base-300 rounded-xl p-8 shadow-sm">
             <h3 className="text-sm font-bold uppercase tracking-widest text-primary mb-6 flex items-center gap-2">
               <Settings size={16} /> System Status
@@ -158,9 +190,9 @@ function AccountHub() {
               <BarChart3 size={120} />
             </div>
           </div>
-        </div>
+        </motion.div>
       </section>
-    </main>
+    </motion.main>
   )
 }
 

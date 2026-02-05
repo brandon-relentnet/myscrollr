@@ -20,6 +20,26 @@ export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
 })
 
+const pageVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.1,
+    },
+  },
+}
+
+const sectionVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { type: 'spring', stiffness: 300, damping: 24 } as const,
+  },
+}
+
 function DashboardPage() {
   const { isAuthenticated, isLoading, signIn, getIdTokenClaims } = useLogto()
   const [activeModule, setActiveModule] = useState<
@@ -77,10 +97,18 @@ function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen pt-28 pb-20 px-6">
+    <motion.div
+      className="min-h-screen pt-28 pb-20 px-6"
+      variants={pageVariants}
+      initial="hidden"
+      animate="visible"
+    >
       <div className="max-w-6xl mx-auto">
         {/* Dashboard Header */}
-        <header className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
+        <motion.header
+          className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6"
+          variants={sectionVariants}
+        >
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
@@ -112,11 +140,14 @@ function DashboardPage() {
               <Settings2 size={16} />
             </button>
           </div>
-        </header>
+        </motion.header>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Module Navigation */}
-          <aside className="lg:col-span-3 space-y-6">
+          <motion.aside
+            className="lg:col-span-3 space-y-6"
+            variants={sectionVariants}
+          >
             <div>
               <p className="text-[10px] font-bold text-base-content/30 uppercase tracking-widest mb-3 px-1">
                 Active Streams
@@ -164,18 +195,28 @@ function DashboardPage() {
                 <QuickStat label="Uptime" value="99.7%" color="text-primary" />
               </div>
             </div>
-          </aside>
+          </motion.aside>
 
           {/* Main Content Area */}
-          <main className="lg:col-span-9 bg-base-200/20 border border-base-300/40 rounded-xl p-8 min-h-[500px]">
-            {activeModule === 'finance' && <FinanceConfig />}
-            {activeModule === 'sports' && <SportsConfig />}
-            {activeModule === 'fantasy' && <FantasyConfig />}
-            {activeModule === 'rss' && <RssConfig />}
-          </main>
+          <motion.main
+            className="lg:col-span-9 bg-base-200/20 border border-base-300/40 rounded-xl p-8 min-h-[500px]"
+            variants={sectionVariants}
+          >
+            <motion.div
+              key={activeModule}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              {activeModule === 'finance' && <FinanceConfig />}
+              {activeModule === 'sports' && <SportsConfig />}
+              {activeModule === 'fantasy' && <FantasyConfig />}
+              {activeModule === 'rss' && <RssConfig />}
+            </motion.div>
+          </motion.main>
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
 

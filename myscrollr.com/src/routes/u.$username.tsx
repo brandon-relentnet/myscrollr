@@ -8,11 +8,32 @@ import {
   Loader2,
   Shield,
 } from 'lucide-react'
+import { motion } from 'motion/react'
 import { API_BASE } from '../api/client'
 
 export const Route = createFileRoute('/u/$username')({
   component: ProfilePage,
 })
+
+const pageVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.1,
+    },
+  },
+}
+
+const sectionVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { type: 'spring', stiffness: 300, damping: 24 } as const,
+  },
+}
 
 interface ProfileData {
   username: string
@@ -131,7 +152,12 @@ function ProfilePage() {
   if (username === 'me' && !isAuthenticated) {
     return (
       <div className="min-h-screen text-base-content flex items-center justify-center p-6 font-mono">
-        <div className="text-center space-y-6 max-w-md border border-base-300 p-12 rounded-lg bg-base-200 shadow-2xl">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4 }}
+          className="text-center space-y-6 max-w-md border border-base-300 p-12 rounded-lg bg-base-200 shadow-2xl"
+        >
           <AlertCircle className="h-16 w-16 text-warning mx-auto mb-4" />
           <h1 className="text-2xl font-bold tracking-[0.2em] uppercase">
             Auth Required
@@ -145,7 +171,7 @@ function ProfilePage() {
           >
             Sign In
           </a>
-        </div>
+        </motion.div>
       </div>
     )
   }
@@ -153,17 +179,30 @@ function ProfilePage() {
   if (!profile) return null
 
   return (
-    <div className="min-h-screen text-base-content pt-28 pb-20 px-6">
+    <motion.div
+      className="min-h-screen text-base-content pt-28 pb-20 px-6"
+      variants={pageVariants}
+      initial="hidden"
+      animate="visible"
+    >
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Profile Header */}
-        <div className="bg-base-200 border border-base-300 rounded-xl p-10 shadow-2xl relative overflow-hidden">
+        <motion.div
+          variants={sectionVariants}
+          className="bg-base-200 border border-base-300 rounded-xl p-10 shadow-2xl relative overflow-hidden"
+        >
           {/* Accent decoration */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full border-l border-b border-primary/10" />
 
           <div className="flex flex-col md:flex-row items-center md:items-start gap-8 relative z-10 text-center md:text-left">
-            <div className="h-28 w-28 rounded-xl bg-primary/10 border-2 border-primary/20 flex items-center justify-center text-4xl font-black text-primary shadow-lg uppercase">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2, type: 'spring' }}
+              className="h-28 w-28 rounded-xl bg-primary/10 border-2 border-primary/20 flex items-center justify-center text-4xl font-black text-primary shadow-lg uppercase"
+            >
               {profile.username ? profile.username[0] : '?'}
-            </div>
+            </motion.div>
             <div className="flex-1 space-y-4">
               <div className="space-y-1">
                 <div className="flex items-center justify-center md:justify-start gap-3">
@@ -191,10 +230,13 @@ function ProfilePage() {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Connected Accounts */}
-        <div className="bg-base-200 border border-base-300 rounded-xl p-10 shadow-xl">
+        <motion.div
+          variants={sectionVariants}
+          className="bg-base-200 border border-base-300 rounded-xl p-10 shadow-xl"
+        >
           <h2 className="text-xl font-black mb-8 flex items-center gap-3 uppercase tracking-tight">
             <LinkIcon size={24} className="text-primary" />
             Integration_Nodes
@@ -242,16 +284,19 @@ function ProfilePage() {
               )}
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Footer info */}
-        <div className="flex items-center justify-center gap-4 text-base-content/20 font-mono text-[10px] uppercase tracking-[0.3em] pt-4">
+        <motion.div
+          variants={sectionVariants}
+          className="flex items-center justify-center gap-4 text-base-content/20 font-mono text-[10px] uppercase tracking-[0.3em] pt-4"
+        >
           <span className="h-px w-12 bg-current opacity-20" />
           <span>Security Provided by Logto OSS</span>
           <span className="h-px w-12 bg-current opacity-20" />
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   )
 }
 
