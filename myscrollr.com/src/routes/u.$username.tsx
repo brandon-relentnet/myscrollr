@@ -52,7 +52,20 @@ function ProfilePage() {
         try {
           const token = await getAccessToken()
           if (!token) {
+            console.log('[Profile] No access token received from Logto')
             setError('Not authenticated')
+            setLoading(false)
+            return
+          }
+          // Debug: log token format
+          const segments = token.split('.')
+          console.log('[Profile] Token received:', {
+            has3Segments: segments.length === 3,
+            length: token.length,
+            prefix: token.substring(0, 20) + '...'
+          })
+          if (segments.length !== 3) {
+            setError('Invalid token format - please sign out and sign in again')
             setLoading(false)
             return
           }
@@ -60,6 +73,7 @@ function ProfilePage() {
           const res = await fetch(`${API_BASE}/users/me/profile`, {
             headers: { Authorization: `Bearer ${token}` }
           })
+          console.log('[Profile] API response:', res.status, res.statusText)
           if (res.ok) {
             const data = await res.json()
             if (data.username) {
@@ -67,6 +81,9 @@ function ProfilePage() {
               window.location.href = `/u/${data.username}`
               return
             }
+          } else {
+            const errData = await res.json().catch(() => ({}))
+            console.log('[Profile] API error:', errData)
           }
           // No username set yet - stay on /u/me to show setup UI
           setProfile({ username: '', display_name: '', bio: '', is_public: true, connected_yahoo: false })
