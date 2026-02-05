@@ -144,12 +144,9 @@ func main() {
 	api.Get("/yahoo/team/:team_key/matchups", LogtoAuth, YahooMatchups)
 	api.Get("/yahoo/team/:team_key/roster", LogtoAuth, YahooRoster)
 
-	// User Profile Routes
+	// User Routes (username from Logto, not our DB)
 	api.Get("/users/:username", GetProfileByUsername)
-	api.Get("/users/me/profile", LogtoAuth, GetMyProfile)
-	api.Post("/users/me/profile", LogtoAuth, GetMyProfile)
-	api.Patch("/users/me/profile", LogtoAuth, UpdateMyProfile)
-	api.Post("/users/me/username", LogtoAuth, SetUsername)
+	api.Get("/users/me/yahoo-status", LogtoAuth, GetYahooStatus)
 	api.Post("/users/me/disconnect/yahoo", LogtoAuth, DisconnectYahoo)
 
 	port := os.Getenv("PORT")
