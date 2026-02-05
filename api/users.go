@@ -93,8 +93,9 @@ func GetProfileByUsername(c *fiber.Ctx) error {
 
 	if err != nil {
 		log.Printf("Error fetching profile: %v", err)
-		// pgx returns ErrNoRows as a string error in some versions
-		if err.Error() == "sql: no rows in result set" || err == sql.ErrNoRows {
+		// Check for any "no rows" error
+		errStr := err.Error()
+		if strings.Contains(errStr, "no rows") || err == sql.ErrNoRows {
 			return c.Status(http.StatusNotFound).JSON(ErrorResponse{
 				Status: "error",
 				Error:  "Profile not found",
