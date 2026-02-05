@@ -105,7 +105,7 @@ function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-base-100 text-primary flex items-center justify-center font-mono">
+      <div className="min-h-screen text-primary flex items-center justify-center font-mono">
         <div className="text-center space-y-4">
            <Loader2 className="animate-spin h-12 w-12 text-primary mx-auto" />
            <p className="uppercase tracking-[0.2em] text-xs">Accessing Identity_Logs...</p>
@@ -117,7 +117,7 @@ function ProfilePage() {
   // Sign-in prompt for unauthenticated users
   if (username === 'me' && !isAuthenticated) {
     return (
-      <div className="min-h-screen bg-base-100 text-base-content flex items-center justify-center p-6 font-mono">
+      <div className="min-h-screen text-base-content flex items-center justify-center p-6 font-mono">
         <div className="text-center space-y-6 max-w-md border border-base-300 p-12 rounded-lg bg-base-200 shadow-2xl">
           <AlertCircle className="h-16 w-16 text-warning mx-auto mb-4" />
           <h1 className="text-2xl font-bold tracking-[0.2em] uppercase">Auth Required</h1>
@@ -133,7 +133,7 @@ function ProfilePage() {
   if (!profile) return null
 
   return (
-    <div className="min-h-screen bg-base-100 text-base-content pt-28 pb-20 px-6">
+    <div className="min-h-screen text-base-content pt-28 pb-20 px-6">
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Profile Header */}
         <div className="bg-base-200 border border-base-300 rounded-xl p-10 shadow-2xl relative overflow-hidden">

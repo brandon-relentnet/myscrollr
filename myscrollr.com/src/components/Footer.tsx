@@ -1,95 +1,261 @@
 import { Link } from '@tanstack/react-router'
+import * as motion from 'motion/react-client'
+import { ArrowUpRight, Github, Terminal, Cpu, Database, Globe } from 'lucide-react'
 import ScrollrSVG from '@/components/ScrollrSVG'
 
 export default function Footer() {
   const year = new Date().getFullYear()
 
+  const links = {
+    product: [
+      { label: 'Features', href: '/#features' },
+      { label: 'Terminal', href: '/dashboard' },
+      { label: 'Extension', href: 'https://chrome.google.com/webstore' },
+    ],
+    resources: [
+      { label: 'Documentation', href: '#' },
+      { label: 'API', href: '#' },
+      { label: 'Status', href: '#' },
+    ],
+    company: [
+      { label: 'About', href: '#' },
+      { label: 'Contact', href: '#' },
+      { label: 'Privacy', href: '#' },
+    ],
+    social: [
+      { icon: Github, href: 'https://github.com/scrollr', label: 'GitHub' },
+      { icon: Globe, href: 'https://twitter.com/scrollr', label: 'Twitter' },
+    ],
+  }
+
+  const techStack = [
+    { icon: Terminal, label: 'Rust', desc: 'Ingestion Services' },
+    { icon: Cpu, label: 'Go', desc: 'API Layer' },
+    { icon: Database, label: 'PostgreSQL', desc: 'Data Storage' },
+  ]
+
   return (
-    <footer className="bg-base-200/50 border-t border-base-300 pb-12 relative overflow-hidden">
-      {/* Background Pattern */}
+    <footer className="relative bg-base-200/30 border-t border-base-300/50 overflow-hidden">
+      {/* Background Grid */}
       <div
         className="absolute inset-0 opacity-[0.02] pointer-events-none"
         style={{
           backgroundImage: `
-               linear-gradient(rgba(191, 255, 0, 0.5) 1px, transparent 1px),
-               linear-gradient(90deg, rgba(191, 255, 0, 0.5) 1px, transparent 1px)
-             `,
-          backgroundSize: '40px 40px',
+            linear-gradient(rgba(191, 255, 0, 0.3) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(191, 255, 0, 0.3) 1px, transparent 1px)
+          `,
+          backgroundSize: '60px 60px',
         }}
       />
 
-      <div className="container relative z-10 flex flex-col gap-14 px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid gap-12 text-center lg:grid-cols-2 lg:items-start lg:text-left">
-          {/* Left Column: Brand Info */}
-          <div className="flex flex-col items-center gap-3 lg:items-start">
-            <div className="flex items-center gap-3 lg:flex-row">
-              <div className="relative">
-                <ScrollrSVG className="size-12" />
-                <span className="absolute -top-1 -right-1 flex h-2 w-2">
+      {/* Accent Glow */}
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full max-w-2xl h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+
+      <div className="container relative z-10 px-5 py-16 lg:py-20">
+        {/* Main Footer Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 mb-16">
+
+          {/* Brand Column */}
+          <div className="lg:col-span-4 space-y-8">
+            <div className="flex items-center gap-4">
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                className="relative flex items-center justify-center rounded-lg border border-base-300/50 bg-base-200/50 p-2.5"
+              >
+                <ScrollrSVG className="size-10" />
+                <span className="absolute -bottom-0.5 -right-0.5 flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
                 </span>
-              </div>
-              <div>
-                <p className="text-xs font-mono uppercase tracking-[0.25em] font-bold text-primary">
+              </motion.div>
+              <div className="flex flex-col">
+                <span className="font-bold text-2xl tracking-tight uppercase font-display">
                   Scrollr
-                </p>
-                <p className="text-lg font-semibold text-base-content">
-                  Customizable Data Ticker
-                </p>
+                </span>
+                <span className="text-[10px] font-mono text-primary/60 uppercase tracking-[0.2em]">
+                  Terminal v2.1
+                </span>
               </div>
             </div>
-            <p className="max-w-sm text-sm text-base-content/60 mt-4 mx-auto lg:mx-0 leading-relaxed">
-              Pin live sports scores, crypto prices, and custom feeds over any
-              tab. Stop alt-tabbing. Stay in your flow.
+
+            <p className="text-sm text-base-content/60 leading-relaxed max-w-sm">
+              Pin live sports scores, crypto prices, and custom feeds over any tab.
+              Stop alt-tabting. Stay in your flow.
             </p>
+
+            {/* Status Indicators */}
+            <div className="flex flex-wrap gap-2">
+              <StatusBadge status="online" label="All Systems" />
+              <StatusBadge status="pulsing" label="Live Data" />
+            </div>
           </div>
 
-          {/* Right Column: Navigation */}
-          <div className="flex justify-center lg:justify-end">
-            <nav>
-              <p className="text-xs font-mono uppercase tracking-[0.25em] font-bold text-primary w-fit mx-auto lg:mx-0">
-                Navigation
-              </p>
-              <ul className="mt-5 space-y-2 text-sm text-base-content/65">
-                <li>
-                  <Link
-                    to="/"
-                    className="inline-flex items-center gap-1.5 transition hover:text-primary group uppercase font-bold tracking-widest text-[10px]"
-                  >
-                    <span className="w-1 h-1 rounded-full bg-primary/0 group-hover:bg-primary transition-all" />
-                    Home
-                  </Link>
-                </li>
-                <li>
-                  <a
-                    href="https://chromewebstore.google.com/detail/scrollr/pjeafpgbpfbcaddipkcbacohhbfakclb"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 transition hover:text-primary group uppercase font-bold tracking-widest text-[10px]"
-                  >
-                    <span className="w-1 h-1 rounded-full bg-primary/0 group-hover:bg-primary transition-all" />
-                    Chrome Web Store
-                  </a>
-                </li>
+          {/* Links Columns */}
+          <div className="lg:col-span-8 grid grid-cols-3 gap-8 lg:gap-12">
+            {/* Product */}
+            <div className="space-y-5">
+              <h4 className="text-xs font-bold font-mono uppercase tracking-[0.2em] text-primary/80">
+                Product
+              </h4>
+              <ul className="space-y-3">
+                {links.product.map((link) => (
+                  <li key={link.label}>
+                    {link.href.startsWith('http') ? (
+                      <motion.a
+                        href={link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        whileHover={{ x: 2 }}
+                        className="flex items-center gap-2 text-sm text-base-content/50 hover:text-primary transition-colors group cursor-pointer"
+                      >
+                        {link.label}
+                        <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </motion.a>
+                    ) : (
+                      <Link
+                        to={link.href}
+                        className="flex items-center gap-2 text-sm text-base-content/50 hover:text-primary transition-colors group"
+                      >
+                        {link.label}
+                        <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </Link>
+                    )}
+                  </li>
+                ))}
               </ul>
-            </nav>
+            </div>
+
+            {/* Resources */}
+            <div className="space-y-5">
+              <h4 className="text-xs font-bold font-mono uppercase tracking-[0.2em] text-primary/80">
+                Resources
+              </h4>
+              <ul className="space-y-3">
+                {links.resources.map((link) => (
+                  <li key={link.label}>
+                    <motion.a
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      whileHover={{ x: 2 }}
+                      className="flex items-center gap-2 text-sm text-base-content/50 hover:text-primary transition-colors group cursor-pointer"
+                    >
+                      {link.label}
+                      <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </motion.a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Company */}
+            <div className="space-y-5">
+              <h4 className="text-xs font-bold font-mono uppercase tracking-[0.2em] text-primary/80">
+                Company
+              </h4>
+              <ul className="space-y-3">
+                {links.company.map((link) => (
+                  <li key={link.label}>
+                    <motion.a
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      whileHover={{ x: 2 }}
+                      className="flex items-center gap-2 text-sm text-base-content/50 hover:text-primary transition-colors group cursor-pointer"
+                    >
+                      {link.label}
+                      <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </motion.a>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
 
-        {/* Decorative Line */}
-        <div className="h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+        {/* Tech Stack Bar */}
+        <div className="relative mb-12">
+          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-gradient-to-r from-transparent via-base-300/50 to-transparent" />
+          <div className="relative flex flex-wrap items-center justify-center gap-6 lg:gap-12">
+            {techStack.map((tech, index) => (
+              <motion.div
+                key={tech.label}
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                className="flex items-center gap-2 px-4 py-2 rounded-sm bg-base-200/50 border border-base-300/30"
+              >
+                <tech.icon size={14} className="text-primary/60" />
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold font-mono uppercase tracking-wider text-base-content/60">
+                    {tech.label}
+                  </span>
+                  <span className="text-[9px] font-mono text-base-content/30 uppercase tracking-wider">
+                    {tech.desc}
+                  </span>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
 
-        <div className="flex flex-col gap-2 text-sm text-base-content/50 sm:flex-row sm:items-center sm:justify-between">
-          <p>© {year} Scrollr.</p>
-          <p className="flex items-center gap-1">
-            Keep the data
-            <span className="font-mono text-primary animate-pulse">
-              scrolling
+        {/* Bottom Bar */}
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-6 pt-8 border-t border-base-300/30">
+          {/* Copyright */}
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-mono text-base-content/40 uppercase tracking-wider">
+              © {year} Scrollr
             </span>
-          </p>
+            <span className="hidden sm:inline text-xs font-mono text-base-content/20">|</span>
+            <span className="flex items-center gap-2 text-xs font-mono text-base-content/40 uppercase tracking-wider">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-50" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
+              </span>
+              Keep the data scrolling
+            </span>
+          </div>
+
+          {/* Social Links */}
+          <div className="flex items-center gap-4">
+            {links.social.map((social) => (
+              <motion.a
+                key={social.label}
+                href={social.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                whileHover={{ scale: 1.1, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center justify-center w-10 h-10 rounded-sm bg-base-200/50 border border-base-300/30 text-base-content/40 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer"
+                aria-label={social.label}
+              >
+                <social.icon size={16} />
+              </motion.a>
+            ))}
+          </div>
         </div>
       </div>
     </footer>
+  )
+}
+
+function StatusBadge({ status, label }: { status: 'online' | 'pulsing'; label: string }) {
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-sm bg-primary/5 border border-primary/10">
+      <span className={`relative flex h-1.5 w-1.5 ${status === 'pulsing' ? '' : ''}`}>
+        {status === 'pulsing' && (
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+        )}
+        <span
+          className={`relative inline-flex rounded-full h-1.5 w-1.5 ${
+            status === 'online' ? 'bg-success' : 'bg-primary'
+          }`}
+        />
+      </span>
+      <span className="text-[10px] font-mono uppercase tracking-wider text-base-content/50">
+        {label}
+      </span>
+    </div>
   )
 }

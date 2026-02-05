@@ -64,11 +64,18 @@ const features: Array<FeatureItem> = [
   },
 ]
 
-const accentColors = [
-  'from-primary',
-  'from-info',
-  'from-secondary',
-  'from-accent',
+const accentGradients = [
+  'from-rose-500 via-pink-500 to-fuchsia-500',
+  'from-cyan-500 via-blue-500 to-indigo-500',
+  'from-amber-500 via-orange-500 to-red-500',
+  'from-emerald-500 via-teal-500 to-cyan-500',
+]
+
+const glowColors = [
+  'bg-rose-500/8',
+  'bg-blue-500/8',
+  'bg-amber-500/8',
+  'bg-emerald-500/8',
 ]
 
 export default function ScrollHighlight() {
@@ -96,21 +103,20 @@ export default function ScrollHighlight() {
 
   return (
     <div ref={containerRef} className="relative min-h-[300vh]">
-      {/* Sticky Progress Bar - more top padding to clear the header */}
+      {/* Sticky Progress Bar */}
       <div className="sticky top-28 left-0 right-0 z-50 px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-mono text-primary uppercase tracking-widest">
-              Live Demo
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-mono text-base-content/60 uppercase tracking-widest">
+              Demo
             </span>
-            <span className="text-xs font-mono text-base-content/50">
-              {features[activeIndex]?.name} • {activeIndex + 1}/
-              {features.length}
+            <span className="text-xs font-mono text-base-content/40">
+              {features[activeIndex]?.name}
             </span>
           </div>
-          <div className="h-1 bg-base-200 rounded-full overflow-hidden">
+          <div className="h-0.5 bg-base-300/50 rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-gradient-to-r from-primary to-info rounded-full"
+              className="h-full bg-gradient-to-r from-rose-500 via-cyan-500 to-emerald-500 rounded-full"
               style={{ width: progressWidth }}
             />
           </div>
@@ -118,13 +124,12 @@ export default function ScrollHighlight() {
       </div>
 
       {/* Feature Sections */}
-      <div className="pt-16 pb-16">
+      <div className="pt-12 pb-12">
         {features.map((feature, index) => (
           <FeatureSection
             key={feature.name}
             feature={feature}
             index={index}
-            isActive={activeIndex === index}
           />
         ))}
       </div>
@@ -135,70 +140,71 @@ export default function ScrollHighlight() {
 function FeatureSection({
   feature,
   index,
-  isActive,
 }: {
   feature: FeatureItem
   index: number
-  isActive: boolean
 }) {
-  const accentClass = accentColors[index % accentColors.length]
+  const accentClass = accentGradients[index % accentGradients.length]
+  const glowClass = glowColors[index % glowColors.length]
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      whileInView={{ opacity: isActive ? 1 : 0.3 }}
-      viewport={{ margin: '-30% 0px -30% 0px' }}
-      transition={{ duration: 0.5 }}
-      className="min-h-[70vh] flex items-center justify-center py-12"
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-20% 0px -20% 0px' }}
+      transition={{ duration: 0.6 }}
+      className="min-h-[60vh] flex items-center justify-center py-12"
     >
       <div className="container max-w-6xl px-4">
         <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
           {/* Data Visualization */}
           <motion.div
-            initial={{ opacity: 0, x: -30 }}
+            initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.5 }}
             className="relative order-2 lg:order-1"
           >
+            {/* Ambient glow behind terminal */}
+            <div className={`absolute -inset-6 ${glowClass} rounded-full blur-2xl`} />
+
             {/* Terminal-style frame */}
-            <div className="relative bg-base-200/80 border border-base-300 rounded-xl overflow-hidden backdrop-blur-sm">
+            <div className="relative bg-base-200/60 border border-base-300/30 rounded-sm overflow-hidden backdrop-blur-xl">
               {/* Terminal header */}
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-base-300 bg-base-300/30">
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-base-300/20 bg-base-300/10">
                 <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-secondary/50" />
-                  <div className="w-3 h-3 rounded-full bg-warning/50" />
-                  <div className="w-3 h-3 rounded-full bg-success/50" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-base-300" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-base-300" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-base-300" />
                 </div>
                 <div className="flex-1 text-center">
-                  <span className="text-xs font-mono text-base-content/50 uppercase">
-                    {feature.name}_feed.exe
+                  <span className="text-xs font-mono text-base-content/40 uppercase tracking-wider">
+                    {feature.name.toLowerCase()}.feed
                   </span>
                 </div>
+                <div className={`w-1.5 h-1.5 rounded-full bg-gradient-to-r ${accentClass} opacity-60`} />
               </div>
 
               {/* Data content */}
-              <div className="p-6">
+              <div className="p-5">
                 {feature.data?.type === 'scores' && (
-                  <div className="space-y-4">
+                  <div className="space-y-2">
                     {feature.data.labels.map((label, i) => (
                       <div
                         key={label}
-                        className="flex items-center justify-between p-3 rounded-lg bg-base-300/50 border border-base-300"
+                        className="flex items-center justify-between p-3 rounded bg-base-300/20 border border-base-300/20"
                       >
-                        <span className="text-sm font-mono font-bold text-base-content">
+                        <span className="text-sm font-mono font-medium text-base-content/80">
                           {label}
                         </span>
-                        <span className="text-sm font-mono text-base-content/70">
+                        <span className="text-sm font-mono text-base-content/50">
                           {feature.data?.values[i]}
                         </span>
-                        <div className="w-16 h-1 rounded-full bg-base-300 overflow-hidden">
+                        <div className="w-16 h-0.5 rounded-full bg-base-300/50 overflow-hidden">
                           <motion.div
                             initial={{ width: '0%' }}
-                            whileInView={{
-                              width: `${60 + Math.random() * 40}%`,
-                            }}
-                            transition={{ duration: 0.8, delay: 0.2 }}
-                            className={`h-full bg-gradient-to-r ${accentClass}`}
+                            whileInView={{ width: `${60 + Math.random() * 30}%` }}
+                            transition={{ duration: 0.6, delay: 0.1 }}
+                            className={`h-full bg-gradient-to-r ${accentClass} opacity-60 rounded-full`}
                           />
                         </div>
                       </div>
@@ -208,26 +214,24 @@ function FeatureSection({
 
                 {feature.data?.type === 'chart' && (
                   <div className="space-y-3">
-                    <div className="flex gap-2 mb-4">
+                    <div className="flex gap-2">
                       {feature.data.labels.map((label) => (
                         <span
                           key={label}
-                          className="text-xs font-mono px-2 py-1 rounded bg-base-300/50"
+                          className="text-[10px] font-mono px-2 py-1 rounded bg-base-300/30 text-base-content/50 uppercase"
                         >
                           {label}
                         </span>
                       ))}
                     </div>
-                    <div className="flex items-end justify-between h-32 gap-2">
+                    <div className="flex items-end justify-between h-28 gap-1.5">
                       {[...Array(8)].map((_, i) => (
                         <motion.div
                           key={i}
-                          initial={{ height: '20%' }}
-                          whileInView={{
-                            height: `${30 + Math.random() * 70}%`,
-                          }}
-                          transition={{ duration: 0.5, delay: i * 0.1 }}
-                          className={`flex-1 rounded-t bg-gradient-to-t ${accentClass} opacity-70`}
+                          initial={{ height: '15%' }}
+                          whileInView={{ height: `${30 + Math.random() * 60}%` }}
+                          transition={{ duration: 0.4, delay: i * 0.08 }}
+                          className={`flex-1 rounded-t-sm bg-gradient-to-t ${accentClass} opacity-50`}
                         />
                       ))}
                     </div>
@@ -235,20 +239,20 @@ function FeatureSection({
                 )}
 
                 {feature.data?.type === 'ticker' && (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {feature.data.labels.map((label, i) => (
                       <motion.div
                         key={label}
-                        initial={{ opacity: 0, x: -20 }}
+                        initial={{ opacity: 0, x: -10 }}
                         whileInView={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.4, delay: i * 0.1 }}
-                        className="flex items-center gap-3 p-2 rounded bg-base-300/30"
+                        transition={{ duration: 0.3, delay: i * 0.08 }}
+                        className="flex items-center gap-3 p-2.5 rounded bg-base-300/10"
                       >
-                        <span className="text-xs font-mono text-primary uppercase">
+                        <span className="text-[10px] font-mono text-base-content/40 uppercase tracking-wider">
                           {label}
                         </span>
-                        <span className="h-px flex-1 bg-base-300" />
-                        <span className="text-xs font-mono text-base-content/70">
+                        <div className="h-px flex-1 bg-gradient-to-r from-base-300/30 to-transparent" />
+                        <span className="text-xs font-mono text-base-content/60">
                           {feature.data?.values[i]}
                         </span>
                       </motion.div>
@@ -257,67 +261,25 @@ function FeatureSection({
                 )}
               </div>
             </div>
-
-            {/* Decorative corner accent */}
-            <div
-              className={`absolute -bottom-2 -right-2 w-16 h-16 bg-gradient-to-br ${accentClass} opacity-20 rounded-bl-xl`}
-            />
           </motion.div>
 
           {/* Content */}
           <motion.div
-            initial={{ opacity: 0, x: 30 }}
+            initial={{ opacity: 0, x: 20 }}
             whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.5 }}
             className="order-1 lg:order-2 text-center lg:text-left"
           >
-            {/* Accent pill */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className={`inline-block mb-4 px-4 py-1.5 rounded-full bg-gradient-to-r ${accentClass} bg-opacity-10 border border-opacity-20 border-current`}
-            >
-              <span className="text-xs font-mono uppercase tracking-wider text-base-content">
-                {feature.subtitle}
-              </span>
-            </motion.div>
+            {/* Subtle accent line */}
+            <div className={`h-0.5 w-12 rounded-full bg-gradient-to-r ${accentClass} mx-auto lg:mx-0 mb-5 opacity-60`} />
 
-            {/* Large title */}
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6"
-            >
-              <span className="text-base-content">{feature.name}</span>
-            </motion.h2>
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4 text-base-content/90">
+              {feature.name}
+            </h2>
 
-            {/* Description */}
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="text-lg text-base-content/60 max-w-md leading-relaxed"
-            >
+            <p className="text-base text-base-content/50 max-w-sm leading-relaxed mx-auto lg:mx-0">
               {feature.description}
-            </motion.p>
-
-            {/* Live indicator */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              className="flex items-center gap-2 mt-6 justify-center lg:justify-start"
-            >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
-              </span>
-              <span className="text-xs font-mono text-primary uppercase tracking-widest">
-                Live Data
-              </span>
-            </motion.div>
+            </p>
           </motion.div>
         </div>
       </div>

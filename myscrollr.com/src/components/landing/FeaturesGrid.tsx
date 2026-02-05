@@ -12,6 +12,7 @@ const features = [
     bgClass: 'bg-primary/10',
     stat: '33%',
     statLabel: 'Longer Watch Time',
+    glowColor: 'bg-primary/4',
   },
   {
     title: 'Zero Distraction',
@@ -24,6 +25,7 @@ const features = [
     bgClass: 'bg-secondary/10',
     stat: '84.6M',
     statLabel: 'Fantasy Users',
+    glowColor: 'bg-secondary/4',
   },
   {
     title: 'Precision Controls',
@@ -36,15 +38,13 @@ const features = [
     bgClass: 'bg-info/10',
     stat: '6x',
     statLabel: 'Brokerage Growth',
+    glowColor: 'bg-info/4',
   },
 ]
 
 export function FeaturesGrid() {
   return (
     <section id="features" className="py-24 lg:py-32 relative">
-      {/* Background Elements */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/3 to-transparent opacity-30 pointer-events-none" />
-
       {/* Section Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -57,9 +57,15 @@ export function FeaturesGrid() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.1 }}
-          className="inline-block mb-4 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-mono uppercase tracking-wider"
+          className="inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-full bg-primary/10 border border-primary/20"
         >
-          The Scrollr Advantage
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
+          </span>
+          <span className="text-xs font-mono uppercase tracking-widest text-primary">
+            The Scrollr Advantage
+          </span>
         </motion.span>
 
         <motion.h2
@@ -69,7 +75,7 @@ export function FeaturesGrid() {
           transition={{ delay: 0.2 }}
           className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6"
         >
-          Built for <span className="text-primary">Power Users</span>
+          Built for <span className="text-gradient-primary">Power Users</span>
         </motion.h2>
 
         <motion.p
@@ -93,31 +99,34 @@ export function FeaturesGrid() {
             viewport={{ once: true }}
             transition={{ delay: 0.2 + index * 0.1 }}
             whileHover={{ y: -4 }}
-            className="group relative p-8 rounded-xl bg-base-200/80 border border-base-300 hover:border-primary/30 transition-all duration-300"
+            className="group relative p-8 rounded-sm bg-base-200/60 backdrop-blur-xl border border-base-300/50 hover:border-primary/30 transition-all duration-300"
           >
+            {/* Card-specific ambient glow */}
+            <div className={`absolute -inset-4 ${feature.glowColor} rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+
             {/* Left Accent Border */}
             <div
-              className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-xl bg-current ${feature.iconClass} opacity-60 group-hover:opacity-100 transition-opacity`}
+              className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-sm bg-current ${feature.iconClass} opacity-60 group-hover:opacity-100 transition-opacity`}
             />
 
             {/* Icon Container */}
             <div
-              className={`mb-6 w-14 h-14 rounded-lg flex items-center justify-center ${feature.bgClass} ${feature.borderClass} ${feature.iconClass}`}
+              className={`relative mb-6 w-14 h-14 rounded-sm flex items-center justify-center ${feature.bgClass} ${feature.borderClass} ${feature.iconClass}`}
             >
               <div dangerouslySetInnerHTML={{ __html: feature.icon }} />
             </div>
 
             {/* Content */}
-            <h3 className="text-xl font-bold mb-3 text-base-content group-hover:text-white transition-colors">
+            <h3 className="relative z-10 text-xl font-bold mb-3 text-base-content group-hover:text-white transition-colors">
               {feature.title}
             </h3>
 
-            <p className="text-base-content/60 leading-relaxed mb-6">
+            <p className="relative z-10 text-base-content/60 leading-relaxed mb-6">
               {feature.description}
             </p>
 
             {/* Stat Badge */}
-            <div className="flex items-baseline gap-2 pt-4 border-t border-base-300">
+            <div className="relative z-10 flex items-baseline gap-2 pt-5 border-t border-base-300/50">
               <span
                 className={`text-2xl font-bold font-mono-numbers ${feature.accent}`}
               >

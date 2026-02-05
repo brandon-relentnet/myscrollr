@@ -13,8 +13,8 @@ export function HeroSection() {
 
   return (
     <>
-      {/* Hero Section - Bold Terminal Aesthetic */}
-      <section className="relative min-h-screen flex items-center overflow-hidden pt-20">
+      {/* Hero Section */}
+      <section className="relative min-h-screen flex items-center overflow-hidden pt-20 z-10">
         <div className="container relative z-10">
           <div className="flex lg:flex-row flex-col justify-center items-center gap-12 lg:gap-20">
             {/* Abstract Pulse Visualization */}
@@ -25,15 +25,15 @@ export function HeroSection() {
               className="relative order-2 lg:order-1"
             >
               {/* Decorative glow */}
-              <div className="absolute inset-0 bg-primary/10 rounded-full blur-3xl" />
+              <div className="absolute inset-0 bg-primary/10 rounded-full blur-[100px]" />
 
               {/* Large animated pulse */}
               <motion.div
                 animate={{
                   scale: [1, 1.02, 1],
-                  rotate: [0, 0.5, 0, -0.5, 0],
+                  rotate: [0, 0.3, 0, -0.3, 0],
                 }}
-                transition={{ duration: 6, repeat: Infinity }}
+                transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
                 className="relative"
               >
                 <ScrollrSVG
@@ -49,14 +49,14 @@ export function HeroSection() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: 0.6 }}
                 whileHover={{ scale: 1.05, rotate: 2 }}
-                className="absolute top-8 -right-4 px-4 py-2 rounded border border-primary/40 bg-base-200/90 backdrop-blur-sm shadow-lg"
+                className="absolute top-8 -right-4 px-4 py-2.5 rounded-sm border border-primary/40 bg-base-200/90 backdrop-blur-sm shadow-lg"
               >
-                <span className="flex items-center gap-2 text-primary">
+                <span className="flex items-center gap-2.5 text-primary">
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
                   </span>
-                  <span className="text-xs font-bold font-mono tracking-widest">
+                  <span className="text-xs font-bold font-mono uppercase tracking-wider">
                     LIVE
                   </span>
                 </span>
@@ -67,13 +67,13 @@ export function HeroSection() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: 0.7 }}
                 whileHover={{ scale: 1.05, rotate: -2 }}
-                className="absolute bottom-20 -left-2 px-4 py-2 rounded border border-info/40 bg-base-200/90 backdrop-blur-sm shadow-lg"
+                className="absolute bottom-24 -left-2 px-4 py-2.5 rounded-sm border border-info/40 bg-base-200/90 backdrop-blur-sm shadow-lg"
               >
-                <span className="flex items-center gap-2">
+                <span className="flex items-center gap-2.5">
                   <span className="text-sm font-bold font-mono text-info">
-                    +2.4%
+                    +2.47%
                   </span>
-                  <span className="text-xs font-mono text-base-content/50">
+                  <span className="text-xs font-mono text-base-content/50 uppercase tracking-wider">
                     BTC
                   </span>
                 </span>
@@ -84,13 +84,13 @@ export function HeroSection() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: 0.8 }}
                 whileHover={{ scale: 1.05, rotate: 2 }}
-                className="absolute bottom-4 right-8 px-4 py-2 rounded border border-secondary/40 bg-base-200/90 backdrop-blur-sm shadow-lg"
+                className="absolute bottom-6 right-8 px-4 py-2.5 rounded-sm border border-secondary/40 bg-base-200/90 backdrop-blur-sm shadow-lg"
               >
-                <span className="flex items-center gap-2">
+                <span className="flex items-center gap-2.5">
                   <span className="text-sm font-bold font-mono text-secondary">
                     Q4 2:34
                   </span>
-                  <span className="text-xs font-mono text-base-content/50">
+                  <span className="text-xs font-mono text-base-content/50 uppercase tracking-wider">
                     LAL
                   </span>
                 </span>
@@ -110,7 +110,7 @@ export function HeroSection() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 1 }}
-                className="mt-6 text-lg sm:text-xl text-base-content/60 max-w-md leading-relaxed"
+                className="mt-8 text-lg sm:text-xl text-base-content/60 max-w-md leading-relaxed"
               >
                 Pin live sports scores, crypto prices, and custom feeds over any
                 tab.
@@ -124,14 +124,14 @@ export function HeroSection() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 1.2 }}
-                className="flex flex-wrap gap-4 mt-8"
+                className="flex flex-wrap gap-4 mt-10"
               >
                 <InstallButton />
                 <motion.button
                   type="button"
                   whileHover={{ y: 2 }}
                   whileTap={{ y: 0 }}
-                  className="inline-flex cursor-pointer items-center justify-center gap-2 rounded border border-base-300 bg-base-200 px-6 py-3 text-sm font-bold uppercase tracking-wider text-base-content hover:bg-base-300 transition-all shadow-sm"
+                  className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-sm border border-base-300 bg-base-200/50 px-6 py-3 text-sm font-bold uppercase tracking-wider text-base-content hover:bg-base-300 transition-all backdrop-blur-sm"
                   onClick={() => scrollToSection('welcome')}
                 >
                   Learn More
@@ -146,9 +146,9 @@ export function HeroSection() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 1.5 }}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-base-content/40"
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 text-base-content/40"
         >
-          <span className="text-xs font-mono uppercase tracking-wider">
+          <span className="text-xs font-mono uppercase tracking-widest">
             Scroll
           </span>
           <motion.div
@@ -175,18 +175,34 @@ export function HeroSection() {
           className="flex lg:flex-row flex-col-reverse justify-center items-center gap-12 text-center lg:text-left"
         >
           <div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/5 border border-primary/10 mb-6"
+            >
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
+              </span>
+              <span className="text-xs font-mono uppercase tracking-widest text-primary">
+                Terminal v2.1
+              </span>
+            </motion.div>
+
             <h1 className="font-extrabold text-4xl sm:text-5xl text-balance tracking-tight">
-              Welcome to <span className="gradient-text-pulse">Scrollr</span>
+              Welcome to <span className="text-gradient-primary">Scrollr</span>
             </h1>
 
-            <p className="mt-4 text-lg max-w-prose text-base-content/70">
+            <p className="mt-5 text-lg max-w-prose text-base-content/70 leading-relaxed">
               Tickers dominate our screens but haven't evolved in years. It's
               almost as if Tickers are talking at you and not with you.
             </p>
-            <p className="mt-4 max-w-prose text-2xl italic font-semibold text-base-content/80">
+            <p className="mt-5 max-w-prose text-2xl italic font-semibold text-base-content/80">
               Scrollr brings them to life.
             </p>
-            <p className="mt-4 max-w-prose text-lg text-base-content/70">
+            <p className="mt-5 max-w-prose text-lg text-base-content/70 leading-relaxed">
               An interactive, personalized, modern ticker experience built to
               engage effortlessly. Follow your Fantasy teams + more while you
               stream the game or just browsing the web.{' '}
@@ -195,12 +211,12 @@ export function HeroSection() {
               </span>
             </p>
 
-            <div className="flex flex-wrap gap-3 mt-6 justify-center lg:justify-start items-center">
+            <div className="flex flex-wrap gap-3 mt-8 justify-center lg:justify-start items-center">
               <motion.button
                 type="button"
                 whileHover={{ y: 2 }}
                 whileTap={{ y: 0 }}
-                className="btn-pulse rounded text-sm shadow-lg"
+                className="btn-pulse rounded-sm text-sm shadow-lg cursor-pointer"
                 onClick={() => scrollToSection('scroll-highlight')}
               >
                 Explore Features
@@ -209,14 +225,28 @@ export function HeroSection() {
                 href="https://chromewebstore.google.com/detail/scrollr/pjeafpgbpfbcaddipkcbacohhbfakclb"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group inline-flex h-full items-center text-sm font-bold uppercase tracking-wider text-base-content/60 hover:text-primary transition-colors px-2"
+                className="group inline-flex h-full items-center text-sm font-bold uppercase tracking-wider text-base-content/60 hover:text-primary transition-colors px-4"
               >
                 View on Web Store
+                <motion.span
+                  animate={{ x: [0, 3, 0] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                  className="ml-2"
+                >
+                  →
+                </motion.span>
               </a>
             </div>
           </div>
 
-          <ScrollrSVG className="w-full max-w-sm h-auto" />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <ScrollrSVG className="w-full max-w-sm h-auto" />
+          </motion.div>
         </motion.div>
       </section>
     </>
