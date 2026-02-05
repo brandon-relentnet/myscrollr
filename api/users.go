@@ -151,7 +151,7 @@ func GetMyProfile(c *fiber.Ctx) error {
 		})
 	}
 
-	// First check if profile exists
+	// Check if profile exists
 	var profile Profile
 	var displayName, bio sql.NullString
 	err := dbPool.QueryRow(context.Background(), `
@@ -170,97 +170,32 @@ func GetMyProfile(c *fiber.Ctx) error {
 	profile.DisplayName = displayName.String
 	profile.Bio = bio.String
 
-	log.Printf("[GetMyProfile] Query err=%v, username=%s", err, profile.Username)
+	log.Printf("[GetMyProfile] Query err=%v", err)
 
-	// If profile exists but has empty username, fix it
-	if profile.Username == "" {
-		log.Printf("[GetMyProfile] Fixing empty username for user %s", userID)
-		newUsername := userID[:8]
-		// Check if this username is available
-		var count int
-		_ = dbPool.QueryRow(context.Background(), `SELECT COUNT(*) FROM profiles WHERE username = $1`, newUsername).Scan(&count)
-		if count > 0 {
-			newUsername = newUsername + fmt.Sprintf("%d", time.Now().Unix()%10000)
-		}
-		// Update the profile
-		_, err = dbPool.Exec(context.Background(), `UPDATE profiles SET username = $1, display_name = COALESCE(NULLIF(display_name, ''), $1) WHERE user_id = $2`, newUsername, userID)
-		if err != nil {
-			log.Printf("[GetMyProfile] Error fixing empty username: %v", err)
-		} else {
-			profile.Username = newUsername
-			profile.DisplayName = newUsername
-			log.Printf("[GetMyProfile] Username fixed to: %s", newUsername)
-		}
+	// If no profile exists, return empty response - frontend handles setup UI
+	if err != nil && (err == sql.ErrNoRows || strings.Contains(err.Error(), "no rows")) {
+		log.Printf("[GetMyProfile] No profile found for user %s", userID)
+		return c.JSON(FullProfileResponse{
+			Username:       "",
+			DisplayName:    "",
+			Bio:            "",
+			IsPublic:       true,
+			ConnectedYahoo: false,
+			LastSync:       nil,
+		})
 	}
-
-	// If no profile exists, create a placeholder one
 	if err != nil {
-		// Use pgx.ErrNoRows for proper error checking
-		if err != sql.ErrNoRows && !strings.Contains(err.Error(), "no rows") {
-			// Real error
-			log.Printf("Error fetching profile: %v", err)
-			return c.Status(http.StatusInternalServerError).JSON(ErrorResponse{
-				Status: "error",
-				Error:  "Failed to fetch profile",
-			})
-		}
-		// Profile doesn't exist, create one
-		log.Printf("[GetMyProfile] Creating new profile for user %s", userID)
-		email := getUserEmail(c)
-		log.Printf("[GetMyProfile] email=%s", email)
-
-		// Generate initial username from email (before @), fallback to user ID
-		initialUsername := ""
-		if email != "" {
-			parts := strings.Split(email, "@")
-			if len(parts) > 0 {
-				initialUsername = parts[0]
-			}
-		}
-		// If email is empty or didn't produce username, use first 8 chars of user ID
-		if initialUsername == "" {
-			initialUsername = userID[:8]
-			log.Printf("[GetMyProfile] Using userID prefix as username: %s", initialUsername)
-		}
-
-		// Check if this username is available
-		var count int
-		err = dbPool.QueryRow(context.Background(), `
-			SELECT COUNT(*) FROM profiles WHERE username = $1
-		`, initialUsername).Scan(&count)
-
-		// If username exists, append a random suffix
-		if err == nil && count > 0 {
-			initialUsername = initialUsername + fmt.Sprintf("%d", time.Now().Unix()%10000)
-		}
-
-		// Create profile
-		_, err = dbPool.Exec(context.Background(), `
-			INSERT INTO profiles (user_id, username, display_name, is_public, created_at, updated_at)
-			VALUES ($1, $2, $3, true, NOW(), NOW())
-		`, userID, initialUsername, initialUsername)
-
-		if err != nil {
-			log.Printf("Error creating profile: %v", err)
-			return c.Status(http.StatusInternalServerError).JSON(ErrorResponse{
-				Status: "error",
-				Error:  "Failed to create profile",
-			})
-		}
-
-		profile = Profile{
-			UserID:      userID,
-			Username:    initialUsername,
-			DisplayName: initialUsername,
-			IsPublic:    true,
-		}
-		log.Printf("[GetMyProfile] Profile created: username=%s", profile.Username)
+		log.Printf("Error fetching profile: %v", err)
+		return c.Status(http.StatusInternalServerError).JSON(ErrorResponse{
+			Status: "error",
+			Error:  "Failed to fetch profile",
+		})
 	}
 
 	// Check if Yahoo is connected
 	connectedYahoo := false
 	var lastSync sql.NullTime
-	err = dbPool.QueryRow(context.Background(), `
+	_ = dbPool.QueryRow(context.Background(), `
 		SELECT last_sync FROM yahoo_users WHERE guid = $1
 	`, userID).Scan(&lastSync)
 	if err == nil && lastSync.Valid {
