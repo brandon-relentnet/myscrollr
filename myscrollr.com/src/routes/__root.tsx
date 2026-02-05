@@ -1,28 +1,21 @@
-import { createRootRoute, Outlet } from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
-import { TanStackDevtools } from '@tanstack/react-devtools'
-import Header from '@/components/Header'
+import { Outlet, createRootRoute } from '@tanstack/react-router'
+import { SpeedInsights } from '@vercel/speed-insights/react'
+import { Analytics } from '@vercel/analytics/react'
+import Header from '../components/Header'
+import Footer from '../components/Footer'
+import { CommandBackground } from '@/components/CommandBackground'
 
 export const Route = createRootRoute({
-  component: RootComponent,
-})
-
-function RootComponent() {
-  return (
-    <>
+  component: () => (
+    <div className="min-h-screen relative">
+      <CommandBackground />
+      <SpeedInsights />
+      <Analytics />
       <Header />
-      <Outlet />
-      <TanStackDevtools
-        config={{
-          position: 'bottom-right',
-        }}
-        plugins={[
-          {
-            name: 'Tanstack Router',
-            render: <TanStackRouterDevtoolsPanel />,
-          },
-        ]}
-      />
-    </>
-  )
-}
+      <main className="relative z-10">
+        <Outlet />
+      </main>
+      <Footer />
+    </div>
+  ),
+})

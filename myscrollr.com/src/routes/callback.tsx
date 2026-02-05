@@ -16,10 +16,11 @@ function Callback() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mx-auto mb-4" />
-          <p>Redirecting...</p>
+      <div className="min-h-screen bg-base-100 text-base-content flex items-center justify-center font-mono">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4" />
+          <p className="uppercase tracking-[0.2em] text-primary animate-pulse">Establishing Secure Session...</p>
+          <p className="text-[10px] opacity-40 uppercase">Redirecting to master control</p>
         </div>
       </div>
     )

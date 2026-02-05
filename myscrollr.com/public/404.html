@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Redirecting…</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+        padding: 2rem;
+        background: #faf4ed;
+        color: #575279;
+      }
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #191724;
+          color: #e0def4;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Routing you back to Scrollr…</h1>
+      <p>If this takes longer than a second, refresh the page.</p>
+    </main>
+    <script>
+      ;(function () {
+        try {
+          var redirectPath =
+            window.location.pathname +
+            window.location.search +
+            window.location.hash
+          sessionStorage.setItem('__scrollr_spa_redirect__', redirectPath)
+        } catch (_err) {}
+        window.location.replace('/')
+      })()
+    </script>
+  </body>
+</html>

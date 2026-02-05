@@ -7,13 +7,26 @@ import { LogtoProvider, type LogtoConfig } from '@logto/react'
 import { routeTree } from './routeTree.gen'
 
 import './styles.css'
-import reportWebVitals from './reportWebVitals.ts'
 
 // Logto configuration
 const logtoConfig: LogtoConfig = {
   endpoint: 'https://auth.myscrollr.relentnet.dev/',
   appId: 'ogbulfshvf934eeli4t9u',
   resources: ['https://api.myscrollr.relentnet.dev'],
+}
+
+const spaRedirectKey = '__doubleup_spa_redirect__'
+
+if (typeof window !== 'undefined') {
+  const pendingRedirect = sessionStorage.getItem(spaRedirectKey)
+  if (pendingRedirect) {
+    sessionStorage.removeItem(spaRedirectKey)
+    const target =
+      pendingRedirect.startsWith('/') || pendingRedirect.startsWith('#')
+        ? pendingRedirect
+        : `/${pendingRedirect}`
+    window.history.replaceState(null, '', target)
+  }
 }
 
 // Create a new router instance
@@ -45,8 +58,3 @@ if (rootElement && !rootElement.innerHTML) {
     </StrictMode>,
   )
 }
-
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
-reportWebVitals()

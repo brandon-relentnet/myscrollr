@@ -1,15 +1,252 @@
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
 
-body {
-  @apply m-0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@theme {
+  --color-primary: #bfff00;
+  --color-primary-content: #0d0d12;
+  --color-secondary: #ff4757;
+  --color-secondary-content: #0d0d12;
+  --color-accent: #a855f7;
+  --color-accent-content: #0d0d12;
+  --color-info: #00d4ff;
+  --color-info-content: #0d0d12;
+  --color-success: #22c55e;
+  --color-success-content: #0d0d12;
+  --color-warning: #fbbf24;
+  --color-warning-content: #0d0d12;
+  --color-error: #ef4444;
+  --color-error-content: #0d0d12;
+
+  --color-base-100: #0d0d12;
+  --color-base-200: #14141c;
+  --color-base-300: #1e1e28;
+  --color-base-content: #e8e8ed;
+
+  --radius-selector: 0rem;
+  --radius-field: 0.125rem;
+  --radius-box: 0.25rem;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
-    monospace;
+/* ==========================================================================
+   FONTS - Space Grotesk + JetBrains Mono
+   ========================================================================== */
+
+:root {
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+
+  /* Legacy variable support */
+  --color-primary: #bfff00;
+  --color-primary-content: #0d0d12;
+  --color-base-100: #0d0d12;
+  --color-base-200: #14141c;
+  --color-base-300: #1e1e28;
+  --color-base-content: #e8e8ed;
+}
+
+body {
+  @apply bg-base-100 m-0 text-base-content font-['Space_Grotesk'] overflow-x-hidden;
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  /* Refined Depth Background */
+  background-color: #08080a;
+  background-image: 
+    /* Subtle Grid Nodes */
+    radial-gradient(circle at 1px 1px, rgba(191, 255, 0, 0.12) 1px, transparent 0),
+    /* Clean Grid Lines */
+    linear-gradient(rgba(191, 255, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(191, 255, 0, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px, 60px 60px, 60px 60px;
+  background-attachment: fixed;
+  position: relative;
+}
+
+/* Refined Global Nebula Layers */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: 
+    /* Top Left - Purple Neon (Softened) */
+    radial-gradient(circle at 15% 15%, rgba(168, 85, 247, 0.08) 0%, transparent 40%),
+    /* Top Right - Cyan Pulse (Softened) */
+    radial-gradient(circle at 85% 15%, rgba(0, 212, 255, 0.07) 0%, transparent 40%),
+    /* Center - Primary Aura */
+    radial-gradient(circle at 50% 45%, rgba(191, 255, 0, 0.05) 0%, transparent 60%),
+    /* Bottom Left - Coral Warmth */
+    radial-gradient(circle at 20% 85%, rgba(255, 71, 87, 0.07) 0%, transparent 40%),
+    /* Bottom Right - Indigo Depth */
+    radial-gradient(circle at 80% 80%, rgba(99, 102, 241, 0.08) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: -1;
+  /* Gentle breathing effect */
+  animation: nebula-breathe 12s ease-in-out infinite alternate;
+}
+
+@keyframes nebula-breathe {
+  from { opacity: 0.8; }
+  to { opacity: 1; }
+}
+
+/* Deep Vignette for focus */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at center, transparent 0%, rgba(8, 8, 10, 0.7) 100%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Monospace for all numbers - terminal precision */
+.font-mono-numbers {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-lining;
+  letter-spacing: -0.02em;
+}
+
+/* ==========================================================================
+   UTILITIES
+   ========================================================================== */
+
+code,
+pre,
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* High-Contrast Glow Effects */
+.glow-primary {
+  box-shadow:
+    0 0 30px rgba(191, 255, 0, 0.15),
+    0 0 60px rgba(191, 255, 0, 0.08);
+}
+
+/* Gradient text */
+.gradient-text-pulse {
+  @apply bg-clip-text bg-linear-to-r from-primary via-info to-secondary text-transparent;
+}
+
+/* ==========================================================================
+   BUTTONS
+   ========================================================================== */
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center rounded-sm px-4 py-2 text-sm font-bold transition-all duration-200 cursor-pointer active:scale-95 disabled:opacity-50 disabled:pointer-events-none uppercase tracking-wider;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-primary-content hover:opacity-90 shadow-[0_0_20px_rgba(191,255,0,0.3)];
+  }
+
+  .btn-ghost {
+    @apply hover:bg-base-300 text-base-content;
+  }
+
+  .btn-outline {
+    @apply border border-base-300 hover:border-primary hover:text-primary backdrop-blur-sm;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1 text-xs;
+  }
+
+  .btn-xs {
+    @apply px-2 py-0.5 text-[10px];
+  }
+
+  .btn-pulse {
+    @apply bg-primary text-base-100 font-semibold px-6 py-3 transition-all duration-200 shadow-[0_0_20px_rgba(191,255,0,0.25)];
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .btn-pulse:hover {
+    @apply bg-primary/90;
+    box-shadow: 0 0 40px rgba(191, 255, 0, 0.4);
+    transform: translateY(-2px);
+  }
+
+  /* Badge Replacements */
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+  .badge-primary {
+    @apply bg-primary/20 text-primary border border-primary/20 backdrop-blur-md;
+  }
+
+  /* Input Replacements */
+  .input {
+    @apply h-9 w-full rounded-sm border border-base-300 bg-base-200/50 backdrop-blur-md px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-base-content/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  /* Modal Replacements */
+  .modal {
+    @apply fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-200;
+  }
+  .modal[open] {
+    @apply opacity-100 pointer-events-auto;
+  }
+  .modal-box {
+    @apply bg-base-100/90 backdrop-blur-xl border border-base-300 p-6 shadow-2xl w-full max-w-2xl relative;
+  }
+}
+
+/* ==========================================================================
+   CARD STYLES
+   ========================================================================== */
+
+.card-pulse {
+  @apply bg-base-200/60 backdrop-blur-2xl border border-base-300 p-6 transition-all duration-300;
+}
+
+.card-pulse:hover {
+  @apply border-primary/40;
+  box-shadow: 0 0 50px rgba(191, 255, 0, 0.1);
+}
+
+/* ==========================================================================
+   ANIMATIONS
+   ========================================================================== */
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.02); }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* ==========================================================================
+   SCROLLBAR
+   ========================================================================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-base-200;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-base-300;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-primary/50;
+}
+
+/* ==========================================================================
+   LAYOUT
+   ========================================================================== */
+
+.container {
+  @apply mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24;
 }

@@ -44,8 +44,13 @@ function ProfilePage() {
             return
           }
 
-          // No username in Logto - show error
-          setError('No username found in your Logto account')
+          // Fallback to sub if no username
+          if (claims?.sub) {
+             window.location.href = `/u/${claims.sub}`
+             return
+          }
+
+          setError('No identity found in your Logto account')
         } catch {
           setError('Failed to load profile')
         }
@@ -74,7 +79,7 @@ function ProfilePage() {
       }
 
       // Get Yahoo connection status from our API
-      if (isAuthenticated) {
+      if (isAuthenticated && (ownUsername === username || ownSub === username)) {
         try {
           const token = await getAccessToken('https://api.myscrollr.relentnet.dev')
           if (token) {
@@ -96,12 +101,15 @@ function ProfilePage() {
     }
 
     loadProfile()
-  }, [username, isAuthenticated])
+  }, [username, isAuthenticated, getIdTokenClaims, getAccessToken])
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
-        <Loader2 className="animate-spin h-8 w-8 text-indigo-500" />
+      <div className="min-h-screen bg-base-100 text-primary flex items-center justify-center font-mono">
+        <div className="text-center space-y-4">
+           <Loader2 className="animate-spin h-12 w-12 text-primary mx-auto" />
+           <p className="uppercase tracking-[0.2em] text-xs">Accessing Identity_Logs...</p>
+        </div>
       </div>
     )
   }
@@ -109,12 +117,12 @@ function ProfilePage() {
   // Sign-in prompt for unauthenticated users
   if (username === 'me' && !isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-6">
-        <div className="text-center">
-          <AlertCircle className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Sign In Required</h1>
-          <p className="text-gray-400 mb-6">Sign in to view your profile</p>
-          <a href={`${window.location.origin}/callback`} className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-8 rounded-xl transition-all">
+      <div className="min-h-screen bg-base-100 text-base-content flex items-center justify-center p-6 font-mono">
+        <div className="text-center space-y-6 max-w-md border border-base-300 p-12 rounded-lg bg-base-200 shadow-2xl">
+          <AlertCircle className="h-16 w-16 text-warning mx-auto mb-4" />
+          <h1 className="text-2xl font-bold tracking-[0.2em] uppercase">Auth Required</h1>
+          <p className="text-base-content/60 uppercase text-xs leading-loose">Identity verification required to access private profile node.</p>
+          <a href={`${window.location.origin}/callback`} className="btn btn-primary px-12">
             Sign In
           </a>
         </div>
@@ -125,60 +133,70 @@ function ProfilePage() {
   if (!profile) return null
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-base-100 text-base-content pt-28 pb-20 px-6">
+      <div className="max-w-4xl mx-auto space-y-8">
         {/* Profile Header */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 mb-6">
-          <div className="flex items-start gap-6">
-            <div className="h-24 w-24 rounded-full bg-indigo-600 flex items-center justify-center text-3xl font-bold">
-              {profile.username ? profile.username[0].toUpperCase() : '?'}
+        <div className="bg-base-200 border border-base-300 rounded-xl p-10 shadow-2xl relative overflow-hidden">
+          {/* Accent decoration */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full border-l border-b border-primary/10" />
+          
+          <div className="flex flex-col md:flex-row items-center md:items-start gap-8 relative z-10 text-center md:text-left">
+            <div className="h-28 w-28 rounded-xl bg-primary/10 border-2 border-primary/20 flex items-center justify-center text-4xl font-black text-primary shadow-lg uppercase">
+              {profile.username ? profile.username[0] : '?'}
             </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-3xl font-bold">@{profile.username}</h1>
-                <span className="px-2 py-1 bg-green-900/50 text-green-400 text-xs rounded-full flex items-center gap-1">
-                  <Shield size={12} /> Public
-                </span>
+            <div className="flex-1 space-y-4">
+              <div className="space-y-1">
+                <div className="flex items-center justify-center md:justify-start gap-3">
+                  <h1 className="text-4xl font-black tracking-tight uppercase">@{profile.username}</h1>
+                  <span className="px-3 py-1 bg-success/10 text-success text-[10px] font-bold rounded-full border border-success/20 flex items-center gap-1.5 uppercase tracking-widest">
+                    <Shield size={12} /> Active
+                  </span>
+                </div>
+                {profile.display_name && profile.display_name !== profile.username && (
+                  <p className="text-xl text-base-content/60 font-medium">{profile.display_name}</p>
+                )}
               </div>
-              {profile.display_name && profile.display_name !== profile.username && (
-                <p className="text-xl text-gray-300 mb-2">{profile.display_name}</p>
-              )}
+              <div className="flex flex-wrap justify-center md:justify-start gap-2 pt-2">
+                 <div className="px-3 py-1 bg-base-300 border border-base-300 rounded-md text-[10px] font-mono uppercase text-base-content/40">Status: Verified</div>
+                 <div className="px-3 py-1 bg-base-300 border border-base-300 rounded-md text-[10px] font-mono uppercase text-base-content/40">Tier: Power_User</div>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Connected Accounts */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 mb-6">
-          <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-            <LinkIcon size={20} className="text-indigo-500" />
-            Connected Accounts
+        <div className="bg-base-200 border border-base-300 rounded-xl p-10 shadow-xl">
+          <h2 className="text-xl font-black mb-8 flex items-center gap-3 uppercase tracking-tight">
+            <LinkIcon size={24} className="text-primary" />
+            Integration_Nodes
           </h2>
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-gray-800 rounded-xl">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-lg bg-purple-600 flex items-center justify-center">
-                  <span className="text-xl font-bold">Y!</span>
+            <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-base-300/50 border border-base-300 rounded-lg gap-6 group hover:border-primary/20 transition-all">
+              <div className="flex items-center gap-5">
+                <div className="h-14 w-14 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary border border-secondary/20 shadow-inner group-hover:scale-105 transition-transform">
+                  <span className="text-2xl font-black">Y!</span>
                 </div>
-                <div>
-                  <p className="font-medium">Yahoo Fantasy</p>
+                <div className="text-left">
+                  <p className="font-bold text-lg uppercase tracking-tight">Yahoo Fantasy</p>
                   {profile.connected_yahoo ? (
-                    <p className="text-sm text-green-400 flex items-center gap-1">
-                      <Check size={14} /> Connected
+                    <p className="text-xs text-success flex items-center gap-1.5 font-bold uppercase tracking-widest mt-1">
+                      <Check size={14} strokeWidth={3} /> Connection Established
                     </p>
                   ) : (
-                    <p className="text-sm text-gray-400">Not connected</p>
+                    <p className="text-xs text-base-content/30 font-bold uppercase tracking-widest mt-1">Status: Disconnected</p>
                   )}
                 </div>
               </div>
+              
               {isOwnProfile && (
-                <div>
+                <div className="w-full sm:w-auto">
                   {profile.connected_yahoo ? (
-                    <a href="/dashboard" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors text-sm">
-                      Dashboard
+                    <a href="/dashboard" className="btn btn-outline border-primary/30 text-primary hover:bg-primary hover:text-primary-content w-full sm:w-auto uppercase text-xs tracking-widest">
+                      Enter Dashboard
                     </a>
                   ) : (
-                    <a href="/dashboard" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors text-sm">
-                      Connect
+                    <a href="/dashboard" className="btn btn-primary w-full sm:w-auto uppercase text-xs tracking-widest shadow-lg">
+                      Link Account
                     </a>
                   )}
                 </div>
@@ -187,9 +205,11 @@ function ProfilePage() {
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="text-center text-gray-500 text-sm">
-          <p>Profile powered by Logto</p>
+        {/* Footer info */}
+        <div className="flex items-center justify-center gap-4 text-base-content/20 font-mono text-[10px] uppercase tracking-[0.3em] pt-4">
+           <span className="h-px w-12 bg-current opacity-20" />
+           <span>Security Provided by Logto OSS</span>
+           <span className="h-px w-12 bg-current opacity-20" />
         </div>
       </div>
     </div>

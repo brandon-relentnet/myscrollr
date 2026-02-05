@@ -1,14 +1,12 @@
-import { Link, useLocation } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
+import { Menu, X, LogOut, LayoutDashboard, UserCircle } from 'lucide-react'
 import { useState } from 'react'
-import { Home, Menu, X, User, LogOut } from 'lucide-react'
 import { useLogto } from '@logto/react'
+import ScrollrSVG from './ScrollrSVG'
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
   const { signIn, signOut, isAuthenticated, isLoading } = useLogto()
-  const location = useLocation()
-
-  const isActive = (path: string) => location.pathname === path
 
   const handleSignIn = () => {
     signIn(`${window.location.origin}/callback`)
@@ -20,106 +18,145 @@ export default function Header() {
 
   return (
     <>
-      <header className="p-4 flex items-center justify-between bg-gray-900 text-white shadow-lg sticky top-0 z-40">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setIsOpen(true)}
-            className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
-            aria-label="Open menu"
-          >
-            <Menu size={24} />
-          </button>
-          <Link to="/">
-            <h1 className="text-xl font-bold text-indigo-400">Scrollr</h1>
+      <header className="top-0 left-0 z-100 fixed flex justify-between items-center bg-base-100/80 backdrop-blur-xl border-b border-base-300 p-4 px-6 w-full h-20">
+        <div className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="flex items-center justify-center rounded-lg border border-base-300 bg-base-200/80 p-2 shadow-sm group-hover:border-primary/30 transition-all">
+              <ScrollrSVG className="size-8" />
+            </div>
+            <span className="font-bold text-xl tracking-tight uppercase">
+              Scrollr
+            </span>
           </Link>
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* Desktop Navigation */}
+        <nav className="hidden lg:flex items-center gap-6">
+          <Link
+            to="/"
+            className="text-sm font-bold uppercase tracking-widest text-base-content/60 hover:text-primary transition-colors"
+          >
+            Home
+          </Link>
+          
+          {isAuthenticated && (
+            <Link
+              to="/dashboard"
+              className="text-sm font-bold uppercase tracking-widest text-base-content/60 hover:text-primary transition-colors flex items-center gap-2"
+            >
+              <LayoutDashboard size={16} />
+              Terminal
+            </Link>
+          )}
+
+          <div className="h-6 w-px bg-base-300" />
+
           {isLoading ? (
-            <div className="w-8 h-8 rounded-full bg-gray-700 animate-pulse" />
+            <div className="w-24 h-9 bg-base-200 animate-pulse rounded-sm" />
           ) : isAuthenticated ? (
-            <>
-              <div className="hidden sm:flex items-center gap-2 text-sm text-gray-400">
-                <User size={16} />
-                <span>User</span>
-              </div>
+            <div className="flex items-center gap-4">
+              <Link
+                to="/account"
+                className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-base-content/60 hover:text-primary transition-colors"
+              >
+                <UserCircle size={18} />
+                Hub
+              </Link>
               <button
                 onClick={handleSignOut}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors text-sm font-medium"
+                className="btn btn-outline border-error/30 text-error hover:bg-error hover:text-white btn-sm"
               >
-                <LogOut size={18} />
-                <span className="hidden sm:inline">Sign Out</span>
+                <LogOut size={16} className="mr-2" />
+                Sign Out
               </button>
-            </>
+            </div>
           ) : (
             <button
               onClick={handleSignIn}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors text-sm font-medium"
+              className="btn btn-primary btn-sm"
             >
               Sign In
             </button>
           )}
-        </div>
-      </header>
-
-      <aside
-        className={`fixed top-0 left-0 h-full w-80 bg-gray-900 text-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <div className="flex items-center justify-between p-4 border-b border-gray-800">
-          <h2 className="text-xl font-bold">Navigation</h2>
-          <button
-            onClick={() => setIsOpen(false)}
-            className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
-            aria-label="Close menu"
-          >
-            <X size={24} />
-          </button>
-        </div>
-
-        <nav className="flex-1 p-4 overflow-y-auto">
-          <Link
-            to="/"
-            onClick={() => setIsOpen(false)}
-            className={`flex items-center gap-3 p-3 rounded-lg transition-colors mb-2 ${
-              isActive('/')
-                ? 'bg-indigo-600'
-                : 'hover:bg-gray-800'
-            }`}
-          >
-            <Home size={20} />
-            <span className="font-medium">Dashboard</span>
-          </Link>
-
-          {isAuthenticated && (
-            <Link
-              to="/dashboard"
-              onClick={() => setIsOpen(false)}
-              className={`flex items-center gap-3 p-3 rounded-lg transition-colors mb-2 ${
-                isActive('/dashboard')
-                  ? 'bg-indigo-600'
-                  : 'hover:bg-gray-800'
-              }`}
-            >
-              <span className="text-lg font-medium">📊</span>
-              <span className="font-medium">My Dashboard</span>
-            </Link>
-          )}
         </nav>
 
-        <div className="p-4 border-t border-gray-800">
+        {/* Menu button for small screens */}
+        <button
+          onClick={() => setIsOpen(true)}
+          className="lg:hidden hover:bg-base-200 ml-4 p-2.5 rounded-lg transition-colors cursor-pointer border border-base-300"
+          aria-label="Open menu"
+        >
+          <Menu size={22} />
+        </button>
+      </header>
+
+      {/* Overlay only on small screens */}
+      <div
+        onClick={() => setIsOpen(false)}
+        className={`bg-black/40 backdrop-blur-sm transition-opacity duration-250 fixed inset-0 h-full w-full z-25 lg:hidden ${
+          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+      />
+      
+      {/* Aside drawer only for small screens */}
+      <aside
+        className={`fixed top-0 right-0 h-full w-80 bg-base-200 shadow-2xl backdrop-blur-xl z-150 transform transition-transform duration-300 ease-in-out flex flex-col lg:hidden ${
+          isOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        <div className="flex justify-between items-center p-4 border-b border-base-300">
+          <h2 className="font-bold text-lg uppercase tracking-widest">Navigation</h2>
+          <button
+            onClick={() => setIsOpen(false)}
+            className="hover:bg-base-300 p-2 rounded-lg transition-colors cursor-pointer"
+            aria-label="Close menu"
+          >
+            <X size={22} />
+          </button>
+        </div>
+        <nav className="flex-1 p-6 flex flex-col gap-4">
+          <Link
+            to="/"
+            className="text-lg font-bold uppercase tracking-widest text-base-content hover:text-primary transition-colors"
+            onClick={() => setIsOpen(false)}
+          >
+            Home
+          </Link>
+          
+          {isAuthenticated && (
+            <>
+              <Link
+                to="/dashboard"
+                className="text-lg font-bold uppercase tracking-widest text-base-content hover:text-primary transition-colors flex items-center gap-3"
+                onClick={() => setIsOpen(false)}
+              >
+                <LayoutDashboard size={20} />
+                Terminal
+              </Link>
+              <Link
+                to="/account"
+                className="text-lg font-bold uppercase tracking-widest text-base-content hover:text-primary transition-colors flex items-center gap-3"
+                onClick={() => setIsOpen(false)}
+              >
+                <UserCircle size={20} />
+                Hub
+              </Link>
+            </>
+          )}
+
+          <div className="h-px bg-base-300 my-2" />
+
           {isLoading ? (
-            <div className="h-10 bg-gray-800 rounded-lg animate-pulse" />
+            <div className="h-12 bg-base-300 animate-pulse rounded-sm" />
           ) : isAuthenticated ? (
             <button
               onClick={() => {
                 handleSignOut()
                 setIsOpen(false)
               }}
-              className="w-full flex items-center justify-center gap-2 p-3 bg-red-600 hover:bg-red-700 rounded-lg transition-colors font-medium"
+              className="btn btn-outline border-error/30 text-error hover:bg-error hover:text-white"
             >
-              <LogOut size={20} />
+              <LogOut size={20} className="mr-2" />
               Sign Out
             </button>
           ) : (
@@ -128,20 +165,13 @@ export default function Header() {
                 handleSignIn()
                 setIsOpen(false)
               }}
-              className="w-full p-3 bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors font-medium"
+              className="btn btn-primary"
             >
               Sign In
             </button>
           )}
-        </div>
+        </nav>
       </aside>
-
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
     </>
   )
 }
