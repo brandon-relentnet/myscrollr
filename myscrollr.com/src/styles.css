@@ -338,15 +338,16 @@ code, pre, .font-mono {
 
   /* The Signature "Pulse" Button */
   .btn-pulse {
-    @apply bg-primary text-primary-content font-semibold px-6 py-3 transition-all duration-200 shadow-[0_0_20px_rgba(191,255,0,0.25)];
+    @apply bg-primary font-semibold px-6 py-3 transition-all duration-200 shadow-[0_0_20px_rgba(191,255,0,0.25)];
     font-family: var(--font-display);
     text-transform: uppercase;
     letter-spacing: 0.08em;
+    color: #000000;
   }
 
   .btn-pulse:hover:not(:disabled) {
     @apply bg-primary/90;
-    box-shadow: 0 0 40px rgba(191, 255, 0, 0.4);
+    box-shadow: 0 0 40px rgba(191, 255, 0, 0.5);
     transform: translateY(-2px);
   }
 
