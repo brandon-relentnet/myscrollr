@@ -20,7 +20,7 @@ function ProfilePage() {
   const { isAuthenticated, getIdTokenClaims, getAccessToken } = useLogto()
   const [profile, setProfile] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [, setError] = useState<string | null>(null)
   const [isOwnProfile, setIsOwnProfile] = useState(false)
 
   useEffect(() => {
