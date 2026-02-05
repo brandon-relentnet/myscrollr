@@ -141,10 +141,10 @@ func GetProfileByUsername(c *fiber.Ctx) error {
 }
 
 // GetMyProfile returns the current user's full profile
+// If no profile exists and logtoUsername is provided, creates one
 func GetMyProfile(c *fiber.Ctx) error {
 	userID := getUserID(c)
-	username := getUsername(c)
-	log.Printf("[GetMyProfile] userID=%s, username=%s", userID, username)
+	log.Printf("[GetMyProfile] userID=%s, method=%s", userID, c.Method())
 
 	if userID == "" {
 		return c.Status(http.StatusUnauthorized).JSON(ErrorResponse{
@@ -153,40 +153,71 @@ func GetMyProfile(c *fiber.Ctx) error {
 		})
 	}
 
-	// Username comes from Logto user profile (primary source)
-	// Additional profile data comes from our database
-	displayName := ""
-	bio := ""
-	isPublic := true
-
-	// Query our database for additional profile data
+	// Check if profile exists
 	var dbUsername string
 	var dbDisplayName, dbBio sql.NullString
+	var isPublic bool
 	err := dbPool.QueryRow(context.Background(), `
 		SELECT username, COALESCE(display_name, ''), COALESCE(bio, ''), is_public
 		FROM profiles
 		WHERE user_id = $1
 	`, userID).Scan(&dbUsername, &dbDisplayName, &dbBio, &isPublic)
 
-	if err == nil && err != sql.ErrNoRows && !strings.Contains(err.Error(), "no rows") {
-		log.Printf("Error fetching profile: %v", err)
+	// If no profile exists, create one (POST with logtoUsername)
+	if err != nil && (err == sql.ErrNoRows || strings.Contains(err.Error(), "no rows")) {
+		// Parse logtoUsername from request body
+		var req struct {
+			LogtoUsername string `json:"logtoUsername"`
+		}
+		if c.Method() == "POST" {
+			if err := c.BodyParser(&req); err != nil {
+				log.Printf("[GetMyProfile] Error parsing body: %v", err)
+			}
+		}
+
+		logtoUsername := req.LogtoUsername
+		log.Printf("[GetMyProfile] Creating profile for userID=%s with logtoUsername=%s", userID, logtoUsername)
+
+		// Use logtoUsername if provided, otherwise generate one
+		username := logtoUsername
+		if username == "" {
+			username = userID[:8]
+		}
+
+		// Check if username is available
+		var count int
+		_ = dbPool.QueryRow(context.Background(), `SELECT COUNT(*) FROM profiles WHERE username = $1`, username).Scan(&count)
+		if count > 0 && username != "" {
+			username = username + fmt.Sprintf("%d", time.Now().Unix()%10000)
+		}
+
+		// Create profile
+		_, err = dbPool.Exec(context.Background(), `
+			INSERT INTO profiles (user_id, username, display_name, is_public, created_at, updated_at)
+			VALUES ($1, $2, $2, true, NOW(), NOW())
+		`, userID, username)
+		if err != nil {
+			log.Printf("[GetMyProfile] Error creating profile: %v", err)
+		} else {
+			dbUsername = username
+			log.Printf("[GetMyProfile] Profile created with username=%s", username)
+		}
+	} else if err != nil {
+		log.Printf("[GetMyProfile] Error querying profile: %v", err)
 		return c.Status(http.StatusInternalServerError).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Failed to fetch profile",
 		})
 	}
 
-	// Use database values if they exist, otherwise use Logto values
+	// Use database values
+	displayName := ""
+	bio := ""
 	if dbDisplayName.Valid {
 		displayName = dbDisplayName.String
 	}
 	if dbBio.Valid {
 		bio = dbBio.String
-	}
-
-	// If we have a username in our database, use it; otherwise use Logto username
-	if dbUsername != "" {
-		username = dbUsername
 	}
 
 	// Check if Yahoo is connected
@@ -200,7 +231,7 @@ func GetMyProfile(c *fiber.Ctx) error {
 	}
 
 	response := FullProfileResponse{
-		Username:       username,
+		Username:       dbUsername,
 		DisplayName:    displayName,
 		Bio:            bio,
 		IsPublic:       isPublic,
@@ -211,7 +242,7 @@ func GetMyProfile(c *fiber.Ctx) error {
 		response.LastSync = &lastSync.Time
 	}
 
-	log.Printf("[GetMyProfile] Returning response: %+v", response)
+	log.Printf("[GetMyProfile] Returning: username=%s", response.Username)
 	return c.JSON(response)
 }
 

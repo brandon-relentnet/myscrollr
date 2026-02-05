@@ -50,6 +50,11 @@ function ProfilePage() {
         }
 
         try {
+          // Get ID token claims for username (ID token has identity claims)
+          const claims = await getIdTokenClaims()
+          console.log('[Profile] ID token claims:', claims)
+          const logtoUsername = claims?.username
+
           // Pass resource to get a JWT access token, not opaque token
           const token = await getAccessToken('https://api.myscrollr.relentnet.dev')
           if (!token) {
@@ -58,29 +63,24 @@ function ProfilePage() {
             setLoading(false)
             return
           }
-          // Debug: log token format
-          const segments = token.split('.')
-          console.log('[Profile] Token received:', {
-            has3Segments: segments.length === 3,
-            length: token.length,
-            prefix: token.substring(0, 20) + '...'
-          })
-          if (segments.length !== 3) {
-            setError('Invalid token format - please sign out and sign in again')
-            setLoading(false)
-            return
-          }
-          // Fetch user profile to get their username
+
+          // Fetch user profile
           const res = await fetch(`${API_BASE}/users/me/profile`, {
-            headers: { Authorization: `Bearer ${token}` }
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ logtoUsername }),
           })
           console.log('[Profile] API response:', res.status, res.statusText)
+
           if (res.ok) {
             const data = await res.json()
             console.log('[Profile] Response data:', data)
             // Set the profile from API response
             setProfile({
-              username: data.username || '',
+              username: data.username || logtoUsername || '',
               display_name: data.display_name || '',
               bio: data.bio || '',
               is_public: data.is_public ?? true,
@@ -88,9 +88,10 @@ function ProfilePage() {
             })
             setIsOwnProfile(true)
 
-            if (data.username) {
+            if (data.username || logtoUsername) {
               // Redirect to actual username
-              window.location.href = `/u/${data.username}`
+              const redirectUsername = data.username || logtoUsername
+              window.location.href = `/u/${redirectUsername}`
               return
             }
             // No username set yet - stay on /u/me to show setup UI

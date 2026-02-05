@@ -147,6 +147,7 @@ func main() {
 	// User Profile Routes
 	api.Get("/users/:username", GetProfileByUsername)
 	api.Get("/users/me/profile", LogtoAuth, GetMyProfile)
+	api.Post("/users/me/profile", LogtoAuth, GetMyProfile)
 	api.Patch("/users/me/profile", LogtoAuth, UpdateMyProfile)
 	api.Post("/users/me/username", LogtoAuth, SetUsername)
 	api.Post("/users/me/disconnect/yahoo", LogtoAuth, DisconnectYahoo)
