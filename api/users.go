@@ -91,14 +91,15 @@ func GetProfileByUsername(c *fiber.Ctx) error {
 	profile.DisplayName = displayName.String
 	profile.Bio = bio.String
 
-	if err == sql.ErrNoRows {
-		return c.Status(http.StatusNotFound).JSON(ErrorResponse{
-			Status: "error",
-			Error:  "Profile not found",
-		})
-	}
 	if err != nil {
 		log.Printf("Error fetching profile: %v", err)
+		// pgx returns ErrNoRows as a string error in some versions
+		if err.Error() == "sql: no rows in result set" || err == sql.ErrNoRows {
+			return c.Status(http.StatusNotFound).JSON(ErrorResponse{
+				Status: "error",
+				Error:  "Profile not found",
+			})
+		}
 		return c.Status(http.StatusInternalServerError).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Failed to fetch profile",
