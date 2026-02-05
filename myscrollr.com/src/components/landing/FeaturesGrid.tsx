@@ -45,6 +45,9 @@ const features = [
 export function FeaturesGrid() {
   return (
     <section id="features" className="py-24 lg:py-32 relative">
+      {/* Background Elements */}
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/3 to-transparent opacity-30 pointer-events-none" />
+
       {/* Section Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}

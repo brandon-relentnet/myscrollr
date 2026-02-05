@@ -100,10 +100,12 @@ body {
   background-image:
     /* Subtle radial vignette */
     radial-gradient(ellipse 80% 50% at 50% 0%, rgba(191, 255, 0, 0.03) 0%, transparent 50%),
-    /* Minimal grid - 80px for cleaner look */
-    linear-gradient(rgba(191, 255, 0, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(191, 255, 0, 0.02) 1px, transparent 1px);
-  background-size: 100% 100%, 80px 80px, 80px 80px;
+    /* Subtle Grid Nodes */
+    radial-gradient(circle at 1px 1px, rgba(191, 255, 0, 0.15) 1px, transparent 0),
+    /* Minimal grid - 60px for cleaner look */
+    linear-gradient(rgba(191, 255, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(191, 255, 0, 0.03) 1px, transparent 1px);
+  background-size: 100% 100%, 60px 60px, 60px 60px, 60px 60px;
   background-attachment: fixed;
   position: relative;
 }
