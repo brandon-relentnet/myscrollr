@@ -78,18 +78,31 @@ function ProfilePage() {
           if (res.ok) {
             const data = await res.json()
             console.log('[Profile] Response data:', data)
+            // Set the profile from API response
+            setProfile({
+              username: data.username || '',
+              display_name: data.display_name || '',
+              bio: data.bio || '',
+              is_public: data.is_public ?? true,
+              connected_yahoo: data.connected_yahoo ?? false,
+            })
+            setIsOwnProfile(true)
+
             if (data.username) {
               // Redirect to actual username
               window.location.href = `/u/${data.username}`
               return
             }
+            // No username set yet - stay on /u/me to show setup UI
+            setLoading(false)
+            return
           } else {
             const errData = await res.json().catch(() => ({}))
             console.log('[Profile] API error:', errData)
+            setError(errData.error || 'Failed to load profile')
+            setLoading(false)
+            return
           }
-          // No username set yet - stay on /u/me to show setup UI
-          setProfile({ username: '', display_name: '', bio: '', is_public: true, connected_yahoo: false })
-          setIsOwnProfile(true)
         } catch {
           setError('Failed to load profile')
         }
