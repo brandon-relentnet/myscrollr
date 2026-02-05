@@ -50,7 +50,8 @@ function ProfilePage() {
         }
 
         try {
-          const token = await getAccessToken()
+          // Pass resource to get a JWT access token, not opaque token
+          const token = await getAccessToken('https://api.myscrollr.relentnet.dev')
           if (!token) {
             console.log('[Profile] No access token received from Logto')
             setError('Not authenticated')
@@ -133,7 +134,7 @@ function ProfilePage() {
     setError(null)
 
     try {
-      const token = await getAccessToken()
+      const token = await getAccessToken('https://api.myscrollr.relentnet.dev')
 
       const res = await fetch(`${API_BASE}/users/me/profile`, {
         method: 'PATCH',
@@ -166,7 +167,7 @@ function ProfilePage() {
     setUsernameError(null)
 
     try {
-      const token = await getAccessToken()
+      const token = await getAccessToken('https://api.myscrollr.relentnet.dev')
 
       const res = await fetch('${API_BASE}/users/me/username', {
         method: 'POST',
@@ -194,7 +195,7 @@ function ProfilePage() {
     if (!confirm('Are you sure you want to disconnect your Yahoo account?')) return
 
     try {
-      const token = await getAccessToken()
+      const token = await getAccessToken('https://api.myscrollr.relentnet.dev')
 
       const res = await fetch('${API_BASE}/users/me/disconnect/yahoo', {
         method: 'POST',
