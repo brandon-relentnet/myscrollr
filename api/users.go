@@ -143,6 +143,7 @@ func GetProfileByUsername(c *fiber.Ctx) error {
 // GetMyProfile returns the current user's full profile
 func GetMyProfile(c *fiber.Ctx) error {
 	userID := getUserID(c)
+	log.Printf("[GetMyProfile] userID=%s", userID)
 	if userID == "" {
 		return c.Status(http.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "error",
@@ -169,10 +170,12 @@ func GetMyProfile(c *fiber.Ctx) error {
 	profile.DisplayName = displayName.String
 	profile.Bio = bio.String
 
+	log.Printf("[GetMyProfile] Query err=%v", err)
+
 	// If no profile exists, create a placeholder one
 	if err != nil {
-		errStr := err.Error()
-		if !strings.Contains(errStr, "no rows") {
+		// Use pgx.ErrNoRows for proper error checking
+		if err != sql.ErrNoRows && !strings.Contains(err.Error(), "no rows") {
 			// Real error
 			log.Printf("Error fetching profile: %v", err)
 			return c.Status(http.StatusInternalServerError).JSON(ErrorResponse{
@@ -181,7 +184,9 @@ func GetMyProfile(c *fiber.Ctx) error {
 			})
 		}
 		// Profile doesn't exist, create one
+		log.Printf("[GetMyProfile] Creating new profile for user %s", userID)
 		email := getUserEmail(c)
+		log.Printf("[GetMyProfile] email=%s", email)
 
 		// Generate initial username from email (before @)
 		initialUsername := ""
@@ -223,6 +228,7 @@ func GetMyProfile(c *fiber.Ctx) error {
 			DisplayName: initialUsername,
 			IsPublic:    true,
 		}
+		log.Printf("[GetMyProfile] Profile found/created: username=%s", profile.Username)
 	}
 
 	// Check if Yahoo is connected
@@ -247,6 +253,7 @@ func GetMyProfile(c *fiber.Ctx) error {
 		response.LastSync = &lastSync.Time
 	}
 
+	log.Printf("[GetMyProfile] Returning response: %+v", response)
 	return c.JSON(response)
 }
 

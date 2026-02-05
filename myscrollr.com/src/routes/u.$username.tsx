@@ -77,6 +77,7 @@ function ProfilePage() {
           console.log('[Profile] API response:', res.status, res.statusText)
           if (res.ok) {
             const data = await res.json()
+            console.log('[Profile] Response data:', data)
             if (data.username) {
               // Redirect to actual username
               window.location.href = `/u/${data.username}`
