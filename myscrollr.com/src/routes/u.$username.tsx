@@ -19,7 +19,7 @@ interface ProfileData {
 
 function ProfilePage() {
   const { username } = Route.useParams()
-  const { isAuthenticated, getIdTokenClaims } = useLogto()
+  const { isAuthenticated, getIdTokenClaims, getAccessToken } = useLogto()
   const [profile, setProfile] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -50,26 +50,27 @@ function ProfilePage() {
         }
 
         try {
-          const claims = await getIdTokenClaims()
-          const userId = claims?.sub
-          if (userId) {
-            // Fetch user profile to get their username
-            const token = claims.__raw
-            const res = await fetch(`${API_BASE}/users/me/profile`, {
-              headers: { Authorization: `Bearer ${token}` }
-            })
-            if (res.ok) {
-              const data = await res.json()
-              if (data.username) {
-                // Redirect to actual username
-                window.location.href = `/u/${data.username}`
-                return
-              }
-            }
-            // No username set yet - stay on /u/me to show setup UI
-            setProfile({ username: '', display_name: '', bio: '', is_public: true, connected_yahoo: false })
-            setIsOwnProfile(true)
+          const token = await getAccessToken()
+          if (!token) {
+            setError('Not authenticated')
+            setLoading(false)
+            return
           }
+          // Fetch user profile to get their username
+          const res = await fetch(`${API_BASE}/users/me/profile`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+          if (res.ok) {
+            const data = await res.json()
+            if (data.username) {
+              // Redirect to actual username
+              window.location.href = `/u/${data.username}`
+              return
+            }
+          }
+          // No username set yet - stay on /u/me to show setup UI
+          setProfile({ username: '', display_name: '', bio: '', is_public: true, connected_yahoo: false })
+          setIsOwnProfile(true)
         } catch {
           setError('Failed to load profile')
         }
@@ -116,7 +117,7 @@ function ProfilePage() {
 
     try {
       const claims = await getIdTokenClaims()
-      const token = await claims?.__raw
+          const token = await getAccessToken()
 
       const res = await fetch(`${API_BASE}/users/me/profile`, {
         method: 'PATCH',
@@ -150,7 +151,7 @@ function ProfilePage() {
 
     try {
       const claims = await getIdTokenClaims()
-      const token = claims?.__raw
+      const token = await getAccessToken()
 
       const res = await fetch('${API_BASE}/users/me/username', {
         method: 'POST',
@@ -179,7 +180,7 @@ function ProfilePage() {
 
     try {
       const claims = await getIdTokenClaims()
-      const token = claims?.__raw
+      const token = await getAccessToken()
 
       const res = await fetch('${API_BASE}/users/me/disconnect/yahoo', {
         method: 'POST',
