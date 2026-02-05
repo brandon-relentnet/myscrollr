@@ -13,6 +13,7 @@ import reportWebVitals from './reportWebVitals.ts'
 const logtoConfig: LogtoConfig = {
   endpoint: 'https://auth.myscrollr.relentnet.dev/',
   appId: 'ogbulfshvf934eeli4t9u',
+  resources: ['https://api.myscrollr.relentnet.dev'],
 }
 
 // Create a new router instance
