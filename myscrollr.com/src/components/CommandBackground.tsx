@@ -26,7 +26,7 @@ export function CommandBackground() {
 
     // Configuration
     const gridSize = 60
-    const particleCount = 50 
+    const particleCount = 50
 
     class Particle {
       x = 0
@@ -52,7 +52,7 @@ export function CommandBackground() {
         this.opacity = 0
         this.maxLife = 200 + Math.random() * 300
         this.life = 0
-        
+
         const directions = [
           [gridSize, 0],
           [-gridSize, 0],
@@ -66,11 +66,12 @@ export function CommandBackground() {
 
       update() {
         this.life++
-        
+
         if (this.life < this.maxLife * 0.2) {
           this.opacity = this.life / (this.maxLife * 0.2)
         } else if (this.life > this.maxLife * 0.8) {
-          this.opacity = 1 - (this.life - this.maxLife * 0.8) / (this.maxLife * 0.2)
+          this.opacity =
+            1 - (this.life - this.maxLife * 0.8) / (this.maxLife * 0.2)
         } else {
           this.opacity = 1
         }
@@ -90,7 +91,7 @@ export function CommandBackground() {
         // Softened nodes
         ctx.fillStyle = `rgba(191, 255, 0, ${this.opacity * 0.4})`
         ctx.fill()
-        
+
         ctx.shadowBlur = 10
         ctx.shadowColor = 'rgba(191, 255, 0, 0.6)'
       }
@@ -103,8 +104,8 @@ export function CommandBackground() {
 
     const render = () => {
       ctx.clearRect(0, 0, width, height)
-      
-      particles.forEach(p => {
+
+      particles.forEach((p) => {
         p.update()
         p.draw()
       })

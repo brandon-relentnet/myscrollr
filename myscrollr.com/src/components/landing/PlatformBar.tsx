@@ -1,4 +1,4 @@
-import * as motion from 'motion/react-client'
+import { motion } from 'motion/react'
 
 const platforms = [
   { name: 'YouTube', color: '#FF0000', icon: 'play' },
@@ -32,10 +32,16 @@ export function PlatformBar() {
             <motion.div
               key={platform.name}
               initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
+              whileInView={{
+                opacity: 1,
+                scale: 1,
+                transition: { delay: index * 0.1 },
+              }}
               viewport={{ once: true }}
-              transition={{ delay: index * 0.1 }}
-              whileHover={{ scale: 1.05 }}
+              whileHover={{
+                scale: 1.05,
+                transition: { duration: 0.2 },
+              }}
               className="group flex items-center gap-3 px-5 py-3 rounded-lg bg-base-200 border border-base-300 hover:border-primary/30 transition-all duration-300 shadow-sm"
             >
               {/* Icon */}

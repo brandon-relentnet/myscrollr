@@ -6,7 +6,10 @@ interface RequestOptions extends RequestInit {
   requiresAuth?: boolean
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+async function request<T>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<T> {
   const { ...fetchOptions } = options
 
   const headers: HeadersInit = {
@@ -20,7 +23,9 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   })
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }))
+    const error = await response
+      .json()
+      .catch(() => ({ error: 'Request failed' }))
     throw new Error(error.error || 'Request failed')
   }
 
@@ -30,20 +35,21 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 // Profile API
 export const profileApi = {
   // Get public profile by username
-  get: (username: string) => request<{
-    username: string
-    display_name?: string
-    bio?: string
-    is_public: boolean
-    connected_yahoo: boolean
-  }>(`/users/${username}`),
+  get: (username: string) =>
+    request<{
+      username: string
+      display_name?: string
+      bio?: string
+      is_public: boolean
+      connected_yahoo: boolean
+    }>(`/users/${username}`),
 }
 
 // Authenticated API caller - use this inside components with useLogto
 export async function authenticatedFetch<T>(
   path: string,
   options: RequestInit = {},
-  getToken: () => Promise<string | null>
+  getToken: () => Promise<string | null>,
 ): Promise<T> {
   const token = await getToken()
   const headers: HeadersInit = {
@@ -51,7 +57,7 @@ export async function authenticatedFetch<T>(
   }
 
   if (token) {
-    (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
+    ;(headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
   }
 
   const response = await fetch(`${API_BASE}${path}`, {
@@ -61,7 +67,9 @@ export async function authenticatedFetch<T>(
   })
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }))
+    const error = await response
+      .json()
+      .catch(() => ({ error: 'Request failed' }))
     throw new Error(error.error || 'Request failed')
   }
 

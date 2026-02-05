@@ -1,4 +1,4 @@
-import * as motion from 'motion/react-client'
+import { motion } from 'motion/react'
 
 export default function TypewriterChangeContentExample() {
   return (

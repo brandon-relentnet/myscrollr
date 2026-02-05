@@ -1,6 +1,13 @@
 import { Link } from '@tanstack/react-router'
-import * as motion from 'motion/react-client'
-import { ArrowUpRight, Cpu, Database, Github, Globe, Terminal } from 'lucide-react'
+import { motion } from 'motion/react'
+import {
+  ArrowUpRight,
+  Cpu,
+  Database,
+  Github,
+  Globe,
+  Terminal,
+} from 'lucide-react'
 import ScrollrSVG from '@/components/ScrollrSVG'
 
 export default function Footer() {
@@ -54,7 +61,6 @@ export default function Footer() {
       <div className="container relative z-10 px-5 py-16 lg:py-20">
         {/* Main Footer Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 mb-16">
-
           {/* Brand Column */}
           <div className="lg:col-span-4 space-y-8">
             <div className="flex items-center gap-4">
@@ -79,8 +85,8 @@ export default function Footer() {
             </div>
 
             <p className="text-sm text-base-content/60 leading-relaxed max-w-sm">
-              Pin live sports scores, crypto prices, and custom feeds over any tab. 
-              Stop alt-tabping. Stay in your flow.
+              Pin live sports scores, crypto prices, and custom feeds over any
+              tab. Stop alt-tabping. Stay in your flow.
             </p>
 
             {/* Status Indicators */}
@@ -109,7 +115,10 @@ export default function Footer() {
                         className="flex items-center gap-2 text-sm text-base-content/50 hover:text-primary transition-colors group cursor-pointer"
                       >
                         {link.label}
-                        <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <ArrowUpRight
+                          size={12}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        />
                       </motion.a>
                     ) : (
                       <Link
@@ -117,7 +126,10 @@ export default function Footer() {
                         className="flex items-center gap-2 text-sm text-base-content/50 hover:text-primary transition-colors group"
                       >
                         {link.label}
-                        <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <ArrowUpRight
+                          size={12}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        />
                       </Link>
                     )}
                   </li>
@@ -141,7 +153,10 @@ export default function Footer() {
                       className="flex items-center gap-2 text-sm text-base-content/50 hover:text-primary transition-colors group cursor-pointer"
                     >
                       {link.label}
-                      <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <ArrowUpRight
+                        size={12}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      />
                     </motion.a>
                   </li>
                 ))}
@@ -164,7 +179,10 @@ export default function Footer() {
                       className="flex items-center gap-2 text-sm text-base-content/50 hover:text-primary transition-colors group cursor-pointer"
                     >
                       {link.label}
-                      <ArrowUpRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <ArrowUpRight
+                        size={12}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      />
                     </motion.a>
                   </li>
                 ))}
@@ -202,7 +220,9 @@ export default function Footer() {
             <span className="text-xs font-mono text-base-content/40 uppercase tracking-wider">
               © {year} Scrollr
             </span>
-            <span className="hidden sm:inline text-xs font-mono text-base-content/20">·</span>
+            <span className="hidden sm:inline text-xs font-mono text-base-content/20">
+              ·
+            </span>
             <span className="flex items-center gap-2 text-xs font-mono text-base-content/40 uppercase tracking-wider">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-50" />

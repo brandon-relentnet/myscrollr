@@ -1,7 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useLogto } from '@logto/react'
 import { useEffect, useState } from 'react'
-import { AlertCircle, Check, Link as LinkIcon, Loader2, Shield } from 'lucide-react'
+import {
+  AlertCircle,
+  Check,
+  Link as LinkIcon,
+  Loader2,
+  Shield,
+} from 'lucide-react'
 import { API_BASE } from '../api/client'
 
 export const Route = createFileRoute('/u/$username')({
@@ -46,8 +52,8 @@ function ProfilePage() {
 
           // Fallback to sub if no username
           if (claims?.sub) {
-             window.location.href = `/u/${claims.sub}`
-             return
+            window.location.href = `/u/${claims.sub}`
+            return
           }
 
           setError('No identity found in your Logto account')
@@ -79,12 +85,17 @@ function ProfilePage() {
       }
 
       // Get Yahoo connection status from our API
-      if (isAuthenticated && (ownUsername === username || ownSub === username)) {
+      if (
+        isAuthenticated &&
+        (ownUsername === username || ownSub === username)
+      ) {
         try {
-          const token = await getAccessToken('https://api.myscrollr.relentnet.dev')
+          const token = await getAccessToken(
+            'https://api.myscrollr.relentnet.dev',
+          )
           if (token) {
             const res = await fetch(`${API_BASE}/users/me/yahoo-status`, {
-              headers: { Authorization: `Bearer ${token}` }
+              headers: { Authorization: `Bearer ${token}` },
             })
             if (res.ok) {
               const data = await res.json()
@@ -107,8 +118,10 @@ function ProfilePage() {
     return (
       <div className="min-h-screen text-primary flex items-center justify-center font-mono">
         <div className="text-center space-y-4">
-           <Loader2 className="animate-spin h-12 w-12 text-primary mx-auto" />
-           <p className="uppercase tracking-[0.2em] text-xs">Accessing Identity_Logs...</p>
+          <Loader2 className="animate-spin h-12 w-12 text-primary mx-auto" />
+          <p className="uppercase tracking-[0.2em] text-xs">
+            Accessing Identity_Logs...
+          </p>
         </div>
       </div>
     )
@@ -120,9 +133,16 @@ function ProfilePage() {
       <div className="min-h-screen text-base-content flex items-center justify-center p-6 font-mono">
         <div className="text-center space-y-6 max-w-md border border-base-300 p-12 rounded-lg bg-base-200 shadow-2xl">
           <AlertCircle className="h-16 w-16 text-warning mx-auto mb-4" />
-          <h1 className="text-2xl font-bold tracking-[0.2em] uppercase">Auth Required</h1>
-          <p className="text-base-content/60 uppercase text-xs leading-loose">Identity verification required to access private profile node.</p>
-          <a href={`${window.location.origin}/callback`} className="btn btn-primary px-12">
+          <h1 className="text-2xl font-bold tracking-[0.2em] uppercase">
+            Auth Required
+          </h1>
+          <p className="text-base-content/60 uppercase text-xs leading-loose">
+            Identity verification required to access private profile node.
+          </p>
+          <a
+            href={`${window.location.origin}/callback`}
+            className="btn btn-primary px-12"
+          >
             Sign In
           </a>
         </div>
@@ -139,7 +159,7 @@ function ProfilePage() {
         <div className="bg-base-200 border border-base-300 rounded-xl p-10 shadow-2xl relative overflow-hidden">
           {/* Accent decoration */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full border-l border-b border-primary/10" />
-          
+
           <div className="flex flex-col md:flex-row items-center md:items-start gap-8 relative z-10 text-center md:text-left">
             <div className="h-28 w-28 rounded-xl bg-primary/10 border-2 border-primary/20 flex items-center justify-center text-4xl font-black text-primary shadow-lg uppercase">
               {profile.username ? profile.username[0] : '?'}
@@ -147,18 +167,27 @@ function ProfilePage() {
             <div className="flex-1 space-y-4">
               <div className="space-y-1">
                 <div className="flex items-center justify-center md:justify-start gap-3">
-                  <h1 className="text-4xl font-black tracking-tight uppercase">@{profile.username}</h1>
+                  <h1 className="text-4xl font-black tracking-tight uppercase">
+                    @{profile.username}
+                  </h1>
                   <span className="px-3 py-1 bg-success/10 text-success text-[10px] font-bold rounded-full border border-success/20 flex items-center gap-1.5 uppercase tracking-widest">
                     <Shield size={12} /> Active
                   </span>
                 </div>
-                {profile.display_name && profile.display_name !== profile.username && (
-                  <p className="text-xl text-base-content/60 font-medium">{profile.display_name}</p>
-                )}
+                {profile.display_name &&
+                  profile.display_name !== profile.username && (
+                    <p className="text-xl text-base-content/60 font-medium">
+                      {profile.display_name}
+                    </p>
+                  )}
               </div>
               <div className="flex flex-wrap justify-center md:justify-start gap-2 pt-2">
-                 <div className="px-3 py-1 bg-base-300 border border-base-300 rounded-md text-[10px] font-mono uppercase text-base-content/40">Status: Verified</div>
-                 <div className="px-3 py-1 bg-base-300 border border-base-300 rounded-md text-[10px] font-mono uppercase text-base-content/40">Tier: Power_User</div>
+                <div className="px-3 py-1 bg-base-300 border border-base-300 rounded-md text-[10px] font-mono uppercase text-base-content/40">
+                  Status: Verified
+                </div>
+                <div className="px-3 py-1 bg-base-300 border border-base-300 rounded-md text-[10px] font-mono uppercase text-base-content/40">
+                  Tier: Power_User
+                </div>
               </div>
             </div>
           </div>
@@ -177,25 +206,35 @@ function ProfilePage() {
                   <span className="text-2xl font-black">Y!</span>
                 </div>
                 <div className="text-left">
-                  <p className="font-bold text-lg uppercase tracking-tight">Yahoo Fantasy</p>
+                  <p className="font-bold text-lg uppercase tracking-tight">
+                    Yahoo Fantasy
+                  </p>
                   {profile.connected_yahoo ? (
                     <p className="text-xs text-success flex items-center gap-1.5 font-bold uppercase tracking-widest mt-1">
                       <Check size={14} strokeWidth={3} /> Connection Established
                     </p>
                   ) : (
-                    <p className="text-xs text-base-content/30 font-bold uppercase tracking-widest mt-1">Status: Disconnected</p>
+                    <p className="text-xs text-base-content/30 font-bold uppercase tracking-widest mt-1">
+                      Status: Disconnected
+                    </p>
                   )}
                 </div>
               </div>
-              
+
               {isOwnProfile && (
                 <div className="w-full sm:w-auto">
                   {profile.connected_yahoo ? (
-                    <a href="/dashboard" className="btn btn-outline border-primary/30 text-primary hover:bg-primary hover:text-primary-content w-full sm:w-auto uppercase text-xs tracking-widest">
+                    <a
+                      href="/dashboard"
+                      className="btn btn-outline border-primary/30 text-primary hover:bg-primary hover:text-primary-content w-full sm:w-auto uppercase text-xs tracking-widest"
+                    >
                       Enter Dashboard
                     </a>
                   ) : (
-                    <a href="/dashboard" className="btn btn-primary w-full sm:w-auto uppercase text-xs tracking-widest shadow-lg">
+                    <a
+                      href="/dashboard"
+                      className="btn btn-primary w-full sm:w-auto uppercase text-xs tracking-widest shadow-lg"
+                    >
                       Link Account
                     </a>
                   )}
@@ -207,9 +246,9 @@ function ProfilePage() {
 
         {/* Footer info */}
         <div className="flex items-center justify-center gap-4 text-base-content/20 font-mono text-[10px] uppercase tracking-[0.3em] pt-4">
-           <span className="h-px w-12 bg-current opacity-20" />
-           <span>Security Provided by Logto OSS</span>
-           <span className="h-px w-12 bg-current opacity-20" />
+          <span className="h-px w-12 bg-current opacity-20" />
+          <span>Security Provided by Logto OSS</span>
+          <span className="h-px w-12 bg-current opacity-20" />
         </div>
       </div>
     </div>

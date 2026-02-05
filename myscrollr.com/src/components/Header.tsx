@@ -1,14 +1,22 @@
 import { Link, useLocation } from '@tanstack/react-router'
-import { ChevronRight, LayoutDashboard, LogOut, Menu, UserCircle, X } from 'lucide-react'
+import {
+  ChevronRight,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  UserCircle,
+  X,
+} from 'lucide-react'
 import { useEffect, useState } from 'react'
-import {  useLogto } from '@logto/react'
-import * as motion from 'motion/react-client'
+import { useLogto } from '@logto/react'
+import { AnimatePresence, motion } from 'motion/react'
 import ScrollrSVG from './ScrollrSVG'
-import type {IdTokenClaims} from '@logto/react';
+import type { IdTokenClaims } from '@logto/react'
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
-  const { signIn, signOut, isAuthenticated, isLoading, getIdTokenClaims } = useLogto()
+  const { signIn, signOut, isAuthenticated, isLoading, getIdTokenClaims } =
+    useLogto()
   const [userClaims, setUserClaims] = useState<IdTokenClaims>()
 
   useEffect(() => {
@@ -33,18 +41,14 @@ export default function Header() {
         {/* Brand */}
         <div className="flex items-center gap-4">
           <Link to="/" className="flex items-center gap-3 group">
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-              className="relative flex items-center justify-center rounded-lg border border-base-300/50 bg-base-200/50 p-2.5 shadow-sm transition-all group-hover:border-primary/30 group-hover:shadow-[0_0_20px_rgba(191,255,0,0.1)]"
-            >
+            <div className="relative flex items-center justify-center rounded-lg border border-base-300/50 bg-base-200/50 p-2.5 shadow-sm transition-all hover:scale-105 transition-spring group-hover:border-primary/30 group-hover:shadow-[0_0_20px_rgba(191,255,0,0.1)]">
               <ScrollrSVG className="size-8" />
               {/* Online indicator */}
               <span className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
               </span>
-            </motion.div>
+            </div>
             <div className="flex flex-col">
               <span className="font-bold text-xl tracking-tight uppercase font-display">
                 Scrollr
@@ -139,118 +143,126 @@ export default function Header() {
         </motion.button>
       </header>
 
-      {/* Mobile Overlay */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: isOpen ? 1 : 0 }}
-        transition={{ duration: 0.2 }}
-        onClick={() => setIsOpen(false)}
-        className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden ${
-          isOpen ? 'pointer-events-auto' : 'pointer-events-none'
-        }`}
-      />
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            {/* Mobile Overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setIsOpen(false)}
+              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden pointer-events-auto"
+            />
 
-        {/* Mobile Drawer */}
-      <motion.aside
-        initial={{ x: '100%' }}
-        animate={{ x: isOpen ? 0 : '100%' }}
-        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="fixed top-0 right-0 h-full w-80 bg-base-200/95 backdrop-blur-2xl z-50 lg:hidden flex flex-col"
-      >
-        {/* Drawer Header */}
-        <div className="flex items-center justify-between px-5 py-5 border-b border-base-300/50">
-          <div className="flex items-center gap-3">
-            <ScrollrSVG className="size-8" />
-            <div className="flex flex-col">
-              <span className="font-bold text-lg uppercase tracking-tight">Scrollr</span>
-              <span className="text-[8px] font-mono text-primary/50 uppercase tracking-[0.15em]">
-                Always Visible
-              </span>
-            </div>
-          </div>
-          <motion.button
-            whileHover={{ scale: 1.1, rotate: 90 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setIsOpen(false)}
-            className="p-2 rounded-sm hover:bg-base-300 transition-colors cursor-pointer"
-            aria-label="Close menu"
-          >
-            <X size={20} />
-          </motion.button>
-        </div>
-
-        {/* Navigation Links */}
-        <nav className="flex-1 px-4 py-6 space-y-1">
-          <MobileNavLink
-            to="/"
-            icon={<ChevronRight size={18} />}
-            onClick={() => setIsOpen(false)}
-          >
-            Home
-          </MobileNavLink>
-
-          {isAuthenticated && (
-            <>
-              <MobileNavLink
-                to="/dashboard"
-                icon={<ChevronRight size={18} />}
-                onClick={() => setIsOpen(false)}
-              >
-                Dashboard
-              </MobileNavLink>
-
-              <MobileNavLink
-                to="/account"
-                icon={<ChevronRight size={18} />}
-                onClick={() => setIsOpen(false)}
-              >
-                {userClaims?.username || userClaims?.name || 'Account'}
-              </MobileNavLink>
-            </>
-          )}
-        </nav>
-
-        {/* Drawer Footer */}
-        <div className="px-5 py-5 border-t border-base-300/50 space-y-3">
-          {isLoading ? (
-            <div className="flex items-center justify-center gap-2 py-3">
-              <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-              <span className="text-xs font-mono uppercase tracking-wider text-base-content/40">
-                Loading...
-              </span>
-            </div>
-          ) : isAuthenticated ? (
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => {
-                handleSignOut()
-                setIsOpen(false)
-              }}
-              className="w-full flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold uppercase tracking-wider border border-error/30 text-error/80 hover:bg-error/10 hover:border-error/50 transition-all rounded-sm cursor-pointer"
+            {/* Mobile Drawer */}
+            <motion.aside
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed top-0 right-0 h-full w-80 bg-base-200/95 backdrop-blur-2xl z-50 lg:hidden flex flex-col"
             >
-              <LogOut size={16} />
-              Sign Out
-            </motion.button>
-          ) : (
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => {
-                handleSignIn()
-                setIsOpen(false)
-              }}
-              className="w-full btn btn-primary flex items-center justify-center gap-2"
-            >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-content opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary-content" />
-              </span>
-              Sign In
-            </motion.button>
-          )}
-        </div>
-      </motion.aside>
+              {/* Drawer Header */}
+              <div className="flex items-center justify-between px-5 py-5 border-b border-base-300/50">
+                <div className="flex items-center gap-3">
+                  <ScrollrSVG className="size-8" />
+                  <div className="flex flex-col">
+                    <span className="font-bold text-lg uppercase tracking-tight">
+                      Scrollr
+                    </span>
+                    <span className="text-[8px] font-mono text-primary/50 uppercase tracking-[0.15em]">
+                      Always Visible
+                    </span>
+                  </div>
+                </div>
+                <motion.button
+                  whileHover={{ scale: 1.1, rotate: 90 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setIsOpen(false)}
+                  className="p-2 rounded-sm hover:bg-base-300 transition-colors cursor-pointer"
+                  aria-label="Close menu"
+                >
+                  <X size={20} />
+                </motion.button>
+              </div>
+
+              {/* Navigation Links */}
+              <nav className="flex-1 px-4 py-6 space-y-1">
+                <MobileNavLink
+                  to="/"
+                  icon={<ChevronRight size={18} />}
+                  onClick={() => setIsOpen(false)}
+                >
+                  Home
+                </MobileNavLink>
+
+                {isAuthenticated && (
+                  <>
+                    <MobileNavLink
+                      to="/dashboard"
+                      icon={<ChevronRight size={18} />}
+                      onClick={() => setIsOpen(false)}
+                    >
+                      Dashboard
+                    </MobileNavLink>
+
+                    <MobileNavLink
+                      to="/account"
+                      icon={<ChevronRight size={18} />}
+                      onClick={() => setIsOpen(false)}
+                    >
+                      {userClaims?.username || userClaims?.name || 'Account'}
+                    </MobileNavLink>
+                  </>
+                )}
+              </nav>
+
+              {/* Drawer Footer */}
+              <div className="px-5 py-5 border-t border-base-300/50 space-y-3">
+                {isLoading ? (
+                  <div className="flex items-center justify-center gap-2 py-3">
+                    <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                    <span className="text-xs font-mono uppercase tracking-wider text-base-content/40">
+                      Loading...
+                    </span>
+                  </div>
+                ) : isAuthenticated ? (
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      handleSignOut()
+                      setIsOpen(false)
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold uppercase tracking-wider border border-error/30 text-error/80 hover:bg-error/10 hover:border-error/50 transition-all rounded-sm cursor-pointer"
+                  >
+                    <LogOut size={16} />
+                    Sign Out
+                  </motion.button>
+                ) : (
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      handleSignIn()
+                      setIsOpen(false)
+                    }}
+                    className="w-full btn btn-primary flex items-center justify-center gap-2"
+                  >
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-content opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-primary-content" />
+                    </span>
+                    Sign In
+                  </motion.button>
+                )}
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
     </>
   )
 }
@@ -312,7 +324,10 @@ function MobileNavLink({
         </span>
         {children}
       </span>
-      <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1" />
+      <ChevronRight
+        size={14}
+        className="opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1"
+      />
     </Link>
   )
 }

@@ -1,4 +1,4 @@
-import * as motion from 'motion/react-client'
+import { motion } from 'motion/react'
 import TypewriterChangeContentExample from '@/components/Typewriter'
 import ScrollrSVG from '@/components/ScrollrSVG'
 import InstallButton from '@/components/InstallButton'
@@ -50,10 +50,17 @@ export function HeroSection() {
               {/* Floating data indicators */}
               <motion.div
                 initial={{ opacity: 0, x: -30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.6 }}
-                whileHover={{ scale: 1.05, rotate: 2 }}
-                className="absolute top-8 -right-4 px-4 py-2.5 rounded-sm border border-primary/40 bg-base-200/90 backdrop-blur-sm shadow-lg"
+                animate={{
+                  opacity: 1,
+                  x: 0,
+                  transition: { duration: 0.5, delay: 0.6 },
+                }}
+                whileHover={{
+                  scale: 1.05,
+                  rotate: 2,
+                  transition: { duration: 0.2 },
+                }}
+                className="absolute top-8 -right-4 px-4 py-2.5 rounded-sm border border-primary/40 bg-base-200/90 backdrop-blur-sm shadow-lg cursor-default"
               >
                 <span className="flex items-center gap-2.5 text-primary">
                   <span className="relative flex h-2 w-2">
@@ -68,10 +75,17 @@ export function HeroSection() {
 
               <motion.div
                 initial={{ opacity: 0, x: -30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.7 }}
-                whileHover={{ scale: 1.05, rotate: -2 }}
-                className="absolute bottom-24 -left-2 px-4 py-2.5 rounded-sm border border-info/40 bg-base-200/90 backdrop-blur-sm shadow-lg"
+                animate={{
+                  opacity: 1,
+                  x: 0,
+                  transition: { duration: 0.5, delay: 0.7 },
+                }}
+                whileHover={{
+                  scale: 1.05,
+                  rotate: -2,
+                  transition: { duration: 0.2 },
+                }}
+                className="absolute bottom-24 -left-2 px-4 py-2.5 rounded-sm border border-info/40 bg-base-200/90 backdrop-blur-sm shadow-lg cursor-default"
               >
                 <span className="flex items-center gap-2.5">
                   <span className="text-sm font-bold font-mono text-info">
@@ -85,10 +99,17 @@ export function HeroSection() {
 
               <motion.div
                 initial={{ opacity: 0, x: -30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.8 }}
-                whileHover={{ scale: 1.05, rotate: 2 }}
-                className="absolute bottom-6 right-8 px-4 py-2.5 rounded-sm border border-secondary/40 bg-base-200/90 backdrop-blur-sm shadow-lg"
+                animate={{
+                  opacity: 1,
+                  x: 0,
+                  transition: { duration: 0.5, delay: 0.8 },
+                }}
+                whileHover={{
+                  scale: 1.05,
+                  rotate: 2,
+                  transition: { duration: 0.2 },
+                }}
+                className="absolute bottom-6 right-8 px-4 py-2.5 rounded-sm border border-secondary/40 bg-base-200/90 backdrop-blur-sm shadow-lg cursor-default"
               >
                 <span className="flex items-center gap-2.5">
                   <span className="text-sm font-bold font-mono text-secondary">

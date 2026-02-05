@@ -110,11 +110,7 @@ export default function ScrollHighlight() {
       {/* Feature Sections */}
       <div className="pt-12 pb-12">
         {features.map((feature, index) => (
-          <FeatureSection
-            key={feature.name}
-            feature={feature}
-            index={index}
-          />
+          <FeatureSection key={feature.name} feature={feature} index={index} />
         ))}
       </div>
     </div>
@@ -149,7 +145,9 @@ function FeatureSection({
             className="relative order-2 lg:order-1"
           >
             {/* Ambient glow behind terminal */}
-            <div className={`absolute -inset-6 ${glowClass} rounded-full blur-2xl`} />
+            <div
+              className={`absolute -inset-6 ${glowClass} rounded-full blur-2xl`}
+            />
 
             {/* Terminal-style frame */}
             <div className="relative bg-base-200/60 border border-base-300/30 rounded-sm overflow-hidden backdrop-blur-xl">
@@ -165,7 +163,9 @@ function FeatureSection({
                     {feature.name.toLowerCase()}.feed
                   </span>
                 </div>
-                <div className={`w-1.5 h-1.5 rounded-full bg-gradient-to-r ${accentClass} opacity-60`} />
+                <div
+                  className={`w-1.5 h-1.5 rounded-full bg-gradient-to-r ${accentClass} opacity-60`}
+                />
               </div>
 
               {/* Data content */}
@@ -186,7 +186,9 @@ function FeatureSection({
                         <div className="w-16 h-0.5 rounded-full bg-base-300/50 overflow-hidden">
                           <motion.div
                             initial={{ width: '0%' }}
-                            whileInView={{ width: `${60 + Math.random() * 30}%` }}
+                            whileInView={{
+                              width: `${60 + Math.random() * 30}%`,
+                            }}
                             transition={{ duration: 0.6, delay: 0.1 }}
                             className={`h-full bg-gradient-to-r ${accentClass} opacity-60 rounded-full`}
                           />
@@ -213,7 +215,9 @@ function FeatureSection({
                         <motion.div
                           key={i}
                           initial={{ height: '15%' }}
-                          whileInView={{ height: `${30 + Math.random() * 60}%` }}
+                          whileInView={{
+                            height: `${30 + Math.random() * 60}%`,
+                          }}
                           transition={{ duration: 0.4, delay: i * 0.08 }}
                           className={`flex-1 rounded-t-sm bg-gradient-to-t ${accentClass} opacity-50`}
                         />
@@ -255,7 +259,9 @@ function FeatureSection({
             className="order-1 lg:order-2 text-center lg:text-left"
           >
             {/* Subtle accent line */}
-            <div className={`h-0.5 w-12 rounded-full bg-gradient-to-r ${accentClass} mx-auto lg:mx-0 mb-5 opacity-60`} />
+            <div
+              className={`h-0.5 w-12 rounded-full bg-gradient-to-r ${accentClass} mx-auto lg:mx-0 mb-5 opacity-60`}
+            />
 
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4 text-base-content/90">
               {feature.name}

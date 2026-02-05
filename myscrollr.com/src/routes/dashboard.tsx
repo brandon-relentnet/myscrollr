@@ -1,10 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
-import {  useLogto } from '@logto/react'
+import { useLogto } from '@logto/react'
 import { useEffect, useState } from 'react'
-import { 
-  Activity, 
-  Cpu, 
-  Ghost, 
+import {
+  Activity,
+  Cpu,
+  Ghost,
   Link2,
   Plus,
   Settings,
@@ -13,8 +13,8 @@ import {
   TrendingDown,
   TrendingUp,
 } from 'lucide-react'
-import * as motion from 'motion/react-client'
-import type {IdTokenClaims} from '@logto/react';
+import { motion } from 'motion/react'
+import type { IdTokenClaims } from '@logto/react'
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
@@ -22,7 +22,9 @@ export const Route = createFileRoute('/dashboard')({
 
 function DashboardPage() {
   const { isAuthenticated, isLoading, signIn, getIdTokenClaims } = useLogto()
-  const [activeModule, setActiveModule] = useState<'finance' | 'sports' | 'rss' | 'fantasy'>('finance')
+  const [activeModule, setActiveModule] = useState<
+    'finance' | 'sports' | 'rss' | 'fantasy'
+  >('finance')
   const [userClaims, setUserClaims] = useState<IdTokenClaims>()
 
   useEffect(() => {
@@ -34,13 +36,15 @@ function DashboardPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <motion.div 
+        <motion.div
           animate={{ opacity: [0.5, 1, 0.5] }}
           transition={{ duration: 1.5, repeat: Infinity }}
           className="flex items-center gap-3"
         >
           <div className="h-2 w-2 rounded-full bg-primary" />
-          <span className="font-mono text-sm text-base-content/50 uppercase tracking-wider">Loading...</span>
+          <span className="font-mono text-sm text-base-content/50 uppercase tracking-wider">
+            Loading...
+          </span>
         </motion.div>
       </div>
     )
@@ -52,13 +56,15 @@ function DashboardPage() {
     }
     return (
       <div className="min-h-screen flex items-center justify-center p-6 font-mono">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="max-w-md border border-base-300 p-10 rounded-lg bg-base-200/50 space-y-6 text-center"
         >
           <ShieldCheck size={40} className="mx-auto text-primary/30" />
-          <h1 className="text-2xl font-bold tracking-[0.1em] uppercase">Sign In</h1>
+          <h1 className="text-2xl font-bold tracking-[0.1em] uppercase">
+            Sign In
+          </h1>
           <p className="text-base-content/50 uppercase text-xs leading-relaxed">
             Connect your accounts to customize your ticker streams
           </p>
@@ -73,7 +79,6 @@ function DashboardPage() {
   return (
     <div className="min-h-screen pt-28 pb-20 px-6">
       <div className="max-w-6xl mx-auto">
-        
         {/* Dashboard Header */}
         <header className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
           <div className="space-y-3">
@@ -90,9 +95,9 @@ function DashboardPage() {
               {userClaims?.name || userClaims?.email} · Manage your ticker data
             </p>
           </div>
-          
+
           <div className="flex items-center gap-4">
-            <motion.button 
+            <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="btn btn-primary btn-sm gap-2"
@@ -100,14 +105,16 @@ function DashboardPage() {
               <Plus size={14} />
               Add Stream
             </motion.button>
-            <button className="p-2.5 rounded border border-base-300 hover:border-primary/30 transition-all text-base-content/50 hover:text-primary" title="Settings">
+            <button
+              className="p-2.5 rounded border border-base-300 hover:border-primary/30 transition-all text-base-content/50 hover:text-primary"
+              title="Settings"
+            >
               <Settings2 size={16} />
             </button>
           </div>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
           {/* Module Navigation */}
           <aside className="lg:col-span-3 space-y-6">
             <div>
@@ -115,29 +122,29 @@ function DashboardPage() {
                 Active Streams
               </p>
               <nav className="flex flex-col gap-1">
-                <ModuleNavButton 
-                  active={activeModule === 'finance'} 
+                <ModuleNavButton
+                  active={activeModule === 'finance'}
                   onClick={() => setActiveModule('finance')}
                   icon={<TrendingUp size={14} />}
                   label="Finance"
                   live={true}
                 />
-                <ModuleNavButton 
-                  active={activeModule === 'sports'} 
+                <ModuleNavButton
+                  active={activeModule === 'sports'}
                   onClick={() => setActiveModule('sports')}
                   icon={<Cpu size={14} />}
                   label="Sports"
                   live={true}
                 />
-                <ModuleNavButton 
-                  active={activeModule === 'fantasy'} 
+                <ModuleNavButton
+                  active={activeModule === 'fantasy'}
                   onClick={() => setActiveModule('fantasy')}
                   icon={<Ghost size={14} />}
                   label="Fantasy"
                   live={false}
                 />
-                <ModuleNavButton 
-                  active={activeModule === 'rss'} 
+                <ModuleNavButton
+                  active={activeModule === 'rss'}
                   onClick={() => setActiveModule('rss')}
                   icon={<Activity size={14} />}
                   label="RSS Feeds"
@@ -177,14 +184,16 @@ function ModuleNavButton({ active, onClick, icon, label, live }: any) {
     <button
       onClick={onClick}
       className={`flex items-center justify-between p-3.5 rounded-lg transition-all text-left group ${
-        active 
-          ? 'bg-primary/8 border border-primary/20 text-primary' 
+        active
+          ? 'bg-primary/8 border border-primary/20 text-primary'
           : 'text-base-content/40 hover:bg-base-200/60 hover:text-base-content/70 border border-transparent'
       }`}
     >
       <div className="flex items-center gap-3">
         {icon}
-        <span className="text-xs font-semibold uppercase tracking-wide">{label}</span>
+        <span className="text-xs font-semibold uppercase tracking-wide">
+          {label}
+        </span>
       </div>
       {live && (
         <span className="flex items-center gap-1.5">
@@ -199,7 +208,9 @@ function ModuleNavButton({ active, onClick, icon, label, live }: any) {
 function QuickStat({ label, value, color = 'text-base-content/80' }: any) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-xs text-base-content/40 uppercase tracking-wide">{label}</span>
+      <span className="text-xs text-base-content/40 uppercase tracking-wide">
+        {label}
+      </span>
       <span className={`text-sm font-bold font-mono ${color}`}>{value}</span>
     </div>
   )
@@ -230,7 +241,9 @@ function FinanceConfig() {
         <div className="flex items-center gap-2">
           <span className="flex items-center gap-1.5 px-2 py-1 rounded bg-primary/10 border border-primary/20">
             <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-            <span className="text-[9px] font-mono text-primary uppercase">Connected</span>
+            <span className="text-[9px] font-mono text-primary uppercase">
+              Connected
+            </span>
           </span>
         </div>
       </div>
@@ -244,7 +257,9 @@ function FinanceConfig() {
             className="bg-base-200/50 border border-base-300/50 rounded-lg p-4 hover:border-primary/30 transition-colors"
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-bold font-mono">{asset.symbol}</span>
+              <span className="text-sm font-bold font-mono">
+                {asset.symbol}
+              </span>
               {asset.up ? (
                 <TrendingUp size={14} className="text-primary" />
               ) : (
@@ -252,7 +267,9 @@ function FinanceConfig() {
               )}
             </div>
             <div className="text-lg font-bold font-mono">{asset.price}</div>
-            <div className={`text-xs font-mono ${asset.up ? 'text-primary' : 'text-secondary'}`}>
+            <div
+              className={`text-xs font-mono ${asset.up ? 'text-primary' : 'text-secondary'}`}
+            >
               {asset.change}
             </div>
           </motion.div>
@@ -273,9 +290,30 @@ function FinanceConfig() {
 
 function SportsConfig() {
   const games = [
-    { league: 'NBA', home: 'LAL', away: 'GSW', time: 'Q4 2:34', score: '112-108', status: 'Live' },
-    { league: 'NBA', home: 'BOS', away: 'NYK', time: 'Q3 7:12', score: '89-87', status: 'Live' },
-    { league: 'NFL', home: 'KC', away: 'BUF', time: 'Q2 8:45', score: '14-10', status: 'Live' },
+    {
+      league: 'NBA',
+      home: 'LAL',
+      away: 'GSW',
+      time: 'Q4 2:34',
+      score: '112-108',
+      status: 'Live',
+    },
+    {
+      league: 'NBA',
+      home: 'BOS',
+      away: 'NYK',
+      time: 'Q3 7:12',
+      score: '89-87',
+      status: 'Live',
+    },
+    {
+      league: 'NFL',
+      home: 'KC',
+      away: 'BUF',
+      time: 'Q2 8:45',
+      score: '14-10',
+      status: 'Live',
+    },
   ]
 
   return (
@@ -292,7 +330,9 @@ function SportsConfig() {
         </div>
         <span className="flex items-center gap-1.5 px-2 py-1 rounded bg-primary/10 border border-primary/20">
           <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-          <span className="text-[9px] font-mono text-primary uppercase">Connected</span>
+          <span className="text-[9px] font-mono text-primary uppercase">
+            Connected
+          </span>
         </span>
       </div>
 
@@ -306,10 +346,14 @@ function SportsConfig() {
             className="bg-base-200/50 border border-base-300/50 rounded-lg p-4"
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-mono text-primary/60 uppercase">{game.league}</span>
+              <span className="text-[10px] font-mono text-primary/60 uppercase">
+                {game.league}
+              </span>
               <span className="flex items-center gap-1.5">
                 <span className="h-1 w-1 rounded-full bg-primary animate-pulse" />
-                <span className="text-[9px] font-mono text-primary uppercase">{game.status}</span>
+                <span className="text-[9px] font-mono text-primary uppercase">
+                  {game.status}
+                </span>
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -320,7 +364,9 @@ function SportsConfig() {
               </div>
               <div className="text-right">
                 <div className="text-sm font-bold font-mono">{game.score}</div>
-                <div className="text-[10px] font-mono text-primary/60">{game.time}</div>
+                <div className="text-[10px] font-mono text-primary/60">
+                  {game.time}
+                </div>
               </div>
             </div>
           </motion.div>
@@ -355,12 +401,18 @@ function FantasyConfig() {
               <span className="text-lg font-bold text-secondary">Y!</span>
             </div>
             <div>
-              <h3 className="text-sm font-bold uppercase">Sleeper League 2024</h3>
-              <p className="text-[10px] text-base-content/40 uppercase tracking-wide">Fantasy Basketball · 12 Teams</p>
+              <h3 className="text-sm font-bold uppercase">
+                Sleeper League 2024
+              </h3>
+              <p className="text-[10px] text-base-content/40 uppercase tracking-wide">
+                Fantasy Basketball · 12 Teams
+              </p>
             </div>
           </div>
           <span className="px-2 py-1 rounded bg-success/10 border border-success/20">
-            <span className="text-[9px] font-bold text-success uppercase">Active</span>
+            <span className="text-[9px] font-bold text-success uppercase">
+              Active
+            </span>
           </span>
         </div>
 
@@ -368,7 +420,9 @@ function FantasyConfig() {
         <div className="bg-base-100/50 rounded-lg p-4 border border-base-300/30">
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs font-bold uppercase">My Team</span>
-            <span className="text-[10px] font-mono text-base-content/40">Rank 3rd · 8-4-0</span>
+            <span className="text-[10px] font-mono text-base-content/40">
+              Rank 3rd · 8-4-0
+            </span>
           </div>
           <div className="grid grid-cols-5 gap-2">
             {[
@@ -378,10 +432,17 @@ function FantasyConfig() {
               { pos: 'PF', name: 'B. Adebayo', pts: '19.5' },
               { pos: 'C', name: 'J. Embiid', pts: '32.1' },
             ].map((player, i) => (
-              <div key={i} className="text-center p-2 rounded bg-base-200/50 border border-base-300/30">
-                <div className="text-[9px] text-primary/60 font-mono">{player.pos}</div>
+              <div
+                key={i}
+                className="text-center p-2 rounded bg-base-200/50 border border-base-300/30"
+              >
+                <div className="text-[9px] text-primary/60 font-mono">
+                  {player.pos}
+                </div>
                 <div className="text-xs font-bold truncate">{player.name}</div>
-                <div className="text-[10px] font-mono text-base-content/50">{player.pts} PPG</div>
+                <div className="text-[10px] font-mono text-base-content/50">
+                  {player.pts} PPG
+                </div>
               </div>
             ))}
           </div>
@@ -394,7 +455,9 @@ function FantasyConfig() {
         className="w-full p-4 rounded-lg border border-dashed border-base-300/50 text-base-content/40 hover:text-primary hover:border-primary/30 transition-all flex items-center justify-center gap-2"
       >
         <Link2 size={16} />
-        <span className="text-xs uppercase tracking-wide">Connect Yahoo Account</span>
+        <span className="text-xs uppercase tracking-wide">
+          Connect Yahoo Account
+        </span>
       </motion.button>
     </div>
   )
@@ -430,16 +493,22 @@ function RssConfig() {
           >
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 rounded bg-primary/10 border border-primary/20 flex items-center justify-center">
-                <span className="text-xs font-bold font-mono text-primary">RSS</span>
+                <span className="text-xs font-bold font-mono text-primary">
+                  RSS
+                </span>
               </div>
               <div>
                 <div className="text-sm font-bold">{feed.name}</div>
-                <div className="text-[10px] text-base-content/40 font-mono">{feed.url}</div>
+                <div className="text-[10px] text-base-content/40 font-mono">
+                  {feed.url}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <span className="px-2 py-0.5 rounded bg-primary/10 border border-primary/20">
-                <span className="text-xs font-mono text-primary">{feed.unread}</span>
+                <span className="text-xs font-mono text-primary">
+                  {feed.unread}
+                </span>
               </span>
               <button className="p-1.5 rounded hover:bg-base-200 transition-colors text-base-content/30 hover:text-base-content/50">
                 <Settings size={14} />

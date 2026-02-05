@@ -1,4 +1,4 @@
-import * as motion from 'motion/react-client'
+import { motion } from 'motion/react'
 
 const features = [
   {
@@ -98,14 +98,22 @@ export function FeaturesGrid() {
           <motion.div
             key={feature.title}
             initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            whileInView={{
+              opacity: 1,
+              y: 0,
+              transition: { delay: 0.2 + index * 0.1 },
+            }}
             viewport={{ once: true }}
-            transition={{ delay: 0.2 + index * 0.1 }}
-            whileHover={{ y: -4 }}
+            whileHover={{
+              y: -4,
+              transition: { duration: 0.2 },
+            }}
             className="group relative p-8 rounded-sm bg-base-200/60 backdrop-blur-xl border border-base-300/50 hover:border-primary/30 transition-all duration-300"
           >
             {/* Card-specific ambient glow */}
-            <div className={`absolute -inset-4 ${feature.glowColor} rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+            <div
+              className={`absolute -inset-4 ${feature.glowColor} rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
+            />
 
             {/* Left Accent Border */}
             <div
