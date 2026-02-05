@@ -183,7 +183,7 @@ function ProfilePage() {
     try {
       const token = await getAccessToken('https://api.myscrollr.relentnet.dev')
 
-      const res = await fetch('${API_BASE}/users/me/username', {
+      const res = await fetch(`${API_BASE}/users/me/username`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

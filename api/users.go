@@ -170,7 +170,28 @@ func GetMyProfile(c *fiber.Ctx) error {
 	profile.DisplayName = displayName.String
 	profile.Bio = bio.String
 
-	log.Printf("[GetMyProfile] Query err=%v", err)
+	log.Printf("[GetMyProfile] Query err=%v, username=%s", err, profile.Username)
+
+	// If profile exists but has empty username, fix it
+	if profile.Username == "" {
+		log.Printf("[GetMyProfile] Fixing empty username for user %s", userID)
+		newUsername := userID[:8]
+		// Check if this username is available
+		var count int
+		_ = dbPool.QueryRow(context.Background(), `SELECT COUNT(*) FROM profiles WHERE username = $1`, newUsername).Scan(&count)
+		if count > 0 {
+			newUsername = newUsername + fmt.Sprintf("%d", time.Now().Unix()%10000)
+		}
+		// Update the profile
+		_, err = dbPool.Exec(context.Background(), `UPDATE profiles SET username = $1, display_name = COALESCE(NULLIF(display_name, ''), $1) WHERE user_id = $2`, newUsername, userID)
+		if err != nil {
+			log.Printf("[GetMyProfile] Error fixing empty username: %v", err)
+		} else {
+			profile.Username = newUsername
+			profile.DisplayName = newUsername
+			log.Printf("[GetMyProfile] Username fixed to: %s", newUsername)
+		}
+	}
 
 	// If no profile exists, create a placeholder one
 	if err != nil {
@@ -188,13 +209,18 @@ func GetMyProfile(c *fiber.Ctx) error {
 		email := getUserEmail(c)
 		log.Printf("[GetMyProfile] email=%s", email)
 
-		// Generate initial username from email (before @)
+		// Generate initial username from email (before @), fallback to user ID
 		initialUsername := ""
 		if email != "" {
 			parts := strings.Split(email, "@")
 			if len(parts) > 0 {
 				initialUsername = parts[0]
 			}
+		}
+		// If email is empty or didn't produce username, use first 8 chars of user ID
+		if initialUsername == "" {
+			initialUsername = userID[:8]
+			log.Printf("[GetMyProfile] Using userID prefix as username: %s", initialUsername)
 		}
 
 		// Check if this username is available
@@ -203,7 +229,7 @@ func GetMyProfile(c *fiber.Ctx) error {
 			SELECT COUNT(*) FROM profiles WHERE username = $1
 		`, initialUsername).Scan(&count)
 
-		// If email-based username exists, append a random suffix
+		// If username exists, append a random suffix
 		if err == nil && count > 0 {
 			initialUsername = initialUsername + fmt.Sprintf("%d", time.Now().Unix()%10000)
 		}
@@ -228,7 +254,7 @@ func GetMyProfile(c *fiber.Ctx) error {
 			DisplayName: initialUsername,
 			IsPublic:    true,
 		}
-		log.Printf("[GetMyProfile] Profile found/created: username=%s", profile.Username)
+		log.Printf("[GetMyProfile] Profile created: username=%s", profile.Username)
 	}
 
 	// Check if Yahoo is connected
