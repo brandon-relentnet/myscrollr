@@ -170,8 +170,17 @@ func GetMyProfile(c *fiber.Ctx) error {
 	profile.Bio = bio.String
 
 	// If no profile exists, create a placeholder one
-	if err == sql.ErrNoRows {
-		// Get email from JWT claims
+	if err != nil {
+		errStr := err.Error()
+		if !strings.Contains(errStr, "no rows") {
+			// Real error
+			log.Printf("Error fetching profile: %v", err)
+			return c.Status(http.StatusInternalServerError).JSON(ErrorResponse{
+				Status: "error",
+				Error:  "Failed to fetch profile",
+			})
+		}
+		// Profile doesn't exist, create one
 		email := getUserEmail(c)
 
 		// Generate initial username from email (before @)
@@ -214,12 +223,6 @@ func GetMyProfile(c *fiber.Ctx) error {
 			DisplayName: initialUsername,
 			IsPublic:    true,
 		}
-	} else if err != nil {
-		log.Printf("Error fetching profile: %v", err)
-		return c.Status(http.StatusInternalServerError).JSON(ErrorResponse{
-			Status: "error",
-			Error:  "Failed to fetch profile",
-		})
 	}
 
 	// Check if Yahoo is connected
