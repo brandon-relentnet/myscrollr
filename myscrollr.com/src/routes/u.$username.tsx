@@ -116,8 +116,7 @@ function ProfilePage() {
     setError(null)
 
     try {
-      const claims = await getIdTokenClaims()
-          const token = await getAccessToken()
+      const token = await getAccessToken()
 
       const res = await fetch(`${API_BASE}/users/me/profile`, {
         method: 'PATCH',
@@ -150,7 +149,6 @@ function ProfilePage() {
     setUsernameError(null)
 
     try {
-      const claims = await getIdTokenClaims()
       const token = await getAccessToken()
 
       const res = await fetch('${API_BASE}/users/me/username', {
@@ -179,7 +177,6 @@ function ProfilePage() {
     if (!confirm('Are you sure you want to disconnect your Yahoo account?')) return
 
     try {
-      const claims = await getIdTokenClaims()
       const token = await getAccessToken()
 
       const res = await fetch('${API_BASE}/users/me/disconnect/yahoo', {
