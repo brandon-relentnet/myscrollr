@@ -243,7 +243,7 @@ function ProfilePage() {
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 mb-6">
           <div className="flex items-start gap-6">
             <div className="h-24 w-24 rounded-full bg-indigo-600 flex items-center justify-center text-3xl font-bold">
-              {profile.username[0].toUpperCase()}
+              {profile.username ? profile.username[0].toUpperCase() : '?'}
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-1">
