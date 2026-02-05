@@ -161,5 +161,10 @@ func LogtoAuth(c *fiber.Ctx) error {
 		c.Locals("user_email", email)
 	}
 
+	// Store username if available (from Logto user profile)
+	if username, ok := claims["username"].(string); ok {
+		c.Locals("username", username)
+	}
+
 	return c.Next()
 }

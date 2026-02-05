@@ -143,7 +143,9 @@ func GetProfileByUsername(c *fiber.Ctx) error {
 // GetMyProfile returns the current user's full profile
 func GetMyProfile(c *fiber.Ctx) error {
 	userID := getUserID(c)
-	log.Printf("[GetMyProfile] userID=%s", userID)
+	username := getUsername(c)
+	log.Printf("[GetMyProfile] userID=%s, username=%s", userID, username)
+
 	if userID == "" {
 		return c.Status(http.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "error",
@@ -151,45 +153,40 @@ func GetMyProfile(c *fiber.Ctx) error {
 		})
 	}
 
-	// Check if profile exists
-	var profile Profile
-	var displayName, bio sql.NullString
+	// Username comes from Logto user profile (primary source)
+	// Additional profile data comes from our database
+	displayName := ""
+	bio := ""
+	isPublic := true
+
+	// Query our database for additional profile data
+	var dbUsername string
+	var dbDisplayName, dbBio sql.NullString
 	err := dbPool.QueryRow(context.Background(), `
-		SELECT user_id, username, COALESCE(display_name, ''), COALESCE(bio, ''), is_public, created_at, updated_at
+		SELECT username, COALESCE(display_name, ''), COALESCE(bio, ''), is_public
 		FROM profiles
 		WHERE user_id = $1
-	`, userID).Scan(
-		&profile.UserID,
-		&profile.Username,
-		&displayName,
-		&bio,
-		&profile.IsPublic,
-		&profile.CreatedAt,
-		&profile.UpdatedAt,
-	)
-	profile.DisplayName = displayName.String
-	profile.Bio = bio.String
+	`, userID).Scan(&dbUsername, &dbDisplayName, &dbBio, &isPublic)
 
-	log.Printf("[GetMyProfile] Query err=%v", err)
-
-	// If no profile exists, return empty response - frontend handles setup UI
-	if err != nil && (err == sql.ErrNoRows || strings.Contains(err.Error(), "no rows")) {
-		log.Printf("[GetMyProfile] No profile found for user %s", userID)
-		return c.JSON(FullProfileResponse{
-			Username:       "",
-			DisplayName:    "",
-			Bio:            "",
-			IsPublic:       true,
-			ConnectedYahoo: false,
-			LastSync:       nil,
-		})
-	}
-	if err != nil {
+	if err == nil && err != sql.ErrNoRows && !strings.Contains(err.Error(), "no rows") {
 		log.Printf("Error fetching profile: %v", err)
 		return c.Status(http.StatusInternalServerError).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Failed to fetch profile",
 		})
+	}
+
+	// Use database values if they exist, otherwise use Logto values
+	if dbDisplayName.Valid {
+		displayName = dbDisplayName.String
+	}
+	if dbBio.Valid {
+		bio = dbBio.String
+	}
+
+	// If we have a username in our database, use it; otherwise use Logto username
+	if dbUsername != "" {
+		username = dbUsername
 	}
 
 	// Check if Yahoo is connected
@@ -198,15 +195,15 @@ func GetMyProfile(c *fiber.Ctx) error {
 	_ = dbPool.QueryRow(context.Background(), `
 		SELECT last_sync FROM yahoo_users WHERE guid = $1
 	`, userID).Scan(&lastSync)
-	if err == nil && lastSync.Valid {
+	if lastSync.Valid {
 		connectedYahoo = true
 	}
 
 	response := FullProfileResponse{
-		Username:       profile.Username,
-		DisplayName:    profile.DisplayName,
-		Bio:            profile.Bio,
-		IsPublic:       profile.IsPublic,
+		Username:       username,
+		DisplayName:    displayName,
+		Bio:            bio,
+		IsPublic:       isPublic,
 		ConnectedYahoo: connectedYahoo,
 		LastSync:       nil,
 	}
@@ -444,6 +441,14 @@ func getUserID(c *fiber.Ctx) string {
 func getUserEmail(c *fiber.Ctx) string {
 	if email, ok := c.Locals("user_email").(string); ok {
 		return email
+	}
+	return ""
+}
+
+// getUsername extracts the username from the Fiber context (set by LogtoAuth middleware)
+func getUsername(c *fiber.Ctx) string {
+	if username, ok := c.Locals("username").(string); ok {
+		return username
 	}
 	return ""
 }
