@@ -29,15 +29,15 @@ export function CommandBackground() {
     const particleCount = 50 
 
     class Particle {
-      x: number = 0
-      y: number = 0
-      size: number = 0
-      speed: number = 0
-      opacity: number = 0
-      targetX: number = 0
-      targetY: number = 0
-      life: number = 0
-      maxLife: number = 0
+      x = 0
+      y = 0
+      size = 0
+      speed = 0
+      opacity = 0
+      targetX = 0
+      targetY = 0
+      life = 0
+      maxLife = 0
 
       constructor() {
         this.reset()
@@ -96,7 +96,7 @@ export function CommandBackground() {
       }
     }
 
-    const particles: Particle[] = []
+    const particles: Array<Particle> = []
     for (let i = 0; i < particleCount; i++) {
       particles.push(new Particle())
     }

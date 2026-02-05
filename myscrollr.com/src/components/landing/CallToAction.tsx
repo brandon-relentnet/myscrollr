@@ -51,9 +51,9 @@ export function CallToAction() {
               transition={{ delay: 0.1 }}
               className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-5"
             >
-              Take the ticker{' '}
+              Bring your data <br />
               <span className="text-gradient-primary font-black uppercase tracking-tighter">
-                with you
+                everywhere
               </span>
             </motion.h2>
 
@@ -64,8 +64,8 @@ export function CallToAction() {
               transition={{ delay: 0.2 }}
               className="text-lg text-base-content/60 leading-relaxed"
             >
-              You've seen how it works. Now bring your sports, stocks, and feeds
-              to every tab you open.
+              Add to Chrome and pin your sports, crypto, and feeds over any tab.
+              Never miss a moment.
             </motion.p>
 
             <motion.div
@@ -77,11 +77,11 @@ export function CallToAction() {
             >
               <span className="tag tag-primary">
                 <span className="w-1 h-1 rounded-full bg-primary" />
-                Free to use
+                Open Source
               </span>
               <span className="tag">
                 <span className="w-1 h-1 rounded-full bg-base-content/30" />
-                No account required
+                Free Forever
               </span>
             </motion.div>
           </div>

@@ -12,9 +12,9 @@ export const Route = createFileRoute('/')({
 
 function HomePage() {
   usePageMeta({
-    title: 'Custom Chrome Ticker Overlay | Scrollr',
+    title: 'Scrollr — Never Alt-Tab Again',
     description:
-      'Scrollr is a Chrome extension that pins a locked bar or moving ticker on top of any tab so sports, fantasy, market, or RSS data stays visible in real time.',
+      'Pin live sports scores, crypto prices, and custom feeds over any tab. The ticker that follows you everywhere.',
   })
 
   return (

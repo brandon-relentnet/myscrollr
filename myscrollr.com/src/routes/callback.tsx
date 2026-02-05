@@ -1,5 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { useNavigate } from '@tanstack/react-router'
+import { createFileRoute, useNavigate  } from '@tanstack/react-router'
 import { useHandleSignInCallback } from '@logto/react'
 
 export const Route = createFileRoute('/callback')({

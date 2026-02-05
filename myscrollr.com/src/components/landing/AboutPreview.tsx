@@ -29,14 +29,14 @@ export function AboutPreview() {
           </motion.div>
 
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight uppercase leading-tight">
-            Building the last ticker <br />
+            The last ticker <br />
             <span className="text-gradient-primary">you'll ever need</span>
           </h2>
 
           <p className="text-lg text-base-content/60 leading-relaxed max-w-lg">
-            Scrollr started as a simple idea: why do we have to switch tabs to
-            see the score? It has since evolved into a powerful overlay engine
-            for the modern web.
+            Scrollr started with a simple question: why do we have to switch tabs 
+            to see the score? It evolved into an overlay engine for anyone who needs 
+            data without the distraction.
           </p>
 
           <motion.div whileHover={{ x: 5 }} className="pt-2">

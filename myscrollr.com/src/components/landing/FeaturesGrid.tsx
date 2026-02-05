@@ -10,8 +10,8 @@ const features = [
     iconClass: 'text-primary',
     borderClass: 'border-primary/20',
     bgClass: 'bg-primary/10',
-    stat: '33%',
-    statLabel: 'Longer Watch Time',
+    stat: '∞',
+    statLabel: 'Tabs Covered',
     glowColor: 'bg-primary/4',
   },
   {
@@ -23,21 +23,21 @@ const features = [
     iconClass: 'text-secondary',
     borderClass: 'border-secondary/20',
     bgClass: 'bg-secondary/10',
-    stat: '84.6M',
-    statLabel: 'Fantasy Users',
+    stat: '15px',
+    statLabel: 'Min Height',
     glowColor: 'bg-secondary/4',
   },
   {
-    title: 'Precision Controls',
+    title: 'Fully Customizable',
     description:
-      'Fine-tune opacity, scroll speed, and card layout to match your workspace. From data-heavy monitors to minimal streaming setups.',
+      'Custom feeds, scroll speed, opacity, and card layouts. Build the ticker that fits your workflow, not the other way around.',
     icon: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
     accent: 'text-info',
     iconClass: 'text-info',
     borderClass: 'border-info/20',
     bgClass: 'bg-info/10',
-    stat: '6x',
-    statLabel: 'Brokerage Growth',
+    stat: '100%',
+    statLabel: 'You Control',
     glowColor: 'bg-info/4',
   },
 ]
@@ -67,7 +67,7 @@ export function FeaturesGrid() {
             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
           </span>
           <span className="text-xs font-mono uppercase tracking-widest text-primary">
-            The Scrollr Advantage
+            Features
           </span>
         </motion.span>
 
@@ -88,7 +88,7 @@ export function FeaturesGrid() {
           transition={{ delay: 0.3 }}
           className="text-lg text-base-content/60 max-w-2xl mx-auto leading-relaxed"
         >
-          Designed for the multitasker who needs to know, without breaking flow.
+          Everything you need to stay informed without losing focus.
         </motion.p>
       </motion.div>
 

@@ -112,11 +112,9 @@ export function HeroSection() {
                 transition={{ duration: 0.5, delay: 1 }}
                 className="mt-8 text-lg sm:text-xl text-base-content/60 max-w-md leading-relaxed"
               >
-                Pin live sports scores, crypto prices, and custom feeds over any
-                tab.
+                Pin live sports scores, crypto prices, and custom feeds over any tab.{' '}
                 <span className="text-primary font-medium">
-                  {' '}
-                  Stop alt-tabting.
+                  Never alt-tab again.
                 </span>
               </motion.p>
 
@@ -134,7 +132,7 @@ export function HeroSection() {
                   className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-sm border border-base-300 bg-base-200/50 px-6 py-3 text-sm font-bold uppercase tracking-wider text-base-content hover:bg-base-300 transition-all backdrop-blur-sm"
                   onClick={() => scrollToSection('welcome')}
                 >
-                  Learn More
+                  How It Works
                 </motion.button>
               </motion.div>
             </motion.div>
@@ -165,7 +163,7 @@ export function HeroSection() {
         </motion.div>
       </section>
 
-      {/* Welcome Section */}
+        {/* Welcome Section */}
       <section className="container scroll-m-75" id="welcome">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -187,28 +185,23 @@ export function HeroSection() {
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
               </span>
               <span className="text-xs font-mono uppercase tracking-widest text-primary">
-                Terminal v2.1
+                Chrome Extension
               </span>
             </motion.div>
 
             <h1 className="font-extrabold text-4xl sm:text-5xl text-balance tracking-tight">
-              Welcome to <span className="text-gradient-primary">Scrollr</span>
+              Your Data, <span className="text-gradient-primary">Always Visible</span>
             </h1>
 
             <p className="mt-5 text-lg max-w-prose text-base-content/70 leading-relaxed">
-              Tickers dominate our screens but haven't evolved in years. It's
-              almost as if Tickers are talking at you and not with you.
+              Tickers dominate our screens but haven't evolved in years. They talk at you, not with you.
             </p>
             <p className="mt-5 max-w-prose text-2xl italic font-semibold text-base-content/80">
               Scrollr brings them to life.
             </p>
             <p className="mt-5 max-w-prose text-lg text-base-content/70 leading-relaxed">
-              An interactive, personalized, modern ticker experience built to
-              engage effortlessly. Follow your Fantasy teams + more while you
-              stream the game or just browsing the web.{' '}
-              <span className="font-semibold text-primary">
-                Available as a Chrome Extension.
-              </span>
+              An interactive, personalized ticker experience built for multitaskers. 
+              Follow your fantasy teams, track markets, and stay updated—without leaving what you're doing.
             </p>
 
             <div className="flex flex-wrap gap-3 mt-8 justify-center lg:justify-start items-center">
@@ -219,7 +212,7 @@ export function HeroSection() {
                 className="btn-pulse rounded-sm text-sm shadow-lg cursor-pointer"
                 onClick={() => scrollToSection('scroll-highlight')}
               >
-                Explore Features
+                See Features
               </motion.button>
               <a
                 href="https://chromewebstore.google.com/detail/scrollr/pjeafpgbpfbcaddipkcbacohhbfakclb"
@@ -227,7 +220,7 @@ export function HeroSection() {
                 rel="noopener noreferrer"
                 className="group inline-flex h-full items-center text-sm font-bold uppercase tracking-wider text-base-content/60 hover:text-primary transition-colors px-4"
               >
-                View on Web Store
+                Add to Chrome
                 <motion.span
                   animate={{ x: [0, 3, 0] }}
                   transition={{ duration: 1.5, repeat: Infinity }}

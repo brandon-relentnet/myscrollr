@@ -36,26 +36,10 @@ const features: Array<FeatureItem> = [
     },
   },
   {
-    name: 'News',
-    subtitle: 'RSS & Alerts',
-    description:
-      'Breaking news, beat writers, and custom feeds. Stay informed without switching tabs.',
-    data: {
-      type: 'ticker',
-      labels: ['BREAKING', 'MARKETS', 'TECH', 'SPORTS'],
-      values: [
-        'Fed cuts rates',
-        'S&P +1.2%',
-        'AI summit today',
-        'Trade deadline',
-      ],
-    },
-  },
-  {
     name: 'Custom',
     subtitle: 'Layouts & Style',
     description:
-      'Make it yours. Shift cards, adjust transparency, and control speed. Your ticker, your rules.',
+      'Make it yours. Adjust transparency, control scroll speed, and customize the layout. Your ticker, your rules.',
     data: {
       type: 'ticker',
       labels: ['LAYOUT', 'SPEED', 'POSITION', 'OPACITY'],

@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useLogto } from '@logto/react'
 import { useEffect, useState } from 'react'
-import { Shield, Link as LinkIcon, Check, AlertCircle, Loader2 } from 'lucide-react'
+import { AlertCircle, Check, Link as LinkIcon, Loader2, Shield } from 'lucide-react'
 import { API_BASE } from '../api/client'
 
 export const Route = createFileRoute('/u/$username')({

@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import * as motion from 'motion/react-client'
-import { ArrowUpRight, Github, Terminal, Cpu, Database, Globe } from 'lucide-react'
+import { ArrowUpRight, Cpu, Database, Github, Globe, Terminal } from 'lucide-react'
 import ScrollrSVG from '@/components/ScrollrSVG'
 
 export default function Footer() {
@@ -72,21 +72,21 @@ export default function Footer() {
                 <span className="font-bold text-2xl tracking-tight uppercase font-display">
                   Scrollr
                 </span>
-                <span className="text-[10px] font-mono text-primary/60 uppercase tracking-[0.2em]">
-                  Terminal v2.1
+                <span className="text-[10px] font-mono text-primary/40 uppercase tracking-[0.2em]">
+                  v2.1.0
                 </span>
               </div>
             </div>
 
             <p className="text-sm text-base-content/60 leading-relaxed max-w-sm">
-              Pin live sports scores, crypto prices, and custom feeds over any tab.
-              Stop alt-tabting. Stay in your flow.
+              Pin live sports scores, crypto prices, and custom feeds over any tab. 
+              Stop alt-tabping. Stay in your flow.
             </p>
 
             {/* Status Indicators */}
             <div className="flex flex-wrap gap-2">
-              <StatusBadge status="online" label="All Systems" />
-              <StatusBadge status="pulsing" label="Live Data" />
+              <StatusBadge status="online" />
+              <StatusBadge status="live" />
             </div>
           </div>
 
@@ -187,14 +187,9 @@ export default function Footer() {
                 className="flex items-center gap-2 px-4 py-2 rounded-sm bg-base-200/50 border border-base-300/30"
               >
                 <tech.icon size={14} className="text-primary/60" />
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold font-mono uppercase tracking-wider text-base-content/60">
-                    {tech.label}
-                  </span>
-                  <span className="text-[9px] font-mono text-base-content/30 uppercase tracking-wider">
-                    {tech.desc}
-                  </span>
-                </div>
+                <span className="text-xs font-bold font-mono uppercase tracking-wider text-base-content/60">
+                  {tech.label}
+                </span>
               </motion.div>
             ))}
           </div>
@@ -207,13 +202,13 @@ export default function Footer() {
             <span className="text-xs font-mono text-base-content/40 uppercase tracking-wider">
               © {year} Scrollr
             </span>
-            <span className="hidden sm:inline text-xs font-mono text-base-content/20">|</span>
+            <span className="hidden sm:inline text-xs font-mono text-base-content/20">·</span>
             <span className="flex items-center gap-2 text-xs font-mono text-base-content/40 uppercase tracking-wider">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-50" />
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
               </span>
-              Keep the data scrolling
+              Open Source
             </span>
           </div>
 
@@ -240,11 +235,11 @@ export default function Footer() {
   )
 }
 
-function StatusBadge({ status, label }: { status: 'online' | 'pulsing'; label: string }) {
+function StatusBadge({ status }: { status: 'online' | 'live' }) {
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-sm bg-primary/5 border border-primary/10">
-      <span className={`relative flex h-1.5 w-1.5 ${status === 'pulsing' ? '' : ''}`}>
-        {status === 'pulsing' && (
+      <span className="relative flex h-1.5 w-1.5">
+        {status === 'live' && (
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
         )}
         <span
@@ -254,7 +249,7 @@ function StatusBadge({ status, label }: { status: 'online' | 'pulsing'; label: s
         />
       </span>
       <span className="text-[10px] font-mono uppercase tracking-wider text-base-content/50">
-        {label}
+        {status === 'online' ? 'Online' : 'Live Data'}
       </span>
     </div>
   )

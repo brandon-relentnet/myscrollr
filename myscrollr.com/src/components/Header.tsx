@@ -1,9 +1,10 @@
 import { Link, useLocation } from '@tanstack/react-router'
-import { Menu, X, LogOut, LayoutDashboard, UserCircle, ChevronRight } from 'lucide-react'
-import { useState, useEffect } from 'react'
-import { useLogto, type IdTokenClaims } from '@logto/react'
+import { ChevronRight, LayoutDashboard, LogOut, Menu, UserCircle, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import {  useLogto } from '@logto/react'
 import * as motion from 'motion/react-client'
 import ScrollrSVG from './ScrollrSVG'
+import type {IdTokenClaims} from '@logto/react';
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
@@ -48,8 +49,8 @@ export default function Header() {
               <span className="font-bold text-xl tracking-tight uppercase font-display">
                 Scrollr
               </span>
-              <span className="text-[9px] font-mono text-primary/60 uppercase tracking-[0.15em]">
-                Terminal_v2.1
+              <span className="text-[9px] font-mono text-primary/50 uppercase tracking-[0.15em]">
+                Always Visible
               </span>
             </div>
           </Link>
@@ -65,12 +66,12 @@ export default function Header() {
             <>
               <NavLink to="/dashboard" activeOn="/dashboard">
                 <LayoutDashboard size={14} />
-                Terminal
+                Dashboard
               </NavLink>
 
               <NavLink to="/account" activeOn="/account">
                 <UserCircle size={14} />
-                {userClaims?.username || userClaims?.name || 'Hub'}
+                {userClaims?.username || userClaims?.name || 'Account'}
               </NavLink>
             </>
           )}
@@ -96,7 +97,7 @@ export default function Header() {
               >
                 <div className="h-8 w-8 rounded-sm bg-primary/10 border border-primary/20 flex items-center justify-center">
                   <span className="text-xs font-bold font-mono text-primary">
-                    {isAuthenticated ? 'ON' : '--'}
+                    SR
                   </span>
                 </div>
               </motion.div>
@@ -149,7 +150,7 @@ export default function Header() {
         }`}
       />
 
-      {/* Mobile Drawer */}
+        {/* Mobile Drawer */}
       <motion.aside
         initial={{ x: '100%' }}
         animate={{ x: isOpen ? 0 : '100%' }}
@@ -161,9 +162,9 @@ export default function Header() {
           <div className="flex items-center gap-3">
             <ScrollrSVG className="size-8" />
             <div className="flex flex-col">
-              <span className="font-bold text-lg uppercase tracking-tight">Menu</span>
-              <span className="text-[8px] font-mono text-primary/60 uppercase tracking-[0.2em]">
-                Navigation
+              <span className="font-bold text-lg uppercase tracking-tight">Scrollr</span>
+              <span className="text-[8px] font-mono text-primary/50 uppercase tracking-[0.15em]">
+                Always Visible
               </span>
             </div>
           </div>
@@ -179,7 +180,7 @@ export default function Header() {
         </div>
 
         {/* Navigation Links */}
-        <nav className="flex-1 px-4 py-6 space-y-2">
+        <nav className="flex-1 px-4 py-6 space-y-1">
           <MobileNavLink
             to="/"
             icon={<ChevronRight size={18} />}
@@ -192,18 +193,18 @@ export default function Header() {
             <>
               <MobileNavLink
                 to="/dashboard"
-                icon={<LayoutDashboard size={18} />}
+                icon={<ChevronRight size={18} />}
                 onClick={() => setIsOpen(false)}
               >
-                Terminal
+                Dashboard
               </MobileNavLink>
 
               <MobileNavLink
                 to="/account"
-                icon={<UserCircle size={18} />}
+                icon={<ChevronRight size={18} />}
                 onClick={() => setIsOpen(false)}
               >
-                {userClaims?.username || userClaims?.name || 'Hub'}
+                {userClaims?.username || userClaims?.name || 'Account'}
               </MobileNavLink>
             </>
           )}
@@ -215,7 +216,7 @@ export default function Header() {
             <div className="flex items-center justify-center gap-2 py-3">
               <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
               <span className="text-xs font-mono uppercase tracking-wider text-base-content/40">
-                Initializing...
+                Loading...
               </span>
             </div>
           ) : isAuthenticated ? (

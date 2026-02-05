@@ -1,15 +1,16 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { useLogto, type IdTokenClaims } from '@logto/react'
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
+import {  useLogto } from '@logto/react'
 import { useEffect, useState } from 'react'
 import { 
-  BarChart3, 
-  TrendingUp, 
-  ShieldCheck, 
   ArrowRight, 
+  BarChart3, 
+  Globe, 
+  Lock, 
   Settings, 
-  Globe,
-  Lock
+  ShieldCheck,
+  TrendingUp
 } from 'lucide-react'
+import type {IdTokenClaims} from '@logto/react';
 
 export const Route = createFileRoute('/account')({
   component: AccountHub,
@@ -21,11 +22,11 @@ function AccountHub() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (isAuthenticated) {
-      getIdTokenClaims().then(setUserClaims)
-    } else if (!isLoading && !isAuthenticated) {
+    if (!isLoading && !isAuthenticated) {
       // Redirect if not logged in
       navigate({ to: '/' })
+    } else if (isAuthenticated) {
+      getIdTokenClaims().then(setUserClaims)
     }
   }, [isAuthenticated, isLoading, getIdTokenClaims, navigate])
 
