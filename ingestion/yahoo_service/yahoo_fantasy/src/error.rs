@@ -74,7 +74,7 @@ impl YahooError {
                     match key {
                         "oauth_problem" => {
                             match trimmed_value {
-                                "token_expired" => {
+                                "token_expired" | "token_missing" => {
                                     return "token_expired".to_string();
                                 }
                                 "unable_to_determine_oauth_type" => {
