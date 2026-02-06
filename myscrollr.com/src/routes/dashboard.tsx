@@ -3,6 +3,7 @@ import { useLogto } from '@logto/react'
 import { useEffect, useRef, useState } from 'react'
 import {
   Activity,
+  ChevronDown,
   Cpu,
   Ghost,
   Link2,
@@ -14,7 +15,7 @@ import {
   TrendingDown,
   TrendingUp,
 } from 'lucide-react'
-import { motion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useRealtime } from '../hooks/useRealtime'
 import type { Game, Trade, YahooState } from '../hooks/useRealtime'
 import type { IdTokenClaims } from '@logto/react'
@@ -606,6 +607,8 @@ const GAME_CODE_LABELS: Record<string, string> = {
   mlb: 'Baseball',
 }
 
+const LEAGUES_PER_PAGE = 5
+
 function FantasyConfig({
   yahoo,
   yahooStatus,
@@ -617,6 +620,9 @@ function FantasyConfig({
   onYahooConnect?: () => void
   onYahooDisconnect?: () => void
 }) {
+  const [filter, setFilter] = useState<'active' | 'finished'>('active')
+  const [visibleCount, setVisibleCount] = useState(LEAGUES_PER_PAGE)
+
   // Build league list from DB records, merging standings data
   const allLeagues = Object.values(yahoo.leagues)
     .map((league) => {
@@ -631,11 +637,20 @@ function FantasyConfig({
         standings: standings?.data,
       }
     })
-    .sort((a, b) => {
-      // Active leagues first, then by season descending
-      if (a.is_finished !== b.is_finished) return a.is_finished ? 1 : -1
-      return Number(b.season) - Number(a.season)
-    })
+    .sort((a, b) => Number(b.season) - Number(a.season))
+
+  const activeLeagues = allLeagues.filter((l) => !l.is_finished)
+  const finishedLeagues = allLeagues.filter((l) => l.is_finished)
+  const filteredLeagues = filter === 'active' ? activeLeagues : finishedLeagues
+  const visibleLeagues = filteredLeagues.slice(0, visibleCount)
+  const hasMore = visibleCount < filteredLeagues.length
+  const remaining = filteredLeagues.length - visibleCount
+
+  // Reset visible count when filter changes
+  const handleFilterChange = (newFilter: 'active' | 'finished') => {
+    setFilter(newFilter)
+    setVisibleCount(LEAGUES_PER_PAGE)
+  }
 
   return (
     <div className="space-y-6">
@@ -653,10 +668,15 @@ function FantasyConfig({
           <span className="flex items-center gap-1.5 px-2 py-1 rounded bg-primary/10 border border-primary/20">
             <span className={`h-1.5 w-1.5 rounded-full ${yahooStatus.synced ? 'bg-primary' : 'bg-warning'} animate-pulse`} />
             <span className="text-[9px] font-mono text-primary uppercase">
-              {allLeagues.length > 0
-                ? `${allLeagues.length} League${allLeagues.length !== 1 ? 's' : ''}`
+              {activeLeagues.length > 0
+                ? `${activeLeagues.length} Active`
                 : yahooStatus.synced ? 'Connected' : 'Syncing...'}
             </span>
+            {finishedLeagues.length > 0 && (
+              <span className="text-[9px] font-mono text-base-content/30 uppercase ml-1">
+                / {finishedLeagues.length} Past
+              </span>
+            )}
           </span>
         )}
       </div>
@@ -716,10 +736,112 @@ function FantasyConfig({
         </motion.div>
       )}
 
+      {/* Filter Toggle */}
+      {allLeagues.length > 0 && (
+        <div className="flex items-center gap-1 p-1 rounded-lg bg-base-200/60 border border-base-300/40 w-fit">
+          <button
+            onClick={() => handleFilterChange('active')}
+            className={`relative px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-colors ${
+              filter === 'active'
+                ? 'text-primary'
+                : 'text-base-content/30 hover:text-base-content/50'
+            }`}
+          >
+            {filter === 'active' && (
+              <motion.div
+                layoutId="fantasy-filter-bg"
+                className="absolute inset-0 bg-primary/10 border border-primary/20 rounded-md"
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              />
+            )}
+            <span className="relative flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
+              Active
+              {activeLeagues.length > 0 && (
+                <span className="font-mono">{activeLeagues.length}</span>
+              )}
+            </span>
+          </button>
+          <button
+            onClick={() => handleFilterChange('finished')}
+            className={`relative px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-colors ${
+              filter === 'finished'
+                ? 'text-base-content/60'
+                : 'text-base-content/30 hover:text-base-content/50'
+            }`}
+          >
+            {filter === 'finished' && (
+              <motion.div
+                layoutId="fantasy-filter-bg"
+                className="absolute inset-0 bg-base-300/30 border border-base-300/40 rounded-md"
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              />
+            )}
+            <span className="relative flex items-center gap-2">
+              Past
+              {finishedLeagues.length > 0 && (
+                <span className="font-mono text-base-content/30">{finishedLeagues.length}</span>
+              )}
+            </span>
+          </button>
+        </div>
+      )}
+
       {/* League Cards */}
-      {allLeagues.map((league) => (
-        <LeagueCard key={league.league_key} league={league} />
-      ))}
+      <AnimatePresence mode="popLayout">
+        {visibleLeagues.map((league, i) => (
+          <motion.div
+            key={league.league_key}
+            initial={{ opacity: 0, y: 12, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.97 }}
+            transition={{
+              type: 'spring',
+              stiffness: 400,
+              damping: 30,
+              delay: i < LEAGUES_PER_PAGE ? i * 0.05 : 0,
+            }}
+            layout
+          >
+            <LeagueCard league={league} />
+          </motion.div>
+        ))}
+      </AnimatePresence>
+
+      {/* Empty filter state */}
+      {allLeagues.length > 0 && filteredLeagues.length === 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center py-8"
+        >
+          <p className="text-xs text-base-content/30 uppercase tracking-wide">
+            {filter === 'active'
+              ? 'No active leagues right now'
+              : 'No past leagues found'}
+          </p>
+        </motion.div>
+      )}
+
+      {/* Load More */}
+      {hasMore && (
+        <motion.button
+          onClick={() => setVisibleCount((prev) => prev + LEAGUES_PER_PAGE)}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
+          className="w-full p-3.5 rounded-lg bg-base-200/40 border border-base-300/40 text-base-content/40 hover:text-base-content/60 hover:border-base-300/60 transition-all flex items-center justify-center gap-2 group"
+        >
+          <ChevronDown size={14} className="group-hover:translate-y-0.5 transition-transform" />
+          <span className="text-[10px] font-bold uppercase tracking-widest">
+            Show {Math.min(remaining, LEAGUES_PER_PAGE)} more
+          </span>
+          <span className="text-[10px] font-mono text-base-content/20">
+            ({remaining} remaining)
+          </span>
+        </motion.button>
+      )}
 
       {/* Account Actions */}
       {yahooStatus.connected && (
@@ -763,6 +885,7 @@ function LeagueCard({
     standings?: any
   }
 }) {
+  const [standingsOpen, setStandingsOpen] = useState(false)
   const sportLabel =
     GAME_CODE_LABELS[league.game_code || ''] || league.game_code || 'Fantasy'
   // Standings data is an array of team objects from the Rust ingestion
@@ -770,90 +893,121 @@ function LeagueCard({
   const isActive = !league.is_finished
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.98 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className={`border rounded-lg p-6 ${isActive ? 'bg-base-200/50 border-base-300/50' : 'bg-base-200/20 border-base-300/30 opacity-60'}`}
+    <div
+      className={`border rounded-lg overflow-hidden transition-colors ${isActive ? 'bg-base-200/50 border-base-300/50' : 'bg-base-200/20 border-base-300/30'}`}
     >
-      {/* League Header */}
-      <div className="flex items-center justify-between mb-4">
+      {/* League Header — clickable to toggle standings */}
+      <button
+        onClick={() => teams.length > 0 && setStandingsOpen((prev) => !prev)}
+        className={`w-full p-5 flex items-center justify-between text-left ${teams.length > 0 ? 'cursor-pointer hover:bg-base-200/30' : 'cursor-default'} transition-colors`}
+      >
         <div className="flex items-center gap-4">
-          <div className={`h-12 w-12 rounded-lg flex items-center justify-center ${isActive ? 'bg-secondary/10 border border-secondary/20' : 'bg-base-300/20 border border-base-300/30'}`}>
-            <span className={`text-lg font-bold ${isActive ? 'text-secondary' : 'text-base-content/30'}`}>Y!</span>
+          <div className={`h-11 w-11 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-secondary/10 border border-secondary/20' : 'bg-base-300/20 border border-base-300/30'}`}>
+            <span className={`text-base font-bold ${isActive ? 'text-secondary' : 'text-base-content/30'}`}>Y!</span>
           </div>
-          <div>
-            <h3 className="text-sm font-bold uppercase">{league.name}</h3>
+          <div className="min-w-0">
+            <h3 className={`text-sm font-bold uppercase truncate ${isActive ? '' : 'text-base-content/50'}`}>{league.name}</h3>
             <p className="text-[10px] text-base-content/40 uppercase tracking-wide">
               {sportLabel} · {league.num_teams} Teams
               {league.season ? ` · ${league.season}` : ''}
             </p>
           </div>
         </div>
-        <span className={`px-2 py-1 rounded ${isActive ? 'bg-success/10 border border-success/20' : 'bg-base-300/20 border border-base-300/30'}`}>
-          <span className={`text-[9px] font-bold uppercase ${isActive ? 'text-success' : 'text-base-content/30'}`}>
-            {isActive ? 'Active' : 'Finished'}
-          </span>
-        </span>
-      </div>
-
-      {/* Standings */}
-      {teams.length > 0 && (
-        <div className="space-y-1.5">
-          <p className="text-[10px] font-bold text-base-content/30 uppercase tracking-widest mb-2">
-            Standings
-          </p>
-          {teams.slice(0, 8).map((team: any, i: number) => {
-            const record = team.team_standings?.outcome_totals
-            const logo = team.team_logos?.team_logo?.[0]?.url
-            return (
-              <div
-                key={team.team_key || i}
-                className="flex items-center justify-between p-2.5 rounded bg-base-100/50 border border-base-300/30"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-mono text-base-content/30 w-4 text-right">
-                    {i + 1}
-                  </span>
-                  {logo && (
-                    <img
-                      src={logo}
-                      alt=""
-                      className="h-5 w-5 rounded object-cover"
-                    />
-                  )}
-                  <span className="text-xs font-bold truncate max-w-[160px]">
-                    {team.name}
-                  </span>
-                </div>
-                {record && (
-                  <span className="text-[10px] font-mono text-base-content/40">
-                    {record.wins}-{record.losses}
-                    {record.ties > 0 ? `-${record.ties}` : ''}
-                    {team.team_standings?.points_for
-                      ? ` · ${team.team_standings.points_for} PF`
-                      : ''}
-                  </span>
-                )}
-              </div>
-            )
-          })}
-          {teams.length > 8 && (
-            <p className="text-[10px] text-base-content/30 text-center pt-1">
-              +{teams.length - 8} more teams
-            </p>
+        <div className="flex items-center gap-3 shrink-0">
+          {isActive ? (
+            <span className="flex items-center gap-1.5 px-2 py-1 rounded bg-success/10 border border-success/20">
+              <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
+              <span className="text-[9px] font-bold uppercase text-success">Active</span>
+            </span>
+          ) : (
+            <span className="text-[9px] font-mono text-base-content/25 uppercase">
+              {league.season}
+            </span>
+          )}
+          {teams.length > 0 && (
+            <motion.div
+              animate={{ rotate: standingsOpen ? 180 : 0 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+            >
+              <ChevronDown size={14} className="text-base-content/30" />
+            </motion.div>
           )}
         </div>
-      )}
+      </button>
 
-      {/* No standings yet */}
+      {/* Collapsible Standings */}
+      <AnimatePresence initial={false}>
+        {standingsOpen && teams.length > 0 && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            className="overflow-hidden"
+          >
+            <div className="px-5 pb-5 space-y-1.5">
+              <div className="h-px bg-base-300/30 mb-3" />
+              <p className="text-[10px] font-bold text-base-content/30 uppercase tracking-widest mb-2">
+                Standings
+              </p>
+              {teams.map((team: any, i: number) => {
+                const record = team.team_standings?.outcome_totals
+                const logo = team.team_logos?.team_logo?.[0]?.url
+                return (
+                  <motion.div
+                    key={team.team_key || i}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{
+                      delay: i * 0.03,
+                      type: 'spring',
+                      stiffness: 400,
+                      damping: 30,
+                    }}
+                    className="flex items-center justify-between p-2.5 rounded bg-base-100/50 border border-base-300/30"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-mono text-base-content/30 w-4 text-right">
+                        {i + 1}
+                      </span>
+                      {logo && (
+                        <img
+                          src={logo}
+                          alt=""
+                          className="h-5 w-5 rounded object-cover"
+                        />
+                      )}
+                      <span className="text-xs font-bold truncate max-w-[160px]">
+                        {team.name}
+                      </span>
+                    </div>
+                    {record && (
+                      <span className="text-[10px] font-mono text-base-content/40">
+                        {record.wins}-{record.losses}
+                        {record.ties > 0 ? `-${record.ties}` : ''}
+                        {team.team_standings?.points_for
+                          ? ` · ${team.team_standings.points_for} PF`
+                          : ''}
+                      </span>
+                    )}
+                  </motion.div>
+                )
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* No standings yet — shown inline, not collapsible */}
       {teams.length === 0 && (
-        <div className="text-center py-4">
-          <p className="text-xs text-base-content/30 uppercase">
-            Standings data not yet available
+        <div className="px-5 pb-4">
+          <div className="h-px bg-base-300/20 mb-3" />
+          <p className="text-[10px] text-base-content/25 uppercase text-center">
+            Standings not yet available
           </p>
         </div>
       )}
-    </motion.div>
+    </div>
   )
 }
 
