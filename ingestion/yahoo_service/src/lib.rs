@@ -117,8 +117,14 @@ async fn sync_user_data(
         ).await?;
     }
 
-    // Fetch standings with rate limiting (1 req/sec)
-    for league in &all_leagues {
+    // Fetch standings for active leagues only (skip finished to save API calls)
+    let active_leagues: Vec<_> = all_leagues.iter().filter(|l| !l.is_finished).collect();
+    let skipped = all_leagues.len() - active_leagues.len();
+    if skipped > 0 {
+        info!("Skipping standings for {} finished leagues", skipped);
+    }
+
+    for league in &active_leagues {
         let league_key = league.league_key.clone();
 
         tokio::time::sleep(Duration::from_millis(500)).await;

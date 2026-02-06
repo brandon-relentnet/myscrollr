@@ -1,7 +1,8 @@
 use anyhow::{Context, anyhow};
 pub use oauth2::{http::header, reqwest::Client};
 use secrecy::{ExposeSecret, SecretString};
-use log::{error, info, debug};
+use log::{error, info};
+use chrono::{Datelike, Utc};
 
 use crate::{debug::LeagueStats, error::YahooError, stats::StatDecode, types::{LeagueStandings, Leagues, Matchup, MatchupTeam, Matchups, Roster, Tokens, UserLeague}, utilities::write_stat_pairs_to_file, xml_leagues, xml_matchups, xml_roster, xml_settings::{self, Stat}, xml_standings};
 
@@ -85,11 +86,21 @@ pub async fn get_user_leagues(tokens: &Tokens, client: Client) -> anyhow::Result
         };
 
         for league in league_data {
-            debug!(
-                "League {} ({}) season={} is_finished={:?} current_week={:?} start_week={:?} end_week={:?} draft_status={}",
+            let current_year = Utc::now().year() as u16;
+            let is_finished = match league.is_finished {
+                Some(1) => true,
+                Some(_) => false,
+                // Yahoo doesn't return is_finished for predraft/unplayed leagues.
+                // If the season is before the current year, it's definitely finished.
+                None => league.season < current_year,
+            };
+
+            info!(
+                "League {} ({}) season={} is_finished={} (raw={:?}) current_week={:?} draft_status={}",
                 league.league_key, league.name, league.season,
-                league.is_finished, league.current_week, league.start_week, league.end_week, league.draft_status
+                is_finished, league.is_finished, league.current_week, league.draft_status
             );
+
             let user_league = UserLeague {
                 league_key: league.league_key,
                 league_id: league.league_id,
@@ -103,7 +114,7 @@ pub async fn get_user_leagues(tokens: &Tokens, client: Client) -> anyhow::Result
                 current_week: league.current_week,
                 start_week: league.start_week,
                 end_week: league.end_week,
-                is_finished: league.is_finished.unwrap_or(0) == 1,
+                is_finished,
                 season: league.season,
                 game_code: league.game_code,
             };
