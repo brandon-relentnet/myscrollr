@@ -31,11 +31,25 @@ export interface Game {
   updated_at?: string;
 }
 
+// ── User Preferences ─────────────────────────────────────────────
+
+export interface UserPreferences {
+  feed_mode: FeedMode;
+  feed_position: FeedPosition;
+  feed_behavior: FeedBehavior;
+  feed_enabled: boolean;
+  active_tabs: FeedCategory[];
+  enabled_sites: string[];
+  disabled_sites: string[];
+  updated_at: string;
+}
+
 // ── API Responses ────────────────────────────────────────────────
 
 export interface DashboardResponse {
   finance: Trade[];
   sports: Game[];
+  preferences?: UserPreferences;
 }
 
 // ── SSE / CDC Payloads ───────────────────────────────────────────

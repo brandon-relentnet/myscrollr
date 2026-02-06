@@ -115,6 +115,24 @@ func ConnectDB() {
 	if err != nil {
 		log.Printf("Warning: Failed to create yahoo_users table: %v", err)
 	}
+
+	// Ensure user_preferences table exists
+	_, err = dbPool.Exec(context.Background(), `
+		CREATE TABLE IF NOT EXISTS user_preferences (
+			logto_sub      TEXT PRIMARY KEY,
+			feed_mode      TEXT NOT NULL DEFAULT 'comfort',
+			feed_position  TEXT NOT NULL DEFAULT 'bottom',
+			feed_behavior  TEXT NOT NULL DEFAULT 'overlay',
+			feed_enabled   BOOLEAN NOT NULL DEFAULT true,
+			active_tabs    JSONB NOT NULL DEFAULT '["finance","sports"]',
+			enabled_sites  JSONB NOT NULL DEFAULT '[]',
+			disabled_sites JSONB NOT NULL DEFAULT '[]',
+			updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+		);
+	`)
+	if err != nil {
+		log.Printf("Warning: Failed to create user_preferences table: %v", err)
+	}
 }
 
 func UpsertYahooUser(guid, logtoSub, refreshToken string) error {

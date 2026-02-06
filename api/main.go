@@ -168,6 +168,8 @@ func main() {
 
 	// User Routes (username from Logto, not our DB)
 	api.Get("/users/:username", GetProfileByUsername)
+	api.Get("/users/me/preferences", LogtoAuth, HandleGetPreferences)
+	api.Put("/users/me/preferences", LogtoAuth, HandleUpdatePreferences)
 	api.Get("/users/me/yahoo-status", LogtoAuth, GetYahooStatus)
 	api.Get("/users/me/yahoo-leagues", LogtoAuth, GetMyYahooLeagues)
 	api.Delete("/users/me/yahoo", LogtoAuth, DisconnectYahoo)
@@ -386,7 +388,16 @@ func GetDashboard(c *fiber.Ctx) error {
 		}
 	}
 
-	// 3. Yahoo (Optional, only if authenticated)
+	// 3. User Preferences
+	logtoSub, _ := c.Locals("user_id").(string)
+	if logtoSub != "" {
+		prefs, err := getOrCreatePreferences(logtoSub)
+		if err == nil {
+			res.Preferences = prefs
+		}
+	}
+
+	// 4. Yahoo (Optional, only if authenticated)
 	guid := getGuid(c)
 	if guid != "" {
 		cacheKey := "cache:yahoo:leagues:" + guid

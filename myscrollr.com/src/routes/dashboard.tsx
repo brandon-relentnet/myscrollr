@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useLogto } from '@logto/react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Activity,
   ChevronDown,
@@ -19,6 +19,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useRealtime } from '../hooks/useRealtime'
 import type { Game, Trade, YahooState } from '../hooks/useRealtime'
 import type { IdTokenClaims } from '@logto/react'
+import SettingsPanel from '../components/SettingsPanel'
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
@@ -46,10 +47,11 @@ const sectionVariants = {
 
 function DashboardPage() {
   const { isAuthenticated, isLoading, signIn, getIdTokenClaims, getAccessToken } = useLogto()
-  const { latestTrades, latestGames, yahoo, status, setInitialYahoo, clearYahoo } = useRealtime()
+  const { latestTrades, latestGames, yahoo, status, preferences, setInitialYahoo, clearYahoo, setUserSub } = useRealtime()
   const [activeModule, setActiveModule] = useState<
     'finance' | 'sports' | 'rss' | 'fantasy'
   >('finance')
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [userClaims, setUserClaims] = useState<IdTokenClaims>()
   const [yahooStatus, setYahooStatus] = useState<{ connected: boolean; synced: boolean }>({ connected: false, synced: false })
   const getAccessTokenRef = useRef(getAccessToken)
@@ -124,7 +126,10 @@ function DashboardPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      getIdTokenClaims().then(setUserClaims)
+      getIdTokenClaims().then((claims) => {
+        setUserClaims(claims)
+        if (claims?.sub) setUserSub(claims.sub)
+      })
       fetchYahooData()
     }
     return () => {
@@ -223,6 +228,14 @@ function DashboardPage() {
     )
   }
 
+  const getToken = useCallback(
+    async (): Promise<string | null> => {
+      const token = await getAccessToken(apiUrl)
+      return token ?? null
+    },
+    [getAccessToken, apiUrl],
+  )
+
   return (
     <motion.div
       className="min-h-screen pt-28 pb-20 px-6"
@@ -263,6 +276,7 @@ function DashboardPage() {
               Add Stream
             </motion.button>
             <button
+              onClick={() => setSettingsOpen(true)}
               className="p-2.5 rounded border border-base-300 hover:border-primary/30 transition-all text-base-content/50 hover:text-primary"
               title="Settings"
             >
@@ -357,6 +371,13 @@ function DashboardPage() {
           </motion.main>
         </div>
       </div>
+
+      <SettingsPanel
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        getToken={getToken}
+        serverPreferences={preferences}
+      />
     </motion.div>
   )
 }

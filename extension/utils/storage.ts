@@ -61,6 +61,14 @@ export const activeFeedTabs = storage.defineItem<FeedCategory[]>(
   { fallback: ['finance', 'sports'], version: 1 },
 );
 
+// ── User identity ────────────────────────────────────────────────
+
+/** Logto user ID (sub claim), used to filter CDC records. */
+export const userSub = storage.defineItem<string | null>('local:userSub', {
+  fallback: null,
+  version: 1,
+});
+
 // ── Auth ─────────────────────────────────────────────────────────
 
 export const authToken = storage.defineItem<string | null>(

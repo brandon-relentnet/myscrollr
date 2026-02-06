@@ -1,6 +1,8 @@
 package main
 
-import "time"
+import (
+	"time"
+)
 
 type Game struct {
 	ID             int       `json:"id"`
@@ -31,8 +33,21 @@ type Trade struct {
 	LastUpdated      time.Time `json:"last_updated"`
 }
 
+type UserPreferences struct {
+	LogtoSub      string   `json:"-"`
+	FeedMode      string   `json:"feed_mode"`
+	FeedPosition  string   `json:"feed_position"`
+	FeedBehavior  string   `json:"feed_behavior"`
+	FeedEnabled   bool     `json:"feed_enabled"`
+	ActiveTabs    []string `json:"active_tabs"`
+	EnabledSites  []string `json:"enabled_sites"`
+	DisabledSites []string `json:"disabled_sites"`
+	UpdatedAt     string   `json:"updated_at"`
+}
+
 type DashboardResponse struct {
-	Finance []Trade         `json:"finance"`
-	Sports  []Game          `json:"sports"`
-	Yahoo   *FantasyContent `json:"yahoo,omitempty"`
+	Finance     []Trade          `json:"finance"`
+	Sports      []Game           `json:"sports"`
+	Yahoo       *FantasyContent  `json:"yahoo,omitempty"`
+	Preferences *UserPreferences `json:"preferences,omitempty"`
 }

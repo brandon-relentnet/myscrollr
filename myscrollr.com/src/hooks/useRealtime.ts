@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { UserPreferences } from '../api/client'
 
 // Define types locally if not available globally yet
 export interface Trade {
@@ -55,6 +56,7 @@ interface RealtimeState {
   latestTrades: Array<Trade>
   latestGames: Array<Game>
   yahoo: YahooState
+  preferences: UserPreferences | null
 }
 
 export function useRealtime() {
@@ -63,10 +65,13 @@ export function useRealtime() {
     latestTrades: [],
     latestGames: [],
     yahoo: { leagues: {}, standings: {}, matchups: {} },
+    preferences: null,
   })
 
   // Track the user's Yahoo GUID to filter SSE events (prevents cross-user data leaking)
   const userGuidRef = useRef<string | null>(null)
+  // Track the user's Logto sub to filter preference CDC records
+  const userSubRef = useRef<string | null>(null)
 
   useEffect(() => {
     const apiUrl = import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'
@@ -193,6 +198,13 @@ export function useRealtime() {
               },
             },
           }))
+        } else if (table === 'user_preferences') {
+          // Only apply preferences belonging to the current user
+          if (!userSubRef.current || record.logto_sub !== userSubRef.current) return
+          setState((prev) => ({
+            ...prev,
+            preferences: record as unknown as UserPreferences,
+          }))
         }
       })
     }
@@ -225,5 +237,13 @@ export function useRealtime() {
     }))
   }
 
-  return { ...state, setInitialYahoo, clearYahoo }
+  const setUserSub = (sub: string | null) => {
+    userSubRef.current = sub
+  }
+
+  const setPreferences = (prefs: UserPreferences | null) => {
+    setState((prev) => ({ ...prev, preferences: prefs }))
+  }
+
+  return { ...state, setInitialYahoo, clearYahoo, setUserSub, setPreferences }
 }

@@ -11,7 +11,10 @@ import {
   feedPosition as feedPositionStorage,
   feedMode as feedModeStorage,
   feedBehavior as feedBehaviorStorage,
+  authToken,
+  authTokenExpiry,
 } from '~/utils/storage';
+import { API_URL, FRONTEND_URL } from '~/utils/constants';
 
 export default function App() {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
@@ -55,29 +58,58 @@ export default function App() {
     return () => browser.runtime.onMessage.removeListener(handler);
   }, []);
 
+  // Fire-and-forget PUT to server for cross-device preference sync.
+  // Local WXT storage is already updated before this is called, so
+  // the extension works instantly even if the API call fails.
+  const syncPreferenceToServer = async (
+    key: string,
+    value: unknown,
+  ): Promise<void> => {
+    try {
+      const token = await authToken.getValue();
+      const expiry = await authTokenExpiry.getValue();
+      if (!token || (expiry && expiry - Date.now() < 10_000)) return;
+
+      fetch(`${API_URL}/users/me/preferences`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ [key]: value }),
+      }).catch(() => {}); // fire and forget
+    } catch {
+      // Ignore — local state is already updated
+    }
+  };
+
   const toggleEnabled = async () => {
     const next = !enabled;
     setEnabled(next);
     await feedEnabledStorage.setValue(next);
+    syncPreferenceToServer('feed_enabled', next);
   };
 
   const changePosition = async (val: FeedPosition) => {
     setPosition(val);
     await feedPositionStorage.setValue(val);
+    syncPreferenceToServer('feed_position', val);
   };
 
   const changeMode = async (val: FeedMode) => {
     setMode(val);
     await feedModeStorage.setValue(val);
+    syncPreferenceToServer('feed_mode', val);
   };
 
   const changeBehavior = async (val: FeedBehavior) => {
     setBehavior(val);
     await feedBehaviorStorage.setValue(val);
+    syncPreferenceToServer('feed_behavior', val);
   };
 
-  const openOptions = () => {
-    browser.runtime.openOptionsPage();
+  const openSettings = () => {
+    browser.tabs.create({ url: `${FRONTEND_URL}/dashboard` });
   };
 
   const handleLogin = () => {
@@ -184,7 +216,7 @@ export default function App() {
       {/* Footer */}
       <div className="px-4 py-2 border-t border-zinc-800">
         <button
-          onClick={openOptions}
+          onClick={openSettings}
           className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
         >
           Settings

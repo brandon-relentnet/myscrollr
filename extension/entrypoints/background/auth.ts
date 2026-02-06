@@ -7,6 +7,7 @@ import {
   authToken,
   authTokenExpiry,
   authRefreshToken,
+  userSub,
 } from '~/utils/storage';
 
 // ── PKCE helpers ─────────────────────────────────────────────────
@@ -161,6 +162,16 @@ async function doLogin(): Promise<boolean> {
       await authRefreshToken.setValue(tokenResponse.refresh_token);
     }
 
+    // Extract and store the user's sub claim for CDC filtering
+    try {
+      const payload = JSON.parse(atob(tokenResponse.access_token.split('.')[1]));
+      if (payload.sub) {
+        await userSub.setValue(payload.sub);
+      }
+    } catch {
+      // JWT decode failed — non-critical, CDC filtering just won't work
+    }
+
     return true;
   } catch (err) {
     console.error('[Scrollr] Login failed:', err);
@@ -172,6 +183,7 @@ export async function logout(): Promise<void> {
   await authToken.setValue(null);
   await authTokenExpiry.setValue(null);
   await authRefreshToken.setValue(null);
+  await userSub.setValue(null);
 }
 
 export async function getValidToken(): Promise<string | null> {

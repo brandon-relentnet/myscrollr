@@ -1,8 +1,9 @@
 import type { ClientMessage, BackgroundMessage, StateSnapshotMessage } from '~/utils/messaging';
-import type { ConnectionStatus } from '~/utils/types';
+import type { ConnectionStatus, DashboardResponse } from '~/utils/types';
 import { API_URL } from '~/utils/constants';
 import { getState, setOnUpdate, mergeDashboardData } from './sse';
 import { login, logout, getValidToken, isAuthenticated } from './auth';
+import { applyServerPreferences } from './preferences';
 
 // ── Broadcast to all listeners ───────────────────────────────────
 
@@ -107,9 +108,14 @@ export function setupMessageListeners() {
             // If login succeeded, fetch initial dashboard data
             if (success) {
               fetchDashboardData()
-                .then((data) => {
+                .then((data: DashboardResponse) => {
                   mergeDashboardData(data.finance || [], data.sports || []);
                   broadcast({ type: 'INITIAL_DATA', payload: data });
+
+                  // Apply server preferences to local storage
+                  if (data.preferences) {
+                    applyServerPreferences(data.preferences);
+                  }
                 })
                 .catch((err) => {
                   console.error('[Scrollr] Dashboard fetch failed:', err);
@@ -129,9 +135,14 @@ export function setupMessageListeners() {
 
         case 'REQUEST_INITIAL_DATA': {
           fetchDashboardData()
-            .then((data) => {
+            .then((data: DashboardResponse) => {
               mergeDashboardData(data.finance || [], data.sports || []);
               sendResponse({ type: 'INITIAL_DATA', payload: data });
+
+              // Apply server preferences to local storage
+              if (data.preferences) {
+                applyServerPreferences(data.preferences);
+              }
             })
             .catch((err) => {
               console.error('[Scrollr] Dashboard fetch failed:', err);

@@ -2,6 +2,19 @@
 
 export const API_BASE = import.meta.env.VITE_API_URL || ''
 
+// ── Shared Types ──────────────────────────────────────────────────
+
+export interface UserPreferences {
+  feed_mode: 'comfort' | 'compact'
+  feed_position: 'top' | 'bottom'
+  feed_behavior: 'overlay' | 'push'
+  feed_enabled: boolean
+  active_tabs: ('finance' | 'sports')[]
+  enabled_sites: string[]
+  disabled_sites: string[]
+  updated_at: string
+}
+
 interface RequestOptions extends RequestInit {
   requiresAuth?: boolean
 }
@@ -74,4 +87,31 @@ export async function authenticatedFetch<T>(
   }
 
   return response.json()
+}
+
+// ── Preferences API ───────────────────────────────────────────────
+
+export async function getPreferences(
+  getToken: () => Promise<string | null>,
+): Promise<UserPreferences> {
+  return authenticatedFetch<UserPreferences>(
+    '/users/me/preferences',
+    {},
+    getToken,
+  )
+}
+
+export async function updatePreferences(
+  prefs: Partial<UserPreferences>,
+  getToken: () => Promise<string | null>,
+): Promise<UserPreferences> {
+  return authenticatedFetch<UserPreferences>(
+    '/users/me/preferences',
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(prefs),
+    },
+    getToken,
+  )
 }
