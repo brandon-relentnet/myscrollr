@@ -1,15 +1,16 @@
 import { Link, useLocation } from '@tanstack/react-router'
 import {
   ChevronRight,
+  Eye,
   LayoutDashboard,
   LogOut,
   Menu,
   UserCircle,
   X,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLogto } from '@logto/react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
 import ScrollrSVG from './ScrollrSVG'
 import type { IdTokenClaims } from '@logto/react'
 
@@ -19,6 +20,9 @@ export default function Header() {
     useLogto()
   const [userClaims, setUserClaims] = useState<IdTokenClaims>()
 
+  const [viewerCount, setViewerCount] = useState<number | null>(null)
+  const viewerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   useEffect(() => {
     if (isAuthenticated) {
       getIdTokenClaims().then(setUserClaims)
@@ -26,6 +30,22 @@ export default function Header() {
       setUserClaims(undefined)
     }
   }, [isAuthenticated, getIdTokenClaims])
+
+  // Poll active viewer count every 15s
+  useEffect(() => {
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'
+    const fetchCount = () => {
+      fetch(`${apiUrl}/events/count`)
+        .then((r) => r.json())
+        .then((d) => setViewerCount(d.count))
+        .catch(() => {})
+    }
+    fetchCount()
+    viewerIntervalRef.current = setInterval(fetchCount, 15000)
+    return () => {
+      if (viewerIntervalRef.current) clearInterval(viewerIntervalRef.current)
+    }
+  }, [])
 
   const handleSignIn = () => {
     signIn(`${window.location.origin}/callback`)
@@ -61,25 +81,27 @@ export default function Header() {
         </div>
 
         {/* Desktop Navigation */}
-        <nav className="hidden lg:flex items-center gap-1">
-          <NavLink to="/" activeOn="/">
-            Home
-          </NavLink>
+        <LayoutGroup id="header-nav">
+          <nav className="hidden lg:flex items-center gap-1">
+            <NavLink to="/" activeOn="/">
+              Home
+            </NavLink>
 
-          {isAuthenticated && (
-            <>
-              <NavLink to="/dashboard" activeOn="/dashboard">
-                <LayoutDashboard size={14} />
-                Dashboard
-              </NavLink>
+            {isAuthenticated && (
+              <>
+                <NavLink to="/dashboard" activeOn="/dashboard">
+                  <LayoutDashboard size={14} />
+                  Dashboard
+                </NavLink>
 
-              <NavLink to="/account" activeOn="/account">
-                <UserCircle size={14} />
-                {userClaims?.username || userClaims?.name || 'Account'}
-              </NavLink>
-            </>
-          )}
-        </nav>
+                <NavLink to="/account" activeOn="/account">
+                  <UserCircle size={14} />
+                  {userClaims?.username || userClaims?.name || 'Account'}
+                </NavLink>
+              </>
+            )}
+          </nav>
+        </LayoutGroup>
 
         {/* Auth Section */}
         <div className="hidden lg:flex items-center gap-4">
@@ -94,17 +116,19 @@ export default function Header() {
             </div>
           ) : isAuthenticated ? (
             <div className="flex items-center gap-3">
-              <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="flex items-center gap-2"
-              >
-                <div className="h-8 w-8 rounded-sm bg-primary/10 border border-primary/20 flex items-center justify-center">
-                  <span className="text-xs font-bold font-mono text-primary">
-                    SR
+              {viewerCount !== null && viewerCount > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm bg-primary/8 border border-primary/15"
+                  title="Active viewers"
+                >
+                  <Eye size={12} className="text-primary/60" />
+                  <span className="text-[11px] font-bold font-mono text-primary/80 tabular-nums">
+                    {viewerCount}
                   </span>
-                </div>
-              </motion.div>
+                </motion.div>
+              )}
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -295,6 +319,8 @@ function NavLink({
         <motion.div
           layoutId="nav-indicator"
           className="absolute bottom-0 left-2 right-2 h-0.5 bg-primary"
+          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+          style={{ originY: '100%' }}
         />
       )}
     </Link>

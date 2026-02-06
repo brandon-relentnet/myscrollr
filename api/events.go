@@ -108,3 +108,10 @@ func RegisterClient() chan []byte {
 func UnregisterClient(ch chan []byte) {
 	globalHub.unregister <- ch
 }
+
+// ClientCount returns the number of connected SSE clients
+func ClientCount() int {
+	globalHub.lock.Lock()
+	defer globalHub.lock.Unlock()
+	return len(globalHub.clients)
+}

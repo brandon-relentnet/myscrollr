@@ -132,6 +132,7 @@ func main() {
 	// --- Public Routes ---
 	app.Get("/health", HealthCheck)
 	app.Get("/events", StreamEvents)
+	app.Get("/events/count", GetActiveViewers)
 	app.Get("/sports/health", SportsHealth)
 	app.Get("/finance/health", FinanceHealth)
 	app.Get("/yahoo/health", YahooHealth)

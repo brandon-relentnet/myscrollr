@@ -10,6 +10,11 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
+// GetActiveViewers returns the count of connected SSE clients
+func GetActiveViewers(c *fiber.Ctx) error {
+	return c.JSON(fiber.Map{"count": ClientCount()})
+}
+
 // StreamEvents handles Server-Sent Events (SSE)
 // @Summary Real-time event stream
 // @Description Server-Sent Events endpoint for trades and games updates
