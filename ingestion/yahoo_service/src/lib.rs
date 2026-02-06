@@ -73,16 +73,15 @@ async fn run_redis_subscriber(
     let client = redis::Client::open(redis_url).expect("Failed to connect to Redis");
     
     loop {
-        let conn = match client.get_async_connection().await {
-            Ok(conn) => conn,
+        let pubsub = match client.get_async_pubsub().await {
+            Ok(pubsub) => pubsub,
             Err(e) => {
-                warn!("Failed to connect to Redis for subscriptions: {}. Retrying in 10s...", e);
+                warn!("Failed to create Redis pubsub connection: {}. Retrying in 10s...", e);
                 tokio::time::sleep(Duration::from_secs(10)).await;
                 continue;
             }
         };
 
-        let mut pubsub = conn.into_pubsub();
         if let Err(e) = pubsub.subscribe("yahoo:new-user").await {
             warn!("Failed to subscribe to yahoo:new-user channel: {}. Retrying in 10s...", e);
             tokio::time::sleep(Duration::from_secs(10)).await;
@@ -91,12 +90,11 @@ async fn run_redis_subscriber(
 
         info!("Subscribed to yahoo:new-user channel for immediate sync triggers");
 
-        while let Some(msg) = pubsub.next_message().await {
+        while let Some(msg) = pubsub.on_message().await {
             if let redis::Value::BulkString(guid_bytes) = msg {
                 if let Ok(guid) = String::from_utf8(guid_bytes) {
                     info!("Received new-user notification for GUID: {}", guid);
                     
-                    // Fetch the user from DB and sync
                     if let Ok(Some(user)) = get_yahoo_user_by_guid(&state.db_pool, &guid).await {
                         if let Err(e) = sync_user_data(&user, state, client_id, client_secret, callback_url).await {
                             error!("Failed to sync user {} from notification: {}", guid, e);
