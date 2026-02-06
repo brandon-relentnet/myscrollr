@@ -15,7 +15,6 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/swagger"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/joho/godotenv"
 
 	// Import generated docs
@@ -86,7 +85,7 @@ func main() {
 		c.Set("Strict-Transport-Security", "max-age=5184000; includeSubDomains")
 		c.Set("X-Frame-Options", "SAMEORIGIN")
 		c.Set("X-DNS-Prefetch-Control", "off")
-		c.Set("Content-Security-Policy", "default-src 'self'; script-src 'self' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'")
+		c.Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
 		return c.Next()
 	})
 
@@ -176,203 +175,21 @@ func main() {
 }
 
 func LandingPage(c *fiber.Ctx) error {
-	c.Set("Content-Type", "text/html")
-	isAuthenticated := c.Cookies("access_token") != ""
-
-	authButtons := ``
-	if isAuthenticated {
-		authButtons = `
-            <a href="/logout" class="bg-red-600 hover:bg-red-500 text-white font-semibold py-3 px-10 rounded-xl transition-all text-center shadow-lg shadow-red-500/20">
-                Sign Out
-            </a>`
-	} else {
-		authButtons = `
-            <a href="/login" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-10 rounded-xl transition-all text-center shadow-lg shadow-indigo-500/20">
-                Sign In
-            </a>
-            <a href="/signup" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-10 rounded-xl transition-all text-center border border-slate-700">
-                Sign Up
-            </a>`
+	frontendURL := os.Getenv("FRONTEND_URL")
+	if frontendURL == "" {
+		frontendURL = "https://myscrollr.com"
 	}
 
-	return c.SendString(`
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scrollr API | Status</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; }
-        .bg-pending { background-color: #9ca3af; }
-        .bg-online { background-color: #10b981; box-shadow: 0 0 8px #10b981; }
-        .bg-offline { background-color: #ef4444; box-shadow: 0 0 8px #ef4444; }
-    </style>
-</head>
-<body class="bg-slate-950 text-slate-200 min-h-screen flex flex-col items-center justify-center p-6">
-    <div class="max-w-3xl w-full">
-        <!-- Header -->
-        <div class="mb-12 text-center">
-            <h1 class="text-5xl font-bold text-white mb-4 tracking-tight">Scrollr <span class="text-indigo-500">API</span></h1>
-            <p class="text-slate-400 text-lg">High-performance data aggregator for finance, sports, and fantasy.</p>
-        </div>
-
-        <!-- Status Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
-            <!-- Core Infra -->
-            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Infrastructure</h2>
-                <div class="space-y-3">
-                    <div class="flex items-center justify-between">
-                        <span>PostgreSQL</span>
-                        <span id="stat-db" class="status-dot bg-pending"></span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span>Redis Cache</span>
-                        <span id="stat-redis" class="status-dot bg-pending"></span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Ingestion Services -->
-            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Ingestion Workers</h2>
-                <div class="space-y-3">
-                    <div class="flex items-center justify-between">
-                        <span>Finance (Finnhub)</span>
-                        <span id="stat-finance" class="status-dot bg-pending"></span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span>Sports (ESPN)</span>
-                        <span id="stat-sports" class="status-dot bg-pending"></span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span>Yahoo Bridge</span>
-                        <span id="stat-yahoo" class="status-dot bg-pending"></span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Call to Actions -->
-        <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            ` + authButtons + `
-            <a href="/swagger/index.html" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-8 rounded-xl transition-all text-center border border-slate-700">
-                Explore Documentation
-            </a>
-        </div>
-
-        <!-- Footer -->
-        <div class="mt-16 text-center text-slate-600 text-sm">
-            &copy; 2026 Relentnet. All systems operational.
-        </div>
-    </div>
-
-    <script>
-        async function checkStatus() {
-            try {
-                const res = await fetch('/health');
-                const data = await res.json();
-                
-                document.getElementById('stat-db').className = 'status-dot ' + (data.database === 'healthy' ? 'bg-online' : 'bg-offline');
-                document.getElementById('stat-redis').className = 'status-dot ' + (data.redis === 'healthy' ? 'bg-online' : 'bg-offline');
-                
-                if (data.services) {
-                    document.getElementById('stat-finance').className = 'status-dot ' + (data.services.finance === 'healthy' ? 'bg-online' : 'bg-offline');
-                    document.getElementById('stat-sports').className = 'status-dot ' + (data.services.sports === 'healthy' ? 'bg-online' : 'bg-offline');
-                    document.getElementById('stat-yahoo').className = 'status-dot ' + (data.services.yahoo === 'healthy' ? 'bg-online' : 'bg-online'); // Note: Using bg-online since its a bridge
-                }
-            } catch (e) {
-                console.error('Status check failed', e);
-            }
-        }
-        checkStatus();
-        setInterval(checkStatus, 30000);
-    </script>
-</body>
-</html>
-	` + authButtons + `
-    </div>
-
-    <script>
-        async function checkStatus() {
-            try {
-                const res = await fetch('/health');
-                const data = await res.json();
-
-                document.getElementById('stat-db').className = 'status-dot ' + (data.database === 'healthy' ? 'bg-online' : 'bg-offline');
-                document.getElementById('stat-redis').className = 'status-dot ' + (data.redis === 'healthy' ? 'bg-online' : 'bg-offline');
-
-                if (data.services) {
-                    document.getElementById('stat-finance').className = 'status-dot ' + (data.services.finance === 'healthy' ? 'bg-online' : 'bg-offline');
-                    document.getElementById('stat-sports').className = 'status-dot ' + (data.services.sports === 'healthy' ? 'bg-online' : 'bg-offline');
-                    document.getElementById('stat-yahoo').className = 'status-dot ' + (data.services.yahoo === 'healthy' ? 'bg-online' : 'bg-online'); // Note: Using bg-online since its a bridge
-                }
-            } catch (e) {
-                console.error('Status check failed', e);
-            }
-        }
-        checkStatus();
-        setInterval(checkStatus, 30000);
-    </script>
-</body>
-</html>
-	`)
-}
-
-// AuthStatus returns the current authentication status based on access_token cookie
-func AuthStatus(c *fiber.Ctx) error {
-	log.Println("[AuthStatus] Checking auth status")
-	log.Printf("[AuthStatus] Cookies: %v", c.Cookies("access_token"))
-
-	tokenString := c.Cookies("access_token")
-	log.Printf("[AuthStatus] Token present: %v", tokenString != "")
-
-	if tokenString == "" {
-		return c.JSON(fiber.Map{
-			"status": "unauthenticated",
-		})
-	}
-
-	// Validate the token using JWKS
-	if jwks == nil {
-		log.Println("[AuthStatus] JWKS not initialized")
-		return c.JSON(fiber.Map{
-			"status": "error",
-			"error":  "Auth system not initialized",
-		})
-	}
-
-	log.Println("[AuthStatus] Parsing token...")
-	token, err := jwt.Parse(tokenString, jwks.Keyfunc)
-	log.Printf("[AuthStatus] Token parsed: valid=%v, err=%v", token.Valid, err)
-
-	if err != nil || !token.Valid {
-		log.Printf("[AuthStatus] Token invalid: %v", err)
-		return c.JSON(fiber.Map{
-			"status": "unauthenticated",
-		})
-	}
-
-	// Extract claims
-	claims, ok := token.Claims.(jwt.MapClaims)
-	log.Printf("[AuthStatus] Claims ok: %v, claims: %v", ok, claims)
-
-	if !ok {
-		return c.JSON(fiber.Map{
-			"status": "error",
-			"error":  "Invalid token claims",
-		})
-	}
-
-	log.Println("[AuthStatus] User authenticated!")
 	return c.JSON(fiber.Map{
-		"status": "authenticated",
-		"email":  claims["email"],
-		"sub":    claims["sub"],
+		"name":    "Scrollr API",
+		"version": "1.0",
+		"status":  "operational",
+		"links": fiber.Map{
+			"health":   "/health",
+			"docs":     "/swagger/index.html",
+			"frontend": frontendURL,
+			"status":   frontendURL + "/status",
+		},
 	})
 }
 

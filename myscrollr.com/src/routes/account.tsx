@@ -139,28 +139,22 @@ function AccountHub() {
           className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-8"
           variants={sectionVariants}
         >
-          <div className="bg-base-200 border border-base-300 rounded-xl p-8 shadow-sm">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-primary mb-6 flex items-center gap-2">
+          <Link
+            to="/status"
+            className="bg-base-200 border border-base-300 rounded-xl p-8 shadow-sm hover:border-primary/30 transition-all block group"
+          >
+            <h3 className="text-sm font-bold uppercase tracking-widest text-primary mb-4 flex items-center gap-2">
               <Settings size={16} /> System Status
             </h3>
-            <div className="space-y-4">
-              <StatusItem
-                label="Identity Provider"
-                value="Logto Cloud"
-                status="Connected"
-              />
-              <StatusItem
-                label="Database Cluster"
-                value="PostgreSQL + CDC"
-                status="Active"
-              />
-              <StatusItem
-                label="Stream Broker"
-                value="Redis"
-                status="Polling"
-              />
+            <p className="text-sm text-base-content/50 mb-6">
+              Monitor infrastructure health, ingestion workers, and live
+              connection status.
+            </p>
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary/60 group-hover:text-primary transition-colors">
+              View Status Dashboard
+              <ArrowRight size={14} />
             </div>
-          </div>
+          </Link>
 
           <div className="bg-base-200 border border-base-300 rounded-xl p-8 shadow-sm relative overflow-hidden group">
             <div className="relative z-10">
@@ -256,27 +250,4 @@ function HubCard({
   )
 }
 
-function StatusItem({
-  label,
-  value,
-  status,
-}: {
-  label: string
-  value: string
-  status: string
-}) {
-  return (
-    <div className="flex items-center justify-between p-3 bg-base-300 rounded-lg">
-      <span className="text-[10px] font-mono uppercase text-base-content/40">
-        {label}
-      </span>
-      <div className="flex items-center gap-3">
-        <span className="text-[10px] font-bold uppercase">{value}</span>
-        <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-        <span className="text-[9px] font-black uppercase text-success tracking-tighter">
-          {status}
-        </span>
-      </div>
-    </div>
-  )
-}
+
