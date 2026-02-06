@@ -86,6 +86,9 @@ export function useRealtime() {
         setState((prev) => ({ ...prev, status }))
       } else if (type === 'STREAM_DATA') {
         handleStreamData(payload)
+      } else if (type === 'PING') {
+        // Respond to heartbeat so the worker knows this port is alive
+        worker.port.postMessage({ type: 'PONG' })
       }
     }
 

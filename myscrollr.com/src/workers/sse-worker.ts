@@ -8,9 +8,11 @@ type WorkerMessage =
   | { type: 'CONNECT' }
   | { type: 'DISCONNECT' }
   | { type: 'STATUS_REQUEST' }
+  | { type: 'PONG' }
 
 type BroadcastMessage =
   | { type: 'STREAM_DATA'; payload: any }
+  | { type: 'PING' }
   | {
       type: 'CONNECTION_STATUS'
       status: 'connected' | 'disconnected' | 'reconnecting'
@@ -23,16 +25,19 @@ const INITIAL_RETRY_DELAY = 1000
 const API_URL =
   import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'
 
-// Set of connected ports (tabs) — use Set for O(1) removal
-const ports = new Set<MessagePort>()
+// Track connected ports with liveness state
+interface PortEntry {
+  port: MessagePort
+  alive: boolean
+}
+const portMap = new Map<MessagePort, PortEntry>()
 
-// Remove a port from the set
+// Remove a port
 function removePort(port: MessagePort) {
-  ports.delete(port)
-  console.log('[SharedWorker] Tab disconnected. Total:', ports.size)
+  portMap.delete(port)
 
   // If no more tabs, close the SSE connection to save resources
-  if (ports.size === 0 && eventSource) {
+  if (portMap.size === 0 && eventSource) {
     console.log('[SharedWorker] No tabs remaining, closing SSE')
     eventSource.close()
     eventSource = null
@@ -42,9 +47,9 @@ function removePort(port: MessagePort) {
 
 // Broadcast to all connected tabs, pruning dead ports
 function broadcast(message: BroadcastMessage) {
-  for (const port of ports) {
+  for (const [port, entry] of portMap) {
     try {
-      port.postMessage(message)
+      entry.port.postMessage(message)
     } catch {
       // Port is dead (tab closed without sending DISCONNECT)
       removePort(port)
@@ -52,9 +57,29 @@ function broadcast(message: BroadcastMessage) {
   }
 }
 
+// Heartbeat: ping all ports every 10s, prune those that didn't respond
+const HEARTBEAT_INTERVAL = 10000
+setInterval(() => {
+  if (portMap.size === 0) return
+
+  // Prune ports that didn't respond to the LAST ping
+  for (const [port, entry] of portMap) {
+    if (!entry.alive) {
+      // Didn't respond since last heartbeat — dead port
+      removePort(port)
+    } else {
+      // Mark as not-alive, wait for PONG to set it back
+      entry.alive = false
+    }
+  }
+
+  // Send new ping to all remaining ports
+  broadcast({ type: 'PING' })
+}, HEARTBEAT_INTERVAL)
+
 function connect() {
   if (eventSource?.readyState === EventSource.OPEN) return
-  if (ports.size === 0) return // Don't connect if no tabs are listening
+  if (portMap.size === 0) return // Don't connect if no tabs are listening
 
   const url = `${API_URL}/events`
 
@@ -106,7 +131,7 @@ function connect() {
 
     setTimeout(() => {
       // Only reconnect if there are still tabs listening
-      if (ports.size > 0) {
+      if (portMap.size > 0) {
         connect()
       }
     }, timeout)
@@ -116,8 +141,8 @@ function connect() {
 // Handle new connections from tabs
 ctx.onconnect = (event: MessageEvent) => {
   const port = event.ports[0]
-  ports.add(port)
-  console.log('[SharedWorker] New tab connected. Total:', ports.size)
+  portMap.set(port, { port, alive: true })
+  console.log('[SharedWorker] New tab connected. Total:', portMap.size)
 
   port.start()
 
@@ -145,6 +170,10 @@ ctx.onconnect = (event: MessageEvent) => {
             ? 'connected'
             : 'disconnected',
       })
+    } else if (e.data.type === 'PONG') {
+      // Mark this port as alive in response to our PING
+      const entry = portMap.get(port)
+      if (entry) entry.alive = true
     } else if (e.data.type === 'DISCONNECT') {
       removePort(port)
     }

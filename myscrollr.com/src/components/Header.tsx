@@ -121,11 +121,14 @@ export default function Header() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm bg-primary/8 border border-primary/15"
-                  title="Active viewers"
+                  title="Users online"
                 >
                   <Eye size={12} className="text-primary/60" />
                   <span className="text-[11px] font-bold font-mono text-primary/80 tabular-nums">
                     {viewerCount}
+                  </span>
+                  <span className="text-[9px] font-mono text-primary/40 uppercase">
+                    online
                   </span>
                 </motion.div>
               )}
