@@ -85,7 +85,12 @@ func main() {
 		c.Set("Strict-Transport-Security", "max-age=5184000; includeSubDomains")
 		c.Set("X-Frame-Options", "SAMEORIGIN")
 		c.Set("X-DNS-Prefetch-Control", "off")
-		c.Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+		// Swagger UI needs its own scripts, styles, and fonts — use a permissive CSP for it
+		if strings.HasPrefix(c.Path(), "/swagger") {
+			c.Set("Content-Security-Policy", "default-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com")
+		} else {
+			c.Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+		}
 		return c.Next()
 	})
 
