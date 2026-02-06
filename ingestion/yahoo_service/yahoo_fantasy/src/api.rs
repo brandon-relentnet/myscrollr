@@ -89,10 +89,13 @@ pub async fn get_user_leagues(tokens: &Tokens, client: Client) -> anyhow::Result
             let current_year = Utc::now().year() as u16;
             let is_finished = match league.is_finished {
                 Some(1) => true,
-                Some(_) => false,
+                Some(0) => false,
                 // Yahoo doesn't return is_finished for predraft/unplayed leagues.
-                // If the season is before the current year, it's definitely finished.
-                None => league.season < current_year,
+                // Only mark as definitely finished if the season is 2+ years old.
+                // Current year and previous year leagues could still be in-season
+                // (e.g. NBA 2025 season runs Oct 2025 - Apr 2026).
+                None => league.season < current_year.saturating_sub(1),
+                _ => false,
             };
 
             info!(

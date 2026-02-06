@@ -66,6 +66,8 @@ export function useRealtime() {
   })
 
   const workerRef = useRef<SharedWorker | null>(null)
+  // Track the user's Yahoo GUID to filter SSE events (prevents cross-user data leaking)
+  const userGuidRef = useRef<string | null>(null)
 
   useEffect(() => {
     // 1. Initialize Shared Worker
@@ -141,6 +143,8 @@ export function useRealtime() {
             return { ...prev, latestGames: newGames.slice(0, 50) }
           })
         } else if (table === 'yahoo_leagues') {
+          // Only accept leagues belonging to this user
+          if (userGuidRef.current && record.guid !== userGuidRef.current) return
           setState((prev) => ({
             ...prev,
             yahoo: {
@@ -152,16 +156,20 @@ export function useRealtime() {
             },
           }))
         } else if (table === 'yahoo_standings') {
-          setState((prev) => ({
-            ...prev,
-            yahoo: {
-              ...prev.yahoo,
-              standings: {
-                ...prev.yahoo.standings,
-                [record.league_key]: record,
+          // Only accept standings for leagues we already know about
+          setState((prev) => {
+            if (!prev.yahoo.leagues[record.league_key]) return prev
+            return {
+              ...prev,
+              yahoo: {
+                ...prev.yahoo,
+                standings: {
+                  ...prev.yahoo.standings,
+                  [record.league_key]: record,
+                },
               },
-            },
-          }))
+            }
+          })
         } else if (table === 'yahoo_matchups') {
           setState((prev) => ({
             ...prev,
@@ -179,6 +187,12 @@ export function useRealtime() {
   }
 
   const setInitialYahoo = (yahoo: YahooState) => {
+    // Extract the user's GUID from the first league record for SSE filtering
+    const firstLeague = Object.values(yahoo.leagues)[0]
+    if (firstLeague?.guid) {
+      userGuidRef.current = firstLeague.guid
+    }
+
     setState((prev) => ({
       ...prev,
       yahoo: {
