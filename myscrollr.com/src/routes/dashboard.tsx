@@ -56,8 +56,11 @@ function DashboardPage() {
   getAccessTokenRef.current = getAccessToken
 
   const apiUrl = import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'
+  const [yahooPending, setYahooPending] = useState(false)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const fetchYahooData = async () => {
+  // Returns true if leagues were found
+  const fetchYahooData = async (): Promise<boolean> => {
     try {
       const token = await getAccessTokenRef.current(apiUrl)
       const [statusRes, leaguesRes] = await Promise.all([
@@ -72,7 +75,6 @@ function DashboardPage() {
 
       if (leaguesRes.ok) {
         const data = await leaguesRes.json()
-        // Seed the yahoo state from DB data
         const leagues: Record<string, any> = {}
         const standings: Record<string, any> = {}
         for (const league of data.leagues || []) {
@@ -82,10 +84,39 @@ function DashboardPage() {
           standings[key] = { league_key: key, data: val }
         }
         setInitialYahoo({ leagues, standings, matchups: {} })
+
+        if (Object.keys(leagues).length > 0) {
+          setYahooPending(false)
+          return true
+        }
       }
     } catch {
       // Silently fail
     }
+    return false
+  }
+
+  // Start polling every 5s until leagues appear, then stop
+  const startSyncPolling = () => {
+    setYahooPending(true)
+    if (pollRef.current) clearInterval(pollRef.current)
+
+    // Immediate first check
+    fetchYahooData().then((found) => {
+      if (found) return
+    })
+
+    // Then poll every 5s, stop after 3 min or when data arrives
+    let elapsed = 0
+    pollRef.current = setInterval(async () => {
+      elapsed += 5000
+      const found = await fetchYahooData()
+      if (found || elapsed >= 180000) {
+        if (pollRef.current) clearInterval(pollRef.current)
+        pollRef.current = null
+        setYahooPending(false)
+      }
+    }, 5000)
   }
 
   useEffect(() => {
@@ -93,19 +124,16 @@ function DashboardPage() {
       getIdTokenClaims().then(setUserClaims)
       fetchYahooData()
     }
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+    }
   }, [isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Listen for both postMessage (ideal) and popup close via focus (fallback)
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'yahoo-auth-complete') {
-        // Poll for data after Yahoo connect — the Rust sync loop may take up to 2 min
-        // Try at 2s (for status), then 10s, 30s, 60s, 120s for league data
-        const delays = [2000, 10000, 30000, 60000, 120000]
-        const timeouts: ReturnType<typeof setTimeout>[] = []
-        for (const delay of delays) {
-          timeouts.push(setTimeout(() => fetchYahooData(), delay))
-        }
-        return () => timeouts.forEach(clearTimeout)
+        startSyncPolling()
       }
     }
     window.addEventListener('message', handleMessage)
@@ -113,24 +141,25 @@ function DashboardPage() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleYahooConnect = async () => {
-    if (!userClaims?.sub) {
-      // If no sub, refresh claims
-      const claims = await getIdTokenClaims()
-      if (claims?.sub) {
-        window.open(
-          `${import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'}/yahoo/start?logto_sub=${claims.sub}`,
-          'yahoo-auth',
-          'width=600,height=700',
-        )
-      }
-    } else {
-      window.open(
-        `${import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'}/yahoo/start?logto_sub=${userClaims.sub}`,
-        'yahoo-auth',
-        'width=600,height=700',
-      )
+    const sub = userClaims?.sub || (await getIdTokenClaims())?.sub
+    if (!sub) return
+
+    const popup = window.open(
+      `${apiUrl}/yahoo/start?logto_sub=${sub}`,
+      'yahoo-auth',
+      'width=600,height=700',
+    )
+
+    // Fallback: detect when popup closes (in case postMessage is blocked by origin mismatch)
+    if (popup) {
+      const checkClosed = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkClosed)
+          startSyncPolling()
+        }
+      }, 500)
     }
-  };
+  }
 
   const handleYahooDisconnect = async () => {
     try {
@@ -146,7 +175,7 @@ function DashboardPage() {
     } catch {
       // Silently fail
     }
-  };
+  }
 
   if (isLoading) {
     return (
@@ -318,7 +347,7 @@ function DashboardPage() {
                 />
               )}
               {activeModule === 'fantasy' && (
-                <FantasyConfig yahoo={yahoo} yahooStatus={yahooStatus} onYahooConnect={handleYahooConnect} onYahooDisconnect={handleYahooDisconnect} />
+                <FantasyConfig yahoo={yahoo} yahooStatus={yahooStatus} yahooPending={yahooPending} onYahooConnect={handleYahooConnect} onYahooDisconnect={handleYahooDisconnect} />
               )}
               {activeModule === 'rss' && <RssConfig />}
             </motion.div>
@@ -612,11 +641,13 @@ const LEAGUES_PER_PAGE = 5
 function FantasyConfig({
   yahoo,
   yahooStatus,
+  yahooPending,
   onYahooConnect,
   onYahooDisconnect,
 }: {
   yahoo: YahooState
   yahooStatus: { connected: boolean; synced: boolean }
+  yahooPending?: boolean
   onYahooConnect?: () => void
   onYahooDisconnect?: () => void
 }) {
@@ -710,28 +741,51 @@ function FantasyConfig({
         </motion.div>
       )}
 
-      {/* Connected but waiting for sync */}
-      {yahooStatus.connected && allLeagues.length === 0 && (
+      {/* Syncing / Waiting state */}
+      {(yahooPending || (yahooStatus.connected && allLeagues.length === 0)) && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center py-12 space-y-4"
+          className="text-center py-12 space-y-5"
         >
-          <motion.div
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          >
-            <Ghost size={48} className="mx-auto text-primary/40" />
-          </motion.div>
+          {/* Animated loader */}
+          <div className="flex items-center justify-center gap-1.5">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <motion.div
+                key={i}
+                className="w-1.5 rounded-full bg-primary"
+                animate={{
+                  height: [8, 24, 8],
+                  opacity: [0.3, 1, 0.3],
+                }}
+                transition={{
+                  duration: 1,
+                  repeat: Infinity,
+                  delay: i * 0.12,
+                  ease: 'easeInOut',
+                }}
+              />
+            ))}
+          </div>
           <div className="space-y-2">
             <p className="text-sm font-bold uppercase text-primary/70">
-              Yahoo Connected
+              {yahooStatus.connected ? 'Syncing Leagues' : 'Connecting Yahoo'}
             </p>
             <p className="text-xs text-base-content/30 max-w-xs mx-auto">
               {yahooStatus.synced
                 ? 'Your account is synced. League data will appear here shortly.'
-                : 'Syncing your fantasy data. This may take a couple of minutes.'}
+                : 'Fetching your fantasy data from Yahoo. This usually takes under two minutes.'}
             </p>
+            <motion.div
+              className="flex items-center justify-center gap-2 pt-2"
+              animate={{ opacity: [0.3, 0.6, 0.3] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              <span className="h-1 w-1 rounded-full bg-primary/40" />
+              <span className="text-[9px] font-mono text-primary/40 uppercase tracking-widest">
+                Checking every 5s
+              </span>
+            </motion.div>
           </div>
         </motion.div>
       )}
