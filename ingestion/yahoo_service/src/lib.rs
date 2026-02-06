@@ -73,7 +73,7 @@ async fn run_redis_subscriber(
     let client = redis::Client::open(redis_url).expect("Failed to connect to Redis");
     
     loop {
-        let mut conn = match client.get_multiplexed_async_connection().await {
+        let conn = match client.get_async_connection().await {
             Ok(conn) => conn,
             Err(e) => {
                 warn!("Failed to connect to Redis for subscriptions: {}. Retrying in 10s...", e);
@@ -93,7 +93,7 @@ async fn run_redis_subscriber(
 
         while let Some(msg) = pubsub.next_message().await {
             if let redis::Value::BulkString(guid_bytes) = msg {
-                if let Some(guid) = guid_bytes.first().map(|b| String::from_utf8_lossy(b).to_string()) {
+                if let Ok(guid) = String::from_utf8(guid_bytes) {
                     info!("Received new-user notification for GUID: {}", guid);
                     
                     // Fetch the user from DB and sync
