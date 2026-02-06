@@ -100,8 +100,9 @@ async fn sync_user_data(
     }
 
     let all_leagues = [leagues.nba, leagues.nfl, leagues.nhl].concat();
+    info!("Found {} leagues for user {}", all_leagues.len(), user.guid);
     
-    for league in all_leagues {
+    for league in &all_leagues {
         let league_key = league.league_key.clone();
         
         // Save league metadata
@@ -114,25 +115,18 @@ async fn sync_user_data(
             &league.season.to_string(),
             serde_json::to_value(&league)?
         ).await?;
+    }
 
-        // 2. Get Standings
+    // Fetch standings with rate limiting (1 req/sec)
+    for league in &all_leagues {
+        let league_key = league.league_key.clone();
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
         match yahoo_api::get_league_standings(&league_key, http_client.clone(), &tokens).await {
             Ok((standings, _)) => {
                 database::upsert_yahoo_standings(&state.db_pool, &league_key, serde_json::to_value(&standings)?).await?;
                 info!("Synced standings for league {}", league_key);
-                
-                // 3. Get Matchups for all teams in the league
-                for team in standings {
-                    let team_key = team.team_key.clone();
-                    match yahoo_api::get_matchups(&team_key, http_client.clone(), &tokens).await {
-                        Ok((matchups, _)) => {
-                            database::upsert_yahoo_matchups(&state.db_pool, &team_key, serde_json::to_value(&matchups)?).await?;
-                        }
-                        Err(e) => {
-                            warn!("Failed to fetch matchups for team {}: {}", team_key, e);
-                        }
-                    }
-                }
             }
             Err(e) => {
                 warn!("Failed to fetch standings for league {}: {}", league_key, e);
