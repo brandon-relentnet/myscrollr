@@ -151,6 +151,7 @@ func main() {
 	// User Routes (username from Logto, not our DB)
 	api.Get("/users/:username", GetProfileByUsername)
 	api.Get("/users/me/yahoo-status", LogtoAuth, GetYahooStatus)
+	api.Get("/users/me/yahoo-leagues", LogtoAuth, GetMyYahooLeagues)
 
 	port := os.Getenv("PORT")
 	if port == "" {

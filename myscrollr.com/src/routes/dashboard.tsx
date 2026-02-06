@@ -44,7 +44,7 @@ const sectionVariants = {
 
 function DashboardPage() {
   const { isAuthenticated, isLoading, signIn, getIdTokenClaims, getAccessToken } = useLogto()
-  const { latestTrades, latestGames, yahoo, status } = useRealtime()
+  const { latestTrades, latestGames, yahoo, status, setInitialYahoo } = useRealtime()
   const [activeModule, setActiveModule] = useState<
     'finance' | 'sports' | 'rss' | 'fantasy'
   >('finance')
@@ -53,26 +53,43 @@ function DashboardPage() {
   const getAccessTokenRef = useRef(getAccessToken)
   getAccessTokenRef.current = getAccessToken
 
-  const checkYahooStatus = async () => {
+  const apiUrl = import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'
+
+  const fetchYahooData = async () => {
     try {
-      const token = await getAccessTokenRef.current(import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev')
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'}/users/me/yahoo-status`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      )
-      if (res.ok) {
-        const data = await res.json()
+      const token = await getAccessTokenRef.current(apiUrl)
+      const [statusRes, leaguesRes] = await Promise.all([
+        fetch(`${apiUrl}/users/me/yahoo-status`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiUrl}/users/me/yahoo-leagues`, { headers: { Authorization: `Bearer ${token}` } }),
+      ])
+
+      if (statusRes.ok) {
+        const data = await statusRes.json()
         setYahooStatus(data)
       }
+
+      if (leaguesRes.ok) {
+        const data = await leaguesRes.json()
+        // Seed the yahoo state from DB data
+        const leagues: Record<string, any> = {}
+        const standings: Record<string, any> = {}
+        for (const league of data.leagues || []) {
+          leagues[league.league_key] = league
+        }
+        for (const [key, val] of Object.entries(data.standings || {})) {
+          standings[key] = { league_key: key, data: val }
+        }
+        setInitialYahoo({ leagues, standings, matchups: {} })
+      }
     } catch {
-      // Silently fail - status stays as disconnected
+      // Silently fail
     }
   }
 
   useEffect(() => {
     if (isAuthenticated) {
       getIdTokenClaims().then(setUserClaims)
-      checkYahooStatus()
+      fetchYahooData()
     }
   }, [isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
 

@@ -178,5 +178,16 @@ export function useRealtime() {
     }
   }
 
-  return state
+  const setInitialYahoo = (yahoo: YahooState) => {
+    setState((prev) => ({
+      ...prev,
+      yahoo: {
+        leagues: { ...yahoo.leagues, ...prev.yahoo.leagues },
+        standings: { ...yahoo.standings, ...prev.yahoo.standings },
+        matchups: { ...yahoo.matchups, ...prev.yahoo.matchups },
+      },
+    }))
+  }
+
+  return { ...state, setInitialYahoo }
 }
