@@ -65,40 +65,47 @@ export function useRealtime() {
     yahoo: { leagues: {}, standings: {}, matchups: {} },
   })
 
-  const workerRef = useRef<SharedWorker | null>(null)
   // Track the user's Yahoo GUID to filter SSE events (prevents cross-user data leaking)
   const userGuidRef = useRef<string | null>(null)
 
   useEffect(() => {
-    // 1. Initialize Shared Worker
-    const worker = new SharedWorker(
-      new URL('../workers/sse-worker.ts', import.meta.url),
-      { type: 'module', name: 'scrollr-stream' },
-    )
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'
+    let eventSource: EventSource | null = null
+    let retryCount = 0
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null
 
-    workerRef.current = worker
+    function connect() {
+      eventSource = new EventSource(`${apiUrl}/events`)
 
-    // 2. Handle Messages from Worker
-    worker.port.onmessage = (event) => {
-      const { type, payload, status } = event.data
+      eventSource.onopen = () => {
+        retryCount = 0
+        setState((prev) => ({ ...prev, status: 'connected' }))
+      }
 
-      if (type === 'CONNECTION_STATUS') {
-        setState((prev) => ({ ...prev, status }))
-      } else if (type === 'STREAM_DATA') {
-        handleStreamData(payload)
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          handleStreamData(data)
+        } catch {
+          // Ignore unparseable messages (e.g. ping comments)
+        }
+      }
+
+      eventSource.onerror = () => {
+        eventSource?.close()
+        setState((prev) => ({ ...prev, status: 'disconnected' }))
+
+        const timeout = Math.min(1000 * Math.pow(2, retryCount), 30000)
+        retryCount++
+        retryTimeout = setTimeout(connect, timeout)
       }
     }
 
-    worker.port.start()
-
-    // 3. Initial Status Request
-    worker.port.postMessage({ type: 'STATUS_REQUEST' })
+    connect()
 
     return () => {
-      // Notify the SharedWorker to remove this port from its set
-      worker.port.postMessage({ type: 'DISCONNECT' })
-      worker.port.close()
-      workerRef.current = null
+      eventSource?.close()
+      if (retryTimeout) clearTimeout(retryTimeout)
     }
   }, [])
 
