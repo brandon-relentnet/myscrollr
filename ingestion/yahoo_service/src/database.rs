@@ -6,7 +6,7 @@ use sqlx::{query, query_as};
 use chrono::{DateTime, Utc};
 use rand::Rng;
 use aes_gcm::{
-    aead::{Aead, KeyInit, Payload},
+    aead::{Aead, KeyInit},
     Aes256Gcm, Nonce
 };
 use base64::{Engine as _, engine::general_purpose};
@@ -253,21 +253,6 @@ pub async fn get_all_yahoo_users(pool: &PgPool) -> Result<Vec<YahooUser>> {
     }
 
     Ok(users)
-}
-
-pub async fn get_yahoo_user_by_guid(pool: &PgPool, guid: &str) -> Result<Option<YahooUser>> {
-    let statement = "SELECT guid, logto_sub, refresh_token, last_sync, created_at FROM yahoo_users WHERE guid = $1";
-    let result = query_as::<_, YahooUser>(statement)
-        .bind(guid)
-        .fetch_optional(pool)
-        .await?;
-
-    if let Some(mut user) = result {
-        user.refresh_token = decrypt(&user.refresh_token).context("Failed to decrypt refresh token")?;
-        Ok(Some(user))
-    } else {
-        Ok(None)
-    }
 }
 
 pub async fn update_user_sync_time(pool: &PgPool, guid: String) -> Result<()> {
