@@ -7,27 +7,27 @@ pub struct FantasyContent {
 
 #[derive(Debug, Deserialize)]
 pub struct Users {
-    pub user: Vec<User>
+    pub user: Vec<User>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct User {
-    pub games: Games
+    pub games: Games,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Games {
-    pub game: Vec<Game>
+    pub game: Vec<Game>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Game {
-    pub leagues: Option<Leagues>
+    pub leagues: Option<Leagues>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Leagues {
-    pub league: Vec<League>
+    pub league: Vec<League>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -44,6 +44,7 @@ pub struct League {
     pub current_week: Option<u8>,
     pub start_week: Option<u8>,
     pub end_week: Option<u8>,
+    pub is_finished: Option<u8>,
     pub season: u16,
     pub game_code: String,
 }

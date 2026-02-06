@@ -1,8 +1,11 @@
-use serde::Serialize;
-use secrecy::SecretString;
 use chrono::{DateTime, Utc};
+use secrecy::SecretString;
+use serde::Serialize;
 
-use crate::{stats::StatDecode, xml_roster::{self, PlayerPoints}};
+use crate::{
+    stats::StatDecode,
+    xml_roster::{self, PlayerPoints},
+};
 
 #[derive(Clone)]
 pub struct Tokens {
@@ -35,8 +38,9 @@ pub struct UserLeague {
     pub current_week: Option<u8>,
     pub start_week: Option<u8>,
     pub end_week: Option<u8>,
+    pub is_finished: bool,
     pub season: u16,
-    pub game_code: String
+    pub game_code: String,
 }
 
 #[derive(Serialize, Debug)]
@@ -64,30 +68,30 @@ where
     pub id: u32,
     pub key: String,
     pub name: String,
-    #[serde(rename="firstName")]
+    #[serde(rename = "firstName")]
     pub first_name: String,
-    #[serde(rename="lastName")]
+    #[serde(rename = "lastName")]
     pub last_name: String,
-    #[serde(rename="teamAbbr")]
+    #[serde(rename = "teamAbbr")]
     pub team_abbreviation: String,
-    #[serde(rename="teamFullName")]
+    #[serde(rename = "teamFullName")]
     pub team_full_name: String,
-    #[serde(rename="uniformNumber")]
+    #[serde(rename = "uniformNumber")]
     pub uniform_number: String,
     pub position: String,
-    #[serde(rename="selectedPosition")]
+    #[serde(rename = "selectedPosition")]
     pub selected_position: String,
-    #[serde(rename="eligiblePositions")]
+    #[serde(rename = "eligiblePositions")]
     pub eligible_positions: Vec<String>,
-    #[serde(rename="imageUrl")]
+    #[serde(rename = "imageUrl")]
     pub image_url: String,
     pub headshot: String,
-    #[serde(rename="isUndroppable")]
+    #[serde(rename = "isUndroppable")]
     pub is_undroppable: bool,
-    #[serde(rename="positionType")]
+    #[serde(rename = "positionType")]
     pub position_type: String,
     pub stats: Vec<xml_roster::Stat<T>>,
-    #[serde(rename="playerPoints")]
+    #[serde(rename = "playerPoints")]
     pub player_points: Option<PlayerPoints>,
 }
 
@@ -100,7 +104,7 @@ pub struct Matchups {
 
 #[derive(Serialize, Debug)]
 pub struct Matchup {
-    pub teams: Vec<MatchupTeam>
+    pub teams: Vec<MatchupTeam>,
 }
 
 #[derive(Serialize, Debug)]

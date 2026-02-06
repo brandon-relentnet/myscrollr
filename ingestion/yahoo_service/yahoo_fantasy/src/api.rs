@@ -98,6 +98,7 @@ pub async fn get_user_leagues(tokens: &Tokens, client: Client) -> anyhow::Result
                 current_week: league.current_week,
                 start_week: league.start_week,
                 end_week: league.end_week,
+                is_finished: league.is_finished.unwrap_or(0) == 1,
                 season: league.season,
                 game_code: league.game_code,
             };

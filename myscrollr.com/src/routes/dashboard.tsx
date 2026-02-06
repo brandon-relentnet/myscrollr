@@ -593,17 +593,24 @@ function FantasyConfig({
   onYahooConnect?: () => void
 }) {
   // Build league list from DB records, merging standings data
-  const allLeagues = Object.values(yahoo.leagues).map((league) => {
-    const standings = yahoo.standings[league.league_key]
-    return {
-      league_key: league.league_key,
-      name: league.name,
-      game_code: league.game_code,
-      season: league.season,
-      num_teams: league.data?.num_teams || 0,
-      standings: standings?.data,
-    }
-  })
+  const allLeagues = Object.values(yahoo.leagues)
+    .map((league) => {
+      const standings = yahoo.standings[league.league_key]
+      return {
+        league_key: league.league_key,
+        name: league.name,
+        game_code: league.game_code,
+        season: league.season,
+        num_teams: league.data?.num_teams || 0,
+        is_finished: league.data?.is_finished ?? true,
+        standings: standings?.data,
+      }
+    })
+    .sort((a, b) => {
+      // Active leagues first, then by season descending
+      if (a.is_finished !== b.is_finished) return a.is_finished ? 1 : -1
+      return Number(b.season) - Number(a.season)
+    })
 
   return (
     <div className="space-y-6">
@@ -715,6 +722,7 @@ function LeagueCard({
     game_code?: string
     num_teams: number
     season?: string
+    is_finished?: boolean
     standings?: any
   }
 }) {
@@ -722,18 +730,19 @@ function LeagueCard({
     GAME_CODE_LABELS[league.game_code || ''] || league.game_code || 'Fantasy'
   // Standings data is an array of team objects from the Rust ingestion
   const teams = Array.isArray(league.standings) ? league.standings : (league.standings?.teams?.team || [])
+  const isActive = !league.is_finished
 
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-base-200/50 border border-base-300/50 rounded-lg p-6"
+      className={`border rounded-lg p-6 ${isActive ? 'bg-base-200/50 border-base-300/50' : 'bg-base-200/20 border-base-300/30 opacity-60'}`}
     >
       {/* League Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-lg bg-secondary/10 border border-secondary/20 flex items-center justify-center">
-            <span className="text-lg font-bold text-secondary">Y!</span>
+          <div className={`h-12 w-12 rounded-lg flex items-center justify-center ${isActive ? 'bg-secondary/10 border border-secondary/20' : 'bg-base-300/20 border border-base-300/30'}`}>
+            <span className={`text-lg font-bold ${isActive ? 'text-secondary' : 'text-base-content/30'}`}>Y!</span>
           </div>
           <div>
             <h3 className="text-sm font-bold uppercase">{league.name}</h3>
@@ -743,9 +752,9 @@ function LeagueCard({
             </p>
           </div>
         </div>
-        <span className="px-2 py-1 rounded bg-success/10 border border-success/20">
-          <span className="text-[9px] font-bold text-success uppercase">
-            Active
+        <span className={`px-2 py-1 rounded ${isActive ? 'bg-success/10 border border-success/20' : 'bg-base-300/20 border border-base-300/30'}`}>
+          <span className={`text-[9px] font-bold uppercase ${isActive ? 'text-success' : 'text-base-content/30'}`}>
+            {isActive ? 'Active' : 'Finished'}
           </span>
         </span>
       </div>
