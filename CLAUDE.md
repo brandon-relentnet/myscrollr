@@ -136,6 +136,7 @@ Cargo workspace with 4 members. All services use Axum, SQLx, tokio. Docker build
 | `events.go` | 117 | Hub pattern for SSE broadcasting via Redis Pub/Sub |
 | `handlers_stream.go` | 72 | SSE endpoint (`GET /events`) with 15s heartbeat |
 | `handlers_webhook.go` | 45 | Sequin CDC webhook receiver (`POST /webhooks/sequin`) |
+| `extension_auth.go` | ~190 | Extension PKCE token exchange/refresh proxy to Logto (CORS `*`) |
 | `models.go` | 38 | Game, Trade, DashboardResponse structs |
 
 ### Frontend (`myscrollr.com/`)
@@ -189,6 +190,8 @@ WXT v0.20 + React 19 + Tailwind v4. Builds for Chrome MV3 and Firefox MV2.
 - `GET /yahoo/start` — Initiate Yahoo OAuth flow
 - `GET /yahoo/callback` — Yahoo OAuth callback handler
 - `POST /webhooks/sequin` — Sequin CDC webhook receiver
+- `POST /extension/token` — Extension PKCE code exchange proxy (CORS `*`)
+- `POST /extension/token/refresh` — Extension token refresh proxy (CORS `*`)
 - `GET /swagger/*` — Swagger API docs
 - `GET /` — JSON API info with links to health, docs, and frontend
 
@@ -247,6 +250,7 @@ Copy `.env.example` to `.env` (for local dev) or configure in Coolify.
 | `FINNHUB_API_KEY` | Finnhub market data API key |
 | `YAHOO_CLIENT_ID` | Yahoo OAuth client ID |
 | `YAHOO_CLIENT_SECRET` | Yahoo OAuth client secret |
+| `LOGTO_EXTENSION_APP_ID` | Logto app ID for the browser extension (PKCE proxy) |
 | `INTERNAL_FINANCE_URL` | Finance service URL (default: port 3001) |
 | `INTERNAL_SPORTS_URL` | Sports service URL (default: port 3002) |
 | `INTERNAL_YAHOO_URL` | Yahoo service URL (default: port 3003) |

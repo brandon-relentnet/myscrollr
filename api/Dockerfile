@@ -36,6 +36,9 @@ ENV LOGTO_URL=https://${COOLIFY_FQDN}/oidc
 ENV LOGTO_JWKS_URL=https://${COOLIFY_FQDN}/oidc/jwks
 ENV YAHOO_CALLBACK_URL=https://${COOLIFY_FQDN}/yahoo/callback
 
+# Extension auth — set via Coolify env or build arg
+# LOGTO_EXTENSION_APP_ID should be configured in deployment environment
+
 # Install curl for health checks
 RUN apk --no-cache add curl
 

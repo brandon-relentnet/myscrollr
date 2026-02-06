@@ -143,7 +143,11 @@ func main() {
 	app.Get("/yahoo/start", YahooStart)
 	app.Get("/yahoo/callback", YahooCallback)
 	app.Post("/webhooks/sequin", HandleSequinWebhook)
-	// Old Logto auth routes removed - frontend now uses Logto SDK directly
+	// Extension auth proxy (PKCE token exchange/refresh via Logto)
+	app.Options("/extension/token", HandleExtensionAuthPreflight)
+	app.Post("/extension/token", HandleExtensionTokenExchange)
+	app.Options("/extension/token/refresh", HandleExtensionAuthPreflight)
+	app.Post("/extension/token/refresh", HandleExtensionTokenRefresh)
 	app.Get("/", LandingPage)
 
 	// --- Protected Routes (Logto) ---
