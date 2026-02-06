@@ -16,8 +16,8 @@ import {
 import { motion } from 'motion/react'
 import { useRealtime } from '../hooks/useRealtime'
 import type { Game, Trade } from '../hooks/useRealtime'
+import type { FantasyContent } from '../types/yahoo'
 import type { IdTokenClaims } from '@logto/react'
-
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
@@ -45,7 +45,7 @@ const sectionVariants = {
 
 function DashboardPage() {
   const { isAuthenticated, isLoading, signIn, getIdTokenClaims } = useLogto()
-  const { latestTrades, latestGames, status } = useRealtime()
+  const { latestTrades, latestGames, yahooData, status } = useRealtime()
   const [activeModule, setActiveModule] = useState<
     'finance' | 'sports' | 'rss' | 'fantasy'
   >('finance')
@@ -226,7 +226,9 @@ function DashboardPage() {
                   connected={status === 'connected'}
                 />
               )}
-              {activeModule === 'fantasy' && <FantasyConfig />}
+              {activeModule === 'fantasy' && (
+                <FantasyConfig yahooData={yahooData} />
+              )}
               {activeModule === 'rss' && <RssConfig />}
             </motion.div>
           </motion.main>
@@ -507,90 +509,203 @@ function SportsConfig({
   )
 }
 
-function FantasyConfig() {
+const GAME_CODE_LABELS: Record<string, string> = {
+  nfl: 'Football',
+  nba: 'Basketball',
+  nhl: 'Hockey',
+  mlb: 'Baseball',
+}
+
+function FantasyConfig({ yahooData }: { yahooData: FantasyContent | null }) {
+  // Extract all leagues across all games
+  const allLeagues =
+    yahooData?.users?.user[0]?.games?.game?.flatMap((game) =>
+      (game.leagues?.league || []).map((league) => ({
+        ...league,
+        game_code: league.game_code || game.code,
+      })),
+    ) || []
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold uppercase tracking-tight flex items-center gap-3">
-          <Ghost size={20} className="text-primary" />
-          Fantasy Leagues
-        </h2>
-        <p className="text-xs text-base-content/40 mt-1 uppercase tracking-wide">
-          Yahoo Fantasy integration
-        </p>
-      </div>
-
-      {/* Demo League */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-base-200/50 border border-base-300/50 rounded-lg p-6"
-      >
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-lg bg-secondary/10 border border-secondary/20 flex items-center justify-center">
-              <span className="text-lg font-bold text-secondary">Y!</span>
-            </div>
-            <div>
-              <h3 className="text-sm font-bold uppercase">
-                Sleeper League 2024
-              </h3>
-              <p className="text-[10px] text-base-content/40 uppercase tracking-wide">
-                Fantasy Basketball · 12 Teams
-              </p>
-            </div>
-          </div>
-          <span className="px-2 py-1 rounded bg-success/10 border border-success/20">
-            <span className="text-[9px] font-bold text-success uppercase">
-              Active
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold uppercase tracking-tight flex items-center gap-3">
+            <Ghost size={20} className="text-primary" />
+            Fantasy Leagues
+          </h2>
+          <p className="text-xs text-base-content/40 mt-1 uppercase tracking-wide">
+            Yahoo Fantasy integration
+          </p>
+        </div>
+        {allLeagues.length > 0 && (
+          <span className="flex items-center gap-1.5 px-2 py-1 rounded bg-primary/10 border border-primary/20">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+            <span className="text-[9px] font-mono text-primary uppercase">
+              {allLeagues.length} League{allLeagues.length !== 1 ? 's' : ''}
             </span>
           </span>
-        </div>
+        )}
+      </div>
 
-        {/* Demo Team */}
-        <div className="bg-base-100/50 rounded-lg p-4 border border-base-300/30">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-bold uppercase">My Team</span>
-            <span className="text-[10px] font-mono text-base-content/40">
-              Rank 3rd · 8-4-0
-            </span>
+      {/* Empty State */}
+      {allLeagues.length === 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center py-12 space-y-4"
+        >
+          <Ghost size={48} className="mx-auto text-base-content/20" />
+          <div className="space-y-2">
+            <p className="text-sm font-bold uppercase text-base-content/50">
+              No Fantasy Data
+            </p>
+            <p className="text-xs text-base-content/30 max-w-xs mx-auto">
+              Connect your Yahoo account to see your fantasy leagues, standings,
+              and rosters in real time.
+            </p>
           </div>
-          <div className="grid grid-cols-5 gap-2">
-            {[
-              { pos: 'PG', name: 'L. Dončić', pts: '28.5' },
-              { pos: 'SG', name: 'S. Gilgeous', pts: '21.3' },
-              { pos: 'SF', name: 'J. Tatum', pts: '26.8' },
-              { pos: 'PF', name: 'B. Adebayo', pts: '19.5' },
-              { pos: 'C', name: 'J. Embiid', pts: '32.1' },
-            ].map((player, i) => (
-              <div
-                key={i}
-                className="text-center p-2 rounded bg-base-200/50 border border-base-300/30"
-              >
-                <div className="text-[9px] text-primary/60 font-mono">
-                  {player.pos}
-                </div>
-                <div className="text-xs font-bold truncate">{player.name}</div>
-                <div className="text-[10px] font-mono text-base-content/50">
-                  {player.pts} PPG
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </motion.div>
+          <motion.a
+            href={`${import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'}/yahoo/start`}
+            target="_blank"
+            rel="noopener noreferrer"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="inline-flex items-center gap-2 btn btn-primary btn-sm"
+          >
+            <Link2 size={14} />
+            Connect Yahoo Account
+          </motion.a>
+        </motion.div>
+      )}
 
-      {/* Connect Button */}
-      <motion.button
-        whileHover={{ scale: 1.01 }}
-        className="w-full p-4 rounded-lg border border-dashed border-base-300/50 text-base-content/40 hover:text-primary hover:border-primary/30 transition-all flex items-center justify-center gap-2"
-      >
-        <Link2 size={16} />
-        <span className="text-xs uppercase tracking-wide">
-          Connect Yahoo Account
-        </span>
-      </motion.button>
+      {/* League Cards */}
+      {allLeagues.map((league) => (
+        <LeagueCard key={league.league_key} league={league} />
+      ))}
+
+      {/* Connect More */}
+      {allLeagues.length > 0 && (
+        <motion.a
+          href={`${import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'}/yahoo/start`}
+          target="_blank"
+          rel="noopener noreferrer"
+          whileHover={{ scale: 1.01 }}
+          className="w-full p-4 rounded-lg border border-dashed border-base-300/50 text-base-content/40 hover:text-primary hover:border-primary/30 transition-all flex items-center justify-center gap-2"
+        >
+          <Link2 size={16} />
+          <span className="text-xs uppercase tracking-wide">
+            Reconnect Yahoo Account
+          </span>
+        </motion.a>
+      )}
     </div>
+  )
+}
+
+function LeagueCard({
+  league,
+}: {
+  league: {
+    league_key: string
+    name: string
+    game_code?: string
+    num_teams: number
+    season?: number
+    standings?: {
+      teams: { team: Array<any> }
+    }
+  }
+}) {
+  const sportLabel =
+    GAME_CODE_LABELS[league.game_code || ''] || league.game_code || 'Fantasy'
+  const teams = league.standings?.teams.team || []
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="bg-base-200/50 border border-base-300/50 rounded-lg p-6"
+    >
+      {/* League Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-lg bg-secondary/10 border border-secondary/20 flex items-center justify-center">
+            <span className="text-lg font-bold text-secondary">Y!</span>
+          </div>
+          <div>
+            <h3 className="text-sm font-bold uppercase">{league.name}</h3>
+            <p className="text-[10px] text-base-content/40 uppercase tracking-wide">
+              {sportLabel} · {league.num_teams} Teams
+              {league.season ? ` · ${league.season}` : ''}
+            </p>
+          </div>
+        </div>
+        <span className="px-2 py-1 rounded bg-success/10 border border-success/20">
+          <span className="text-[9px] font-bold text-success uppercase">
+            Active
+          </span>
+        </span>
+      </div>
+
+      {/* Standings */}
+      {teams.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-[10px] font-bold text-base-content/30 uppercase tracking-widest mb-2">
+            Standings
+          </p>
+          {teams.slice(0, 8).map((team: any, i: number) => {
+            const record = team.team_standings?.outcome_totals
+            const logo = team.team_logos?.team_logo?.[0]?.url
+            return (
+              <div
+                key={team.team_key || i}
+                className="flex items-center justify-between p-2.5 rounded bg-base-100/50 border border-base-300/30"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] font-mono text-base-content/30 w-4 text-right">
+                    {i + 1}
+                  </span>
+                  {logo && (
+                    <img
+                      src={logo}
+                      alt=""
+                      className="h-5 w-5 rounded object-cover"
+                    />
+                  )}
+                  <span className="text-xs font-bold truncate max-w-[160px]">
+                    {team.name}
+                  </span>
+                </div>
+                {record && (
+                  <span className="text-[10px] font-mono text-base-content/40">
+                    {record.wins}-{record.losses}
+                    {record.ties > 0 ? `-${record.ties}` : ''}
+                    {team.team_standings?.points_for
+                      ? ` · ${team.team_standings.points_for} PF`
+                      : ''}
+                  </span>
+                )}
+              </div>
+            )
+          })}
+          {teams.length > 8 && (
+            <p className="text-[10px] text-base-content/30 text-center pt-1">
+              +{teams.length - 8} more teams
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* No standings yet */}
+      {teams.length === 0 && (
+        <div className="text-center py-4">
+          <p className="text-xs text-base-content/30 uppercase">
+            Standings data not yet available
+          </p>
+        </div>
+      )}
+    </motion.div>
   )
 }
 

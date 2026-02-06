@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { FantasyContent } from '../types/yahoo'
 
 // Define types locally if not available globally yet
 export interface Trade {
@@ -28,6 +29,7 @@ interface RealtimeState {
   status: 'connected' | 'disconnected' | 'reconnecting'
   latestTrades: Array<Trade>
   latestGames: Array<Game>
+  yahooData: FantasyContent | null
 }
 
 export function useRealtime() {
@@ -35,6 +37,7 @@ export function useRealtime() {
     status: 'disconnected',
     latestTrades: [],
     latestGames: [],
+    yahooData: null,
   })
 
   const workerRef = useRef<SharedWorker | null>(null)
@@ -112,6 +115,14 @@ export function useRealtime() {
 
             return { ...prev, latestGames: newGames.slice(0, 50) }
           })
+        } else if (table === 'yahoo_leagues') {
+          // Merge Yahoo Data
+          if (record.data) {
+            setState((prev) => ({
+              ...prev,
+              yahooData: record.data,
+            }))
+          }
         }
       })
     }

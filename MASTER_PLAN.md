@@ -59,27 +59,27 @@ Connecting the external producer to our internal consumer.
 
 Consuming the stream efficiently using a Shared Worker architecture.
 
-- [ ] **3.1 Shared Worker (`myscrollr.com/src/workers/sse-worker.ts`)**
-  - [ ] Create worker file.
-  - [ ] Implement `EventSource` connection to `/events`.
-  - [ ] Implement robust reconnection logic (exponential backoff).
-  - [ ] Handle `BroadcastChannel` to communicate with tabs.
+- [x] **3.1 Shared Worker (`myscrollr.com/src/workers/sse-worker.ts`)**
+  - [x] Create worker file.
+  - [x] Implement `EventSource` connection to `/events`.
+  - [x] Implement robust reconnection logic (exponential backoff).
+  - [x] Handle `BroadcastChannel` to communicate with tabs.
 
-- [ ] **3.2 React Hook (`useRealtime.ts`)**
-  - [ ] Create hook to instantiate/connect to the worker.
-  - [ ] **Strategy:** "Hybrid Sync" - Fetch initial state via REST, then apply updates from Stream.
-  - [ ] maintain `latestTrades` and `latestGames` state.
-  - [ ] expose `status` (connected/disconnected/reconnecting).
+- [x] **3.2 React Hook (`useRealtime.ts`)**
+  - [x] Create hook to instantiate/connect to the worker.
+  - [x] **Strategy:** "Hybrid Sync" - Fetch initial state via REST, then apply updates from Stream.
+  - [x] maintain `latestTrades` and `latestGames` state.
+  - [x] expose `status` (connected/disconnected/reconnecting).
 
-- [ ] **3.3 Dashboard Integration (`dashboard.tsx`)**
-  - [ ] Replace polling/static data in `FinanceConfig` and `SportsConfig` with `useRealtime` data.
-  - [ ] Add visual indicator for "Live Stream" status (Green/Red dot).
+- [x] **3.3 Dashboard Integration (`dashboard.tsx`)**
+  - [x] Replace polling/static data in `FinanceConfig` and `SportsConfig` with `useRealtime` data.
+  - [x] Add visual indicator for "Live Stream" status (Green/Red dot).
 
 ---
 
-## 🧩 Phase 4: Extension Integration
+## 🧩 Phase 4: Extension Integration (Skipped)
 
-Ensuring the browser extension also receives these updates.
+*Skipped for now per user request.*
 
 - [ ] **4.1 Background Script Integration**
   - [ ] Adapt the SSE logic for the Extension's Background Service Worker (Manifest V3).
@@ -92,12 +92,66 @@ Ensuring the browser extension also receives these updates.
 
 ## ✅ Final Verification
 
-- [ ] **End-to-End Test:**
+- [x] **End-to-End Test:**
   1.  Update a record in Postgres manually (or wait for ingestion).
   2.  Verify Sequin sends Webhook.
   3.  Verify API logs reception.
   4.  Verify Dashboard updates without refresh.
-  5.  Verify Extension popup updates.
+
+---
+
+## 🏈 Phase 4: Fantasy Integration (Option 1)
+
+Connecting the existing Yahoo ingestion to the real-time dashboard.
+
+- [ ] **4.1 Sequin Configuration (Manual)**
+  - [ ] Add `yahoo_leagues` to the existing Sequin Webhook Sink table list.
+  - [ ] *Note:* This table contains a `data` JSONB column which holds the full nested structure (`FantasyContent`).
+  - _Checkpoint:_ Verify `yahoo_leagues` updates appear in the SSE stream via `curl -N .../events`.
+
+- [x] **4.2 Frontend Types (`myscrollr.com/src/types/yahoo.ts`)**
+  - [x] Create TypeScript interfaces matching the Go `FantasyContent` struct (Users, Games, Leagues, Teams, Rosters).
+  - [x] Export these types for use in the dashboard.
+
+- [x] **4.3 Real-time Hook Update (`useRealtime.ts`)**
+  - [x] Add `yahooData` to the state.
+  - [x] Listen for `yahoo_leagues` updates from the worker.
+  - [x] Implement logic to merge the incoming `data` JSONB blob into the state.
+
+- [x] **4.4 Dashboard Integration (`dashboard.tsx`)**
+  - [x] Update `FantasyConfig` to accept `yahooData` prop.
+  - [x] Replace hardcoded "Sleeper League" data with dynamic league rendering.
+  - [x] Added `LeagueCard` component with standings display (rank, W-L record, points for).
+  - [x] Handle "Empty State" (Prompt user to `/yahoo/start` if no data exists).
+
+---
+
+## 📰 Phase 5: RSS Feeds (Option 2)
+
+Building a new microservice to ingest news and stream it.
+
+- [ ] **5.1 Ingestion Service (`ingestion/rss_service`)**
+  - [ ] Initialize new Rust crate in the workspace.
+  - [ ] Dependencies: `rss`, `reqwest`, `tokio`, `sqlx`.
+  - [ ] Implement `FeedManager` to poll a list of URLs (e.g., HackerNews, TechCrunch) every 5 minutes.
+  - [ ] Implement database storage to upsert items.
+
+- [ ] **5.2 Database Migration**
+  - [ ] Create table `rss_items`:
+    - `guid` (Primary Key)
+    - `title`
+    - `link`
+    - `pub_date`
+    - `source`
+    - `created_at`
+
+- [ ] **5.3 Backend Integration**
+  - [ ] Add `rss_items` to Sequin sync.
+  - [ ] (Optional) Add `GET /rss` endpoint to Go API for initial fetch (Hybrid Sync).
+
+- [ ] **5.4 Frontend Integration**
+  - [ ] Update `useRealtime.ts` to handle `rss_items` stream.
+  - [ ] Update `RssConfig` in `dashboard.tsx` to render the live list.
 
 ---
 
