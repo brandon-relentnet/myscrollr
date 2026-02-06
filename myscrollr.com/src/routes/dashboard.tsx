@@ -97,14 +97,17 @@ function DashboardPage() {
   }
 
   // Start polling every 5s until leagues appear, then stop
-  const startSyncPolling = () => {
+  const startSyncPolling = async () => {
     setYahooPending(true)
     if (pollRef.current) clearInterval(pollRef.current)
+    pollRef.current = null
 
-    // Immediate first check
-    fetchYahooData().then((found) => {
-      if (found) return
-    })
+    // Immediate first check — wait for result before starting interval
+    const found = await fetchYahooData()
+    if (found) {
+      setYahooPending(false)
+      return
+    }
 
     // Then poll every 5s, stop after 3 min or when data arrives
     let elapsed = 0
@@ -713,7 +716,7 @@ function FantasyConfig({
       </div>
 
       {/* Not Connected */}
-      {!yahooStatus.connected && (
+      {!yahooStatus.connected && !yahooPending && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -748,14 +751,15 @@ function FantasyConfig({
           animate={{ opacity: 1, y: 0 }}
           className="text-center py-12 space-y-5"
         >
-          {/* Animated loader */}
-          <div className="flex items-center justify-center gap-1.5">
+          {/* Animated loader — fixed height container prevents layout shift */}
+          <div className="flex items-center justify-center gap-1.5 h-6">
             {[0, 1, 2, 3, 4].map((i) => (
               <motion.div
                 key={i}
-                className="w-1.5 rounded-full bg-primary"
+                className="w-1.5 rounded-full bg-primary origin-center"
+                style={{ height: 8 }}
                 animate={{
-                  height: [8, 24, 8],
+                  scaleY: [1, 3, 1],
                   opacity: [0.3, 1, 0.3],
                 }}
                 transition={{
