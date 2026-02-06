@@ -37,7 +37,11 @@ pub async fn start_active_sync(state: YahooWorkerState) {
 
     let client_id = std::env::var("YAHOO_CLIENT_ID").expect("YAHOO_CLIENT_ID must be set");
     let client_secret = std::env::var("YAHOO_CLIENT_SECRET").expect("YAHOO_CLIENT_SECRET must be set");
-    let callback_url = std::env::var("YAHOO_CALLBACK_URL").unwrap_or_else(|_| "https://api.myscrollr.relentnet.dev/yahoo/callback".to_string());
+    let callback_url = std::env::var("YAHOO_CALLBACK_URL")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "https://api.myscrollr.relentnet.dev/yahoo/callback".to_string());
+    info!("Using callback URL: {}", callback_url);
 
     // Sync loop - polls for new users and updates existing ones
     // Data changes flow through: Postgres → Sequin → Redis Pub/Sub → Go SSE → Frontend

@@ -11,7 +11,8 @@ import (
 
 // YahooStatusResponse returns whether user has Yahoo connected
 type YahooStatusResponse struct {
-	Connected bool `json:"connected"`
+	Connected bool   `json:"connected"`
+	Synced    bool   `json:"synced"`
 }
 
 // GetYahooStatus returns whether the current user has Yahoo connected
@@ -29,7 +30,11 @@ func GetYahooStatus(c *fiber.Ctx) error {
 		SELECT last_sync FROM yahoo_users WHERE logto_sub = $1
 	`, userID).Scan(&lastSync)
 
-	if err != nil && err != sql.ErrNoRows && !contains(err.Error(), "no rows") {
+	if err != nil {
+		errStr := err.Error()
+		if err == sql.ErrNoRows || contains(errStr, "no rows") {
+			return c.JSON(YahooStatusResponse{Connected: false, Synced: false})
+		}
 		log.Printf("[GetYahooStatus] Error: %v", err)
 		return c.Status(http.StatusInternalServerError).JSON(ErrorResponse{
 			Status: "error",
@@ -37,8 +42,10 @@ func GetYahooStatus(c *fiber.Ctx) error {
 		})
 	}
 
+	// Row exists = user connected Yahoo, last_sync set = data has been synced
 	return c.JSON(YahooStatusResponse{
-		Connected: lastSync.Valid,
+		Connected: true,
+		Synced:    lastSync.Valid,
 	})
 }
 

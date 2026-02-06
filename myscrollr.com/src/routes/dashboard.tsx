@@ -44,23 +44,42 @@ const sectionVariants = {
 }
 
 function DashboardPage() {
-  const { isAuthenticated, isLoading, signIn, getIdTokenClaims } = useLogto()
+  const { isAuthenticated, isLoading, signIn, getIdTokenClaims, getAccessToken } = useLogto()
   const { latestTrades, latestGames, yahooData, status } = useRealtime()
   const [activeModule, setActiveModule] = useState<
     'finance' | 'sports' | 'rss' | 'fantasy'
   >('finance')
   const [userClaims, setUserClaims] = useState<IdTokenClaims>()
+  const [yahooStatus, setYahooStatus] = useState<{ connected: boolean; synced: boolean }>({ connected: false, synced: false })
+
+  const checkYahooStatus = async () => {
+    try {
+      const token = await getAccessToken(`${import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'}/`)
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'}/users/me/yahoo-status`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      )
+      if (res.ok) {
+        const data = await res.json()
+        setYahooStatus(data)
+      }
+    } catch {
+      // Silently fail - status stays as disconnected
+    }
+  }
 
   useEffect(() => {
     if (isAuthenticated) {
       getIdTokenClaims().then(setUserClaims)
+      checkYahooStatus()
     }
   }, [isAuthenticated, getIdTokenClaims])
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'yahoo-auth-complete') {
-        window.location.reload()
+        // Re-check status instead of full reload
+        checkYahooStatus()
       }
     }
     window.addEventListener('message', handleMessage)
@@ -257,7 +276,7 @@ function DashboardPage() {
                 />
               )}
               {activeModule === 'fantasy' && (
-                <FantasyConfig yahooData={yahooData} onYahooConnect={handleYahooConnect} />
+                <FantasyConfig yahooData={yahooData} yahooStatus={yahooStatus} onYahooConnect={handleYahooConnect} />
               )}
               {activeModule === 'rss' && <RssConfig />}
             </motion.div>
@@ -548,9 +567,11 @@ const GAME_CODE_LABELS: Record<string, string> = {
 
 function FantasyConfig({
   yahooData,
+  yahooStatus,
   onYahooConnect,
 }: {
   yahooData: FantasyContent | null
+  yahooStatus: { connected: boolean; synced: boolean }
   onYahooConnect?: () => void
 }) {
   // Extract all leagues across all games
@@ -574,18 +595,20 @@ function FantasyConfig({
             Yahoo Fantasy integration
           </p>
         </div>
-        {allLeagues.length > 0 && (
+        {yahooStatus.connected && (
           <span className="flex items-center gap-1.5 px-2 py-1 rounded bg-primary/10 border border-primary/20">
-            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+            <span className={`h-1.5 w-1.5 rounded-full ${yahooStatus.synced ? 'bg-primary' : 'bg-warning'} animate-pulse`} />
             <span className="text-[9px] font-mono text-primary uppercase">
-              {allLeagues.length} League{allLeagues.length !== 1 ? 's' : ''}
+              {allLeagues.length > 0
+                ? `${allLeagues.length} League${allLeagues.length !== 1 ? 's' : ''}`
+                : yahooStatus.synced ? 'Connected' : 'Syncing...'}
             </span>
           </span>
         )}
       </div>
 
-      {/* Empty State */}
-      {allLeagues.length === 0 && (
+      {/* Not Connected */}
+      {!yahooStatus.connected && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -610,6 +633,32 @@ function FantasyConfig({
             <Link2 size={14} />
             Connect Yahoo Account
           </motion.button>
+        </motion.div>
+      )}
+
+      {/* Connected but waiting for sync */}
+      {yahooStatus.connected && allLeagues.length === 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center py-12 space-y-4"
+        >
+          <motion.div
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+          >
+            <Ghost size={48} className="mx-auto text-primary/40" />
+          </motion.div>
+          <div className="space-y-2">
+            <p className="text-sm font-bold uppercase text-primary/70">
+              Yahoo Connected
+            </p>
+            <p className="text-xs text-base-content/30 max-w-xs mx-auto">
+              {yahooStatus.synced
+                ? 'Your account is synced. League data will appear here shortly.'
+                : 'Syncing your fantasy data. This may take a couple of minutes.'}
+            </p>
+          </div>
         </motion.div>
       )}
 
