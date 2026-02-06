@@ -4,6 +4,7 @@ import type { FeedCategory } from '~/utils/types';
 interface FeedTabsProps {
   activeTab: FeedCategory;
   onTabChange: (tab: FeedCategory) => void;
+  availableTabs: FeedCategory[];
 }
 
 const TABS: { id: FeedCategory; label: string }[] = [
@@ -11,10 +12,14 @@ const TABS: { id: FeedCategory; label: string }[] = [
   { id: 'sports', label: 'Sports' },
 ];
 
-export default function FeedTabs({ activeTab, onTabChange }: FeedTabsProps) {
+export default function FeedTabs({ activeTab, onTabChange, availableTabs }: FeedTabsProps) {
+  const visibleTabs = TABS.filter((tab) => availableTabs.includes(tab.id));
+
+  if (visibleTabs.length === 0) return null;
+
   return (
     <div className="flex items-center gap-0.5">
-      {TABS.map((tab) => (
+      {visibleTabs.map((tab) => (
         <button
           key={tab.id}
           onClick={() => onTabChange(tab.id)}

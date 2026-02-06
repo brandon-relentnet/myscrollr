@@ -34,28 +34,44 @@ export default defineContentScript({
   cssInjectionMode: 'ui',
 
   async main(ctx) {
-    const show = await shouldShowOnSite(window.location.href);
-    if (!show) return;
+    type UiHandle = Awaited<ReturnType<typeof createShadowRootUi<ReactDOM.Root>>>;
+    let ui: UiHandle | null = null;
 
-    const ui = await createShadowRootUi(ctx, {
-      name: 'scrollr-feed',
-      position: 'overlay',
-      anchor: 'body',
-      onMount(container) {
-        // Create a wrapper div inside the shadow root container
-        const wrapper = document.createElement('div');
-        wrapper.id = 'scrollr-root';
-        container.append(wrapper);
+    /** Mount or unmount the feed bar based on whether it should show on the given URL. */
+    async function evaluate(url: string) {
+      const show = await shouldShowOnSite(url);
 
-        const root = ReactDOM.createRoot(wrapper);
-        root.render(<App />);
-        return root;
-      },
-      onRemove(root) {
-        root?.unmount();
-      },
+      if (show && !ui) {
+        ui = await createShadowRootUi(ctx, {
+          name: 'scrollr-feed',
+          position: 'overlay',
+          anchor: 'body',
+          onMount(container) {
+            const wrapper = document.createElement('div');
+            wrapper.id = 'scrollr-root';
+            container.append(wrapper);
+
+            const root = ReactDOM.createRoot(wrapper);
+            root.render(<App ctx={ctx} />);
+            return root;
+          },
+          onRemove(root) {
+            root?.unmount();
+          },
+        });
+        ui.mount();
+      } else if (!show && ui) {
+        ui.remove();
+        ui = null;
+      }
+    }
+
+    // Evaluate on initial page load
+    await evaluate(window.location.href);
+
+    // Re-evaluate on SPA navigations (pushState, replaceState, popstate, hashchange)
+    ctx.addEventListener(window, 'wxt:locationchange', ({ newUrl }) => {
+      evaluate(newUrl.href);
     });
-
-    ui.mount();
   },
 });

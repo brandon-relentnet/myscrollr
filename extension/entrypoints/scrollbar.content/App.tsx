@@ -6,6 +6,7 @@ import type {
   FeedPosition,
   FeedMode,
   FeedBehavior,
+  FeedCategory,
 } from '~/utils/types';
 import type { BackgroundMessage, StateSnapshotMessage } from '~/utils/messaging';
 import {
@@ -15,10 +16,16 @@ import {
   feedMode as feedModeStorage,
   feedCollapsed as feedCollapsedStorage,
   feedBehavior as feedBehaviorStorage,
+  activeFeedTabs as activeFeedTabsStorage,
 } from '~/utils/storage';
+import type { ContentScriptContext } from '#imports';
 import FeedBar from './FeedBar';
 
-export default function App() {
+interface AppProps {
+  ctx: ContentScriptContext;
+}
+
+export default function App({ ctx }: AppProps) {
   // ── Data state ───────────────────────────────────────────────
   const [trades, setTrades] = useState<Trade[]>([]);
   const [games, setGames] = useState<Game[]>([]);
@@ -31,13 +38,17 @@ export default function App() {
   const [mode, setMode] = useState<FeedMode>('comfort');
   const [collapsed, setCollapsed] = useState(false);
   const [behavior, setBehavior] = useState<FeedBehavior>('overlay');
+  const [activeTabs, setActiveTabs] = useState<FeedCategory[]>(['finance', 'sports']);
 
   // ── Load initial state from background + storage ─────────────
   useEffect(() => {
+    if (!ctx.isValid) return;
+
     // Request state snapshot from background
     browser.runtime
       .sendMessage({ type: 'GET_STATE' })
       .then((response: unknown) => {
+        if (!ctx.isValid) return;
         const snapshot = response as StateSnapshotMessage | null;
         if (snapshot?.type === 'STATE_SNAPSHOT') {
           setTrades(snapshot.trades);
@@ -56,7 +67,8 @@ export default function App() {
     feedModeStorage.getValue().then(setMode).catch(() => {});
     feedCollapsedStorage.getValue().then(setCollapsed).catch(() => {});
     feedBehaviorStorage.getValue().then(setBehavior).catch(() => {});
-  }, []);
+    activeFeedTabsStorage.getValue().then(setActiveTabs).catch(() => {});
+  }, [ctx]);
 
   // ── Listen for broadcasts from background ────────────────────
   const handleMessage = useCallback((message: unknown) => {
@@ -87,14 +99,23 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!ctx.isValid) return;
     browser.runtime.onMessage.addListener(handleMessage);
+
+    // Clean up on context invalidation (extension update/reinstall)
+    ctx.onInvalidated(() => {
+      browser.runtime.onMessage.removeListener(handleMessage);
+    });
+
     return () => {
       browser.runtime.onMessage.removeListener(handleMessage);
     };
-  }, [handleMessage]);
+  }, [handleMessage, ctx]);
 
   // ── Watch storage for live preference changes ────────────────
   useEffect(() => {
+    if (!ctx.isValid) return;
+
     const unwatchers = [
       feedEnabledStorage.watch((v) => setEnabled(v)),
       feedPositionStorage.watch((v) => setPosition(v)),
@@ -102,29 +123,37 @@ export default function App() {
       feedModeStorage.watch((v) => setMode(v)),
       feedCollapsedStorage.watch((v) => setCollapsed(v)),
       feedBehaviorStorage.watch((v) => setBehavior(v)),
+      activeFeedTabsStorage.watch((v) => setActiveTabs(v)),
     ];
 
-    return () => {
-      unwatchers.forEach((unwatch) => unwatch());
-    };
-  }, []);
+    const cleanup = () => unwatchers.forEach((unwatch) => unwatch());
+
+    // Clean up on context invalidation (extension update/reinstall)
+    ctx.onInvalidated(cleanup);
+
+    return cleanup;
+  }, [ctx]);
 
   // ── Manage push mode (adjust page margin) ────────────────────
   useEffect(() => {
-    if (behavior !== 'push' || collapsed) {
+    const resetMargins = () => {
       document.body.style.marginTop = '';
       document.body.style.marginBottom = '';
+    };
+
+    if (!ctx.isValid || behavior !== 'push' || collapsed) {
+      resetMargins();
       return;
     }
 
     const prop = position === 'top' ? 'marginTop' : 'marginBottom';
     document.body.style[prop] = `${height}px`;
 
-    return () => {
-      document.body.style.marginTop = '';
-      document.body.style.marginBottom = '';
-    };
-  }, [behavior, position, height, collapsed]);
+    // Always clean up margins, even on context invalidation
+    ctx.onInvalidated(resetMargins);
+
+    return resetMargins;
+  }, [behavior, position, height, collapsed, ctx]);
 
   // Hide the feed bar when globally disabled
   if (!enabled) return null;
@@ -139,6 +168,7 @@ export default function App() {
       mode={mode}
       collapsed={collapsed}
       behavior={behavior}
+      activeTabs={activeTabs}
       onToggleCollapse={() => {
         const next = !collapsed;
         setCollapsed(next);
@@ -146,6 +176,8 @@ export default function App() {
       }}
       onHeightChange={(h: number) => {
         setHeight(h);
+      }}
+      onHeightCommit={(h: number) => {
         feedHeightStorage.setValue(h);
       }}
     />

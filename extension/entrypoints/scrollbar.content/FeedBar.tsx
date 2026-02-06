@@ -9,7 +9,6 @@ import type {
   FeedBehavior,
   FeedCategory,
 } from '~/utils/types';
-import { activeFeedTabs as activeFeedTabsStorage } from '~/utils/storage';
 import FeedTabs from './FeedTabs';
 import TradeItem from './TradeItem';
 import GameItem from './GameItem';
@@ -24,8 +23,10 @@ interface FeedBarProps {
   mode: FeedMode;
   collapsed: boolean;
   behavior: FeedBehavior;
+  activeTabs: FeedCategory[];
   onToggleCollapse: () => void;
   onHeightChange: (height: number) => void;
+  onHeightCommit: (height: number) => void;
 }
 
 const COLLAPSED_HEIGHT = 32;
@@ -41,19 +42,21 @@ export default function FeedBar({
   mode,
   collapsed,
   behavior,
+  activeTabs,
   onToggleCollapse,
   onHeightChange,
+  onHeightCommit,
 }: FeedBarProps) {
-  const [activeTab, setActiveTab] = useState<FeedCategory>('finance');
+  const [activeTab, setActiveTab] = useState<FeedCategory>(activeTabs[0] ?? 'finance');
   const [isDragging, setIsDragging] = useState(false);
   const barRef = useRef<HTMLDivElement>(null);
 
-  // Load saved active tab
+  // Sync activeTab when activeTabs changes (e.g., user disables current tab in options)
   useEffect(() => {
-    activeFeedTabsStorage.getValue().then((tabs) => {
-      if (tabs.length > 0) setActiveTab(tabs[0]);
-    });
-  }, []);
+    if (activeTabs.length > 0 && !activeTabs.includes(activeTab)) {
+      setActiveTab(activeTabs[0]);
+    }
+  }, [activeTabs, activeTab]);
 
   // ── Drag resize ────────────────────────────────────────────────
   const handleDragStart = useCallback(
@@ -63,17 +66,19 @@ export default function FeedBar({
 
       const startY = e.clientY;
       const startHeight = height;
+      let currentHeight = height;
 
       const onMouseMove = (ev: MouseEvent) => {
         const delta = position === 'bottom'
           ? startY - ev.clientY
           : ev.clientY - startY;
-        const newHeight = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, startHeight + delta));
-        onHeightChange(newHeight);
+        currentHeight = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, startHeight + delta));
+        onHeightChange(currentHeight); // Visual update only
       };
 
       const onMouseUp = () => {
         setIsDragging(false);
+        onHeightCommit(currentHeight); // Persist to storage on drag end
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
       };
@@ -81,7 +86,7 @@ export default function FeedBar({
       document.addEventListener('mousemove', onMouseMove);
       document.addEventListener('mouseup', onMouseUp);
     },
-    [height, position, onHeightChange],
+    [height, position, onHeightChange, onHeightCommit],
   );
 
   const effectiveHeight = collapsed ? COLLAPSED_HEIGHT : height;
@@ -117,7 +122,7 @@ export default function FeedBar({
           <span className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
             Scrollr
           </span>
-          <FeedTabs activeTab={activeTab} onTabChange={setActiveTab} />
+          <FeedTabs activeTab={activeTab} onTabChange={setActiveTab} availableTabs={activeTabs} />
         </div>
 
         <div className="flex items-center gap-2">
