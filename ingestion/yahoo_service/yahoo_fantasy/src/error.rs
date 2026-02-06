@@ -52,6 +52,8 @@ impl YahooError {
                     }
                 } else if error_type.contains("This game does not support accessing a roster by date") {
                     return Self::Error("date unsupported".to_string())
+                } else if error_type.contains("You must be logged in") {
+                    return Self::Failed;
                 } else {
                     return Self::Error(error_type);
                 }

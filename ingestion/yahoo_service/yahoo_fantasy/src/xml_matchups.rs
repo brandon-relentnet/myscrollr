@@ -7,11 +7,12 @@ pub struct FantasyContent {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Team {
-    pub matchups: Matchups,
+    pub matchups: Option<Matchups>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Matchups {
+    #[serde(default)]
     pub matchup: Vec<Matchup>,
 }
 
@@ -31,14 +32,14 @@ pub struct Matchup {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Teams {
-    pub team: Vec<MatchTeam>
+    pub team: Vec<MatchTeam>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct MatchTeam {
     pub team_key: String,
     pub name: String,
-    pub team_points: TeamPoints
+    pub team_points: TeamPoints,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

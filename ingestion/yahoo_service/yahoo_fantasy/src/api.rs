@@ -320,7 +320,12 @@ pub async fn get_matchups(team_key: &str, client: Client, tokens: &Tokens) -> an
         future_matches: Vec::new(),
     };
 
-    for matchup in parsed.team.matchups.matchup {
+    let matchups = match parsed.team.matchups {
+        Some(m) => m.matchup,
+        None => return Ok((output, opt_tokens)),
+    };
+
+    for matchup in matchups {
         let matchup_formatted = {
             let mut data = Vec::new();
 
