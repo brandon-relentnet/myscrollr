@@ -126,6 +126,7 @@ func main() {
 	app.Get("/sports/health", SportsHealth)
 	app.Get("/finance/health", FinanceHealth)
 	app.Get("/yahoo/health", YahooHealth)
+	app.Get("/yahoo/start", YahooStart)
 	app.Get("/yahoo/callback", YahooCallback)
 	app.Post("/webhooks/sequin", HandleSequinWebhook)
 	// Old Logto auth routes removed - frontend now uses Logto SDK directly
@@ -142,7 +143,6 @@ func main() {
 	api.Get("/dashboard", LogtoAuth, GetDashboard)
 
 	// Yahoo OAuth & Data
-	api.Get("/yahoo/start", LogtoAuth, YahooStart)
 	api.Get("/yahoo/leagues", LogtoAuth, YahooLeagues)
 	api.Get("/yahoo/league/:league_key/standings", LogtoAuth, YahooStandings)
 	api.Get("/yahoo/team/:team_key/matchups", LogtoAuth, YahooMatchups)
