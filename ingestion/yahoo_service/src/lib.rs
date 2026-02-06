@@ -3,7 +3,7 @@ use std::time::Duration;
 use tokio::sync::Mutex;
 use log::{info, error, warn};
 use secrecy::SecretString;
-use crate::database::{PgPool, YahooUser, get_all_yahoo_users, update_user_sync_time};
+use crate::database::{PgPool, YahooUser, get_all_yahoo_users, update_user_sync_time, get_yahoo_user_by_guid};
 use yahoo_fantasy::{api as yahoo_api, types::Tokens};
 
 pub mod log;
@@ -38,6 +38,84 @@ pub async fn start_active_sync(state: YahooWorkerState) {
     let client_id = std::env::var("YAHOO_CLIENT_ID").expect("YAHOO_CLIENT_ID must be set");
     let client_secret = std::env::var("YAHOO_CLIENT_SECRET").expect("YAHOO_CLIENT_SECRET must be set");
     let callback_url = std::env::var("YAHOO_CALLBACK_URL").unwrap_or_else(|_| "https://api.myscrollr.relentnet.dev/yahoo/callback".to_string());
+    let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1/".to_string());
+
+    // Spawn the sync loop
+    let sync_state = state.clone();
+    let sync_client_id = client_id.clone();
+    let sync_client_secret = client_secret.clone();
+    let sync_callback_url = callback_url.clone();
+    
+    tokio::spawn(async move {
+        run_sync_loop(&sync_state, &sync_client_id, &sync_client_secret, &sync_callback_url).await;
+    });
+
+    // Spawn Redis subscriber for immediate sync triggers
+    let subscriber_state = state.clone();
+    let subscriber_client_id = client_id.clone();
+    let subscriber_client_secret = client_secret.clone();
+    let subscriber_callback_url = callback_url.clone();
+    
+    tokio::spawn(async move {
+        run_redis_subscriber(&subscriber_state, &subscriber_client_id, &subscriber_client_secret, &subscriber_callback_url, &redis_url).await;
+    });
+
+    info!("Yahoo Active Sync worker started");
+}
+
+async fn run_redis_subscriber(
+    state: &YahooWorkerState,
+    client_id: &str,
+    client_secret: &str,
+    callback_url: &str,
+    redis_url: &str
+) {
+    let client = redis::Client::open(redis_url).expect("Failed to connect to Redis");
+    
+    loop {
+        let mut conn = match client.get_multiplexed_async_connection().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                warn!("Failed to connect to Redis for subscriptions: {}. Retrying in 10s...", e);
+                tokio::time::sleep(Duration::from_secs(10)).await;
+                continue;
+            }
+        };
+
+        let mut pubsub = conn.into_pubsub();
+        if let Err(e) = pubsub.subscribe("yahoo:new-user").await {
+            warn!("Failed to subscribe to yahoo:new-user channel: {}. Retrying in 10s...", e);
+            tokio::time::sleep(Duration::from_secs(10)).await;
+            continue;
+        }
+
+        info!("Subscribed to yahoo:new-user channel for immediate sync triggers");
+
+        while let Some(msg) = pubsub.next_message().await {
+            if let redis::Value::BulkString(guid_bytes) = msg {
+                if let Some(guid) = guid_bytes.first().map(|b| String::from_utf8_lossy(b).to_string()) {
+                    info!("Received new-user notification for GUID: {}", guid);
+                    
+                    // Fetch the user from DB and sync
+                    if let Ok(Some(user)) = get_yahoo_user_by_guid(&state.db_pool, &guid).await {
+                        if let Err(e) = sync_user_data(&user, state, client_id, client_secret, callback_url).await {
+                            error!("Failed to sync user {} from notification: {}", guid, e);
+                        }
+                    } else {
+                        warn!("User {} not found in database for immediate sync", guid);
+                    }
+                }
+            }
+        }
+    }
+}
+
+async fn run_sync_loop(
+    state: &YahooWorkerState,
+    client_id: &str,
+    client_secret: &str,
+    callback_url: &str
+) {
 
     loop {
         match get_all_yahoo_users(&state.db_pool).await {
@@ -54,8 +132,8 @@ pub async fn start_active_sync(state: YahooWorkerState) {
             }
         }
 
-        // Wait before next sync cycle (e.g., 15 minutes)
-        tokio::time::sleep(Duration::from_secs(900)).await;
+        // Wait before next sync cycle (e.g., 2 minutes in dev, 15 min in prod)
+        tokio::time::sleep(Duration::from_secs(120)).await;
     }
 }
 

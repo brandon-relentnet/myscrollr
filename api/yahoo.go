@@ -182,6 +182,11 @@ func YahooCallback(c *fiber.Ctx) error {
 						UpsertYahooUser(guid, logtoIdentifier, refreshToken)
 						log.Printf("[Yahoo Sync] Registered user %s (Logto: %s) for active sync", guid, logtoIdentifier)
 						
+						// Publish to Redis to trigger immediate sync
+						if err := rdb.Publish(context.Background(), "yahoo:new-user", guid).Err(); err != nil {
+							log.Printf("[Yahoo Sync] Warning: Failed to publish new-user event: %v", err)
+						}
+						
 						// Hash token for Redis key
 						h := sha256.Sum256([]byte(accessToken))
 						tokenHash := hex.EncodeToString(h[:])
