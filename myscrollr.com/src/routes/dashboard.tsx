@@ -57,6 +57,26 @@ function DashboardPage() {
     }
   }, [isAuthenticated, getIdTokenClaims])
 
+  const handleYahooConnect = async () => {
+    if (!userClaims?.sub) {
+      // If no sub, refresh claims
+      const claims = await getIdTokenClaims()
+      if (claims?.sub) {
+        window.open(
+          `${import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'}/yahoo/start?logto_sub=${claims.sub}`,
+          'yahoo-auth',
+          'width=600,height=700',
+        )
+      }
+    } else {
+      window.open(
+        `${import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'}/yahoo/start?logto_sub=${userClaims.sub}`,
+        'yahoo-auth',
+        'width=600,height=700',
+      )
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -227,7 +247,7 @@ function DashboardPage() {
                 />
               )}
               {activeModule === 'fantasy' && (
-                <FantasyConfig yahooData={yahooData} />
+                <FantasyConfig yahooData={yahooData} onYahooConnect={handleYahooConnect} />
               )}
               {activeModule === 'rss' && <RssConfig />}
             </motion.div>
@@ -516,7 +536,13 @@ const GAME_CODE_LABELS: Record<string, string> = {
   mlb: 'Baseball',
 }
 
-function FantasyConfig({ yahooData }: { yahooData: FantasyContent | null }) {
+function FantasyConfig({
+  yahooData,
+  onYahooConnect,
+}: {
+  yahooData: FantasyContent | null
+  onYahooConnect?: () => void
+}) {
   // Extract all leagues across all games
   const allLeagues =
     yahooData?.users?.user[0]?.games?.game?.flatMap((game) =>
@@ -565,17 +591,15 @@ function FantasyConfig({ yahooData }: { yahooData: FantasyContent | null }) {
               and rosters in real time.
             </p>
           </div>
-          <motion.a
-            href={`${import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'}/yahoo/start`}
-            target="_blank"
-            rel="noopener noreferrer"
+          <motion.button
+            onClick={onYahooConnect}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="inline-flex items-center gap-2 btn btn-primary btn-sm"
           >
             <Link2 size={14} />
             Connect Yahoo Account
-          </motion.a>
+          </motion.button>
         </motion.div>
       )}
 
@@ -586,10 +610,8 @@ function FantasyConfig({ yahooData }: { yahooData: FantasyContent | null }) {
 
       {/* Connect More */}
       {allLeagues.length > 0 && (
-        <motion.a
-          href={`${import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'}/yahoo/start`}
-          target="_blank"
-          rel="noopener noreferrer"
+        <motion.button
+          onClick={onYahooConnect}
           whileHover={{ scale: 1.01 }}
           className="w-full p-4 rounded-lg border border-dashed border-base-300/50 text-base-content/40 hover:text-primary hover:border-primary/30 transition-all flex items-center justify-center gap-2"
         >
@@ -597,7 +619,7 @@ function FantasyConfig({ yahooData }: { yahooData: FantasyContent | null }) {
           <span className="text-xs uppercase tracking-wide">
             Reconnect Yahoo Account
           </span>
-        </motion.a>
+        </motion.button>
       )}
     </div>
   )

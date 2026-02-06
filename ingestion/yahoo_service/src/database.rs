@@ -97,6 +97,7 @@ pub async fn initialize_pool() -> Result<PgPool> {
 #[derive(sqlx::FromRow, Debug, Clone)]
 pub struct YahooUser {
     pub guid: String,
+    pub logto_sub: Option<String>,
     pub refresh_token: String,
     pub last_sync: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
@@ -106,6 +107,7 @@ pub async fn create_tables(pool: &PgPool) -> Result<()> {
     let users_statement = "
         CREATE TABLE IF NOT EXISTS yahoo_users (
             guid VARCHAR(100) PRIMARY KEY,
+            logto_sub VARCHAR(255) UNIQUE,
             refresh_token TEXT NOT NULL,
             last_sync TIMESTAMP WITH TIME ZONE,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -223,16 +225,17 @@ pub async fn upsert_yahoo_roster(pool: &PgPool, team_key: &str, league_key: &str
     Ok(())
 }
 
-pub async fn upsert_yahoo_user(pool: &PgPool, guid: String, refresh_token: String) -> Result<()> {
+pub async fn upsert_yahoo_user(pool: &PgPool, guid: String, logto_sub: Option<String>, refresh_token: String) -> Result<()> {
     let encrypted_token = encrypt(&refresh_token).context("Failed to encrypt refresh token")?;
     let statement = "
-        INSERT INTO yahoo_users (guid, refresh_token)
-        VALUES ($1, $2)
+        INSERT INTO yahoo_users (guid, logto_sub, refresh_token)
+        VALUES ($1, $2, $3)
         ON CONFLICT (guid) DO UPDATE
-        SET refresh_token = EXCLUDED.refresh_token;
+        SET logto_sub = EXCLUDED.logto_sub, refresh_token = EXCLUDED.refresh_token;
     ";
     query(statement)
         .bind(guid)
+        .bind(logto_sub)
         .bind(encrypted_token)
         .execute(pool)
         .await?;
@@ -240,7 +243,7 @@ pub async fn upsert_yahoo_user(pool: &PgPool, guid: String, refresh_token: Strin
 }
 
 pub async fn get_all_yahoo_users(pool: &PgPool) -> Result<Vec<YahooUser>> {
-    let statement = "SELECT guid, refresh_token, last_sync, created_at FROM yahoo_users";
+    let statement = "SELECT guid, logto_sub, refresh_token, last_sync, created_at FROM yahoo_users";
     let mut users = query_as::<_, YahooUser>(statement)
         .fetch_all(pool)
         .await?;

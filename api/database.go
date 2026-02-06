@@ -106,6 +106,7 @@ func ConnectDB() {
 	_, err = dbPool.Exec(context.Background(), `
 		CREATE TABLE IF NOT EXISTS yahoo_users (
 			guid VARCHAR(100) PRIMARY KEY,
+			logto_sub VARCHAR(255) UNIQUE,
 			refresh_token TEXT NOT NULL,
 			last_sync TIMESTAMP WITH TIME ZONE,
 			created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -116,33 +117,19 @@ func ConnectDB() {
 	}
 }
 
-func UpsertYahooUser(guid, refreshToken string) error {
-
+func UpsertYahooUser(guid, logtoSub, refreshToken string) error {
 	encryptedToken, err := encrypt(refreshToken)
-
 	if err != nil {
-
 		log.Printf("[Security Error] Failed to encrypt refresh token for user %s: %v", guid, err)
-
 		return err
-
 	}
 
-
-
 	_, err = dbPool.Exec(context.Background(), `
-
-		INSERT INTO yahoo_users (guid, refresh_token)
-
-		VALUES (
-, $2)
-
+		INSERT INTO yahoo_users (guid, logto_sub, refresh_token)
+		VALUES ($1, $2, $3)
 		ON CONFLICT (guid) DO UPDATE
-
-		SET refresh_token = EXCLUDED.refresh_token;
-
-	`, guid, encryptedToken)
+		SET logto_sub = EXCLUDED.logto_sub, refresh_token = EXCLUDED.refresh_token;
+	`, guid, logtoSub, encryptedToken)
 
 	return err
-
 }

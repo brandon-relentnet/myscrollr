@@ -26,7 +26,7 @@ func GetYahooStatus(c *fiber.Ctx) error {
 
 	var lastSync sql.NullTime
 	err := dbPool.QueryRow(context.Background(), `
-		SELECT last_sync FROM yahoo_users WHERE guid = $1
+		SELECT last_sync FROM yahoo_users WHERE logto_sub = $1
 	`, userID).Scan(&lastSync)
 
 	if err != nil && err != sql.ErrNoRows && !contains(err.Error(), "no rows") {

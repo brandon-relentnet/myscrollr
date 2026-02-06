@@ -114,10 +114,23 @@ func fetchYahoo(c *fiber.Ctx, url string) ([]byte, error) {
 // @Security LogtoAuth
 // @Router /yahoo/start [get]
 func YahooStart(c *fiber.Ctx) error {
+	// Extract logto_sub from query parameter (passed by frontend) or cookies
+	logtoSub := c.Query("logto_sub")
+	if logtoSub == "" {
+		logtoSub = c.Cookies("logto_sub")
+	}
+	
 	b := make([]byte, 16)
 	rand.Read(b)
 	state := hex.EncodeToString(b)
-	err := rdb.Set(context.Background(), "csrf:"+state, "1", 10*time.Minute).Err()
+	
+	// Store state and logto_sub mapping
+	pipe := rdb.Pipeline()
+	pipe.Set(context.Background(), "csrf:"+state, "1", 10*time.Minute)
+	if logtoSub != "" {
+		pipe.Set(context.Background(), "yahoo_state_logto:"+state, logtoSub, 10*time.Minute)
+	}
+	_, err := pipe.Exec(context.Background())
 	if err != nil { return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to store state"}) }
 	return c.Redirect(yahooConfig.AuthCodeURL(state), fiber.StatusTemporaryRedirect)
 }
@@ -134,6 +147,10 @@ func YahooCallback(c *fiber.Ctx) error {
 	state, code := c.Query("state"), c.Query("code")
 	val, err := rdb.GetDel(context.Background(), "csrf:"+state).Result()
 	if err != nil || val == "" { return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Status: "error", Error: "Invalid or expired state"}) }
+	
+	// Retrieve logto_sub associated with this state
+	logtoSub, _ := rdb.Get(context.Background(), "yahoo_state_logto:"+state).Result()
+	
 	token, err := yahooConfig.Exchange(context.Background(), code)
 	if err != nil { return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to exchange code"}) }
 
@@ -142,7 +159,7 @@ func YahooCallback(c *fiber.Ctx) error {
 		c.Cookie(&fiber.Cookie{Name: "yahoo-refresh", Value: token.RefreshToken, Expires: time.Now().Add(30 * 24 * time.Hour), HTTPOnly: true, Secure: true, SameSite: "Strict", Path: "/"})
 		
 		// Fetch GUID and persist for Active Sync
-		go func(accessToken, refreshToken string) {
+		go func(accessToken, refreshToken string, sub string) {
 			client := &http.Client{Timeout: 10 * time.Second}
 			req, _ := http.NewRequest("GET", "https://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1", nil)
 			req.Header.Set("Authorization", "Bearer "+accessToken)
@@ -154,8 +171,13 @@ func YahooCallback(c *fiber.Ctx) error {
 				if err := xml.Unmarshal(body, &content); err == nil && content.Users != nil && len(content.Users.User) > 0 {
 					guid := content.Users.User[0].Guid
 					if guid != "" {
-						UpsertYahooUser(guid, refreshToken)
-						log.Printf("[Yahoo Sync] Registered user %s for active sync", guid)
+						// Use the passed sub if available, otherwise use guid
+						logtoIdentifier := sub
+						if logtoIdentifier == "" {
+							logtoIdentifier = guid // Fallback to Yahoo GUID
+						}
+						UpsertYahooUser(guid, logtoIdentifier, refreshToken)
+						log.Printf("[Yahoo Sync] Registered user %s (Logto: %s) for active sync", guid, logtoIdentifier)
 						
 						// Hash token for Redis key
 						h := sha256.Sum256([]byte(accessToken))
@@ -165,7 +187,7 @@ func YahooCallback(c *fiber.Ctx) error {
 					}
 				}
 			}
-		}(token.AccessToken, token.RefreshToken)
+		}(token.AccessToken, token.RefreshToken, logtoSub)
 	}
 
 	frontendURL := validateURL(os.Getenv("FRONTEND_URL"), "https://myscrollr.com")
