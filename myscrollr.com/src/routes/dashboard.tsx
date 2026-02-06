@@ -775,7 +775,7 @@ function FantasyConfig({
             <p className="text-sm font-bold uppercase text-primary/70">
               {yahooStatus.connected ? 'Syncing Leagues' : 'Connecting Yahoo'}
             </p>
-            <p className="text-xs text-base-content/30 max-w-xs mx-auto">
+            <p className="text-xs text-base-content/30 max-w-xs mx-auto text-center">
               {yahooStatus.synced
                 ? 'Your account is synced. League data will appear here shortly.'
                 : 'Fetching your fantasy data from Yahoo. This usually takes under two minutes.'}
