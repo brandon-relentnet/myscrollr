@@ -95,7 +95,10 @@ export function useRealtime() {
     worker.port.postMessage({ type: 'STATUS_REQUEST' })
 
     return () => {
-      // Cleanup if needed
+      // Notify the SharedWorker to remove this port from its set
+      worker.port.postMessage({ type: 'DISCONNECT' })
+      worker.port.close()
+      workerRef.current = null
     }
   }, [])
 
