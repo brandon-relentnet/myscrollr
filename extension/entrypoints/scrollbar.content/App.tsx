@@ -31,6 +31,7 @@ export default function App({ ctx }: AppProps) {
   const [games, setGames] = useState<Game[]>([]);
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [enabled, setEnabled] = useState(true);
+  const [authenticated, setAuthenticated] = useState(false);
 
   // ── Preference state ─────────────────────────────────────────
   const [position, setPosition] = useState<FeedPosition>('bottom');
@@ -54,6 +55,7 @@ export default function App({ ctx }: AppProps) {
           setTrades(snapshot.trades);
           setGames(snapshot.games);
           setStatus(snapshot.connectionStatus);
+          setAuthenticated(snapshot.authenticated);
         }
       })
       .catch(() => {
@@ -91,6 +93,10 @@ export default function App({ ctx }: AppProps) {
 
       case 'CONNECTION_STATUS':
         setStatus(msg.status);
+        break;
+
+      case 'AUTH_STATUS':
+        setAuthenticated(msg.authenticated);
         break;
 
       default:
@@ -141,7 +147,7 @@ export default function App({ ctx }: AppProps) {
       document.body.style.marginBottom = '';
     };
 
-    if (!ctx.isValid || behavior !== 'push' || collapsed) {
+    if (!ctx.isValid || behavior !== 'push' || collapsed || !authenticated) {
       resetMargins();
       return;
     }
@@ -153,7 +159,12 @@ export default function App({ ctx }: AppProps) {
     ctx.onInvalidated(resetMargins);
 
     return resetMargins;
-  }, [behavior, position, height, collapsed, ctx]);
+  }, [behavior, position, height, collapsed, authenticated, ctx]);
+
+  // ── Login handler ──────────────────────────────────────────────
+  const handleLogin = useCallback(() => {
+    browser.runtime.sendMessage({ type: 'LOGIN' }).catch(() => {});
+  }, []);
 
   // Hide the feed bar when globally disabled
   if (!enabled) return null;
@@ -169,6 +180,8 @@ export default function App({ ctx }: AppProps) {
       collapsed={collapsed}
       behavior={behavior}
       activeTabs={activeTabs}
+      authenticated={authenticated}
+      onLogin={handleLogin}
       onToggleCollapse={() => {
         const next = !collapsed;
         setCollapsed(next);

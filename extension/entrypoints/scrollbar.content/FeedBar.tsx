@@ -24,6 +24,8 @@ interface FeedBarProps {
   collapsed: boolean;
   behavior: FeedBehavior;
   activeTabs: FeedCategory[];
+  authenticated: boolean;
+  onLogin: () => void;
   onToggleCollapse: () => void;
   onHeightChange: (height: number) => void;
   onHeightCommit: (height: number) => void;
@@ -43,6 +45,8 @@ export default function FeedBar({
   collapsed,
   behavior,
   activeTabs,
+  authenticated,
+  onLogin,
   onToggleCollapse,
   onHeightChange,
   onHeightCommit,
@@ -89,8 +93,47 @@ export default function FeedBar({
     [height, position, onHeightChange, onHeightCommit],
   );
 
-  const effectiveHeight = collapsed ? COLLAPSED_HEIGHT : height;
+  const effectiveHeight = !authenticated
+    ? COLLAPSED_HEIGHT
+    : collapsed
+      ? COLLAPSED_HEIGHT
+      : height;
 
+  // ── Unauthenticated: show a minimal CTA bar ──────────────────
+  if (!authenticated) {
+    return (
+      <div
+        ref={barRef}
+        className={clsx(
+          'fixed left-0 right-0 bg-zinc-900 text-zinc-100 shadow-2xl border-zinc-700 font-sans',
+          position === 'bottom' ? 'bottom-0 border-t' : 'top-0 border-b',
+        )}
+        style={{
+          height: `${COLLAPSED_HEIGHT}px`,
+          zIndex: 2147483647,
+        }}
+      >
+        <div className="flex items-center justify-between h-full px-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
+              Scrollr
+            </span>
+            <span className="text-xs text-zinc-500">
+              Sign in to see live market & sports data
+            </span>
+          </div>
+          <button
+            onClick={onLogin}
+            className="text-xs font-medium px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
+          >
+            Sign In
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Authenticated: full feed bar ──────────────────────────────
   return (
     <div
       ref={barRef}
