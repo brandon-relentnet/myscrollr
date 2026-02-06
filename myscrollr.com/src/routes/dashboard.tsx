@@ -14,7 +14,10 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { motion } from 'motion/react'
+import { useRealtime } from '../hooks/useRealtime'
+import type { Game, Trade } from '../hooks/useRealtime'
 import type { IdTokenClaims } from '@logto/react'
+
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
@@ -42,6 +45,7 @@ const sectionVariants = {
 
 function DashboardPage() {
   const { isAuthenticated, isLoading, signIn, getIdTokenClaims } = useLogto()
+  const { latestTrades, latestGames, status } = useRealtime()
   const [activeModule, setActiveModule] = useState<
     'finance' | 'sports' | 'rss' | 'fantasy'
   >('finance')
@@ -111,7 +115,9 @@ function DashboardPage() {
         >
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${status === 'connected' ? 'bg-primary' : 'bg-secondary'} animate-pulse`}
+              />
               <span className="text-[10px] font-mono font-bold text-primary uppercase tracking-[0.25em]">
                 Dashboard
               </span>
@@ -208,8 +214,18 @@ function DashboardPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              {activeModule === 'finance' && <FinanceConfig />}
-              {activeModule === 'sports' && <SportsConfig />}
+              {activeModule === 'finance' && (
+                <FinanceConfig
+                  trades={latestTrades}
+                  connected={status === 'connected'}
+                />
+              )}
+              {activeModule === 'sports' && (
+                <SportsConfig
+                  games={latestGames}
+                  connected={status === 'connected'}
+                />
+              )}
               {activeModule === 'fantasy' && <FantasyConfig />}
               {activeModule === 'rss' && <RssConfig />}
             </motion.div>
@@ -257,15 +273,54 @@ function QuickStat({ label, value, color = 'text-base-content/80' }: any) {
   )
 }
 
-function FinanceConfig() {
-  const assets = [
-    { symbol: 'BTC', price: '67,892.34', change: '+2.47%', up: true },
-    { symbol: 'ETH', price: '3,421.18', change: '+1.23%', up: true },
-    { symbol: 'NVDA', price: '892.44', change: '-0.84%', up: false },
-    { symbol: 'AAPL', price: '178.32', change: '+0.31%', up: true },
-    { symbol: 'TSLA', price: '175.21', change: '-1.52%', up: false },
-    { symbol: 'GOOGL', price: '141.80', change: '+0.67%', up: true },
-  ]
+function FinanceConfig({
+  trades,
+  connected,
+}: {
+  trades: Array<Trade>
+  connected: boolean
+}) {
+  const assets =
+    trades.length > 0
+      ? trades
+      : [
+          {
+            symbol: 'BTC',
+            price: '67,892.34',
+            percentage_change: '+2.47%',
+            direction: 'up',
+          },
+          {
+            symbol: 'ETH',
+            price: '3,421.18',
+            percentage_change: '+1.23%',
+            direction: 'up',
+          },
+          {
+            symbol: 'NVDA',
+            price: '892.44',
+            percentage_change: '-0.84%',
+            direction: 'down',
+          },
+          {
+            symbol: 'AAPL',
+            price: '178.32',
+            percentage_change: '+0.31%',
+            direction: 'up',
+          },
+          {
+            symbol: 'TSLA',
+            price: '175.21',
+            percentage_change: '-1.52%',
+            direction: 'down',
+          },
+          {
+            symbol: 'GOOGL',
+            price: '141.80',
+            percentage_change: '+0.67%',
+            direction: 'up',
+          },
+        ]
 
   return (
     <div className="space-y-6">
@@ -280,10 +335,16 @@ function FinanceConfig() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1.5 px-2 py-1 rounded bg-primary/10 border border-primary/20">
-            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-            <span className="text-[9px] font-mono text-primary uppercase">
-              Connected
+          <span
+            className={`flex items-center gap-1.5 px-2 py-1 rounded ${connected ? 'bg-primary/10 border-primary/20' : 'bg-base-300/30 border-base-300'} border`}
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${connected ? 'bg-primary' : 'bg-base-content/30'} animate-pulse`}
+            />
+            <span
+              className={`text-[9px] font-mono ${connected ? 'text-primary' : 'text-base-content/50'} uppercase`}
+            >
+              {connected ? 'Connected' : 'Connecting...'}
             </span>
           </span>
         </div>
@@ -299,19 +360,27 @@ function FinanceConfig() {
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-bold font-mono">
-                {asset.symbol}
+                {asset.symbol.replace('BINANCE:', '')}
               </span>
-              {asset.up ? (
+              {asset.direction === 'up' ? (
                 <TrendingUp size={14} className="text-primary" />
               ) : (
                 <TrendingDown size={14} className="text-secondary" />
               )}
             </div>
-            <div className="text-lg font-bold font-mono">{asset.price}</div>
+            <div className="text-lg font-bold font-mono">
+              {typeof asset.price === 'number'
+                ? asset.price.toFixed(2)
+                : asset.price}
+            </div>
             <div
-              className={`text-xs font-mono ${asset.up ? 'text-primary' : 'text-secondary'}`}
+              className={`text-xs font-mono ${asset.direction === 'up' ? 'text-primary' : 'text-secondary'}`}
             >
-              {asset.change}
+              {typeof asset.percentage_change === 'number'
+                ? (asset.percentage_change > 0 ? '+' : '') +
+                  asset.percentage_change.toFixed(2) +
+                  '%'
+                : asset.percentage_change}
             </div>
           </motion.div>
         ))}
@@ -329,33 +398,44 @@ function FinanceConfig() {
   )
 }
 
-function SportsConfig() {
-  const games = [
+function SportsConfig({
+  games,
+  connected,
+}: {
+  games: Array<Game>
+  connected: boolean
+}) {
+  const demoGames = [
     {
       league: 'NBA',
-      home: 'LAL',
-      away: 'GSW',
-      time: 'Q4 2:34',
-      score: '112-108',
-      status: 'Live',
+      home_team_name: 'LAL',
+      away_team_name: 'GSW',
+      short_detail: 'Q4 2:34',
+      home_team_score: '112',
+      away_team_score: '108',
+      state: 'in_progress',
     },
     {
       league: 'NBA',
-      home: 'BOS',
-      away: 'NYK',
-      time: 'Q3 7:12',
-      score: '89-87',
-      status: 'Live',
+      home_team_name: 'BOS',
+      away_team_name: 'NYK',
+      short_detail: 'Q3 7:12',
+      home_team_score: '89',
+      away_team_score: '87',
+      state: 'in_progress',
     },
     {
       league: 'NFL',
-      home: 'KC',
-      away: 'BUF',
-      time: 'Q2 8:45',
-      score: '14-10',
-      status: 'Live',
+      home_team_name: 'KC',
+      away_team_name: 'BUF',
+      short_detail: 'Q2 8:45',
+      home_team_score: '14',
+      away_team_score: '10',
+      state: 'in_progress',
     },
   ]
+
+  const displayGames = games.length > 0 ? games : demoGames
 
   return (
     <div className="space-y-6">
@@ -369,16 +449,22 @@ function SportsConfig() {
             ESPN polling interval: 30s
           </p>
         </div>
-        <span className="flex items-center gap-1.5 px-2 py-1 rounded bg-primary/10 border border-primary/20">
-          <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-          <span className="text-[9px] font-mono text-primary uppercase">
-            Connected
+        <span
+          className={`flex items-center gap-1.5 px-2 py-1 rounded ${connected ? 'bg-primary/10 border-primary/20' : 'bg-base-300/30 border-base-300'} border`}
+        >
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${connected ? 'bg-primary' : 'bg-base-content/30'} animate-pulse`}
+          />
+          <span
+            className={`text-[9px] font-mono ${connected ? 'text-primary' : 'text-base-content/50'} uppercase`}
+          >
+            {connected ? 'Connected' : 'Connecting...'}
           </span>
         </span>
       </div>
 
       <div className="space-y-3">
-        {games.map((game, i) => (
+        {displayGames.map((game, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, y: 10 }}
@@ -391,22 +477,26 @@ function SportsConfig() {
                 {game.league}
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="h-1 w-1 rounded-full bg-primary animate-pulse" />
+                <span
+                  className={`h-1 w-1 rounded-full ${game.state?.includes('progress') ? 'bg-primary' : 'bg-base-content/30'} animate-pulse`}
+                />
                 <span className="text-[9px] font-mono text-primary uppercase">
-                  {game.status}
+                  {game.state?.replace('in_', '') || 'Live'}
                 </span>
               </span>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <span className="text-sm font-bold">{game.home}</span>
+                <span className="text-sm font-bold">{game.home_team_name}</span>
                 <span className="text-xs text-base-content/40">vs</span>
-                <span className="text-sm font-bold">{game.away}</span>
+                <span className="text-sm font-bold">{game.away_team_name}</span>
               </div>
               <div className="text-right">
-                <div className="text-sm font-bold font-mono">{game.score}</div>
+                <div className="text-sm font-bold font-mono">
+                  {game.home_team_score}-{game.away_team_score}
+                </div>
                 <div className="text-[10px] font-mono text-primary/60">
-                  {game.time}
+                  {game.short_detail}
                 </div>
               </div>
             </div>
