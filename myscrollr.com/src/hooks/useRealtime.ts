@@ -143,8 +143,8 @@ export function useRealtime() {
             return { ...prev, latestGames: newGames.slice(0, 50) }
           })
         } else if (table === 'yahoo_leagues') {
-          // Only accept leagues belonging to this user
-          if (userGuidRef.current && record.guid !== userGuidRef.current) return
+          // Only accept leagues belonging to this user — reject if GUID unknown or mismatched
+          if (!userGuidRef.current || record.guid !== userGuidRef.current) return
           setState((prev) => ({
             ...prev,
             yahoo: {
@@ -157,6 +157,7 @@ export function useRealtime() {
           }))
         } else if (table === 'yahoo_standings') {
           // Only accept standings for leagues we already know about
+          if (!userGuidRef.current) return
           setState((prev) => {
             if (!prev.yahoo.leagues[record.league_key]) return prev
             return {
@@ -171,6 +172,7 @@ export function useRealtime() {
             }
           })
         } else if (table === 'yahoo_matchups') {
+          if (!userGuidRef.current) return
           setState((prev) => ({
             ...prev,
             yahoo: {
@@ -193,15 +195,25 @@ export function useRealtime() {
       userGuidRef.current = firstLeague.guid
     }
 
+    // REST data is authoritative — it replaces SSE-accumulated state.
+    // SSE updates that arrived after this REST fetch are merged on top.
     setState((prev) => ({
       ...prev,
       yahoo: {
-        leagues: { ...yahoo.leagues, ...prev.yahoo.leagues },
-        standings: { ...yahoo.standings, ...prev.yahoo.standings },
-        matchups: { ...yahoo.matchups, ...prev.yahoo.matchups },
+        leagues: { ...prev.yahoo.leagues, ...yahoo.leagues },
+        standings: { ...prev.yahoo.standings, ...yahoo.standings },
+        matchups: { ...prev.yahoo.matchups, ...yahoo.matchups },
       },
     }))
   }
 
-  return { ...state, setInitialYahoo }
+  const clearYahoo = () => {
+    userGuidRef.current = null
+    setState((prev) => ({
+      ...prev,
+      yahoo: { leagues: {}, standings: {}, matchups: {} },
+    }))
+  }
+
+  return { ...state, setInitialYahoo, clearYahoo }
 }

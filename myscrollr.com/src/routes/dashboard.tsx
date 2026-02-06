@@ -45,7 +45,7 @@ const sectionVariants = {
 
 function DashboardPage() {
   const { isAuthenticated, isLoading, signIn, getIdTokenClaims, getAccessToken } = useLogto()
-  const { latestTrades, latestGames, yahoo, status, setInitialYahoo } = useRealtime()
+  const { latestTrades, latestGames, yahoo, status, setInitialYahoo, clearYahoo } = useRealtime()
   const [activeModule, setActiveModule] = useState<
     'finance' | 'sports' | 'rss' | 'fantasy'
   >('finance')
@@ -97,8 +97,14 @@ function DashboardPage() {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'yahoo-auth-complete') {
-        // Wait for Go API goroutine to write user to DB, then check status
-        setTimeout(() => fetchYahooData(), 2000)
+        // Poll for data after Yahoo connect — the Rust sync loop may take up to 2 min
+        // Try at 2s (for status), then 10s, 30s, 60s, 120s for league data
+        const delays = [2000, 10000, 30000, 60000, 120000]
+        const timeouts: ReturnType<typeof setTimeout>[] = []
+        for (const delay of delays) {
+          timeouts.push(setTimeout(() => fetchYahooData(), delay))
+        }
+        return () => timeouts.forEach(clearTimeout)
       }
     }
     window.addEventListener('message', handleMessage)
@@ -134,7 +140,7 @@ function DashboardPage() {
       })
       if (res.ok) {
         setYahooStatus({ connected: false, synced: false })
-        setInitialYahoo({ leagues: {}, standings: {}, matchups: {} })
+        clearYahoo()
       }
     } catch {
       // Silently fail
