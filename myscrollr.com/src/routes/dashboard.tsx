@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useLogto } from '@logto/react'
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Activity,
   Cpu,
@@ -51,10 +51,12 @@ function DashboardPage() {
   >('finance')
   const [userClaims, setUserClaims] = useState<IdTokenClaims>()
   const [yahooStatus, setYahooStatus] = useState<{ connected: boolean; synced: boolean }>({ connected: false, synced: false })
+  const getAccessTokenRef = useRef(getAccessToken)
+  getAccessTokenRef.current = getAccessToken
 
-  const checkYahooStatus = useCallback(async () => {
+  const checkYahooStatus = async () => {
     try {
-      const token = await getAccessToken(import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev')
+      const token = await getAccessTokenRef.current(import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev')
       const res = await fetch(
         `${import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'}/users/me/yahoo-status`,
         { headers: { Authorization: `Bearer ${token}` } },
@@ -66,14 +68,14 @@ function DashboardPage() {
     } catch {
       // Silently fail - status stays as disconnected
     }
-  }, [getAccessToken])
+  }
 
   useEffect(() => {
     if (isAuthenticated) {
       getIdTokenClaims().then(setUserClaims)
       checkYahooStatus()
     }
-  }, [isAuthenticated, getIdTokenClaims, checkYahooStatus])
+  }, [isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -84,7 +86,7 @@ function DashboardPage() {
     }
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [checkYahooStatus])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleYahooConnect = async () => {
     if (!userClaims?.sub) {

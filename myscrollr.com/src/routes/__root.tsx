@@ -1,6 +1,4 @@
 import { Outlet, createRootRoute } from '@tanstack/react-router'
-import { SpeedInsights } from '@vercel/speed-insights/react'
-import { Analytics } from '@vercel/analytics/react'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 import { CommandBackground } from '@/components/CommandBackground'
@@ -20,10 +18,6 @@ export const Route = createRootRoute({
 
       {/* Scanline Effect - Optional: Remove if too distracting */}
       <div className="scanlines pointer-events-none" />
-
-      {/* Performance Monitoring */}
-      <SpeedInsights />
-      <Analytics />
 
       {/* Navigation */}
       <Header />

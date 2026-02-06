@@ -15,8 +15,6 @@
     "@tailwindcss/vite": "^4.0.6",
     "@tanstack/react-router": "^1.132.0",
     "@tanstack/router-plugin": "^1.132.0",
-    "@vercel/analytics": "^1.5.0",
-    "@vercel/speed-insights": "^1.2.0",
     "lucide-react": "^0.545.0",
     "motion": "^12.23.24",
     "react": "^19.2.0",
