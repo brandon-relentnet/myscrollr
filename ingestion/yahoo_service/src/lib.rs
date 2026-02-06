@@ -83,7 +83,7 @@ async fn sync_user_data(
     let (leagues, opt_new_tokens) = yahoo_api::get_user_leagues(&tokens, http_client.clone()).await?;
     
     if let Some((_new_access, new_refresh)) = opt_new_tokens {
-        database::upsert_yahoo_user(&state.db_pool, user.guid.clone(), new_refresh).await?;
+        database::upsert_yahoo_user(&state.db_pool, user.guid.clone(), user.logto_sub.clone(), new_refresh).await?;
     }
 
     let all_leagues = [leagues.nba, leagues.nfl, leagues.nhl].concat();
