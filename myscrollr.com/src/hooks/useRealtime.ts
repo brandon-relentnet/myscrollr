@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import type { FantasyContent } from '../types/yahoo'
 
 // Define types locally if not available globally yet
 export interface Trade {
@@ -25,11 +24,37 @@ export interface Game {
   [key: string]: any
 }
 
+// Yahoo data as stored in DB rows (keyed by league_key/team_key)
+export interface YahooLeagueRecord {
+  league_key: string
+  guid: string
+  name: string
+  game_code: string
+  season: string
+  data: any // JSONB blob from yahoo API
+}
+
+export interface YahooStandingsRecord {
+  league_key: string
+  data: any
+}
+
+export interface YahooMatchupsRecord {
+  team_key: string
+  data: any
+}
+
+export interface YahooState {
+  leagues: Record<string, YahooLeagueRecord>
+  standings: Record<string, YahooStandingsRecord>
+  matchups: Record<string, YahooMatchupsRecord>
+}
+
 interface RealtimeState {
   status: 'connected' | 'disconnected' | 'reconnecting'
   latestTrades: Array<Trade>
   latestGames: Array<Game>
-  yahooData: FantasyContent | null
+  yahoo: YahooState
 }
 
 export function useRealtime() {
@@ -37,7 +62,7 @@ export function useRealtime() {
     status: 'disconnected',
     latestTrades: [],
     latestGames: [],
-    yahooData: null,
+    yahoo: { leagues: {}, standings: {}, matchups: {} },
   })
 
   const workerRef = useRef<SharedWorker | null>(null)
@@ -116,13 +141,38 @@ export function useRealtime() {
             return { ...prev, latestGames: newGames.slice(0, 50) }
           })
         } else if (table === 'yahoo_leagues') {
-          // Merge Yahoo Data
-          if (record.data) {
-            setState((prev) => ({
-              ...prev,
-              yahooData: record.data,
-            }))
-          }
+          setState((prev) => ({
+            ...prev,
+            yahoo: {
+              ...prev.yahoo,
+              leagues: {
+                ...prev.yahoo.leagues,
+                [record.league_key]: record,
+              },
+            },
+          }))
+        } else if (table === 'yahoo_standings') {
+          setState((prev) => ({
+            ...prev,
+            yahoo: {
+              ...prev.yahoo,
+              standings: {
+                ...prev.yahoo.standings,
+                [record.league_key]: record,
+              },
+            },
+          }))
+        } else if (table === 'yahoo_matchups') {
+          setState((prev) => ({
+            ...prev,
+            yahoo: {
+              ...prev.yahoo,
+              matchups: {
+                ...prev.yahoo.matchups,
+                [record.team_key]: record,
+              },
+            },
+          }))
         }
       })
     }

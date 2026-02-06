@@ -15,8 +15,7 @@ import {
 } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useRealtime } from '../hooks/useRealtime'
-import type { Game, Trade } from '../hooks/useRealtime'
-import type { FantasyContent } from '../types/yahoo'
+import type { Game, Trade, YahooState } from '../hooks/useRealtime'
 import type { IdTokenClaims } from '@logto/react'
 
 export const Route = createFileRoute('/dashboard')({
@@ -45,7 +44,7 @@ const sectionVariants = {
 
 function DashboardPage() {
   const { isAuthenticated, isLoading, signIn, getIdTokenClaims, getAccessToken } = useLogto()
-  const { latestTrades, latestGames, yahooData, status } = useRealtime()
+  const { latestTrades, latestGames, yahoo, status } = useRealtime()
   const [activeModule, setActiveModule] = useState<
     'finance' | 'sports' | 'rss' | 'fantasy'
   >('finance')
@@ -278,7 +277,7 @@ function DashboardPage() {
                 />
               )}
               {activeModule === 'fantasy' && (
-                <FantasyConfig yahooData={yahooData} yahooStatus={yahooStatus} onYahooConnect={handleYahooConnect} />
+                <FantasyConfig yahoo={yahoo} yahooStatus={yahooStatus} onYahooConnect={handleYahooConnect} />
               )}
               {activeModule === 'rss' && <RssConfig />}
             </motion.div>
@@ -568,22 +567,26 @@ const GAME_CODE_LABELS: Record<string, string> = {
 }
 
 function FantasyConfig({
-  yahooData,
+  yahoo,
   yahooStatus,
   onYahooConnect,
 }: {
-  yahooData: FantasyContent | null
+  yahoo: YahooState
   yahooStatus: { connected: boolean; synced: boolean }
   onYahooConnect?: () => void
 }) {
-  // Extract all leagues across all games
-  const allLeagues =
-    yahooData?.users?.user[0]?.games?.game?.flatMap((game) =>
-      (game.leagues?.league || []).map((league) => ({
-        ...league,
-        game_code: league.game_code || game.code,
-      })),
-    ) || []
+  // Build league list from DB records, merging standings data
+  const allLeagues = Object.values(yahoo.leagues).map((league) => {
+    const standings = yahoo.standings[league.league_key]
+    return {
+      league_key: league.league_key,
+      name: league.name,
+      game_code: league.game_code,
+      season: league.season,
+      num_teams: league.data?.num_teams || 0,
+      standings: standings?.data,
+    }
+  })
 
   return (
     <div className="space-y-6">
@@ -694,15 +697,14 @@ function LeagueCard({
     name: string
     game_code?: string
     num_teams: number
-    season?: number
-    standings?: {
-      teams: { team: Array<any> }
-    }
+    season?: string
+    standings?: any
   }
 }) {
   const sportLabel =
     GAME_CODE_LABELS[league.game_code || ''] || league.game_code || 'Fantasy'
-  const teams = league.standings?.teams.team || []
+  // Standings data is an array of team objects from the Rust ingestion
+  const teams = Array.isArray(league.standings) ? league.standings : (league.standings?.teams?.team || [])
 
   return (
     <motion.div
