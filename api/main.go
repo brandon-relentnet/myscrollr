@@ -109,12 +109,21 @@ func main() {
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
 	}))
 
-	// Rate Limiting
+	// Rate Limiting (skip health checks, SSE, and webhooks)
 	app.Use(limiter.New(limiter.Config{
-		Max:        60,
+		Max:        120,
 		Expiration: 1 * time.Minute,
 		KeyGenerator: func(c *fiber.Ctx) string {
 			return c.IP()
+		},
+		Next: func(c *fiber.Ctx) bool {
+			path := c.Path()
+			return path == "/health" ||
+				path == "/events" ||
+				path == "/sports/health" ||
+				path == "/finance/health" ||
+				path == "/yahoo/health" ||
+				path == "/webhooks/sequin"
 		},
 	}))
 
