@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useLogto } from '@logto/react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   Activity,
   Cpu,
@@ -52,7 +52,7 @@ function DashboardPage() {
   const [userClaims, setUserClaims] = useState<IdTokenClaims>()
   const [yahooStatus, setYahooStatus] = useState<{ connected: boolean; synced: boolean }>({ connected: false, synced: false })
 
-  const checkYahooStatus = async () => {
+  const checkYahooStatus = useCallback(async () => {
     try {
       const token = await getAccessToken(import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev')
       const res = await fetch(
@@ -66,25 +66,25 @@ function DashboardPage() {
     } catch {
       // Silently fail - status stays as disconnected
     }
-  }
+  }, [getAccessToken])
 
   useEffect(() => {
     if (isAuthenticated) {
       getIdTokenClaims().then(setUserClaims)
       checkYahooStatus()
     }
-  }, [isAuthenticated, getIdTokenClaims])
+  }, [isAuthenticated, getIdTokenClaims, checkYahooStatus])
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'yahoo-auth-complete') {
-        // Re-check status instead of full reload
-        checkYahooStatus()
+        // Wait for Go API goroutine to write user to DB, then check status
+        setTimeout(() => checkYahooStatus(), 2000)
       }
     }
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [])
+  }, [checkYahooStatus])
 
   const handleYahooConnect = async () => {
     if (!userClaims?.sub) {

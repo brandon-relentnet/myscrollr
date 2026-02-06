@@ -37,14 +37,12 @@ pub async fn start_active_sync(state: YahooWorkerState) {
 
     let client_id = std::env::var("YAHOO_CLIENT_ID").expect("YAHOO_CLIENT_ID must be set");
     let client_secret = std::env::var("YAHOO_CLIENT_SECRET").expect("YAHOO_CLIENT_SECRET must be set");
+    // YAHOO_CALLBACK_URL must be a full URL pointing to the Go API's callback endpoint
+    // e.g. https://api.myscrollr.relentnet.dev/yahoo/callback
+    // Do NOT use COOLIFY_FQDN here - it points to this ingestion service, not the API
     let callback_url = std::env::var("YAHOO_CALLBACK_URL")
         .ok()
-        .filter(|s| !s.is_empty() && !s.contains("{{"))
-        .or_else(|| {
-            std::env::var("COOLIFY_FQDN").ok()
-                .filter(|s| !s.is_empty() && !s.contains("{{"))
-                .map(|fqdn| format!("{}/yahoo/callback", fqdn.trim_end_matches('/')))
-        })
+        .filter(|s| !s.is_empty() && !s.contains("{{") && s.starts_with("https://"))
         .unwrap_or_else(|| "https://api.myscrollr.relentnet.dev/yahoo/callback".to_string());
     info!("Using callback URL: {}", callback_url);
 
