@@ -66,6 +66,8 @@ func main() {
 
 	ConnectRedis()
 	defer rdb.Close()
+	
+	InitHub()
 
 	InitYahoo()
 	InitAuth()
@@ -120,10 +122,12 @@ func main() {
 
 	// --- Public Routes ---
 	app.Get("/health", HealthCheck)
+	app.Get("/events", StreamEvents)
 	app.Get("/sports/health", SportsHealth)
 	app.Get("/finance/health", FinanceHealth)
 	app.Get("/yahoo/health", YahooHealth)
 	app.Get("/yahoo/callback", YahooCallback)
+	app.Post("/webhooks/sequin", HandleSequinWebhook)
 	// Old Logto auth routes removed - frontend now uses Logto SDK directly
 	app.Get("/", LandingPage)
 
