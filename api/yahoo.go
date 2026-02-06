@@ -149,7 +149,10 @@ func YahooCallback(c *fiber.Ctx) error {
 	if err != nil || val == "" { return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Status: "error", Error: "Invalid or expired state"}) }
 	
 	// Retrieve logto_sub associated with this state
-	logtoSub, _ := rdb.Get(context.Background(), "yahoo_state_logto:"+state).Result()
+	logtoSub, err := rdb.Get(context.Background(), "yahoo_state_logto:"+state).Result()
+	if err != nil {
+		log.Printf("[Yahoo Callback] Warning: Failed to retrieve logto_sub from Redis for state %s: %v", state, err)
+	}
 	
 	token, err := yahooConfig.Exchange(context.Background(), code)
 	if err != nil { return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to exchange code"}) }

@@ -57,6 +57,16 @@ function DashboardPage() {
     }
   }, [isAuthenticated, getIdTokenClaims])
 
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'yahoo-auth-complete') {
+        window.location.reload()
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
+
   const handleYahooConnect = async () => {
     if (!userClaims?.sub) {
       // If no sub, refresh claims
