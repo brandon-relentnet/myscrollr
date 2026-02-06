@@ -145,8 +145,20 @@ func LogtoAuth(c *fiber.Ctx) error {
 			expectedAudience = fmt.Sprintf("https://%s", fqdn)
 		}
 	}
-	aud, _ := claims["aud"].(string)
-	if expectedAudience != "" && aud != expectedAudience {
+	// Logto can return aud as a string or a JSON array — handle both
+	audValid := false
+	switch audClaim := claims["aud"].(type) {
+	case string:
+		audValid = audClaim == expectedAudience
+	case []interface{}:
+		for _, a := range audClaim {
+			if s, ok := a.(string); ok && s == expectedAudience {
+				audValid = true
+				break
+			}
+		}
+	}
+	if expectedAudience != "" && !audValid {
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "unauthorized",
 			Error:  "Invalid token audience",
