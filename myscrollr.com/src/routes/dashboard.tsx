@@ -97,7 +97,7 @@ function DashboardPage() {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'yahoo-auth-complete') {
         // Wait for Go API goroutine to write user to DB, then check status
-        setTimeout(() => checkYahooStatus(), 2000)
+        setTimeout(() => fetchYahooData(), 2000)
       }
     }
     window.addEventListener('message', handleMessage)
