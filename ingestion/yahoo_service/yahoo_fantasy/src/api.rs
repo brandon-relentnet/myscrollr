@@ -1,7 +1,7 @@
 use anyhow::{Context, anyhow};
 pub use oauth2::{http::header, reqwest::Client};
 use secrecy::{ExposeSecret, SecretString};
-use log::{error, info};
+use log::{error, info, debug};
 
 use crate::{debug::LeagueStats, error::YahooError, stats::StatDecode, types::{LeagueStandings, Leagues, Matchup, MatchupTeam, Matchups, Roster, Tokens, UserLeague}, utilities::write_stat_pairs_to_file, xml_leagues, xml_matchups, xml_roster, xml_settings::{self, Stat}, xml_standings};
 
@@ -85,6 +85,11 @@ pub async fn get_user_leagues(tokens: &Tokens, client: Client) -> anyhow::Result
         };
 
         for league in league_data {
+            debug!(
+                "League {} ({}) season={} is_finished={:?} current_week={:?} start_week={:?} end_week={:?} draft_status={}",
+                league.league_key, league.name, league.season,
+                league.is_finished, league.current_week, league.start_week, league.end_week, league.draft_status
+            );
             let user_league = UserLeague {
                 league_key: league.league_key,
                 league_id: league.league_id,

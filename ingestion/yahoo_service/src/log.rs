@@ -14,7 +14,7 @@ pub struct AsyncLogger {
 
 impl Log for AsyncLogger {
     fn enabled(&self, metadata: &log::Metadata) -> bool {
-        metadata.level() <= Level::Info
+        metadata.level() <= Level::Debug
     }
 
     fn log(&self, record: &log::Record) {
