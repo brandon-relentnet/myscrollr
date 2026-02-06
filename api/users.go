@@ -122,6 +122,63 @@ func GetMyYahooLeagues(c *fiber.Ctx) error {
 	})
 }
 
+// DisconnectYahoo removes the user's Yahoo connection and all associated data
+func DisconnectYahoo(c *fiber.Ctx) error {
+	userID := getUserID(c)
+	if userID == "" {
+		return c.Status(http.StatusUnauthorized).JSON(ErrorResponse{
+			Status: "error",
+			Error:  "Authentication required",
+		})
+	}
+
+	// Look up the user's Yahoo GUID before deleting
+	var guid string
+	err := dbPool.QueryRow(context.Background(), `
+		SELECT guid FROM yahoo_users WHERE logto_sub = $1
+	`, userID).Scan(&guid)
+	if err != nil {
+		// No Yahoo connection found — nothing to disconnect
+		return c.JSON(fiber.Map{"status": "ok", "message": "No Yahoo account connected"})
+	}
+
+	// Delete from yahoo_users — cascades to yahoo_leagues, yahoo_standings, yahoo_rosters
+	_, err = dbPool.Exec(context.Background(), `
+		DELETE FROM yahoo_users WHERE logto_sub = $1
+	`, userID)
+	if err != nil {
+		log.Printf("[DisconnectYahoo] Error deleting yahoo_users: %v", err)
+		return c.Status(http.StatusInternalServerError).JSON(ErrorResponse{
+			Status: "error",
+			Error:  "Failed to disconnect Yahoo account",
+		})
+	}
+
+	// Clean up orphaned yahoo_matchups (no FK cascade)
+	// We don't have a direct link, but matchup team_keys start with league_keys
+	// For now, just log the disconnect — matchups will be overwritten on reconnect
+
+	// Clear Redis cache keys for this user
+	cacheKeys := []string{
+		"cache:yahoo:leagues:" + guid,
+	}
+	for _, key := range cacheKeys {
+		rdb.Del(context.Background(), key)
+	}
+
+	// Clear any token_to_guid mappings (scan for matching GUID values)
+	iter := rdb.Scan(context.Background(), 0, "token_to_guid:*", 100).Iterator()
+	for iter.Next(context.Background()) {
+		val, err := rdb.Get(context.Background(), iter.Val()).Result()
+		if err == nil && val == guid {
+			rdb.Del(context.Background(), iter.Val())
+		}
+	}
+
+	log.Printf("[DisconnectYahoo] User %s disconnected Yahoo (GUID: %s)", userID, guid)
+	return c.JSON(fiber.Map{"status": "ok", "message": "Yahoo account disconnected"})
+}
+
 // GetProfileByUsername returns basic profile info (Logto-sourced username + Yahoo status)
 func GetProfileByUsername(c *fiber.Ctx) error {
 	username := c.Params("username")

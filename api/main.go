@@ -161,6 +161,7 @@ func main() {
 	api.Get("/users/:username", GetProfileByUsername)
 	api.Get("/users/me/yahoo-status", LogtoAuth, GetYahooStatus)
 	api.Get("/users/me/yahoo-leagues", LogtoAuth, GetMyYahooLeagues)
+	api.Delete("/users/me/yahoo", LogtoAuth, DisconnectYahoo)
 
 	port := os.Getenv("PORT")
 	if port == "" {

@@ -6,6 +6,7 @@ import {
   Cpu,
   Ghost,
   Link2,
+  Unlink,
   Plus,
   Settings,
   Settings2,
@@ -121,6 +122,22 @@ function DashboardPage() {
         'yahoo-auth',
         'width=600,height=700',
       )
+    }
+  };
+
+  const handleYahooDisconnect = async () => {
+    try {
+      const token = await getAccessTokenRef.current(apiUrl)
+      const res = await fetch(`${apiUrl}/users/me/yahoo`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        setYahooStatus({ connected: false, synced: false })
+        setInitialYahoo({ leagues: {}, standings: {}, matchups: {} })
+      }
+    } catch {
+      // Silently fail
     }
   };
 
@@ -294,7 +311,7 @@ function DashboardPage() {
                 />
               )}
               {activeModule === 'fantasy' && (
-                <FantasyConfig yahoo={yahoo} yahooStatus={yahooStatus} onYahooConnect={handleYahooConnect} />
+                <FantasyConfig yahoo={yahoo} yahooStatus={yahooStatus} onYahooConnect={handleYahooConnect} onYahooDisconnect={handleYahooDisconnect} />
               )}
               {activeModule === 'rss' && <RssConfig />}
             </motion.div>
@@ -587,10 +604,12 @@ function FantasyConfig({
   yahoo,
   yahooStatus,
   onYahooConnect,
+  onYahooDisconnect,
 }: {
   yahoo: YahooState
   yahooStatus: { connected: boolean; synced: boolean }
   onYahooConnect?: () => void
+  onYahooDisconnect?: () => void
 }) {
   // Build league list from DB records, merging standings data
   const allLeagues = Object.values(yahoo.leagues)
@@ -696,18 +715,30 @@ function FantasyConfig({
         <LeagueCard key={league.league_key} league={league} />
       ))}
 
-      {/* Connect More */}
-      {allLeagues.length > 0 && (
-        <motion.button
-          onClick={onYahooConnect}
-          whileHover={{ scale: 1.01 }}
-          className="w-full p-4 rounded-lg border border-dashed border-base-300/50 text-base-content/40 hover:text-primary hover:border-primary/30 transition-all flex items-center justify-center gap-2"
-        >
-          <Link2 size={16} />
-          <span className="text-xs uppercase tracking-wide">
-            Reconnect Yahoo Account
-          </span>
-        </motion.button>
+      {/* Account Actions */}
+      {yahooStatus.connected && (
+        <div className="flex gap-3">
+          <motion.button
+            onClick={onYahooConnect}
+            whileHover={{ scale: 1.01 }}
+            className="flex-1 p-4 rounded-lg border border-dashed border-base-300/50 text-base-content/40 hover:text-primary hover:border-primary/30 transition-all flex items-center justify-center gap-2"
+          >
+            <Link2 size={16} />
+            <span className="text-xs uppercase tracking-wide">
+              Reconnect Yahoo
+            </span>
+          </motion.button>
+          <motion.button
+            onClick={onYahooDisconnect}
+            whileHover={{ scale: 1.01 }}
+            className="p-4 rounded-lg border border-dashed border-base-300/50 text-base-content/40 hover:text-error hover:border-error/30 transition-all flex items-center justify-center gap-2"
+          >
+            <Unlink size={16} />
+            <span className="text-xs uppercase tracking-wide">
+              Disconnect
+            </span>
+          </motion.button>
+        </div>
       )}
     </div>
   )
