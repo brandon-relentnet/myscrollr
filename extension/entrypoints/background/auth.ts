@@ -1,7 +1,7 @@
 import {
+  API_URL,
   LOGTO_ENDPOINT,
   LOGTO_APP_ID,
-  LOGTO_RESOURCE,
 } from '~/utils/constants';
 import {
   authToken,
@@ -41,16 +41,13 @@ async function exchangeCodeForToken(
   redirectUri: string,
   codeVerifier: string,
 ): Promise<TokenResponse> {
-  const response = await fetch(`${LOGTO_ENDPOINT}/oidc/token`, {
+  const response = await fetch(`${API_URL}/extension/token`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'authorization_code',
-      client_id: LOGTO_APP_ID,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
       code,
       redirect_uri: redirectUri,
       code_verifier: codeVerifier,
-      resource: LOGTO_RESOURCE,
     }),
   });
 
@@ -65,14 +62,11 @@ async function exchangeCodeForToken(
 async function refreshAccessToken(
   refreshToken: string,
 ): Promise<TokenResponse> {
-  const response = await fetch(`${LOGTO_ENDPOINT}/oidc/token`, {
+  const response = await fetch(`${API_URL}/extension/token/refresh`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      client_id: LOGTO_APP_ID,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
       refresh_token: refreshToken,
-      resource: LOGTO_RESOURCE,
     }),
   });
 
@@ -123,7 +117,7 @@ async function doLogin(): Promise<boolean> {
       redirect_uri: redirectUri,
       response_type: 'code',
       scope: 'openid profile email offline_access',
-      resource: LOGTO_RESOURCE,
+      resource: API_URL,
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
       prompt: 'consent',
