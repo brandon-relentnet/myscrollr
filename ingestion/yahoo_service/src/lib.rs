@@ -39,7 +39,12 @@ pub async fn start_active_sync(state: YahooWorkerState) {
     let client_secret = std::env::var("YAHOO_CLIENT_SECRET").expect("YAHOO_CLIENT_SECRET must be set");
     let callback_url = std::env::var("YAHOO_CALLBACK_URL")
         .ok()
-        .filter(|s| !s.is_empty())
+        .filter(|s| !s.is_empty() && !s.contains("{{"))
+        .or_else(|| {
+            std::env::var("COOLIFY_FQDN").ok()
+                .filter(|s| !s.is_empty() && !s.contains("{{"))
+                .map(|fqdn| format!("{}/yahoo/callback", fqdn.trim_end_matches('/')))
+        })
         .unwrap_or_else(|| "https://api.myscrollr.relentnet.dev/yahoo/callback".to_string());
     info!("Using callback URL: {}", callback_url);
 

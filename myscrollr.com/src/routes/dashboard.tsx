@@ -54,7 +54,7 @@ function DashboardPage() {
 
   const checkYahooStatus = async () => {
     try {
-      const token = await getAccessToken(`${import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'}/`)
+      const token = await getAccessToken(import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev')
       const res = await fetch(
         `${import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'}/users/me/yahoo-status`,
         { headers: { Authorization: `Bearer ${token}` } },
