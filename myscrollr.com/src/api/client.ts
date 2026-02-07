@@ -9,7 +9,6 @@ export interface UserPreferences {
   feed_position: 'top' | 'bottom'
   feed_behavior: 'overlay' | 'push'
   feed_enabled: boolean
-  active_tabs: ('finance' | 'sports')[]
   enabled_sites: string[]
   disabled_sites: string[]
   updated_at: string

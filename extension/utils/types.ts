@@ -53,7 +53,6 @@ export interface UserPreferences {
   feed_position: FeedPosition;
   feed_behavior: FeedBehavior;
   feed_enabled: boolean;
-  active_tabs: FeedCategory[];
   enabled_sites: string[];
   disabled_sites: string[];
   updated_at: string;

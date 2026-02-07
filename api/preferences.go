@@ -12,46 +12,42 @@ import (
 // getOrCreatePreferences fetches preferences for a user, creating defaults if none exist.
 func getOrCreatePreferences(logtoSub string) (*UserPreferences, error) {
 	var prefs UserPreferences
-	var activeTabs, enabledSites, disabledSites []byte
+	var enabledSites, disabledSites []byte
 	var updatedAt time.Time
 
 	err := dbPool.QueryRow(context.Background(),
 		`SELECT logto_sub, feed_mode, feed_position, feed_behavior, feed_enabled,
-		        active_tabs, enabled_sites, disabled_sites, updated_at
+		        enabled_sites, disabled_sites, updated_at
 		 FROM user_preferences WHERE logto_sub = $1`, logtoSub,
 	).Scan(
 		&prefs.LogtoSub, &prefs.FeedMode, &prefs.FeedPosition, &prefs.FeedBehavior,
-		&prefs.FeedEnabled, &activeTabs, &enabledSites, &disabledSites, &updatedAt,
+		&prefs.FeedEnabled, &enabledSites, &disabledSites, &updatedAt,
 	)
 
 	if err != nil {
 		// Row doesn't exist — insert defaults and return them
-		var atBytes, esBytes, dsBytes []byte
+		var esBytes, dsBytes []byte
 		var insertedAt time.Time
 		err = dbPool.QueryRow(context.Background(),
 			`INSERT INTO user_preferences (logto_sub)
 			 VALUES ($1)
 			 ON CONFLICT (logto_sub) DO UPDATE SET logto_sub = EXCLUDED.logto_sub
 			 RETURNING logto_sub, feed_mode, feed_position, feed_behavior, feed_enabled,
-			           active_tabs, enabled_sites, disabled_sites, updated_at`,
+			           enabled_sites, disabled_sites, updated_at`,
 			logtoSub,
 		).Scan(
 			&prefs.LogtoSub, &prefs.FeedMode, &prefs.FeedPosition, &prefs.FeedBehavior,
-			&prefs.FeedEnabled, &atBytes, &esBytes, &dsBytes, &insertedAt,
+			&prefs.FeedEnabled, &esBytes, &dsBytes, &insertedAt,
 		)
 		if err != nil {
 			return nil, err
 		}
-		activeTabs = atBytes
 		enabledSites = esBytes
 		disabledSites = dsBytes
 		updatedAt = insertedAt
 	}
 
 	// Unmarshal JSONB fields
-	if err := json.Unmarshal(activeTabs, &prefs.ActiveTabs); err != nil {
-		prefs.ActiveTabs = []string{"finance", "sports"}
-	}
 	if err := json.Unmarshal(enabledSites, &prefs.EnabledSites); err != nil {
 		prefs.EnabledSites = []string{}
 	}
@@ -155,25 +151,6 @@ func HandleUpdatePreferences(c *fiber.Ctx) error {
 			})
 		}
 	}
-	if v, ok := body["active_tabs"]; ok {
-		arr, isArr := v.([]interface{})
-		if !isArr {
-			return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
-				Status: "error",
-				Error:  "active_tabs must be an array",
-			})
-		}
-		allowed := map[string]bool{"finance": true, "sports": true}
-		for _, item := range arr {
-			s, isStr := item.(string)
-			if !isStr || !allowed[s] {
-				return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
-					Status: "error",
-					Error:  "active_tabs must be a subset of ['finance', 'sports']",
-				})
-			}
-		}
-	}
 	if v, ok := body["enabled_sites"]; ok {
 		if _, isArr := v.([]interface{}); !isArr {
 			return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
@@ -192,18 +169,15 @@ func HandleUpdatePreferences(c *fiber.Ctx) error {
 	}
 
 	// Build the UPSERT query dynamically based on provided fields
-	// Start with defaults for all columns, then override with provided values
-	// This ensures the row exists after the operation
 	query := `
-		INSERT INTO user_preferences (logto_sub, feed_mode, feed_position, feed_behavior, feed_enabled, active_tabs, enabled_sites, disabled_sites, updated_at)
+		INSERT INTO user_preferences (logto_sub, feed_mode, feed_position, feed_behavior, feed_enabled, enabled_sites, disabled_sites, updated_at)
 		VALUES ($1,
 			COALESCE($2, 'comfort'),
 			COALESCE($3, 'bottom'),
 			COALESCE($4, 'overlay'),
 			COALESCE($5, true),
-			COALESCE($6, '["finance","sports"]'::jsonb),
+			COALESCE($6, '[]'::jsonb),
 			COALESCE($7, '[]'::jsonb),
-			COALESCE($8, '[]'::jsonb),
 			now()
 		)
 		ON CONFLICT (logto_sub) DO UPDATE SET
@@ -211,18 +185,17 @@ func HandleUpdatePreferences(c *fiber.Ctx) error {
 			feed_position  = COALESCE($3, user_preferences.feed_position),
 			feed_behavior  = COALESCE($4, user_preferences.feed_behavior),
 			feed_enabled   = COALESCE($5, user_preferences.feed_enabled),
-			active_tabs    = COALESCE($6, user_preferences.active_tabs),
-			enabled_sites  = COALESCE($7, user_preferences.enabled_sites),
-			disabled_sites = COALESCE($8, user_preferences.disabled_sites),
+			enabled_sites  = COALESCE($6, user_preferences.enabled_sites),
+			disabled_sites = COALESCE($7, user_preferences.disabled_sites),
 			updated_at     = now()
 		RETURNING logto_sub, feed_mode, feed_position, feed_behavior, feed_enabled,
-		          active_tabs, enabled_sites, disabled_sites, updated_at
+		          enabled_sites, disabled_sites, updated_at
 	`
 
 	// Extract nullable parameters
 	var feedMode, feedPosition, feedBehavior *string
 	var feedEnabled *bool
-	var activeTabsJSON, enabledSitesJSON, disabledSitesJSON []byte
+	var enabledSitesJSON, disabledSitesJSON []byte
 
 	if v, ok := body["feed_mode"].(string); ok {
 		feedMode = &v
@@ -236,10 +209,6 @@ func HandleUpdatePreferences(c *fiber.Ctx) error {
 	if v, ok := body["feed_enabled"].(bool); ok {
 		feedEnabled = &v
 	}
-	if v, ok := body["active_tabs"]; ok {
-		b, _ := json.Marshal(v)
-		activeTabsJSON = b
-	}
 	if v, ok := body["enabled_sites"]; ok {
 		b, _ := json.Marshal(v)
 		enabledSitesJSON = b
@@ -250,15 +219,15 @@ func HandleUpdatePreferences(c *fiber.Ctx) error {
 	}
 
 	var prefs UserPreferences
-	var atBytes, esBytes, dsBytes []byte
+	var esBytes, dsBytes []byte
 	var updatedAt time.Time
 
 	err := dbPool.QueryRow(context.Background(), query,
 		logtoSub, feedMode, feedPosition, feedBehavior, feedEnabled,
-		activeTabsJSON, enabledSitesJSON, disabledSitesJSON,
+		enabledSitesJSON, disabledSitesJSON,
 	).Scan(
 		&prefs.LogtoSub, &prefs.FeedMode, &prefs.FeedPosition, &prefs.FeedBehavior,
-		&prefs.FeedEnabled, &atBytes, &esBytes, &dsBytes, &updatedAt,
+		&prefs.FeedEnabled, &esBytes, &dsBytes, &updatedAt,
 	)
 	if err != nil {
 		log.Printf("[Preferences] Error updating preferences for %s: %v", logtoSub, err)
@@ -269,9 +238,6 @@ func HandleUpdatePreferences(c *fiber.Ctx) error {
 	}
 
 	// Unmarshal JSONB fields
-	if err := json.Unmarshal(atBytes, &prefs.ActiveTabs); err != nil {
-		prefs.ActiveTabs = []string{"finance", "sports"}
-	}
 	if err := json.Unmarshal(esBytes, &prefs.EnabledSites); err != nil {
 		prefs.EnabledSites = []string{}
 	}

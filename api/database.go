@@ -142,7 +142,6 @@ func ConnectDB() {
 			feed_position  TEXT NOT NULL DEFAULT 'bottom',
 			feed_behavior  TEXT NOT NULL DEFAULT 'overlay',
 			feed_enabled   BOOLEAN NOT NULL DEFAULT true,
-			active_tabs    JSONB NOT NULL DEFAULT '["finance","sports"]',
 			enabled_sites  JSONB NOT NULL DEFAULT '[]',
 			disabled_sites JSONB NOT NULL DEFAULT '[]',
 			updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()

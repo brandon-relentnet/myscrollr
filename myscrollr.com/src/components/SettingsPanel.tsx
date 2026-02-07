@@ -28,7 +28,6 @@ const DEFAULT_PREFS: UserPreferences = {
   feed_position: 'bottom',
   feed_behavior: 'overlay',
   feed_enabled: true,
-  active_tabs: ['finance', 'sports'],
   enabled_sites: [],
   disabled_sites: [],
   updated_at: '',

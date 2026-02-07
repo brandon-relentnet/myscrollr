@@ -39,7 +39,6 @@ type UserPreferences struct {
 	FeedPosition  string   `json:"feed_position"`
 	FeedBehavior  string   `json:"feed_behavior"`
 	FeedEnabled   bool     `json:"feed_enabled"`
-	ActiveTabs    []string `json:"active_tabs"`
 	EnabledSites  []string `json:"enabled_sites"`
 	DisabledSites []string `json:"disabled_sites"`
 	UpdatedAt     string   `json:"updated_at"`

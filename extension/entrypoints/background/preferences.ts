@@ -8,6 +8,10 @@ import {
   enabledSites,
   disabledSites,
 } from '~/utils/storage';
+
+// NOTE: activeFeedTabs is used for stream-derived tab computation only
+// (see syncActiveTabs). Streams are the single source of truth for which
+// data categories are active.
 import { refreshDashboard } from './messaging';
 
 // ── Stream visibility tracking ────────────────────────────────────
@@ -89,7 +93,6 @@ export async function applyServerPreferences(prefs: UserPreferences): Promise<vo
     feedPosition.setValue(prefs.feed_position),
     feedBehavior.setValue(prefs.feed_behavior),
     feedEnabled.setValue(prefs.feed_enabled),
-    activeFeedTabs.setValue(prefs.active_tabs),
     enabledSites.setValue(prefs.enabled_sites),
     disabledSites.setValue(prefs.disabled_sites),
   ]);
