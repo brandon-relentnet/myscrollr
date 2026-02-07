@@ -61,6 +61,14 @@ function DashboardPage() {
   const [yahooPending, setYahooPending] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  const getToken = useCallback(
+    async (): Promise<string | null> => {
+      const token = await getAccessToken(apiUrl)
+      return token ?? null
+    },
+    [getAccessToken, apiUrl],
+  )
+
   // Returns true if leagues were found
   const fetchYahooData = async (): Promise<boolean> => {
     try {
@@ -227,14 +235,6 @@ function DashboardPage() {
       </div>
     )
   }
-
-  const getToken = useCallback(
-    async (): Promise<string | null> => {
-      const token = await getAccessToken(apiUrl)
-      return token ?? null
-    },
-    [getAccessToken, apiUrl],
-  )
 
   return (
     <motion.div
