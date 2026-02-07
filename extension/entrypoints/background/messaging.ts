@@ -3,7 +3,7 @@ import type { ConnectionStatus, DashboardResponse } from '~/utils/types';
 import { API_URL, FRONTEND_URL } from '~/utils/constants';
 import { getState, setOnUpdate, mergeDashboardData } from './sse';
 import { login, logout, getValidToken, isAuthenticated } from './auth';
-import { applyServerPreferences } from './preferences';
+import { applyServerPreferences, initStreamsVisibility } from './preferences';
 
 // ── Broadcast to all listeners ───────────────────────────────────
 
@@ -122,6 +122,11 @@ export function setupMessageListeners() {
                   if (data.preferences) {
                     applyServerPreferences(data.preferences);
                   }
+
+                  // Initialise stream visibility from server state
+                  if (data.streams) {
+                    initStreamsVisibility(data.streams);
+                  }
                 })
                 .catch((err) => {
                   console.error('[Scrollr] Dashboard fetch failed:', err);
@@ -148,6 +153,11 @@ export function setupMessageListeners() {
               // Apply server preferences to local storage
               if (data.preferences) {
                 applyServerPreferences(data.preferences);
+              }
+
+              // Initialise stream visibility from server state
+              if (data.streams) {
+                initStreamsVisibility(data.streams);
               }
             })
             .catch((err) => {

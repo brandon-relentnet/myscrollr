@@ -1,7 +1,7 @@
 import { startSSE, setupKeepAlive, mergeDashboardData } from './sse';
 import { setupBroadcasting, setupMessageListeners, broadcast } from './messaging';
 import { setOnAuthExpired, isAuthenticated, getValidToken } from './auth';
-import { applyServerPreferences } from './preferences';
+import { applyServerPreferences, initStreamsVisibility } from './preferences';
 import { API_URL } from '~/utils/constants';
 import type { DashboardResponse } from '~/utils/types';
 
@@ -41,6 +41,9 @@ export default defineBackground({
         broadcast({ type: 'INITIAL_DATA', payload: data });
         if (data.preferences) {
           await applyServerPreferences(data.preferences);
+        }
+        if (data.streams) {
+          await initStreamsVisibility(data.streams);
         }
       } catch {
         // Non-critical — preferences will sync on next login or CDC event

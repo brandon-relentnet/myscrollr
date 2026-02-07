@@ -1,6 +1,6 @@
 import { SSE_URL, SSE_RECONNECT_BASE, SSE_RECONNECT_MAX, MAX_ITEMS } from '~/utils/constants';
 import type { Trade, Game, ConnectionStatus, SSEPayload, CDCRecord } from '~/utils/types';
-import { handlePreferenceUpdate } from './preferences';
+import { handlePreferenceUpdate, handleStreamUpdate, handleStreamDelete } from './preferences';
 
 // ── In-memory state ──────────────────────────────────────────────
 
@@ -104,6 +104,12 @@ function processCDCRecord(cdc: CDCRecord) {
   } else if (table === 'user_preferences') {
     if (cdc.action === 'insert' || cdc.action === 'update') {
       handlePreferenceUpdate(cdc.record);
+    }
+  } else if (table === 'user_streams') {
+    if (cdc.action === 'insert' || cdc.action === 'update') {
+      handleStreamUpdate(cdc.record);
+    } else if (cdc.action === 'delete') {
+      handleStreamDelete(cdc.record);
     }
   }
   // Ignore unknown tables silently (yahoo_* etc. for future use)
