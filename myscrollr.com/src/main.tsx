@@ -16,20 +16,6 @@ const logtoConfig: LogtoConfig = {
   resources: ['https://api.myscrollr.relentnet.dev'],
 }
 
-const spaRedirectKey = '__doubleup_spa_redirect__'
-
-if (typeof window !== 'undefined') {
-  const pendingRedirect = sessionStorage.getItem(spaRedirectKey)
-  if (pendingRedirect) {
-    sessionStorage.removeItem(spaRedirectKey)
-    const target =
-      pendingRedirect.startsWith('/') || pendingRedirect.startsWith('#')
-        ? pendingRedirect
-        : `/${pendingRedirect}`
-    window.history.replaceState(null, '', target)
-  }
-}
-
 // Create a new router instance
 const router = createRouter({
   routeTree,
