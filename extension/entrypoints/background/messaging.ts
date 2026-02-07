@@ -68,6 +68,28 @@ async function fetchDashboardData() {
   return response.json();
 }
 
+/**
+ * Fetches the full dashboard state and merges it into the background's
+ * in-memory data. Used on login, startup, and when stream config changes
+ * (so that existing items for newly-subscribed feeds are loaded immediately).
+ */
+export async function refreshDashboard(): Promise<void> {
+  try {
+    const data: DashboardResponse = await fetchDashboardData();
+    mergeDashboardData(data.finance || [], data.sports || [], data.rss || []);
+    broadcast({ type: 'INITIAL_DATA', payload: data });
+
+    if (data.preferences) {
+      applyServerPreferences(data.preferences);
+    }
+    if (data.streams) {
+      initStreamsVisibility(data.streams);
+    }
+  } catch (err) {
+    console.error('[Scrollr] Dashboard refresh failed:', err);
+  }
+}
+
 // ── Message listeners ────────────────────────────────────────────
 
 export function setupMessageListeners() {

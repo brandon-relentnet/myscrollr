@@ -8,6 +8,7 @@ import {
   enabledSites,
   disabledSites,
 } from '~/utils/storage';
+import { refreshDashboard } from './messaging';
 
 // ── Stream visibility tracking ────────────────────────────────────
 // Module-scoped map of stream type → visible. CDC sends one row at a
@@ -54,6 +55,10 @@ export async function handleStreamUpdate(record: Record<string, unknown>): Promi
 
   streamVisibility.set(streamType, Boolean(record.visible));
   await syncActiveTabs();
+
+  // Refetch dashboard so that existing items for newly-subscribed feeds
+  // (e.g. RSS) are loaded immediately — CDC only delivers future changes.
+  refreshDashboard();
 }
 
 /**
@@ -67,6 +72,9 @@ export async function handleStreamDelete(record: Record<string, unknown>): Promi
 
   streamVisibility.delete(streamType);
   await syncActiveTabs();
+
+  // Refetch dashboard to clear items from the removed stream.
+  refreshDashboard();
 }
 
 // ── Preferences ───────────────────────────────────────────────────
