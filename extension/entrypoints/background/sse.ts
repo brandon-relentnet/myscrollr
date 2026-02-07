@@ -34,15 +34,12 @@ export function getState() {
 }
 
 export function mergeDashboardData(newTrades: Trade[], newGames: Game[], newRssItems: RssItem[] = []) {
-  for (const trade of newTrades) {
-    upsertTrade(trade as unknown as Record<string, unknown>);
-  }
-  for (const game of newGames) {
-    upsertGame(game as unknown as Record<string, unknown>);
-  }
-  for (const item of newRssItems) {
-    upsertRssItem(item as unknown as Record<string, unknown>);
-  }
+  // Dashboard response is the authoritative snapshot for this user —
+  // replace in-memory arrays rather than upserting into stale data.
+  // SSE CDC events arriving after this will upsert on top correctly.
+  trades = [...newTrades];
+  games = [...newGames];
+  rssItems = [...newRssItems];
 }
 
 // ── Upsert helpers ───────────────────────────────────────────────
