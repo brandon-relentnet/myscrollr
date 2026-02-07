@@ -61,9 +61,42 @@ function DashboardPage() {
   const [yahooPending, setYahooPending] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  // ── Prevent remount/re-animation on token refresh ──────────────
+  // Once the dashboard has rendered successfully, subsequent isLoading
+  // or isAuthenticated flickers (caused by Logto SDK's getAccessToken
+  // toggling loadingCount) should NOT unmount the dashboard content.
+  const hasLoaded = useRef(false)
+  const hasAnimated = useRef(false)
+
+  // Token cache to avoid calling getAccessToken() (which triggers
+  // Logto's setIsLoading) on every settings change.
+  const tokenCacheRef = useRef<{ token: string; expiry: number } | null>(null)
+
   const getToken = useCallback(
     async (): Promise<string | null> => {
+      // Return cached token if still valid (>60s remaining) to avoid
+      // triggering Logto SDK's setIsLoading which causes dashboard remount.
+      const cached = tokenCacheRef.current
+      if (cached && cached.expiry - Date.now() > 60_000) {
+        return cached.token
+      }
+
       const token = await getAccessToken(apiUrl)
+      if (token) {
+        // Decode JWT exp claim to cache the token with its expiry
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]!))
+          if (payload.exp) {
+            tokenCacheRef.current = {
+              token,
+              expiry: payload.exp * 1000, // JWT exp is in seconds
+            }
+          }
+        } catch {
+          // If decoding fails, don't cache — will call getAccessToken next time
+        }
+      }
+
       return token ?? null
     },
     [getAccessToken, apiUrl],
@@ -193,7 +226,10 @@ function DashboardPage() {
     }
   }
 
-  if (isLoading) {
+  // Only show the loading spinner on the very first load. Once the dashboard
+  // has rendered, Logto SDK's transient isLoading flickers (from getAccessToken
+  // calls) should NOT unmount and remount the entire dashboard.
+  if (isLoading && !hasLoaded.current) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <motion.div
@@ -210,7 +246,9 @@ function DashboardPage() {
     )
   }
 
-  if (!isAuthenticated) {
+  // Same guard: once we've loaded the dashboard, don't flash the sign-in
+  // screen if isAuthenticated briefly flips during a token refresh.
+  if (!isAuthenticated && !hasLoaded.current) {
     const handleSignIn = () => {
       signIn(`${window.location.origin}/callback`)
     }
@@ -236,11 +274,21 @@ function DashboardPage() {
     )
   }
 
+  // Mark that the dashboard has successfully rendered at least once.
+  // All subsequent isLoading / isAuthenticated flickers will be ignored.
+  hasLoaded.current = true
+
+  // Entrance animations should only play on the very first render.
+  // hasAnimated is set to true synchronously before the JSX is returned,
+  // so any subsequent re-render will skip the entrance animation.
+  const shouldAnimate = !hasAnimated.current
+  hasAnimated.current = true
+
   return (
     <motion.div
       className="min-h-screen pt-28 pb-20 px-6"
       variants={pageVariants}
-      initial="hidden"
+      initial={shouldAnimate ? 'hidden' : false}
       animate="visible"
     >
       <div className="max-w-6xl mx-auto">
