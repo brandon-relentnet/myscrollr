@@ -73,7 +73,12 @@ interface RealtimeState {
   preferences: UserPreferences | null
 }
 
-export function useRealtime() {
+interface UseRealtimeOptions {
+  /** Async function that returns a valid JWT access token, or null if unauthenticated. */
+  getToken: () => Promise<string | null>
+}
+
+export function useRealtime({ getToken }: UseRealtimeOptions) {
   const [state, setState] = useState<RealtimeState>({
     status: 'disconnected',
     latestTrades: [],
@@ -83,19 +88,35 @@ export function useRealtime() {
     preferences: null,
   })
 
-  // Track the user's Yahoo GUID to filter SSE events (prevents cross-user data leaking)
-  const userGuidRef = useRef<string | null>(null)
-  // Track the user's Logto sub to filter preference CDC records
-  const userSubRef = useRef<string | null>(null)
+  // Keep getToken ref stable across renders so the effect doesn't re-run
+  const getTokenRef = useRef(getToken)
+  getTokenRef.current = getToken
 
   useEffect(() => {
-    const apiUrl = import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'
+    const apiUrl =
+      import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'
     let eventSource: EventSource | null = null
     let retryCount = 0
     let retryTimeout: ReturnType<typeof setTimeout> | null = null
+    let cancelled = false
 
-    function connect() {
-      eventSource = new EventSource(`${apiUrl}/events`)
+    async function connect() {
+      if (cancelled) return
+
+      // Acquire a valid token before connecting — SSE requires auth
+      const token = await getTokenRef.current()
+      if (!token || cancelled) {
+        setState((prev) => ({ ...prev, status: 'disconnected' }))
+        // Retry after a delay in case auth becomes available
+        const timeout = Math.min(1000 * Math.pow(2, retryCount), 30000)
+        retryCount++
+        retryTimeout = setTimeout(connect, timeout)
+        return
+      }
+
+      eventSource = new EventSource(
+        `${apiUrl}/events?token=${encodeURIComponent(token)}`,
+      )
 
       eventSource.onopen = () => {
         retryCount = 0
@@ -124,14 +145,16 @@ export function useRealtime() {
     connect()
 
     return () => {
+      cancelled = true
       eventSource?.close()
       if (retryTimeout) clearTimeout(retryTimeout)
     }
   }, [])
 
   const handleStreamData = (data: any) => {
-    // Sequin payload structure based on user test:
-    // {"data":[{"action":"update","changes":...,"metadata":{ "table_name": "trades" },"record":{...}}]}
+    // Server-side filtering: all records in the SSE stream are already
+    // scoped to the authenticated user. No client-side logto_sub/guid
+    // checks are needed.
 
     if (data?.data && Array.isArray(data.data)) {
       data.data.forEach((event: any) => {
@@ -142,21 +165,17 @@ export function useRealtime() {
 
         if (table === 'trades') {
           setState((prev) => {
-            // Check if trade exists
             const idx = prev.latestTrades.findIndex(
               (t) => t.symbol === record.symbol,
             )
             let newTrades = [...prev.latestTrades]
 
             if (idx >= 0) {
-              // Update existing
               newTrades[idx] = { ...newTrades[idx], ...record }
             } else {
-              // Add new to top
               newTrades = [record, ...newTrades]
             }
 
-            // Limit size
             return { ...prev, latestTrades: newTrades.slice(0, 50) }
           })
         } else if (table === 'games') {
@@ -174,7 +193,6 @@ export function useRealtime() {
           })
         } else if (table === 'rss_items') {
           setState((prev) => {
-            // Upsert by composite key (feed_url + guid)
             const idx = prev.latestRssItems.findIndex(
               (r) =>
                 r.feed_url === record.feed_url && r.guid === record.guid,
@@ -208,8 +226,6 @@ export function useRealtime() {
             return { ...prev, latestRssItems: newItems.slice(0, 50) }
           })
         } else if (table === 'yahoo_leagues') {
-          // Only accept leagues belonging to this user — reject if GUID unknown or mismatched
-          if (!userGuidRef.current || record.guid !== userGuidRef.current) return
           setState((prev) => ({
             ...prev,
             yahoo: {
@@ -221,8 +237,6 @@ export function useRealtime() {
             },
           }))
         } else if (table === 'yahoo_standings') {
-          // Only accept standings for leagues we already know about
-          if (!userGuidRef.current) return
           setState((prev) => {
             if (!prev.yahoo.leagues[record.league_key]) return prev
             return {
@@ -237,7 +251,6 @@ export function useRealtime() {
             }
           })
         } else if (table === 'yahoo_matchups') {
-          if (!userGuidRef.current) return
           setState((prev) => ({
             ...prev,
             yahoo: {
@@ -249,8 +262,6 @@ export function useRealtime() {
             },
           }))
         } else if (table === 'user_preferences') {
-          // Only apply preferences belonging to the current user
-          if (!userSubRef.current || record.logto_sub !== userSubRef.current) return
           setState((prev) => ({
             ...prev,
             preferences: record as unknown as UserPreferences,
@@ -261,12 +272,6 @@ export function useRealtime() {
   }
 
   const setInitialYahoo = (yahoo: YahooState) => {
-    // Extract the user's GUID from the first league record for SSE filtering
-    const firstLeague = Object.values(yahoo.leagues)[0]
-    if (firstLeague?.guid) {
-      userGuidRef.current = firstLeague.guid
-    }
-
     // REST data is authoritative — it replaces SSE-accumulated state.
     // SSE updates that arrived after this REST fetch are merged on top.
     setState((prev) => ({
@@ -280,20 +285,15 @@ export function useRealtime() {
   }
 
   const clearYahoo = () => {
-    userGuidRef.current = null
     setState((prev) => ({
       ...prev,
       yahoo: { leagues: {}, standings: {}, matchups: {} },
     }))
   }
 
-  const setUserSub = (sub: string | null) => {
-    userSubRef.current = sub
-  }
-
   const setPreferences = (prefs: UserPreferences | null) => {
     setState((prev) => ({ ...prev, preferences: prefs }))
   }
 
-  return { ...state, setInitialYahoo, clearYahoo, setUserSub, setPreferences }
+  return { ...state, setInitialYahoo, clearYahoo, setPreferences }
 }

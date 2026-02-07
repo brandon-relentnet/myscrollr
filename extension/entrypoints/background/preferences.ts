@@ -7,7 +7,6 @@ import {
   activeFeedTabs,
   enabledSites,
   disabledSites,
-  userSub,
 } from '~/utils/storage';
 
 // ── Stream visibility tracking ────────────────────────────────────
@@ -49,9 +48,7 @@ export async function initStreamsVisibility(streams: UserStream[]): Promise<void
  * Updates the visibility map and recomputes activeFeedTabs.
  */
 export async function handleStreamUpdate(record: Record<string, unknown>): Promise<void> {
-  const currentSub = await userSub.getValue();
-  if (!currentSub || record.logto_sub !== currentSub) return;
-
+  // Server already filters records to the authenticated user — no client-side guard needed.
   const streamType = record.stream_type as StreamType | undefined;
   if (!streamType) return;
 
@@ -64,9 +61,7 @@ export async function handleStreamUpdate(record: Record<string, unknown>): Promi
  * Removes the stream from the visibility map and recomputes activeFeedTabs.
  */
 export async function handleStreamDelete(record: Record<string, unknown>): Promise<void> {
-  const currentSub = await userSub.getValue();
-  if (!currentSub || record.logto_sub !== currentSub) return;
-
+  // Server already filters records to the authenticated user — no client-side guard needed.
   const streamType = record.stream_type as StreamType | undefined;
   if (!streamType) return;
 
@@ -97,8 +92,6 @@ export async function applyServerPreferences(prefs: UserPreferences): Promise<vo
  * Only applies if the record belongs to the current user.
  */
 export async function handlePreferenceUpdate(record: Record<string, unknown>): Promise<void> {
-  const currentSub = await userSub.getValue();
-  if (!currentSub || record.logto_sub !== currentSub) return;
-
+  // Server already filters records to the authenticated user — no client-side guard needed.
   await applyServerPreferences(record as unknown as UserPreferences);
 }

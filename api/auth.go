@@ -50,6 +50,79 @@ func InitAuth() {
 	}
 }
 
+// ValidateToken validates a JWT token string and returns the subject (user ID)
+// and the full claims map. This is the shared validation logic used by both
+// the LogtoAuth middleware and the SSE endpoint's query-param authentication.
+func ValidateToken(tokenString string) (sub string, claims jwt.MapClaims, err error) {
+	if jwks == nil {
+		return "", nil, fmt.Errorf("JWKS not initialized")
+	}
+
+	token, err := jwt.Parse(tokenString, jwks.Keyfunc)
+	if err != nil {
+		return "", nil, fmt.Errorf("JWT parse failed: %w", err)
+	}
+
+	if !token.Valid {
+		return "", nil, fmt.Errorf("token is not valid")
+	}
+
+	mapClaims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return "", nil, fmt.Errorf("invalid token claims")
+	}
+
+	// Extract Logto User ID (sub)
+	sub, ok = mapClaims["sub"].(string)
+	if !ok {
+		return "", nil, fmt.Errorf("token missing 'sub' claim")
+	}
+
+	// Verify Issuer
+	expectedIssuer := os.Getenv("LOGTO_URL")
+	if expectedIssuer == "" {
+		fqdn := os.Getenv("COOLIFY_FQDN")
+		if fqdn != "" {
+			fqdn = strings.TrimPrefix(fqdn, "https://")
+			fqdn = strings.TrimPrefix(fqdn, "http://")
+			fqdn = strings.TrimSuffix(fqdn, "/")
+			expectedIssuer = fmt.Sprintf("https://%s/oidc", fqdn)
+		}
+	}
+	if expectedIssuer != "" && mapClaims["iss"] != expectedIssuer {
+		return "", nil, fmt.Errorf("invalid token issuer")
+	}
+
+	// Verify Audience
+	expectedAudience := os.Getenv("API_URL")
+	if expectedAudience == "" {
+		fqdn := os.Getenv("COOLIFY_FQDN")
+		if fqdn != "" {
+			fqdn = strings.TrimPrefix(fqdn, "https://")
+			fqdn = strings.TrimPrefix(fqdn, "http://")
+			fqdn = strings.TrimSuffix(fqdn, "/")
+			expectedAudience = fmt.Sprintf("https://%s", fqdn)
+		}
+	}
+	audValid := false
+	switch audClaim := mapClaims["aud"].(type) {
+	case string:
+		audValid = audClaim == expectedAudience
+	case []interface{}:
+		for _, a := range audClaim {
+			if s, ok := a.(string); ok && s == expectedAudience {
+				audValid = true
+				break
+			}
+		}
+	}
+	if expectedAudience != "" && !audValid {
+		return "", nil, fmt.Errorf("invalid token audience")
+	}
+
+	return sub, mapClaims, nil
+}
+
 // LogtoAuth is the middleware that validates the Logto JWT
 func LogtoAuth(c *fiber.Ctx) error {
 	tokenString := ""
@@ -74,94 +147,12 @@ func LogtoAuth(c *fiber.Ctx) error {
 		})
 	}
 
-	if jwks == nil {
-		log.Println("[Auth Error] JWKS not initialized")
-		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
-			Status: "error",
-			Error:  "Authentication system not initialized",
-		})
-	}
-
-	// Parse the token.
-	token, err := jwt.Parse(tokenString, jwks.Keyfunc)
+	sub, claims, err := ValidateToken(tokenString)
 	if err != nil {
-		log.Printf("[Auth Error] JWT Parse failed: %v", err)
+		log.Printf("[Auth Error] %v", err)
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "unauthorized",
 			Error:  "Invalid or expired token",
-		})
-	}
-
-	if !token.Valid {
-		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
-			Status: "unauthorized",
-			Error:  "Token is not valid",
-		})
-	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
-			Status: "unauthorized",
-			Error:  "Invalid token claims",
-		})
-	}
-
-	// Extract Logto User ID (sub)
-	sub, ok := claims["sub"].(string)
-	if !ok {
-		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
-			Status: "unauthorized",
-			Error:  "Token missing 'sub' claim",
-		})
-	}
-
-	// Verify Issuer - use pre-derived LOGTO_URL or derive from COOLIFY_FQDN
-	expectedIssuer := os.Getenv("LOGTO_URL")
-	if expectedIssuer == "" {
-		fqdn := os.Getenv("COOLIFY_FQDN")
-		if fqdn != "" {
-			fqdn = strings.TrimPrefix(fqdn, "https://")
-			fqdn = strings.TrimPrefix(fqdn, "http://")
-			fqdn = strings.TrimSuffix(fqdn, "/")
-			expectedIssuer = fmt.Sprintf("https://%s/oidc", fqdn)
-		}
-	}
-	if expectedIssuer != "" && claims["iss"] != expectedIssuer {
-		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
-			Status: "unauthorized",
-			Error:  "Invalid token issuer",
-		})
-	}
-
-	// Verify Audience (API Resource Identifier) - use pre-derived API_URL
-	expectedAudience := os.Getenv("API_URL")
-	if expectedAudience == "" {
-		fqdn := os.Getenv("COOLIFY_FQDN")
-		if fqdn != "" {
-			fqdn = strings.TrimPrefix(fqdn, "https://")
-			fqdn = strings.TrimPrefix(fqdn, "http://")
-			fqdn = strings.TrimSuffix(fqdn, "/")
-			expectedAudience = fmt.Sprintf("https://%s", fqdn)
-		}
-	}
-	// Logto can return aud as a string or a JSON array — handle both
-	audValid := false
-	switch audClaim := claims["aud"].(type) {
-	case string:
-		audValid = audClaim == expectedAudience
-	case []interface{}:
-		for _, a := range audClaim {
-			if s, ok := a.(string); ok && s == expectedAudience {
-				audValid = true
-				break
-			}
-		}
-	}
-	if expectedAudience != "" && !audValid {
-		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
-			Status: "unauthorized",
-			Error:  "Invalid token audience",
 		})
 	}
 

@@ -18,57 +18,6 @@ var validStreamTypes = map[string]bool{
 	"rss":     true,
 }
 
-// defaultStreams are created automatically for new users.
-var defaultStreams = []struct {
-	StreamType string
-	Config     map[string]interface{}
-}{
-	{
-		StreamType: "finance",
-		Config:     map[string]interface{}{},
-	},
-	{
-		StreamType: "sports",
-		Config:     map[string]interface{}{},
-	},
-}
-
-// seedDefaultStreams creates the default streams for a new user.
-func seedDefaultStreams(logtoSub string) ([]Stream, error) {
-	streams := make([]Stream, 0, len(defaultStreams))
-
-	for _, ds := range defaultStreams {
-		configJSON, _ := json.Marshal(ds.Config)
-
-		var s Stream
-		err := dbPool.QueryRow(context.Background(), `
-			INSERT INTO user_streams (logto_sub, stream_type, enabled, visible, config)
-			VALUES ($1, $2, true, true, $3)
-			ON CONFLICT (logto_sub, stream_type) DO NOTHING
-			RETURNING id, logto_sub, stream_type, enabled, visible, config, created_at, updated_at
-		`, logtoSub, ds.StreamType, configJSON).Scan(
-			&s.ID, &s.LogtoSub, &s.StreamType, &s.Enabled, &s.Visible,
-			&configJSON, &s.CreatedAt, &s.UpdatedAt,
-		)
-		if err != nil {
-			// ON CONFLICT DO NOTHING means no row returned — stream already exists.
-			// This is fine, we'll fetch all streams below.
-			continue
-		}
-		if err := json.Unmarshal(configJSON, &s.Config); err != nil {
-			s.Config = map[string]interface{}{}
-		}
-		streams = append(streams, s)
-	}
-
-	// If some already existed, fetch all streams for the user.
-	if len(streams) < len(defaultStreams) {
-		return getUserStreams(logtoSub)
-	}
-
-	return streams, nil
-}
-
 // getUserStreams fetches all streams for a user.
 func getUserStreams(logtoSub string) ([]Stream, error) {
 	rows, err := dbPool.Query(context.Background(), `
@@ -99,11 +48,70 @@ func getUserStreams(logtoSub string) ([]Stream, error) {
 	return streams, nil
 }
 
+// syncStreamSubscriptions rebuilds Redis subscription sets for a user from their
+// current streams in the database. This ensures Redis is warm even after restart.
+// Called on dashboard load and after stream CRUD operations.
+func syncStreamSubscriptions(logtoSub string) {
+	streams, err := getUserStreams(logtoSub)
+	if err != nil {
+		log.Printf("[Streams] Failed to sync subscriptions for %s: %v", logtoSub, err)
+		return
+	}
+
+	ctx := context.Background()
+	for _, s := range streams {
+		setKey := "stream:subscribers:" + s.StreamType
+		if s.Enabled {
+			AddSubscriber(ctx, setKey, logtoSub)
+		} else {
+			RemoveSubscriber(ctx, setKey, logtoSub)
+		}
+
+		// For RSS streams, also maintain per-feed-URL sets
+		if s.StreamType == "rss" && s.Enabled {
+			feedURLs := extractFeedURLsFromStreamConfig(s.Config)
+			for _, url := range feedURLs {
+				AddSubscriber(ctx, "rss:subscribers:"+url, logtoSub)
+			}
+		}
+	}
+}
+
+// extractFeedURLsFromStreamConfig extracts feed URLs from a stream's config map.
+func extractFeedURLsFromStreamConfig(config map[string]interface{}) []string {
+	configJSON, err := json.Marshal(config)
+	if err != nil {
+		return nil
+	}
+	return extractFeedURLsFromConfig(configJSON)
+}
+
+// addStreamSubscriptions adds Redis subscription entries for a newly created/enabled stream.
+func addStreamSubscriptions(ctx context.Context, logtoSub, streamType string, config map[string]interface{}) {
+	AddSubscriber(ctx, "stream:subscribers:"+streamType, logtoSub)
+	if streamType == "rss" {
+		feedURLs := extractFeedURLsFromStreamConfig(config)
+		for _, url := range feedURLs {
+			AddSubscriber(ctx, "rss:subscribers:"+url, logtoSub)
+		}
+	}
+}
+
+// removeStreamSubscriptions removes Redis subscription entries for a deleted/disabled stream.
+func removeStreamSubscriptions(ctx context.Context, logtoSub, streamType string, config map[string]interface{}) {
+	RemoveSubscriber(ctx, "stream:subscribers:"+streamType, logtoSub)
+	if streamType == "rss" {
+		feedURLs := extractFeedURLsFromStreamConfig(config)
+		for _, url := range feedURLs {
+			RemoveSubscriber(ctx, "rss:subscribers:"+url, logtoSub)
+		}
+	}
+}
+
 // GetStreams returns all streams for the authenticated user.
-// If the user has no streams, default streams are seeded.
 //
 // @Summary Get user streams
-// @Description Returns all active streams for the authenticated user, auto-seeding defaults if empty
+// @Description Returns all active streams for the authenticated user
 // @Tags Streams
 // @Produce json
 // @Success 200 {object} object{streams=[]Stream}
@@ -125,18 +133,6 @@ func GetStreams(c *fiber.Ctx) error {
 			Status: "error",
 			Error:  "Failed to fetch streams",
 		})
-	}
-
-	// Auto-seed defaults for new users
-	if len(streams) == 0 {
-		streams, err = seedDefaultStreams(userID)
-		if err != nil {
-			log.Printf("[Streams] Error seeding defaults: %v", err)
-			return c.Status(http.StatusInternalServerError).JSON(ErrorResponse{
-				Status: "error",
-				Error:  "Failed to initialize streams",
-			})
-		}
 	}
 
 	return c.JSON(fiber.Map{"streams": streams})
@@ -214,6 +210,12 @@ func CreateStream(c *fiber.Ctx) error {
 
 	if err := json.Unmarshal(configBytes, &s.Config); err != nil {
 		s.Config = map[string]interface{}{}
+	}
+
+	// Maintain Redis subscription sets
+	ctx := context.Background()
+	if s.Enabled {
+		addStreamSubscriptions(ctx, userID, s.StreamType, s.Config)
 	}
 
 	return c.Status(http.StatusCreated).JSON(s)
@@ -315,8 +317,15 @@ func UpdateStream(c *fiber.Ctx) error {
 		s.Config = map[string]interface{}{}
 	}
 
+	// Maintain Redis subscription sets based on new enabled state
+	ctx := context.Background()
+	if s.Enabled {
+		addStreamSubscriptions(ctx, userID, s.StreamType, s.Config)
+	} else {
+		removeStreamSubscriptions(ctx, userID, s.StreamType, s.Config)
+	}
+
 	// If this was an RSS stream config update, sync feed URLs to tracked_feeds
-	// so the RSS ingestion service discovers and starts fetching them.
 	if streamType == "rss" && req.Config != nil {
 		go syncRSSFeedsToTracked(s.Config)
 	}
@@ -346,6 +355,12 @@ func DeleteStream(c *fiber.Ctx) error {
 
 	streamType := c.Params("type")
 
+	// Fetch the stream config before deleting (needed to clean up RSS subscriber sets)
+	var configBytes []byte
+	_ = dbPool.QueryRow(context.Background(), `
+		SELECT config FROM user_streams WHERE logto_sub = $1 AND stream_type = $2
+	`, userID, streamType).Scan(&configBytes)
+
 	tag, err := dbPool.Exec(context.Background(), `
 		DELETE FROM user_streams WHERE logto_sub = $1 AND stream_type = $2
 	`, userID, streamType)
@@ -363,6 +378,17 @@ func DeleteStream(c *fiber.Ctx) error {
 			Error:  "Stream not found",
 		})
 	}
+
+	// Clean up Redis subscription sets
+	ctx := context.Background()
+	var config map[string]interface{}
+	if len(configBytes) > 0 {
+		json.Unmarshal(configBytes, &config)
+	}
+	if config == nil {
+		config = map[string]interface{}{}
+	}
+	removeStreamSubscriptions(ctx, userID, streamType, config)
 
 	return c.JSON(fiber.Map{"status": "ok", "message": "Stream removed"})
 }

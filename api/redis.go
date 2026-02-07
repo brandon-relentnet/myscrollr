@@ -57,7 +57,7 @@ func SetCache(key string, value interface{}, expiration time.Duration) {
 	}
 }
 
-// Publish broadcasts a message to a specific Redis channel
+// Publish broadcasts a JSON-serialized message to a specific Redis channel
 func Publish(channel string, message interface{}) error {
 	data, err := json.Marshal(message)
 	if err != nil {
@@ -67,8 +67,39 @@ func Publish(channel string, message interface{}) error {
 	return rdb.Publish(context.Background(), channel, data).Err()
 }
 
+// PublishRaw publishes pre-serialised bytes to a Redis channel
+func PublishRaw(channel string, data []byte) error {
+	return rdb.Publish(context.Background(), channel, data).Err()
+}
+
 // Subscribe listens to a Redis channel and returns the PubSub object
 // The caller is responsible for calling .Channel() and .Close()
 func Subscribe(ctx context.Context, channel string) *redis.PubSub {
 	return rdb.Subscribe(ctx, channel)
+}
+
+// PSubscribe listens to Redis channels matching a pattern
+func PSubscribe(ctx context.Context, pattern string) *redis.PubSub {
+	return rdb.PSubscribe(ctx, pattern)
+}
+
+// --- Subscription Set Helpers ---
+// Used to track which users subscribe to which data types.
+// Keys follow the convention:
+//   stream:subscribers:{type}  (e.g. stream:subscribers:finance)
+//   rss:subscribers:{feed_url} (e.g. rss:subscribers:https://example.com/feed.xml)
+
+// AddSubscriber adds a user to a subscription set
+func AddSubscriber(ctx context.Context, setKey, userSub string) error {
+	return rdb.SAdd(ctx, setKey, userSub).Err()
+}
+
+// RemoveSubscriber removes a user from a subscription set
+func RemoveSubscriber(ctx context.Context, setKey, userSub string) error {
+	return rdb.SRem(ctx, setKey, userSub).Err()
+}
+
+// GetSubscribers returns all user subs in a subscription set
+func GetSubscribers(ctx context.Context, setKey string) ([]string, error) {
+	return rdb.SMembers(ctx, setKey).Result()
 }

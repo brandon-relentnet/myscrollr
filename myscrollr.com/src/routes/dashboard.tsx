@@ -83,14 +83,6 @@ function DashboardPage() {
     getIdTokenClaims,
     getAccessToken,
   } = useLogto()
-  const {
-    yahoo,
-    status,
-    preferences,
-    setInitialYahoo,
-    clearYahoo,
-    setUserSub,
-  } = useRealtime()
   const [activeModule, setActiveModule] = useState<StreamType>('finance')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [userClaims, setUserClaims] = useState<IdTokenClaims>()
@@ -146,6 +138,15 @@ function DashboardPage() {
     },
     [getAccessToken, apiUrl],
   )
+
+  // useRealtime must come after getToken is defined
+  const {
+    yahoo,
+    status,
+    preferences,
+    setInitialYahoo,
+    clearYahoo,
+  } = useRealtime({ getToken })
 
   // ── Fetch streams ────────────────────────────────────────────────
   const fetchStreams = useCallback(async () => {
@@ -282,7 +283,6 @@ function DashboardPage() {
     if (isAuthenticated) {
       getIdTokenClaims().then((claims) => {
         setUserClaims(claims)
-        if (claims?.sub) setUserSub(claims.sub)
       })
       fetchYahooData()
       fetchStreams()

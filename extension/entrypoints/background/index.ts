@@ -1,4 +1,4 @@
-import { startSSE, setupKeepAlive, mergeDashboardData } from './sse';
+import { startSSE, stopSSE, setupKeepAlive, mergeDashboardData } from './sse';
 import { setupBroadcasting, setupMessageListeners, broadcast } from './messaging';
 import { setOnAuthExpired, isAuthenticated, getValidToken } from './auth';
 import { applyServerPreferences, initStreamsVisibility } from './preferences';
@@ -12,13 +12,12 @@ export default defineBackground({
     // Wire up SSE → broadcast pipeline
     setupBroadcasting();
 
-    // Notify all UIs when auth silently expires during token refresh
+    // Notify all UIs when auth silently expires during token refresh,
+    // and tear down the authenticated SSE connection.
     setOnAuthExpired(() => {
+      stopSSE();
       broadcast({ type: 'AUTH_STATUS', authenticated: false });
     });
-
-    // Start the SSE connection to the API
-    startSSE();
 
     // Listen for messages from popup / content scripts
     setupMessageListeners();
@@ -26,9 +25,14 @@ export default defineBackground({
     // Keep MV3 service worker alive
     setupKeepAlive();
 
-    // If already authenticated (e.g., token persisted from previous session), sync preferences
+    // If already authenticated (e.g., token persisted from previous session),
+    // start SSE and sync preferences from the server.
     isAuthenticated().then(async (authed) => {
       if (!authed) return;
+
+      // Start authenticated SSE connection
+      startSSE();
+
       try {
         const token = await getValidToken();
         if (!token) return;
@@ -37,7 +41,7 @@ export default defineBackground({
         });
         if (!response.ok) return;
         const data: DashboardResponse = await response.json();
-        mergeDashboardData(data.finance || [], data.sports || []);
+        mergeDashboardData(data.finance || [], data.sports || [], data.rss || []);
         broadcast({ type: 'INITIAL_DATA', payload: data });
         if (data.preferences) {
           await applyServerPreferences(data.preferences);

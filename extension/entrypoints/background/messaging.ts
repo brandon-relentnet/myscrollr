@@ -1,7 +1,7 @@
 import type { ClientMessage, BackgroundMessage, StateSnapshotMessage } from '~/utils/messaging';
 import type { ConnectionStatus, DashboardResponse } from '~/utils/types';
 import { API_URL, FRONTEND_URL } from '~/utils/constants';
-import { getState, setOnUpdate, mergeDashboardData } from './sse';
+import { getState, setOnUpdate, mergeDashboardData, startSSE, stopSSE } from './sse';
 import { login, logout, getValidToken, isAuthenticated } from './auth';
 import { applyServerPreferences, initStreamsVisibility } from './preferences';
 
@@ -107,8 +107,11 @@ export function setupMessageListeners() {
             broadcast({ type: 'AUTH_STATUS', authenticated: authed });
             sendResponse({ type: 'AUTH_STATUS', authenticated: authed });
 
-            // If login succeeded, fetch initial dashboard data and open frontend
+            // If login succeeded, start SSE, fetch dashboard data, and open frontend
             if (success) {
+              // Start authenticated SSE connection
+              startSSE();
+
               // Open the frontend dashboard — Logto session cookie is shared,
               // so the frontend will auto-authenticate instantly.
               browser.tabs.create({ url: `${FRONTEND_URL}/dashboard` }).catch(() => {
@@ -140,6 +143,8 @@ export function setupMessageListeners() {
 
         case 'LOGOUT': {
           logout().then(() => {
+            // Tear down authenticated SSE connection before broadcasting
+            stopSSE();
             broadcast({ type: 'AUTH_STATUS', authenticated: false });
             sendResponse({ type: 'AUTH_STATUS', authenticated: false });
           });

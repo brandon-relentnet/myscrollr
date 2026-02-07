@@ -406,14 +406,14 @@ func GetDashboard(c *fiber.Ctx) error {
 			res.Preferences = prefs
 		}
 
-		// Fetch user streams (auto-seeds defaults if none exist)
+		// Fetch user streams
 		streams, err := getUserStreams(logtoSub)
 		if err == nil {
-			if len(streams) == 0 {
-				streams, _ = seedDefaultStreams(logtoSub)
-			}
 			res.Streams = streams
 		}
+
+		// Warm Redis subscription sets from current DB state
+		go syncStreamSubscriptions(logtoSub)
 	}
 
 	// 5. RSS Items (per-user, filtered by subscribed feeds)

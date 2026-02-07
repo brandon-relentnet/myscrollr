@@ -1,6 +1,7 @@
 import { SSE_URL, SSE_RECONNECT_BASE, SSE_RECONNECT_MAX, MAX_ITEMS } from '~/utils/constants';
 import type { Trade, Game, RssItem, ConnectionStatus, SSEPayload, CDCRecord } from '~/utils/types';
 import { handlePreferenceUpdate, handleStreamUpdate, handleStreamDelete } from './preferences';
+import { getValidToken, isAuthenticated } from './auth';
 
 // ── In-memory state ──────────────────────────────────────────────
 
@@ -120,6 +121,8 @@ function removeRssItem(record: Record<string, unknown>) {
 }
 
 // ── Process a single CDC record ──────────────────────────────────
+// Server already filters records to only those relevant to this user,
+// so no client-side logto_sub/guid checks are needed.
 
 function processCDCRecord(cdc: CDCRecord) {
   const table = cdc.metadata.table_name;
@@ -153,7 +156,7 @@ function processCDCRecord(cdc: CDCRecord) {
       handleStreamDelete(cdc.record);
     }
   }
-  // Ignore unknown tables silently (yahoo_* etc. for future use)
+  // Unknown tables (yahoo_* etc.) silently ignored for now
 }
 
 // ── SSE lifecycle ────────────────────────────────────────────────
@@ -163,11 +166,29 @@ function setStatus(status: ConnectionStatus) {
   onUpdate?.('status', status);
 }
 
-export function startSSE() {
+/**
+ * Starts an authenticated SSE connection. Acquires a valid JWT token
+ * and passes it as a query parameter since EventSource does not support
+ * custom headers. If not authenticated, does nothing.
+ */
+export async function startSSE() {
   if (eventSource) return; // Already connected
 
+  // Require authentication — don't connect without a valid token
+  const authed = await isAuthenticated();
+  if (!authed) {
+    setStatus('disconnected');
+    return;
+  }
+
+  const token = await getValidToken();
+  if (!token) {
+    setStatus('disconnected');
+    return;
+  }
+
   try {
-    eventSource = new EventSource(SSE_URL);
+    eventSource = new EventSource(`${SSE_URL}?token=${encodeURIComponent(token)}`);
 
     eventSource.onopen = () => {
       reconnectDelay = SSE_RECONNECT_BASE; // Reset backoff
@@ -207,6 +228,7 @@ export function stopSSE() {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
   }
+  reconnectDelay = SSE_RECONNECT_BASE; // Reset backoff on explicit stop
   setStatus('disconnected');
 }
 
@@ -226,7 +248,7 @@ function scheduleReconnect() {
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
     reconnectDelay = Math.min(reconnectDelay * 2, SSE_RECONNECT_MAX);
-    startSSE();
+    startSSE(); // Will re-acquire token automatically
   }, reconnectDelay);
 }
 
@@ -238,7 +260,7 @@ export function setupKeepAlive() {
 
   browser.alarms?.onAlarm.addListener((alarm) => {
     if (alarm.name === 'scrollr-keepalive') {
-      // If SSE got disconnected, reconnect
+      // If SSE got disconnected, try to reconnect (startSSE checks auth)
       if (connectionStatus === 'disconnected') {
         startSSE();
       }
