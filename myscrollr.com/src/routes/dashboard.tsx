@@ -10,8 +10,6 @@ import {
   Ghost,
   Link2,
   Plus,
-  Power,
-  PowerOff,
   Rss,
   Settings2,
   Trash2,
@@ -161,19 +159,20 @@ function DashboardPage() {
     }
   }, [getToken])
 
-  const handleToggleEnabled = async (stream: Stream) => {
-    // Optimistic update
+  const handleToggleStream = async (stream: Stream) => {
+    const next = !stream.visible
+    // Optimistic update — both enabled and visible stay in sync
     setStreams((prev) =>
       prev.map((s) =>
         s.stream_type === stream.stream_type
-          ? { ...s, enabled: !s.enabled }
+          ? { ...s, enabled: next, visible: next }
           : s,
       ),
     )
     try {
       await streamsApi.update(
         stream.stream_type,
-        { enabled: !stream.enabled },
+        { enabled: next, visible: next },
         getToken,
       )
     } catch {
@@ -181,32 +180,7 @@ function DashboardPage() {
       setStreams((prev) =>
         prev.map((s) =>
           s.stream_type === stream.stream_type
-            ? { ...s, enabled: stream.enabled }
-            : s,
-        ),
-      )
-    }
-  }
-
-  const handleToggleVisible = async (stream: Stream) => {
-    setStreams((prev) =>
-      prev.map((s) =>
-        s.stream_type === stream.stream_type
-          ? { ...s, visible: !s.visible }
-          : s,
-      ),
-    )
-    try {
-      await streamsApi.update(
-        stream.stream_type,
-        { visible: !stream.visible },
-        getToken,
-      )
-    } catch {
-      setStreams((prev) =>
-        prev.map((s) =>
-          s.stream_type === stream.stream_type
-            ? { ...s, visible: stream.visible }
+            ? { ...s, enabled: stream.enabled, visible: stream.visible }
             : s,
         ),
       )
@@ -411,8 +385,7 @@ function DashboardPage() {
 
   // ── Derived data ─────────────────────────────────────────────────
   const activeStream = streams.find((s) => s.stream_type === activeModule)
-  const enabledCount = streams.filter((s) => s.enabled).length
-  const visibleCount = streams.filter((s) => s.visible).length
+  const activeCount = streams.filter((s) => s.visible).length
   const existingTypes = new Set(streams.map((s) => s.stream_type))
   const availableTypes = (
     Object.keys(STREAM_META) as StreamType[]
@@ -557,7 +530,6 @@ function DashboardPage() {
                         onClick={() => setActiveModule(stream.stream_type)}
                         icon={meta.icon}
                         label={meta.label}
-                        enabled={stream.enabled}
                         visible={stream.visible}
                       />
                     )
@@ -577,17 +549,10 @@ function DashboardPage() {
                   value={String(streams.length)}
                 />
                 <QuickStat
-                  label="Enabled"
-                  value={String(enabledCount)}
+                  label="Active"
+                  value={String(activeCount)}
                   color={
-                    enabledCount > 0 ? 'text-primary' : 'text-base-content/80'
-                  }
-                />
-                <QuickStat
-                  label="On Ticker"
-                  value={String(visibleCount)}
-                  color={
-                    visibleCount > 0 ? 'text-primary' : 'text-base-content/80'
+                    activeCount > 0 ? 'text-primary' : 'text-base-content/80'
                   }
                 />
                 <QuickStat
@@ -618,8 +583,7 @@ function DashboardPage() {
                 <FinanceStreamConfig
                   stream={activeStream}
                   connected={status === 'connected'}
-                  onToggleEnabled={() => handleToggleEnabled(activeStream)}
-                  onToggleVisible={() => handleToggleVisible(activeStream)}
+                  onToggle={() => handleToggleStream(activeStream)}
                   onDelete={() => handleDeleteStream('finance')}
                 />
               )}
@@ -627,8 +591,7 @@ function DashboardPage() {
                 <SportsStreamConfig
                   stream={activeStream}
                   connected={status === 'connected'}
-                  onToggleEnabled={() => handleToggleEnabled(activeStream)}
-                  onToggleVisible={() => handleToggleVisible(activeStream)}
+                  onToggle={() => handleToggleStream(activeStream)}
                   onDelete={() => handleDeleteStream('sports')}
                 />
               )}
@@ -640,8 +603,7 @@ function DashboardPage() {
                   yahooPending={yahooPending}
                   onYahooConnect={handleYahooConnect}
                   onYahooDisconnect={handleYahooDisconnect}
-                  onToggleEnabled={() => handleToggleEnabled(activeStream)}
-                  onToggleVisible={() => handleToggleVisible(activeStream)}
+                  onToggle={() => handleToggleStream(activeStream)}
                   onDelete={() => handleDeleteStream('fantasy')}
                 />
               )}
@@ -649,8 +611,7 @@ function DashboardPage() {
                 <RssStreamConfig
                   stream={activeStream}
                   getToken={getToken}
-                  onToggleEnabled={() => handleToggleEnabled(activeStream)}
-                  onToggleVisible={() => handleToggleVisible(activeStream)}
+                  onToggle={() => handleToggleStream(activeStream)}
                   onDelete={() => handleDeleteStream('rss')}
                   onStreamUpdate={(updated) =>
                     setStreams((prev) =>
@@ -707,14 +668,12 @@ function StreamNavButton({
   onClick,
   icon,
   label,
-  enabled,
   visible,
 }: {
   active: boolean
   onClick: () => void
   icon: React.ReactNode
   label: string
-  enabled: boolean
   visible: boolean
 }) {
   return (
@@ -732,16 +691,11 @@ function StreamNavButton({
           {label}
         </span>
       </div>
-      <div className="flex items-center gap-2">
-        {visible && (
-          <Eye size={10} className="text-primary/50" />
-        )}
-        {enabled ? (
-          <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-        ) : (
-          <span className="h-1.5 w-1.5 rounded-full bg-base-content/20" />
-        )}
-      </div>
+      {visible ? (
+        <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+      ) : (
+        <span className="h-1.5 w-1.5 rounded-full bg-base-content/20" />
+      )}
     </button>
   )
 }
@@ -773,8 +727,7 @@ function StreamHeader({
   title,
   subtitle,
   connected,
-  onToggleEnabled,
-  onToggleVisible,
+  onToggle,
   onDelete,
 }: {
   stream: Stream
@@ -782,11 +735,11 @@ function StreamHeader({
   title: string
   subtitle: string
   connected?: boolean
-  onToggleEnabled: () => void
-  onToggleVisible: () => void
+  onToggle: () => void
   onDelete: () => void
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const active = stream.visible
 
   return (
     <div className="space-y-5 mb-6">
@@ -816,36 +769,21 @@ function StreamHeader({
         )}
       </div>
 
-      {/* Toggle Controls */}
+      {/* Toggle + Delete */}
       <div className="flex flex-wrap gap-3">
         <button
-          onClick={onToggleEnabled}
+          onClick={onToggle}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all ${
-            stream.enabled
+            active
               ? 'bg-primary/8 border-primary/20 text-primary'
               : 'bg-base-200/40 border-base-300/40 text-base-content/40'
           }`}
         >
-          {stream.enabled ? <Power size={12} /> : <PowerOff size={12} />}
+          {active ? <Eye size={12} /> : <EyeOff size={12} />}
           <span className="text-[10px] font-bold uppercase tracking-widest">
-            {stream.enabled ? 'Enabled' : 'Disabled'}
+            {active ? 'On Ticker' : 'Off'}
           </span>
-          <ToggleSwitch active={stream.enabled} />
-        </button>
-
-        <button
-          onClick={onToggleVisible}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all ${
-            stream.visible
-              ? 'bg-primary/8 border-primary/20 text-primary'
-              : 'bg-base-200/40 border-base-300/40 text-base-content/40'
-          }`}
-        >
-          {stream.visible ? <Eye size={12} /> : <EyeOff size={12} />}
-          <span className="text-[10px] font-bold uppercase tracking-widest">
-            {stream.visible ? 'On Ticker' : 'Hidden'}
-          </span>
-          <ToggleSwitch active={stream.visible} />
+          <ToggleSwitch active={active} />
         </button>
 
         <div className="ml-auto">
@@ -906,14 +844,12 @@ function ToggleSwitch({ active }: { active: boolean }) {
 function FinanceStreamConfig({
   stream,
   connected,
-  onToggleEnabled,
-  onToggleVisible,
+  onToggle,
   onDelete,
 }: {
   stream: Stream
   connected: boolean
-  onToggleEnabled: () => void
-  onToggleVisible: () => void
+  onToggle: () => void
   onDelete: () => void
 }) {
   return (
@@ -924,8 +860,7 @@ function FinanceStreamConfig({
         title="Finance Stream"
         subtitle="Real-time market data via Finnhub WebSocket"
         connected={connected}
-        onToggleEnabled={onToggleEnabled}
-        onToggleVisible={onToggleVisible}
+        onToggle={onToggle}
         onDelete={onDelete}
       />
 
@@ -970,14 +905,12 @@ function FinanceStreamConfig({
 function SportsStreamConfig({
   stream,
   connected,
-  onToggleEnabled,
-  onToggleVisible,
+  onToggle,
   onDelete,
 }: {
   stream: Stream
   connected: boolean
-  onToggleEnabled: () => void
-  onToggleVisible: () => void
+  onToggle: () => void
   onDelete: () => void
 }) {
   const leagues = ['NFL', 'NBA', 'NHL', 'MLB']
@@ -990,8 +923,7 @@ function SportsStreamConfig({
         title="Sports Stream"
         subtitle="Live scores via ESPN polling"
         connected={connected}
-        onToggleEnabled={onToggleEnabled}
-        onToggleVisible={onToggleVisible}
+        onToggle={onToggle}
         onDelete={onDelete}
       />
 
@@ -1046,8 +978,7 @@ function FantasyStreamConfig({
   yahooPending,
   onYahooConnect,
   onYahooDisconnect,
-  onToggleEnabled,
-  onToggleVisible,
+  onToggle,
   onDelete,
 }: {
   stream: Stream
@@ -1056,8 +987,7 @@ function FantasyStreamConfig({
   yahooPending?: boolean
   onYahooConnect?: () => void
   onYahooDisconnect?: () => void
-  onToggleEnabled: () => void
-  onToggleVisible: () => void
+  onToggle: () => void
   onDelete: () => void
 }) {
   const [filter, setFilter] = useState<'active' | 'finished'>('active')
@@ -1097,8 +1027,7 @@ function FantasyStreamConfig({
         icon={<Ghost size={20} className="text-primary" />}
         title="Fantasy Stream"
         subtitle="Yahoo Fantasy integration"
-        onToggleEnabled={onToggleEnabled}
-        onToggleVisible={onToggleVisible}
+        onToggle={onToggle}
         onDelete={onDelete}
       />
 
@@ -1502,15 +1431,13 @@ function LeagueCard({
 function RssStreamConfig({
   stream,
   getToken,
-  onToggleEnabled,
-  onToggleVisible,
+  onToggle,
   onDelete,
   onStreamUpdate,
 }: {
   stream: Stream
   getToken: () => Promise<string | null>
-  onToggleEnabled: () => void
-  onToggleVisible: () => void
+  onToggle: () => void
   onDelete: () => void
   onStreamUpdate: (updated: Stream) => void
 }) {
@@ -1559,8 +1486,7 @@ function RssStreamConfig({
         icon={<Rss size={20} className="text-primary" />}
         title="RSS Stream"
         subtitle="Custom news feeds on your ticker"
-        onToggleEnabled={onToggleEnabled}
-        onToggleVisible={onToggleVisible}
+        onToggle={onToggle}
         onDelete={onDelete}
       />
 
