@@ -127,6 +127,8 @@ func main() {
 				path == "/sports/health" ||
 				path == "/finance/health" ||
 				path == "/yahoo/health" ||
+				path == "/rss/health" ||
+				path == "/rss/feeds" ||
 				path == "/webhooks/sequin"
 		},
 	}))
@@ -142,6 +144,8 @@ func main() {
 	app.Get("/yahoo/health", YahooHealth)
 	app.Get("/yahoo/start", YahooStart)
 	app.Get("/yahoo/callback", YahooCallback)
+	app.Get("/rss/health", RssHealth)
+	app.Get("/rss/feeds", GetRSSFeedCatalog)
 	app.Post("/webhooks/sequin", HandleSequinWebhook)
 	// Extension auth proxy (PKCE token exchange/refresh via Logto)
 	app.Options("/extension/token", HandleExtensionAuthPreflight)
@@ -255,6 +259,7 @@ func HealthCheck(c *fiber.Ctx) error {
 		"finance": os.Getenv("INTERNAL_FINANCE_URL"),
 		"sports":  os.Getenv("INTERNAL_SPORTS_URL"),
 		"yahoo":   os.Getenv("INTERNAL_YAHOO_URL"),
+		"rss":     os.Getenv("INTERNAL_RSS_URL"),
 	}
 
 	httpClient := &http.Client{Timeout: 2 * time.Second}
@@ -360,6 +365,7 @@ func GetDashboard(c *fiber.Ctx) error {
 	res := DashboardResponse{
 		Finance: make([]Trade, 0),
 		Sports:  make([]Game, 0),
+		Rss:     make([]RssItem, 0),
 	}
 
 	// 1. Finance (from cache or DB)
@@ -410,7 +416,22 @@ func GetDashboard(c *fiber.Ctx) error {
 		}
 	}
 
-	// 4. Yahoo (Optional, only if authenticated)
+	// 5. RSS Items (per-user, filtered by subscribed feeds)
+	if logtoSub != "" {
+		feedURLs := getUserRSSFeedURLs(logtoSub)
+		if len(feedURLs) > 0 {
+			cacheKey := "cache:rss:" + logtoSub
+			if !GetCache(cacheKey, &res.Rss) {
+				res.Rss = queryRSSItems(feedURLs)
+				if res.Rss == nil {
+					res.Rss = make([]RssItem, 0)
+				}
+				SetCache(cacheKey, res.Rss, 60*time.Second)
+			}
+		}
+	}
+
+	// 6. Yahoo (Optional, only if authenticated)
 	guid := getGuid(c)
 	if guid != "" {
 		cacheKey := "cache:yahoo:leagues:" + guid

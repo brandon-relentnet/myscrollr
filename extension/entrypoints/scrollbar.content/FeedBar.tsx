@@ -3,6 +3,7 @@ import { clsx } from 'clsx';
 import type {
   Trade,
   Game,
+  RssItem as RssItemType,
   ConnectionStatus,
   FeedPosition,
   FeedMode,
@@ -12,11 +13,13 @@ import type {
 import FeedTabs from './FeedTabs';
 import TradeItem from './TradeItem';
 import GameItem from './GameItem';
+import RssItem from './RssItem';
 import ConnectionIndicator from './ConnectionIndicator';
 
 interface FeedBarProps {
   trades: Trade[];
   games: Game[];
+  rssItems: RssItemType[];
   connectionStatus: ConnectionStatus;
   position: FeedPosition;
   height: number;
@@ -38,6 +41,7 @@ const MAX_HEIGHT = 600;
 export default function FeedBar({
   trades,
   games,
+  rssItems,
   connectionStatus,
   position,
   height,
@@ -215,6 +219,19 @@ export default function FeedBar({
               )}
               {games.map((game) => (
                 <GameItem key={String(game.id)} game={game} mode={mode} />
+              ))}
+            </div>
+          )}
+
+          {activeTab === 'rss' && (
+            <div className="grid gap-px bg-zinc-800 grid-cols-1">
+              {rssItems.length === 0 && (
+                <div className="col-span-full text-center py-8 text-zinc-500 text-sm">
+                  Waiting for RSS articles...
+                </div>
+              )}
+              {rssItems.map((item) => (
+                <RssItem key={`${item.feed_url}:${item.guid}`} item={item} mode={mode} />
               ))}
             </div>
           )}

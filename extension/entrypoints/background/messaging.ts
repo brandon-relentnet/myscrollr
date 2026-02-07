@@ -36,6 +36,7 @@ export function setupBroadcasting() {
         type: 'STATE_UPDATE',
         trades: state.trades,
         games: state.games,
+        rssItems: state.rssItems,
       });
     } else if (type === 'status') {
       broadcast({
@@ -82,6 +83,7 @@ export function setupMessageListeners() {
               type: 'STATE_SNAPSHOT',
               trades: state.trades,
               games: state.games,
+              rssItems: state.rssItems,
               connectionStatus: state.connectionStatus,
               authenticated: authed,
             };
@@ -115,7 +117,7 @@ export function setupMessageListeners() {
 
               fetchDashboardData()
                 .then((data: DashboardResponse) => {
-                  mergeDashboardData(data.finance || [], data.sports || []);
+                  mergeDashboardData(data.finance || [], data.sports || [], data.rss || []);
                   broadcast({ type: 'INITIAL_DATA', payload: data });
 
                   // Apply server preferences to local storage
@@ -147,7 +149,7 @@ export function setupMessageListeners() {
         case 'REQUEST_INITIAL_DATA': {
           fetchDashboardData()
             .then((data: DashboardResponse) => {
-              mergeDashboardData(data.finance || [], data.sports || []);
+              mergeDashboardData(data.finance || [], data.sports || [], data.rss || []);
               sendResponse({ type: 'INITIAL_DATA', payload: data });
 
               // Apply server preferences to local storage

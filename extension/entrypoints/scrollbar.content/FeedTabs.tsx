@@ -10,6 +10,7 @@ interface FeedTabsProps {
 const TABS: { id: FeedCategory; label: string }[] = [
   { id: 'finance', label: 'Finance' },
   { id: 'sports', label: 'Sports' },
+  { id: 'rss', label: 'RSS' },
 ];
 
 export default function FeedTabs({ activeTab, onTabChange, availableTabs }: FeedTabsProps) {

@@ -56,9 +56,30 @@ type Stream struct {
 	UpdatedAt  time.Time              `json:"updated_at"`
 }
 
+type RssItem struct {
+	ID          int        `json:"id"`
+	FeedURL     string     `json:"feed_url"`
+	GUID        string     `json:"guid"`
+	Title       string     `json:"title"`
+	Link        string     `json:"link"`
+	Description string     `json:"description"`
+	SourceName  string     `json:"source_name"`
+	PublishedAt *time.Time `json:"published_at"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+}
+
+type TrackedFeed struct {
+	URL       string `json:"url"`
+	Name      string `json:"name"`
+	Category  string `json:"category"`
+	IsDefault bool   `json:"is_default"`
+}
+
 type DashboardResponse struct {
 	Finance     []Trade          `json:"finance"`
 	Sports      []Game           `json:"sports"`
+	Rss         []RssItem        `json:"rss"`
 	Yahoo       *FantasyContent  `json:"yahoo,omitempty"`
 	Preferences *UserPreferences `json:"preferences,omitempty"`
 	Streams     []Stream         `json:"streams,omitempty"`

@@ -22,8 +22,8 @@ import { useRealtime } from '../hooks/useRealtime'
 import type { YahooState } from '../hooks/useRealtime'
 import type { IdTokenClaims } from '@logto/react'
 import SettingsPanel from '../components/SettingsPanel'
-import { streamsApi } from '../api/client'
-import type { Stream, StreamType } from '../api/client'
+import { streamsApi, rssApi } from '../api/client'
+import type { Stream, StreamType, TrackedFeed } from '../api/client'
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
@@ -1443,14 +1443,39 @@ function RssStreamConfig({
 }) {
   const [newFeedName, setNewFeedName] = useState('')
   const [newFeedUrl, setNewFeedUrl] = useState('')
+  const [catalog, setCatalog] = useState<TrackedFeed[]>([])
+  const [catalogLoading, setCatalogLoading] = useState(true)
+  const [activeCategory, setActiveCategory] = useState('All')
+  const [saving, setSaving] = useState(false)
 
   const feeds = Array.isArray((stream.config as any)?.feeds)
     ? ((stream.config as any).feeds as Array<{ name: string; url: string }>)
     : []
 
+  const feedUrlSet = new Set(feeds.map((f) => f.url))
+
+  // Fetch catalog on mount
+  useEffect(() => {
+    rssApi
+      .getCatalog()
+      .then(setCatalog)
+      .catch(() => {})
+      .finally(() => setCatalogLoading(false))
+  }, [])
+
+  const categories = [
+    'All',
+    ...Array.from(new Set(catalog.map((f) => f.category))),
+  ]
+  const filteredCatalog =
+    activeCategory === 'All'
+      ? catalog
+      : catalog.filter((f) => f.category === activeCategory)
+
   const updateFeeds = async (
     nextFeeds: Array<{ name: string; url: string }>,
   ) => {
+    setSaving(true)
     try {
       const updated = await streamsApi.update(
         'rss',
@@ -1460,6 +1485,8 @@ function RssStreamConfig({
       onStreamUpdate(updated)
     } catch {
       // Could show error
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -1467,10 +1494,15 @@ function RssStreamConfig({
     const name = newFeedName.trim()
     const url = newFeedUrl.trim()
     if (!name || !url) return
-    if (feeds.some((f) => f.url === url)) return
+    if (feedUrlSet.has(url)) return
     updateFeeds([...feeds, { name, url }])
     setNewFeedName('')
     setNewFeedUrl('')
+  }
+
+  const addCatalogFeed = (feed: TrackedFeed) => {
+    if (feedUrlSet.has(feed.url)) return
+    updateFeeds([...feeds, { name: feed.name, url: feed.url }])
   }
 
   const removeFeed = (idx: number) => {
@@ -1490,51 +1522,60 @@ function RssStreamConfig({
         onDelete={onDelete}
       />
 
+      {/* Info Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <InfoCard label="Your Feeds" value={String(feeds.length)} />
+        <InfoCard label="Catalog Size" value={String(catalog.length)} />
+        <InfoCard label="Poll Interval" value="5 min" />
+      </div>
+
+      {/* Current Feeds */}
       <div className="space-y-3">
+        <p className="text-[10px] font-bold text-base-content/30 uppercase tracking-widest px-1">
+          Your Feeds ({feeds.length} active)
+        </p>
         {feeds.map((feed, i) => (
           <motion.div
             key={feed.url}
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: i * 0.05 }}
-            className="flex items-center justify-between p-4 bg-base-200/50 border border-base-300/50 rounded-lg"
+            transition={{ delay: i * 0.03 }}
+            className="flex items-center justify-between p-3.5 bg-base-200/50 border border-base-300/50 rounded-lg"
           >
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded bg-primary/10 border border-primary/20 flex items-center justify-center">
-                <span className="text-xs font-bold font-mono text-primary">
-                  RSS
-                </span>
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="h-8 w-8 rounded bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                <Rss size={12} className="text-primary" />
               </div>
-              <div>
-                <div className="text-sm font-bold">{feed.name}</div>
-                <div className="text-[10px] text-base-content/40 font-mono truncate max-w-[260px]">
+              <div className="min-w-0">
+                <div className="text-xs font-bold truncate">{feed.name}</div>
+                <div className="text-[10px] text-base-content/30 font-mono truncate max-w-[280px]">
                   {feed.url}
                 </div>
               </div>
             </div>
             <button
               onClick={() => removeFeed(i)}
-              className="p-2 rounded hover:bg-error/10 text-base-content/20 hover:text-error transition-colors shrink-0"
+              disabled={saving}
+              className="p-2 rounded hover:bg-error/10 text-base-content/20 hover:text-error transition-colors shrink-0 disabled:opacity-30"
             >
               <Trash2 size={14} />
             </button>
           </motion.div>
         ))}
+        {feeds.length === 0 && (
+          <div className="text-center py-6">
+            <Rss size={28} className="mx-auto text-base-content/15 mb-2" />
+            <p className="text-[10px] text-base-content/25 uppercase tracking-wide">
+              No feeds yet — browse the catalog or add a custom feed
+            </p>
+          </div>
+        )}
       </div>
 
-      {feeds.length === 0 && (
-        <div className="text-center py-8">
-          <Rss size={32} className="mx-auto text-base-content/15 mb-3" />
-          <p className="text-xs text-base-content/30 uppercase tracking-wide">
-            No feeds configured yet
-          </p>
-        </div>
-      )}
-
-      {/* Add Feed Form */}
+      {/* Add Custom Feed Form */}
       <div className="bg-base-200/30 border border-base-300/30 rounded-lg p-4 space-y-3">
         <p className="text-[10px] font-bold text-base-content/30 uppercase tracking-widest">
-          Add Feed
+          Add Custom Feed
         </p>
         <div className="flex flex-col sm:flex-row gap-2">
           <input
@@ -1545,7 +1586,7 @@ function RssStreamConfig({
             className="flex-1 px-3 py-2 rounded bg-base-200/50 border border-base-300/40 text-xs font-mono text-base-content/60 placeholder:text-base-content/20 focus:outline-none focus:border-primary/30 transition-colors"
           />
           <input
-            type="text"
+            type="url"
             value={newFeedUrl}
             onChange={(e) => setNewFeedUrl(e.target.value)}
             onKeyDown={(e) => {
@@ -1556,12 +1597,103 @@ function RssStreamConfig({
           />
           <button
             onClick={addFeed}
-            className="px-4 py-2 rounded border border-base-300/40 text-base-content/30 hover:text-primary hover:border-primary/30 transition-colors flex items-center gap-2"
+            disabled={saving || !newFeedName.trim() || !newFeedUrl.trim()}
+            className="px-4 py-2 rounded border border-base-300/40 text-base-content/30 hover:text-primary hover:border-primary/30 transition-colors flex items-center gap-2 disabled:opacity-30"
           >
             <Plus size={14} />
             <span className="text-xs uppercase tracking-wide">Add</span>
           </button>
         </div>
+      </div>
+
+      {/* Feed Catalog Browser */}
+      <div className="space-y-4">
+        <p className="text-[10px] font-bold text-base-content/30 uppercase tracking-widest px-1">
+          Browse Feed Catalog
+        </p>
+
+        {/* Category Tabs */}
+        <div className="flex flex-wrap gap-1 p-1 rounded-lg bg-base-200/60 border border-base-300/40">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              className={`relative px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-colors ${
+                activeCategory === cat
+                  ? 'text-primary'
+                  : 'text-base-content/30 hover:text-base-content/50'
+              }`}
+            >
+              {activeCategory === cat && (
+                <motion.div
+                  layoutId="rss-category-bg"
+                  className="absolute inset-0 bg-primary/10 border border-primary/20 rounded-md"
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                />
+              )}
+              <span className="relative">{cat}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Catalog Grid */}
+        {catalogLoading ? (
+          <div className="text-center py-8">
+            <motion.span
+              animate={{ opacity: [0.3, 0.7, 0.3] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+              className="text-[10px] font-mono text-base-content/30 uppercase"
+            >
+              Loading catalog...
+            </motion.span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {filteredCatalog.map((feed) => {
+              const isAdded = feedUrlSet.has(feed.url)
+              return (
+                <motion.div
+                  key={feed.url}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                    isAdded
+                      ? 'bg-primary/5 border-primary/20'
+                      : 'bg-base-200/30 border-base-300/40 hover:border-base-300/60'
+                  }`}
+                >
+                  <div className="min-w-0 mr-2">
+                    <div className="text-xs font-bold truncate">
+                      {feed.name}
+                    </div>
+                    <div className="text-[9px] text-base-content/30 uppercase tracking-wide">
+                      {feed.category}
+                    </div>
+                  </div>
+                  {isAdded ? (
+                    <span className="text-[9px] font-bold text-primary uppercase tracking-widest shrink-0 px-2 py-1 rounded bg-primary/10">
+                      Added
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => addCatalogFeed(feed)}
+                      disabled={saving}
+                      className="text-[9px] font-bold text-base-content/40 uppercase tracking-widest shrink-0 px-2 py-1 rounded border border-base-300/40 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-30"
+                    >
+                      + Add
+                    </button>
+                  )}
+                </motion.div>
+              )
+            })}
+          </div>
+        )}
+
+        {!catalogLoading && filteredCatalog.length === 0 && (
+          <p className="text-center text-[10px] text-base-content/25 uppercase tracking-wide py-4">
+            No feeds in this category
+          </p>
+        )}
       </div>
     </div>
   )

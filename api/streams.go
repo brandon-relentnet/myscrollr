@@ -315,6 +315,12 @@ func UpdateStream(c *fiber.Ctx) error {
 		s.Config = map[string]interface{}{}
 	}
 
+	// If this was an RSS stream config update, sync feed URLs to tracked_feeds
+	// so the RSS ingestion service discovers and starts fetching them.
+	if streamType == "rss" && req.Config != nil {
+		go syncRSSFeedsToTracked(s.Config)
+	}
+
 	return c.JSON(s)
 }
 

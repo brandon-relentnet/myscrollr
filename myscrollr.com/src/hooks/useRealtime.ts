@@ -25,6 +25,19 @@ export interface Game {
   [key: string]: any
 }
 
+export interface RssItem {
+  id: number
+  feed_url: string
+  guid: string
+  title: string
+  link: string
+  description: string
+  source_name: string
+  published_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 // Yahoo data as stored in DB rows (keyed by league_key/team_key)
 export interface YahooLeagueRecord {
   league_key: string
@@ -55,6 +68,7 @@ interface RealtimeState {
   status: 'connected' | 'disconnected' | 'reconnecting'
   latestTrades: Array<Trade>
   latestGames: Array<Game>
+  latestRssItems: Array<RssItem>
   yahoo: YahooState
   preferences: UserPreferences | null
 }
@@ -64,6 +78,7 @@ export function useRealtime() {
     status: 'disconnected',
     latestTrades: [],
     latestGames: [],
+    latestRssItems: [],
     yahoo: { leagues: {}, standings: {}, matchups: {} },
     preferences: null,
   })
@@ -156,6 +171,41 @@ export function useRealtime() {
             }
 
             return { ...prev, latestGames: newGames.slice(0, 50) }
+          })
+        } else if (table === 'rss_items') {
+          setState((prev) => {
+            // Upsert by composite key (feed_url + guid)
+            const idx = prev.latestRssItems.findIndex(
+              (r) =>
+                r.feed_url === record.feed_url && r.guid === record.guid,
+            )
+            let newItems = [...prev.latestRssItems]
+
+            if (event.action === 'delete') {
+              if (idx >= 0) {
+                newItems.splice(idx, 1)
+              }
+              return { ...prev, latestRssItems: newItems }
+            }
+
+            if (idx >= 0) {
+              newItems[idx] = { ...newItems[idx], ...record }
+            } else {
+              newItems = [record, ...newItems]
+            }
+
+            // Sort by published_at DESC, limit 50
+            newItems.sort((a, b) => {
+              const aTime = a.published_at
+                ? new Date(a.published_at).getTime()
+                : 0
+              const bTime = b.published_at
+                ? new Date(b.published_at).getTime()
+                : 0
+              return bTime - aTime
+            })
+
+            return { ...prev, latestRssItems: newItems.slice(0, 50) }
           })
         } else if (table === 'yahoo_leagues') {
           // Only accept leagues belonging to this user — reject if GUID unknown or mismatched

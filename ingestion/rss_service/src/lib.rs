@@ -1,0 +1,180 @@
+use std::{sync::Arc, fs, time::Duration};
+use reqwest::Client;
+use tokio::sync::Mutex;
+use crate::log::{error, info, warn};
+use crate::database::{
+    PgPool, create_tables, get_tracked_feeds, seed_tracked_feeds,
+    upsert_rss_item, cleanup_old_articles, FeedConfig, TrackedFeed, ParsedArticle,
+};
+pub use crate::types::RssHealth;
+
+pub mod log;
+pub mod database;
+pub mod types;
+
+pub async fn start_rss_service(pool: Arc<PgPool>, health_state: Arc<Mutex<RssHealth>>) {
+    info!("Starting RSS service...");
+
+    if let Err(e) = create_tables(&pool).await {
+        error!("Failed to create database tables: {}", e);
+        return;
+    }
+
+    // Seed default feeds from config if tracked_feeds is empty
+    let existing = get_tracked_feeds(pool.clone()).await;
+    let feeds = if existing.is_empty() {
+        info!("Database tracked_feeds is empty, seeding from local config...");
+        if let Ok(file_contents) = fs::read_to_string("./configs/feeds.json") {
+            if let Ok(config) = serde_json::from_str::<Vec<FeedConfig>>(&file_contents) {
+                let _ = seed_tracked_feeds(pool.clone(), config).await;
+                get_tracked_feeds(pool.clone()).await
+            } else {
+                error!("Failed to parse configs/feeds.json");
+                Vec::new()
+            }
+        } else {
+            warn!("configs/feeds.json not found");
+            Vec::new()
+        }
+    } else {
+        existing
+    };
+
+    if feeds.is_empty() {
+        error!("No feeds to track. RSS service idling.");
+        return;
+    }
+
+    // Reset per-cycle counters
+    health_state.lock().await.reset_cycle();
+
+    info!("Polling {} RSS feeds...", feeds.len());
+    let client = Client::builder()
+        .timeout(Duration::from_secs(15))
+        .user_agent("MyScrollr RSS Bot/1.0")
+        .build()
+        .unwrap_or_else(|_| Client::new());
+
+    for feed in &feeds {
+        match poll_feed(&client, &pool, feed).await {
+            Ok(count) => {
+                health_state.lock().await.record_success(count as u64);
+            }
+            Err(e) => {
+                error!("Error polling feed {} ({}): {}", feed.name, feed.url, e);
+                health_state.lock().await.record_error(format!("{}: {}", feed.name, e));
+            }
+        }
+    }
+
+    // Cleanup old articles (older than 7 days)
+    match cleanup_old_articles(&pool).await {
+        Ok(deleted) if deleted > 0 => {
+            info!("Cleaned up {} old RSS articles", deleted);
+        }
+        Ok(_) => {} // Nothing to clean
+        Err(e) => {
+            warn!("Failed to cleanup old articles: {}", e);
+        }
+    }
+
+    let health = health_state.lock().await;
+    info!(
+        "RSS poll cycle complete: {} feeds polled, {} items ingested, {} errors",
+        health.feeds_polled, health.items_ingested, health.error_count
+    );
+}
+
+async fn poll_feed(client: &Client, pool: &Arc<PgPool>, feed: &TrackedFeed) -> anyhow::Result<usize> {
+    let response = client.get(&feed.url).send().await?;
+    let bytes = response.bytes().await?;
+
+    let parsed = feed_rs::parser::parse(&bytes[..])?;
+
+    let mut count = 0;
+    for entry in parsed.entries {
+        let guid = entry.id.clone();
+        // Skip entries with empty GUIDs
+        if guid.is_empty() {
+            continue;
+        }
+
+        let title = entry.title
+            .map(|t| t.content)
+            .unwrap_or_default();
+
+        // Skip entries with no title
+        if title.is_empty() {
+            continue;
+        }
+
+        let link = entry.links
+            .first()
+            .map(|l| l.href.clone())
+            .unwrap_or_default();
+
+        let description = entry.summary
+            .map(|s| s.content)
+            .or_else(|| entry.content.and_then(|c| c.body))
+            .unwrap_or_default();
+
+        // Truncate description to 500 chars
+        let description = if description.len() > 500 {
+            let mut truncated = description[..500].to_string();
+            truncated.push_str("...");
+            truncated
+        } else {
+            description
+        };
+
+        // Strip HTML tags from description (basic approach)
+        let description = strip_html_tags(&description);
+
+        let published_at = entry.published
+            .or(entry.updated)
+            .map(|dt| dt.with_timezone(&chrono::Utc));
+
+        let source_name = parsed.title
+            .as_ref()
+            .map(|t| t.content.clone())
+            .unwrap_or_else(|| feed.name.clone());
+
+        let article = ParsedArticle {
+            feed_url: feed.url.clone(),
+            guid,
+            title,
+            link,
+            description,
+            source_name,
+            published_at,
+        };
+
+        if let Err(e) = upsert_rss_item(pool.clone(), article).await {
+            warn!("Failed to upsert RSS item from {}: {}", feed.name, e);
+            continue;
+        }
+
+        count += 1;
+    }
+
+    Ok(count)
+}
+
+/// Basic HTML tag stripper — removes angle-bracketed tags.
+fn strip_html_tags(input: &str) -> String {
+    let mut result = String::with_capacity(input.len());
+    let mut in_tag = false;
+
+    for ch in input.chars() {
+        match ch {
+            '<' => in_tag = true,
+            '>' => in_tag = false,
+            _ if !in_tag => result.push(ch),
+            _ => {}
+        }
+    }
+
+    // Collapse multiple whitespace and trim
+    let collapsed: String = result.split_whitespace().collect::<Vec<&str>>().join(" ");
+    collapsed
+}

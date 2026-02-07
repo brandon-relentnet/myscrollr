@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type {
   Trade,
   Game,
+  RssItem,
   ConnectionStatus,
   FeedPosition,
   FeedMode,
@@ -29,6 +30,7 @@ export default function App({ ctx }: AppProps) {
   // ── Data state ───────────────────────────────────────────────
   const [trades, setTrades] = useState<Trade[]>([]);
   const [games, setGames] = useState<Game[]>([]);
+  const [rssItems, setRssItems] = useState<RssItem[]>([]);
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [enabled, setEnabled] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
@@ -54,6 +56,7 @@ export default function App({ ctx }: AppProps) {
         if (snapshot?.type === 'STATE_SNAPSHOT') {
           setTrades(snapshot.trades);
           setGames(snapshot.games);
+          setRssItems(snapshot.rssItems || []);
           setStatus(snapshot.connectionStatus);
           setAuthenticated(snapshot.authenticated);
         }
@@ -81,13 +84,15 @@ export default function App({ ctx }: AppProps) {
         // Background already processed CDC — just replace state
         setTrades(msg.trades);
         setGames(msg.games);
+        setRssItems(msg.rssItems || []);
         break;
 
       case 'INITIAL_DATA': {
         // Dashboard data after login
-        const { finance, sports } = msg.payload;
+        const { finance, sports, rss } = msg.payload;
         if (finance) setTrades(finance as unknown as Trade[]);
         if (sports) setGames(sports as unknown as Game[]);
+        if (rss) setRssItems(rss as unknown as RssItem[]);
         break;
       }
 
@@ -173,6 +178,7 @@ export default function App({ ctx }: AppProps) {
     <FeedBar
       trades={trades}
       games={games}
+      rssItems={rssItems}
       connectionStatus={status}
       position={position}
       height={height}

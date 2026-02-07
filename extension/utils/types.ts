@@ -31,6 +31,21 @@ export interface Game {
   updated_at?: string;
 }
 
+// ── RSS ─────────────────────────────────────────────────────────
+
+export interface RssItem {
+  id: number;
+  feed_url: string;
+  guid: string;
+  title: string;
+  link: string;
+  description: string;
+  source_name: string;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // ── User Preferences ─────────────────────────────────────────────
 
 export interface UserPreferences {
@@ -64,6 +79,7 @@ export interface UserStream {
 export interface DashboardResponse {
   finance: Trade[];
   sports: Game[];
+  rss: RssItem[];
   preferences?: UserPreferences;
   streams?: UserStream[];
 }

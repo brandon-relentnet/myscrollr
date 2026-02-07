@@ -1,11 +1,12 @@
 import { SSE_URL, SSE_RECONNECT_BASE, SSE_RECONNECT_MAX, MAX_ITEMS } from '~/utils/constants';
-import type { Trade, Game, ConnectionStatus, SSEPayload, CDCRecord } from '~/utils/types';
+import type { Trade, Game, RssItem, ConnectionStatus, SSEPayload, CDCRecord } from '~/utils/types';
 import { handlePreferenceUpdate, handleStreamUpdate, handleStreamDelete } from './preferences';
 
 // ── In-memory state ──────────────────────────────────────────────
 
 let trades: Trade[] = [];
 let games: Game[] = [];
+let rssItems: RssItem[] = [];
 let connectionStatus: ConnectionStatus = 'disconnected';
 
 let eventSource: EventSource | null = null;
@@ -28,15 +29,18 @@ export function setOnUpdate(cb: OnUpdate) {
 // ── State accessors ──────────────────────────────────────────────
 
 export function getState() {
-  return { trades, games, connectionStatus };
+  return { trades, games, rssItems, connectionStatus };
 }
 
-export function mergeDashboardData(newTrades: Trade[], newGames: Game[]) {
+export function mergeDashboardData(newTrades: Trade[], newGames: Game[], newRssItems: RssItem[] = []) {
   for (const trade of newTrades) {
     upsertTrade(trade as unknown as Record<string, unknown>);
   }
   for (const game of newGames) {
     upsertGame(game as unknown as Record<string, unknown>);
+  }
+  for (const item of newRssItems) {
+    upsertRssItem(item as unknown as Record<string, unknown>);
   }
 }
 
@@ -84,6 +88,37 @@ function removeTrade(record: Record<string, unknown>) {
   trades = trades.filter((t) => t.symbol !== trade.symbol);
 }
 
+function upsertRssItem(record: Record<string, unknown>) {
+  if (typeof record.feed_url !== 'string' || typeof record.guid !== 'string') {
+    console.warn('[Scrollr] Skipping RSS record with missing feed_url/guid:', record);
+    return;
+  }
+  const item = record as unknown as RssItem;
+  const idx = rssItems.findIndex(
+    (r) => r.feed_url === item.feed_url && r.guid === item.guid,
+  );
+  if (idx >= 0) {
+    rssItems[idx] = item;
+  } else {
+    rssItems.push(item);
+    if (rssItems.length > MAX_ITEMS) rssItems.shift();
+  }
+  // Keep sorted by published_at descending
+  rssItems.sort((a, b) => {
+    const ta = a.published_at ? new Date(a.published_at).getTime() : 0;
+    const tb = b.published_at ? new Date(b.published_at).getTime() : 0;
+    return tb - ta;
+  });
+}
+
+function removeRssItem(record: Record<string, unknown>) {
+  if (typeof record.feed_url !== 'string' || typeof record.guid !== 'string') return;
+  const item = record as unknown as RssItem;
+  rssItems = rssItems.filter(
+    (r) => !(r.feed_url === item.feed_url && r.guid === item.guid),
+  );
+}
+
 // ── Process a single CDC record ──────────────────────────────────
 
 function processCDCRecord(cdc: CDCRecord) {
@@ -100,6 +135,12 @@ function processCDCRecord(cdc: CDCRecord) {
       removeGame(cdc.record);
     } else {
       upsertGame(cdc.record);
+    }
+  } else if (table === 'rss_items') {
+    if (cdc.action === 'delete') {
+      removeRssItem(cdc.record);
+    } else {
+      upsertRssItem(cdc.record);
     }
   } else if (table === 'user_preferences') {
     if (cdc.action === 'insert' || cdc.action === 'update') {

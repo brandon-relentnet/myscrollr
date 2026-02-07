@@ -1,6 +1,7 @@
 import type {
   Trade,
   Game,
+  RssItem,
   SSEPayload,
   DashboardResponse,
   ConnectionStatus,
@@ -32,12 +33,14 @@ export interface StateUpdateMessage {
   type: 'STATE_UPDATE';
   trades: Trade[];
   games: Game[];
+  rssItems: RssItem[];
 }
 
 export interface StateSnapshotMessage {
   type: 'STATE_SNAPSHOT';
   trades: Trade[];
   games: Game[];
+  rssItems: RssItem[];
   connectionStatus: ConnectionStatus;
   authenticated: boolean;
 }

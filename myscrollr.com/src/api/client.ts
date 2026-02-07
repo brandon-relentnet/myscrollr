@@ -154,6 +154,20 @@ export const streamsApi = {
     ),
 }
 
+// ── RSS Types & API ──────────────────────────────────────────────
+
+export interface TrackedFeed {
+  url: string
+  name: string
+  category: string
+  is_default: boolean
+}
+
+export const rssApi = {
+  /** Fetch the public feed catalog (no auth required) */
+  getCatalog: () => request<TrackedFeed[]>('/rss/feeds'),
+}
+
 // ── Preferences API ───────────────────────────────────────────────
 
 export async function getPreferences(
