@@ -371,56 +371,66 @@ func GetDashboard(c *fiber.Ctx) error {
 		Rss:     make([]RssItem, 0),
 	}
 
-	// 1. Finance (from cache or DB)
-	if !GetCache("cache:finance", &res.Finance) {
-		rows, err := dbPool.Query(context.Background(), "SELECT symbol, price, previous_close, price_change, percentage_change, direction, last_updated FROM trades ORDER BY symbol ASC")
-		if err == nil {
-			for rows.Next() {
-				var t Trade
-				if err := rows.Scan(&t.Symbol, &t.Price, &t.PreviousClose, &t.PriceChange, &t.PercentageChange, &t.Direction, &t.LastUpdated); err == nil {
-					res.Finance = append(res.Finance, t)
-				}
-			}
-			rows.Close()
-			SetCache("cache:finance", res.Finance, 30*time.Second)
-		}
-	}
-
-	// 2. Sports (from cache or DB)
-	if !GetCache("cache:sports", &res.Sports) {
-		rows, err := dbPool.Query(context.Background(), "SELECT id, league, external_game_id, link, home_team_name, home_team_logo, home_team_score, away_team_name, away_team_logo, away_team_score, start_time, short_detail, state FROM games ORDER BY start_time DESC LIMIT 20")
-		if err == nil {
-			for rows.Next() {
-				var g Game
-				if err := rows.Scan(&g.ID, &g.League, &g.ExternalGameID, &g.Link, &g.HomeTeamName, &g.HomeTeamLogo, &g.HomeTeamScore, &g.AwayTeamName, &g.AwayTeamLogo, &g.AwayTeamScore, &g.StartTime, &g.ShortDetail, &g.State); err == nil {
-					res.Sports = append(res.Sports, g)
-				}
-			}
-			rows.Close()
-			SetCache("cache:sports", res.Sports, 30*time.Second)
-		}
-	}
-
-	// 3. User Preferences & Streams
+	// 1. User identity, preferences, streams, and enabled stream types
 	logtoSub, _ := c.Locals("user_id").(string)
+	enabledTypes := map[string]bool{}
+
 	if logtoSub != "" {
 		prefs, err := getOrCreatePreferences(logtoSub)
 		if err == nil {
 			res.Preferences = prefs
 		}
 
-		// Fetch user streams
 		streams, err := getUserStreams(logtoSub)
 		if err == nil {
 			res.Streams = streams
+			for _, s := range streams {
+				if s.Enabled {
+					enabledTypes[s.StreamType] = true
+				}
+			}
 		}
 
 		// Warm Redis subscription sets from current DB state
 		go syncStreamSubscriptions(logtoSub)
 	}
 
-	// 5. RSS Items (per-user, filtered by subscribed feeds)
-	if logtoSub != "" {
+	// 2. Finance (only if user has an enabled finance stream)
+	if enabledTypes["finance"] {
+		if !GetCache("cache:finance", &res.Finance) {
+			rows, err := dbPool.Query(context.Background(), "SELECT symbol, price, previous_close, price_change, percentage_change, direction, last_updated FROM trades ORDER BY symbol ASC")
+			if err == nil {
+				for rows.Next() {
+					var t Trade
+					if err := rows.Scan(&t.Symbol, &t.Price, &t.PreviousClose, &t.PriceChange, &t.PercentageChange, &t.Direction, &t.LastUpdated); err == nil {
+						res.Finance = append(res.Finance, t)
+					}
+				}
+				rows.Close()
+				SetCache("cache:finance", res.Finance, 30*time.Second)
+			}
+		}
+	}
+
+	// 3. Sports (only if user has an enabled sports stream)
+	if enabledTypes["sports"] {
+		if !GetCache("cache:sports", &res.Sports) {
+			rows, err := dbPool.Query(context.Background(), "SELECT id, league, external_game_id, link, home_team_name, home_team_logo, home_team_score, away_team_name, away_team_logo, away_team_score, start_time, short_detail, state FROM games ORDER BY start_time DESC LIMIT 20")
+			if err == nil {
+				for rows.Next() {
+					var g Game
+					if err := rows.Scan(&g.ID, &g.League, &g.ExternalGameID, &g.Link, &g.HomeTeamName, &g.HomeTeamLogo, &g.HomeTeamScore, &g.AwayTeamName, &g.AwayTeamLogo, &g.AwayTeamScore, &g.StartTime, &g.ShortDetail, &g.State); err == nil {
+						res.Sports = append(res.Sports, g)
+					}
+				}
+				rows.Close()
+				SetCache("cache:sports", res.Sports, 30*time.Second)
+			}
+		}
+	}
+
+	// 4. RSS (only if user has an enabled rss stream with feed URLs)
+	if enabledTypes["rss"] && logtoSub != "" {
 		feedURLs := getUserRSSFeedURLs(logtoSub)
 		if len(feedURLs) > 0 {
 			cacheKey := "cache:rss:" + logtoSub
@@ -434,20 +444,22 @@ func GetDashboard(c *fiber.Ctx) error {
 		}
 	}
 
-	// 6. Yahoo (Optional, only if authenticated)
-	guid := getGuid(c)
-	if guid != "" {
-		cacheKey := "cache:yahoo:leagues:" + guid
-		var yahooContent FantasyContent
-		if GetCache(cacheKey, &yahooContent) {
-			res.Yahoo = &yahooContent
-		} else {
-			var data []byte
-			err := dbPool.QueryRow(context.Background(), "SELECT data FROM yahoo_leagues WHERE guid = $1 LIMIT 1", guid).Scan(&data)
-			if err == nil {
-				if err := json.Unmarshal(data, &yahooContent); err == nil {
-					res.Yahoo = &yahooContent
-					SetCache(cacheKey, yahooContent, 5*time.Minute)
+	// 5. Yahoo Fantasy (only if user has an enabled fantasy stream and linked Yahoo account)
+	if enabledTypes["fantasy"] {
+		guid := getGuid(c)
+		if guid != "" {
+			cacheKey := "cache:yahoo:leagues:" + guid
+			var yahooContent FantasyContent
+			if GetCache(cacheKey, &yahooContent) {
+				res.Yahoo = &yahooContent
+			} else {
+				var data []byte
+				err := dbPool.QueryRow(context.Background(), "SELECT data FROM yahoo_leagues WHERE guid = $1 LIMIT 1", guid).Scan(&data)
+				if err == nil {
+					if err := json.Unmarshal(data, &yahooContent); err == nil {
+						res.Yahoo = &yahooContent
+						SetCache(cacheKey, yahooContent, 5*time.Minute)
+					}
 				}
 			}
 		}
