@@ -1,6 +1,6 @@
 import type { ClientMessage, BackgroundMessage, StateSnapshotMessage } from '~/utils/messaging';
 import type { ConnectionStatus, DashboardResponse } from '~/utils/types';
-import { API_URL } from '~/utils/constants';
+import { API_URL, FRONTEND_URL } from '~/utils/constants';
 import { getState, setOnUpdate, mergeDashboardData } from './sse';
 import { login, logout, getValidToken, isAuthenticated } from './auth';
 import { applyServerPreferences } from './preferences';
@@ -105,8 +105,14 @@ export function setupMessageListeners() {
             broadcast({ type: 'AUTH_STATUS', authenticated: authed });
             sendResponse({ type: 'AUTH_STATUS', authenticated: authed });
 
-            // If login succeeded, fetch initial dashboard data
+            // If login succeeded, fetch initial dashboard data and open frontend
             if (success) {
+              // Open the frontend dashboard — Logto session cookie is shared,
+              // so the frontend will auto-authenticate instantly.
+              browser.tabs.create({ url: `${FRONTEND_URL}/dashboard` }).catch(() => {
+                // Tab creation failed (e.g. in tests), non-critical
+              });
+
               fetchDashboardData()
                 .then((data: DashboardResponse) => {
                   mergeDashboardData(data.finance || [], data.sports || []);

@@ -45,9 +45,21 @@ type UserPreferences struct {
 	UpdatedAt     string   `json:"updated_at"`
 }
 
+type Stream struct {
+	ID         int                    `json:"id"`
+	LogtoSub   string                 `json:"-"`
+	StreamType string                 `json:"stream_type"`
+	Enabled    bool                   `json:"enabled"`
+	Visible    bool                   `json:"visible"`
+	Config     map[string]interface{} `json:"config"`
+	CreatedAt  time.Time              `json:"created_at"`
+	UpdatedAt  time.Time              `json:"updated_at"`
+}
+
 type DashboardResponse struct {
 	Finance     []Trade          `json:"finance"`
 	Sports      []Game           `json:"sports"`
 	Yahoo       *FantasyContent  `json:"yahoo,omitempty"`
 	Preferences *UserPreferences `json:"preferences,omitempty"`
+	Streams     []Stream         `json:"streams,omitempty"`
 }

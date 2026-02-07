@@ -123,14 +123,13 @@ function AccountHub() {
             accent="info"
           />
 
-          {/* Account Settings */}
+          {/* Account Settings — opens Logto Account Center */}
           <HubCard
             title="Security Node"
             desc="Manage identity & keys"
-            to="/account"
+            href="https://auth.myscrollr.relentnet.dev/account"
             icon={<Lock className="size-6" />}
             accent="secondary"
-            disabled
           />
         </motion.div>
 
@@ -195,15 +194,25 @@ function HubCard({
   desc,
   to,
   params,
+  href,
   icon,
   accent,
   disabled = false,
-}: any) {
+}: {
+  title: string
+  desc: string
+  to?: string
+  params?: Record<string, string>
+  href?: string
+  icon: React.ReactNode
+  accent: 'primary' | 'secondary' | 'info'
+  disabled?: boolean
+}) {
   const accentClasses = {
     primary: 'text-primary bg-primary/10 border-primary/20',
     secondary: 'text-secondary bg-secondary/10 border-secondary/20',
     info: 'text-info bg-info/10 border-info/20',
-  }[accent as 'primary' | 'secondary' | 'info']
+  }[accent]
 
   const content = (
     <div
@@ -243,8 +252,17 @@ function HubCard({
 
   if (disabled) return content
 
+  // External link (e.g. Logto Account Center)
+  if (href) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className="block h-full">
+        {content}
+      </a>
+    )
+  }
+
   return (
-    <Link to={to} params={params} className="block h-full">
+    <Link to={to!} params={params} className="block h-full">
       {content}
     </Link>
   )

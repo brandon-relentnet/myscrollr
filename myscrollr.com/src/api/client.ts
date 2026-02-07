@@ -89,6 +89,71 @@ export async function authenticatedFetch<T>(
   return response.json()
 }
 
+// ── Stream Types ─────────────────────────────────────────────────
+
+export type StreamType = 'finance' | 'sports' | 'fantasy' | 'rss'
+
+export interface Stream {
+  id: number
+  stream_type: StreamType
+  enabled: boolean
+  visible: boolean
+  config: Record<string, unknown>
+  created_at: string
+  updated_at: string
+}
+
+// ── Streams API ──────────────────────────────────────────────────
+
+export const streamsApi = {
+  getAll: (getToken: () => Promise<string | null>) =>
+    authenticatedFetch<{ streams: Stream[] }>(
+      '/users/me/streams',
+      {},
+      getToken,
+    ),
+
+  create: (
+    streamType: StreamType,
+    config: Record<string, unknown>,
+    getToken: () => Promise<string | null>,
+  ) =>
+    authenticatedFetch<Stream>(
+      '/users/me/streams',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stream_type: streamType, config }),
+      },
+      getToken,
+    ),
+
+  update: (
+    streamType: StreamType,
+    data: { enabled?: boolean; visible?: boolean; config?: Record<string, unknown> },
+    getToken: () => Promise<string | null>,
+  ) =>
+    authenticatedFetch<Stream>(
+      `/users/me/streams/${streamType}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      },
+      getToken,
+    ),
+
+  delete: (
+    streamType: StreamType,
+    getToken: () => Promise<string | null>,
+  ) =>
+    authenticatedFetch<{ status: string; message: string }>(
+      `/users/me/streams/${streamType}`,
+      { method: 'DELETE' },
+      getToken,
+    ),
+}
+
 // ── Preferences API ───────────────────────────────────────────────
 
 export async function getPreferences(

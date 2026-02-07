@@ -5,21 +5,27 @@ import {
   Activity,
   ChevronDown,
   Cpu,
+  Eye,
+  EyeOff,
   Ghost,
   Link2,
-  Unlink,
   Plus,
-  Settings,
+  Power,
+  PowerOff,
+  Rss,
   Settings2,
-  ShieldCheck,
-  TrendingDown,
+  Trash2,
   TrendingUp,
+  Unlink,
+  X,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useRealtime } from '../hooks/useRealtime'
-import type { Game, Trade, YahooState } from '../hooks/useRealtime'
+import type { YahooState } from '../hooks/useRealtime'
 import type { IdTokenClaims } from '@logto/react'
 import SettingsPanel from '../components/SettingsPanel'
+import { streamsApi } from '../api/client'
+import type { Stream, StreamType } from '../api/client'
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
@@ -45,28 +51,72 @@ const sectionVariants = {
   },
 }
 
+const STREAM_META: Record<
+  StreamType,
+  { label: string; icon: React.ReactNode; desc: string }
+> = {
+  finance: {
+    label: 'Finance',
+    icon: <TrendingUp size={14} />,
+    desc: 'Real-time market data via Finnhub',
+  },
+  sports: {
+    label: 'Sports',
+    icon: <Cpu size={14} />,
+    desc: 'Live scores via ESPN',
+  },
+  fantasy: {
+    label: 'Fantasy',
+    icon: <Ghost size={14} />,
+    desc: 'Yahoo Fantasy integration',
+  },
+  rss: {
+    label: 'RSS Feeds',
+    icon: <Rss size={14} />,
+    desc: 'Custom news streams',
+  },
+}
+
 function DashboardPage() {
-  const { isAuthenticated, isLoading, signIn, getIdTokenClaims, getAccessToken } = useLogto()
-  const { latestTrades, latestGames, yahoo, status, preferences, setInitialYahoo, clearYahoo, setUserSub } = useRealtime()
-  const [activeModule, setActiveModule] = useState<
-    'finance' | 'sports' | 'rss' | 'fantasy'
-  >('finance')
+  const {
+    isAuthenticated,
+    isLoading,
+    signIn,
+    getIdTokenClaims,
+    getAccessToken,
+  } = useLogto()
+  const {
+    yahoo,
+    status,
+    preferences,
+    setInitialYahoo,
+    clearYahoo,
+    setUserSub,
+  } = useRealtime()
+  const [activeModule, setActiveModule] = useState<StreamType>('finance')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [userClaims, setUserClaims] = useState<IdTokenClaims>()
-  const [yahooStatus, setYahooStatus] = useState<{ connected: boolean; synced: boolean }>({ connected: false, synced: false })
+  const [yahooStatus, setYahooStatus] = useState<{
+    connected: boolean
+    synced: boolean
+  }>({ connected: false, synced: false })
   const getAccessTokenRef = useRef(getAccessToken)
   getAccessTokenRef.current = getAccessToken
 
-  const apiUrl = import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'
+  const apiUrl =
+    import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'
   const [yahooPending, setYahooPending] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  // ── Streams state ────────────────────────────────────────────────
+  const [streams, setStreams] = useState<Stream[]>([])
+  const [streamsLoading, setStreamsLoading] = useState(true)
+  const [addStreamOpen, setAddStreamOpen] = useState(false)
+
   // ── Prevent remount/re-animation on token refresh ──────────────
-  // Once the dashboard has rendered successfully, subsequent isLoading
-  // or isAuthenticated flickers (caused by Logto SDK's getAccessToken
-  // toggling loadingCount) should NOT unmount the dashboard content.
   const hasLoaded = useRef(false)
   const hasAnimated = useRef(false)
+  const autoSignInTriggered = useRef(false)
 
   // Token cache to avoid calling getAccessToken() (which triggers
   // Logto's setIsLoading) on every settings change.
@@ -74,8 +124,6 @@ function DashboardPage() {
 
   const getToken = useCallback(
     async (): Promise<string | null> => {
-      // Return cached token if still valid (>60s remaining) to avoid
-      // triggering Logto SDK's setIsLoading which causes dashboard remount.
       const cached = tokenCacheRef.current
       if (cached && cached.expiry - Date.now() > 60_000) {
         return cached.token
@@ -83,17 +131,16 @@ function DashboardPage() {
 
       const token = await getAccessToken(apiUrl)
       if (token) {
-        // Decode JWT exp claim to cache the token with its expiry
         try {
           const payload = JSON.parse(atob(token.split('.')[1]!))
           if (payload.exp) {
             tokenCacheRef.current = {
               token,
-              expiry: payload.exp * 1000, // JWT exp is in seconds
+              expiry: payload.exp * 1000,
             }
           }
         } catch {
-          // If decoding fails, don't cache — will call getAccessToken next time
+          // If decoding fails, don't cache
         }
       }
 
@@ -102,13 +149,107 @@ function DashboardPage() {
     [getAccessToken, apiUrl],
   )
 
+  // ── Fetch streams ────────────────────────────────────────────────
+  const fetchStreams = useCallback(async () => {
+    try {
+      const data = await streamsApi.getAll(getToken)
+      setStreams(data.streams || [])
+    } catch {
+      // Silently fail — keep existing state
+    } finally {
+      setStreamsLoading(false)
+    }
+  }, [getToken])
+
+  const handleToggleEnabled = async (stream: Stream) => {
+    // Optimistic update
+    setStreams((prev) =>
+      prev.map((s) =>
+        s.stream_type === stream.stream_type
+          ? { ...s, enabled: !s.enabled }
+          : s,
+      ),
+    )
+    try {
+      await streamsApi.update(
+        stream.stream_type,
+        { enabled: !stream.enabled },
+        getToken,
+      )
+    } catch {
+      // Revert
+      setStreams((prev) =>
+        prev.map((s) =>
+          s.stream_type === stream.stream_type
+            ? { ...s, enabled: stream.enabled }
+            : s,
+        ),
+      )
+    }
+  }
+
+  const handleToggleVisible = async (stream: Stream) => {
+    setStreams((prev) =>
+      prev.map((s) =>
+        s.stream_type === stream.stream_type
+          ? { ...s, visible: !s.visible }
+          : s,
+      ),
+    )
+    try {
+      await streamsApi.update(
+        stream.stream_type,
+        { visible: !stream.visible },
+        getToken,
+      )
+    } catch {
+      setStreams((prev) =>
+        prev.map((s) =>
+          s.stream_type === stream.stream_type
+            ? { ...s, visible: stream.visible }
+            : s,
+        ),
+      )
+    }
+  }
+
+  const handleAddStream = async (streamType: StreamType) => {
+    try {
+      const newStream = await streamsApi.create(streamType, {}, getToken)
+      setStreams((prev) => [...prev, newStream])
+      setActiveModule(streamType)
+      setAddStreamOpen(false)
+    } catch {
+      // Could show an error toast
+    }
+  }
+
+  const handleDeleteStream = async (streamType: StreamType) => {
+    const prev = streams
+    setStreams((s) => s.filter((st) => st.stream_type !== streamType))
+    try {
+      await streamsApi.delete(streamType, getToken)
+      // Switch to first remaining stream
+      const remaining = prev.filter((s) => s.stream_type !== streamType)
+      if (remaining.length > 0) {
+        setActiveModule(remaining[0].stream_type)
+      }
+    } catch {
+      setStreams(prev)
+    }
+  }
+
   // Returns true if leagues were found
   const fetchYahooData = async (): Promise<boolean> => {
     try {
       const token = await getAccessTokenRef.current(apiUrl)
       const [statusRes, leaguesRes] = await Promise.all([
-        fetch(`${apiUrl}/users/me/yahoo-status`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${apiUrl}/users/me/yahoo-leagues`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${apiUrl}/users/me/yahoo-status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${apiUrl}/users/me/yahoo-leagues`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ])
 
       if (statusRes.ok) {
@@ -145,14 +286,12 @@ function DashboardPage() {
     if (pollRef.current) clearInterval(pollRef.current)
     pollRef.current = null
 
-    // Immediate first check — wait for result before starting interval
     const found = await fetchYahooData()
     if (found) {
       setYahooPending(false)
       return
     }
 
-    // Then poll every 5s, stop after 3 min or when data arrives
     let elapsed = 0
     pollRef.current = setInterval(async () => {
       elapsed += 5000
@@ -172,13 +311,14 @@ function DashboardPage() {
         if (claims?.sub) setUserSub(claims.sub)
       })
       fetchYahooData()
+      fetchStreams()
     }
     return () => {
       if (pollRef.current) clearInterval(pollRef.current)
     }
   }, [isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Listen for both postMessage (ideal) and popup close via focus (fallback)
+  // Listen for Yahoo auth popup completion
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'yahoo-auth-complete') {
@@ -199,7 +339,6 @@ function DashboardPage() {
       'width=600,height=700',
     )
 
-    // Fallback: detect when popup closes (in case postMessage is blocked by origin mismatch)
     if (popup) {
       const checkClosed = setInterval(() => {
         if (popup.closed) {
@@ -226,9 +365,7 @@ function DashboardPage() {
     }
   }
 
-  // Only show the loading spinner on the very first load. Once the dashboard
-  // has rendered, Logto SDK's transient isLoading flickers (from getAccessToken
-  // calls) should NOT unmount and remount the entire dashboard.
+  // ── Loading / auth guards ────────────────────────────────────────
   if (isLoading && !hasLoaded.current) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -246,43 +383,40 @@ function DashboardPage() {
     )
   }
 
-  // Same guard: once we've loaded the dashboard, don't flash the sign-in
-  // screen if isAuthenticated briefly flips during a token refresh.
   if (!isAuthenticated && !hasLoaded.current) {
-    const handleSignIn = () => {
+    if (!autoSignInTriggered.current) {
+      autoSignInTriggered.current = true
       signIn(`${window.location.origin}/callback`)
     }
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 font-mono">
+      <div className="min-h-screen flex items-center justify-center">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-md border border-base-300 p-10 rounded-lg bg-base-200/50 space-y-6 text-center"
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 1.5, repeat: Infinity }}
+          className="flex items-center gap-3"
         >
-          <ShieldCheck size={40} className="mx-auto text-primary/30" />
-          <h1 className="text-2xl font-bold tracking-[0.1em] uppercase">
-            Sign In
-          </h1>
-          <p className="text-base-content/50 uppercase text-xs leading-relaxed">
-            Connect your accounts to customize your ticker streams
-          </p>
-          <button onClick={handleSignIn} className="btn btn-primary px-10">
-            Continue
-          </button>
+          <div className="h-2 w-2 rounded-full bg-primary" />
+          <span className="font-mono text-sm text-base-content/50 uppercase tracking-wider">
+            Authenticating...
+          </span>
         </motion.div>
       </div>
     )
   }
 
-  // Mark that the dashboard has successfully rendered at least once.
-  // All subsequent isLoading / isAuthenticated flickers will be ignored.
   hasLoaded.current = true
 
-  // Entrance animations should only play on the very first render.
-  // hasAnimated is set to true synchronously before the JSX is returned,
-  // so any subsequent re-render will skip the entrance animation.
   const shouldAnimate = !hasAnimated.current
   hasAnimated.current = true
+
+  // ── Derived data ─────────────────────────────────────────────────
+  const activeStream = streams.find((s) => s.stream_type === activeModule)
+  const enabledCount = streams.filter((s) => s.enabled).length
+  const visibleCount = streams.filter((s) => s.visible).length
+  const existingTypes = new Set(streams.map((s) => s.stream_type))
+  const availableTypes = (
+    Object.keys(STREAM_META) as StreamType[]
+  ).filter((t) => !existingTypes.has(t))
 
   return (
     <motion.div
@@ -315,14 +449,64 @@ function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-4">
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="btn btn-primary btn-sm gap-2"
-            >
-              <Plus size={14} />
-              Add Stream
-            </motion.button>
+            <div className="relative">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() =>
+                  availableTypes.length > 0
+                    ? setAddStreamOpen(!addStreamOpen)
+                    : undefined
+                }
+                disabled={availableTypes.length === 0}
+                className="btn btn-primary btn-sm gap-2 disabled:opacity-30"
+              >
+                <Plus size={14} />
+                Add Stream
+              </motion.button>
+
+              {/* Add Stream Dropdown */}
+              <AnimatePresence>
+                {addStreamOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -4, scale: 0.95 }}
+                    transition={{
+                      type: 'spring',
+                      stiffness: 500,
+                      damping: 30,
+                    }}
+                    className="absolute right-0 top-full mt-2 w-56 bg-base-100 border border-base-300/60 rounded-lg shadow-xl z-50 overflow-hidden"
+                  >
+                    <div className="p-2">
+                      <p className="text-[9px] font-bold text-base-content/30 uppercase tracking-widest px-2 py-1.5">
+                        Available Integrations
+                      </p>
+                      {availableTypes.map((type) => (
+                        <button
+                          key={type}
+                          onClick={() => handleAddStream(type)}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-primary/8 text-left transition-colors group"
+                        >
+                          <span className="text-base-content/40 group-hover:text-primary transition-colors">
+                            {STREAM_META[type].icon}
+                          </span>
+                          <div>
+                            <span className="text-xs font-bold uppercase tracking-wide block">
+                              {STREAM_META[type].label}
+                            </span>
+                            <span className="text-[9px] text-base-content/30">
+                              {STREAM_META[type].desc}
+                            </span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
             <button
               onClick={() => setSettingsOpen(true)}
               className="p-2.5 rounded border border-base-300 hover:border-primary/30 transition-all text-base-content/50 hover:text-primary"
@@ -333,8 +517,16 @@ function DashboardPage() {
           </div>
         </motion.header>
 
+        {/* Close dropdown on outside click */}
+        {addStreamOpen && (
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setAddStreamOpen(false)}
+          />
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Module Navigation */}
+          {/* Sidebar */}
           <motion.aside
             className="lg:col-span-3 space-y-6"
             variants={sectionVariants}
@@ -344,34 +536,33 @@ function DashboardPage() {
                 Active Streams
               </p>
               <nav className="flex flex-col gap-1">
-                <ModuleNavButton
-                  active={activeModule === 'finance'}
-                  onClick={() => setActiveModule('finance')}
-                  icon={<TrendingUp size={14} />}
-                  label="Finance"
-                  live={true}
-                />
-                <ModuleNavButton
-                  active={activeModule === 'sports'}
-                  onClick={() => setActiveModule('sports')}
-                  icon={<Cpu size={14} />}
-                  label="Sports"
-                  live={true}
-                />
-                <ModuleNavButton
-                  active={activeModule === 'fantasy'}
-                  onClick={() => setActiveModule('fantasy')}
-                  icon={<Ghost size={14} />}
-                  label="Fantasy"
-                  live={false}
-                />
-                <ModuleNavButton
-                  active={activeModule === 'rss'}
-                  onClick={() => setActiveModule('rss')}
-                  icon={<Activity size={14} />}
-                  label="RSS Feeds"
-                  live={false}
-                />
+                {streamsLoading ? (
+                  <div className="p-4 text-center">
+                    <motion.span
+                      animate={{ opacity: [0.3, 0.7, 0.3] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                      className="text-[10px] font-mono text-base-content/30 uppercase"
+                    >
+                      Loading...
+                    </motion.span>
+                  </div>
+                ) : (
+                  streams.map((stream) => {
+                    const meta = STREAM_META[stream.stream_type]
+                    if (!meta) return null
+                    return (
+                      <StreamNavButton
+                        key={stream.stream_type}
+                        active={activeModule === stream.stream_type}
+                        onClick={() => setActiveModule(stream.stream_type)}
+                        icon={meta.icon}
+                        label={meta.label}
+                        enabled={stream.enabled}
+                        visible={stream.visible}
+                      />
+                    )
+                  })
+                )}
               </nav>
             </div>
 
@@ -381,9 +572,33 @@ function DashboardPage() {
                 Overview
               </p>
               <div className="space-y-3">
-                <QuickStat label="Active Streams" value="6" />
-                <QuickStat label="Data Points/min" value="~240" />
-                <QuickStat label="Uptime" value="99.7%" color="text-primary" />
+                <QuickStat
+                  label="Total Streams"
+                  value={String(streams.length)}
+                />
+                <QuickStat
+                  label="Enabled"
+                  value={String(enabledCount)}
+                  color={
+                    enabledCount > 0 ? 'text-primary' : 'text-base-content/80'
+                  }
+                />
+                <QuickStat
+                  label="On Ticker"
+                  value={String(visibleCount)}
+                  color={
+                    visibleCount > 0 ? 'text-primary' : 'text-base-content/80'
+                  }
+                />
+                <QuickStat
+                  label="Connection"
+                  value={status === 'connected' ? 'Live' : 'Offline'}
+                  color={
+                    status === 'connected'
+                      ? 'text-primary'
+                      : 'text-base-content/40'
+                  }
+                />
               </div>
             </div>
           </motion.aside>
@@ -399,22 +614,77 @@ function DashboardPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              {activeModule === 'finance' && (
-                <FinanceConfig
-                  trades={latestTrades}
+              {activeStream && activeModule === 'finance' && (
+                <FinanceStreamConfig
+                  stream={activeStream}
                   connected={status === 'connected'}
+                  onToggleEnabled={() => handleToggleEnabled(activeStream)}
+                  onToggleVisible={() => handleToggleVisible(activeStream)}
+                  onDelete={() => handleDeleteStream('finance')}
                 />
               )}
-              {activeModule === 'sports' && (
-                <SportsConfig
-                  games={latestGames}
+              {activeStream && activeModule === 'sports' && (
+                <SportsStreamConfig
+                  stream={activeStream}
                   connected={status === 'connected'}
+                  onToggleEnabled={() => handleToggleEnabled(activeStream)}
+                  onToggleVisible={() => handleToggleVisible(activeStream)}
+                  onDelete={() => handleDeleteStream('sports')}
                 />
               )}
-              {activeModule === 'fantasy' && (
-                <FantasyConfig yahoo={yahoo} yahooStatus={yahooStatus} yahooPending={yahooPending} onYahooConnect={handleYahooConnect} onYahooDisconnect={handleYahooDisconnect} />
+              {activeStream && activeModule === 'fantasy' && (
+                <FantasyStreamConfig
+                  stream={activeStream}
+                  yahoo={yahoo}
+                  yahooStatus={yahooStatus}
+                  yahooPending={yahooPending}
+                  onYahooConnect={handleYahooConnect}
+                  onYahooDisconnect={handleYahooDisconnect}
+                  onToggleEnabled={() => handleToggleEnabled(activeStream)}
+                  onToggleVisible={() => handleToggleVisible(activeStream)}
+                  onDelete={() => handleDeleteStream('fantasy')}
+                />
               )}
-              {activeModule === 'rss' && <RssConfig />}
+              {activeStream && activeModule === 'rss' && (
+                <RssStreamConfig
+                  stream={activeStream}
+                  getToken={getToken}
+                  onToggleEnabled={() => handleToggleEnabled(activeStream)}
+                  onToggleVisible={() => handleToggleVisible(activeStream)}
+                  onDelete={() => handleDeleteStream('rss')}
+                  onStreamUpdate={(updated) =>
+                    setStreams((prev) =>
+                      prev.map((s) =>
+                        s.stream_type === updated.stream_type ? updated : s,
+                      ),
+                    )
+                  }
+                />
+              )}
+              {!activeStream && !streamsLoading && (
+                <div className="text-center py-20 space-y-4">
+                  <Activity
+                    size={48}
+                    className="mx-auto text-base-content/15"
+                  />
+                  <p className="text-sm font-bold uppercase text-base-content/40">
+                    No Streams Yet
+                  </p>
+                  <p className="text-xs text-base-content/25 max-w-xs mx-auto">
+                    Add a stream to start receiving real-time data on your
+                    ticker.
+                  </p>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setAddStreamOpen(true)}
+                    className="btn btn-primary btn-sm gap-2 mt-2"
+                  >
+                    <Plus size={14} />
+                    Add Stream
+                  </motion.button>
+                </div>
+              )}
             </motion.div>
           </motion.main>
         </div>
@@ -430,7 +700,23 @@ function DashboardPage() {
   )
 }
 
-function ModuleNavButton({ active, onClick, icon, label, live }: any) {
+// ── Sidebar Navigation ─────────────────────────────────────────────
+
+function StreamNavButton({
+  active,
+  onClick,
+  icon,
+  label,
+  enabled,
+  visible,
+}: {
+  active: boolean
+  onClick: () => void
+  icon: React.ReactNode
+  label: string
+  enabled: boolean
+  visible: boolean
+}) {
   return (
     <button
       onClick={onClick}
@@ -446,17 +732,29 @@ function ModuleNavButton({ active, onClick, icon, label, live }: any) {
           {label}
         </span>
       </div>
-      {live && (
-        <span className="flex items-center gap-1.5">
+      <div className="flex items-center gap-2">
+        {visible && (
+          <Eye size={10} className="text-primary/50" />
+        )}
+        {enabled ? (
           <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-          <span className="text-[9px] font-mono text-primary/60">LIVE</span>
-        </span>
-      )}
+        ) : (
+          <span className="h-1.5 w-1.5 rounded-full bg-base-content/20" />
+        )}
+      </div>
     </button>
   )
 }
 
-function QuickStat({ label, value, color = 'text-base-content/80' }: any) {
+function QuickStat({
+  label,
+  value,
+  color = 'text-base-content/80',
+}: {
+  label: string
+  value: string
+  color?: string
+}) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-xs text-base-content/40 uppercase tracking-wide">
@@ -467,68 +765,42 @@ function QuickStat({ label, value, color = 'text-base-content/80' }: any) {
   )
 }
 
-function FinanceConfig({
-  trades,
+// ── Shared Stream Header ───────────────────────────────────────────
+
+function StreamHeader({
+  stream,
+  icon,
+  title,
+  subtitle,
   connected,
+  onToggleEnabled,
+  onToggleVisible,
+  onDelete,
 }: {
-  trades: Array<Trade>
-  connected: boolean
+  stream: Stream
+  icon: React.ReactNode
+  title: string
+  subtitle: string
+  connected?: boolean
+  onToggleEnabled: () => void
+  onToggleVisible: () => void
+  onDelete: () => void
 }) {
-  const assets =
-    trades.length > 0
-      ? trades
-      : [
-          {
-            symbol: 'BTC',
-            price: '67,892.34',
-            percentage_change: '+2.47%',
-            direction: 'up',
-          },
-          {
-            symbol: 'ETH',
-            price: '3,421.18',
-            percentage_change: '+1.23%',
-            direction: 'up',
-          },
-          {
-            symbol: 'NVDA',
-            price: '892.44',
-            percentage_change: '-0.84%',
-            direction: 'down',
-          },
-          {
-            symbol: 'AAPL',
-            price: '178.32',
-            percentage_change: '+0.31%',
-            direction: 'up',
-          },
-          {
-            symbol: 'TSLA',
-            price: '175.21',
-            percentage_change: '-1.52%',
-            direction: 'down',
-          },
-          {
-            symbol: 'GOOGL',
-            price: '141.80',
-            percentage_change: '+0.67%',
-            direction: 'up',
-          },
-        ]
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 mb-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold uppercase tracking-tight flex items-center gap-3">
-            <TrendingUp size={20} className="text-primary" />
-            Market Data
+            {icon}
+            {title}
           </h2>
           <p className="text-xs text-base-content/40 mt-1 uppercase tracking-wide">
-            Real-time prices via Finnhub WebSocket
+            {subtitle}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        {connected !== undefined && (
           <span
             className={`flex items-center gap-1.5 px-2 py-1 rounded ${connected ? 'bg-primary/10 border-primary/20' : 'bg-base-300/30 border-base-300'} border`}
           >
@@ -538,168 +810,225 @@ function FinanceConfig({
             <span
               className={`text-[9px] font-mono ${connected ? 'text-primary' : 'text-base-content/50'} uppercase`}
             >
-              {connected ? 'Connected' : 'Connecting...'}
+              {connected ? 'Connected' : 'Offline'}
             </span>
           </span>
+        )}
+      </div>
+
+      {/* Toggle Controls */}
+      <div className="flex flex-wrap gap-3">
+        <button
+          onClick={onToggleEnabled}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all ${
+            stream.enabled
+              ? 'bg-primary/8 border-primary/20 text-primary'
+              : 'bg-base-200/40 border-base-300/40 text-base-content/40'
+          }`}
+        >
+          {stream.enabled ? <Power size={12} /> : <PowerOff size={12} />}
+          <span className="text-[10px] font-bold uppercase tracking-widest">
+            {stream.enabled ? 'Enabled' : 'Disabled'}
+          </span>
+          <ToggleSwitch active={stream.enabled} />
+        </button>
+
+        <button
+          onClick={onToggleVisible}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all ${
+            stream.visible
+              ? 'bg-primary/8 border-primary/20 text-primary'
+              : 'bg-base-200/40 border-base-300/40 text-base-content/40'
+          }`}
+        >
+          {stream.visible ? <Eye size={12} /> : <EyeOff size={12} />}
+          <span className="text-[10px] font-bold uppercase tracking-widest">
+            {stream.visible ? 'On Ticker' : 'Hidden'}
+          </span>
+          <ToggleSwitch active={stream.visible} />
+        </button>
+
+        <div className="ml-auto">
+          {confirmDelete ? (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-base-content/40 uppercase">
+                Remove?
+              </span>
+              <button
+                onClick={() => {
+                  onDelete()
+                  setConfirmDelete(false)
+                }}
+                className="px-3 py-2 rounded-lg border border-error/30 text-error text-[10px] font-bold uppercase tracking-widest hover:bg-error/10 transition-colors"
+              >
+                Confirm
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="p-2 rounded-lg border border-base-300/40 text-base-content/30 hover:text-base-content/50 transition-colors"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="p-2.5 rounded-lg border border-base-300/40 text-base-content/20 hover:text-error hover:border-error/30 transition-colors"
+              title="Remove stream"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
         </div>
       </div>
-
-      {/* Asset Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        {assets.map((asset) => (
-          <motion.div
-            key={asset.symbol}
-            whileHover={{ scale: 1.02 }}
-            className="bg-base-200/50 border border-base-300/50 rounded-lg p-4 hover:border-primary/30 transition-colors"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-bold font-mono">
-                {asset.symbol.replace('BINANCE:', '')}
-              </span>
-              {asset.direction === 'up' ? (
-                <TrendingUp size={14} className="text-primary" />
-              ) : (
-                <TrendingDown size={14} className="text-secondary" />
-              )}
-            </div>
-            <div className="text-lg font-bold font-mono">
-              {typeof asset.price === 'number'
-                ? asset.price.toFixed(2)
-                : asset.price}
-            </div>
-            <div
-              className={`text-xs font-mono ${asset.direction === 'up' ? 'text-primary' : 'text-secondary'}`}
-            >
-              {typeof asset.percentage_change === 'number'
-                ? (asset.percentage_change > 0 ? '+' : '') +
-                  asset.percentage_change.toFixed(2) +
-                  '%'
-                : asset.percentage_change}
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Add Asset Card */}
-      <motion.button
-        whileHover={{ scale: 1.01 }}
-        className="w-full p-4 rounded-lg border border-dashed border-base-300/50 text-base-content/30 hover:text-base-content/50 hover:border-primary/30 transition-all flex items-center justify-center gap-2"
-      >
-        <Plus size={16} />
-        <span className="text-xs uppercase tracking-wide">Add Asset</span>
-      </motion.button>
     </div>
   )
 }
 
-function SportsConfig({
-  games,
-  connected,
-}: {
-  games: Array<Game>
-  connected: boolean
-}) {
-  const demoGames = [
-    {
-      league: 'NBA',
-      home_team_name: 'LAL',
-      away_team_name: 'GSW',
-      short_detail: 'Q4 2:34',
-      home_team_score: '112',
-      away_team_score: '108',
-      state: 'in_progress',
-    },
-    {
-      league: 'NBA',
-      home_team_name: 'BOS',
-      away_team_name: 'NYK',
-      short_detail: 'Q3 7:12',
-      home_team_score: '89',
-      away_team_score: '87',
-      state: 'in_progress',
-    },
-    {
-      league: 'NFL',
-      home_team_name: 'KC',
-      away_team_name: 'BUF',
-      short_detail: 'Q2 8:45',
-      home_team_score: '14',
-      away_team_score: '10',
-      state: 'in_progress',
-    },
-  ]
+function ToggleSwitch({ active }: { active: boolean }) {
+  return (
+    <span
+      className={`block h-4 w-7 rounded-full relative transition-colors ml-1 ${
+        active ? 'bg-primary' : 'bg-base-300'
+      }`}
+    >
+      <motion.span
+        className="absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white"
+        animate={{ x: active ? 12 : 0 }}
+        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+      />
+    </span>
+  )
+}
 
-  const displayGames = games.length > 0 ? games : demoGames
+// ── Finance Stream Config ──────────────────────────────────────────
+
+function FinanceStreamConfig({
+  stream,
+  connected,
+  onToggleEnabled,
+  onToggleVisible,
+  onDelete,
+}: {
+  stream: Stream
+  connected: boolean
+  onToggleEnabled: () => void
+  onToggleVisible: () => void
+  onDelete: () => void
+}) {
+  return (
+    <div className="space-y-6">
+      <StreamHeader
+        stream={stream}
+        icon={<TrendingUp size={20} className="text-primary" />}
+        title="Finance Stream"
+        subtitle="Real-time market data via Finnhub WebSocket"
+        connected={connected}
+        onToggleEnabled={onToggleEnabled}
+        onToggleVisible={onToggleVisible}
+        onDelete={onDelete}
+      />
+
+      {/* Info Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <InfoCard label="Data Source" value="Finnhub" />
+        <InfoCard label="Tracked Symbols" value="50" />
+        <InfoCard label="Update Frequency" value="Real-time" />
+      </div>
+
+      <div className="bg-base-200/30 border border-base-300/30 rounded-lg p-5 space-y-3">
+        <p className="text-[10px] font-bold text-base-content/30 uppercase tracking-widest">
+          About This Stream
+        </p>
+        <p className="text-xs text-base-content/50 leading-relaxed">
+          Tracks 45 stocks and 5 cryptocurrencies (via Binance) in real-time
+          using Finnhub's WebSocket API. Price updates, percentage changes, and
+          trend direction are delivered to your ticker as they happen.
+        </p>
+        <div className="flex flex-wrap gap-2 pt-2">
+          {['AAPL', 'TSLA', 'NVDA', 'GOOGL', 'AMZN', 'BTC', 'ETH'].map(
+            (sym) => (
+              <span
+                key={sym}
+                className="px-2 py-1 rounded bg-base-300/30 border border-base-300/40 text-[10px] font-mono text-base-content/40"
+              >
+                {sym}
+              </span>
+            ),
+          )}
+          <span className="px-2 py-1 text-[10px] font-mono text-base-content/25">
+            +43 more
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Sports Stream Config ───────────────────────────────────────────
+
+function SportsStreamConfig({
+  stream,
+  connected,
+  onToggleEnabled,
+  onToggleVisible,
+  onDelete,
+}: {
+  stream: Stream
+  connected: boolean
+  onToggleEnabled: () => void
+  onToggleVisible: () => void
+  onDelete: () => void
+}) {
+  const leagues = ['NFL', 'NBA', 'NHL', 'MLB']
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold uppercase tracking-tight flex items-center gap-3">
-            <Cpu size={20} className="text-primary" />
-            Live Scores
-          </h2>
-          <p className="text-xs text-base-content/40 mt-1 uppercase tracking-wide">
-            ESPN polling interval: 30s
-          </p>
-        </div>
-        <span
-          className={`flex items-center gap-1.5 px-2 py-1 rounded ${connected ? 'bg-primary/10 border-primary/20' : 'bg-base-300/30 border-base-300'} border`}
-        >
-          <span
-            className={`h-1.5 w-1.5 rounded-full ${connected ? 'bg-primary' : 'bg-base-content/30'} animate-pulse`}
-          />
-          <span
-            className={`text-[9px] font-mono ${connected ? 'text-primary' : 'text-base-content/50'} uppercase`}
-          >
-            {connected ? 'Connected' : 'Connecting...'}
-          </span>
-        </span>
+      <StreamHeader
+        stream={stream}
+        icon={<Cpu size={20} className="text-primary" />}
+        title="Sports Stream"
+        subtitle="Live scores via ESPN polling"
+        connected={connected}
+        onToggleEnabled={onToggleEnabled}
+        onToggleVisible={onToggleVisible}
+        onDelete={onDelete}
+      />
+
+      {/* Info Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <InfoCard label="Data Source" value="ESPN" />
+        <InfoCard label="Leagues" value={String(leagues.length)} />
+        <InfoCard label="Poll Interval" value="5 min" />
       </div>
 
-      <div className="space-y-3">
-        {displayGames.map((game, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className="bg-base-200/50 border border-base-300/50 rounded-lg p-4"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-mono text-primary/60 uppercase">
-                {game.league}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span
-                  className={`h-1 w-1 rounded-full ${game.state?.includes('progress') ? 'bg-primary' : 'bg-base-content/30'} animate-pulse`}
-                />
-                <span className="text-[9px] font-mono text-primary uppercase">
-                  {game.state?.replace('in_', '') || 'Live'}
-                </span>
+      <div className="bg-base-200/30 border border-base-300/30 rounded-lg p-5 space-y-3">
+        <p className="text-[10px] font-bold text-base-content/30 uppercase tracking-widest">
+          Tracked Leagues
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {leagues.map((league) => (
+            <div
+              key={league}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-base-200/50 border border-base-300/40"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+              <span className="text-xs font-bold uppercase tracking-wide">
+                {league}
               </span>
             </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <span className="text-sm font-bold">{game.home_team_name}</span>
-                <span className="text-xs text-base-content/40">vs</span>
-                <span className="text-sm font-bold">{game.away_team_name}</span>
-              </div>
-              <div className="text-right">
-                <div className="text-sm font-bold font-mono">
-                  {game.home_team_score}-{game.away_team_score}
-                </div>
-                <div className="text-[10px] font-mono text-primary/60">
-                  {game.short_detail}
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        ))}
+          ))}
+        </div>
+        <p className="text-xs text-base-content/40 leading-relaxed pt-2">
+          Scores are polled from ESPN every 5 minutes. Active, upcoming, and
+          recently completed games are delivered to your ticker.
+        </p>
       </div>
     </div>
   )
 }
+
+// ── Fantasy Stream Config ──────────────────────────────────────────
 
 const GAME_CODE_LABELS: Record<string, string> = {
   nfl: 'Football',
@@ -710,23 +1039,30 @@ const GAME_CODE_LABELS: Record<string, string> = {
 
 const LEAGUES_PER_PAGE = 5
 
-function FantasyConfig({
+function FantasyStreamConfig({
+  stream,
   yahoo,
   yahooStatus,
   yahooPending,
   onYahooConnect,
   onYahooDisconnect,
+  onToggleEnabled,
+  onToggleVisible,
+  onDelete,
 }: {
+  stream: Stream
   yahoo: YahooState
   yahooStatus: { connected: boolean; synced: boolean }
   yahooPending?: boolean
   onYahooConnect?: () => void
   onYahooDisconnect?: () => void
+  onToggleEnabled: () => void
+  onToggleVisible: () => void
+  onDelete: () => void
 }) {
   const [filter, setFilter] = useState<'active' | 'finished'>('active')
-  const [visibleCount, setVisibleCount] = useState(LEAGUES_PER_PAGE)
+  const [leagueVisibleCount, setLeagueVisibleCount] = useState(LEAGUES_PER_PAGE)
 
-  // Build league list from DB records, merging standings data
   const allLeagues = Object.values(yahoo.leagues)
     .map((league) => {
       const standings = yahoo.standings[league.league_key]
@@ -745,35 +1081,40 @@ function FantasyConfig({
   const activeLeagues = allLeagues.filter((l) => !l.is_finished)
   const finishedLeagues = allLeagues.filter((l) => l.is_finished)
   const filteredLeagues = filter === 'active' ? activeLeagues : finishedLeagues
-  const visibleLeagues = filteredLeagues.slice(0, visibleCount)
-  const hasMore = visibleCount < filteredLeagues.length
-  const remaining = filteredLeagues.length - visibleCount
+  const visibleLeagues = filteredLeagues.slice(0, leagueVisibleCount)
+  const hasMore = leagueVisibleCount < filteredLeagues.length
+  const remaining = filteredLeagues.length - leagueVisibleCount
 
-  // Reset visible count when filter changes
   const handleFilterChange = (newFilter: 'active' | 'finished') => {
     setFilter(newFilter)
-    setVisibleCount(LEAGUES_PER_PAGE)
+    setLeagueVisibleCount(LEAGUES_PER_PAGE)
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold uppercase tracking-tight flex items-center gap-3">
-            <Ghost size={20} className="text-primary" />
-            Fantasy Leagues
-          </h2>
-          <p className="text-xs text-base-content/40 mt-1 uppercase tracking-wide">
-            Yahoo Fantasy integration
-          </p>
-        </div>
-        {yahooStatus.connected && (
+      <StreamHeader
+        stream={stream}
+        icon={<Ghost size={20} className="text-primary" />}
+        title="Fantasy Stream"
+        subtitle="Yahoo Fantasy integration"
+        onToggleEnabled={onToggleEnabled}
+        onToggleVisible={onToggleVisible}
+        onDelete={onDelete}
+      />
+
+      {/* Yahoo Connection Status */}
+      {yahooStatus.connected && (
+        <div className="flex items-center gap-3">
           <span className="flex items-center gap-1.5 px-2 py-1 rounded bg-primary/10 border border-primary/20">
-            <span className={`h-1.5 w-1.5 rounded-full ${yahooStatus.synced ? 'bg-primary' : 'bg-warning'} animate-pulse`} />
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${yahooStatus.synced ? 'bg-primary' : 'bg-warning'} animate-pulse`}
+            />
             <span className="text-[9px] font-mono text-primary uppercase">
               {activeLeagues.length > 0
                 ? `${activeLeagues.length} Active`
-                : yahooStatus.synced ? 'Connected' : 'Syncing...'}
+                : yahooStatus.synced
+                  ? 'Connected'
+                  : 'Syncing...'}
             </span>
             {finishedLeagues.length > 0 && (
               <span className="text-[9px] font-mono text-base-content/30 uppercase ml-1">
@@ -781,8 +1122,8 @@ function FantasyConfig({
               </span>
             )}
           </span>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Not Connected */}
       {!yahooStatus.connected && !yahooPending && (
@@ -814,13 +1155,13 @@ function FantasyConfig({
       )}
 
       {/* Syncing / Waiting state */}
-      {(yahooPending || (yahooStatus.connected && allLeagues.length === 0)) && (
+      {(yahooPending ||
+        (yahooStatus.connected && allLeagues.length === 0)) && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-center py-12 space-y-5"
         >
-          {/* Animated loader — fixed height container prevents layout shift */}
           <div className="flex items-center justify-center gap-1.5 h-6">
             {[0, 1, 2, 3, 4].map((i) => (
               <motion.div
@@ -907,7 +1248,9 @@ function FantasyConfig({
             <span className="relative flex items-center gap-2">
               Past
               {finishedLeagues.length > 0 && (
-                <span className="font-mono text-base-content/30">{finishedLeagues.length}</span>
+                <span className="font-mono text-base-content/30">
+                  {finishedLeagues.length}
+                </span>
               )}
             </span>
           </button>
@@ -953,14 +1296,19 @@ function FantasyConfig({
       {/* Load More */}
       {hasMore && (
         <motion.button
-          onClick={() => setVisibleCount((prev) => prev + LEAGUES_PER_PAGE)}
+          onClick={() =>
+            setLeagueVisibleCount((prev) => prev + LEAGUES_PER_PAGE)
+          }
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.99 }}
           className="w-full p-3.5 rounded-lg bg-base-200/40 border border-base-300/40 text-base-content/40 hover:text-base-content/60 hover:border-base-300/60 transition-all flex items-center justify-center gap-2 group"
         >
-          <ChevronDown size={14} className="group-hover:translate-y-0.5 transition-transform" />
+          <ChevronDown
+            size={14}
+            className="group-hover:translate-y-0.5 transition-transform"
+          />
           <span className="text-[10px] font-bold uppercase tracking-widest">
             Show {Math.min(remaining, LEAGUES_PER_PAGE)} more
           </span>
@@ -989,15 +1337,15 @@ function FantasyConfig({
             className="p-4 rounded-lg border border-dashed border-base-300/50 text-base-content/40 hover:text-error hover:border-error/30 transition-all flex items-center justify-center gap-2"
           >
             <Unlink size={16} />
-            <span className="text-xs uppercase tracking-wide">
-              Disconnect
-            </span>
+            <span className="text-xs uppercase tracking-wide">Disconnect</span>
           </motion.button>
         </div>
       )}
     </div>
   )
 }
+
+// ── League Card (reused from before) ───────────────────────────────
 
 function LeagueCard({
   league,
@@ -1015,25 +1363,35 @@ function LeagueCard({
   const [standingsOpen, setStandingsOpen] = useState(false)
   const sportLabel =
     GAME_CODE_LABELS[league.game_code || ''] || league.game_code || 'Fantasy'
-  // Standings data is an array of team objects from the Rust ingestion
-  const teams = Array.isArray(league.standings) ? league.standings : (league.standings?.teams?.team || [])
+  const teams = Array.isArray(league.standings)
+    ? league.standings
+    : (league.standings?.teams?.team || [])
   const isActive = !league.is_finished
 
   return (
     <div
       className={`border rounded-lg overflow-hidden transition-colors ${isActive ? 'bg-base-200/50 border-base-300/50' : 'bg-base-200/20 border-base-300/30'}`}
     >
-      {/* League Header — clickable to toggle standings */}
       <button
         onClick={() => teams.length > 0 && setStandingsOpen((prev) => !prev)}
         className={`w-full p-5 flex items-center justify-between text-left ${teams.length > 0 ? 'cursor-pointer hover:bg-base-200/30' : 'cursor-default'} transition-colors`}
       >
         <div className="flex items-center gap-4">
-          <div className={`h-11 w-11 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-secondary/10 border border-secondary/20' : 'bg-base-300/20 border border-base-300/30'}`}>
-            <span className={`text-base font-bold ${isActive ? 'text-secondary' : 'text-base-content/30'}`}>Y!</span>
+          <div
+            className={`h-11 w-11 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-secondary/10 border border-secondary/20' : 'bg-base-300/20 border border-base-300/30'}`}
+          >
+            <span
+              className={`text-base font-bold ${isActive ? 'text-secondary' : 'text-base-content/30'}`}
+            >
+              Y!
+            </span>
           </div>
           <div className="min-w-0">
-            <h3 className={`text-sm font-bold uppercase truncate ${isActive ? '' : 'text-base-content/50'}`}>{league.name}</h3>
+            <h3
+              className={`text-sm font-bold uppercase truncate ${isActive ? '' : 'text-base-content/50'}`}
+            >
+              {league.name}
+            </h3>
             <p className="text-[10px] text-base-content/40 uppercase tracking-wide">
               {sportLabel} · {league.num_teams} Teams
               {league.season ? ` · ${league.season}` : ''}
@@ -1044,7 +1402,9 @@ function LeagueCard({
           {isActive ? (
             <span className="flex items-center gap-1.5 px-2 py-1 rounded bg-success/10 border border-success/20">
               <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-              <span className="text-[9px] font-bold uppercase text-success">Active</span>
+              <span className="text-[9px] font-bold uppercase text-success">
+                Active
+              </span>
             </span>
           ) : (
             <span className="text-[9px] font-mono text-base-content/25 uppercase">
@@ -1125,7 +1485,6 @@ function LeagueCard({
         )}
       </AnimatePresence>
 
-      {/* No standings yet — shown inline, not collapsible */}
       {teams.length === 0 && (
         <div className="px-5 pb-4">
           <div className="h-px bg-base-300/20 mb-3" />
@@ -1138,32 +1497,80 @@ function LeagueCard({
   )
 }
 
-function RssConfig() {
-  const feeds = [
-    { name: 'Hacker News', url: 'news.ycombinator.com', unread: 12 },
-    { name: 'TechCrunch', url: 'techcrunch.com', unread: 5 },
-    { name: 'The Verge', url: 'theverge.com', unread: 8 },
-  ]
+// ── RSS Stream Config ──────────────────────────────────────────────
+
+function RssStreamConfig({
+  stream,
+  getToken,
+  onToggleEnabled,
+  onToggleVisible,
+  onDelete,
+  onStreamUpdate,
+}: {
+  stream: Stream
+  getToken: () => Promise<string | null>
+  onToggleEnabled: () => void
+  onToggleVisible: () => void
+  onDelete: () => void
+  onStreamUpdate: (updated: Stream) => void
+}) {
+  const [newFeedName, setNewFeedName] = useState('')
+  const [newFeedUrl, setNewFeedUrl] = useState('')
+
+  const feeds = Array.isArray((stream.config as any)?.feeds)
+    ? ((stream.config as any).feeds as Array<{ name: string; url: string }>)
+    : []
+
+  const updateFeeds = async (
+    nextFeeds: Array<{ name: string; url: string }>,
+  ) => {
+    try {
+      const updated = await streamsApi.update(
+        'rss',
+        { config: { feeds: nextFeeds } },
+        getToken,
+      )
+      onStreamUpdate(updated)
+    } catch {
+      // Could show error
+    }
+  }
+
+  const addFeed = () => {
+    const name = newFeedName.trim()
+    const url = newFeedUrl.trim()
+    if (!name || !url) return
+    if (feeds.some((f) => f.url === url)) return
+    updateFeeds([...feeds, { name, url }])
+    setNewFeedName('')
+    setNewFeedUrl('')
+  }
+
+  const removeFeed = (idx: number) => {
+    const next = [...feeds]
+    next.splice(idx, 1)
+    updateFeeds(next)
+  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold uppercase tracking-tight flex items-center gap-3">
-          <Activity size={20} className="text-primary" />
-          RSS Feeds
-        </h2>
-        <p className="text-xs text-base-content/40 mt-1 uppercase tracking-wide">
-          Custom news streams
-        </p>
-      </div>
+      <StreamHeader
+        stream={stream}
+        icon={<Rss size={20} className="text-primary" />}
+        title="RSS Stream"
+        subtitle="Custom news feeds on your ticker"
+        onToggleEnabled={onToggleEnabled}
+        onToggleVisible={onToggleVisible}
+        onDelete={onDelete}
+      />
 
       <div className="space-y-3">
         {feeds.map((feed, i) => (
           <motion.div
-            key={i}
+            key={feed.url}
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: i * 0.1 }}
+            transition={{ delay: i * 0.05 }}
             className="flex items-center justify-between p-4 bg-base-200/50 border border-base-300/50 rounded-lg"
           >
             <div className="flex items-center gap-3">
@@ -1174,32 +1581,75 @@ function RssConfig() {
               </div>
               <div>
                 <div className="text-sm font-bold">{feed.name}</div>
-                <div className="text-[10px] text-base-content/40 font-mono">
+                <div className="text-[10px] text-base-content/40 font-mono truncate max-w-[260px]">
                   {feed.url}
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="px-2 py-0.5 rounded bg-primary/10 border border-primary/20">
-                <span className="text-xs font-mono text-primary">
-                  {feed.unread}
-                </span>
-              </span>
-              <button className="p-1.5 rounded hover:bg-base-200 transition-colors text-base-content/30 hover:text-base-content/50">
-                <Settings size={14} />
-              </button>
-            </div>
+            <button
+              onClick={() => removeFeed(i)}
+              className="p-2 rounded hover:bg-error/10 text-base-content/20 hover:text-error transition-colors shrink-0"
+            >
+              <Trash2 size={14} />
+            </button>
           </motion.div>
         ))}
       </div>
 
-      <motion.button
-        whileHover={{ scale: 1.01 }}
-        className="w-full p-4 rounded-lg border border-dashed border-base-300/50 text-base-content/40 hover:text-primary hover:border-primary/30 transition-all flex items-center justify-center gap-2"
-      >
-        <Plus size={16} />
-        <span className="text-xs uppercase tracking-wide">Add Feed</span>
-      </motion.button>
+      {feeds.length === 0 && (
+        <div className="text-center py-8">
+          <Rss size={32} className="mx-auto text-base-content/15 mb-3" />
+          <p className="text-xs text-base-content/30 uppercase tracking-wide">
+            No feeds configured yet
+          </p>
+        </div>
+      )}
+
+      {/* Add Feed Form */}
+      <div className="bg-base-200/30 border border-base-300/30 rounded-lg p-4 space-y-3">
+        <p className="text-[10px] font-bold text-base-content/30 uppercase tracking-widest">
+          Add Feed
+        </p>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            type="text"
+            value={newFeedName}
+            onChange={(e) => setNewFeedName(e.target.value)}
+            placeholder="Feed name"
+            className="flex-1 px-3 py-2 rounded bg-base-200/50 border border-base-300/40 text-xs font-mono text-base-content/60 placeholder:text-base-content/20 focus:outline-none focus:border-primary/30 transition-colors"
+          />
+          <input
+            type="text"
+            value={newFeedUrl}
+            onChange={(e) => setNewFeedUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') addFeed()
+            }}
+            placeholder="https://example.com/feed.xml"
+            className="flex-[2] px-3 py-2 rounded bg-base-200/50 border border-base-300/40 text-xs font-mono text-base-content/60 placeholder:text-base-content/20 focus:outline-none focus:border-primary/30 transition-colors"
+          />
+          <button
+            onClick={addFeed}
+            className="px-4 py-2 rounded border border-base-300/40 text-base-content/30 hover:text-primary hover:border-primary/30 transition-colors flex items-center gap-2"
+          >
+            <Plus size={14} />
+            <span className="text-xs uppercase tracking-wide">Add</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Info Card ──────────────────────────────────────────────────────
+
+function InfoCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-base-200/40 border border-base-300/40 rounded-lg p-4">
+      <p className="text-[10px] text-base-content/30 uppercase tracking-widest mb-1">
+        {label}
+      </p>
+      <p className="text-sm font-bold font-mono">{value}</p>
     </div>
   )
 }

@@ -170,6 +170,10 @@ func main() {
 	api.Get("/users/:username", GetProfileByUsername)
 	api.Get("/users/me/preferences", LogtoAuth, HandleGetPreferences)
 	api.Put("/users/me/preferences", LogtoAuth, HandleUpdatePreferences)
+	api.Get("/users/me/streams", LogtoAuth, GetStreams)
+	api.Post("/users/me/streams", LogtoAuth, CreateStream)
+	api.Put("/users/me/streams/:type", LogtoAuth, UpdateStream)
+	api.Delete("/users/me/streams/:type", LogtoAuth, DeleteStream)
 	api.Get("/users/me/yahoo-status", LogtoAuth, GetYahooStatus)
 	api.Get("/users/me/yahoo-leagues", LogtoAuth, GetMyYahooLeagues)
 	api.Delete("/users/me/yahoo", LogtoAuth, DisconnectYahoo)
@@ -388,12 +392,21 @@ func GetDashboard(c *fiber.Ctx) error {
 		}
 	}
 
-	// 3. User Preferences
+	// 3. User Preferences & Streams
 	logtoSub, _ := c.Locals("user_id").(string)
 	if logtoSub != "" {
 		prefs, err := getOrCreatePreferences(logtoSub)
 		if err == nil {
 			res.Preferences = prefs
+		}
+
+		// Fetch user streams (auto-seeds defaults if none exist)
+		streams, err := getUserStreams(logtoSub)
+		if err == nil {
+			if len(streams) == 0 {
+				streams, _ = seedDefaultStreams(logtoSub)
+			}
+			res.Streams = streams
 		}
 	}
 

@@ -116,6 +116,24 @@ func ConnectDB() {
 		log.Printf("Warning: Failed to create yahoo_users table: %v", err)
 	}
 
+	// Ensure user_streams table exists
+	_, err = dbPool.Exec(context.Background(), `
+		CREATE TABLE IF NOT EXISTS user_streams (
+			id              SERIAL PRIMARY KEY,
+			logto_sub       TEXT NOT NULL,
+			stream_type     TEXT NOT NULL,
+			enabled         BOOLEAN NOT NULL DEFAULT true,
+			visible         BOOLEAN NOT NULL DEFAULT true,
+			config          JSONB NOT NULL DEFAULT '{}',
+			created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+			updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+			UNIQUE(logto_sub, stream_type)
+		);
+	`)
+	if err != nil {
+		log.Printf("Warning: Failed to create user_streams table: %v", err)
+	}
+
 	// Ensure user_preferences table exists
 	_, err = dbPool.Exec(context.Background(), `
 		CREATE TABLE IF NOT EXISTS user_preferences (

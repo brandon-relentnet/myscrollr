@@ -86,16 +86,6 @@ export default function SettingsPanel({
     [getToken],
   )
 
-  const toggleTab = (tab: 'finance' | 'sports') => {
-    const current = prefs.active_tabs
-    const next = current.includes(tab)
-      ? current.filter((t) => t !== tab)
-      : [...current, tab]
-    // Must have at least one active tab
-    if (next.length === 0) return
-    save({ active_tabs: next })
-  }
-
   const addSite = (
     list: 'enabled_sites' | 'disabled_sites',
     value: string,
@@ -250,26 +240,6 @@ export default function SettingsPanel({
                     />
                   </Section>
 
-                  {/* ── Active Categories ─────────────────── */}
-                  <Section
-                    icon={<Layers size={14} />}
-                    title="Categories"
-                    desc="Choose which data tabs appear in the feed"
-                  >
-                    <div className="flex gap-2">
-                      <CategoryPill
-                        label="Finance"
-                        active={prefs.active_tabs.includes('finance')}
-                        onClick={() => toggleTab('finance')}
-                      />
-                      <CategoryPill
-                        label="Sports"
-                        active={prefs.active_tabs.includes('sports')}
-                        onClick={() => toggleTab('sports')}
-                      />
-                    </div>
-                  </Section>
-
                   {/* ── Allowed Sites ─────────────────────── */}
                   <Section
                     icon={<Globe size={14} />}
@@ -422,34 +392,6 @@ function SegmentedControl({
         </button>
       ))}
     </div>
-  )
-}
-
-function CategoryPill({
-  label,
-  active,
-  onClick,
-}: {
-  label: string
-  active: boolean
-  onClick: () => void
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-4 py-2.5 rounded-lg border text-[10px] font-bold uppercase tracking-widest transition-all ${
-        active
-          ? 'bg-primary/8 border-primary/20 text-primary'
-          : 'bg-base-200/40 border-base-300/40 text-base-content/30 hover:text-base-content/50'
-      }`}
-    >
-      <span className="flex items-center gap-2">
-        {active && (
-          <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-        )}
-        {label}
-      </span>
-    </button>
   )
 }
 
