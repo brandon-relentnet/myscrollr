@@ -166,6 +166,18 @@ export interface TrackedFeed {
 export const rssApi = {
   /** Fetch the public feed catalog (no auth required) */
   getCatalog: () => request<TrackedFeed[]>('/rss/feeds'),
+
+  /** Delete a custom (non-default) feed from the catalog */
+  deleteFeed: (url: string, getToken: () => Promise<string | null>) =>
+    authenticatedFetch<{ status: string; message: string }>(
+      '/rss/feeds',
+      {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      },
+      getToken,
+    ),
 }
 
 // ── Preferences API ───────────────────────────────────────────────

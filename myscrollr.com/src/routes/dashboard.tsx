@@ -1505,6 +1505,22 @@ function RssStreamConfig({
     updateFeeds([...feeds, { name: feed.name, url: feed.url }])
   }
 
+  const deleteCatalogFeed = async (feed: TrackedFeed) => {
+    if (feed.is_default) return
+    try {
+      await rssApi.deleteFeed(feed.url, getToken)
+      // Remove from local catalog state
+      setCatalog((prev) => prev.filter((f) => f.url !== feed.url))
+      // Also remove from user's active feeds if subscribed
+      if (feedUrlSet.has(feed.url)) {
+        const nextFeeds = feeds.filter((f) => f.url !== feed.url)
+        updateFeeds(nextFeeds)
+      }
+    } catch {
+      // Could show error toast
+    }
+  }
+
   const removeFeed = (idx: number) => {
     const next = [...feeds]
     next.splice(idx, 1)
@@ -1668,21 +1684,37 @@ function RssStreamConfig({
                     </div>
                     <div className="text-[9px] text-base-content/30 uppercase tracking-wide">
                       {feed.category}
+                      {!feed.is_default && (
+                        <span className="ml-1 text-base-content/20">
+                          (custom)
+                        </span>
+                      )}
                     </div>
                   </div>
-                  {isAdded ? (
-                    <span className="text-[9px] font-bold text-primary uppercase tracking-widest shrink-0 px-2 py-1 rounded bg-primary/10">
-                      Added
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => addCatalogFeed(feed)}
-                      disabled={saving}
-                      className="text-[9px] font-bold text-base-content/40 uppercase tracking-widest shrink-0 px-2 py-1 rounded border border-base-300/40 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-30"
-                    >
-                      + Add
-                    </button>
-                  )}
+                  <div className="flex items-center gap-1 shrink-0">
+                    {isAdded ? (
+                      <span className="text-[9px] font-bold text-primary uppercase tracking-widest px-2 py-1 rounded bg-primary/10">
+                        Added
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => addCatalogFeed(feed)}
+                        disabled={saving}
+                        className="text-[9px] font-bold text-base-content/40 uppercase tracking-widest px-2 py-1 rounded border border-base-300/40 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-30"
+                      >
+                        + Add
+                      </button>
+                    )}
+                    {!feed.is_default && (
+                      <button
+                        onClick={() => deleteCatalogFeed(feed)}
+                        title="Remove custom feed from catalog"
+                        className="p-1 rounded hover:bg-error/10 text-base-content/20 hover:text-error transition-colors"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
                 </motion.div>
               )
             })}

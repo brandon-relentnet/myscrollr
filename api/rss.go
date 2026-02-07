@@ -127,6 +127,72 @@ func queryRSSItems(feedURLs []string) []RssItem {
 	return items
 }
 
+// DeleteCustomFeed removes a non-default feed from the catalog and cleans up its items and Redis sets.
+//
+// @Summary Delete a custom RSS feed from the catalog
+// @Description Removes a custom (non-default) feed from tracked_feeds, its rss_items, and Redis subscriber sets
+// @Tags RSS
+// @Accept json
+// @Produce json
+// @Param body body object true "Feed URL to delete" example({"url":"https://example.com/feed.xml"})
+// @Success 200 {object} object{status=string,message=string}
+// @Failure 400 {object} ErrorResponse
+// @Failure 403 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Security LogtoAuth
+// @Router /rss/feeds [delete]
+func DeleteCustomFeed(c *fiber.Ctx) error {
+	var req struct {
+		URL string `json:"url"`
+	}
+	if err := c.BodyParser(&req); err != nil || req.URL == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+			Status: "error",
+			Error:  "Request body must include a non-empty 'url' field",
+		})
+	}
+
+	// Verify the feed exists and is not a default feed
+	var isDefault bool
+	err := dbPool.QueryRow(context.Background(),
+		"SELECT is_default FROM tracked_feeds WHERE url = $1", req.URL).Scan(&isDefault)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
+			Status: "error",
+			Error:  "Feed not found in catalog",
+		})
+	}
+	if isDefault {
+		return c.Status(fiber.StatusForbidden).JSON(ErrorResponse{
+			Status: "error",
+			Error:  "Cannot delete a built-in default feed",
+		})
+	}
+
+	// Delete rss_items for this feed URL
+	_, _ = dbPool.Exec(context.Background(),
+		"DELETE FROM rss_items WHERE feed_url = $1", req.URL)
+
+	// Delete the tracked feed
+	_, err = dbPool.Exec(context.Background(),
+		"DELETE FROM tracked_feeds WHERE url = $1 AND is_default = false", req.URL)
+	if err != nil {
+		log.Printf("[RSS] Failed to delete custom feed %s: %v", req.URL, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Status: "error",
+			Error:  "Failed to delete feed",
+		})
+	}
+
+	// Clean up Redis subscriber set for this feed URL
+	rdb.Del(context.Background(), "rss:subscribers:"+req.URL)
+
+	// Invalidate catalog cache
+	rdb.Del(context.Background(), "cache:rss:catalog")
+
+	return c.JSON(fiber.Map{"status": "ok", "message": "Custom feed deleted"})
+}
+
 // syncRSSFeedsToTracked upserts feed URLs from a user's RSS stream config
 // into the tracked_feeds table so the RSS service discovers and fetches them.
 func syncRSSFeedsToTracked(config map[string]interface{}) {

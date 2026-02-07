@@ -170,6 +170,9 @@ func main() {
 	api.Get("/yahoo/team/:team_key/matchups", LogtoAuth, YahooMatchups)
 	api.Get("/yahoo/team/:team_key/roster", LogtoAuth, YahooRoster)
 
+	// RSS Management
+	api.Delete("/rss/feeds", LogtoAuth, DeleteCustomFeed)
+
 	// User Routes (username from Logto, not our DB)
 	api.Get("/users/:username", GetProfileByUsername)
 	api.Get("/users/me/preferences", LogtoAuth, HandleGetPreferences)
