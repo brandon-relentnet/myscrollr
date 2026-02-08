@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Activity,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Cpu,
   Eye,
   EyeOff,
@@ -1441,11 +1443,14 @@ function RssStreamConfig({
   onDelete: () => void
   onStreamUpdate: (updated: Stream) => void
 }) {
+  const FEEDS_PER_PAGE = 24
+
   const [newFeedName, setNewFeedName] = useState('')
   const [newFeedUrl, setNewFeedUrl] = useState('')
   const [catalog, setCatalog] = useState<TrackedFeed[]>([])
   const [catalogLoading, setCatalogLoading] = useState(true)
   const [activeCategory, setActiveCategory] = useState('All')
+  const [currentPage, setCurrentPage] = useState(1)
   const [saving, setSaving] = useState(false)
 
   const feeds = Array.isArray((stream.config as any)?.feeds)
@@ -1471,6 +1476,12 @@ function RssStreamConfig({
     activeCategory === 'All'
       ? catalog
       : catalog.filter((f) => f.category === activeCategory)
+
+  const totalPages = Math.max(1, Math.ceil(filteredCatalog.length / FEEDS_PER_PAGE))
+  const paginatedCatalog = filteredCatalog.slice(
+    (currentPage - 1) * FEEDS_PER_PAGE,
+    currentPage * FEEDS_PER_PAGE,
+  )
 
   const updateFeeds = async (
     nextFeeds: Array<{ name: string; url: string }>,
@@ -1633,7 +1644,10 @@ function RssStreamConfig({
           {categories.map((cat) => (
             <button
               key={cat}
-              onClick={() => setActiveCategory(cat)}
+              onClick={() => {
+                setActiveCategory(cat)
+                setCurrentPage(1)
+              }}
               className={`relative px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-colors ${
                 activeCategory === cat
                   ? 'text-primary'
@@ -1664,8 +1678,9 @@ function RssStreamConfig({
             </motion.span>
           </div>
         ) : (
+          <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {filteredCatalog.map((feed) => {
+            {paginatedCatalog.map((feed) => {
               const isAdded = feedUrlSet.has(feed.url)
               return (
                 <motion.div
@@ -1719,6 +1734,34 @@ function RssStreamConfig({
               )
             })}
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-2">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="flex items-center gap-1 px-3 py-1.5 rounded border border-base-300/40 text-[10px] font-bold uppercase tracking-widest text-base-content/40 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-20 disabled:pointer-events-none"
+              >
+                <ChevronLeft size={12} />
+                Prev
+              </button>
+              <span className="text-[10px] font-mono text-base-content/30">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
+                disabled={currentPage === totalPages}
+                className="flex items-center gap-1 px-3 py-1.5 rounded border border-base-300/40 text-[10px] font-bold uppercase tracking-widest text-base-content/40 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-20 disabled:pointer-events-none"
+              >
+                Next
+                <ChevronRight size={12} />
+              </button>
+            </div>
+           )}
+          </>
         )}
 
         {!catalogLoading && filteredCatalog.length === 0 && (

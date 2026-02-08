@@ -20,25 +20,22 @@ pub async fn start_rss_service(pool: Arc<PgPool>, health_state: Arc<Mutex<RssHea
         return;
     }
 
-    // Seed default feeds from config if tracked_feeds is empty
-    let existing = get_tracked_feeds(pool.clone()).await;
-    let feeds = if existing.is_empty() {
-        info!("Database tracked_feeds is empty, seeding from local config...");
-        if let Ok(file_contents) = fs::read_to_string("./configs/feeds.json") {
-            if let Ok(config) = serde_json::from_str::<Vec<FeedConfig>>(&file_contents) {
-                let _ = seed_tracked_feeds(pool.clone(), config).await;
-                get_tracked_feeds(pool.clone()).await
-            } else {
-                error!("Failed to parse configs/feeds.json");
-                Vec::new()
+    // Always upsert default feeds from config on startup (ON CONFLICT DO NOTHING
+    // ensures existing feeds and user customizations are never overwritten)
+    match fs::read_to_string("./configs/feeds.json") {
+        Ok(file_contents) => match serde_json::from_str::<Vec<FeedConfig>>(&file_contents) {
+            Ok(config) => {
+                info!("Upserting {} default feeds from configs/feeds.json...", config.len());
+                if let Err(e) = seed_tracked_feeds(pool.clone(), config).await {
+                    error!("Failed to seed default feeds: {}", e);
+                }
             }
-        } else {
-            warn!("configs/feeds.json not found");
-            Vec::new()
-        }
-    } else {
-        existing
-    };
+            Err(e) => error!("Failed to parse configs/feeds.json: {}", e),
+        },
+        Err(e) => warn!("configs/feeds.json not found: {}", e),
+    }
+
+    let feeds = get_tracked_feeds(pool.clone()).await;
 
     if feeds.is_empty() {
         error!("No feeds to track. RSS service idling.");
