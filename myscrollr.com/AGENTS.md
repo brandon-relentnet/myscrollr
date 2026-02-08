@@ -5,11 +5,11 @@
 The repository is divided into two main parts:
 
 1. **Root (Marketing Site & Hub)**: A Vite + React app.
-2. **`frontend_wxt/` (Chrome Extension)**: The Scrollr browser extension (WXT + React). See `frontend_wxt/AGENTS.md` for specific guidelines.
+2. **`extension/` (Chrome Extension)**: The Scrollr browser extension (WXT + React). See `extension/CLAUDE.md` for specific guidelines.
 
 ### Root (Marketing Site)
 
-The Vite + React app lives in `src/`. `main.tsx` mounts the TanStack Router tree defined under `src/routes/`; add new feature routes there and keep loaders/components co-located. Shared UI sits in `src/components/` (one PascalCase component per file), while typed helpers belong to `src/content/`. Tailwind v4 layers are configured in `styles.css`; extend tokens there instead of editing generated CSS. `src/routeTree.gen.ts` is auto-generated, so never hand edit. Static assets go in `public/`, and build artifacts produced by Vite land in `dist/` (safe to delete).
+The Vite + React app lives in `src/`. `main.tsx` mounts the TanStack Router tree defined under `src/routes/`; add new feature routes there and keep loaders/components co-located. Shared UI sits in `src/components/` (one PascalCase component per file), API helpers live in `src/api/`, and hooks in `src/hooks/`. Tailwind v4 layers are configured in `styles.css`; extend tokens there instead of editing generated CSS. `src/routeTree.gen.ts` is auto-generated, so never hand edit. Static assets go in `public/`, and build artifacts produced by Vite land in `dist/` (safe to delete).
 
 ## Build, Test, and Development Commands
 

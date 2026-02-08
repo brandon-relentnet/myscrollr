@@ -1,6 +1,7 @@
 .git
 .env
 target/
+Cargo.lock
 .log
 acme_cache/
 release/
