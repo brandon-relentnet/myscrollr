@@ -8,10 +8,10 @@ MyScrollr is a multi-component platform aggregating financial market data (via F
 
 | Component | Technology | Files | Purpose |
 |-----------|------------|-------|---------|
-| **Frontend** | React 19, Vite 7, TanStack Router, Tailwind v4 | 27 TS/TSX | User interface at myscrollr.com |
-| **Extension** | WXT v0.20, React 19, Tailwind v4 | 27 TS/TSX | Chrome/Firefox browser extension with scrollbar feed overlay |
-| **API** | Go 1.21, Fiber v2, pgx, Redis | 15 Go files (~3.4k LOC) | Public API server (port 8080) |
-| **Ingestion** | Rust (edition 2024), Axum, SQLx, tokio | 40 .rs files | 4 independent data collection services + 1 internal library |
+| **Frontend** | React 19, Vite 7, TanStack Router, Tailwind v4 | 26 TS/TSX | User interface at myscrollr.com |
+| **Extension** | WXT v0.20, React 19, Tailwind v4 | 19 TS/TSX | Chrome/Firefox browser extension with scrollbar feed overlay |
+| **API** | Go 1.21, Fiber v2, pgx, Redis | 15 Go files (~3.3k LOC) | Public API server (port 8080) |
+| **Ingestion** | Rust (edition 2024), Axum, SQLx, tokio | 31 .rs files | 4 independent data collection services + 1 internal library |
 | **Database** | PostgreSQL | 13 tables | Data persistence (programmatic schema, no migrations) |
 | **Cache** | Redis | — | Caching, token storage, per-user Pub/Sub routing, subscription sets |
 
@@ -133,9 +133,9 @@ Four independent Rust crates (not a Cargo workspace). All services use Axum, SQL
 | `yahoo_fantasy` | (lib) | Internal library: Yahoo OAuth2 flows, XML parsing | — | oauth2 5.0, quick-xml, serde-xml-rs |
 
 **Config files**:
-- `finance_service/configs/subscriptions.json` — 49 tracked symbols (44 stocks + 5 crypto via Binance)
-- `sports_service/configs/leagues.json` — 4 leagues (NFL, NBA, NHL, MLB)
-- `rss_service/configs/feeds.json` — 109 default feeds across 8 categories (Tech, Dev & AI, Business & Finance, News & Politics, Science & Health, Sports, Entertainment, Design)
+- `finance_service/configs/subscriptions.json` — 50 tracked symbols (45 stocks + 5 crypto via Binance)
+- `sports_service/configs/leagues.json` — 8 leagues (NFL, NBA, NHL, MLB, College Football, Men's College Basketball, Women's College Basketball, College Baseball)
+- `rss_service/configs/feeds.json` — 117 default feeds across 8 categories (Tech, Dev & AI, Business & Finance, News & Politics, Science & Health, Sports, Entertainment, Design)
 
 **RSS Service features**:
 - **Feed quarantine**: Feeds with 288+ consecutive failures (~24 hours) are excluded from regular polling and retried every 288 cycles
@@ -148,21 +148,21 @@ Four independent Rust crates (not a Cargo workspace). All services use Axum, SQL
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `main.go` | 468 | Fiber app init, middleware (CORS, rate limiting, security headers), route definitions, data handlers, health checks, stream-aware dashboard |
-| `auth.go` | 173 | Logto JWT validation middleware (JWKS refresh, issuer/audience validation) |
+| `main.go` | 466 | Fiber app init, middleware (CORS, rate limiting, security headers), route definitions, data handlers, health checks, stream-aware dashboard |
+| `auth.go` | 163 | Logto JWT validation middleware (JWKS refresh, issuer/audience validation) |
 | `yahoo.go` | 351 | Yahoo OAuth2 flow (start/callback), league/standings/matchups/roster proxy endpoints |
 | `yahoo_models.go` | 164 | XML/JSON model structs for Yahoo Fantasy API |
-| `users.go` | 244 | User profile, Yahoo status/leagues/disconnect |
-| `streams.go` | 447 | Streams CRUD API, Redis subscription set management, `syncStreamSubscriptions()` |
+| `users.go` | 218 | User profile, Yahoo status/leagues/disconnect |
+| `streams.go` | 438 | Streams CRUD API, Redis subscription set management, `syncStreamSubscriptions()` |
 | `preferences.go` | 250 | User preferences CRUD with auto-creation of defaults, field-level validation |
 | `rss.go` | 237 | RSS feed catalog, per-user RSS item queries, feed-to-tracked sync |
 | `database.go` | 170 | PostgreSQL pool (pgxpool), AES-256-GCM encryption helpers, table creation (yahoo_users, user_streams, user_preferences) |
-| `redis.go` | 105 | Redis client, GetCache/SetCache, Publish/Subscribe/PSubscribe, GetSubscribers |
-| `events.go` | 139 | Per-user Hub pattern for SSE via Redis Pub/Sub (`events:user:*` pattern subscription) |
+| `redis.go` | 89 | Redis client, GetCache/SetCache, PublishRaw, PSubscribe, subscription set helpers (AddSubscriber/RemoveSubscriber/GetSubscribers) |
+| `events.go` | 138 | Per-user Hub pattern for SSE via Redis Pub/Sub (`events:user:*` pattern subscription) |
 | `handlers_stream.go` | 91 | Authenticated SSE endpoint (`GET /events?token=`) with 15s heartbeat |
 | `handlers_webhook.go` | 227 | Sequin CDC webhook receiver with per-user routing logic |
 | `extension_auth.go` | 211 | Extension PKCE token exchange/refresh proxy to Logto (CORS `*`) |
-| `models.go` | 85 | Game, Trade, RssItem, TrackedFeed, Stream, UserPreferences, DashboardResponse structs |
+| `models.go` | 82 | Game, Trade, RssItem, TrackedFeed, Stream, UserPreferences, DashboardResponse structs |
 
 ### Frontend (`myscrollr.com/`)
 
@@ -188,7 +188,7 @@ React 19 + Vite 7 + TanStack Router + Tailwind CSS v4 + Logto React SDK + Motion
 
 **Dashboard features**:
 - **Stream management**: Users configure which data types they receive (finance, sports, fantasy, rss) via stream CRUD
-- **RSS feed configuration**: Browse 109-feed catalog by category, add custom feeds, manage subscriptions
+- **RSS feed configuration**: Browse 117-feed catalog by category, add custom feeds, manage subscriptions
 - **Quick Start**: One-click creation of finance, sports, and RSS streams
 - **Conditional data loading**: Dashboard only fetches data for enabled streams, keeping responses lean
 - **Settings panel**: Server-persisted extension preferences with real-time CDC-based sync
