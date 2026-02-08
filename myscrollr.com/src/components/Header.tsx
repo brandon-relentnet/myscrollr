@@ -105,6 +105,20 @@ export default function Header() {
 
         {/* Auth Section */}
         <div className="hidden lg:flex items-center gap-4">
+          {/* Viewer count — always visible */}
+          <div
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm bg-primary/8 border border-primary/15"
+            title="Users online"
+          >
+            <Eye size={12} className="text-primary/60" />
+            <span className="text-[11px] font-bold font-mono text-primary/80 tabular-nums">
+              {viewerCount ?? '—'}
+            </span>
+            <span className="text-[9px] font-mono text-primary/40 uppercase">
+              online
+            </span>
+          </div>
+
           <div className="h-8 w-px bg-base-300/50" />
 
           {isLoading ? (
@@ -115,33 +129,15 @@ export default function Header() {
               </span>
             </div>
           ) : isAuthenticated ? (
-            <div className="flex items-center gap-3">
-              {viewerCount !== null && viewerCount > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm bg-primary/8 border border-primary/15"
-                  title="Users online"
-                >
-                  <Eye size={12} className="text-primary/60" />
-                  <span className="text-[11px] font-bold font-mono text-primary/80 tabular-nums">
-                    {viewerCount}
-                  </span>
-                  <span className="text-[9px] font-mono text-primary/40 uppercase">
-                    online
-                  </span>
-                </motion.div>
-              )}
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleSignOut}
-                className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border border-error/30 text-error/80 hover:bg-error/10 hover:border-error/50 transition-all rounded-sm cursor-pointer"
-              >
-                <LogOut size={14} />
-                Sign Out
-              </motion.button>
-            </div>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleSignOut}
+              className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border border-error/30 text-error/80 hover:bg-error/10 hover:border-error/50 transition-all rounded-sm cursor-pointer"
+            >
+              <LogOut size={14} />
+              Sign Out
+            </motion.button>
           ) : (
             <motion.button
               whileHover={{ scale: 1.02 }}
@@ -248,6 +244,20 @@ export default function Header() {
 
               {/* Drawer Footer */}
               <div className="px-5 py-5 border-t border-base-300/50 space-y-3">
+                {/* Viewer count — always visible */}
+                <div
+                  className="flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-sm bg-primary/8 border border-primary/15"
+                  title="Users online"
+                >
+                  <Eye size={12} className="text-primary/60" />
+                  <span className="text-[11px] font-bold font-mono text-primary/80 tabular-nums">
+                    {viewerCount ?? '—'}
+                  </span>
+                  <span className="text-[9px] font-mono text-primary/40 uppercase">
+                    online
+                  </span>
+                </div>
+
                 {isLoading ? (
                   <div className="flex items-center justify-center gap-2 py-3">
                     <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
