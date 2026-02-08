@@ -2,6 +2,7 @@ import { Link, useLocation } from '@tanstack/react-router'
 import {
   ChevronRight,
   Eye,
+  House,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -84,6 +85,7 @@ export default function Header() {
         <LayoutGroup id="header-nav">
           <nav className="hidden lg:flex items-center gap-1">
             <NavLink to="/" activeOn="/">
+              <House size={14} />
               Home
             </NavLink>
 
