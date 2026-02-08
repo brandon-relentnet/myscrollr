@@ -56,7 +56,7 @@ interface Integration {
   description: string
   detail: string
   icon: React.ReactNode
-  category: 'core' | 'available'
+  recommended?: boolean
 }
 
 interface ComingSoonIntegration {
@@ -66,7 +66,7 @@ interface ComingSoonIntegration {
   icon: React.ReactNode
 }
 
-const CORE_INTEGRATIONS: Integration[] = [
+const INTEGRATIONS: Integration[] = [
   {
     id: 'finance',
     streamType: 'finance',
@@ -75,7 +75,7 @@ const CORE_INTEGRATIONS: Integration[] = [
     detail:
       '50 tracked symbols across stocks and crypto via Finnhub WebSocket. Live price changes, percentage moves, and directional indicators.',
     icon: <TrendingUp size={20} />,
-    category: 'core',
+    recommended: true,
   },
   {
     id: 'sports',
@@ -85,7 +85,7 @@ const CORE_INTEGRATIONS: Integration[] = [
     detail:
       'NFL, NBA, NHL, and MLB scores from ESPN. Game states, team matchups, and real-time score updates polling every minute.',
     icon: <Cpu size={20} />,
-    category: 'core',
+    recommended: true,
   },
   {
     id: 'rss',
@@ -95,11 +95,8 @@ const CORE_INTEGRATIONS: Integration[] = [
     detail:
       '100+ curated feeds across 8 categories. Subscribe to the sources you care about and get articles delivered in real-time.',
     icon: <Rss size={20} />,
-    category: 'core',
+    recommended: true,
   },
-]
-
-const AVAILABLE_INTEGRATIONS: Integration[] = [
   {
     id: 'fantasy',
     streamType: 'fantasy',
@@ -108,7 +105,6 @@ const AVAILABLE_INTEGRATIONS: Integration[] = [
     detail:
       'Connect your Yahoo account to view league standings, team rosters, weekly matchups, and live scoring across all your fantasy leagues.',
     icon: <Ghost size={20} />,
-    category: 'available',
   },
 ]
 
@@ -232,8 +228,8 @@ function IntegrationsPage() {
               </span>
               <span className="h-px w-12 bg-base-300" />
               <span className="text-[10px] font-mono text-base-content/30 uppercase">
-                {CORE_INTEGRATIONS.length + AVAILABLE_INTEGRATIONS.length}{' '}
-                available &middot; {COMING_SOON.length} coming soon
+                {INTEGRATIONS.length} available &middot;{' '}
+                {COMING_SOON.length} coming soon
               </span>
             </div>
 
@@ -244,27 +240,27 @@ function IntegrationsPage() {
             </h1>
 
             <p className="text-sm text-base-content/40 max-w-lg leading-relaxed font-mono">
-              Connect data sources to your Scrollr feed. Core integrations are
-              included with every account. Add optional integrations to unlock
-              more real-time data streams.
+              Add data sources to your Scrollr feed. Recommended integrations
+              give you the best experience out of the box, or pick exactly the
+              streams you want.
             </p>
           </motion.div>
         </div>
       </section>
 
-      {/* Core Integrations */}
+      {/* Integrations */}
       <section className="container py-16">
         <motion.div variants={itemVariants}>
           <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
-            <Check size={16} /> Core Integrations
+            <Puzzle size={16} /> Integrations
           </h2>
           <p className="text-[10px] font-mono text-base-content/30 mb-8">
-            Included with every account &mdash; always installed, always active
+            Add data sources to your account to build your feed
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {CORE_INTEGRATIONS.map((integration) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {INTEGRATIONS.map((integration) => (
             <motion.div key={integration.id} variants={itemVariants}>
               <IntegrationCard
                 integration={integration}
@@ -273,34 +269,7 @@ function IntegrationsPage() {
                 onAdd={handleAdd}
                 adding={adding === integration.id}
                 isAuthenticated={isAuthenticated}
-                isCore
-              />
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      {/* Available Integrations */}
-      <section className="container pb-16">
-        <motion.div variants={itemVariants}>
-          <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
-            <Puzzle size={16} /> Available Integrations
-          </h2>
-          <p className="text-[10px] font-mono text-base-content/30 mb-8">
-            Optional integrations you can add to your account
-          </p>
-        </motion.div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {AVAILABLE_INTEGRATIONS.map((integration) => (
-            <motion.div key={integration.id} variants={itemVariants}>
-              <IntegrationCard
-                integration={integration}
-                installed={hasStream(integration.streamType)}
-                loading={loading}
-                onAdd={handleAdd}
-                adding={adding === integration.id}
-                isAuthenticated={isAuthenticated}
+                recommended={integration.recommended}
               />
             </motion.div>
           ))}
@@ -354,7 +323,7 @@ function IntegrationCard({
   onAdd,
   adding,
   isAuthenticated,
-  isCore = false,
+  recommended = false,
 }: {
   integration: Integration
   installed: boolean
@@ -362,7 +331,7 @@ function IntegrationCard({
   onAdd: (integration: Integration) => void
   adding: boolean
   isAuthenticated: boolean
-  isCore?: boolean
+  recommended?: boolean
 }) {
   return (
     <div className="group bg-base-200 border border-base-300 rounded-xl p-6 hover:border-primary/20 transition-all relative overflow-hidden">
@@ -381,13 +350,13 @@ function IntegrationCard({
             <span className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-base-content/30 bg-base-300/50 rounded border border-base-300/50">
               Loading
             </span>
-          ) : isCore ? (
-            <span className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-primary/60 bg-primary/8 rounded border border-primary/15">
-              Core
-            </span>
           ) : installed ? (
             <span className="flex items-center gap-1 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-success/80 bg-success/10 rounded border border-success/20">
               <Check size={10} /> Added
+            </span>
+          ) : recommended ? (
+            <span className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-primary/60 bg-primary/8 rounded border border-primary/15">
+              Recommended
             </span>
           ) : null}
         </div>
@@ -404,20 +373,7 @@ function IntegrationCard({
         </p>
 
         {/* Action */}
-        {isCore ? (
-          installed ? (
-            <Link
-              to="/dashboard"
-              className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary/50 hover:text-primary transition-colors"
-            >
-              Manage on Dashboard <ArrowRight size={12} />
-            </Link>
-          ) : (
-            <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-base-content/20">
-              <Check size={12} /> Auto-installed on sign up
-            </span>
-          )
-        ) : installed ? (
+        {installed ? (
           <Link
             to="/dashboard"
             className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary/50 hover:text-primary transition-colors"

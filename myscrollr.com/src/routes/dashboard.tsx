@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useLogto } from '@logto/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
@@ -12,12 +12,14 @@ import {
   Ghost,
   Link2,
   Plus,
+  Puzzle,
   Rss,
   Settings2,
   Trash2,
   TrendingUp,
   Unlink,
   X,
+  Zap,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useRealtime } from '../hooks/useRealtime'
@@ -154,7 +156,16 @@ function DashboardPage() {
   const fetchStreams = useCallback(async () => {
     try {
       const data = await streamsApi.getAll(getToken)
-      setStreams(data.streams || [])
+      const fetched = data.streams || []
+      setStreams(fetched)
+      // If the currently selected module doesn't exist in fetched streams,
+      // fall back to the first available stream type
+      if (fetched.length > 0) {
+        setActiveModule((current) => {
+          const exists = fetched.some((s) => s.stream_type === current)
+          return exists ? current : fetched[0].stream_type
+        })
+      }
     } catch {
       // Silently fail — keep existing state
     } finally {
@@ -213,6 +224,25 @@ function DashboardPage() {
       }
     } catch {
       setStreams(prev)
+    }
+  }
+
+  const handleQuickStart = async () => {
+    const recommended: StreamType[] = ['finance', 'sports', 'rss']
+    const toAdd = recommended.filter(
+      (t) => !streams.some((s) => s.stream_type === t),
+    )
+    if (toAdd.length === 0) return
+
+    try {
+      const created = await Promise.all(
+        toAdd.map((t) => streamsApi.create(t, {}, getToken)),
+      )
+      setStreams((prev) => [...prev, ...created])
+      setActiveModule(created[0].stream_type)
+    } catch {
+      // Partial failure — refetch to get accurate state
+      fetchStreams()
     }
   }
 
@@ -624,28 +654,53 @@ function DashboardPage() {
                   }
                 />
               )}
-              {!activeStream && !streamsLoading && (
-                <div className="text-center py-20 space-y-4">
+              {!activeStream && !streamsLoading && streams.length === 0 && (
+                <div className="text-center py-20 space-y-6">
                   <Activity
                     size={48}
                     className="mx-auto text-base-content/15"
                   />
-                  <p className="text-sm font-bold uppercase text-base-content/40">
-                    No Streams Yet
-                  </p>
-                  <p className="text-xs text-base-content/25 max-w-xs mx-auto">
-                    Add a stream to start receiving real-time data on your
-                    ticker.
-                  </p>
+                  <div className="space-y-2">
+                    <p className="text-sm font-bold uppercase text-base-content/40">
+                      No Streams Yet
+                    </p>
+                    <p className="text-xs text-base-content/25 max-w-xs mx-auto">
+                      Add data sources to build your real-time feed. Start with
+                      the recommended set or pick your own.
+                    </p>
+                  </div>
+
+                  {/* Primary CTA — Quick Start */}
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => setAddStreamOpen(true)}
-                    className="btn btn-primary btn-sm gap-2 mt-2"
+                    onClick={handleQuickStart}
+                    className="btn btn-primary btn-sm gap-2"
                   >
-                    <Plus size={14} />
-                    Add Stream
+                    <Zap size={14} />
+                    Quick Start — Finance, Sports & RSS
                   </motion.button>
+
+                  {/* Secondary CTAs */}
+                  <div className="flex items-center justify-center gap-4 pt-2">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setAddStreamOpen(true)}
+                      className="text-[10px] font-bold uppercase tracking-widest text-base-content/30 hover:text-base-content/50 transition-colors flex items-center gap-1.5"
+                    >
+                      <Plus size={12} />
+                      Add Stream
+                    </motion.button>
+                    <span className="text-base-content/10">|</span>
+                    <Link
+                      to="/integrations"
+                      className="text-[10px] font-bold uppercase tracking-widest text-primary/40 hover:text-primary/70 transition-colors flex items-center gap-1.5"
+                    >
+                      <Puzzle size={12} />
+                      Browse Integrations
+                    </Link>
+                  </div>
                 </div>
               )}
             </motion.div>
