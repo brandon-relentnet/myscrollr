@@ -1,0 +1,452 @@
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { useLogto } from '@logto/react'
+import { useCallback, useEffect, useState } from 'react'
+import {
+  ArrowRight,
+  BookOpen,
+  Check,
+  Clock,
+  Code2,
+  Cpu,
+  Ghost,
+  Lock,
+  MessageSquare,
+  Music,
+  Play,
+  Puzzle,
+  Rss,
+  TrendingUp,
+  Tv,
+} from 'lucide-react'
+
+import { motion } from 'motion/react'
+import { usePageMeta } from '@/lib/usePageMeta'
+import { streamsApi } from '@/api/client'
+import type { Stream, StreamType } from '@/api/client'
+
+export const Route = createFileRoute('/integrations')({
+  component: IntegrationsPage,
+})
+
+// ── Animation Variants ───────────────────────────────────────────
+
+const pageVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { type: 'spring', stiffness: 400, damping: 28 } as const,
+  },
+}
+
+// ── Integration Definitions ──────────────────────────────────────
+
+interface Integration {
+  id: string
+  streamType: StreamType
+  name: string
+  description: string
+  detail: string
+  icon: React.ReactNode
+  category: 'core' | 'available'
+}
+
+interface ComingSoonIntegration {
+  id: string
+  name: string
+  description: string
+  icon: React.ReactNode
+}
+
+const CORE_INTEGRATIONS: Integration[] = [
+  {
+    id: 'finance',
+    streamType: 'finance',
+    name: 'Finance',
+    description: 'Real-time market data',
+    detail:
+      '50 tracked symbols across stocks and crypto via Finnhub WebSocket. Live price changes, percentage moves, and directional indicators.',
+    icon: <TrendingUp size={20} />,
+    category: 'core',
+  },
+  {
+    id: 'sports',
+    streamType: 'sports',
+    name: 'Sports',
+    description: 'Live scores & schedules',
+    detail:
+      'NFL, NBA, NHL, and MLB scores from ESPN. Game states, team matchups, and real-time score updates polling every minute.',
+    icon: <Cpu size={20} />,
+    category: 'core',
+  },
+  {
+    id: 'rss',
+    streamType: 'rss',
+    name: 'RSS Feeds',
+    description: 'Custom news streams',
+    detail:
+      '100+ curated feeds across 8 categories. Subscribe to the sources you care about and get articles delivered in real-time.',
+    icon: <Rss size={20} />,
+    category: 'core',
+  },
+]
+
+const AVAILABLE_INTEGRATIONS: Integration[] = [
+  {
+    id: 'fantasy',
+    streamType: 'fantasy',
+    name: 'Yahoo Fantasy',
+    description: 'Fantasy sports leagues',
+    detail:
+      'Connect your Yahoo account to view league standings, team rosters, weekly matchups, and live scoring across all your fantasy leagues.',
+    icon: <Ghost size={20} />,
+    category: 'available',
+  },
+]
+
+const COMING_SOON: ComingSoonIntegration[] = [
+  {
+    id: 'discord',
+    name: 'Discord',
+    description: 'Server activity & notifications',
+    icon: <MessageSquare size={18} />,
+  },
+  {
+    id: 'twitch',
+    name: 'Twitch',
+    description: 'Stream alerts & follows',
+    icon: <Tv size={18} />,
+  },
+  {
+    id: 'reddit',
+    name: 'Reddit',
+    description: 'Subreddit feeds & trending',
+    icon: <BookOpen size={18} />,
+  },
+  {
+    id: 'github',
+    name: 'GitHub',
+    description: 'Activity & notifications',
+    icon: <Code2 size={18} />,
+  },
+  {
+    id: 'youtube',
+    name: 'YouTube',
+    description: 'Subscription updates',
+    icon: <Play size={18} />,
+  },
+  {
+    id: 'spotify',
+    name: 'Spotify',
+    description: 'Now playing & activity',
+    icon: <Music size={18} />,
+  },
+]
+
+// ── Page Component ───────────────────────────────────────────────
+
+function IntegrationsPage() {
+  usePageMeta({
+    title: 'Integrations — Scrollr',
+    description:
+      'Browse and connect integrations to extend your Scrollr feed with real-time data from your favorite platforms.',
+  })
+
+  const { isAuthenticated, getAccessToken, signIn } = useLogto()
+  const [streams, setStreams] = useState<Stream[]>([])
+  const [loading, setLoading] = useState(false)
+  const [adding, setAdding] = useState<string | null>(null)
+
+  const apiUrl =
+    import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'
+
+  const getToken = useCallback(
+    async (): Promise<string | null> => {
+      const token = await getAccessToken(apiUrl)
+      return token ?? null
+    },
+    [getAccessToken, apiUrl],
+  )
+
+  // Fetch user's streams when authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setStreams([])
+      return
+    }
+    setLoading(true)
+    streamsApi
+      .getAll(getToken)
+      .then((res) => setStreams(res.streams || []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [isAuthenticated, getToken])
+
+  const hasStream = (type: StreamType) =>
+    streams.some((s) => s.stream_type === type)
+
+  const handleAdd = async (integration: Integration) => {
+    if (!isAuthenticated) {
+      signIn(`${window.location.origin}/callback`)
+      return
+    }
+    if (hasStream(integration.streamType)) return
+
+    setAdding(integration.id)
+    try {
+      const created = await streamsApi.create(
+        integration.streamType,
+        {},
+        getToken,
+      )
+      setStreams((prev) => [...prev, created])
+    } catch {
+      // Silently handle — likely 409 conflict (already exists)
+    } finally {
+      setAdding(null)
+    }
+  }
+
+  return (
+    <motion.div
+      className="min-h-screen pt-20"
+      variants={pageVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      {/* Hero */}
+      <section className="relative pt-24 pb-16 overflow-hidden border-b border-base-300 bg-base-200/30">
+        <div className="container relative z-10">
+          <motion.div className="max-w-4xl" variants={itemVariants}>
+            <div className="flex items-center gap-3 mb-6">
+              <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded-md border border-primary/20 uppercase tracking-[0.2em] flex items-center gap-2">
+                <Puzzle size={14} /> integrations
+              </span>
+              <span className="h-px w-12 bg-base-300" />
+              <span className="text-[10px] font-mono text-base-content/30 uppercase">
+                {CORE_INTEGRATIONS.length + AVAILABLE_INTEGRATIONS.length}{' '}
+                available &middot; {COMING_SOON.length} coming soon
+              </span>
+            </div>
+
+            <h1 className="text-5xl md:text-7xl font-black tracking-tight uppercase mb-6 leading-none">
+              Extend Your
+              <br />
+              <span className="text-primary">Feed</span>
+            </h1>
+
+            <p className="text-sm text-base-content/40 max-w-lg leading-relaxed font-mono">
+              Connect data sources to your Scrollr feed. Core integrations are
+              included with every account. Add optional integrations to unlock
+              more real-time data streams.
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Core Integrations */}
+      <section className="container py-16">
+        <motion.div variants={itemVariants}>
+          <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
+            <Check size={16} /> Core Integrations
+          </h2>
+          <p className="text-[10px] font-mono text-base-content/30 mb-8">
+            Included with every account &mdash; always installed, always active
+          </p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {CORE_INTEGRATIONS.map((integration) => (
+            <motion.div key={integration.id} variants={itemVariants}>
+              <IntegrationCard
+                integration={integration}
+                installed={hasStream(integration.streamType)}
+                loading={loading}
+                onAdd={handleAdd}
+                adding={adding === integration.id}
+                isAuthenticated={isAuthenticated}
+                isCore
+              />
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* Available Integrations */}
+      <section className="container pb-16">
+        <motion.div variants={itemVariants}>
+          <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
+            <Puzzle size={16} /> Available Integrations
+          </h2>
+          <p className="text-[10px] font-mono text-base-content/30 mb-8">
+            Optional integrations you can add to your account
+          </p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {AVAILABLE_INTEGRATIONS.map((integration) => (
+            <motion.div key={integration.id} variants={itemVariants}>
+              <IntegrationCard
+                integration={integration}
+                installed={hasStream(integration.streamType)}
+                loading={loading}
+                onAdd={handleAdd}
+                adding={adding === integration.id}
+                isAuthenticated={isAuthenticated}
+              />
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* Coming Soon */}
+      <section className="container pb-24">
+        <motion.div variants={itemVariants}>
+          <h2 className="text-sm font-bold uppercase tracking-widest text-base-content/30 mb-2 flex items-center gap-2">
+            <Clock size={16} /> Coming Soon
+          </h2>
+          <p className="text-[10px] font-mono text-base-content/20 mb-8">
+            Future integrations on the roadmap
+          </p>
+        </motion.div>
+
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {COMING_SOON.map((item) => (
+            <motion.div
+              key={item.id}
+              variants={itemVariants}
+              className="bg-base-200/50 border border-base-300/50 rounded-xl p-5 text-center opacity-40"
+            >
+              <div className="h-10 w-10 rounded-lg bg-base-300/50 flex items-center justify-center mx-auto mb-3 text-base-content/30">
+                {item.icon}
+              </div>
+              <p className="text-xs font-bold text-base-content/40 uppercase tracking-wider">
+                {item.name}
+              </p>
+              <p className="text-[9px] font-mono text-base-content/20 mt-1">
+                {item.description}
+              </p>
+              <span className="inline-block mt-3 px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest text-base-content/20 border border-base-300/50 rounded">
+                Soon
+              </span>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+    </motion.div>
+  )
+}
+
+// ── Integration Card ─────────────────────────────────────────────
+
+function IntegrationCard({
+  integration,
+  installed,
+  loading,
+  onAdd,
+  adding,
+  isAuthenticated,
+  isCore = false,
+}: {
+  integration: Integration
+  installed: boolean
+  loading: boolean
+  onAdd: (integration: Integration) => void
+  adding: boolean
+  isAuthenticated: boolean
+  isCore?: boolean
+}) {
+  return (
+    <div className="group bg-base-200 border border-base-300 rounded-xl p-6 hover:border-primary/20 transition-all relative overflow-hidden">
+      {/* Subtle hover glow */}
+      <div className="absolute inset-0 bg-primary/[0.02] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+
+      <div className="relative z-10">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-4">
+          <div className="h-10 w-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+            {integration.icon}
+          </div>
+
+          {/* Status Badge */}
+          {loading ? (
+            <span className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-base-content/30 bg-base-300/50 rounded border border-base-300/50">
+              Loading
+            </span>
+          ) : isCore ? (
+            <span className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-primary/60 bg-primary/8 rounded border border-primary/15">
+              Core
+            </span>
+          ) : installed ? (
+            <span className="flex items-center gap-1 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-success/80 bg-success/10 rounded border border-success/20">
+              <Check size={10} /> Added
+            </span>
+          ) : null}
+        </div>
+
+        {/* Content */}
+        <h3 className="text-sm font-bold uppercase tracking-wider text-base-content mb-1">
+          {integration.name}
+        </h3>
+        <p className="text-[10px] font-mono text-primary/50 uppercase tracking-wider mb-3">
+          {integration.description}
+        </p>
+        <p className="text-xs text-base-content/30 leading-relaxed mb-5">
+          {integration.detail}
+        </p>
+
+        {/* Action */}
+        {isCore ? (
+          installed ? (
+            <Link
+              to="/dashboard"
+              className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary/50 hover:text-primary transition-colors"
+            >
+              Manage on Dashboard <ArrowRight size={12} />
+            </Link>
+          ) : (
+            <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-base-content/20">
+              <Check size={12} /> Auto-installed on sign up
+            </span>
+          )
+        ) : installed ? (
+          <Link
+            to="/dashboard"
+            className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary/50 hover:text-primary transition-colors"
+          >
+            Manage on Dashboard <ArrowRight size={12} />
+          </Link>
+        ) : (
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => onAdd(integration)}
+            disabled={adding}
+            className="flex items-center gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-widest border border-primary/30 text-primary/80 hover:bg-primary/10 hover:border-primary/50 transition-all rounded-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {!isAuthenticated ? (
+              <>
+                <Lock size={12} /> Sign in to Add
+              </>
+            ) : adding ? (
+              <>
+                <div className="h-2.5 w-2.5 rounded-full border border-primary/50 border-t-transparent animate-spin" />
+                Adding...
+              </>
+            ) : (
+              <>Add to Account</>
+            )}
+          </motion.button>
+        )}
+      </div>
+    </div>
+  )
+}

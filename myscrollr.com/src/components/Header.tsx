@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Puzzle,
   UserCircle,
   X,
 } from 'lucide-react'
@@ -87,6 +88,11 @@ export default function Header() {
             <NavLink to="/" activeOn="/">
               <House size={14} />
               Home
+            </NavLink>
+
+            <NavLink to="/integrations" activeOn="/integrations">
+              <Puzzle size={14} />
+              Integrations
             </NavLink>
 
             {isAuthenticated && (
@@ -221,6 +227,14 @@ export default function Header() {
                   onClick={() => setIsOpen(false)}
                 >
                   Home
+                </MobileNavLink>
+
+                <MobileNavLink
+                  to="/integrations"
+                  icon={<ChevronRight size={18} />}
+                  onClick={() => setIsOpen(false)}
+                >
+                  Integrations
                 </MobileNavLink>
 
                 {isAuthenticated && (
