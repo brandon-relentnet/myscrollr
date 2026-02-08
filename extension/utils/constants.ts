@@ -1,6 +1,6 @@
 export const API_URL = 'https://api.myscrollr.relentnet.dev';
 export const SSE_URL = `${API_URL}/events`;
-export const FRONTEND_URL = 'https://myscrollr.com';
+export const FRONTEND_URL = 'https://myscrollr.relentnet.dev';
 
 export const LOGTO_ENDPOINT = 'https://auth.myscrollr.relentnet.dev';
 export const LOGTO_APP_ID = 'kq298uwwusrvw8m6yn6b4';
