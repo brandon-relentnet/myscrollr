@@ -263,6 +263,21 @@ func UpdateStream(c *fiber.Ctx) error {
 		})
 	}
 
+	// For RSS config changes, fetch old config before UPDATE so we can diff subscriber sets
+	var oldFeedURLs []string
+	if streamType == "rss" && req.Config != nil {
+		var oldConfigBytes []byte
+		_ = dbPool.QueryRow(context.Background(), `
+			SELECT config FROM user_streams WHERE logto_sub = $1 AND stream_type = $2
+		`, userID, streamType).Scan(&oldConfigBytes)
+		if len(oldConfigBytes) > 0 {
+			var oldConfig map[string]interface{}
+			if json.Unmarshal(oldConfigBytes, &oldConfig) == nil {
+				oldFeedURLs = extractFeedURLsFromStreamConfig(oldConfig)
+			}
+		}
+	}
+
 	// Build dynamic UPDATE query
 	setClauses := []string{"updated_at = now()"}
 	args := []interface{}{userID, streamType}
@@ -325,8 +340,24 @@ func UpdateStream(c *fiber.Ctx) error {
 		removeStreamSubscriptions(ctx, userID, s.StreamType, s.Config)
 	}
 
-	// If this was an RSS stream config update, sync feed URLs to tracked_feeds
+	// For RSS config changes: remove stale per-feed subscriber sets and invalidate cache
 	if streamType == "rss" && req.Config != nil {
+		// Diff old vs new feed URLs and remove user from stale subscriber sets
+		newFeedURLs := extractFeedURLsFromStreamConfig(s.Config)
+		newURLSet := make(map[string]bool, len(newFeedURLs))
+		for _, u := range newFeedURLs {
+			newURLSet[u] = true
+		}
+		for _, u := range oldFeedURLs {
+			if !newURLSet[u] {
+				RemoveSubscriber(ctx, "rss:subscribers:"+u, userID)
+			}
+		}
+
+		// Invalidate per-user RSS cache so /dashboard returns fresh data
+		rdb.Del(ctx, "cache:rss:"+userID)
+
+		// Sync new feed URLs to tracked_feeds for the RSS service to discover
 		go syncRSSFeedsToTracked(s.Config)
 	}
 
@@ -389,6 +420,11 @@ func DeleteStream(c *fiber.Ctx) error {
 		config = map[string]interface{}{}
 	}
 	removeStreamSubscriptions(ctx, userID, streamType, config)
+
+	// Invalidate per-user RSS cache so /dashboard doesn't serve stale feed items
+	if streamType == "rss" {
+		rdb.Del(ctx, "cache:rss:"+userID)
+	}
 
 	return c.JSON(fiber.Map{"status": "ok", "message": "Stream removed"})
 }
