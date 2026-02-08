@@ -1,5 +1,5 @@
-use std::fmt::Debug;
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::sync::RwLock;
 
 use serde::{Deserialize, Serialize};
@@ -12,6 +12,7 @@ pub trait StatDecode: TryFrom<u32> + Debug + Sized {
 static HOCKEY_STATS: RwLock<Option<HashMap<u32, String>>> = RwLock::new(None);
 static BASKETBALL_STATS: RwLock<Option<HashMap<u32, String>>> = RwLock::new(None);
 static FOOTBALL_STATS: RwLock<Option<HashMap<u32, String>>> = RwLock::new(None);
+static BASEBALL_STATS: RwLock<Option<HashMap<u32, String>>> = RwLock::new(None);
 
 #[derive(Deserialize, Serialize, Debug)]
 struct StatPair {
@@ -22,16 +23,18 @@ struct StatPair {
 fn load_stat_mappings(game_code: &str) -> HashMap<u32, String> {
     let filename = format!("./configs/stat_pairs_{}.json", game_code);
 
-    let content = std::fs::read_to_string(&filename)
-        .unwrap_or_else(|_| {
-            eprintln!("Warning: Could not load stat pairs for {}, using empty mappings", game_code);
-            "[]".to_string()
-        });
+    let content = std::fs::read_to_string(&filename).unwrap_or_else(|_| {
+        eprintln!(
+            "Warning: Could not load stat pairs for {}, using empty mappings",
+            game_code
+        );
+        "[]".to_string()
+    });
 
-    let stats: Vec<StatPair> = serde_json::from_str(&content)
-        .unwrap_or_default();
+    let stats: Vec<StatPair> = serde_json::from_str(&content).unwrap_or_default();
 
-    stats.into_iter()
+    stats
+        .into_iter()
         .map(|s| {
             // Remove all spaces from the stat name
             let cleaned_name = s.name.replace(" ", "");
@@ -40,7 +43,10 @@ fn load_stat_mappings(game_code: &str) -> HashMap<u32, String> {
         .collect()
 }
 
-fn get_or_load_stats(cache: &RwLock<Option<HashMap<u32, String>>>, game_code: &str) -> HashMap<u32, String> {
+fn get_or_load_stats(
+    cache: &RwLock<Option<HashMap<u32, String>>>,
+    game_code: &str,
+) -> HashMap<u32, String> {
     // Try to read from cache first
     {
         let read_guard = cache.read().unwrap();
@@ -75,6 +81,9 @@ pub fn invalidate_stat_cache(sport: &str) {
         "football" | "nfl" => {
             *FOOTBALL_STATS.write().unwrap() = None;
         }
+        "baseball" | "mlb" => {
+            *BASEBALL_STATS.write().unwrap() = None;
+        }
         _ => {}
     }
 }
@@ -102,12 +111,15 @@ impl TryFrom<u32> for HockeyStats {
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         let mappings = get_or_load_stats(&HOCKEY_STATS, "nhl");
 
-        mappings.get(&value)
-            .map(|name| HockeyStats(DynamicStat {
-                id: value,
-                name: name.clone(),
-                sport: String::from("hockey"),
-            }))
+        mappings
+            .get(&value)
+            .map(|name| {
+                HockeyStats(DynamicStat {
+                    id: value,
+                    name: name.clone(),
+                    sport: String::from("hockey"),
+                })
+            })
             .ok_or_else(|| format!("TryFrom not implemented for Hockey Stat ID({value})"))
     }
 }
@@ -134,12 +146,15 @@ impl TryFrom<u32> for BasketballStats {
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         let mappings = get_or_load_stats(&BASKETBALL_STATS, "nba");
 
-        mappings.get(&value)
-            .map(|name| BasketballStats(DynamicStat {
-                id: value,
-                name: name.clone(),
-                sport: String::from("basketball"),
-            }))
+        mappings
+            .get(&value)
+            .map(|name| {
+                BasketballStats(DynamicStat {
+                    id: value,
+                    name: name.clone(),
+                    sport: String::from("basketball"),
+                })
+            })
             .ok_or_else(|| format!("TryFrom not implemented for Basketball Stat ID({value})"))
     }
 }
@@ -166,17 +181,55 @@ impl TryFrom<u32> for FootballStats {
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         let mappings = get_or_load_stats(&FOOTBALL_STATS, "nfl");
 
-        mappings.get(&value)
-            .map(|name| FootballStats(DynamicStat {
-                id: value,
-                name: name.clone(),
-                sport: String::from("football"),
-            }))
+        mappings
+            .get(&value)
+            .map(|name| {
+                FootballStats(DynamicStat {
+                    id: value,
+                    name: name.clone(),
+                    sport: String::from("football"),
+                })
+            })
             .ok_or_else(|| format!("TryFrom not implemented for Football Stat ID({value})"))
     }
 }
 
 impl std::fmt::Display for FootballStats {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.name.to_lowercase())
+    }
+}
+
+// Baseball Stats - Dynamic implementation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BaseballStats(DynamicStat);
+
+impl StatDecode for BaseballStats {
+    fn expected_sport() -> &'static str {
+        "baseball"
+    }
+}
+
+impl TryFrom<u32> for BaseballStats {
+    type Error = String;
+
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        let mappings = get_or_load_stats(&BASEBALL_STATS, "mlb");
+
+        mappings
+            .get(&value)
+            .map(|name| {
+                BaseballStats(DynamicStat {
+                    id: value,
+                    name: name.clone(),
+                    sport: String::from("baseball"),
+                })
+            })
+            .ok_or_else(|| format!("TryFrom not implemented for Baseball Stat ID({value})"))
+    }
+}
+
+impl std::fmt::Display for BaseballStats {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0.name.to_lowercase())
     }

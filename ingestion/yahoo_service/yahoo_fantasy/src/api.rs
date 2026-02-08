@@ -74,6 +74,7 @@ pub async fn get_user_leagues(tokens: &Tokens, client: Client) -> anyhow::Result
     let mut nba = Vec::new();
     let mut nfl = Vec::new();
     let mut nhl = Vec::new();
+    let mut mlb = Vec::new();
 
     let users = cleaned.users.user;
     let games = users[0].games.game.clone();
@@ -126,6 +127,7 @@ pub async fn get_user_leagues(tokens: &Tokens, client: Client) -> anyhow::Result
                 "nba" => nba.push(user_league),
                 "nfl" => nfl.push(user_league),
                 "nhl" => nhl.push(user_league),
+                "mlb" => mlb.push(user_league),
                 _ => (),
             }
         }
@@ -135,6 +137,7 @@ pub async fn get_user_leagues(tokens: &Tokens, client: Client) -> anyhow::Result
         nba,
         nfl,
         nhl,
+        mlb,
     };
     
     return Ok((leagues, opt_tokens));
@@ -286,11 +289,13 @@ pub async fn debug_league_stats(client: Client, tokens: &Tokens) -> anyhow::Resu
     leagues_info.nba.iter().for_each(|league| league_keys.push(&league.league_key));
     leagues_info.nfl.iter().for_each(|league| league_keys.push(&league.league_key));
     leagues_info.nhl.iter().for_each(|league| league_keys.push(&league.league_key));
+    leagues_info.mlb.iter().for_each(|league| league_keys.push(&league.league_key));
 
     let mut stats = LeagueStats {
         nfl: Vec::new(),
         nba: Vec::new(),
         nhl: Vec::new(),
+        mlb: Vec::new(),
     };
 
     let mut new_tokens: Option<(String, String)> = None;
@@ -320,6 +325,7 @@ pub async fn debug_league_stats(client: Client, tokens: &Tokens) -> anyhow::Resu
             "nfl" => stats.nfl.push(stat),
             "nba" => stats.nba.push(stat),
             "nhl" => stats.nhl.push(stat),
+            "mlb" => stats.mlb.push(stat),
             _ => ()
         }
     }
