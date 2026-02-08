@@ -176,6 +176,15 @@ async fn poll_feed(client: &Client, pool: &Arc<PgPool>, feed: &TrackedFeed) -> a
             .or(entry.updated)
             .map(|dt| dt.with_timezone(&chrono::Utc));
 
+        // Skip articles older than the cleanup threshold (7 days) so we never
+        // re-insert rows that cleanup already deleted — avoids a CDC
+        // INSERT→DELETE storm every poll cycle.
+        if let Some(pub_date) = &published_at {
+            if *pub_date < chrono::Utc::now() - chrono::Duration::days(7) {
+                continue;
+            }
+        }
+
         let source_name = parsed.title
             .as_ref()
             .map(|t| t.content.clone())
