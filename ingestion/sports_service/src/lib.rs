@@ -38,12 +38,23 @@ pub async fn start_sports_service(pool: Arc<PgPool>, health_state: Arc<Mutex<Spo
     info!("Polling sports data for {} leagues...", leagues.len());
     let client = Client::new();
 
-    for league in leagues {
-        match poll_league(&client, &league).await {
+    for league in &leagues {
+        match poll_league(&client, league).await {
             Ok(games) => {
+                let total = games.len();
+                let mut upserted = 0;
+                let mut failed = 0;
                 for game in games {
-                    let _ = upsert_game(pool.clone(), game).await;
+                    let game_id = game.external_game_id.clone();
+                    match upsert_game(pool.clone(), game).await {
+                        Ok(_) => upserted += 1,
+                        Err(e) => {
+                            error!("[{}] Failed to upsert game {}: {}", league.name, game_id, e);
+                            failed += 1;
+                        }
+                    }
                 }
+                info!("[{}] Poll complete: {} games found, {} upserted, {} failed", league.name, total, upserted, failed);
                 health_state.lock().await.record_success();
             }
             Err(e) => {
@@ -70,38 +81,128 @@ async fn poll_league(client: &Client, league: &LeagueConfigs) -> anyhow::Result<
 }
 
 fn parse_espn_game(event: &serde_json::Value, league_name: &str) -> Option<crate::database::CleanedData> {
-    let competition = event.get("competitions")?.get(0)?;
-    let competitors = competition.get("competitors")?.as_array()?;
-    if competitors.len() < 2 { return None; }
-    
-    let home_team_node = competitors.get(0)?;
-    let away_team_node = competitors.get(1)?;
+    // --- Required fields: bail with a log message if any are missing ---
 
-    let id = event.get("id")?.as_str()?;
-    if id.len() > 50 { return None; } // Sanity check on ID length
+    let id = match event.get("id").and_then(|v| v.as_str()) {
+        Some(id) if id.len() <= 50 => id,
+        Some(id) => {
+            error!("[{}] Skipping game: id too long ({})", league_name, id.len());
+            return None;
+        }
+        None => {
+            error!("[{}] Skipping game: missing 'id' field", league_name);
+            return None;
+        }
+    };
 
-    let home_name = home_team_node.get("team")?.get("displayName")?.as_str()?;
-    let away_name = away_team_node.get("team")?.get("displayName")?.as_str()?;
-    
-    // Validation: Ensure names aren't suspiciously long
-    if home_name.len() > 100 || away_name.len() > 100 { return None; }
+    let competition = match event.get("competitions").and_then(|c| c.get(0)) {
+        Some(c) => c,
+        None => {
+            error!("[{}] Skipping game {}: missing 'competitions[0]'", league_name, id);
+            return None;
+        }
+    };
+
+    let competitors = match competition.get("competitors").and_then(|c| c.as_array()) {
+        Some(c) if c.len() >= 2 => c,
+        _ => {
+            error!("[{}] Skipping game {}: missing or insufficient 'competitors'", league_name, id);
+            return None;
+        }
+    };
+
+    let home_team_node = &competitors[0];
+    let away_team_node = &competitors[1];
+
+    let home_name = match home_team_node.get("team").and_then(|t| t.get("displayName")).and_then(|n| n.as_str()) {
+        Some(name) if name.len() <= 100 => name.to_string(),
+        Some(name) => {
+            error!("[{}] Skipping game {}: home team name too long ({})", league_name, id, name.len());
+            return None;
+        }
+        None => {
+            error!("[{}] Skipping game {}: missing home team displayName", league_name, id);
+            return None;
+        }
+    };
+
+    let away_name = match away_team_node.get("team").and_then(|t| t.get("displayName")).and_then(|n| n.as_str()) {
+        Some(name) if name.len() <= 100 => name.to_string(),
+        Some(name) => {
+            error!("[{}] Skipping game {}: away team name too long ({})", league_name, id, name.len());
+            return None;
+        }
+        None => {
+            error!("[{}] Skipping game {}: missing away team displayName", league_name, id);
+            return None;
+        }
+    };
+
+    let date_str = event.get("date").and_then(|d| d.as_str());
+    let start_time = match date_str.and_then(|d| chrono::DateTime::parse_from_rfc3339(d).ok()) {
+        Some(dt) => dt.with_timezone(&chrono::Utc),
+        None => {
+            error!("[{}] Skipping game {}: missing or unparseable 'date' (raw: {:?})", league_name, id, date_str);
+            return None;
+        }
+    };
+
+    let state = match competition.get("status").and_then(|s| s.get("type")).and_then(|t| t.get("state")).and_then(|s| s.as_str()) {
+        Some(s) => s.to_string(),
+        None => {
+            error!("[{}] Skipping game {}: missing 'status.type.state'", league_name, id);
+            return None;
+        }
+    };
+
+    // --- Optional fields: use None/defaults and warn if missing ---
+
+    let link = event.get("links")
+        .and_then(|l| l.get(0))
+        .and_then(|l| l.get("href"))
+        .and_then(|h| h.as_str())
+        .map(|s| s.to_string());
+
+    let home_logo = home_team_node.get("team")
+        .and_then(|t| t.get("logo"))
+        .and_then(|l| l.as_str())
+        .map(|s| s.to_string());
+
+    let home_score = home_team_node.get("score")
+        .and_then(|s| s.as_str())
+        .and_then(|s| s.parse::<i32>().ok());
+
+    let away_logo = away_team_node.get("team")
+        .and_then(|t| t.get("logo"))
+        .and_then(|l| l.as_str())
+        .map(|s| s.to_string());
+
+    let away_score = away_team_node.get("score")
+        .and_then(|s| s.as_str())
+        .and_then(|s| s.parse::<i32>().ok());
+
+    let short_detail = competition.get("status")
+        .and_then(|s| s.get("type"))
+        .and_then(|t| t.get("shortDetail"))
+        .and_then(|d| d.as_str())
+        .map(|s| s.to_string());
 
     Some(crate::database::CleanedData {
         league: league_name.to_string(),
         external_game_id: id.to_string(),
-        link: event.get("links")?.get(0)?.get("href")?.as_str()?.to_string(),
+        link,
         home_team: crate::database::Team {
-            name: home_name.to_string(),
-            logo: home_team_node.get("team")?.get("logo")?.as_str().unwrap_or("").to_string(),
-            score: home_team_node.get("score")?.as_str()?.parse().unwrap_or(0),
+            name: home_name,
+            logo: home_logo,
+            score: home_score,
         },
         away_team: crate::database::Team {
-            name: away_name.to_string(),
-            logo: away_team_node.get("team")?.get("logo")?.as_str().unwrap_or("").to_string(),
-            score: away_team_node.get("score")?.as_str()?.parse().unwrap_or(0),
+            name: away_name,
+            logo: away_logo,
+            score: away_score,
         },
-        start_time: chrono::DateTime::parse_from_rfc3339(event.get("date")?.as_str()?).ok()?.with_timezone(&chrono::Utc),
-        short_detail: competition.get("status")?.get("type")?.get("shortDetail")?.as_str()?.to_string(),
-        state: competition.get("status")?.get("type")?.get("state")?.as_str()?.to_string(),
+        start_time,
+        short_detail,
+        state,
     })
 }

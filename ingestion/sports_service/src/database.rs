@@ -52,19 +52,19 @@ pub struct LeagueConfigs {
 pub struct CleanedData {
     pub league: String,
     pub external_game_id: String,
-    pub link: String,
+    pub link: Option<String>,
     pub home_team: Team,
     pub away_team: Team,
     pub start_time: chrono::DateTime<Utc>,
-    pub short_detail: String,
+    pub short_detail: Option<String>,
     pub state: String,
 }
 
 #[derive(Debug)]
 pub struct Team {
     pub name: String,
-    pub logo: String,
-    pub score: i32
+    pub logo: Option<String>,
+    pub score: Option<i32>,
 }
 
 pub struct LiveLeagueList {
