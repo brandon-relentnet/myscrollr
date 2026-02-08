@@ -22,6 +22,7 @@ pub struct Leagues {
     pub nba: Vec<UserLeague>,
     pub nfl: Vec<UserLeague>,
     pub nhl: Vec<UserLeague>,
+    pub mlb: Vec<UserLeague>,
 }
 
 #[derive(Serialize, Debug, Clone)]
