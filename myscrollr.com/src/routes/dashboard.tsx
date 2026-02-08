@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { useLogto } from '@logto/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
@@ -29,8 +29,14 @@ import SettingsPanel from '../components/SettingsPanel'
 import { streamsApi, rssApi } from '../api/client'
 import type { Stream, StreamType, TrackedFeed } from '../api/client'
 
+const VALID_TABS = new Set<StreamType>(['finance', 'sports', 'fantasy', 'rss'])
+
 export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
+  validateSearch: (search: Record<string, unknown>): { tab?: StreamType } => {
+    const tab = search.tab as string | undefined
+    return { tab: tab && VALID_TABS.has(tab as StreamType) ? (tab as StreamType) : undefined }
+  },
 })
 
 const pageVariants = {
@@ -87,7 +93,18 @@ function DashboardPage() {
     getIdTokenClaims,
     getAccessToken,
   } = useLogto()
-  const [activeModule, setActiveModule] = useState<StreamType>('finance')
+  const { tab } = useSearch({ from: '/dashboard' })
+  const navigate = useNavigate({ from: '/dashboard' })
+  const activeModule: StreamType = tab ?? 'finance'
+  const setActiveModule = useCallback(
+    (next: StreamType | ((current: StreamType) => StreamType)) => {
+      const resolved = typeof next === 'function' ? next(activeModule) : next
+      if (resolved !== activeModule) {
+        navigate({ search: { tab: resolved }, replace: true })
+      }
+    },
+    [activeModule, navigate],
+  )
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [userClaims, setUserClaims] = useState<IdTokenClaims>()
   const [yahooStatus, setYahooStatus] = useState<{

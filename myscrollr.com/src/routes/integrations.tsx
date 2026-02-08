@@ -377,6 +377,7 @@ function IntegrationCard({
         {installed ? (
           <Link
             to="/dashboard"
+            search={{ tab: integration.streamType }}
             className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary/50 hover:text-primary transition-colors"
           >
             Manage on Dashboard <ArrowRight size={12} />
