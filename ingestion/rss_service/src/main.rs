@@ -35,8 +35,10 @@ async fn main() {
     let health_clone = health.clone();
     tokio::spawn(async move {
         println!("Starting periodic RSS ingest loop (5 minute interval)...");
+        let mut cycle: u64 = 0;
         loop {
-            start_rss_service(pool_clone.clone(), health_clone.clone()).await;
+            start_rss_service(pool_clone.clone(), health_clone.clone(), cycle).await;
+            cycle += 1;
             tokio::time::sleep(std::time::Duration::from_secs(300)).await;
         }
     });

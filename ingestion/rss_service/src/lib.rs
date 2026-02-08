@@ -3,8 +3,9 @@ use reqwest::Client;
 use tokio::sync::Mutex;
 use crate::log::{error, info, warn};
 use crate::database::{
-    PgPool, create_tables, get_tracked_feeds, seed_tracked_feeds,
-    upsert_rss_item, cleanup_old_articles, FeedConfig, TrackedFeed, ParsedArticle,
+    PgPool, create_tables, get_tracked_feeds, get_quarantined_feeds, seed_tracked_feeds,
+    upsert_rss_item, cleanup_old_articles, record_feed_success, record_feed_failure,
+    FeedConfig, TrackedFeed, ParsedArticle,
 };
 pub use crate::types::RssHealth;
 
@@ -12,8 +13,8 @@ pub mod log;
 pub mod database;
 pub mod types;
 
-pub async fn start_rss_service(pool: Arc<PgPool>, health_state: Arc<Mutex<RssHealth>>) {
-    info!("Starting RSS service...");
+pub async fn start_rss_service(pool: Arc<PgPool>, health_state: Arc<Mutex<RssHealth>>, cycle: u64) {
+    info!("Starting RSS service (cycle {})...", cycle);
 
     if let Err(e) = create_tables(&pool).await {
         error!("Failed to create database tables: {}", e);
@@ -22,20 +23,31 @@ pub async fn start_rss_service(pool: Arc<PgPool>, health_state: Arc<Mutex<RssHea
 
     // Always upsert default feeds from config on startup (ON CONFLICT DO NOTHING
     // ensures existing feeds and user customizations are never overwritten)
-    match fs::read_to_string("./configs/feeds.json") {
-        Ok(file_contents) => match serde_json::from_str::<Vec<FeedConfig>>(&file_contents) {
-            Ok(config) => {
-                info!("Upserting {} default feeds from configs/feeds.json...", config.len());
-                if let Err(e) = seed_tracked_feeds(pool.clone(), config).await {
-                    error!("Failed to seed default feeds: {}", e);
+    if cycle == 0 {
+        match fs::read_to_string("./configs/feeds.json") {
+            Ok(file_contents) => match serde_json::from_str::<Vec<FeedConfig>>(&file_contents) {
+                Ok(config) => {
+                    info!("Upserting {} default feeds from configs/feeds.json...", config.len());
+                    if let Err(e) = seed_tracked_feeds(pool.clone(), config).await {
+                        error!("Failed to seed default feeds: {}", e);
+                    }
                 }
-            }
-            Err(e) => error!("Failed to parse configs/feeds.json: {}", e),
-        },
-        Err(e) => warn!("configs/feeds.json not found: {}", e),
+                Err(e) => error!("Failed to parse configs/feeds.json: {}", e),
+            },
+            Err(e) => warn!("configs/feeds.json not found: {}", e),
+        }
     }
 
-    let feeds = get_tracked_feeds(pool.clone()).await;
+    let mut feeds = get_tracked_feeds(pool.clone()).await;
+
+    // Every 288 cycles (~24 hours), retry quarantined feeds to see if they've recovered
+    if cycle % 288 == 0 && cycle > 0 {
+        let quarantined = get_quarantined_feeds(pool.clone()).await;
+        if !quarantined.is_empty() {
+            info!("Retrying {} quarantined feeds...", quarantined.len());
+            feeds.extend(quarantined);
+        }
+    }
 
     if feeds.is_empty() {
         error!("No feeds to track. RSS service idling.");
@@ -58,6 +70,7 @@ pub async fn start_rss_service(pool: Arc<PgPool>, health_state: Arc<Mutex<RssHea
         let health = health_state.clone();
         let feed_name = feed.name.clone();
         let feed_url = feed.url.clone();
+        let prev_failures = feed.consecutive_failures;
 
         // Spawn each feed poll as its own task so that a panic in one feed
         // (e.g. from an unexpected parser issue) cannot kill the entire cycle
@@ -67,13 +80,27 @@ pub async fn start_rss_service(pool: Arc<PgPool>, health_state: Arc<Mutex<RssHea
 
         match handle.await {
             Ok(Ok(count)) => {
+                record_feed_success(&pool, &feed_url).await;
+                if prev_failures >= 3 {
+                    info!("Feed {} ({}) recovered after {} consecutive failures", feed_name, feed_url, prev_failures);
+                }
                 health.lock().await.record_success(count as u64);
             }
             Ok(Err(e)) => {
+                let err_msg = format!("{}", e);
+                record_feed_failure(&pool, &feed_url, &err_msg).await;
+                let new_failures = prev_failures + 1;
+                if new_failures == 3 {
+                    warn!("Feed {} ({}) hidden from catalog after 3 consecutive failures", feed_name, feed_url);
+                } else if new_failures == 288 {
+                    warn!("Feed {} ({}) quarantined after 288 consecutive failures (24h)", feed_name, feed_url);
+                }
                 error!("Error polling feed {} ({}): {}", feed_name, feed_url, e);
                 health.lock().await.record_error(format!("{}: {}", feed_name, e));
             }
             Err(panic_err) => {
+                let err_msg = format!("PANIC: {}", panic_err);
+                record_feed_failure(&pool, &feed_url, &err_msg).await;
                 error!("PANIC polling feed {} ({}): {}", feed_name, feed_url, panic_err);
                 health.lock().await.record_error(format!("PANIC: {}", feed_name));
             }

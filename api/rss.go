@@ -31,7 +31,7 @@ func GetRSSFeedCatalog(c *fiber.Ctx) error {
 	}
 
 	rows, err := dbPool.Query(context.Background(),
-		"SELECT url, name, category, is_default FROM tracked_feeds WHERE is_enabled = true ORDER BY category, name")
+		"SELECT url, name, category, is_default FROM tracked_feeds WHERE is_enabled = true AND consecutive_failures < 3 ORDER BY category, name")
 	if err != nil {
 		log.Printf("[RSS] Catalog query failed: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{

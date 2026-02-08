@@ -58,6 +58,7 @@ pub struct TrackedFeed {
     pub category: String,
     pub is_default: bool,
     pub is_enabled: bool,
+    pub consecutive_failures: i32,
 }
 
 // ── Parsed article ready for DB insertion ────────────────────────
@@ -105,6 +106,18 @@ pub async fn create_tables(pool: &Arc<PgPool>) -> Result<()> {
     let mut connection = pool.acquire().await?;
     query(tracked_feeds_statement).execute(&mut *connection).await?;
     query(rss_items_statement).execute(&mut *connection).await?;
+
+    // Idempotent schema migrations — add health tracking columns
+    let migrations = [
+        "ALTER TABLE tracked_feeds ADD COLUMN IF NOT EXISTS consecutive_failures INT NOT NULL DEFAULT 0",
+        "ALTER TABLE tracked_feeds ADD COLUMN IF NOT EXISTS last_error TEXT",
+        "ALTER TABLE tracked_feeds ADD COLUMN IF NOT EXISTS last_error_at TIMESTAMPTZ",
+        "ALTER TABLE tracked_feeds ADD COLUMN IF NOT EXISTS last_success_at TIMESTAMPTZ",
+    ];
+    for migration in &migrations {
+        query(migration).execute(&mut *connection).await?;
+    }
+
     Ok(())
 }
 
@@ -128,10 +141,14 @@ pub async fn seed_tracked_feeds(pool: Arc<PgPool>, feeds: Vec<FeedConfig>) -> Re
     Ok(())
 }
 
-// ── Get all enabled feeds ────────────────────────────────────────
+// ── Get all enabled, non-quarantined feeds ──────────────────────
 
 pub async fn get_tracked_feeds(pool: Arc<PgPool>) -> Vec<TrackedFeed> {
-    let statement = "SELECT url, name, category, is_default, is_enabled FROM tracked_feeds WHERE is_enabled = TRUE";
+    let statement = "
+        SELECT url, name, category, is_default, is_enabled, consecutive_failures
+        FROM tracked_feeds
+        WHERE is_enabled = TRUE AND consecutive_failures < 288
+    ";
     let res: Result<Vec<TrackedFeed>, sqlx::Error> = async {
         let mut connection = pool.acquire().await?;
         let data = query_as(statement).fetch_all(&mut *connection).await?;
@@ -144,6 +161,69 @@ pub async fn get_tracked_feeds(pool: Arc<PgPool>) -> Vec<TrackedFeed> {
             log::error!("Failed to get tracked feeds: {}", e);
             Vec::new()
         }
+    }
+}
+
+// ── Get quarantined feeds (for periodic retry) ──────────────────
+
+pub async fn get_quarantined_feeds(pool: Arc<PgPool>) -> Vec<TrackedFeed> {
+    let statement = "
+        SELECT url, name, category, is_default, is_enabled, consecutive_failures
+        FROM tracked_feeds
+        WHERE is_enabled = TRUE AND consecutive_failures >= 288
+    ";
+    let res: Result<Vec<TrackedFeed>, sqlx::Error> = async {
+        let mut connection = pool.acquire().await?;
+        let data = query_as(statement).fetch_all(&mut *connection).await?;
+        Ok(data)
+    }.await;
+
+    match res {
+        Ok(data) => data,
+        Err(e) => {
+            log::error!("Failed to get quarantined feeds: {}", e);
+            Vec::new()
+        }
+    }
+}
+
+// ── Record feed poll success ────────────────────────────────────
+
+pub async fn record_feed_success(pool: &Arc<PgPool>, feed_url: &str) {
+    let statement = "
+        UPDATE tracked_feeds
+        SET consecutive_failures = 0, last_success_at = NOW()
+        WHERE url = $1
+    ";
+    let res: Result<(), sqlx::Error> = async {
+        let mut connection = pool.acquire().await?;
+        query(statement).bind(feed_url).execute(&mut *connection).await?;
+        Ok(())
+    }.await;
+
+    if let Err(e) = res {
+        log::error!("Failed to record feed success for {}: {}", feed_url, e);
+    }
+}
+
+// ── Record feed poll failure ────────────────────────────────────
+
+pub async fn record_feed_failure(pool: &Arc<PgPool>, feed_url: &str, error: &str) {
+    let statement = "
+        UPDATE tracked_feeds
+        SET consecutive_failures = consecutive_failures + 1,
+            last_error = $2,
+            last_error_at = NOW()
+        WHERE url = $1
+    ";
+    let res: Result<(), sqlx::Error> = async {
+        let mut connection = pool.acquire().await?;
+        query(statement).bind(feed_url).bind(error).execute(&mut *connection).await?;
+        Ok(())
+    }.await;
+
+    if let Err(e) = res {
+        log::error!("Failed to record feed failure for {}: {}", feed_url, e);
     }
 }
 

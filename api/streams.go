@@ -218,6 +218,11 @@ func CreateStream(c *fiber.Ctx) error {
 		addStreamSubscriptions(ctx, userID, s.StreamType, s.Config)
 	}
 
+	// Sync RSS feed URLs to tracked_feeds so the ingestion service discovers them
+	if s.StreamType == "rss" {
+		go syncRSSFeedsToTracked(s.Config)
+	}
+
 	return c.Status(http.StatusCreated).JSON(s)
 }
 

@@ -21,7 +21,6 @@
   { "name": "NerdWallet", "url": "https://www.nerdwallet.com/blog/feed/", "category": "Finance" },
 
   { "name": "ESPN Top Headlines", "url": "https://www.espn.com/espn/rss/news", "category": "Sports News" },
-  { "name": "CBS Sports", "url": "https://www.cbssports.com/rss/headlines/", "category": "Sports News" },
   { "name": "ESPN NFL", "url": "https://www.espn.com/espn/rss/nfl/news", "category": "Sports News" },
   { "name": "ESPN NBA", "url": "https://www.espn.com/espn/rss/nba/news", "category": "Sports News" },
   { "name": "ESPN MLB", "url": "https://www.espn.com/espn/rss/mlb/news", "category": "Sports News" },
@@ -104,7 +103,6 @@
   { "name": "McKinsey Insights", "url": "https://www.mckinsey.com/insights/rss", "category": "Business" },
   { "name": "Wharton Knowledge", "url": "https://knowledge.wharton.upenn.edu/feed/", "category": "Business" },
 
-  { "name": "Politico", "url": "https://www.politico.com/rss/politicopicks.xml", "category": "Politics" },
   { "name": "The Hill", "url": "https://thehill.com/feed/", "category": "Politics" },
   { "name": "FiveThirtyEight", "url": "https://fivethirtyeight.com/feed/", "category": "Politics" },
   { "name": "ProPublica", "url": "https://feeds.propublica.org/propublica/main", "category": "Politics" },
