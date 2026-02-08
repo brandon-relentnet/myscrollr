@@ -243,7 +243,7 @@ function StatusPage() {
               />
               <ServiceRow
                 name="Sports Service"
-                description="ESPN API — scores polling every 5 min"
+                description="ESPN API — scores polling every 1 min"
                 state={sportsState}
                 port={3002}
               />

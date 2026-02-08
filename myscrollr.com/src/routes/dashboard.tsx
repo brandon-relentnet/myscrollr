@@ -933,7 +933,7 @@ function SportsStreamConfig({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <InfoCard label="Data Source" value="ESPN" />
         <InfoCard label="Leagues" value={String(leagues.length)} />
-        <InfoCard label="Poll Interval" value="5 min" />
+        <InfoCard label="Poll Interval" value="1 min" />
       </div>
 
       <div className="bg-base-200/30 border border-base-300/30 rounded-lg p-5 space-y-3">
@@ -954,7 +954,7 @@ function SportsStreamConfig({
           ))}
         </div>
         <p className="text-xs text-base-content/40 leading-relaxed pt-2">
-          Scores are polled from ESPN every 5 minutes. Active, upcoming, and
+          Scores are polled from ESPN every minute. Active, upcoming, and
           recently completed games are delivered to your ticker.
         </p>
       </div>
