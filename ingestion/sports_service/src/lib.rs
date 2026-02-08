@@ -66,8 +66,15 @@ pub async fn start_sports_service(pool: Arc<PgPool>, health_state: Arc<Mutex<Spo
 }
 
 async fn poll_league(client: &Client, league: &LeagueConfigs) -> anyhow::Result<Vec<crate::database::CleanedData>> {
-    let url = format!("https://site.api.espn.com/apis/site/v2/sports/{}/{}/scoreboard", league.slug.split('/').next().unwrap_or("football"), league.slug.split('/').last().unwrap_or("nfl"));
-    let resp = client.get(url).send().await?.json::<serde_json::Value>().await?;
+    let base_url = format!("https://site.api.espn.com/apis/site/v2/sports/{}/scoreboard", league.slug);
+    let url = match league.slug.as_str() {
+        s if s.contains("college") => {
+            format!("{}?groups=80", base_url)
+        }
+        _ => base_url,
+    };
+    
+    let resp = client.get(&url).send().await?.json::<serde_json::Value>().await?;
     
     let mut cleaned_games = Vec::new();
     if let Some(events) = resp.get("events").and_then(|e| e.as_array()) {
