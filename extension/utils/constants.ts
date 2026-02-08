@@ -4,7 +4,6 @@ export const FRONTEND_URL = 'https://myscrollr.relentnet.dev';
 
 export const LOGTO_ENDPOINT = 'https://auth.myscrollr.relentnet.dev';
 export const LOGTO_APP_ID = 'kq298uwwusrvw8m6yn6b4';
-export const LOGTO_RESOURCE = API_URL;
 
 /** Maximum number of items kept in memory per category. */
 export const MAX_ITEMS = 50;

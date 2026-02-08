@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -195,7 +196,7 @@ func CreateStream(c *fiber.Ctx) error {
 		&configBytes, &s.CreatedAt, &s.UpdatedAt,
 	)
 	if err != nil {
-		if contains(err.Error(), "unique") || contains(err.Error(), "duplicate") {
+		if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
 			return c.Status(http.StatusConflict).JSON(ErrorResponse{
 				Status: "error",
 				Error:  "Stream of this type already exists",
@@ -310,7 +311,7 @@ func UpdateStream(c *fiber.Ctx) error {
 		SET %s
 		WHERE logto_sub = $1 AND stream_type = $2
 		RETURNING id, logto_sub, stream_type, enabled, visible, config, created_at, updated_at
-	`, joinStrings(setClauses, ", "))
+	`, strings.Join(setClauses, ", "))
 
 	var s Stream
 	var configBytes []byte
@@ -320,7 +321,7 @@ func UpdateStream(c *fiber.Ctx) error {
 	)
 	if err != nil {
 		errStr := err.Error()
-		if contains(errStr, "no rows") {
+		if strings.Contains(errStr, "no rows") {
 			return c.Status(http.StatusNotFound).JSON(ErrorResponse{
 				Status: "error",
 				Error:  "Stream not found",
@@ -434,14 +435,4 @@ func DeleteStream(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "ok", "message": "Stream removed"})
 }
 
-// joinStrings joins a slice of strings with a separator.
-func joinStrings(strs []string, sep string) string {
-	result := ""
-	for i, s := range strs {
-		if i > 0 {
-			result += sep
-		}
-		result += s
-	}
-	return result
-}
+

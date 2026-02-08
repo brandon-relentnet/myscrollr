@@ -14,9 +14,7 @@ export interface UserPreferences {
   updated_at: string
 }
 
-interface RequestOptions extends RequestInit {
-  requiresAuth?: boolean
-}
+interface RequestOptions extends RequestInit {}
 
 async function request<T>(
   path: string,
@@ -42,19 +40,6 @@ async function request<T>(
   }
 
   return response.json()
-}
-
-// Profile API
-export const profileApi = {
-  // Get public profile by username
-  get: (username: string) =>
-    request<{
-      username: string
-      display_name?: string
-      bio?: string
-      is_public: boolean
-      connected_yahoo: boolean
-    }>(`/users/${username}`),
 }
 
 // Authenticated API caller - use this inside components with useLogto

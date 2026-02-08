@@ -159,15 +159,5 @@ func LogtoAuth(c *fiber.Ctx) error {
 	// Store user ID in context
 	c.Locals("user_id", sub)
 
-	// Also store email if available
-	if email, ok := claims["email"].(string); ok {
-		c.Locals("user_email", email)
-	}
-
-	// Store username if available (from Logto user profile)
-	if username, ok := claims["username"].(string); ok {
-		c.Locals("username", username)
-	}
-
 	return c.Next()
 }

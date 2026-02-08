@@ -114,15 +114,6 @@ export function setupMessageListeners() {
           return true; // Keep channel open for async response
         }
 
-        case 'REQUEST_STATUS': {
-          const state = getState();
-          sendResponse({
-            type: 'CONNECTION_STATUS',
-            status: state.connectionStatus,
-          });
-          return false;
-        }
-
         case 'LOGIN': {
           login().then((success) => {
             const authed = success;
@@ -170,29 +161,6 @@ export function setupMessageListeners() {
             broadcast({ type: 'AUTH_STATUS', authenticated: false });
             sendResponse({ type: 'AUTH_STATUS', authenticated: false });
           });
-          return true;
-        }
-
-        case 'REQUEST_INITIAL_DATA': {
-          fetchDashboardData()
-            .then((data: DashboardResponse) => {
-              mergeDashboardData(data.finance || [], data.sports || [], data.rss || []);
-              sendResponse({ type: 'INITIAL_DATA', payload: data });
-
-              // Apply server preferences to local storage
-              if (data.preferences) {
-                applyServerPreferences(data.preferences);
-              }
-
-              // Initialise stream visibility from server state
-              if (data.streams) {
-                initStreamsVisibility(data.streams);
-              }
-            })
-            .catch((err) => {
-              console.error('[Scrollr] Dashboard fetch failed:', err);
-              sendResponse(null);
-            });
           return true;
         }
 

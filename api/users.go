@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -33,7 +34,7 @@ func GetYahooStatus(c *fiber.Ctx) error {
 
 	if err != nil {
 		errStr := err.Error()
-		if err == sql.ErrNoRows || contains(errStr, "no rows") {
+		if err == sql.ErrNoRows || strings.Contains(errStr, "no rows") {
 			return c.JSON(YahooStatusResponse{Connected: false, Synced: false})
 		}
 		log.Printf("[GetYahooStatus] Error: %v", err)
@@ -214,31 +215,4 @@ func getUserID(c *fiber.Ctx) string {
 	return ""
 }
 
-// getUserEmail extracts the user email from the Fiber context (set by LogtoAuth middleware)
-func getUserEmail(c *fiber.Ctx) string {
-	if email, ok := c.Locals("user_email").(string); ok {
-		return email
-	}
-	return ""
-}
 
-// getUsername extracts the username from the Fiber context (set by LogtoAuth middleware)
-func getUsername(c *fiber.Ctx) string {
-	if username, ok := c.Locals("username").(string); ok {
-		return username
-	}
-	return ""
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))
-}
-
-func containsHelper(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}

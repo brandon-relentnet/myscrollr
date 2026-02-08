@@ -8,7 +8,6 @@ use yahoo_fantasy::{api as yahoo_api, types::Tokens};
 
 pub mod log;
 pub mod database;
-pub mod types;
 
 #[derive(Clone)]
 pub struct YahooWorkerState {
@@ -87,7 +86,6 @@ async fn sync_user_data(
         client_id: client_id.to_string(),
         client_secret: SecretString::new(client_secret.to_string().into_boxed_str()),
         callback_url: callback_url.to_string(),
-        access_type: "".to_string(),
     };
 
     let http_client = yahoo_api::Client::new();

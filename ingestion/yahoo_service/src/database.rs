@@ -160,21 +160,6 @@ pub async fn create_tables(pool: &PgPool) -> Result<()> {
     Ok(())
 }
 
-pub async fn upsert_yahoo_matchups(pool: &PgPool, team_key: &str, data: serde_json::Value) -> Result<()> {
-    let statement = "
-        INSERT INTO yahoo_matchups (team_key, data, updated_at)
-        VALUES ($1, $2, CURRENT_TIMESTAMP)
-        ON CONFLICT (team_key) DO UPDATE
-        SET data = EXCLUDED.data, updated_at = CURRENT_TIMESTAMP;
-    ";
-    query(statement)
-        .bind(team_key)
-        .bind(data)
-        .execute(pool)
-        .await?;
-    Ok(())
-}
-
 pub async fn upsert_yahoo_league(pool: &PgPool, guid: &str, league_key: &str, name: &str, game_code: &str, season: &str, data: serde_json::Value) -> Result<()> {
     let statement = "
         INSERT INTO yahoo_leagues (league_key, guid, name, game_code, season, data, updated_at)
@@ -202,22 +187,6 @@ pub async fn upsert_yahoo_standings(pool: &PgPool, league_key: &str, data: serde
         SET data = EXCLUDED.data, updated_at = CURRENT_TIMESTAMP;
     ";
     query(statement)
-        .bind(league_key)
-        .bind(data)
-        .execute(pool)
-        .await?;
-    Ok(())
-}
-
-pub async fn upsert_yahoo_roster(pool: &PgPool, team_key: &str, league_key: &str, data: serde_json::Value) -> Result<()> {
-    let statement = "
-        INSERT INTO yahoo_rosters (team_key, league_key, data, updated_at)
-        VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
-        ON CONFLICT (team_key) DO UPDATE
-        SET data = EXCLUDED.data, updated_at = CURRENT_TIMESTAMP;
-    ";
-    query(statement)
-        .bind(team_key)
         .bind(league_key)
         .bind(data)
         .execute(pool)

@@ -57,25 +57,9 @@ func SetCache(key string, value interface{}, expiration time.Duration) {
 	}
 }
 
-// Publish broadcasts a JSON-serialized message to a specific Redis channel
-func Publish(channel string, message interface{}) error {
-	data, err := json.Marshal(message)
-	if err != nil {
-		log.Printf("[Redis Error] Failed to marshal publish data for %s: %v", channel, err)
-		return err
-	}
-	return rdb.Publish(context.Background(), channel, data).Err()
-}
-
 // PublishRaw publishes pre-serialised bytes to a Redis channel
 func PublishRaw(channel string, data []byte) error {
 	return rdb.Publish(context.Background(), channel, data).Err()
-}
-
-// Subscribe listens to a Redis channel and returns the PubSub object
-// The caller is responsible for calling .Channel() and .Close()
-func Subscribe(ctx context.Context, channel string) *redis.PubSub {
-	return rdb.Subscribe(ctx, channel)
 }
 
 // PSubscribe listens to Redis channels matching a pattern

@@ -1,9 +1,9 @@
-use std::{env, time::Duration, fmt::Display, sync::Arc};
+use std::{env, time::Duration, sync::Arc};
 use anyhow::{Context, Result};
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 pub use sqlx::PgPool;
 use sqlx::{FromRow, query, query_as};
-pub use chrono::Utc;
+use chrono::Utc;
 use serde::Deserialize;
 
 pub async fn initialize_pool() -> Result<PgPool> {
@@ -65,37 +65,6 @@ pub struct Team {
     pub name: String,
     pub logo: Option<String>,
     pub score: Option<i32>,
-}
-
-pub struct LiveLeagueList {
-    data: Vec<LiveByLeague>,
-}
-
-impl LiveLeagueList {
-    pub fn new(data: Vec<LiveByLeague>) -> Self {
-        LiveLeagueList { data }
-    }
-}
-
-impl Display for LiveLeagueList  {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for item in self.data.iter() {
-            write!(f, "{} ", item)?;
-        }
-        Ok(())
-    }
-}
-
-#[derive(FromRow, Debug)]
-pub struct LiveByLeague {
-    league: String,
-    count: i64,
-}
-
-impl Display for LiveByLeague {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({}, {})", self.league, self.count)
-    }
 }
 
 pub async fn create_tables(pool: &Arc<PgPool>) -> Result<()> {
@@ -188,19 +157,4 @@ pub async fn upsert_game(pool: Arc<PgPool>, game: CleanedData) -> Result<()> {
     Ok(())
 }
 
-pub async fn get_live_games(pool: &Arc<PgPool>) -> LiveLeagueList {
-    let statement = "SELECT league, COUNT(*) as count FROM games WHERE state = 'in' GROUP BY league";
-    let res: Result<Vec<LiveByLeague>, sqlx::Error> = async {
-        let mut connection = pool.acquire().await?;
-        let data = query_as(statement).fetch_all(&mut *connection).await?;
-        Ok(data)
-    }.await;
 
-    match res {
-        Ok(data) => LiveLeagueList::new(data),
-        Err(e) => {
-            log::error!("Failed to get live games: {}", e);
-            LiveLeagueList::new(Vec::new())
-        }
-    }
-}

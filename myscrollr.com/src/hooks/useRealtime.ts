@@ -1,45 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { UserPreferences } from '../api/client'
 
-// Define types locally if not available globally yet
-export interface Trade {
-  symbol: string
-  price: number | string
-  previous_close?: number
-  percentage_change?: number | string
-  price_change?: number | string
-  direction?: 'up' | 'down'
-  last_updated?: string
-  [key: string]: any
-}
-
-export interface Game {
-  id: number | string
-  league: string
-  home_team_name: string
-  away_team_name: string
-  home_team_score: number | string
-  away_team_score: number | string
-  short_detail?: string // e.g. "Q4 2:30"
-  state?: string // e.g. "in_progress"
-  [key: string]: any
-}
-
-export interface RssItem {
-  id: number
-  feed_url: string
-  guid: string
-  title: string
-  link: string
-  description: string
-  source_name: string
-  published_at: string | null
-  created_at: string
-  updated_at: string
-}
-
 // Yahoo data as stored in DB rows (keyed by league_key/team_key)
-export interface YahooLeagueRecord {
+interface YahooLeagueRecord {
   league_key: string
   guid: string
   name: string
@@ -48,12 +11,12 @@ export interface YahooLeagueRecord {
   data: any // JSONB blob from yahoo API
 }
 
-export interface YahooStandingsRecord {
+interface YahooStandingsRecord {
   league_key: string
   data: any
 }
 
-export interface YahooMatchupsRecord {
+interface YahooMatchupsRecord {
   team_key: string
   data: any
 }
@@ -66,9 +29,6 @@ export interface YahooState {
 
 interface RealtimeState {
   status: 'connected' | 'disconnected' | 'reconnecting'
-  latestTrades: Array<Trade>
-  latestGames: Array<Game>
-  latestRssItems: Array<RssItem>
   yahoo: YahooState
   preferences: UserPreferences | null
 }
@@ -81,9 +41,6 @@ interface UseRealtimeOptions {
 export function useRealtime({ getToken }: UseRealtimeOptions) {
   const [state, setState] = useState<RealtimeState>({
     status: 'disconnected',
-    latestTrades: [],
-    latestGames: [],
-    latestRssItems: [],
     yahoo: { leagues: {}, standings: {}, matchups: {} },
     preferences: null,
   })
@@ -163,69 +120,7 @@ export function useRealtime({ getToken }: UseRealtimeOptions) {
 
         if (!record) return
 
-        if (table === 'trades') {
-          setState((prev) => {
-            const idx = prev.latestTrades.findIndex(
-              (t) => t.symbol === record.symbol,
-            )
-            let newTrades = [...prev.latestTrades]
-
-            if (idx >= 0) {
-              newTrades[idx] = { ...newTrades[idx], ...record }
-            } else {
-              newTrades = [record, ...newTrades]
-            }
-
-            return { ...prev, latestTrades: newTrades.slice(0, 50) }
-          })
-        } else if (table === 'games') {
-          setState((prev) => {
-            const idx = prev.latestGames.findIndex((g) => g.id === record.id)
-            let newGames = [...prev.latestGames]
-
-            if (idx >= 0) {
-              newGames[idx] = { ...newGames[idx], ...record }
-            } else {
-              newGames = [record, ...newGames]
-            }
-
-            return { ...prev, latestGames: newGames.slice(0, 50) }
-          })
-        } else if (table === 'rss_items') {
-          setState((prev) => {
-            const idx = prev.latestRssItems.findIndex(
-              (r) =>
-                r.feed_url === record.feed_url && r.guid === record.guid,
-            )
-            let newItems = [...prev.latestRssItems]
-
-            if (event.action === 'delete') {
-              if (idx >= 0) {
-                newItems.splice(idx, 1)
-              }
-              return { ...prev, latestRssItems: newItems }
-            }
-
-            if (idx >= 0) {
-              newItems[idx] = { ...newItems[idx], ...record }
-            } else {
-              newItems = [record, ...newItems]
-            }
-
-            // Sort by published_at DESC, limit 50
-            newItems.sort((a, b) => {
-              const aTime = a.published_at
-                ? new Date(a.published_at).getTime()
-                : 0
-              const bTime = b.published_at
-                ? new Date(b.published_at).getTime()
-                : 0
-              return bTime - aTime
-            })
-
-            return { ...prev, latestRssItems: newItems.slice(0, 50) }
-          })
-        } else if (table === 'yahoo_leagues') {
+        if (table === 'yahoo_leagues') {
           setState((prev) => ({
             ...prev,
             yahoo: {
@@ -291,9 +186,5 @@ export function useRealtime({ getToken }: UseRealtimeOptions) {
     }))
   }
 
-  const setPreferences = (prefs: UserPreferences | null) => {
-    setState((prev) => ({ ...prev, preferences: prefs }))
-  }
-
-  return { ...state, setInitialYahoo, clearYahoo, setPreferences }
+  return { ...state, setInitialYahoo, clearYahoo }
 }

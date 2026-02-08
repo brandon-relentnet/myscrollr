@@ -2,11 +2,6 @@ use chrono::{DateTime, Utc};
 use secrecy::SecretString;
 use serde::Serialize;
 
-use crate::{
-    stats::StatDecode,
-    xml_roster::{self, PlayerPoints},
-};
-
 #[derive(Clone)]
 pub struct Tokens {
     pub access_token: SecretString,
@@ -14,7 +9,6 @@ pub struct Tokens {
     pub client_id: String,
     pub client_secret: SecretString,
     pub callback_url: String,
-    pub access_type: String,
 }
 
 #[derive(Serialize, Clone)]
@@ -60,61 +54,6 @@ pub struct LeagueStandings {
     pub points_against: String,
 }
 
-#[derive(Serialize, Debug)]
-pub struct Roster<T>
-where
-    T: StatDecode + std::fmt::Display,
-    <T as TryFrom<u32>>::Error: std::fmt::Display,
-{
-    pub id: u32,
-    pub key: String,
-    pub name: String,
-    #[serde(rename = "firstName")]
-    pub first_name: String,
-    #[serde(rename = "lastName")]
-    pub last_name: String,
-    #[serde(rename = "teamAbbr")]
-    pub team_abbreviation: String,
-    #[serde(rename = "teamFullName")]
-    pub team_full_name: String,
-    #[serde(rename = "uniformNumber")]
-    pub uniform_number: String,
-    pub position: String,
-    #[serde(rename = "selectedPosition")]
-    pub selected_position: String,
-    #[serde(rename = "eligiblePositions")]
-    pub eligible_positions: Vec<String>,
-    #[serde(rename = "imageUrl")]
-    pub image_url: String,
-    pub headshot: String,
-    #[serde(rename = "isUndroppable")]
-    pub is_undroppable: bool,
-    #[serde(rename = "positionType")]
-    pub position_type: String,
-    pub stats: Vec<xml_roster::Stat<T>>,
-    #[serde(rename = "playerPoints")]
-    pub player_points: Option<PlayerPoints>,
-}
-
-#[derive(Serialize, Debug)]
-pub struct Matchups {
-    pub completed_matches: Vec<Matchup>,
-    pub active_matches: Vec<Matchup>,
-    pub future_matches: Vec<Matchup>,
-}
-
-#[derive(Serialize, Debug)]
-pub struct Matchup {
-    pub teams: Vec<MatchupTeam>,
-}
-
-#[derive(Serialize, Debug)]
-pub struct MatchupTeam {
-    pub team_key: String,
-    pub team_name: String,
-    pub team_points: f32,
-}
-
 #[derive(Serialize, Clone)]
 pub struct YahooHealth {
     pub status: String,
@@ -137,22 +76,9 @@ impl YahooHealth {
         }
     }
 
-    pub fn update_oauth_status(&mut self, has_token: bool) {
-        self.oauth_status = if has_token {
-            String::from("authenticated")
-        } else {
-            String::from("no_token")
-        };
-    }
-
     pub fn record_successful_call(&mut self) {
         self.last_api_call = Some(Utc::now());
         self.successful_calls += 1;
-    }
-
-    pub fn record_error(&mut self, error: String) {
-        self.error_count += 1;
-        self.last_error = Some(error);
     }
 
     pub fn get_health(&self) -> Self {

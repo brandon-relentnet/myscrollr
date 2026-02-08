@@ -18,12 +18,9 @@ type Game struct {
 	StartTime      time.Time `json:"start_time"`
 	ShortDetail    string    `json:"short_detail"`
 	State          string    `json:"state"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 type Trade struct {
-	ID               int       `json:"id"`
 	Symbol           string    `json:"symbol"`
 	Price            float64   `json:"price"`
 	PreviousClose    float64   `json:"previous_close"`

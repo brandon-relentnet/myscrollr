@@ -31,10 +31,8 @@ type HealthResponse struct {
 
 // ErrorResponse represents a standard API error
 type ErrorResponse struct {
-	Status  string `json:"status"`
-	Error   string `json:"error"`
-	Hint    string `json:"hint,omitempty"`
-	Target  string `json:"target,omitempty"`
+	Status string `json:"status"`
+	Error  string `json:"error"`
 }
 
 // @title Scrollr API

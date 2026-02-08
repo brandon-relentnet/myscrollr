@@ -2,7 +2,7 @@ use std::{fs::{self, File}, io::Write, sync::OnceLock};
 use log::{Level, Log};
 use tokio::sync::mpsc;
 
-pub use log::{info, error, warn, debug, trace};
+pub use log::{info, error};
 
 type LogMessage = String;
 
