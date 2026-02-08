@@ -52,14 +52,30 @@ pub async fn start_rss_service(pool: Arc<PgPool>, health_state: Arc<Mutex<RssHea
         .build()
         .unwrap_or_else(|_| Client::new());
 
-    for feed in &feeds {
-        match poll_feed(&client, &pool, feed).await {
-            Ok(count) => {
-                health_state.lock().await.record_success(count as u64);
+    for feed in feeds {
+        let client = client.clone();
+        let pool = pool.clone();
+        let health = health_state.clone();
+        let feed_name = feed.name.clone();
+        let feed_url = feed.url.clone();
+
+        // Spawn each feed poll as its own task so that a panic in one feed
+        // (e.g. from an unexpected parser issue) cannot kill the entire cycle
+        let handle = tokio::task::spawn(async move {
+            poll_feed(&client, &pool, &feed).await
+        });
+
+        match handle.await {
+            Ok(Ok(count)) => {
+                health.lock().await.record_success(count as u64);
             }
-            Err(e) => {
-                error!("Error polling feed {} ({}): {}", feed.name, feed.url, e);
-                health_state.lock().await.record_error(format!("{}: {}", feed.name, e));
+            Ok(Err(e)) => {
+                error!("Error polling feed {} ({}): {}", feed_name, feed_url, e);
+                health.lock().await.record_error(format!("{}: {}", feed_name, e));
+            }
+            Err(panic_err) => {
+                error!("PANIC polling feed {} ({}): {}", feed_name, feed_url, panic_err);
+                health.lock().await.record_error(format!("PANIC: {}", feed_name));
             }
         }
     }
@@ -115,9 +131,10 @@ async fn poll_feed(client: &Client, pool: &Arc<PgPool>, feed: &TrackedFeed) -> a
             .or_else(|| entry.content.and_then(|c| c.body))
             .unwrap_or_default();
 
-        // Truncate description to 500 chars
-        let description = if description.len() > 500 {
-            let mut truncated = description[..500].to_string();
+        // Truncate description to 500 characters (char-based to avoid
+        // panicking on multi-byte UTF-8 sequences like smart quotes)
+        let description = if description.chars().count() > 500 {
+            let mut truncated: String = description.chars().take(500).collect();
             truncated.push_str("...");
             truncated
         } else {
