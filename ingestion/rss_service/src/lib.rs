@@ -74,13 +74,14 @@ pub async fn start_rss_service(pool: Arc<PgPool>, health_state: Arc<Mutex<RssHea
 
         // Spawn each feed poll as its own task so that a panic in one feed
         // (e.g. from an unexpected parser issue) cannot kill the entire cycle
+        let pool_outer = pool.clone();
         let handle = tokio::task::spawn(async move {
             poll_feed(&client, &pool, &feed).await
         });
 
         match handle.await {
             Ok(Ok(count)) => {
-                record_feed_success(&pool, &feed_url).await;
+                record_feed_success(&pool_outer, &feed_url).await;
                 if prev_failures >= 3 {
                     info!("Feed {} ({}) recovered after {} consecutive failures", feed_name, feed_url, prev_failures);
                 }
@@ -88,7 +89,7 @@ pub async fn start_rss_service(pool: Arc<PgPool>, health_state: Arc<Mutex<RssHea
             }
             Ok(Err(e)) => {
                 let err_msg = format!("{}", e);
-                record_feed_failure(&pool, &feed_url, &err_msg).await;
+                record_feed_failure(&pool_outer, &feed_url, &err_msg).await;
                 let new_failures = prev_failures + 1;
                 if new_failures == 3 {
                     warn!("Feed {} ({}) hidden from catalog after 3 consecutive failures", feed_name, feed_url);
@@ -100,7 +101,7 @@ pub async fn start_rss_service(pool: Arc<PgPool>, health_state: Arc<Mutex<RssHea
             }
             Err(panic_err) => {
                 let err_msg = format!("PANIC: {}", panic_err);
-                record_feed_failure(&pool, &feed_url, &err_msg).await;
+                record_feed_failure(&pool_outer, &feed_url, &err_msg).await;
                 error!("PANIC polling feed {} ({}): {}", feed_name, feed_url, panic_err);
                 health.lock().await.record_error(format!("PANIC: {}", feed_name));
             }
