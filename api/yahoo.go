@@ -240,7 +240,7 @@ func YahooLeagues(c *fiber.Ctx) error {
 	}
 
 	// Fallback to Live API
-	body, err := fetchYahoo(c, "https://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1/games;game_keys=nfl,nba,nhl/leagues")
+	body, err := fetchYahoo(c, "https://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1/games;game_keys=nfl,nba,nhl,mlb/leagues")
 	if err != nil { 
 		log.Printf("[Yahoo Error] Fetch failed: %v", err)
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Status: "unauthorized", Error: "Failed to fetch data from Yahoo"}) 

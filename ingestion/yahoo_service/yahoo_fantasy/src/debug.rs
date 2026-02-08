@@ -7,4 +7,5 @@ pub struct LeagueStats {
     pub nfl: Vec<Vec<Stat>>,
     pub nba: Vec<Vec<Stat>>,
     pub nhl: Vec<Vec<Stat>>,
+    pub mlb: Vec<Vec<Stat>>,
 }
