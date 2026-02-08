@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -80,7 +81,7 @@ func main() {
 		c.Set("X-XSS-Protection", "1; mode=block")
 		c.Set("X-Content-Type-Options", "nosniff")
 		c.Set("X-Download-Options", "noopen")
-		c.Set("Strict-Transport-Security", "max-age=5184000; includeSubDomains")
+		c.Set("Strict-Transport-Security", fmt.Sprintf("max-age=%d; includeSubDomains", HSTSMaxAge))
 		c.Set("X-Frame-Options", "SAMEORIGIN")
 		c.Set("X-DNS-Prefetch-Control", "off")
 		// Swagger UI needs its own scripts, styles, and fonts — use a permissive CSP for it
@@ -95,7 +96,7 @@ func main() {
 	// Hardened CORS
 	allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
 	if allowedOrigins == "" {
-		allowedOrigins = "https://myscrollr.com,https://api.myscrollr.relentnet.dev"
+		allowedOrigins = DefaultAllowedOrigins
 	} else {
 		// Clean and validate provided origins
 		origins := strings.Split(allowedOrigins, ",")
@@ -113,8 +114,8 @@ func main() {
 
 	// Rate Limiting (skip health checks, SSE, and webhooks)
 	app.Use(limiter.New(limiter.Config{
-		Max:        120,
-		Expiration: 1 * time.Minute,
+		Max:        RateLimitMax,
+		Expiration: RateLimitExpiration,
 		KeyGenerator: func(c *fiber.Ctx) string {
 			return c.IP()
 		},
@@ -185,7 +186,7 @@ func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080"
+		port = DefaultPort
 	}
 
 	log.Printf("Starting server on port %s", port)
@@ -197,7 +198,7 @@ func main() {
 func LandingPage(c *fiber.Ctx) error {
 	frontendURL := os.Getenv("FRONTEND_URL")
 	if frontendURL == "" {
-		frontendURL = "https://myscrollr.com"
+		frontendURL = DefaultFrontendURL
 	}
 
 	return c.JSON(fiber.Map{
@@ -229,7 +230,7 @@ func proxyInternalHealth(c *fiber.Ctx, internalURL string) error {
 	}
 
 	targetURL := buildHealthURL(internalURL)
-	httpClient := &http.Client{Timeout: 5 * time.Second}
+	httpClient := &http.Client{Timeout: HealthProxyTimeout}
 	resp, err := httpClient.Get(targetURL)
 	if err != nil {
 		return c.Status(fiber.StatusServiceUnavailable).JSON(ErrorResponse{Status: "down", Error: err.Error()})
@@ -263,7 +264,7 @@ func HealthCheck(c *fiber.Ctx) error {
 		"rss":     os.Getenv("INTERNAL_RSS_URL"),
 	}
 
-	httpClient := &http.Client{Timeout: 2 * time.Second}
+	httpClient := &http.Client{Timeout: HealthCheckTimeout}
 	for name, baseURL := range services {
 		if baseURL == "" { continue }
 		targetURL := buildHealthURL(baseURL)
@@ -288,13 +289,13 @@ func HealthCheck(c *fiber.Ctx) error {
 // @Router /sports [get]
 func GetSports(c *fiber.Ctx) error {
 	var games []Game
-	if GetCache("cache:sports", &games) {
+	if GetCache(CacheKeySports, &games) {
 		c.Set("X-Cache", "HIT")
 		return c.JSON(games)
 	}
 
 	rows, err := dbPool.Query(context.Background(),
-		"SELECT id, league, external_game_id, link, home_team_name, home_team_logo, home_team_score, away_team_name, away_team_logo, away_team_score, start_time, short_detail, state FROM games ORDER BY start_time DESC LIMIT 50")
+		fmt.Sprintf("SELECT id, league, external_game_id, link, home_team_name, home_team_logo, home_team_score, away_team_name, away_team_logo, away_team_score, start_time, short_detail, state FROM games ORDER BY start_time DESC LIMIT %d", DefaultSportsLimit))
 	if err != nil {
 		log.Printf("[Database Error] GetSports query failed: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Internal server error"})
@@ -303,15 +304,14 @@ func GetSports(c *fiber.Ctx) error {
 
 	for rows.Next() {
 		var g Game
-		err := rows.Scan(&g.ID, &g.League, &g.ExternalGameID, &g.Link, &g.HomeTeamName, &g.HomeTeamLogo, &g.HomeTeamScore, &g.AwayTeamName, &g.AwayTeamLogo, &g.AwayTeamScore, &g.StartTime, &g.ShortDetail, &g.State)
-		if err != nil {
+		if err := rows.Scan(&g.ID, &g.League, &g.ExternalGameID, &g.Link, &g.HomeTeamName, &g.HomeTeamLogo, &g.HomeTeamScore, &g.AwayTeamName, &g.AwayTeamLogo, &g.AwayTeamScore, &g.StartTime, &g.ShortDetail, &g.State); err != nil {
 			log.Printf("[Database Error] GetSports scan failed: %v", err)
-			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Internal server error"})
+			continue
 		}
 		games = append(games, g)
 	}
 
-	SetCache("cache:sports", games, 30*time.Second)
+	SetCache(CacheKeySports, games, SportsCacheTTL)
 	c.Set("X-Cache", "MISS")
 	return c.JSON(games)
 }
@@ -326,7 +326,7 @@ func GetSports(c *fiber.Ctx) error {
 // @Router /finance [get]
 func GetFinance(c *fiber.Ctx) error {
 	var trades []Trade
-	if GetCache("cache:finance", &trades) {
+	if GetCache(CacheKeyFinance, &trades) {
 		c.Set("X-Cache", "HIT")
 		return c.JSON(trades)
 	}
@@ -341,15 +341,14 @@ func GetFinance(c *fiber.Ctx) error {
 
 	for rows.Next() {
 		var t Trade
-		err := rows.Scan(&t.Symbol, &t.Price, &t.PreviousClose, &t.PriceChange, &t.PercentageChange, &t.Direction, &t.LastUpdated)
-		if err != nil {
+		if err := rows.Scan(&t.Symbol, &t.Price, &t.PreviousClose, &t.PriceChange, &t.PercentageChange, &t.Direction, &t.LastUpdated); err != nil {
 			log.Printf("[Database Error] GetFinance scan failed: %v", err)
-			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Internal server error"})
+			continue
 		}
 		trades = append(trades, t)
 	}
 
-	SetCache("cache:finance", trades, 30*time.Second)
+	SetCache(CacheKeyFinance, trades, FinanceCacheTTL)
 	c.Set("X-Cache", "MISS")
 	return c.JSON(trades)
 }
@@ -370,74 +369,86 @@ func GetDashboard(c *fiber.Ctx) error {
 	}
 
 	// 1. User identity, preferences, streams, and enabled stream types
-	logtoSub, _ := c.Locals("user_id").(string)
+	userID := getUserID(c)
+	if userID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Status: "unauthorized",
+			Error:  "Authentication required",
+		})
+	}
 	enabledTypes := map[string]bool{}
 
-	if logtoSub != "" {
-		prefs, err := getOrCreatePreferences(logtoSub)
-		if err == nil {
-			res.Preferences = prefs
-		}
+	prefs, err := getOrCreatePreferences(userID)
+	if err == nil {
+		res.Preferences = prefs
+	}
 
-		streams, err := getUserStreams(logtoSub)
-		if err == nil {
-			res.Streams = streams
-			for _, s := range streams {
-				if s.Enabled {
-					enabledTypes[s.StreamType] = true
-				}
+	streams, err := getUserStreams(userID)
+	if err == nil {
+		res.Streams = streams
+		for _, s := range streams {
+			if s.Enabled {
+				enabledTypes[s.StreamType] = true
 			}
 		}
-
-		// Warm Redis subscription sets from current DB state
-		go syncStreamSubscriptions(logtoSub)
 	}
+
+	// Warm Redis subscription sets from current DB state
+	go syncStreamSubscriptions(userID)
 
 	// 2. Finance (only if user has an enabled finance stream)
 	if enabledTypes["finance"] {
-		if !GetCache("cache:finance", &res.Finance) {
+		if !GetCache(CacheKeyFinance, &res.Finance) {
 			rows, err := dbPool.Query(context.Background(), "SELECT symbol, price, previous_close, price_change, percentage_change, direction, last_updated FROM trades ORDER BY symbol ASC")
-			if err == nil {
+			if err != nil {
+				log.Printf("[Database Error] Dashboard finance query failed: %v", err)
+			} else {
+				defer rows.Close()
 				for rows.Next() {
 					var t Trade
-					if err := rows.Scan(&t.Symbol, &t.Price, &t.PreviousClose, &t.PriceChange, &t.PercentageChange, &t.Direction, &t.LastUpdated); err == nil {
-						res.Finance = append(res.Finance, t)
+					if err := rows.Scan(&t.Symbol, &t.Price, &t.PreviousClose, &t.PriceChange, &t.PercentageChange, &t.Direction, &t.LastUpdated); err != nil {
+						log.Printf("[Database Error] Dashboard finance scan failed: %v", err)
+						continue
 					}
+					res.Finance = append(res.Finance, t)
 				}
-				rows.Close()
-				SetCache("cache:finance", res.Finance, 30*time.Second)
+				SetCache(CacheKeyFinance, res.Finance, FinanceCacheTTL)
 			}
 		}
 	}
 
 	// 3. Sports (only if user has an enabled sports stream)
 	if enabledTypes["sports"] {
-		if !GetCache("cache:sports", &res.Sports) {
-			rows, err := dbPool.Query(context.Background(), "SELECT id, league, external_game_id, link, home_team_name, home_team_logo, home_team_score, away_team_name, away_team_logo, away_team_score, start_time, short_detail, state FROM games ORDER BY start_time DESC LIMIT 20")
-			if err == nil {
+		if !GetCache(CacheKeySports, &res.Sports) {
+			rows, err := dbPool.Query(context.Background(), fmt.Sprintf("SELECT id, league, external_game_id, link, home_team_name, home_team_logo, home_team_score, away_team_name, away_team_logo, away_team_score, start_time, short_detail, state FROM games ORDER BY start_time DESC LIMIT %d", DashboardSportsLimit))
+			if err != nil {
+				log.Printf("[Database Error] Dashboard sports query failed: %v", err)
+			} else {
+				defer rows.Close()
 				for rows.Next() {
 					var g Game
-					if err := rows.Scan(&g.ID, &g.League, &g.ExternalGameID, &g.Link, &g.HomeTeamName, &g.HomeTeamLogo, &g.HomeTeamScore, &g.AwayTeamName, &g.AwayTeamLogo, &g.AwayTeamScore, &g.StartTime, &g.ShortDetail, &g.State); err == nil {
-						res.Sports = append(res.Sports, g)
+					if err := rows.Scan(&g.ID, &g.League, &g.ExternalGameID, &g.Link, &g.HomeTeamName, &g.HomeTeamLogo, &g.HomeTeamScore, &g.AwayTeamName, &g.AwayTeamLogo, &g.AwayTeamScore, &g.StartTime, &g.ShortDetail, &g.State); err != nil {
+						log.Printf("[Database Error] Dashboard sports scan failed: %v", err)
+						continue
 					}
+					res.Sports = append(res.Sports, g)
 				}
-				rows.Close()
-				SetCache("cache:sports", res.Sports, 30*time.Second)
+				SetCache(CacheKeySports, res.Sports, SportsCacheTTL)
 			}
 		}
 	}
 
 	// 4. RSS (only if user has an enabled rss stream with feed URLs)
-	if enabledTypes["rss"] && logtoSub != "" {
-		feedURLs := getUserRSSFeedURLs(logtoSub)
+	if enabledTypes["rss"] {
+		feedURLs := getUserRSSFeedURLs(userID)
 		if len(feedURLs) > 0 {
-			cacheKey := "cache:rss:" + logtoSub
+			cacheKey := CacheKeyRSSPrefix + userID
 			if !GetCache(cacheKey, &res.Rss) {
 				res.Rss = queryRSSItems(feedURLs)
 				if res.Rss == nil {
 					res.Rss = make([]RssItem, 0)
 				}
-				SetCache(cacheKey, res.Rss, 60*time.Second)
+				SetCache(cacheKey, res.Rss, RSSItemsCacheTTL)
 			}
 		}
 	}
@@ -446,7 +457,7 @@ func GetDashboard(c *fiber.Ctx) error {
 	if enabledTypes["fantasy"] {
 		guid := getGuid(c)
 		if guid != "" {
-			cacheKey := "cache:yahoo:leagues:" + guid
+			cacheKey := CacheKeyYahooLeaguesPrefix + guid
 			var yahooContent FantasyContent
 			if GetCache(cacheKey, &yahooContent) {
 				res.Yahoo = &yahooContent
@@ -456,7 +467,7 @@ func GetDashboard(c *fiber.Ctx) error {
 				if err == nil {
 					if err := json.Unmarshal(data, &yahooContent); err == nil {
 						res.Yahoo = &yahooContent
-						SetCache(cacheKey, yahooContent, 5*time.Minute)
+						SetCache(cacheKey, yahooContent, YahooCacheTTL)
 					}
 				}
 			}

@@ -38,6 +38,17 @@ interface UseRealtimeOptions {
   getToken: () => Promise<string | null>
 }
 
+interface CDCEvent {
+  metadata?: { table_name?: string }
+  record?: Record<string, unknown>
+  changes?: Record<string, unknown> | null
+  action?: string
+}
+
+interface SSEPayload {
+  data?: CDCEvent[]
+}
+
 export function useRealtime({ getToken }: UseRealtimeOptions) {
   const [state, setState] = useState<RealtimeState>({
     status: 'disconnected',
@@ -108,51 +119,54 @@ export function useRealtime({ getToken }: UseRealtimeOptions) {
     }
   }, [])
 
-  const handleStreamData = (data: any) => {
+  const handleStreamData = (data: SSEPayload) => {
     // Server-side filtering: all records in the SSE stream are already
     // scoped to the authenticated user. No client-side logto_sub/guid
     // checks are needed.
 
     if (data?.data && Array.isArray(data.data)) {
-      data.data.forEach((event: any) => {
+      data.data.forEach((event: CDCEvent) => {
         const table = event.metadata?.table_name
         const record = event.record
 
         if (!record) return
 
         if (table === 'yahoo_leagues') {
+          const key = record.league_key as string
           setState((prev) => ({
             ...prev,
             yahoo: {
               ...prev.yahoo,
               leagues: {
                 ...prev.yahoo.leagues,
-                [record.league_key]: record,
+                [key]: record as unknown as YahooLeagueRecord,
               },
             },
           }))
         } else if (table === 'yahoo_standings') {
+          const key = record.league_key as string
           setState((prev) => {
-            if (!prev.yahoo.leagues[record.league_key]) return prev
+            if (!prev.yahoo.leagues[key]) return prev
             return {
               ...prev,
               yahoo: {
                 ...prev.yahoo,
                 standings: {
                   ...prev.yahoo.standings,
-                  [record.league_key]: record,
+                  [key]: record as unknown as YahooStandingsRecord,
                 },
               },
             }
           })
         } else if (table === 'yahoo_matchups') {
+          const key = record.team_key as string
           setState((prev) => ({
             ...prev,
             yahoo: {
               ...prev.yahoo,
               matchups: {
                 ...prev.yahoo.matchups,
-                [record.team_key]: record,
+                [key]: record as unknown as YahooMatchupsRecord,
               },
             },
           }))

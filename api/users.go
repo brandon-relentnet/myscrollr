@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
-	"net/http"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -21,8 +20,8 @@ type YahooStatusResponse struct {
 func GetYahooStatus(c *fiber.Ctx) error {
 	userID := getUserID(c)
 	if userID == "" {
-		return c.Status(http.StatusUnauthorized).JSON(ErrorResponse{
-			Status: "error",
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Status: "unauthorized",
 			Error:  "Authentication required",
 		})
 	}
@@ -38,7 +37,7 @@ func GetYahooStatus(c *fiber.Ctx) error {
 			return c.JSON(YahooStatusResponse{Connected: false, Synced: false})
 		}
 		log.Printf("[GetYahooStatus] Error: %v", err)
-		return c.Status(http.StatusInternalServerError).JSON(ErrorResponse{
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Failed to check Yahoo status",
 		})
@@ -55,8 +54,8 @@ func GetYahooStatus(c *fiber.Ctx) error {
 func GetMyYahooLeagues(c *fiber.Ctx) error {
 	userID := getUserID(c)
 	if userID == "" {
-		return c.Status(http.StatusUnauthorized).JSON(ErrorResponse{
-			Status: "error",
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Status: "unauthorized",
 			Error:  "Authentication required",
 		})
 	}
@@ -76,7 +75,7 @@ func GetMyYahooLeagues(c *fiber.Ctx) error {
 	`, guid)
 	if err != nil {
 		log.Printf("[GetMyYahooLeagues] League query error: %v", err)
-		return c.Status(http.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to fetch leagues"})
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to fetch leagues"})
 	}
 	defer leagueRows.Close()
 
@@ -127,8 +126,8 @@ func GetMyYahooLeagues(c *fiber.Ctx) error {
 func DisconnectYahoo(c *fiber.Ctx) error {
 	userID := getUserID(c)
 	if userID == "" {
-		return c.Status(http.StatusUnauthorized).JSON(ErrorResponse{
-			Status: "error",
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Status: "unauthorized",
 			Error:  "Authentication required",
 		})
 	}
@@ -149,7 +148,7 @@ func DisconnectYahoo(c *fiber.Ctx) error {
 	`, userID)
 	if err != nil {
 		log.Printf("[DisconnectYahoo] Error deleting yahoo_users: %v", err)
-		return c.Status(http.StatusInternalServerError).JSON(ErrorResponse{
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Failed to disconnect Yahoo account",
 		})
@@ -161,14 +160,14 @@ func DisconnectYahoo(c *fiber.Ctx) error {
 
 	// Clear Redis cache keys for this user
 	cacheKeys := []string{
-		"cache:yahoo:leagues:" + guid,
+		CacheKeyYahooLeaguesPrefix + guid,
 	}
 	for _, key := range cacheKeys {
 		rdb.Del(context.Background(), key)
 	}
 
 	// Clear any token_to_guid mappings (scan for matching GUID values)
-	iter := rdb.Scan(context.Background(), 0, "token_to_guid:*", 100).Iterator()
+	iter := rdb.Scan(context.Background(), 0, RedisTokenToGuidPrefix+"*", RedisScanCount).Iterator()
 	for iter.Next(context.Background()) {
 		val, err := rdb.Get(context.Background(), iter.Val()).Result()
 		if err == nil && val == guid {
@@ -184,7 +183,7 @@ func DisconnectYahoo(c *fiber.Ctx) error {
 func GetProfileByUsername(c *fiber.Ctx) error {
 	username := c.Params("username")
 	if username == "" {
-		return c.Status(http.StatusBadRequest).JSON(ErrorResponse{
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Username is required",
 		})

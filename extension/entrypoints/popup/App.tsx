@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
+import { clsx } from 'clsx';
 import type {
   ConnectionStatus,
   FeedPosition,
   FeedMode,
   FeedBehavior,
 } from '~/utils/types';
-import type { StateSnapshotMessage } from '~/utils/messaging';
+import type { BackgroundMessage, StateSnapshotMessage, ClientMessage } from '~/utils/messaging';
 import {
   feedEnabled as feedEnabledStorage,
   feedPosition as feedPositionStorage,
@@ -27,7 +28,7 @@ export default function App() {
   // Load state on mount
   useEffect(() => {
     browser.runtime
-      .sendMessage({ type: 'GET_STATE' })
+      .sendMessage({ type: 'GET_STATE' } satisfies ClientMessage)
       .then((response: unknown) => {
         const snapshot = response as StateSnapshotMessage | null;
         if (snapshot?.type === 'STATE_SNAPSHOT') {
@@ -46,12 +47,14 @@ export default function App() {
   // Listen for live broadcasts from background
   useEffect(() => {
     const handler = (message: unknown) => {
-      const msg = message as Record<string, unknown>;
-      if (msg.type === 'AUTH_STATUS' && typeof msg.authenticated === 'boolean') {
-        setAuthenticated(msg.authenticated);
-      }
-      if (msg.type === 'CONNECTION_STATUS' && typeof msg.status === 'string') {
-        setStatus(msg.status as ConnectionStatus);
+      const msg = message as BackgroundMessage;
+      switch (msg.type) {
+        case 'AUTH_STATUS':
+          setAuthenticated(msg.authenticated);
+          break;
+        case 'CONNECTION_STATUS':
+          setStatus(msg.status);
+          break;
       }
     };
     browser.runtime.onMessage.addListener(handler);
@@ -113,11 +116,11 @@ export default function App() {
   };
 
   const handleLogin = () => {
-    browser.runtime.sendMessage({ type: 'LOGIN' });
+    browser.runtime.sendMessage({ type: 'LOGIN' } satisfies ClientMessage);
   };
 
   const handleLogout = () => {
-    browser.runtime.sendMessage({ type: 'LOGOUT' }).then(() => {
+    browser.runtime.sendMessage({ type: 'LOGOUT' } satisfies ClientMessage).then(() => {
       setAuthenticated(false);
     });
   };
@@ -129,13 +132,12 @@ export default function App() {
         <span className="font-bold text-base tracking-tight">Scrollr</span>
         <div className="flex items-center gap-1.5">
           <div
-            className={`w-2 h-2 rounded-full ${
-              status === 'connected'
-                ? 'bg-emerald-400'
-                : status === 'reconnecting'
-                  ? 'bg-amber-400 animate-pulse'
-                  : 'bg-red-400'
-            }`}
+            className={clsx(
+              'w-2 h-2 rounded-full',
+              status === 'connected' && 'bg-emerald-400',
+              status === 'reconnecting' && 'bg-amber-400 animate-pulse',
+              status === 'disconnected' && 'bg-red-400',
+            )}
           />
           <span className="text-xs text-zinc-500 capitalize">{status}</span>
         </div>
@@ -147,11 +149,12 @@ export default function App() {
           <span className="text-zinc-400">Feed</span>
           <button
             onClick={toggleEnabled}
-            className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+            className={clsx(
+              'px-3 py-1 rounded text-xs font-medium transition-colors',
               enabled
                 ? 'bg-emerald-600 text-white hover:bg-emerald-500'
-                : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'
-            }`}
+                : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600',
+            )}
           >
             {enabled ? 'ON' : 'OFF'}
           </button>

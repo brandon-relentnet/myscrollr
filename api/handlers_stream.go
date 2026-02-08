@@ -58,12 +58,12 @@ func StreamEvents(c *fiber.Ctx) error {
 
 	// 5. Stream events to the client
 	c.Context().SetBodyStreamWriter(fasthttp.StreamWriter(func(w *bufio.Writer) {
-		ticker := time.NewTicker(15 * time.Second)
+		ticker := time.NewTicker(SSEHeartbeatInterval)
 		defer ticker.Stop()
 		defer UnregisterClient(client)
 
 		// Send initial retry interval (3 seconds)
-		fmt.Fprintf(w, "retry: 3000\n\n")
+		fmt.Fprintf(w, "retry: %d\n\n", SSERetryIntervalMs)
 		w.Flush()
 
 		for {

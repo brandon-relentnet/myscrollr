@@ -75,13 +75,13 @@ func ConnectDB() {
 	}
 
 	// Pool configuration for low latency/high performance
-	config.MaxConns = 20
-	config.MinConns = 2
-	config.MaxConnIdleTime = 30 * time.Minute
+	config.MaxConns = DBMaxConns
+	config.MinConns = DBMinConns
+	config.MaxConnIdleTime = DBMaxConnIdleTime
 
 	// Retry loop for DB connection
 	var pool *pgxpool.Pool
-	retries := 5
+	retries := DBMaxRetries
 	for i := 0; i < retries; i++ {
 		pool, err = pgxpool.NewWithConfig(context.Background(), config)
 		if err == nil {
@@ -92,7 +92,7 @@ func ConnectDB() {
 		}
 
 		fmt.Printf("Failed to connect to DB, retrying in 2 seconds... (%d attempts left)\n", retries-i-1)
-		time.Sleep(2 * time.Second)
+		time.Sleep(DBRetryDelay)
 	}
 
 	if err != nil {

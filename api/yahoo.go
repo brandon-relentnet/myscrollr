@@ -69,7 +69,7 @@ func getGuid(c *fiber.Ctx) string {
 	h := sha256.Sum256([]byte(token))
 	tokenHash := hex.EncodeToString(h[:])
 	
-	guid, _ := rdb.Get(context.Background(), "token_to_guid:"+tokenHash).Result()
+	guid, _ := rdb.Get(context.Background(), RedisTokenToGuidPrefix+tokenHash).Result()
 	return guid
 }
 
@@ -77,7 +77,7 @@ func fetchYahoo(c *fiber.Ctx, url string) ([]byte, error) {
 	token := getToken(c)
 	if token == "" { return nil, fmt.Errorf("unauthorized") }
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := &http.Client{Timeout: YahooAPITimeout}
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 
@@ -94,7 +94,7 @@ func fetchYahoo(c *fiber.Ctx, url string) ([]byte, error) {
 		if err != nil { return nil, fmt.Errorf("refresh failed") }
 
 		c.Cookie(&fiber.Cookie{
-			Name: "yahoo-auth", Value: newToken.AccessToken, Expires: time.Now().Add(24 * time.Hour), HTTPOnly: true, Secure: true, SameSite: "Strict", Path: "/",
+			Name: "yahoo-auth", Value: newToken.AccessToken, Expires: time.Now().Add(YahooAuthCookieExpiry), HTTPOnly: true, Secure: true, SameSite: "Strict", Path: "/",
 		})
 
 		req.Header.Set("Authorization", "Bearer "+newToken.AccessToken)
@@ -120,15 +120,15 @@ func YahooStart(c *fiber.Ctx) error {
 		logtoSub = c.Cookies("logto_sub")
 	}
 	
-	b := make([]byte, 16)
+	b := make([]byte, OAuthStateBytes)
 	rand.Read(b)
 	state := hex.EncodeToString(b)
 	
 	// Store state and logto_sub mapping
 	pipe := rdb.Pipeline()
-	pipe.Set(context.Background(), "csrf:"+state, "1", 10*time.Minute)
+	pipe.Set(context.Background(), RedisCSRFPrefix+state, "1", OAuthStateExpiry)
 	if logtoSub != "" {
-		pipe.Set(context.Background(), "yahoo_state_logto:"+state, logtoSub, 10*time.Minute)
+		pipe.Set(context.Background(), RedisYahooStateLogtoPrefix+state, logtoSub, OAuthStateExpiry)
 	}
 	_, err := pipe.Exec(context.Background())
 	if err != nil { return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to store state"}) }
@@ -145,11 +145,11 @@ func YahooStart(c *fiber.Ctx) error {
 // @Router /yahoo/callback [get]
 func YahooCallback(c *fiber.Ctx) error {
 	state, code := c.Query("state"), c.Query("code")
-	val, err := rdb.GetDel(context.Background(), "csrf:"+state).Result()
+	val, err := rdb.GetDel(context.Background(), RedisCSRFPrefix+state).Result()
 	if err != nil || val == "" { return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Status: "error", Error: "Invalid or expired state"}) }
 	
 	// Retrieve logto_sub associated with this state
-	logtoSub, err := rdb.Get(context.Background(), "yahoo_state_logto:"+state).Result()
+	logtoSub, err := rdb.Get(context.Background(), RedisYahooStateLogtoPrefix+state).Result()
 	if err != nil {
 		log.Printf("[Yahoo Callback] Warning: Failed to retrieve logto_sub from Redis for state %s: %v", state, err)
 	}
@@ -157,13 +157,13 @@ func YahooCallback(c *fiber.Ctx) error {
 	token, err := yahooConfig.Exchange(context.Background(), code)
 	if err != nil { return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to exchange code"}) }
 
-	c.Cookie(&fiber.Cookie{Name: "yahoo-auth", Value: token.AccessToken, Expires: time.Now().Add(24 * time.Hour), HTTPOnly: true, Secure: true, SameSite: "Strict", Path: "/"})
+	c.Cookie(&fiber.Cookie{Name: "yahoo-auth", Value: token.AccessToken, Expires: time.Now().Add(YahooAuthCookieExpiry), HTTPOnly: true, Secure: true, SameSite: "Strict", Path: "/"})
 	if token.RefreshToken != "" {
-		c.Cookie(&fiber.Cookie{Name: "yahoo-refresh", Value: token.RefreshToken, Expires: time.Now().Add(30 * 24 * time.Hour), HTTPOnly: true, Secure: true, SameSite: "Strict", Path: "/"})
+		c.Cookie(&fiber.Cookie{Name: "yahoo-refresh", Value: token.RefreshToken, Expires: time.Now().Add(YahooRefreshCookieExpiry), HTTPOnly: true, Secure: true, SameSite: "Strict", Path: "/"})
 		
 		// Fetch GUID and persist for Active Sync
 		go func(accessToken, refreshToken string, sub string) {
-			client := &http.Client{Timeout: 10 * time.Second}
+			client := &http.Client{Timeout: YahooAPITimeout}
 			req, _ := http.NewRequest("GET", "https://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1", nil)
 			req.Header.Set("Authorization", "Bearer "+accessToken)
 			resp, err := client.Do(req)
@@ -186,21 +186,21 @@ func YahooCallback(c *fiber.Ctx) error {
 						h := sha256.Sum256([]byte(accessToken))
 						tokenHash := hex.EncodeToString(h[:])
 						
-						rdb.Set(context.Background(), "token_to_guid:"+tokenHash, guid, 24*time.Hour)
+						rdb.Set(context.Background(), RedisTokenToGuidPrefix+tokenHash, guid, TokenToGuidTTL)
 					}
 				}
 			}
 		}(token.AccessToken, token.RefreshToken, logtoSub)
 	}
 
-	frontendURL := validateURL(os.Getenv("FRONTEND_URL"), "https://myscrollr.com")
+	frontendURL := validateURL(os.Getenv("FRONTEND_URL"), DefaultFrontendURL)
 	if os.Getenv("FRONTEND_URL") == "" {
-		log.Println("[Security Warning] FRONTEND_URL not set, defaulting to https://myscrollr.com for postMessage")
+		log.Printf("[Security Warning] FRONTEND_URL not set, defaulting to %s for postMessage", DefaultFrontendURL)
 	}
 
 	html := fmt.Sprintf(`<!doctype html><html><head><meta charset="utf-8"><title>Auth Complete</title></head>
-            <body style="font-family: ui-sans-serif, system-ui;"><script>(function() { try { if (window.opener) { window.opener.postMessage({ type: 'yahoo-auth-complete' }, '%s'); } } catch(e) { } setTimeout(function(){ window.close(); }, 1500); })();</script>
-            <p>Authentication successful. You can close this window.</p></body></html>`, frontendURL)
+            <body style="font-family: ui-sans-serif, system-ui;"><script>(function() { try { if (window.opener) { window.opener.postMessage({ type: 'yahoo-auth-complete' }, '%s'); } } catch(e) { } setTimeout(function(){ window.close(); }, %d); })();</script>
+            <p>Authentication successful. You can close this window.</p></body></html>`, frontendURL, AuthPopupCloseDelayMs)
 	c.Set("Content-Type", "text/html")
 	return c.Status(fiber.StatusOK).SendString(html)
 }
@@ -214,10 +214,10 @@ func YahooCallback(c *fiber.Ctx) error {
 // @Router /yahoo/leagues [get]
 func YahooLeagues(c *fiber.Ctx) error {
 	guid := getGuid(c)
-	cacheKey := "cache:yahoo:leagues:" + guid
+	cacheKey := CacheKeyYahooLeaguesPrefix + guid
 	if guid == "" {
 		token := getToken(c)
-		if token != "" { cacheKey = "cache:yahoo:leagues:" + token[:10] }
+		if token != "" { cacheKey = CacheKeyYahooLeaguesPrefix + token[:TokenCacheKeyPrefixLen] }
 	}
 
 	var content FantasyContent
@@ -232,9 +232,9 @@ func YahooLeagues(c *fiber.Ctx) error {
 		err := dbPool.QueryRow(context.Background(), "SELECT data FROM yahoo_leagues WHERE guid = $1 LIMIT 1", guid).Scan(&data)
 		if err == nil {
 			if err := json.Unmarshal(data, &content); err == nil {
-				SetCache(cacheKey, content, 5*time.Minute)
-				c.Set("X-Cache", "DB-HIT")
-				return c.JSON(content)
+			SetCache(cacheKey, content, YahooCacheTTL)
+			c.Set("X-Cache", "DB-HIT")
+			return c.JSON(content)
 			}
 		}
 	}
@@ -250,7 +250,7 @@ func YahooLeagues(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to process Yahoo data"}) 
 	}
 
-	SetCache(cacheKey, content, 5*time.Minute)
+	SetCache(cacheKey, content, YahooCacheTTL)
 	c.Set("X-Cache", "MISS")
 	return c.JSON(content)
 }
@@ -265,7 +265,7 @@ func YahooLeagues(c *fiber.Ctx) error {
 // @Router /yahoo/league/{league_key}/standings [get]
 func YahooStandings(c *fiber.Ctx) error {
 	leagueKey := c.Params("league_key")
-	cacheKey := "cache:yahoo:standings:" + leagueKey
+	cacheKey := CacheKeyYahooStandingsPrefix + leagueKey
 	var content FantasyContent
 	if GetCache(cacheKey, &content) {
 		c.Set("X-Cache", "HIT")
@@ -282,7 +282,7 @@ func YahooStandings(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to process standings data"}) 
 	}
 
-	SetCache(cacheKey, content, 5*time.Minute)
+	SetCache(cacheKey, content, YahooCacheTTL)
 	c.Set("X-Cache", "MISS")
 	return c.JSON(content)
 }
@@ -297,7 +297,7 @@ func YahooStandings(c *fiber.Ctx) error {
 // @Router /yahoo/team/{team_key}/matchups [get]
 func YahooMatchups(c *fiber.Ctx) error {
 	teamKey := c.Params("team_key")
-	cacheKey := "cache:yahoo:matchups:" + teamKey
+	cacheKey := CacheKeyYahooMatchupsPrefix + teamKey
 	var content FantasyContent
 	if GetCache(cacheKey, &content) {
 		c.Set("X-Cache", "HIT")
@@ -314,7 +314,7 @@ func YahooMatchups(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to process matchups data"}) 
 	}
 
-	SetCache(cacheKey, content, 5*time.Minute)
+	SetCache(cacheKey, content, YahooCacheTTL)
 	c.Set("X-Cache", "MISS")
 	return c.JSON(content)
 }
@@ -329,7 +329,7 @@ func YahooMatchups(c *fiber.Ctx) error {
 // @Router /yahoo/team/{team_key}/roster [get]
 func YahooRoster(c *fiber.Ctx) error {
 	teamKey := c.Params("team_key")
-	cacheKey := "cache:yahoo:roster:" + teamKey
+	cacheKey := CacheKeyYahooRosterPrefix + teamKey
 	var content FantasyContent
 	if GetCache(cacheKey, &content) {
 		c.Set("X-Cache", "HIT")
@@ -346,7 +346,7 @@ func YahooRoster(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to process roster data"}) 
 	}
 
-	SetCache(cacheKey, content, 5*time.Minute)
+	SetCache(cacheKey, content, YahooCacheTTL)
 	c.Set("X-Cache", "MISS")
 	return c.JSON(content)
 }

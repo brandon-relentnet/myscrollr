@@ -27,7 +27,7 @@ import type { YahooState } from '../hooks/useRealtime'
 import type { IdTokenClaims } from '@logto/react'
 import SettingsPanel from '../components/SettingsPanel'
 import { streamsApi, rssApi } from '../api/client'
-import type { Stream, StreamType, TrackedFeed } from '../api/client'
+import type { Stream, StreamType, TrackedFeed, RssStreamConfig } from '../api/client'
 
 const VALID_TABS = new Set<StreamType>(['finance', 'sports', 'fantasy', 'rss'])
 
@@ -1526,9 +1526,8 @@ function RssStreamConfig({
   const [currentPage, setCurrentPage] = useState(1)
   const [saving, setSaving] = useState(false)
 
-  const feeds = Array.isArray((stream.config as any)?.feeds)
-    ? ((stream.config as any).feeds as Array<{ name: string; url: string }>)
-    : []
+  const rssConfig = stream.config as RssStreamConfig
+  const feeds = Array.isArray(rssConfig?.feeds) ? rssConfig.feeds : []
 
   const feedUrlSet = new Set(feeds.map((f) => f.url))
 
@@ -1537,7 +1536,9 @@ function RssStreamConfig({
     rssApi
       .getCatalog()
       .then(setCatalog)
-      .catch(() => {})
+      .catch(() => {
+        // Catalog fetch is best-effort; user can still manage existing feeds
+      })
       .finally(() => setCatalogLoading(false))
   }, [])
 

@@ -68,16 +68,16 @@ func (h *Hub) Run() {
 // messages to the correct SSE clients.
 func (h *Hub) listenToRedis() {
 	ctx := context.Background()
-	pubsub := PSubscribe(ctx, "events:user:*")
+	pubsub := PSubscribe(ctx, RedisEventsUserPrefix+"*")
 	defer pubsub.Close()
 
 	ch := pubsub.Channel()
 
-	log.Println("[EventHub] Listening to Redis pattern: events:user:*")
+	log.Printf("[EventHub] Listening to Redis pattern: %s*", RedisEventsUserPrefix)
 
 	for msg := range ch {
 		// Channel name is "events:user:{sub}" — extract the sub
-		parts := strings.SplitN(msg.Channel, "events:user:", 2)
+		parts := strings.SplitN(msg.Channel, RedisEventsUserPrefix, 2)
 		if len(parts) != 2 || parts[1] == "" {
 			continue
 		}
@@ -105,7 +105,7 @@ func InitHub() {
 // This is called by the webhook handler after routing CDC events.
 func SendToUser(sub string, msg []byte) {
 	go func() {
-		if err := PublishRaw("events:user:"+sub, msg); err != nil {
+		if err := PublishRaw(RedisEventsUserPrefix+sub, msg); err != nil {
 			log.Printf("[EventHub] Failed to send to user %s: %v", sub, err)
 		}
 	}()
@@ -115,7 +115,7 @@ func SendToUser(sub string, msg []byte) {
 func RegisterClient(userID string) *Client {
 	client := &Client{
 		userID: userID,
-		ch:     make(chan []byte, 100),
+		ch:     make(chan []byte, SSEClientBufferSize),
 	}
 	globalHub.register <- client
 	return client

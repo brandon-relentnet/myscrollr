@@ -27,7 +27,7 @@ func HandleSequinWebhook(c *fiber.Ctx) error {
 		expected := "Bearer " + secret
 		if authHeader != expected {
 			log.Printf("[Sequin] Webhook auth failed")
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
+			return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Status: "unauthorized", Error: "Unauthorized"})
 		}
 	}
 
@@ -35,7 +35,7 @@ func HandleSequinWebhook(c *fiber.Ctx) error {
 	body := c.Body()
 	records := parseCDCRecords(body)
 	if len(records) == 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "No valid CDC records"})
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Status: "error", Error: "No valid CDC records"})
 	}
 
 	// 3. Route each record to the correct users
@@ -98,10 +98,10 @@ func routeCDCRecord(ctx context.Context, rec cdcRecord) {
 
 	switch table {
 	case "trades":
-		routeToStreamSubscribers(ctx, "stream:subscribers:finance", payload)
+		routeToStreamSubscribers(ctx, RedisStreamSubscribersPrefix+"finance", payload)
 
 	case "games":
-		routeToStreamSubscribers(ctx, "stream:subscribers:sports", payload)
+		routeToStreamSubscribers(ctx, RedisStreamSubscribersPrefix+"sports", payload)
 
 	case "rss_items":
 		routeToRSSSubscribers(ctx, rec.Record, payload)
@@ -147,7 +147,7 @@ func routeToRSSSubscribers(ctx context.Context, record map[string]interface{}, p
 	if !ok || feedURL == "" {
 		return
 	}
-	subs, err := GetSubscribers(ctx, "rss:subscribers:"+feedURL)
+	subs, err := GetSubscribers(ctx, RedisRSSSubscribersPrefix+feedURL)
 	if err != nil {
 		log.Printf("[Sequin] Failed to get RSS subscribers for %s: %v", feedURL, err)
 		return

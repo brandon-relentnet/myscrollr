@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -25,13 +25,13 @@ func RssHealth(c *fiber.Ctx) error {
 // @Router /rss/feeds [get]
 func GetRSSFeedCatalog(c *fiber.Ctx) error {
 	var catalog []TrackedFeed
-	if GetCache("cache:rss:catalog", &catalog) {
+	if GetCache(CacheKeyRSSCatalog, &catalog) {
 		c.Set("X-Cache", "HIT")
 		return c.JSON(catalog)
 	}
 
 	rows, err := dbPool.Query(context.Background(),
-		"SELECT url, name, category, is_default FROM tracked_feeds WHERE is_enabled = true AND consecutive_failures < 3 ORDER BY category, name")
+		fmt.Sprintf("SELECT url, name, category, is_default FROM tracked_feeds WHERE is_enabled = true AND consecutive_failures < %d ORDER BY category, name", MaxConsecutiveFailures))
 	if err != nil {
 		log.Printf("[RSS] Catalog query failed: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
@@ -51,7 +51,7 @@ func GetRSSFeedCatalog(c *fiber.Ctx) error {
 		catalog = append(catalog, f)
 	}
 
-	SetCache("cache:rss:catalog", catalog, 5*time.Minute)
+	SetCache(CacheKeyRSSCatalog, catalog, RSSCatalogCacheTTL)
 	c.Set("X-Cache", "MISS")
 	return c.JSON(catalog)
 }
@@ -103,8 +103,8 @@ func queryRSSItems(feedURLs []string) []RssItem {
 		FROM rss_items
 		WHERE feed_url = ANY($1)
 		ORDER BY published_at DESC NULLS LAST
-		LIMIT 50
-	`, feedURLs)
+		LIMIT $2
+	`, feedURLs, DefaultRSSItemsLimit)
 	if err != nil {
 		log.Printf("[RSS] Items query failed: %v", err)
 		return nil
@@ -185,10 +185,10 @@ func DeleteCustomFeed(c *fiber.Ctx) error {
 	}
 
 	// Clean up Redis subscriber set for this feed URL
-	rdb.Del(context.Background(), "rss:subscribers:"+req.URL)
+	rdb.Del(context.Background(), RedisRSSSubscribersPrefix+req.URL)
 
 	// Invalidate catalog cache
-	rdb.Del(context.Background(), "cache:rss:catalog")
+	rdb.Del(context.Background(), CacheKeyRSSCatalog)
 
 	return c.JSON(fiber.Map{"status": "ok", "message": "Custom feed deleted"})
 }
@@ -233,5 +233,5 @@ func syncRSSFeedsToTracked(config map[string]interface{}) {
 	}
 
 	// Invalidate the catalog cache so new custom feeds appear
-	rdb.Del(context.Background(), "cache:rss:catalog")
+	rdb.Del(context.Background(), CacheKeyRSSCatalog)
 }

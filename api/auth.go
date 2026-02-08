@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/MicahParks/keyfunc/v2"
 	"github.com/gofiber/fiber/v2"
@@ -38,9 +37,9 @@ func InitAuth() {
 		RefreshErrorHandler: func(err error) {
 			log.Printf("There was an error with the jwt.Keyfunc refresh: %s", err.Error())
 		},
-		RefreshInterval:   time.Hour,
-		RefreshRateLimit:  time.Minute * 5,
-		RefreshTimeout:    time.Second * 10,
+		RefreshInterval:   JWKSRefreshInterval,
+		RefreshRateLimit:  JWKSRefreshRateLimit,
+		RefreshTimeout:    JWKSRefreshTimeout,
 		RefreshUnknownKID: true,
 	})
 	if err != nil {

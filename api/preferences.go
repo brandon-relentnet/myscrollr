@@ -68,17 +68,17 @@ func getOrCreatePreferences(logtoSub string) (*UserPreferences, error) {
 // @Security LogtoAuth
 // @Router /users/me/preferences [get]
 func HandleGetPreferences(c *fiber.Ctx) error {
-	logtoSub, ok := c.Locals("user_id").(string)
-	if !ok || logtoSub == "" {
+	userID := getUserID(c)
+	if userID == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "unauthorized",
 			Error:  "Missing user identity",
 		})
 	}
 
-	prefs, err := getOrCreatePreferences(logtoSub)
+	prefs, err := getOrCreatePreferences(userID)
 	if err != nil {
-		log.Printf("[Preferences] Error fetching preferences for %s: %v", logtoSub, err)
+		log.Printf("[Preferences] Error fetching preferences for %s: %v", userID, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Failed to fetch preferences",
@@ -98,8 +98,8 @@ func HandleGetPreferences(c *fiber.Ctx) error {
 // @Security LogtoAuth
 // @Router /users/me/preferences [put]
 func HandleUpdatePreferences(c *fiber.Ctx) error {
-	logtoSub, ok := c.Locals("user_id").(string)
-	if !ok || logtoSub == "" {
+	userID := getUserID(c)
+	if userID == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "unauthorized",
 			Error:  "Missing user identity",
@@ -223,14 +223,14 @@ func HandleUpdatePreferences(c *fiber.Ctx) error {
 	var updatedAt time.Time
 
 	err := dbPool.QueryRow(context.Background(), query,
-		logtoSub, feedMode, feedPosition, feedBehavior, feedEnabled,
+		userID, feedMode, feedPosition, feedBehavior, feedEnabled,
 		enabledSitesJSON, disabledSitesJSON,
 	).Scan(
 		&prefs.LogtoSub, &prefs.FeedMode, &prefs.FeedPosition, &prefs.FeedBehavior,
 		&prefs.FeedEnabled, &esBytes, &dsBytes, &updatedAt,
 	)
 	if err != nil {
-		log.Printf("[Preferences] Error updating preferences for %s: %v", logtoSub, err)
+		log.Printf("[Preferences] Error updating preferences for %s: %v", userID, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Failed to update preferences",

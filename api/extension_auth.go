@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -186,7 +185,7 @@ func proxyLogtoToken(c *fiber.Ctx, formData url.Values) error {
 		})
 	}
 
-	httpClient := &http.Client{Timeout: 10 * time.Second}
+	httpClient := &http.Client{Timeout: LogtoProxyTimeout}
 	resp, err := httpClient.PostForm(tokenURL, formData)
 	if err != nil {
 		log.Printf("[ExtAuth] Logto request failed: %v", err)

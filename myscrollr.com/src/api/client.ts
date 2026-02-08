@@ -14,7 +14,7 @@ export interface UserPreferences {
   updated_at: string
 }
 
-interface RequestOptions extends RequestInit {}
+type RequestOptions = RequestInit
 
 async function request<T>(
   path: string,
@@ -85,6 +85,10 @@ export interface Stream {
   config: Record<string, unknown>
   created_at: string
   updated_at: string
+}
+
+export interface RssStreamConfig {
+  feeds?: Array<{ name: string; url: string }>
 }
 
 // ── Streams API ──────────────────────────────────────────────────

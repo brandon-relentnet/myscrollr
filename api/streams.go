@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -61,7 +60,7 @@ func syncStreamSubscriptions(logtoSub string) {
 
 	ctx := context.Background()
 	for _, s := range streams {
-		setKey := "stream:subscribers:" + s.StreamType
+		setKey := RedisStreamSubscribersPrefix + s.StreamType
 		if s.Enabled {
 			AddSubscriber(ctx, setKey, logtoSub)
 		} else {
@@ -72,7 +71,7 @@ func syncStreamSubscriptions(logtoSub string) {
 		if s.StreamType == "rss" && s.Enabled {
 			feedURLs := extractFeedURLsFromStreamConfig(s.Config)
 			for _, url := range feedURLs {
-				AddSubscriber(ctx, "rss:subscribers:"+url, logtoSub)
+			AddSubscriber(ctx, RedisRSSSubscribersPrefix+url, logtoSub)
 			}
 		}
 	}
@@ -89,22 +88,22 @@ func extractFeedURLsFromStreamConfig(config map[string]interface{}) []string {
 
 // addStreamSubscriptions adds Redis subscription entries for a newly created/enabled stream.
 func addStreamSubscriptions(ctx context.Context, logtoSub, streamType string, config map[string]interface{}) {
-	AddSubscriber(ctx, "stream:subscribers:"+streamType, logtoSub)
+	AddSubscriber(ctx, RedisStreamSubscribersPrefix+streamType, logtoSub)
 	if streamType == "rss" {
 		feedURLs := extractFeedURLsFromStreamConfig(config)
 		for _, url := range feedURLs {
-			AddSubscriber(ctx, "rss:subscribers:"+url, logtoSub)
+			AddSubscriber(ctx, RedisRSSSubscribersPrefix+url, logtoSub)
 		}
 	}
 }
 
 // removeStreamSubscriptions removes Redis subscription entries for a deleted/disabled stream.
 func removeStreamSubscriptions(ctx context.Context, logtoSub, streamType string, config map[string]interface{}) {
-	RemoveSubscriber(ctx, "stream:subscribers:"+streamType, logtoSub)
+	RemoveSubscriber(ctx, RedisStreamSubscribersPrefix+streamType, logtoSub)
 	if streamType == "rss" {
 		feedURLs := extractFeedURLsFromStreamConfig(config)
 		for _, url := range feedURLs {
-			RemoveSubscriber(ctx, "rss:subscribers:"+url, logtoSub)
+			RemoveSubscriber(ctx, RedisRSSSubscribersPrefix+url, logtoSub)
 		}
 	}
 }
@@ -121,8 +120,8 @@ func removeStreamSubscriptions(ctx context.Context, logtoSub, streamType string,
 func GetStreams(c *fiber.Ctx) error {
 	userID := getUserID(c)
 	if userID == "" {
-		return c.Status(http.StatusUnauthorized).JSON(ErrorResponse{
-			Status: "error",
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Status: "unauthorized",
 			Error:  "Authentication required",
 		})
 	}
@@ -130,7 +129,7 @@ func GetStreams(c *fiber.Ctx) error {
 	streams, err := getUserStreams(userID)
 	if err != nil {
 		log.Printf("[Streams] Error fetching streams: %v", err)
-		return c.Status(http.StatusInternalServerError).JSON(ErrorResponse{
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Failed to fetch streams",
 		})
@@ -155,8 +154,8 @@ func GetStreams(c *fiber.Ctx) error {
 func CreateStream(c *fiber.Ctx) error {
 	userID := getUserID(c)
 	if userID == "" {
-		return c.Status(http.StatusUnauthorized).JSON(ErrorResponse{
-			Status: "error",
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Status: "unauthorized",
 			Error:  "Authentication required",
 		})
 	}
@@ -166,14 +165,14 @@ func CreateStream(c *fiber.Ctx) error {
 		Config     map[string]interface{} `json:"config"`
 	}
 	if err := c.BodyParser(&req); err != nil {
-		return c.Status(http.StatusBadRequest).JSON(ErrorResponse{
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Invalid request body",
 		})
 	}
 
 	if !validStreamTypes[req.StreamType] {
-		return c.Status(http.StatusBadRequest).JSON(ErrorResponse{
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Invalid stream type. Must be one of: finance, sports, fantasy, rss",
 		})
@@ -197,13 +196,13 @@ func CreateStream(c *fiber.Ctx) error {
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
-			return c.Status(http.StatusConflict).JSON(ErrorResponse{
+			return c.Status(fiber.StatusConflict).JSON(ErrorResponse{
 				Status: "error",
 				Error:  "Stream of this type already exists",
 			})
 		}
 		log.Printf("[Streams] Create error: %v", err)
-		return c.Status(http.StatusInternalServerError).JSON(ErrorResponse{
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Failed to create stream",
 		})
@@ -224,7 +223,7 @@ func CreateStream(c *fiber.Ctx) error {
 		go syncRSSFeedsToTracked(s.Config)
 	}
 
-	return c.Status(http.StatusCreated).JSON(s)
+	return c.Status(fiber.StatusCreated).JSON(s)
 }
 
 // UpdateStream updates a stream by type for the authenticated user.
@@ -243,15 +242,15 @@ func CreateStream(c *fiber.Ctx) error {
 func UpdateStream(c *fiber.Ctx) error {
 	userID := getUserID(c)
 	if userID == "" {
-		return c.Status(http.StatusUnauthorized).JSON(ErrorResponse{
-			Status: "error",
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Status: "unauthorized",
 			Error:  "Authentication required",
 		})
 	}
 
 	streamType := c.Params("type")
 	if !validStreamTypes[streamType] {
-		return c.Status(http.StatusBadRequest).JSON(ErrorResponse{
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Invalid stream type",
 		})
@@ -263,7 +262,7 @@ func UpdateStream(c *fiber.Ctx) error {
 		Config  map[string]interface{} `json:"config"`
 	}
 	if err := c.BodyParser(&req); err != nil {
-		return c.Status(http.StatusBadRequest).JSON(ErrorResponse{
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Invalid request body",
 		})
@@ -322,13 +321,13 @@ func UpdateStream(c *fiber.Ctx) error {
 	if err != nil {
 		errStr := err.Error()
 		if strings.Contains(errStr, "no rows") {
-			return c.Status(http.StatusNotFound).JSON(ErrorResponse{
+			return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
 				Status: "error",
 				Error:  "Stream not found",
 			})
 		}
 		log.Printf("[Streams] Update error: %v", err)
-		return c.Status(http.StatusInternalServerError).JSON(ErrorResponse{
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Failed to update stream",
 		})
@@ -356,12 +355,12 @@ func UpdateStream(c *fiber.Ctx) error {
 		}
 		for _, u := range oldFeedURLs {
 			if !newURLSet[u] {
-				RemoveSubscriber(ctx, "rss:subscribers:"+u, userID)
+				RemoveSubscriber(ctx, RedisRSSSubscribersPrefix+u, userID)
 			}
 		}
 
 		// Invalidate per-user RSS cache so /dashboard returns fresh data
-		rdb.Del(ctx, "cache:rss:"+userID)
+		rdb.Del(ctx, CacheKeyRSSPrefix+userID)
 
 		// Sync new feed URLs to tracked_feeds for the RSS service to discover
 		go syncRSSFeedsToTracked(s.Config)
@@ -384,8 +383,8 @@ func UpdateStream(c *fiber.Ctx) error {
 func DeleteStream(c *fiber.Ctx) error {
 	userID := getUserID(c)
 	if userID == "" {
-		return c.Status(http.StatusUnauthorized).JSON(ErrorResponse{
-			Status: "error",
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Status: "unauthorized",
 			Error:  "Authentication required",
 		})
 	}
@@ -403,14 +402,14 @@ func DeleteStream(c *fiber.Ctx) error {
 	`, userID, streamType)
 	if err != nil {
 		log.Printf("[Streams] Delete error: %v", err)
-		return c.Status(http.StatusInternalServerError).JSON(ErrorResponse{
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Failed to delete stream",
 		})
 	}
 
 	if tag.RowsAffected() == 0 {
-		return c.Status(http.StatusNotFound).JSON(ErrorResponse{
+		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Stream not found",
 		})
@@ -429,7 +428,7 @@ func DeleteStream(c *fiber.Ctx) error {
 
 	// Invalidate per-user RSS cache so /dashboard doesn't serve stale feed items
 	if streamType == "rss" {
-		rdb.Del(ctx, "cache:rss:"+userID)
+		rdb.Del(ctx, CacheKeyRSSPrefix+userID)
 	}
 
 	return c.JSON(fiber.Map{"status": "ok", "message": "Stream removed"})
