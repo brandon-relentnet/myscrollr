@@ -139,8 +139,8 @@ fn parse_espn_game(event: &serde_json::Value, league_name: &str) -> Option<crate
     };
 
     let date_str = event.get("date").and_then(|d| d.as_str());
-    let start_time = match date_str.and_then(|d| chrono::DateTime::parse_from_rfc3339(d).ok()) {
-        Some(dt) => dt.with_timezone(&chrono::Utc),
+    let start_time = match date_str.and_then(|d| parse_espn_date(d)) {
+        Some(dt) => dt,
         None => {
             error!("[{}] Skipping game {}: missing or unparseable 'date' (raw: {:?})", league_name, id, date_str);
             return None;
@@ -205,4 +205,26 @@ fn parse_espn_game(event: &serde_json::Value, league_name: &str) -> Option<crate
         short_detail,
         state,
     })
+}
+
+/// Parse ESPN date strings which may omit seconds (e.g. "2026-02-08T23:30Z").
+/// `parse_from_rfc3339` requires seconds, so we try that first and fall back
+/// to `NaiveDateTime::parse_from_str` with formats ESPN is known to use.
+fn parse_espn_date(s: &str) -> Option<chrono::DateTime<chrono::Utc>> {
+    // Try strict RFC 3339 first (e.g. "2026-02-08T23:30:00Z")
+    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(s) {
+        return Some(dt.with_timezone(&chrono::Utc));
+    }
+
+    // ESPN often sends "2026-02-08T23:30Z" (no seconds)
+    if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%MZ") {
+        return Some(dt.and_utc());
+    }
+
+    // Also handle offset variant without seconds: "2026-02-08T23:30+00:00"
+    if let Ok(dt) = chrono::DateTime::parse_from_str(s, "%Y-%m-%dT%H:%M%:z") {
+        return Some(dt.with_timezone(&chrono::Utc));
+    }
+
+    None
 }
