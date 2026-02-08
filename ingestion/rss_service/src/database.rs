@@ -127,7 +127,7 @@ pub async fn seed_tracked_feeds(pool: Arc<PgPool>, feeds: Vec<FeedConfig>) -> Re
     let statement = "
         INSERT INTO tracked_feeds (url, name, category, is_default, is_enabled)
         VALUES ($1, $2, $3, true, true)
-        ON CONFLICT (url) DO NOTHING
+        ON CONFLICT (url) DO UPDATE SET category = EXCLUDED.category, name = EXCLUDED.name
     ";
     let mut connection = pool.acquire().await?;
     for feed in feeds {

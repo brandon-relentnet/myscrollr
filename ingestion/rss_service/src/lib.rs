@@ -21,8 +21,8 @@ pub async fn start_rss_service(pool: Arc<PgPool>, health_state: Arc<Mutex<RssHea
         return;
     }
 
-    // Always upsert default feeds from config on startup (ON CONFLICT DO NOTHING
-    // ensures existing feeds and user customizations are never overwritten)
+    // Always upsert default feeds from config on startup (ON CONFLICT updates
+    // category and name so renames propagate; user customizations are unaffected)
     if cycle == 0 {
         match fs::read_to_string("./configs/feeds.json") {
             Ok(file_contents) => match serde_json::from_str::<Vec<FeedConfig>>(&file_contents) {
