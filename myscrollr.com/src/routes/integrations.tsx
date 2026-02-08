@@ -334,11 +334,11 @@ function IntegrationCard({
   recommended?: boolean
 }) {
   return (
-    <div className="group bg-base-200 border border-base-300 rounded-xl p-6 hover:border-primary/20 transition-all relative overflow-hidden">
+    <div className="group bg-base-200 border border-base-300 rounded-xl p-6 hover:border-primary/20 transition-all relative overflow-hidden h-full flex flex-col">
       {/* Subtle hover glow */}
       <div className="absolute inset-0 bg-primary/[0.02] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
-      <div className="relative z-10">
+      <div className="relative z-10 flex flex-col flex-1">
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="h-10 w-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
@@ -368,11 +368,12 @@ function IntegrationCard({
         <p className="text-[10px] font-mono text-primary/50 uppercase tracking-wider mb-3">
           {integration.description}
         </p>
-        <p className="text-xs text-base-content/30 leading-relaxed mb-5">
+        <p className="text-xs text-base-content/30 leading-relaxed">
           {integration.detail}
         </p>
 
-        {/* Action */}
+        {/* Action — pinned to bottom */}
+        <div className="mt-auto pt-5">
         {installed ? (
           <Link
             to="/dashboard"
@@ -402,6 +403,7 @@ function IntegrationCard({
             )}
           </motion.button>
         )}
+        </div>
       </div>
     </div>
   )
