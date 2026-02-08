@@ -681,9 +681,10 @@ function DashboardPage() {
                     <p className="text-sm font-bold uppercase text-base-content/40">
                       No Streams Yet
                     </p>
-                    <p className="text-xs text-base-content/25 max-w-xs mx-auto">
-                      Add data sources to build your real-time feed. Start with
-                      the recommended set or pick your own.
+                    <p className="text-xs text-base-content/25">
+                      Add data sources to build your real-time feed.
+                      <br />
+                      Start with the recommended set or pick your own.
                     </p>
                   </div>
 
