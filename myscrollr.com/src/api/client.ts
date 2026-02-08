@@ -9,8 +9,8 @@ export interface UserPreferences {
   feed_position: 'top' | 'bottom'
   feed_behavior: 'overlay' | 'push'
   feed_enabled: boolean
-  enabled_sites: string[]
-  disabled_sites: string[]
+  enabled_sites: Array<string>
+  disabled_sites: Array<string>
   updated_at: string
 }
 
@@ -95,7 +95,7 @@ export interface RssStreamConfig {
 
 export const streamsApi = {
   getAll: (getToken: () => Promise<string | null>) =>
-    authenticatedFetch<{ streams: Stream[] }>(
+    authenticatedFetch<{ streams: Array<Stream> }>(
       '/users/me/streams',
       {},
       getToken,
@@ -118,7 +118,11 @@ export const streamsApi = {
 
   update: (
     streamType: StreamType,
-    data: { enabled?: boolean; visible?: boolean; config?: Record<string, unknown> },
+    data: {
+      enabled?: boolean
+      visible?: boolean
+      config?: Record<string, unknown>
+    },
     getToken: () => Promise<string | null>,
   ) =>
     authenticatedFetch<Stream>(
@@ -131,10 +135,7 @@ export const streamsApi = {
       getToken,
     ),
 
-  delete: (
-    streamType: StreamType,
-    getToken: () => Promise<string | null>,
-  ) =>
+  delete: (streamType: StreamType, getToken: () => Promise<string | null>) =>
     authenticatedFetch<{ status: string; message: string }>(
       `/users/me/streams/${streamType}`,
       { method: 'DELETE' },
@@ -153,7 +154,7 @@ export interface TrackedFeed {
 
 export const rssApi = {
   /** Fetch the public feed catalog (no auth required) */
-  getCatalog: () => request<TrackedFeed[]>('/rss/feeds'),
+  getCatalog: () => request<Array<TrackedFeed>>('/rss/feeds'),
 
   /** Delete a custom (non-default) feed from the catalog */
   deleteFeed: (url: string, getToken: () => Promise<string | null>) =>

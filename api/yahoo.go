@@ -28,13 +28,8 @@ func InitYahoo() {
 	// Use pre-derived YAHOO_CALLBACK_URL from Dockerfile, or fallback to derivation
 	redirectURL := os.Getenv("YAHOO_CALLBACK_URL")
 	if redirectURL == "" {
-		// Fallback: derive from COOLIFY_FQDN
-		domain := os.Getenv("COOLIFY_FQDN")
-		if domain != "" {
-			domain = strings.TrimPrefix(domain, "https://")
-			domain = strings.TrimPrefix(domain, "http://")
-			domain = strings.TrimSuffix(domain, "/")
-			redirectURL = fmt.Sprintf("https://%s/yahoo/callback", domain)
+		if fqdn := cleanFQDN(); fqdn != "" {
+			redirectURL = fmt.Sprintf("https://%s/yahoo/callback", fqdn)
 		}
 	}
 	log.Printf("[Yahoo Init] Client ID: %s... Redirect URI: %s", clientID[:5], redirectURL)
@@ -255,6 +250,33 @@ func YahooLeagues(c *fiber.Ctx) error {
 	return c.JSON(content)
 }
 
+// fetchYahooWithCache is a shared helper for Yahoo endpoints that follow
+// the same pattern: read a route param, check cache, fetch from Yahoo API,
+// unmarshal XML, cache the result.
+func fetchYahooWithCache(c *fiber.Ctx, paramName, cachePrefix, urlTemplate, logNoun string) error {
+	key := c.Params(paramName)
+	cacheKey := cachePrefix + key
+	var content FantasyContent
+	if GetCache(cacheKey, &content) {
+		c.Set("X-Cache", "HIT")
+		return c.JSON(content)
+	}
+
+	body, err := fetchYahoo(c, fmt.Sprintf(urlTemplate, key))
+	if err != nil {
+		log.Printf("[Yahoo Error] Fetch %s failed for %s: %v", logNoun, key, err)
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Status: "unauthorized", Error: "Failed to fetch " + logNoun})
+	}
+	if err := xml.Unmarshal(body, &content); err != nil {
+		log.Printf("[Yahoo Error] Unmarshal %s failed for %s: %v", logNoun, key, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to process " + logNoun + " data"})
+	}
+
+	SetCache(cacheKey, content, YahooCacheTTL)
+	c.Set("X-Cache", "MISS")
+	return c.JSON(content)
+}
+
 // YahooStandings retrieves standings for a league
 // @Summary Get league standings
 // @Description Fetches standings for a specific league key
@@ -264,27 +286,8 @@ func YahooLeagues(c *fiber.Ctx) error {
 // @Security LogtoAuth
 // @Router /yahoo/league/{league_key}/standings [get]
 func YahooStandings(c *fiber.Ctx) error {
-	leagueKey := c.Params("league_key")
-	cacheKey := CacheKeyYahooStandingsPrefix + leagueKey
-	var content FantasyContent
-	if GetCache(cacheKey, &content) {
-		c.Set("X-Cache", "HIT")
-		return c.JSON(content)
-	}
-
-	body, err := fetchYahoo(c, fmt.Sprintf("https://fantasysports.yahooapis.com/fantasy/v2/league/%s/standings", leagueKey))
-	if err != nil { 
-		log.Printf("[Yahoo Error] Fetch standings failed for %s: %v", leagueKey, err)
-		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Status: "unauthorized", Error: "Failed to fetch standings"}) 
-	}
-	if err := xml.Unmarshal(body, &content); err != nil { 
-		log.Printf("[Yahoo Error] Unmarshal standings failed for %s: %v", leagueKey, err)
-		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to process standings data"}) 
-	}
-
-	SetCache(cacheKey, content, YahooCacheTTL)
-	c.Set("X-Cache", "MISS")
-	return c.JSON(content)
+	return fetchYahooWithCache(c, "league_key", CacheKeyYahooStandingsPrefix,
+		"https://fantasysports.yahooapis.com/fantasy/v2/league/%s/standings", "standings")
 }
 
 // YahooMatchups retrieves matchups for a team
@@ -296,27 +299,8 @@ func YahooStandings(c *fiber.Ctx) error {
 // @Security LogtoAuth
 // @Router /yahoo/team/{team_key}/matchups [get]
 func YahooMatchups(c *fiber.Ctx) error {
-	teamKey := c.Params("team_key")
-	cacheKey := CacheKeyYahooMatchupsPrefix + teamKey
-	var content FantasyContent
-	if GetCache(cacheKey, &content) {
-		c.Set("X-Cache", "HIT")
-		return c.JSON(content)
-	}
-
-	body, err := fetchYahoo(c, fmt.Sprintf("https://fantasysports.yahooapis.com/fantasy/v2/team/%s/matchups", teamKey))
-	if err != nil { 
-		log.Printf("[Yahoo Error] Fetch matchups failed for %s: %v", teamKey, err)
-		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Status: "unauthorized", Error: "Failed to fetch matchups"}) 
-	}
-	if err := xml.Unmarshal(body, &content); err != nil { 
-		log.Printf("[Yahoo Error] Unmarshal matchups failed for %s: %v", teamKey, err)
-		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to process matchups data"}) 
-	}
-
-	SetCache(cacheKey, content, YahooCacheTTL)
-	c.Set("X-Cache", "MISS")
-	return c.JSON(content)
+	return fetchYahooWithCache(c, "team_key", CacheKeyYahooMatchupsPrefix,
+		"https://fantasysports.yahooapis.com/fantasy/v2/team/%s/matchups", "matchups")
 }
 
 // YahooRoster retrieves roster for a team
@@ -328,25 +312,6 @@ func YahooMatchups(c *fiber.Ctx) error {
 // @Security LogtoAuth
 // @Router /yahoo/team/{team_key}/roster [get]
 func YahooRoster(c *fiber.Ctx) error {
-	teamKey := c.Params("team_key")
-	cacheKey := CacheKeyYahooRosterPrefix + teamKey
-	var content FantasyContent
-	if GetCache(cacheKey, &content) {
-		c.Set("X-Cache", "HIT")
-		return c.JSON(content)
-	}
-
-	body, err := fetchYahoo(c, fmt.Sprintf("https://fantasysports.yahooapis.com/fantasy/v2/team/%s/roster", teamKey))
-	if err != nil { 
-		log.Printf("[Yahoo Error] Fetch roster failed for %s: %v", teamKey, err)
-		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Status: "unauthorized", Error: "Failed to fetch roster"}) 
-	}
-	if err := xml.Unmarshal(body, &content); err != nil { 
-		log.Printf("[Yahoo Error] Unmarshal roster failed for %s: %v", teamKey, err)
-		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to process roster data"}) 
-	}
-
-	SetCache(cacheKey, content, YahooCacheTTL)
-	c.Set("X-Cache", "MISS")
-	return c.JSON(content)
+	return fetchYahooWithCache(c, "team_key", CacheKeyYahooRosterPrefix,
+		"https://fantasysports.yahooapis.com/fantasy/v2/team/%s/roster", "roster")
 }

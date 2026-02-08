@@ -9,7 +9,7 @@ import {
   Shield,
 } from 'lucide-react'
 import { motion } from 'motion/react'
-import { API_BASE } from '../api/client'
+import { API_BASE, authenticatedFetch } from '@/api/client'
 
 export const Route = createFileRoute('/u/$username')({
   component: ProfilePage,
@@ -111,20 +111,20 @@ function ProfilePage() {
         (ownUsername === username || ownSub === username)
       ) {
         try {
-          const token = await getAccessToken(
-            'https://api.myscrollr.relentnet.dev',
-          )
-          if (token) {
-            const res = await fetch(`${API_BASE}/users/me/yahoo-status`, {
-              headers: { Authorization: `Bearer ${token}` },
-            })
-            if (res.ok) {
-              const data = await res.json()
-              profileData.connected_yahoo = data.connected || false
-            }
+          const getToken = async () => {
+            const token = await getAccessToken(
+              API_BASE || 'https://api.myscrollr.relentnet.dev',
+            )
+            return token ?? null
           }
-        } catch (err) {
-          console.log('[Profile] Yahoo status error:', err)
+          const data = await authenticatedFetch<{ connected: boolean }>(
+            '/users/me/yahoo-status',
+            {},
+            getToken,
+          )
+          profileData.connected_yahoo = data.connected || false
+        } catch {
+          // Yahoo status unavailable — leave connected_yahoo as false
         }
       }
 

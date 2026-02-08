@@ -16,11 +16,7 @@ import (
 func getLogtoTokenURL() string {
 	logtoURL := os.Getenv("LOGTO_URL")
 	if logtoURL == "" {
-		fqdn := os.Getenv("COOLIFY_FQDN")
-		if fqdn != "" {
-			fqdn = strings.TrimPrefix(fqdn, "https://")
-			fqdn = strings.TrimPrefix(fqdn, "http://")
-			fqdn = strings.TrimSuffix(fqdn, "/")
+		if fqdn := cleanFQDN(); fqdn != "" {
 			logtoURL = fmt.Sprintf("https://%s/oidc", fqdn)
 		}
 	}
@@ -36,11 +32,7 @@ func getExtensionAppID() string {
 func getAPIResource() string {
 	apiURL := os.Getenv("API_URL")
 	if apiURL == "" {
-		fqdn := os.Getenv("COOLIFY_FQDN")
-		if fqdn != "" {
-			fqdn = strings.TrimPrefix(fqdn, "https://")
-			fqdn = strings.TrimPrefix(fqdn, "http://")
-			fqdn = strings.TrimSuffix(fqdn, "/")
+		if fqdn := cleanFQDN(); fqdn != "" {
 			apiURL = fmt.Sprintf("https://%s", fqdn)
 		}
 	}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { UserPreferences } from '../api/client'
+import type { UserPreferences } from '@/api/client'
 
 // Yahoo data as stored in DB rows (keyed by league_key/team_key)
 interface YahooLeagueRecord {
@@ -46,7 +46,7 @@ interface CDCEvent {
 }
 
 interface SSEPayload {
-  data?: CDCEvent[]
+  data?: Array<CDCEvent>
 }
 
 export function useRealtime({ getToken }: UseRealtimeOptions) {

@@ -38,9 +38,7 @@ function Callback() {
           <p className="uppercase tracking-[0.2em] text-error">
             Authentication Failed
           </p>
-          <p className="text-xs text-base-content/50">
-            {error.message}
-          </p>
+          <p className="text-xs text-base-content/50">{error.message}</p>
           <button
             onClick={() => navigate({ to: '/dashboard' })}
             className="btn btn-primary btn-sm mt-4"

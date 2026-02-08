@@ -20,14 +20,11 @@ func InitAuth() {
 	jwksURL := os.Getenv("LOGTO_JWKS_URL")
 	if jwksURL == "" {
 		// Fallback: derive from COOLIFY_FQDN
-		fqdn := os.Getenv("COOLIFY_FQDN")
+		fqdn := cleanFQDN()
 		if fqdn == "" {
 			log.Println("[Security Warning] COOLIFY_FQDN not set, authentication will fail")
 			return
 		}
-		fqdn = strings.TrimPrefix(fqdn, "https://")
-		fqdn = strings.TrimPrefix(fqdn, "http://")
-		fqdn = strings.TrimSuffix(fqdn, "/")
 		jwksURL = fmt.Sprintf("https://%s/oidc/jwks", fqdn)
 	}
 
@@ -80,11 +77,7 @@ func ValidateToken(tokenString string) (sub string, claims jwt.MapClaims, err er
 	// Verify Issuer
 	expectedIssuer := os.Getenv("LOGTO_URL")
 	if expectedIssuer == "" {
-		fqdn := os.Getenv("COOLIFY_FQDN")
-		if fqdn != "" {
-			fqdn = strings.TrimPrefix(fqdn, "https://")
-			fqdn = strings.TrimPrefix(fqdn, "http://")
-			fqdn = strings.TrimSuffix(fqdn, "/")
+		if fqdn := cleanFQDN(); fqdn != "" {
 			expectedIssuer = fmt.Sprintf("https://%s/oidc", fqdn)
 		}
 	}
@@ -95,11 +88,7 @@ func ValidateToken(tokenString string) (sub string, claims jwt.MapClaims, err er
 	// Verify Audience
 	expectedAudience := os.Getenv("API_URL")
 	if expectedAudience == "" {
-		fqdn := os.Getenv("COOLIFY_FQDN")
-		if fqdn != "" {
-			fqdn = strings.TrimPrefix(fqdn, "https://")
-			fqdn = strings.TrimPrefix(fqdn, "http://")
-			fqdn = strings.TrimSuffix(fqdn, "/")
+		if fqdn := cleanFQDN(); fqdn != "" {
 			expectedAudience = fmt.Sprintf("https://%s", fqdn)
 		}
 	}

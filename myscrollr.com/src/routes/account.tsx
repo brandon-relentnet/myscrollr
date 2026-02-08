@@ -255,7 +255,12 @@ function HubCard({
   // External link (e.g. Logto Account Center)
   if (href) {
     return (
-      <a href={href} target="_blank" rel="noopener noreferrer" className="block h-full">
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block h-full"
+      >
         {content}
       </a>
     )
@@ -267,5 +272,3 @@ function HubCard({
     </Link>
   )
 }
-
-

@@ -1,14 +1,19 @@
-import { startSSE, stopSSE, setupKeepAlive, mergeDashboardData } from './sse';
+import { startSSE, stopSSE, setupKeepAlive } from './sse';
 import { setupBroadcasting, setupMessageListeners, broadcast } from './messaging';
-import { setOnAuthExpired, isAuthenticated, getValidToken } from './auth';
-import { applyServerPreferences, initStreamsVisibility } from './preferences';
-import { API_URL } from '~/utils/constants';
-import type { DashboardResponse } from '~/utils/types';
+import { setOnAuthExpired, isAuthenticated } from './auth';
+import { setOnStreamChanged } from './preferences';
+import { setBroadcast, refreshDashboard } from './dashboard';
 
 export default defineBackground({
   type: 'module',
 
   main() {
+    // Wire up dashboard → broadcast (avoids circular import)
+    setBroadcast(broadcast);
+
+    // Wire up stream changes → dashboard refresh (avoids circular import)
+    setOnStreamChanged(() => refreshDashboard());
+
     // Wire up SSE → broadcast pipeline
     setupBroadcasting();
 
@@ -29,29 +34,8 @@ export default defineBackground({
     // start SSE and sync preferences from the server.
     isAuthenticated().then(async (authed) => {
       if (!authed) return;
-
-      // Start authenticated SSE connection
       startSSE();
-
-      try {
-        const token = await getValidToken();
-        if (!token) return;
-        const response = await fetch(`${API_URL}/dashboard`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!response.ok) return;
-        const data: DashboardResponse = await response.json();
-        mergeDashboardData(data.finance || [], data.sports || [], data.rss || []);
-        broadcast({ type: 'INITIAL_DATA', payload: data });
-        if (data.preferences) {
-          await applyServerPreferences(data.preferences);
-        }
-        if (data.streams) {
-          await initStreamsVisibility(data.streams);
-        }
-      } catch {
-        // Non-critical — preferences will sync on next login or CDC event
-      }
+      await refreshDashboard();
     });
 
     console.log('[Scrollr] Background started');

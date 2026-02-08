@@ -1,4 +1,9 @@
-import { createFileRoute, Link, useNavigate, useSearch } from '@tanstack/react-router'
+import {
+  Link,
+  createFileRoute,
+  useNavigate,
+  useSearch,
+} from '@tanstack/react-router'
 import { useLogto } from '@logto/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
@@ -22,12 +27,17 @@ import {
   Zap,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useRealtime } from '../hooks/useRealtime'
-import type { YahooState } from '../hooks/useRealtime'
+import type { YahooState } from '@/hooks/useRealtime'
 import type { IdTokenClaims } from '@logto/react'
-import SettingsPanel from '../components/SettingsPanel'
-import { streamsApi, rssApi } from '../api/client'
-import type { Stream, StreamType, TrackedFeed, RssStreamConfig } from '../api/client'
+import type {
+  RssStreamConfig,
+  Stream,
+  StreamType,
+  TrackedFeed,
+} from '@/api/client'
+import { useRealtime } from '@/hooks/useRealtime'
+import SettingsPanel from '@/components/SettingsPanel'
+import { authenticatedFetch, rssApi, streamsApi } from '@/api/client'
 
 const VALID_TABS = new Set<StreamType>(['finance', 'sports', 'fantasy', 'rss'])
 
@@ -35,7 +45,12 @@ export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
   validateSearch: (search: Record<string, unknown>): { tab?: StreamType } => {
     const tab = search.tab as string | undefined
-    return { tab: tab && VALID_TABS.has(tab as StreamType) ? (tab as StreamType) : undefined }
+    return {
+      tab:
+        tab && VALID_TABS.has(tab as StreamType)
+          ? (tab as StreamType)
+          : undefined,
+    }
   },
 })
 
@@ -111,16 +126,13 @@ function DashboardPage() {
     connected: boolean
     synced: boolean
   }>({ connected: false, synced: false })
-  const getAccessTokenRef = useRef(getAccessToken)
-  getAccessTokenRef.current = getAccessToken
-
   const apiUrl =
     import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'
   const [yahooPending, setYahooPending] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // ── Streams state ────────────────────────────────────────────────
-  const [streams, setStreams] = useState<Stream[]>([])
+  const [streams, setStreams] = useState<Array<Stream>>([])
   const [streamsLoading, setStreamsLoading] = useState(true)
   const [addStreamOpen, setAddStreamOpen] = useState(false)
 
@@ -133,41 +145,33 @@ function DashboardPage() {
   // Logto's setIsLoading) on every settings change.
   const tokenCacheRef = useRef<{ token: string; expiry: number } | null>(null)
 
-  const getToken = useCallback(
-    async (): Promise<string | null> => {
-      const cached = tokenCacheRef.current
-      if (cached && cached.expiry - Date.now() > 60_000) {
-        return cached.token
-      }
+  const getToken = useCallback(async (): Promise<string | null> => {
+    const cached = tokenCacheRef.current
+    if (cached && cached.expiry - Date.now() > 60_000) {
+      return cached.token
+    }
 
-      const token = await getAccessToken(apiUrl)
-      if (token) {
-        try {
-          const payload = JSON.parse(atob(token.split('.')[1]!))
-          if (payload.exp) {
-            tokenCacheRef.current = {
-              token,
-              expiry: payload.exp * 1000,
-            }
+    const token = await getAccessToken(apiUrl)
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]))
+        if (payload.exp) {
+          tokenCacheRef.current = {
+            token,
+            expiry: payload.exp * 1000,
           }
-        } catch {
-          // If decoding fails, don't cache
         }
+      } catch {
+        // If decoding fails, don't cache
       }
+    }
 
-      return token ?? null
-    },
-    [getAccessToken, apiUrl],
-  )
+    return token ?? null
+  }, [getAccessToken, apiUrl])
 
   // useRealtime must come after getToken is defined
-  const {
-    yahoo,
-    status,
-    preferences,
-    setInitialYahoo,
-    clearYahoo,
-  } = useRealtime({ getToken })
+  const { yahoo, status, preferences, setInitialYahoo, clearYahoo } =
+    useRealtime({ getToken })
 
   // ── Fetch streams ────────────────────────────────────────────────
   const fetchStreams = useCallback(async () => {
@@ -245,7 +249,7 @@ function DashboardPage() {
   }
 
   const handleQuickStart = async () => {
-    const recommended: StreamType[] = ['finance', 'sports', 'rss']
+    const recommended: Array<StreamType> = ['finance', 'sports', 'rss']
     const toAdd = recommended.filter(
       (t) => !streams.some((s) => s.stream_type === t),
     )
@@ -266,29 +270,30 @@ function DashboardPage() {
   // Returns true if leagues were found
   const fetchYahooData = async (): Promise<boolean> => {
     try {
-      const token = await getAccessTokenRef.current(apiUrl)
-      const [statusRes, leaguesRes] = await Promise.all([
-        fetch(`${apiUrl}/users/me/yahoo-status`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${apiUrl}/users/me/yahoo-leagues`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+      const [statusData, leaguesData] = await Promise.all([
+        authenticatedFetch<{ connected: boolean; synced: boolean }>(
+          '/users/me/yahoo-status',
+          {},
+          getToken,
+        ).catch(() => null),
+        authenticatedFetch<{ leagues?: any[]; standings?: Record<string, any> }>(
+          '/users/me/yahoo-leagues',
+          {},
+          getToken,
+        ).catch(() => null),
       ])
 
-      if (statusRes.ok) {
-        const data = await statusRes.json()
-        setYahooStatus(data)
+      if (statusData) {
+        setYahooStatus(statusData)
       }
 
-      if (leaguesRes.ok) {
-        const data = await leaguesRes.json()
+      if (leaguesData) {
         const leagues: Record<string, any> = {}
         const standings: Record<string, any> = {}
-        for (const league of data.leagues || []) {
+        for (const league of leaguesData.leagues || []) {
           leagues[league.league_key] = league
         }
-        for (const [key, val] of Object.entries(data.standings || {})) {
+        for (const [key, val] of Object.entries(leaguesData.standings || {})) {
           standings[key] = { league_key: key, data: val }
         }
         setInitialYahoo({ leagues, standings, matchups: {} })
@@ -374,15 +379,13 @@ function DashboardPage() {
 
   const handleYahooDisconnect = async () => {
     try {
-      const token = await getAccessTokenRef.current(apiUrl)
-      const res = await fetch(`${apiUrl}/users/me/yahoo`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (res.ok) {
-        setYahooStatus({ connected: false, synced: false })
-        clearYahoo()
-      }
+      await authenticatedFetch(
+        '/users/me/yahoo',
+        { method: 'DELETE' },
+        getToken,
+      )
+      setYahooStatus({ connected: false, synced: false })
+      clearYahoo()
     } catch {
       // Silently fail
     }
@@ -436,9 +439,9 @@ function DashboardPage() {
   const activeStream = streams.find((s) => s.stream_type === activeModule)
   const activeCount = streams.filter((s) => s.visible).length
   const existingTypes = new Set(streams.map((s) => s.stream_type))
-  const availableTypes = (
-    Object.keys(STREAM_META) as StreamType[]
-  ).filter((t) => !existingTypes.has(t))
+  const availableTypes = (Object.keys(STREAM_META) as Array<StreamType>).filter(
+    (t) => !existingTypes.has(t),
+  )
 
   return (
     <motion.div
@@ -1159,8 +1162,7 @@ function FantasyStreamConfig({
       )}
 
       {/* Syncing / Waiting state */}
-      {(yahooPending ||
-        (yahooStatus.connected && allLeagues.length === 0)) && (
+      {(yahooPending || (yahooStatus.connected && allLeagues.length === 0)) && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1369,7 +1371,7 @@ function LeagueCard({
     GAME_CODE_LABELS[league.game_code || ''] || league.game_code || 'Fantasy'
   const teams = Array.isArray(league.standings)
     ? league.standings
-    : (league.standings?.teams?.team || [])
+    : league.standings?.teams?.team || []
   const isActive = !league.is_finished
 
   return (
@@ -1520,7 +1522,7 @@ function RssStreamConfig({
 
   const [newFeedName, setNewFeedName] = useState('')
   const [newFeedUrl, setNewFeedUrl] = useState('')
-  const [catalog, setCatalog] = useState<TrackedFeed[]>([])
+  const [catalog, setCatalog] = useState<Array<TrackedFeed>>([])
   const [catalogLoading, setCatalogLoading] = useState(true)
   const [activeCategory, setActiveCategory] = useState('All')
   const [currentPage, setCurrentPage] = useState(1)
@@ -1551,7 +1553,10 @@ function RssStreamConfig({
       ? catalog
       : catalog.filter((f) => f.category === activeCategory)
 
-  const totalPages = Math.max(1, Math.ceil(filteredCatalog.length / FEEDS_PER_PAGE))
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredCatalog.length / FEEDS_PER_PAGE),
+  )
   const paginatedCatalog = filteredCatalog.slice(
     (currentPage - 1) * FEEDS_PER_PAGE,
     currentPage * FEEDS_PER_PAGE,
@@ -1753,88 +1758,88 @@ function RssStreamConfig({
           </div>
         ) : (
           <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {paginatedCatalog.map((feed) => {
-              const isAdded = feedUrlSet.has(feed.url)
-              return (
-                <motion.div
-                  key={feed.url}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
-                    isAdded
-                      ? 'bg-primary/5 border-primary/20'
-                      : 'bg-base-200/30 border-base-300/40 hover:border-base-300/60'
-                  }`}
-                >
-                  <div className="min-w-0 mr-2">
-                    <div className="text-xs font-bold truncate">
-                      {feed.name}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {paginatedCatalog.map((feed) => {
+                const isAdded = feedUrlSet.has(feed.url)
+                return (
+                  <motion.div
+                    key={feed.url}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                      isAdded
+                        ? 'bg-primary/5 border-primary/20'
+                        : 'bg-base-200/30 border-base-300/40 hover:border-base-300/60'
+                    }`}
+                  >
+                    <div className="min-w-0 mr-2">
+                      <div className="text-xs font-bold truncate">
+                        {feed.name}
+                      </div>
+                      <div className="text-[9px] text-base-content/30 uppercase tracking-wide">
+                        {feed.category}
+                        {!feed.is_default && (
+                          <span className="ml-1 text-base-content/20">
+                            (custom)
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-[9px] text-base-content/30 uppercase tracking-wide">
-                      {feed.category}
-                      {!feed.is_default && (
-                        <span className="ml-1 text-base-content/20">
-                          (custom)
+                    <div className="flex items-center gap-1 shrink-0">
+                      {isAdded ? (
+                        <span className="text-[9px] font-bold text-primary uppercase tracking-widest px-2 py-1 rounded bg-primary/10">
+                          Added
                         </span>
+                      ) : (
+                        <button
+                          onClick={() => addCatalogFeed(feed)}
+                          disabled={saving}
+                          className="text-[9px] font-bold text-base-content/40 uppercase tracking-widest px-2 py-1 rounded border border-base-300/40 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-30"
+                        >
+                          + Add
+                        </button>
+                      )}
+                      {!feed.is_default && (
+                        <button
+                          onClick={() => deleteCatalogFeed(feed)}
+                          title="Remove custom feed from catalog"
+                          className="p-1 rounded hover:bg-error/10 text-base-content/20 hover:text-error transition-colors"
+                        >
+                          <X size={12} />
+                        </button>
                       )}
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    {isAdded ? (
-                      <span className="text-[9px] font-bold text-primary uppercase tracking-widest px-2 py-1 rounded bg-primary/10">
-                        Added
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => addCatalogFeed(feed)}
-                        disabled={saving}
-                        className="text-[9px] font-bold text-base-content/40 uppercase tracking-widest px-2 py-1 rounded border border-base-300/40 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-30"
-                      >
-                        + Add
-                      </button>
-                    )}
-                    {!feed.is_default && (
-                      <button
-                        onClick={() => deleteCatalogFeed(feed)}
-                        title="Remove custom feed from catalog"
-                        className="p-1 rounded hover:bg-error/10 text-base-content/20 hover:text-error transition-colors"
-                      >
-                        <X size={12} />
-                      </button>
-                    )}
-                  </div>
-                </motion.div>
-              )
-            })}
-          </div>
-
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between pt-2">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="flex items-center gap-1 px-3 py-1.5 rounded border border-base-300/40 text-[10px] font-bold uppercase tracking-widest text-base-content/40 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-20 disabled:pointer-events-none"
-              >
-                <ChevronLeft size={12} />
-                Prev
-              </button>
-              <span className="text-[10px] font-mono text-base-content/30">
-                {currentPage} / {totalPages}
-              </span>
-              <button
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(totalPages, p + 1))
-                }
-                disabled={currentPage === totalPages}
-                className="flex items-center gap-1 px-3 py-1.5 rounded border border-base-300/40 text-[10px] font-bold uppercase tracking-widest text-base-content/40 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-20 disabled:pointer-events-none"
-              >
-                Next
-                <ChevronRight size={12} />
-              </button>
+                  </motion.div>
+                )
+              })}
             </div>
-           )}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-2">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded border border-base-300/40 text-[10px] font-bold uppercase tracking-widest text-base-content/40 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-20 disabled:pointer-events-none"
+                >
+                  <ChevronLeft size={12} />
+                  Prev
+                </button>
+                <span className="text-[10px] font-mono text-base-content/30">
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                  }
+                  disabled={currentPage === totalPages}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded border border-base-300/40 text-[10px] font-bold uppercase tracking-widest text-base-content/40 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-20 disabled:pointer-events-none"
+                >
+                  Next
+                  <ChevronRight size={12} />
+                </button>
+              </div>
+            )}
           </>
         )}
 

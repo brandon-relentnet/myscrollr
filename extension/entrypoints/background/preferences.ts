@@ -9,10 +9,13 @@ import {
   disabledSites,
 } from '~/utils/storage';
 
-// NOTE: activeFeedTabs is used for stream-derived tab computation only
-// (see syncActiveTabs). Streams are the single source of truth for which
-// data categories are active.
-import { refreshDashboard } from './messaging';
+// ── Callback for stream changes (set by index.ts to avoid circular imports) ──
+
+let onStreamChanged: (() => void) | null = null;
+
+export function setOnStreamChanged(cb: () => void) {
+  onStreamChanged = cb;
+}
 
 // ── Stream visibility tracking ────────────────────────────────────
 // Module-scoped map of stream type → visible. CDC sends one row at a
@@ -62,7 +65,7 @@ export async function handleStreamUpdate(record: Record<string, unknown>): Promi
 
   // Refetch dashboard so that existing items for newly-subscribed feeds
   // (e.g. RSS) are loaded immediately — CDC only delivers future changes.
-  refreshDashboard();
+  onStreamChanged?.();
 }
 
 /**
@@ -78,7 +81,7 @@ export async function handleStreamDelete(record: Record<string, unknown>): Promi
   await syncActiveTabs();
 
   // Refetch dashboard to clear items from the removed stream.
-  refreshDashboard();
+  onStreamChanged?.();
 }
 
 // ── Preferences ───────────────────────────────────────────────────

@@ -9,7 +9,7 @@ import type {
   FeedBehavior,
   FeedCategory,
 } from '~/utils/types';
-import type { BackgroundMessage, StateSnapshotMessage } from '~/utils/messaging';
+import type { BackgroundMessage, ClientMessage, StateSnapshotMessage } from '~/utils/messaging';
 import {
   feedEnabled as feedEnabledStorage,
   feedPosition as feedPositionStorage,
@@ -49,7 +49,7 @@ export default function App({ ctx }: AppProps) {
 
     // Request state snapshot from background
     browser.runtime
-      .sendMessage({ type: 'GET_STATE' })
+      .sendMessage({ type: 'GET_STATE' } satisfies ClientMessage)
       .then((response: unknown) => {
         if (!ctx.isValid) return;
         const snapshot = response as StateSnapshotMessage | null;
@@ -168,7 +168,7 @@ export default function App({ ctx }: AppProps) {
 
   // ── Login handler ──────────────────────────────────────────────
   const handleLogin = useCallback(() => {
-    browser.runtime.sendMessage({ type: 'LOGIN' }).catch(() => {});
+    browser.runtime.sendMessage({ type: 'LOGIN' } satisfies ClientMessage).catch(() => {});
   }, []);
 
   // Hide the feed bar when globally disabled

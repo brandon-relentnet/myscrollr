@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
 import { useLogto } from '@logto/react'
 import { useCallback, useEffect, useState } from 'react'
 import {
@@ -20,9 +20,9 @@ import {
 } from 'lucide-react'
 
 import { motion } from 'motion/react'
+import type { Stream, StreamType } from '@/api/client'
 import { usePageMeta } from '@/lib/usePageMeta'
 import { streamsApi } from '@/api/client'
-import type { Stream, StreamType } from '@/api/client'
 
 export const Route = createFileRoute('/integrations')({
   component: IntegrationsPage,
@@ -66,7 +66,7 @@ interface ComingSoonIntegration {
   icon: React.ReactNode
 }
 
-const INTEGRATIONS: Integration[] = [
+const INTEGRATIONS: Array<Integration> = [
   {
     id: 'finance',
     streamType: 'finance',
@@ -108,7 +108,7 @@ const INTEGRATIONS: Integration[] = [
   },
 ]
 
-const COMING_SOON: ComingSoonIntegration[] = [
+const COMING_SOON: Array<ComingSoonIntegration> = [
   {
     id: 'discord',
     name: 'Discord',
@@ -157,20 +157,17 @@ function IntegrationsPage() {
   })
 
   const { isAuthenticated, getAccessToken, signIn } = useLogto()
-  const [streams, setStreams] = useState<Stream[]>([])
+  const [streams, setStreams] = useState<Array<Stream>>([])
   const [loading, setLoading] = useState(false)
   const [adding, setAdding] = useState<string | null>(null)
 
   const apiUrl =
     import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'
 
-  const getToken = useCallback(
-    async (): Promise<string | null> => {
-      const token = await getAccessToken(apiUrl)
-      return token ?? null
-    },
-    [getAccessToken, apiUrl],
-  )
+  const getToken = useCallback(async (): Promise<string | null> => {
+    const token = await getAccessToken(apiUrl)
+    return token ?? null
+  }, [getAccessToken, apiUrl])
 
   // Fetch user's streams when authenticated
   useEffect(() => {
@@ -228,8 +225,8 @@ function IntegrationsPage() {
               </span>
               <span className="h-px w-12 bg-base-300" />
               <span className="text-[10px] font-mono text-base-content/30 uppercase">
-                {INTEGRATIONS.length} available &middot;{' '}
-                {COMING_SOON.length} coming soon
+                {INTEGRATIONS.length} available &middot; {COMING_SOON.length}{' '}
+                coming soon
               </span>
             </div>
 
@@ -374,36 +371,36 @@ function IntegrationCard({
 
         {/* Action — pinned to bottom */}
         <div className="mt-auto pt-5">
-        {installed ? (
-          <Link
-            to="/dashboard"
-            search={{ tab: integration.streamType }}
-            className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary/50 hover:text-primary transition-colors"
-          >
-            Manage on Dashboard <ArrowRight size={12} />
-          </Link>
-        ) : (
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => onAdd(integration)}
-            disabled={adding}
-            className="flex items-center gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-widest border border-primary/30 text-primary/80 hover:bg-primary/10 hover:border-primary/50 transition-all rounded-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {!isAuthenticated ? (
-              <>
-                <Lock size={12} /> Sign in to Add
-              </>
-            ) : adding ? (
-              <>
-                <div className="h-2.5 w-2.5 rounded-full border border-primary/50 border-t-transparent animate-spin" />
-                Adding...
-              </>
-            ) : (
-              <>Add to Account</>
-            )}
-          </motion.button>
-        )}
+          {installed ? (
+            <Link
+              to="/dashboard"
+              search={{ tab: integration.streamType }}
+              className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary/50 hover:text-primary transition-colors"
+            >
+              Manage on Dashboard <ArrowRight size={12} />
+            </Link>
+          ) : (
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => onAdd(integration)}
+              disabled={adding}
+              className="flex items-center gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-widest border border-primary/30 text-primary/80 hover:bg-primary/10 hover:border-primary/50 transition-all rounded-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {!isAuthenticated ? (
+                <>
+                  <Lock size={12} /> Sign in to Add
+                </>
+              ) : adding ? (
+                <>
+                  <div className="h-2.5 w-2.5 rounded-full border border-primary/50 border-t-transparent animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                <>Add to Account</>
+              )}
+            </motion.button>
+          )}
         </div>
       </div>
     </div>

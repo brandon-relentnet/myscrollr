@@ -1,9 +1,9 @@
 import type { ClientMessage, BackgroundMessage, StateSnapshotMessage } from '~/utils/messaging';
-import type { ConnectionStatus, DashboardResponse } from '~/utils/types';
-import { API_URL, FRONTEND_URL } from '~/utils/constants';
-import { getState, setOnUpdate, mergeDashboardData, startSSE, stopSSE } from './sse';
-import { login, logout, getValidToken, isAuthenticated } from './auth';
-import { applyServerPreferences, initStreamsVisibility } from './preferences';
+import type { ConnectionStatus } from '~/utils/types';
+import { FRONTEND_URL } from '~/utils/constants';
+import { getState, setOnUpdate, startSSE, stopSSE } from './sse';
+import { login, logout, isAuthenticated } from './auth';
+import { refreshDashboard } from './dashboard';
 
 // ── Broadcast to all listeners ───────────────────────────────────
 
@@ -47,49 +47,6 @@ export function setupBroadcasting() {
   });
 }
 
-// ── Fetch dashboard data with auth ───────────────────────────────
-
-async function fetchDashboardData() {
-  const token = await getValidToken();
-  if (!token) {
-    throw new Error('Not authenticated');
-  }
-
-  const response = await fetch(`${API_URL}/dashboard`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    console.error('[Scrollr] Dashboard fetch failed:', response.status, body);
-    throw new Error(`Dashboard fetch failed: ${response.status}`);
-  }
-
-  return response.json();
-}
-
-/**
- * Fetches the full dashboard state and merges it into the background's
- * in-memory data. Used on login, startup, and when stream config changes
- * (so that existing items for newly-subscribed feeds are loaded immediately).
- */
-export async function refreshDashboard(): Promise<void> {
-  try {
-    const data: DashboardResponse = await fetchDashboardData();
-    mergeDashboardData(data.finance || [], data.sports || [], data.rss || []);
-    broadcast({ type: 'INITIAL_DATA', payload: data });
-
-    if (data.preferences) {
-      applyServerPreferences(data.preferences);
-    }
-    if (data.streams) {
-      initStreamsVisibility(data.streams);
-    }
-  } catch (err) {
-    console.error('[Scrollr] Dashboard refresh failed:', err);
-  }
-}
-
 // ── Message listeners ────────────────────────────────────────────
 
 export function setupMessageListeners() {
@@ -116,39 +73,13 @@ export function setupMessageListeners() {
 
         case 'LOGIN': {
           login().then((success) => {
-            const authed = success;
-            broadcast({ type: 'AUTH_STATUS', authenticated: authed });
-            sendResponse({ type: 'AUTH_STATUS', authenticated: authed });
+            broadcast({ type: 'AUTH_STATUS', authenticated: success });
+            sendResponse({ type: 'AUTH_STATUS', authenticated: success });
 
-            // If login succeeded, start SSE, fetch dashboard data, and open frontend
             if (success) {
-              // Start authenticated SSE connection
               startSSE();
-
-              // Open the frontend dashboard — Logto session cookie is shared,
-              // so the frontend will auto-authenticate instantly.
-              browser.tabs.create({ url: `${FRONTEND_URL}/dashboard` }).catch(() => {
-                // Tab creation failed (e.g. in tests), non-critical
-              });
-
-              fetchDashboardData()
-                .then((data: DashboardResponse) => {
-                  mergeDashboardData(data.finance || [], data.sports || [], data.rss || []);
-                  broadcast({ type: 'INITIAL_DATA', payload: data });
-
-                  // Apply server preferences to local storage
-                  if (data.preferences) {
-                    applyServerPreferences(data.preferences);
-                  }
-
-                  // Initialise stream visibility from server state
-                  if (data.streams) {
-                    initStreamsVisibility(data.streams);
-                  }
-                })
-                .catch((err) => {
-                  console.error('[Scrollr] Dashboard fetch failed:', err);
-                });
+              browser.tabs.create({ url: `${FRONTEND_URL}/dashboard` }).catch(() => {});
+              refreshDashboard();
             }
           });
           return true;

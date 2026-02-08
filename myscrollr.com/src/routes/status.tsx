@@ -272,9 +272,7 @@ function StatusPage() {
             icon={<Zap size={18} />}
             label="API Status"
             value={fetchError ? 'Unreachable' : 'Online'}
-            sublabel={
-              fetchError ? 'Cannot reach API' : 'Accepting requests'
-            }
+            sublabel={fetchError ? 'Cannot reach API' : 'Accepting requests'}
             error={fetchError}
           />
           <MetricCard

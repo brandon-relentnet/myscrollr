@@ -12,8 +12,8 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import type { UserPreferences } from '../api/client'
-import { getPreferences, updatePreferences } from '../api/client'
+import type { UserPreferences } from '@/api/client'
+import { getPreferences, updatePreferences } from '@/api/client'
 
 interface SettingsPanelProps {
   open: boolean
@@ -85,10 +85,7 @@ export default function SettingsPanel({
     [getToken],
   )
 
-  const addSite = (
-    list: 'enabled_sites' | 'disabled_sites',
-    value: string,
-  ) => {
+  const addSite = (list: 'enabled_sites' | 'disabled_sites', value: string) => {
     const trimmed = value.trim()
     if (!trimmed) return
     const current = prefs[list]
@@ -98,7 +95,10 @@ export default function SettingsPanel({
     else setNewBlockedSite('')
   }
 
-  const removeSite = (list: 'enabled_sites' | 'disabled_sites', idx: number) => {
+  const removeSite = (
+    list: 'enabled_sites' | 'disabled_sites',
+    idx: number,
+  ) => {
     const next = [...prefs[list]]
     next.splice(idx, 1)
     save({ [list]: next })
@@ -365,7 +365,7 @@ function SegmentedControl({
   onChange,
 }: {
   value: string
-  options: { value: string; label: string }[]
+  options: Array<{ value: string; label: string }>
   onChange: (v: string) => void
 }) {
   return (
@@ -402,7 +402,7 @@ function SiteList({
   onAdd,
   placeholder,
 }: {
-  sites: string[]
+  sites: Array<string>
   onRemove: (idx: number) => void
   inputValue: string
   onInputChange: (v: string) => void

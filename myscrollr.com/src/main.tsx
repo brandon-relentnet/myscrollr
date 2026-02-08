@@ -2,12 +2,12 @@ import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { LogtoProvider } from '@logto/react'
-import { routeTree } from './routeTree.gen'
 import type { LogtoConfig } from '@logto/react'
+import { routeTree } from '@/routeTree.gen'
 
 // Import the generated route tree
 
-import './styles.css'
+import '@/styles.css'
 
 // Logto configuration
 const logtoConfig: LogtoConfig = {
