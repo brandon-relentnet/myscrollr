@@ -230,6 +230,8 @@ pub async fn record_feed_failure(pool: &Arc<PgPool>, feed_url: &str, error: &str
 // ── Upsert a single RSS item ────────────────────────────────────
 
 pub async fn upsert_rss_item(pool: Arc<PgPool>, article: ParsedArticle) -> Result<()> {
+    // Only touch the row when content actually changed — unchanged articles
+    // are skipped so Sequin CDC won't fire redundant UPDATE events on repoll.
     let statement = "
         INSERT INTO rss_items (feed_url, guid, title, link, description, source_name, published_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -240,7 +242,13 @@ pub async fn upsert_rss_item(pool: Arc<PgPool>, article: ParsedArticle) -> Resul
             description = EXCLUDED.description,
             source_name = EXCLUDED.source_name,
             published_at = EXCLUDED.published_at,
-            updated_at = CURRENT_TIMESTAMP;
+            updated_at = CURRENT_TIMESTAMP
+        WHERE
+            rss_items.title       IS DISTINCT FROM EXCLUDED.title
+            OR rss_items.link        IS DISTINCT FROM EXCLUDED.link
+            OR rss_items.description IS DISTINCT FROM EXCLUDED.description
+            OR rss_items.source_name IS DISTINCT FROM EXCLUDED.source_name
+            OR rss_items.published_at IS DISTINCT FROM EXCLUDED.published_at;
     ";
     let mut connection = pool.acquire().await?;
     query(statement)
