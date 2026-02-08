@@ -34,10 +34,10 @@ async fn main() {
     let pool_clone = pool.clone();
     let health_clone = health.clone();
     tokio::spawn(async move {
-        println!("Starting periodic sports ingest loop (5 minute interval)...");
+        println!("Starting periodic sports ingest loop (1 minute interval)...");
         loop {
             start_sports_service(pool_clone.clone(), health_clone.clone()).await;
-            tokio::time::sleep(std::time::Duration::from_secs(300)).await;
+            tokio::time::sleep(std::time::Duration::from_secs(60)).await;
         }
     });
 
