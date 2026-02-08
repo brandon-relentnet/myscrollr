@@ -147,7 +147,7 @@ func LogtoAuth(c *fiber.Ctx) error {
 		})
 	}
 
-	sub, claims, err := ValidateToken(tokenString)
+	sub, _, err := ValidateToken(tokenString)
 	if err != nil {
 		log.Printf("[Auth Error] %v", err)
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
