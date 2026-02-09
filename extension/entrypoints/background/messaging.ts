@@ -1,9 +1,38 @@
 import type { ClientMessage, BackgroundMessage, StateSnapshotMessage } from '~/utils/messaging';
-import type { ConnectionStatus } from '~/utils/types';
+import type { ConnectionStatus, CDCRecord } from '~/utils/types';
 import { FRONTEND_URL } from '~/utils/constants';
-import { getState, setOnUpdate, startSSE, stopSSE } from './sse';
+import { getConnectionStatus, getLastDashboard, setOnStatusChange, setOnCDCRecords } from './sse';
 import { login, logout, isAuthenticated } from './auth';
 import { refreshDashboard } from './dashboard';
+
+// ── Per-tab CDC subscriptions ─────────────────────────────────────
+// Maps tab ID → set of table names the tab wants CDC records for.
+// The popup uses `undefined` as its tab ID (it's not a tab).
+
+const tabSubscriptions = new Map<number | undefined, Set<string>>();
+
+function addSubscription(tabId: number | undefined, tables: string[]) {
+  let subs = tabSubscriptions.get(tabId);
+  if (!subs) {
+    subs = new Set();
+    tabSubscriptions.set(tabId, subs);
+  }
+  for (const t of tables) subs.add(t);
+}
+
+function removeSubscription(tabId: number | undefined, tables: string[]) {
+  const subs = tabSubscriptions.get(tabId);
+  if (!subs) return;
+  for (const t of tables) subs.delete(t);
+  if (subs.size === 0) tabSubscriptions.delete(tabId);
+}
+
+/** Clean up subscriptions when a tab is closed. */
+function setupTabCleanup() {
+  browser.tabs.onRemoved?.addListener((tabId) => {
+    tabSubscriptions.delete(tabId);
+  });
+}
 
 // ── Broadcast to all listeners ───────────────────────────────────
 
@@ -25,50 +54,75 @@ export function broadcast(message: BackgroundMessage) {
   });
 }
 
-// ── SSE update callback ──────────────────────────────────────────
+/**
+ * Send a CDC batch only to tabs that subscribed to the given table.
+ */
+function sendCDCBatch(table: string, records: CDCRecord[]) {
+  const message: BackgroundMessage = {
+    type: 'CDC_BATCH',
+    table,
+    records,
+  };
+
+  // Check popup subscription (tabId = undefined)
+  if (tabSubscriptions.get(undefined)?.has(table)) {
+    browser.runtime.sendMessage(message).catch(() => {});
+  }
+
+  // Send to subscribed tabs only
+  for (const [tabId, subs] of tabSubscriptions) {
+    if (tabId != null && subs.has(table)) {
+      browser.tabs.sendMessage(tabId, message).catch(() => {});
+    }
+  }
+}
+
+// ── SSE callback wiring ──────────────────────────────────────────
 
 export function setupBroadcasting() {
-  setOnUpdate((type, data) => {
-    if (type === 'stream') {
-      // Broadcast pre-processed state instead of raw CDC payloads
-      const state = getState();
-      broadcast({
-        type: 'STATE_UPDATE',
-        trades: state.trades,
-        games: state.games,
-        rssItems: state.rssItems,
-      });
-    } else if (type === 'status') {
-      broadcast({
-        type: 'CONNECTION_STATUS',
-        status: data as ConnectionStatus,
-      });
-    }
+  setOnStatusChange((status) => {
+    broadcast({ type: 'CONNECTION_STATUS', status });
+  });
+
+  setOnCDCRecords((table, records) => {
+    sendCDCBatch(table, records);
   });
 }
 
 // ── Message listeners ────────────────────────────────────────────
 
 export function setupMessageListeners() {
+  setupTabCleanup();
+
   browser.runtime.onMessage.addListener(
-    (message: unknown, _sender, sendResponse) => {
+    (message: unknown, sender, sendResponse) => {
       const msg = message as ClientMessage;
+      const tabId = sender.tab?.id ?? undefined;
 
       switch (msg.type) {
         case 'GET_STATE': {
-          const state = getState();
           isAuthenticated().then((authed) => {
             const snapshot: StateSnapshotMessage = {
               type: 'STATE_SNAPSHOT',
-              trades: state.trades,
-              games: state.games,
-              rssItems: state.rssItems,
-              connectionStatus: state.connectionStatus,
+              dashboard: getLastDashboard(),
+              connectionStatus: getConnectionStatus(),
               authenticated: authed,
             };
             sendResponse(snapshot);
           });
           return true; // Keep channel open for async response
+        }
+
+        case 'SUBSCRIBE_CDC': {
+          addSubscription(tabId, msg.tables);
+          sendResponse({ ok: true });
+          return false;
+        }
+
+        case 'UNSUBSCRIBE_CDC': {
+          removeSubscription(tabId, msg.tables);
+          sendResponse({ ok: true });
+          return false;
         }
 
         case 'LOGIN': {
@@ -101,3 +155,6 @@ export function setupMessageListeners() {
     },
   );
 }
+
+// Lazy imports to avoid circular dependency with sse.ts
+import { startSSE, stopSSE } from './sse';

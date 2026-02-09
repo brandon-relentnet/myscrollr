@@ -1,13 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import type {
-  Trade,
-  Game,
-  RssItem,
   ConnectionStatus,
   FeedPosition,
   FeedMode,
   FeedBehavior,
-  FeedCategory,
+  DashboardResponse,
 } from '~/utils/types';
 import type { BackgroundMessage, ClientMessage, StateSnapshotMessage } from '~/utils/messaging';
 import {
@@ -28,9 +25,7 @@ interface AppProps {
 
 export default function App({ ctx }: AppProps) {
   // ── Data state ───────────────────────────────────────────────
-  const [trades, setTrades] = useState<Trade[]>([]);
-  const [games, setGames] = useState<Game[]>([]);
-  const [rssItems, setRssItems] = useState<RssItem[]>([]);
+  const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [enabled, setEnabled] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
@@ -41,7 +36,7 @@ export default function App({ ctx }: AppProps) {
   const [mode, setMode] = useState<FeedMode>('comfort');
   const [collapsed, setCollapsed] = useState(false);
   const [behavior, setBehavior] = useState<FeedBehavior>('overlay');
-  const [activeTabs, setActiveTabs] = useState<FeedCategory[]>(['finance', 'sports']);
+  const [activeTabs, setActiveTabs] = useState<string[]>(['finance', 'sports']);
 
   // ── Load initial state from background + storage ─────────────
   useEffect(() => {
@@ -54,9 +49,7 @@ export default function App({ ctx }: AppProps) {
         if (!ctx.isValid) return;
         const snapshot = response as StateSnapshotMessage | null;
         if (snapshot?.type === 'STATE_SNAPSHOT') {
-          setTrades(snapshot.trades);
-          setGames(snapshot.games);
-          setRssItems(snapshot.rssItems || []);
+          setDashboard(snapshot.dashboard);
           setStatus(snapshot.connectionStatus);
           setAuthenticated(snapshot.authenticated);
         }
@@ -72,7 +65,7 @@ export default function App({ ctx }: AppProps) {
     feedModeStorage.getValue().then(setMode).catch(() => {});
     feedCollapsedStorage.getValue().then(setCollapsed).catch(() => {});
     feedBehaviorStorage.getValue().then(setBehavior).catch(() => {});
-    activeFeedTabsStorage.getValue().then(setActiveTabs).catch(() => {});
+    activeFeedTabsStorage.getValue().then((v) => setActiveTabs(v as string[])).catch(() => {});
   }, [ctx]);
 
   // ── Listen for broadcasts from background ────────────────────
@@ -80,21 +73,10 @@ export default function App({ ctx }: AppProps) {
     const msg = message as BackgroundMessage;
 
     switch (msg.type) {
-      case 'STATE_UPDATE':
-        // Background already processed CDC — just replace state
-        setTrades(msg.trades);
-        setGames(msg.games);
-        setRssItems(msg.rssItems || []);
+      case 'INITIAL_DATA':
+        // Dashboard data after login or dashboard refresh
+        setDashboard(msg.payload);
         break;
-
-      case 'INITIAL_DATA': {
-        // Dashboard data after login
-        const { finance, sports, rss } = msg.payload.data || {};
-        if (finance) setTrades(finance as Trade[]);
-        if (sports) setGames(sports as Game[]);
-        if (rss) setRssItems(rss as RssItem[]);
-        break;
-      }
 
       case 'CONNECTION_STATUS':
         setStatus(msg.status);
@@ -103,6 +85,9 @@ export default function App({ ctx }: AppProps) {
       case 'AUTH_STATUS':
         setAuthenticated(msg.authenticated);
         break;
+
+      // CDC_BATCH messages are handled by individual FeedTab components
+      // via the useScrollrCDC hook — App doesn't process them.
 
       default:
         break;
@@ -134,7 +119,7 @@ export default function App({ ctx }: AppProps) {
       feedModeStorage.watch((v) => setMode(v)),
       feedCollapsedStorage.watch((v) => setCollapsed(v)),
       feedBehaviorStorage.watch((v) => setBehavior(v)),
-      activeFeedTabsStorage.watch((v) => setActiveTabs(v)),
+      activeFeedTabsStorage.watch((v) => setActiveTabs(v as string[])),
     ];
 
     const cleanup = () => unwatchers.forEach((unwatch) => unwatch());
@@ -176,9 +161,7 @@ export default function App({ ctx }: AppProps) {
 
   return (
     <FeedBar
-      trades={trades}
-      games={games}
-      rssItems={rssItems}
+      dashboard={dashboard}
       connectionStatus={status}
       position={position}
       height={height}

@@ -1,26 +1,28 @@
 import { clsx } from 'clsx';
-import type { FeedCategory } from '~/utils/types';
+import { getIntegration, sortTabOrder } from '~/integrations/registry';
 
 interface FeedTabsProps {
-  activeTab: FeedCategory;
-  onTabChange: (tab: FeedCategory) => void;
-  availableTabs: FeedCategory[];
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+  /** Integration IDs that should be shown as tabs. */
+  availableTabs: string[];
 }
 
-const TABS: { id: FeedCategory; label: string }[] = [
-  { id: 'finance', label: 'Finance' },
-  { id: 'sports', label: 'Sports' },
-  { id: 'rss', label: 'RSS' },
-];
-
 export default function FeedTabs({ activeTab, onTabChange, availableTabs }: FeedTabsProps) {
-  const visibleTabs = TABS.filter((tab) => availableTabs.includes(tab.id));
+  // Sort into canonical order and resolve labels from the registry
+  const sorted = sortTabOrder(availableTabs);
+  const tabs = sorted
+    .map((id) => {
+      const manifest = getIntegration(id);
+      return manifest ? { id: manifest.id, label: manifest.tabLabel } : null;
+    })
+    .filter(Boolean) as { id: string; label: string }[];
 
-  if (visibleTabs.length === 0) return null;
+  if (tabs.length === 0) return null;
 
   return (
     <div className="flex items-center gap-0.5">
-      {visibleTabs.map((tab) => (
+      {tabs.map((tab) => (
         <button
           key={tab.id}
           onClick={() => onTabChange(tab.id)}

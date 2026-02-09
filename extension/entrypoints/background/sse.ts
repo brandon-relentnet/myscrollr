@@ -1,166 +1,100 @@
-import { SSE_URL, SSE_RECONNECT_BASE, SSE_RECONNECT_MAX, MAX_ITEMS } from '~/utils/constants';
-import type { Trade, Game, RssItem, ConnectionStatus, SSEPayload, CDCRecord } from '~/utils/types';
+import { SSE_URL, SSE_RECONNECT_BASE, SSE_RECONNECT_MAX } from '~/utils/constants';
+import type { ConnectionStatus, SSEPayload, CDCRecord, DashboardResponse } from '~/utils/types';
 import { handlePreferenceUpdate, handleStreamUpdate, handleStreamDelete } from './preferences';
 import { getValidToken, isAuthenticated } from './auth';
 
-// ── In-memory state ──────────────────────────────────────────────
+// ── Connection state ──────────────────────────────────────────────
 
-let trades: Trade[] = [];
-let games: Game[] = [];
-let rssItems: RssItem[] = [];
 let connectionStatus: ConnectionStatus = 'disconnected';
-
 let eventSource: EventSource | null = null;
 let reconnectDelay = SSE_RECONNECT_BASE;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-// ── Callback for broadcasting updates ────────────────────────────
+// ── Dashboard snapshot ────────────────────────────────────────────
+// Stored so we can hand it to new content scripts via GET_STATE.
 
-type OnUpdate = (
-  type: 'stream' | 'status',
-  data: SSEPayload | ConnectionStatus,
-) => void;
+let lastDashboard: DashboardResponse | null = null;
 
-let onUpdate: OnUpdate | null = null;
+export function getLastDashboard(): DashboardResponse | null {
+  return lastDashboard;
+}
 
-export function setOnUpdate(cb: OnUpdate) {
-  onUpdate = cb;
+export function setLastDashboard(data: DashboardResponse) {
+  lastDashboard = data;
+}
+
+// ── Callbacks ─────────────────────────────────────────────────────
+
+type OnStatusChange = (status: ConnectionStatus) => void;
+type OnCDCRecords = (table: string, records: CDCRecord[]) => void;
+
+let onStatusChange: OnStatusChange | null = null;
+let onCDCRecords: OnCDCRecords | null = null;
+
+export function setOnStatusChange(cb: OnStatusChange) {
+  onStatusChange = cb;
+}
+
+export function setOnCDCRecords(cb: OnCDCRecords) {
+  onCDCRecords = cb;
 }
 
 // ── State accessors ──────────────────────────────────────────────
 
-export function getState() {
-  return { trades, games, rssItems, connectionStatus };
+export function getConnectionStatus(): ConnectionStatus {
+  return connectionStatus;
 }
 
-export function mergeDashboardData(newTrades: Trade[], newGames: Game[], newRssItems: RssItem[] = []) {
-  // Dashboard response is the authoritative snapshot for this user —
-  // replace in-memory arrays rather than upserting into stale data.
-  // SSE CDC events arriving after this will upsert on top correctly.
-  trades = [...newTrades];
-  games = [...newGames];
-  rssItems = [...newRssItems];
-}
+// ── Framework CDC tables (handled by the background, not forwarded) ──
 
-// ── Upsert helpers ───────────────────────────────────────────────
+const FRAMEWORK_TABLES = new Set(['user_preferences', 'user_streams']);
 
-function upsertTrade(record: Record<string, unknown>) {
-  if (typeof record.symbol !== 'string') {
-    console.warn('[Scrollr] Skipping trade record with missing symbol:', record);
-    return;
-  }
-  const trade = record as unknown as Trade;
-  const idx = trades.findIndex((t) => t.symbol === trade.symbol);
-  if (idx >= 0) {
-    trades[idx] = trade;
-  } else {
-    trades.push(trade);
-    if (trades.length > MAX_ITEMS) trades.shift();
-  }
-}
+// ── Process SSE payload ──────────────────────────────────────────
 
-function upsertGame(record: Record<string, unknown>) {
-  if (record.id == null) {
-    console.warn('[Scrollr] Skipping game record with missing id:', record);
-    return;
-  }
-  const game = record as unknown as Game;
-  const idx = games.findIndex((g) => String(g.id) === String(game.id));
-  if (idx >= 0) {
-    games[idx] = game;
-  } else {
-    games.push(game);
-    if (games.length > MAX_ITEMS) games.shift();
-  }
-}
+function processPayload(payload: SSEPayload) {
+  if (!payload.data || !Array.isArray(payload.data)) return;
 
-function removeGame(record: Record<string, unknown>) {
-  if (record.id == null) return;
-  const game = record as unknown as Game;
-  games = games.filter((g) => String(g.id) !== String(game.id));
-}
+  // Group CDC records by table for efficient batching
+  const byTable = new Map<string, CDCRecord[]>();
 
-function removeTrade(record: Record<string, unknown>) {
-  if (typeof record.symbol !== 'string') return;
-  const trade = record as unknown as Trade;
-  trades = trades.filter((t) => t.symbol !== trade.symbol);
-}
+  for (const cdc of payload.data) {
+    const table = cdc.metadata.table_name;
 
-function upsertRssItem(record: Record<string, unknown>) {
-  if (typeof record.feed_url !== 'string' || typeof record.guid !== 'string') {
-    console.warn('[Scrollr] Skipping RSS record with missing feed_url/guid:', record);
-    return;
-  }
-  const item = record as unknown as RssItem;
-  const idx = rssItems.findIndex(
-    (r) => r.feed_url === item.feed_url && r.guid === item.guid,
-  );
-  if (idx >= 0) {
-    rssItems[idx] = item;
-  } else {
-    rssItems.push(item);
-    if (rssItems.length > MAX_ITEMS) rssItems.shift();
-  }
-  // Keep sorted by published_at descending
-  rssItems.sort((a, b) => {
-    const ta = a.published_at ? new Date(a.published_at).getTime() : 0;
-    const tb = b.published_at ? new Date(b.published_at).getTime() : 0;
-    return tb - ta;
-  });
-}
-
-function removeRssItem(record: Record<string, unknown>) {
-  if (typeof record.feed_url !== 'string' || typeof record.guid !== 'string') return;
-  const item = record as unknown as RssItem;
-  rssItems = rssItems.filter(
-    (r) => !(r.feed_url === item.feed_url && r.guid === item.guid),
-  );
-}
-
-// ── Process a single CDC record ──────────────────────────────────
-// Server already filters records to only those relevant to this user,
-// so no client-side logto_sub/guid checks are needed.
-
-function processCDCRecord(cdc: CDCRecord) {
-  const table = cdc.metadata.table_name;
-
-  if (table === 'trades') {
-    if (cdc.action === 'delete') {
-      removeTrade(cdc.record);
-    } else {
-      upsertTrade(cdc.record);
+    // Framework tables are handled internally, not forwarded
+    if (table === 'user_preferences') {
+      if (cdc.action === 'insert' || cdc.action === 'update') {
+        handlePreferenceUpdate(cdc.record);
+      }
+      continue;
     }
-  } else if (table === 'games') {
-    if (cdc.action === 'delete') {
-      removeGame(cdc.record);
-    } else {
-      upsertGame(cdc.record);
+
+    if (table === 'user_streams') {
+      if (cdc.action === 'insert' || cdc.action === 'update') {
+        handleStreamUpdate(cdc.record);
+      } else if (cdc.action === 'delete') {
+        handleStreamDelete(cdc.record);
+      }
+      continue;
     }
-  } else if (table === 'rss_items') {
-    if (cdc.action === 'delete') {
-      removeRssItem(cdc.record);
-    } else {
-      upsertRssItem(cdc.record);
+
+    // Integration CDC records — batch by table for forwarding
+    if (!byTable.has(table)) {
+      byTable.set(table, []);
     }
-  } else if (table === 'user_preferences') {
-    if (cdc.action === 'insert' || cdc.action === 'update') {
-      handlePreferenceUpdate(cdc.record);
-    }
-  } else if (table === 'user_streams') {
-    if (cdc.action === 'insert' || cdc.action === 'update') {
-      handleStreamUpdate(cdc.record);
-    } else if (cdc.action === 'delete') {
-      handleStreamDelete(cdc.record);
-    }
+    byTable.get(table)!.push(cdc);
   }
-  // Unknown tables (yahoo_* etc.) silently ignored for now
+
+  // Forward each table's batch to the messaging layer
+  for (const [table, records] of byTable) {
+    onCDCRecords?.(table, records);
+  }
 }
 
 // ── SSE lifecycle ────────────────────────────────────────────────
 
 function setStatus(status: ConnectionStatus) {
   connectionStatus = status;
-  onUpdate?.('status', status);
+  onStatusChange?.(status);
 }
 
 /**
@@ -195,13 +129,7 @@ export async function startSSE() {
     eventSource.onmessage = (event) => {
       try {
         const payload: SSEPayload = JSON.parse(event.data);
-
-        if (payload.data && Array.isArray(payload.data)) {
-          for (const record of payload.data) {
-            processCDCRecord(record);
-          }
-          onUpdate?.('stream', payload);
-        }
+        processPayload(payload);
       } catch (err) {
         console.warn('[Scrollr] Malformed SSE message:', err);
       }

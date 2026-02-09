@@ -3,7 +3,6 @@ import type {
   FeedPosition,
   FeedMode,
   FeedBehavior,
-  FeedCategory,
 } from './types';
 
 // ── Feed bar position & layout ───────────────────────────────────
@@ -56,7 +55,7 @@ export const disabledSites = storage.defineItem<string[]>(
 
 // ── Active feed categories ───────────────────────────────────────
 
-export const activeFeedTabs = storage.defineItem<FeedCategory[]>(
+export const activeFeedTabs = storage.defineItem<string[]>(
   'local:activeFeedTabs',
   { fallback: ['finance', 'sports'], version: 1 },
 );

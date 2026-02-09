@@ -1,4 +1,5 @@
-import type { UserPreferences, UserStream, StreamType, FeedCategory } from '~/utils/types';
+import type { UserPreferences, UserStream } from '~/utils/types';
+import { TAB_ORDER } from '~/integrations/registry';
 import {
   feedMode,
   feedPosition,
@@ -22,20 +23,21 @@ export function setOnStreamChanged(cb: () => void) {
 // time, so we maintain the full picture here and recompute activeFeedTabs
 // from the complete map on every change.
 
-const streamVisibility = new Map<StreamType, boolean>();
+const streamVisibility = new Map<string, boolean>();
 
 /**
  * Derives activeFeedTabs from the current stream visibility map and
  * writes it to WXT storage. Content scripts react via storage watchers.
  */
 async function syncActiveTabs(): Promise<void> {
-  const visible: FeedCategory[] = [];
+  const visible: string[] = [];
   for (const [type, isVisible] of streamVisibility) {
     if (isVisible) visible.push(type);
   }
-  // Preserve a stable order: finance, sports, fantasy, rss
-  const order: FeedCategory[] = ['finance', 'sports', 'fantasy', 'rss'];
-  const sorted = order.filter((t) => visible.includes(t));
+  // Preserve a stable order from the registry, unknown IDs appended alphabetically
+  const known = TAB_ORDER.filter((t) => visible.includes(t));
+  const unknown = visible.filter((t) => !TAB_ORDER.includes(t)).sort();
+  const sorted = [...known, ...unknown];
   await activeFeedTabs.setValue(sorted);
 }
 
@@ -57,7 +59,7 @@ export async function initStreamsVisibility(streams: UserStream[]): Promise<void
  */
 export async function handleStreamUpdate(record: Record<string, unknown>): Promise<void> {
   // Server already filters records to the authenticated user — no client-side guard needed.
-  const streamType = record.stream_type as StreamType | undefined;
+  const streamType = record.stream_type as string | undefined;
   if (!streamType) return;
 
   streamVisibility.set(streamType, Boolean(record.visible));
@@ -74,7 +76,7 @@ export async function handleStreamUpdate(record: Record<string, unknown>): Promi
  */
 export async function handleStreamDelete(record: Record<string, unknown>): Promise<void> {
   // Server already filters records to the authenticated user — no client-side guard needed.
-  const streamType = record.stream_type as StreamType | undefined;
+  const streamType = record.stream_type as string | undefined;
   if (!streamType) return;
 
   streamVisibility.delete(streamType);

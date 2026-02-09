@@ -1,9 +1,7 @@
 import type {
-  Trade,
-  Game,
-  RssItem,
   DashboardResponse,
   ConnectionStatus,
+  CDCRecord,
 } from './types';
 
 // ── Background → Content Scripts / Popup ─────────────────────────
@@ -23,18 +21,24 @@ export interface AuthStatusMessage {
   authenticated: boolean;
 }
 
-export interface StateUpdateMessage {
-  type: 'STATE_UPDATE';
-  trades: Trade[];
-  games: Game[];
-  rssItems: RssItem[];
+/**
+ * A batch of CDC records for a specific table, forwarded from the
+ * background's SSE stream to content scripts that subscribed to it.
+ */
+export interface CDCBatchMessage {
+  type: 'CDC_BATCH';
+  table: string;
+  records: CDCRecord[];
 }
 
+/**
+ * Full state snapshot sent in response to GET_STATE.
+ * Includes connection status, auth state, and the raw dashboard
+ * payload so each FeedTab can extract its own initial data.
+ */
 export interface StateSnapshotMessage {
   type: 'STATE_SNAPSHOT';
-  trades: Trade[];
-  games: Game[];
-  rssItems: RssItem[];
+  dashboard: DashboardResponse | null;
   connectionStatus: ConnectionStatus;
   authenticated: boolean;
 }
@@ -43,7 +47,7 @@ export type BackgroundMessage =
   | ConnectionStatusMessage
   | InitialDataMessage
   | AuthStatusMessage
-  | StateUpdateMessage
+  | CDCBatchMessage
   | StateSnapshotMessage;
 
 // ── Content Script / Popup → Background ──────────────────────────
@@ -60,7 +64,23 @@ export interface LogoutMessage {
   type: 'LOGOUT';
 }
 
+/**
+ * Content script tells the background which CDC tables it wants
+ * to receive records for. Sent when a FeedTab mounts/unmounts.
+ */
+export interface SubscribeCDCMessage {
+  type: 'SUBSCRIBE_CDC';
+  tables: string[];
+}
+
+export interface UnsubscribeCDCMessage {
+  type: 'UNSUBSCRIBE_CDC';
+  tables: string[];
+}
+
 export type ClientMessage =
   | GetStateMessage
   | LoginMessage
-  | LogoutMessage;
+  | LogoutMessage
+  | SubscribeCDCMessage
+  | UnsubscribeCDCMessage;

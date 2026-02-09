@@ -2,7 +2,7 @@ import type { BackgroundMessage } from '~/utils/messaging';
 import type { DashboardResponse } from '~/utils/types';
 import { API_URL } from '~/utils/constants';
 import { getValidToken } from './auth';
-import { mergeDashboardData } from './sse';
+import { setLastDashboard } from './sse';
 import { applyServerPreferences, initStreamsVisibility } from './preferences';
 
 // ── Broadcast callback (set by index.ts to avoid circular imports) ──
@@ -35,14 +35,18 @@ async function fetchDashboardData(): Promise<DashboardResponse> {
 }
 
 /**
- * Fetches the full dashboard state and merges it into the background's
- * in-memory data. Used on login, startup, and when stream config changes
- * (so that existing items for newly-subscribed feeds are loaded immediately).
+ * Fetches the full dashboard state and stores it as the latest snapshot.
+ * Used on login, startup, and when stream config changes (so that
+ * existing items for newly-subscribed feeds are loaded immediately).
  */
 export async function refreshDashboard(): Promise<void> {
   try {
     const data: DashboardResponse = await fetchDashboardData();
-    mergeDashboardData(data.data?.finance || [], data.data?.sports || [], data.data?.rss || []);
+
+    // Store as latest snapshot so GET_STATE can return it
+    setLastDashboard(data);
+
+    // Broadcast to all content scripts / popup
     broadcastFn?.({ type: 'INITIAL_DATA', payload: data });
 
     if (data.preferences) {

@@ -1,32 +1,27 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { clsx } from 'clsx';
 import type {
-  Trade,
-  Game,
-  RssItem as RssItemType,
   ConnectionStatus,
   FeedPosition,
   FeedMode,
   FeedBehavior,
-  FeedCategory,
+  DashboardResponse,
 } from '~/utils/types';
+import { getIntegration } from '~/integrations/registry';
 import FeedTabs from './FeedTabs';
-import TradeItem from './TradeItem';
-import GameItem from './GameItem';
-import RssItem from './RssItem';
 import ConnectionIndicator from './ConnectionIndicator';
 
 interface FeedBarProps {
-  trades: Trade[];
-  games: Game[];
-  rssItems: RssItemType[];
+  /** Raw dashboard response — each FeedTab extracts its initial data from here. */
+  dashboard: DashboardResponse | null;
   connectionStatus: ConnectionStatus;
   position: FeedPosition;
   height: number;
   mode: FeedMode;
   collapsed: boolean;
   behavior: FeedBehavior;
-  activeTabs: FeedCategory[];
+  /** Integration IDs that are visible (derived from user_streams). */
+  activeTabs: string[];
   authenticated: boolean;
   onLogin: () => void;
   onToggleCollapse: () => void;
@@ -38,10 +33,19 @@ const COLLAPSED_HEIGHT = 32;
 const MIN_HEIGHT = 100;
 const MAX_HEIGHT = 600;
 
+/**
+ * Map from integration ID → dashboard data key → initial items.
+ * This is how we bridge the old dashboard response format to the
+ * new per-integration FeedTab props.
+ */
+const DASHBOARD_KEY_MAP: Record<string, string> = {
+  finance: 'finance',
+  sports: 'sports',
+  rss: 'rss',
+};
+
 export default function FeedBar({
-  trades,
-  games,
-  rssItems,
+  dashboard,
   connectionStatus,
   position,
   height,
@@ -55,16 +59,29 @@ export default function FeedBar({
   onHeightChange,
   onHeightCommit,
 }: FeedBarProps) {
-  const [activeTab, setActiveTab] = useState<FeedCategory>(activeTabs[0] ?? 'finance');
+  const [activeTab, setActiveTab] = useState<string>(activeTabs[0] ?? 'finance');
   const [isDragging, setIsDragging] = useState(false);
   const barRef = useRef<HTMLDivElement>(null);
 
-  // Sync activeTab when activeTabs changes (e.g., user disables current tab in options)
+  // Sync activeTab when activeTabs changes (e.g., user disables current tab)
   useEffect(() => {
     if (activeTabs.length > 0 && !activeTabs.includes(activeTab)) {
       setActiveTab(activeTabs[0]);
     }
   }, [activeTabs, activeTab]);
+
+  // Build streamConfig for the active integration, injecting __initialItems
+  const streamConfig = useMemo(() => {
+    const dashboardKey = DASHBOARD_KEY_MAP[activeTab];
+    const initialItems = dashboardKey
+      ? (dashboard?.data?.[dashboardKey] as unknown[] | undefined) ?? []
+      : [];
+    return { __initialItems: initialItems };
+  }, [activeTab, dashboard]);
+
+  // Look up the active integration's FeedTab component
+  const integration = getIntegration(activeTab);
+  const FeedTabComponent = integration?.FeedTab ?? null;
 
   // ── Drag resize ────────────────────────────────────────────────
   const handleDragStart = useCallback(
@@ -184,55 +201,14 @@ export default function FeedBar({
         </div>
       </div>
 
-      {/* Content */}
+      {/* Content — render the active integration's FeedTab */}
       {!collapsed && (
         <div className="overflow-y-auto overflow-x-hidden" style={{ height: `${height - COLLAPSED_HEIGHT}px` }}>
-          {activeTab === 'finance' && (
-            <div className={clsx(
-              'grid gap-px bg-zinc-800',
-              mode === 'compact'
-                ? 'grid-cols-1'
-                : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
-            )}>
-              {trades.length === 0 && (
-                <div className="col-span-full text-center py-8 text-zinc-500 text-sm">
-                  Waiting for trade data...
-                </div>
-              )}
-              {trades.map((trade) => (
-                <TradeItem key={trade.symbol} trade={trade} mode={mode} />
-              ))}
-            </div>
-          )}
-
-          {activeTab === 'sports' && (
-            <div className={clsx(
-              'grid gap-px bg-zinc-800',
-              mode === 'compact'
-                ? 'grid-cols-1'
-                : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
-            )}>
-              {games.length === 0 && (
-                <div className="col-span-full text-center py-8 text-zinc-500 text-sm">
-                  Waiting for game data...
-                </div>
-              )}
-              {games.map((game) => (
-                <GameItem key={String(game.id)} game={game} mode={mode} />
-              ))}
-            </div>
-          )}
-
-          {activeTab === 'rss' && (
-            <div className="grid gap-px bg-zinc-800 grid-cols-1">
-              {rssItems.length === 0 && (
-                <div className="col-span-full text-center py-8 text-zinc-500 text-sm">
-                  Waiting for RSS articles...
-                </div>
-              )}
-              {rssItems.map((item) => (
-                <RssItem key={`${item.feed_url}:${item.guid}`} item={item} mode={mode} />
-              ))}
+          {FeedTabComponent ? (
+            <FeedTabComponent mode={mode} streamConfig={streamConfig} />
+          ) : (
+            <div className="text-center py-8 text-zinc-500 text-sm">
+              No integration selected
             </div>
           )}
         </div>

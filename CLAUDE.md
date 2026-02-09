@@ -9,7 +9,7 @@ MyScrollr is a multi-component platform aggregating financial market data (via F
 | Component | Technology | Files | Purpose |
 |-----------|------------|-------|---------|
 | **Frontend** | React 19, Vite 7, TanStack Router, Tailwind v4 | 26 TS/TSX | User interface at myscrollr.com |
-| **Extension** | WXT v0.20, React 19, Tailwind v4 | 19 TS/TSX | Chrome/Firefox browser extension with scrollbar feed overlay |
+| **Extension** | WXT v0.20, React 19, Tailwind v4 | 27 TS/TSX | Chrome/Firefox browser extension with scrollbar feed overlay |
 | **API** | Go 1.21, Fiber v2, pgx, Redis | 24 Go files (~4k LOC) | Public API server (port 8080), modular monolith with plugin-style integration system |
 | **Ingestion** | Rust (edition 2024), Axum, SQLx, tokio | 31 .rs files | 4 independent data collection services + 1 internal library |
 | **Database** | PostgreSQL | 13 tables | Data persistence (programmatic schema, no migrations) |
@@ -218,23 +218,49 @@ React 19 + Vite 7 + TanStack Router + Tailwind CSS v4 + Logto React SDK + Motion
 
 WXT v0.20 + React 19 + Tailwind v4. Builds for Chrome MV3 and Firefox MV2. Built locally (not deployed via Coolify).
 
+**Integration Framework**: The extension uses a plugin-style integration framework. Each data source (finance, sports, rss) is a self-contained integration in `integrations/official/`. The background script is a CDC pass-through router — it no longer holds centralized data arrays. Each integration's `FeedTab` component manages its own data via the `useScrollrCDC` hook. The content script's `FeedBar` is a generic shell that renders whichever integration's component is active from the registry.
+
+**Data flow**: SSE CDC records → background `onCDCRecords(table, records)` → `sendCDCBatch()` routes to subscribed content script tabs → `useScrollrCDC` hook receives `CDC_BATCH` messages → upserts/removes items in local state → FeedTab component re-renders.
+
 **Entrypoints**:
 
 | Entrypoint | Key Files | Purpose |
 |-----------|-----------|---------|
-| `background/` | `index.ts`, `sse.ts`, `messaging.ts`, `auth.ts`, `preferences.ts` | Authenticated SSE pipeline, CDC processing, Chrome message passing, auth state, server preference sync, stream visibility management, MV3 alarm-based keepalive |
-| `scrollbar.content/` | `index.tsx`, `App.tsx`, `FeedBar.tsx`, `FeedTabs.tsx`, `TradeItem.tsx`, `GameItem.tsx`, `RssItem.tsx`, `ConnectionIndicator.tsx` | Shadow Root UI injected on all URLs, scrollbar feed overlay with finance/sports/rss tabs |
+| `background/` | `index.ts`, `sse.ts`, `messaging.ts`, `auth.ts`, `preferences.ts`, `dashboard.ts` | Authenticated SSE pipeline, CDC pass-through routing, per-tab CDC subscriptions, Chrome message passing, auth state, server preference sync, stream visibility management, MV3 alarm-based keepalive |
+| `scrollbar.content/` | `index.tsx`, `App.tsx`, `FeedBar.tsx`, `FeedTabs.tsx`, `ConnectionIndicator.tsx` | Shadow Root UI injected on all URLs, generic scrollbar feed shell — renders active integration's FeedTab from registry |
 | `popup/` | `index.html`, `main.tsx`, `App.tsx` | Extension popup UI |
+
+**Integration Framework** (`integrations/`):
+
+| File | Purpose |
+|------|---------|
+| `types.ts` | `FeedTabProps { mode, streamConfig }` and `IntegrationManifest { id, name, tabLabel, tier, FeedTab }` |
+| `registry.ts` | Map of integration ID → manifest. `getIntegration()`, `getAllIntegrations()`, `sortTabOrder()`, `TAB_ORDER` |
+| `hooks/useScrollrCDC.ts` | Generic CDC subscription hook — sends `SUBSCRIBE_CDC` to background, listens for `CDC_BATCH`, upsert/remove with key extractor, optional sort/validate, caps at MAX_ITEMS |
+| `official/finance/FeedTab.tsx` | Uses `useScrollrCDC('trades')`, renders TradeItem grid |
+| `official/finance/TradeItem.tsx` | Individual trade display (price, change, direction arrow) |
+| `official/sports/FeedTab.tsx` | Uses `useScrollrCDC('games')`, renders GameItem grid |
+| `official/sports/GameItem.tsx` | Individual game display (teams, scores, state) |
+| `official/rss/FeedTab.tsx` | Uses `useScrollrCDC('rss_items')`, renders RssItem list sorted by published_at |
+| `official/rss/RssItem.tsx` | RSS article display (comfort/compact modes) |
+
+**Messaging protocol** (background ↔ content script):
+- `SUBSCRIBE_CDC { tables: string[] }` — Content script tab subscribes to CDC tables
+- `UNSUBSCRIBE_CDC { tables: string[] }` — Content script tab unsubscribes
+- `CDC_BATCH { table, records }` — Background routes CDC records to subscribed tabs only
+- `INITIAL_DATA { dashboard }` — Dashboard snapshot on connect (provides initial items before CDC)
+- `STATE_SNAPSHOT { dashboard }` — Full dashboard state on request
+- `CONNECTION_STATUS` / `AUTH_STATUS` — Connection and auth state updates
 
 **Utilities** (`utils/`):
 - `constants.ts` — API URL, SSE URL, Logto config, SSE reconnect settings, MAX_ITEMS
-- `types.ts` — Trade, Game, RssItem, DashboardResponse, CDCRecord, SSEPayload, FeedCategory types
-- `messaging.ts` — Message type definitions for background-to-UI communication
-- `storage.ts` — 13 WXT storage items: feedPosition, feedHeight, feedMode, feedCollapsed, feedBehavior, feedEnabled, enabledSites, disabledSites, activeFeedTabs, userSub, authToken, authTokenExpiry, authRefreshToken
+- `types.ts` — Trade, Game, RssItem, DashboardResponse, CDCRecord, SSEPayload types
+- `messaging.ts` — Message type definitions for background-to-UI communication (CDC routing messages)
+- `storage.ts` — 13 WXT storage items: feedPosition, feedHeight, feedMode, feedCollapsed, feedBehavior, feedEnabled, enabledSites, disabledSites, activeFeedTabs (`string[]`), userSub, authToken, authTokenExpiry, authRefreshToken
 
 **Server preference sync**: The background script processes `user_preferences` CDC records from SSE and writes the 6 preference fields (feed_mode, feed_position, feed_behavior, feed_enabled, enabled_sites, disabled_sites) to WXT storage items. Content scripts watch these storage items reactively, so preference changes from the web dashboard are applied across all open tabs instantly.
 
-**Stream visibility**: The background tracks stream visibility from `user_streams` CDC records. Only streams with `visible === true` appear as tabs in the feed bar. The tab order is stable: `['finance', 'sports', 'fantasy', 'rss']`.
+**Stream visibility**: The background tracks stream visibility from `user_streams` CDC records. Only streams with `visible === true` appear as tabs in the feed bar. The tab order is defined by `TAB_ORDER` in the integration registry: `['finance', 'sports', 'fantasy', 'rss']`.
 
 **Manifest config**: Permissions: `storage`, `identity`, `alarms`. Host permissions: `https://api.myscrollr.relentnet.dev/*`, `https://auth.myscrollr.relentnet.dev/*`. PostCSS rem-to-px for content script CSS isolation.
 
@@ -325,6 +351,7 @@ Tables are created programmatically on service startup via `CREATE TABLE IF NOT 
 - **Preference sync**: Server preferences are pushed to the extension via CDC/SSE; the content script watches WXT storage items reactively for cross-tab updates
 - **Stream-driven UI**: Extension tab visibility is driven by `user_streams` CDC records; dashboard conditionally loads data only for enabled streams
 - **Extension conventions**: WXT directory-based entrypoints, Shadow Root UI for content script isolation, WXT storage API for preferences, authenticated SSE via `?token=` query param
+- **Extension integration framework**: Plugin-style architecture — each data source is a self-contained integration in `extension/integrations/official/` with its own `FeedTab` component and `useScrollrCDC` hook for CDC data management. Background is a CDC pass-through router, not a centralized data store.
 
 ## Configuration
 
@@ -393,7 +420,9 @@ Copy `.env.example` to `.env` (for local dev) or configure in Coolify.
 - `myscrollr.com/src/routes/dashboard.tsx` — Stream-aware dashboard with RSS feed configuration, Quick Start, conditional data loading
 - `extension/entrypoints/background/sse.ts` — Extension SSE client (authenticated, CDC processing for trades/games/rss)
 - `extension/entrypoints/background/preferences.ts` — Server preference sync and stream visibility management
-- `extension/entrypoints/scrollbar.content/RssItem.tsx` — RSS article display component (comfort/compact modes)
+- `extension/integrations/registry.ts` — Integration registry (maps IDs to manifests, tab ordering)
+- `extension/integrations/hooks/useScrollrCDC.ts` — Generic CDC subscription hook for integration FeedTabs
+- `extension/integrations/official/rss/RssItem.tsx` — RSS article display component (comfort/compact modes)
 - `extension/utils/storage.ts` — All 13 WXT storage item definitions
 - `api/integration/integration.go` — Core `Integration` interface + 5 optional capability interfaces, shared types
 - `api/INTEGRATIONS.md` — Developer guide for adding new integrations
