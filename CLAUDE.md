@@ -189,26 +189,42 @@ The API uses a modular monolith architecture with a plugin-style integration sys
 
 React 19 + Vite 7 + TanStack Router + Tailwind CSS v4 + Logto React SDK + Motion (Framer Motion).
 
+**Integration Framework**: The frontend uses a registry-driven integration framework mirroring the extension's architecture. Each data source has a self-contained `DashboardTab` component in `src/integrations/official/`. The dashboard route is a generic shell that looks up the active integration from the registry and renders its `DashboardTab`. Integration-specific state (like Yahoo OAuth) is passed via `extraProps`.
+
 **Routes**:
 | Route File | Path | Purpose |
 |-----------|------|---------|
 | `__root.tsx` | Layout | Header, Footer, CommandBackground, global effects |
 | `index.tsx` | `/` | Landing page (HeroSection, FeaturesGrid, ScrollHighlight, AboutPreview, CallToAction) |
-| `dashboard.tsx` | `/dashboard` | Protected dashboard with stream management (finance/sports/fantasy/rss), real-time SSE data, settings panel |
+| `dashboard.tsx` | `/dashboard` | Protected dashboard — registry-driven stream management, sidebar nav, Quick Start, settings panel |
 | `status.tsx` | `/status` | Public system status dashboard — polls `/health` for live service states (including RSS) |
 | `callback.tsx` | `/callback` | Logto OAuth callback handler |
 | `account.tsx` | `/account` | Account settings (links to /status for system health) |
 | `integrations.tsx` | `/integrations` | Future marketplace system preview |
 | `u.$username.tsx` | `/u/:username` | Public user profile |
 
+**Integration Framework** (`src/integrations/`):
+
+| File | Purpose |
+|------|---------|
+| `types.ts` | `DashboardTabProps { stream, getToken, connected, onToggle, onDelete, onStreamUpdate, extraProps }` and `IntegrationManifest { id, name, tabLabel, description, icon, DashboardTab }` |
+| `registry.ts` | Map of integration ID → manifest. `getIntegration()`, `getAllIntegrations()`, `sortTabOrder()`, `TAB_ORDER` |
+| `shared.tsx` | Shared UI components used across integrations: `StreamHeader`, `ToggleSwitch`, `InfoCard` |
+| `official/finance/DashboardTab.tsx` | Finance stream config — Finnhub info, tracked symbols preview |
+| `official/sports/DashboardTab.tsx` | Sports stream config — ESPN info, league grid |
+| `official/fantasy/DashboardTab.tsx` | Fantasy stream config — Yahoo OAuth, league cards with collapsible standings, active/past filter. Receives Yahoo state via `extraProps` |
+| `official/rss/DashboardTab.tsx` | RSS stream config — feed management, custom feed form, 117-feed catalog browser with category tabs and pagination |
+
 **Key files**:
 - `src/hooks/useRealtime.ts` — EventSource SSE client, processes CDC records for trades/games/rss_items/yahoo/preferences/streams tables
 - `src/api/client.ts` — `authenticatedFetch` helper, streams CRUD API, RSS catalog API, preferences API
 - `src/components/SettingsPanel.tsx` — Slide-out panel for extension preference management (display mode, position, behavior, site filtering) with real-time CDC sync
+- `src/integrations/registry.ts` — Integration registry (maps IDs to manifests, tab ordering)
 - `src/main.tsx` — LogtoProvider wraps RouterProvider for OIDC auth
 
 **Dashboard features**:
-- **Stream management**: Users configure which data types they receive (finance, sports, fantasy, rss) via stream CRUD
+- **Registry-driven UI**: Dashboard looks up active integration from registry and renders its `DashboardTab` — no if/else chain
+- **Stream management**: Users configure which data types they receive via stream CRUD, available types derived from registry
 - **RSS feed configuration**: Browse 117-feed catalog by category, add custom feeds, manage subscriptions
 - **Quick Start**: One-click creation of finance, sports, and RSS streams
 - **Conditional data loading**: Dashboard only fetches data for enabled streams, keeping responses lean
@@ -417,7 +433,8 @@ Copy `.env.example` to `.env` (for local dev) or configure in Coolify.
 - `myscrollr.com/src/hooks/useRealtime.ts` — SSE real-time data hook (core of frontend real-time, handles trades/games/rss/yahoo/preferences/streams CDC records)
 - `myscrollr.com/src/api/client.ts` — API client with streams CRUD, RSS catalog, preferences APIs
 - `myscrollr.com/src/components/SettingsPanel.tsx` — Server-persisted extension preference management with CDC sync
-- `myscrollr.com/src/routes/dashboard.tsx` — Stream-aware dashboard with RSS feed configuration, Quick Start, conditional data loading
+- `myscrollr.com/src/integrations/registry.ts` — Frontend integration registry (maps IDs to manifests, tab ordering)
+- `myscrollr.com/src/routes/dashboard.tsx` — Registry-driven dashboard with stream management, Quick Start, conditional data loading
 - `extension/entrypoints/background/sse.ts` — Extension SSE client (authenticated, CDC processing for trades/games/rss)
 - `extension/entrypoints/background/preferences.ts` — Server preference sync and stream visibility management
 - `extension/integrations/registry.ts` — Integration registry (maps IDs to manifests, tab ordering)
