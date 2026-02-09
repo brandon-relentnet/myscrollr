@@ -1,868 +1,391 @@
-# Third-Party Integrations for Scrollr Extension
+# Scrollr Integration Framework
 
 ## Overview
 
-This document outlines the architecture for allowing third-party developers to create pluggable integrations that render within the Scrollr extension's shadow DOM. The system leverages existing infrastructure (Redis, PostgreSQL, Sequin CDC) and WXT's architecture with a tiered sandboxing approach.
+Scrollr uses a **compile-time, first-party, plugin-style integration system** spanning three layers: the Go API, the browser extension, and the web frontend. Each data source (finance, sports, RSS, fantasy) is a self-contained integration that plugs into shared infrastructure at each layer.
 
-## Key Principles
+This is **not** a runtime marketplace. There are no API keys, no database-driven registry, and no third-party publishing flow. Integrations are Go packages, React components, and registry entries checked into the monorepo and built at compile time.
 
-1. **Strict Data Isolation**: Integrations cannot access data from other integrations or core Scrollr data
-2. **Developer Self-Hosting**: Developers host their own data ingestion APIs; only UI code lives in the Scrollr repo
-3. **Tiered Trust**: Different sandboxing levels based on integration verification status
-4. **CDC-Driven**: All data flows through PostgreSQL → Sequin → Redis → Extension (same as core features)
+### How It Works
+
+Each integration plugs in at three levels:
+
+| Layer | Purpose | Key Pattern |
+|-------|---------|------------|
+| **Go API** (`api/integrations/`) | CDC routing, dashboard data, health checks, HTTP routes | Interface + capability type assertions |
+| **Extension** (`extension/integrations/`) | Feed bar tab with real-time CDC data | Registry + `useScrollrCDC` hook |
+| **Frontend** (`myscrollr.com/src/integrations/`) | Dashboard configuration panel | Registry + shared UI components |
+
+All three layers use the same integration ID (e.g. `"finance"`, `"sports"`, `"rss"`, `"fantasy"`) as the universal key that ties everything together. This ID matches the `stream_type` in `user_streams` and the dashboard response data keys.
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Third-Party Integration System                │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌─────────────┐   ┌──────────────┐   ┌─────────────────────┐   │
-│  │ Developer   │   │ Integration  │   │ Scrollr API         │   │
-│  │ submits PR  │──>│ Registry     │──>│ /integrations/*     │   │
-│  │ + manifest  │   │ (PostgreSQL) │   │                     │   │
-│  └─────────────┘   └──────────────┘   └─────────────────────┘   │
-│                                                                  │
-│  ┌─────────────┐   ┌──────────────┐   ┌─────────────────────┐   │
-│  │ Developer   │   │ Redis        │   │ Extension           │   │
-│  │ API pushes  │──>│ Pub/Sub      │──>│ Dynamic Tabs        │   │
-│  │ data        │   │ (per-user)   │   │ (Shadow DOM)        │   │
-│  └─────────────┘   └──────────────┘   └─────────────────────┘   │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+                      ┌─────────────────────────────────────────────┐
+                      │          Rust Ingestion Services            │
+                      │  finance:3001  sports:3002  yahoo:3003      │
+                      │  rss:3004                                   │
+                      └────────────────────┬────────────────────────┘
+                                           │ write
+                                           v
+                      ┌─────────────────────────────────────────────┐
+                      │              PostgreSQL                     │
+                      │  trades, games, rss_items, yahoo_*          │
+                      └────────────────────┬────────────────────────┘
+                                           │ CDC
+                                           v
+                      ┌─────────────────────────────────────────────┐
+                      │          Sequin (external CDC)              │
+                      │  Detects row changes, sends webhooks        │
+                      └────────────────────┬────────────────────────┘
+                                           │ POST /webhooks/sequin
+                                           v
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          Go API (port 8080)                                  │
+│                                                                              │
+│  core/handlers_webhook.go                                                    │
+│    → For each CDC record, iterate IntegrationRegistry                        │
+│    → if intg.(CDCHandler) && HandlesTable(table) → RouteCDCRecord()          │
+│                                                                              │
+│  Per integration:                                                            │
+│    finance/  → broadcast to stream:subscribers:finance                        │
+│    sports/   → broadcast to stream:subscribers:sports                         │
+│    rss/      → per-feed-URL routing via rss:subscribers:{url}                │
+│    fantasy/  → join resolution (guid/league_key/team_key → logto_sub)        │
+│                                                                              │
+│  → Redis Pub/Sub → per-user channel events:user:{sub}                        │
+│  → SSE endpoint GET /events?token=                                           │
+└──────────────────────────────────────────────────────────────────────────────┘
+                         │                              │
+                         v                              v
+          ┌──────────────────────────┐   ┌──────────────────────────┐
+          │    Browser Extension     │   │    Web Frontend          │
+          │                          │   │    myscrollr.com         │
+          │  Background:             │   │                          │
+          │    CDC pass-through      │   │  useRealtime hook:       │
+          │    → CDC_BATCH to tabs   │   │    processes CDC records │
+          │                          │   │                          │
+          │  FeedTab components:     │   │  DashboardTab components:│
+          │    useScrollrCDC hook    │   │    stream config panels  │
+          │    manages own state     │   │    shared UI components  │
+          └──────────────────────────┘   └──────────────────────────┘
 ```
 
-## Hosting Model
+## Current Integrations
 
-| Component | Location | Responsibility |
-|-----------|----------|----------------|
-| **UI Components** | Scrollr monorepo (`integrations/`) | Submitted via PR, built with extension |
-| **Backend API** | Developer-hosted | Fetches data, authenticates users, pushes to Scrollr API |
-| **Data Storage** | Scrollr PostgreSQL | Stores integration data per-user for CDC |
-| **Real-time Delivery** | Scrollr infrastructure | CDC → Redis Pub/Sub → SSE → Extension |
+| Integration | Go Capabilities | Extension FeedTab | Frontend DashboardTab | Rust Service | CDC Tables | Routing Strategy |
+|-------------|----------------|-------------------|----------------------|-------------|------------|-----------------|
+| **finance** | CDCHandler, DashboardProvider, HealthChecker | `useScrollrCDC('trades')` | Info cards, tracked symbols | finance_service:3001 | `trades` | Broadcast to `stream:subscribers:finance` |
+| **sports** | CDCHandler, DashboardProvider, HealthChecker | `useScrollrCDC('games')` | Info cards, league grid | sports_service:3002 | `games` | Broadcast to `stream:subscribers:sports` |
+| **rss** | CDCHandler, DashboardProvider, StreamLifecycle, HealthChecker | `useScrollrCDC('rss_items')` | Feed management, catalog browser | rss_service:3004 | `rss_items`, `tracked_feeds` | Per-feed-URL via `rss:subscribers:{url}` |
+| **fantasy** | CDCHandler, DashboardProvider, HealthChecker | Not in extension (dashboard-only) | Yahoo OAuth, league cards, standings | yahoo_service:3003 | `yahoo_leagues`, `yahoo_standings`, `yahoo_matchups`, `yahoo_rosters` | Join resolution (guid/league_key/team_key -> logto_sub) |
 
-## Tiered Security Model
+## Adding a New Integration
 
-Based on integration verification status, different sandboxing methods are applied:
+This section walks through adding a complete integration across all three layers. Each layer has a `_template/` scaffold you can copy as a starting point.
 
-| Integration Type | Sandbox Method | Trust Level | Review Process |
-|-----------------|----------------|-------------|----------------|
-| **Official** | Shadow DOM + Standard CSP | Full trust | Built by Scrollr team |
-| **Verified** | Shadow DOM + Strict CSP | High trust | Manual code review required |
-| **Unverified** | WebWorker + Proxied APIs | Limited trust | Self-published, automated checks only |
+### Step 1: Go API Layer
 
-### Shadow DOM + CSP (Official & Verified)
+The Go API uses a core `Integration` interface (3 methods) plus 5 optional capability interfaces checked via type assertions. You only implement what you need.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ Scrollr Extension (Content Script)                           │
-│ ┌─────────────────────────────────────────────────────────┐  │
-│ │ Shadow DOM (scrollr-feed)                               │  │
-│ │ ┌───────────────────────────────────────────────────┐  │  │
-│ │ │ Integration Tab Component                         │  │  │
-│ │ │ - Direct React rendering                          │  │  │
-│ │ │ - No fetch/XHR (data via props only)              │  │  │
-│ │ │ - eval/Function disabled via CSP                  │  │  │
-│ │ │ - CSS scoped to shadow root                       │  │  │
-│ │ └───────────────────────────────────────────────────┘  │  │
-│ └─────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
+**Quick start:**
+
+```bash
+cp -r api/integrations/_template api/integrations/myservice
 ```
 
-**Pros:**
-- Integration can use React naturally (direct DOM access to shadow root)
-- Good developer experience - familiar patterns
-- CSS is naturally isolated via shadow DOM
-- Data passed as props - no network access needed in component
+1. Change `package _template` to `package myservice`
+2. Implement the core interface: `Name()`, `DisplayName()`, `RegisterRoutes()`
+3. Implement optional capabilities as needed (uncomment in template, delete what you don't use)
+4. Register in `api/main.go`:
 
-**Cons:**
-- Requires thorough code review for verified integrations
-- Must ensure no malicious code in PR
+```go
+import "github.com/brandon-relentnet/myscrollr/api/integrations/myservice"
 
-### WebWorker + Messaging Proxy (Unverified)
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ Scrollr Extension                                            │
-│ ┌─────────────────────────────────────────────────────────┐  │
-│ │ Main Thread                                             │  │
-│ │ - Renders generic integration wrapper                   │  │
-│ │ - Sends data to Worker                                  │  │
-│ │ - Receives render instructions (virtual DOM)            │  │
-│ └─────────────────────────────────────────────────────────┘  │
-│                            │ postMessage                     │
-│                            v                                 │
-│ ┌─────────────────────────────────────────────────────────┐  │
-│ │ WebWorker (Sandboxed)                                   │  │
-│ │ - Integration logic runs here                           │  │
-│ │ - No DOM access, no window scope                        │  │
-│ │ - Returns virtual DOM structure                         │  │
-│ │ - Crashes don't affect extension                        │  │
-│ └─────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
+srv.RegisterIntegration(myservice.New(core.DBPool, core.SendToUser, core.RouteToStreamSubscribers))
 ```
 
-**Pros:**
-- Complete isolation from extension and page
-- Safe to run untrusted code
-- Crashes contained to worker
+**Capability decision guide:**
 
-**Cons:**
-- More complex development model
-- Limited to simple UI patterns
-- Performance overhead for complex UIs
+| Need | Implement | Example |
+|------|-----------|---------|
+| Push CDC events to users | `CDCHandler` | All current integrations |
+| Contribute data to `GET /dashboard` | `DashboardProvider` | All current integrations |
+| React to stream create/update/delete | `StreamLifecycle` | RSS (syncs feeds to tracked_feeds) |
+| Monitor a backing service's health | `HealthChecker` | All current integrations |
+| Advertise config JSON Schema | `Configurable` | None currently |
 
-## Data Flow
+**CDC routing patterns:**
 
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  Developer      │     │   Scrollr API   │     │   Sequin CDC    │
-│  Backend API    │────>│   POST /int/    │────>│   detects       │
-│  pushes data    │     │   :slug/data    │     │   changes       │
-└─────────────────┘     └────────┬────────┘     └────────┬────────┘
-                                 │                       │
-                                 v                       v
-                        ┌─────────────────┐     ┌─────────────────┐
-                        │   PostgreSQL    │     │   Webhook to    │
-                        │   integration_  │────>│   Go API        │
-                        │   data table    │     │                 │
-                        └─────────────────┘     └────────┬────────┘
-                                                         │
-                                                         v
-                                                ┌─────────────────┐
-                                                │   Redis Pub/Sub │
-                                                │   per-user      │
-                                                │   channels      │
-                                                └────────┬────────┘
-                                                         │
-                                                         v
-                                                ┌─────────────────┐
-                                                │   Extension SSE │
-                                                │   processes CDC │
-                                                └────────┬────────┘
-                                                         │
-                                         ┌───────────────┴───────────────┐
-                                         v                               v
-                                ┌─────────────────┐             ┌─────────────────┐
-                                │   Background    │             │   Content UI    │
-                                │   updates       │────────────>│   renders       │
-                                │   state         │  broadcast  │   integration   │
-                                └─────────────────┘             └─────────────────┘
+| Pattern | Use Case | Implementation |
+|---------|----------|---------------|
+| Broadcast | All subscribers of a stream type | `RouteToStreamSubscribers(ctx, "stream:subscribers:<type>", payload)` |
+| Record owner | Route to user identified in record | `SendToUser(record["logto_sub"], payload)` |
+| Per-resource | Users subscribed to a specific resource | `RouteToStreamSubscribers(ctx, "rss:subscribers:<url>", payload)` |
+| Join resolution | Resolve via DB lookup | Query `yahoo_users`/`yahoo_leagues` to find `logto_sub` |
+
+> **Full Go API guide:** See [`api/INTEGRATIONS.md`](../api/INTEGRATIONS.md) for the complete interface reference, lifecycle diagrams, available `core/` helpers, and step-by-step instructions.
+
+### Step 2: Extension Layer
+
+The extension uses a registry-driven framework. Each integration registers a `FeedTab` React component that manages its own data via the `useScrollrCDC` hook.
+
+**Quick start:**
+
+```bash
+cp extension/integrations/_template/FeedTab.tsx extension/integrations/official/myservice/FeedTab.tsx
 ```
 
-## Database Schema
+1. Implement the `FeedTab` component using `useScrollrCDC` for CDC data:
 
-### integration_definitions
+```tsx
+import { useScrollrCDC } from '~/integrations/hooks/useScrollrCDC';
+import type { FeedTabProps } from '~/integrations/types';
 
-Metadata about registered integrations. Created programmatically on API startup.
+export default function MyServiceFeedTab({ mode, streamConfig }: FeedTabProps) {
+  const initialItems = (streamConfig.__initialItems as MyItem[]) ?? [];
 
-```sql
-CREATE TABLE IF NOT EXISTS integration_definitions (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    slug            VARCHAR(100) NOT NULL UNIQUE,   -- URL-friendly identifier (e.g., "crypto-prices")
-    developer_id    VARCHAR(255) NOT NULL,          -- Developer's logto_sub
-    name            VARCHAR(255) NOT NULL,          -- Display name (e.g., "Crypto Prices")
-    description     TEXT,                           -- Short description for marketplace
-    version         VARCHAR(50) NOT NULL,           -- Semantic version (e.g., "1.0.0")
-    manifest        JSONB NOT NULL,                 -- Full integration manifest
-    icon_url        TEXT,                           -- Integration icon URL
-    status          VARCHAR(50) DEFAULT 'unverified',  -- official, verified, unverified, suspended
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    approved_at     TIMESTAMPTZ,
-    approved_by     VARCHAR(255)                    -- Admin logto_sub who approved
-);
+  const { items } = useScrollrCDC<MyItem>({
+    table: 'my_table',           // CDC table name
+    initialItems,
+    keyOf: (item) => item.id,    // Unique key extractor
+    sort: (a, b) => ...,         // Optional sort
+    validate: (record) => ...,   // Optional validation
+  });
 
-CREATE INDEX IF NOT EXISTS idx_integration_definitions_status ON integration_definitions(status);
-CREATE INDEX IF NOT EXISTS idx_integration_definitions_developer ON integration_definitions(developer_id);
-```
-
-### user_integrations
-
-Which integrations each user has enabled. Follows same pattern as `user_streams`.
-
-```sql
-CREATE TABLE IF NOT EXISTS user_integrations (
-    id              SERIAL PRIMARY KEY,
-    logto_sub       VARCHAR(255) NOT NULL,
-    integration_id  UUID NOT NULL REFERENCES integration_definitions(id) ON DELETE CASCADE,
-    config          JSONB DEFAULT '{}',             -- User-specific configuration
-    enabled         BOOLEAN DEFAULT TRUE,
-    visible         BOOLEAN DEFAULT TRUE,           -- Show in tab bar
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(logto_sub, integration_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_user_integrations_user ON user_integrations(logto_sub);
-```
-
-### integration_data
-
-CDC table for integration-specific data. Routed to users via `logto_sub`.
-
-```sql
-CREATE TABLE IF NOT EXISTS integration_data (
-    id              SERIAL PRIMARY KEY,
-    integration_id  UUID NOT NULL REFERENCES integration_definitions(id) ON DELETE CASCADE,
-    logto_sub       VARCHAR(255) NOT NULL,          -- Target user for CDC routing
-    data_type       VARCHAR(255) NOT NULL,          -- Category (e.g., "price", "alert")
-    data_key        VARCHAR(255) NOT NULL,          -- Unique key for upserts (e.g., "BTC-USD")
-    payload         JSONB NOT NULL,                 -- The actual data
-    expires_at      TIMESTAMPTZ,                    -- Optional TTL for auto-cleanup
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(integration_id, logto_sub, data_type, data_key)
-);
-
-CREATE INDEX IF NOT EXISTS idx_integration_data_routing ON integration_data(integration_id, logto_sub);
-CREATE INDEX IF NOT EXISTS idx_integration_data_expires ON integration_data(expires_at) WHERE expires_at IS NOT NULL;
-```
-
-### integration_api_keys
-
-API keys for developer data ingestion. Keys are hashed with bcrypt.
-
-```sql
-CREATE TABLE IF NOT EXISTS integration_api_keys (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    integration_id  UUID NOT NULL REFERENCES integration_definitions(id) ON DELETE CASCADE,
-    key_hash        VARCHAR(255) NOT NULL,          -- bcrypt hash of API key
-    key_prefix      VARCHAR(12) NOT NULL UNIQUE,    -- First 8 chars for identification (e.g., "scrollr_")
-    name            VARCHAR(255),                   -- Key name/description
-    scopes          JSONB DEFAULT '["data:write"]', -- Allowed operations
-    last_used_at    TIMESTAMPTZ,
-    expires_at      TIMESTAMPTZ,
-    created_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_integration_api_keys_integration ON integration_api_keys(integration_id);
-CREATE INDEX IF NOT EXISTS idx_integration_api_keys_prefix ON integration_api_keys(key_prefix);
-```
-
-## Integration Manifest Specification
-
-Developers provide a manifest file (`scrollr.manifest.json`) in their integration directory:
-
-```typescript
-interface IntegrationManifest {
-  // Required metadata
-  id: string;                      // Must match directory name (e.g., "crypto-prices")
-  name: string;                    // Display name (e.g., "Crypto Prices")
-  version: string;                 // Semantic version (e.g., "1.0.0")
-  
-  author: {
-    name: string;
-    email?: string;
-    url?: string;
-    github: string;                // GitHub username (required for PR verification)
-  };
-  
-  description: {
-    short: string;                 // Max 120 chars, shown in marketplace
-    long?: string;                 // Full description (markdown supported)
-  };
-  
-  // Data types this integration handles
-  dataTypes: {
-    [key: string]: {
-      description: string;
-      schema?: object;             // JSON Schema for validation (optional)
-      ttl?: number;                // Auto-expire after N seconds (optional)
-    };
-  };
-  
-  // UI configuration
-  ui: {
-    tab: {
-      label: string;               // Tab label (max 12 chars)
-      icon?: string;               // Inline SVG or path to .svg file
-      order?: number;              // Tab ordering (default: 100, lower = left)
-    };
-    
-    component: string;             // Exported component name (e.g., "CryptoPricesTab")
-    
-    // Display mode configurations
-    modes: {
-      comfort: {
-        columns?: 1 | 2 | 3 | 4;   // Grid columns (default: 1)
-        itemHeight?: number;       // Approximate item height in px
-      };
-      compact: {
-        columns?: 1 | 2 | 3 | 4;
-        itemHeight?: number;
-      };
-    };
-  };
-  
-  // Optional: URL patterns where integration is contextually relevant
-  contextualSites?: string[];
-  
-  // Privacy declaration (enforced, not configurable)
-  privacy: {
-    dataAccess: 'own_only';        // Always 'own_only' - no cross-integration data
-    networkAccess: false;          // Components cannot make network requests
-  };
-}
-```
-
-### Example Manifest
-
-```json
-{
-  "id": "crypto-prices",
-  "name": "Crypto Prices",
-  "version": "1.0.0",
-  "author": {
-    "name": "Alice Developer",
-    "email": "alice@example.com",
-    "github": "alicedev"
-  },
-  "description": {
-    "short": "Real-time cryptocurrency prices with customizable watchlists",
-    "long": "Track your favorite cryptocurrencies with real-time price updates. Features include customizable watchlists, price alerts, and 24h change indicators."
-  },
-  "dataTypes": {
-    "price": {
-      "description": "Current price data for a cryptocurrency pair",
-      "schema": {
-        "type": "object",
-        "properties": {
-          "symbol": { "type": "string" },
-          "price": { "type": "number" },
-          "change_24h": { "type": "number" },
-          "volume_24h": { "type": "number" }
-        },
-        "required": ["symbol", "price"]
-      }
-    },
-    "alert": {
-      "description": "Triggered price alerts",
-      "ttl": 86400
-    }
-  },
-  "ui": {
-    "tab": {
-      "label": "Crypto",
-      "icon": "<svg viewBox='0 0 24 24' fill='currentColor'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.94 1.64h1.71c-.05-1.34-.87-2.57-2.49-2.97V5H10.9v1.69c-1.51.32-2.72 1.3-2.72 2.81 0 1.79 1.49 2.69 3.66 3.21 1.95.46 2.34 1.15 2.34 1.87 0 .53-.39 1.39-2.1 1.39-1.6 0-2.23-.72-2.32-1.64H8.04c.1 1.7 1.36 2.66 2.86 2.97V19h2.34v-1.67c1.52-.29 2.72-1.16 2.73-2.77-.01-2.2-1.9-2.96-3.66-3.42z'/></svg>",
-      "order": 50
-    },
-    "component": "CryptoPricesTab",
-    "modes": {
-      "comfort": { "columns": 4, "itemHeight": 72 },
-      "compact": { "columns": 1, "itemHeight": 28 }
-    }
-  },
-  "contextualSites": [
-    "*://*.coinmarketcap.com/*",
-    "*://*.coingecko.com/*",
-    "*://*.binance.com/*"
-  ],
-  "privacy": {
-    "dataAccess": "own_only",
-    "networkAccess": false
-  }
-}
-```
-
-## Integration Component Contract
-
-Integration components receive data via props and must not make network requests:
-
-```typescript
-// Type definition for integration components
-interface IntegrationComponentProps<T = unknown> {
-  // Data organized by data_type -> data_key -> payload
-  data: Record<string, Record<string, T>>;
-  
-  // Current display mode
-  mode: 'comfort' | 'compact';
-  
-  // Mode-specific config from manifest
-  modeConfig: {
-    columns?: number;
-    itemHeight?: number;
-  };
-  
-  // User's integration config (if any)
-  userConfig: Record<string, unknown>;
-}
-
-// Example integration component
-export function CryptoPricesTab({ data, mode, modeConfig }: IntegrationComponentProps<CryptoPrice>) {
-  const prices = data.price ?? {};
-  const alerts = data.alert ?? {};
-  
   return (
-    <div className={clsx(
-      'grid gap-px bg-zinc-800',
-      modeConfig.columns === 4 && 'grid-cols-4',
-      modeConfig.columns === 1 && 'grid-cols-1',
-    )}>
-      {Object.entries(prices).map(([key, price]) => (
-        <CryptoItem key={key} price={price} mode={mode} />
-      ))}
+    <div className={clsx('grid gap-px', mode === 'comfort' ? 'grid-cols-4' : 'grid-cols-1')}>
+      {items.map((item) => <MyItem key={item.id} item={item} mode={mode} />)}
     </div>
   );
 }
 ```
 
-## API Endpoints
+2. Register in `extension/integrations/registry.ts`:
 
-### Public Endpoints
+```ts
+import MyServiceFeedTab from './official/myservice/FeedTab';
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/integrations` | List approved integrations (marketplace) |
-| `GET` | `/integrations/:slug` | Get integration details by slug |
+const myservice: IntegrationManifest = {
+  id: 'myservice',
+  name: 'My Service',
+  tabLabel: 'MyServ',
+  tier: 'official',
+  FeedTab: MyServiceFeedTab,
+};
 
-### Protected Endpoints (User Auth via LogtoAuth)
+// Add to the integrations Map:
+[myservice.id, myservice],
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/users/me/integrations` | List user's enabled integrations |
-| `POST` | `/users/me/integrations` | Enable an integration |
-| `PUT` | `/users/me/integrations/:id` | Update user's integration config |
-| `DELETE` | `/users/me/integrations/:id` | Disable an integration |
+// Add to TAB_ORDER:
+export const TAB_ORDER: readonly string[] = ['finance', 'sports', 'fantasy', 'rss', 'myservice'];
+```
 
-### Developer Endpoints (Logto Auth + Developer Role)
+3. Add the dashboard key mapping in `extension/entrypoints/scrollbar.content/FeedBar.tsx`:
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/developers/me/integrations` | List developer's own integrations |
-| `PUT` | `/developers/me/integrations/:slug` | Update integration metadata |
-| `POST` | `/developers/me/integrations/:slug/keys` | Create API key |
-| `GET` | `/developers/me/integrations/:slug/keys` | List API keys (masked) |
-| `DELETE` | `/developers/me/integrations/:slug/keys/:id` | Revoke API key |
+```ts
+const DASHBOARD_KEY_MAP: Record<string, string> = {
+  finance: 'finance',
+  sports: 'sports',
+  rss: 'rss',
+  myservice: 'myservice',  // Must match the key in DashboardResponse.data
+};
+```
 
-### Data Ingestion Endpoints (API Key Auth)
+**Key contracts:**
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/integrations/:slug/data` | Push data for user(s) |
-| `DELETE` | `/integrations/:slug/data` | Delete data by key(s) |
+| Type | Location | Purpose |
+|------|----------|---------|
+| `FeedTabProps` | `integrations/types.ts` | `{ mode, streamConfig }` — props every FeedTab receives |
+| `IntegrationManifest` | `integrations/types.ts` | `{ id, name, tabLabel, tier, FeedTab }` — registry entry |
+| `useScrollrCDC<T>` | `integrations/hooks/useScrollrCDC.ts` | Subscribe to CDC table, upsert/remove by key, sort, validate, cap at MAX_ITEMS |
 
-#### Data Push Request Format
+**How data flows to FeedTabs:**
 
-Single item:
+1. Background receives CDC records via SSE
+2. Background routes `CDC_BATCH { table, records }` to content script tabs that sent `SUBSCRIBE_CDC`
+3. `useScrollrCDC` hook receives the batch and upserts/removes items in local state
+4. For initial data: `GET /dashboard` response is stored as `lastDashboard`, broadcast as `INITIAL_DATA`, and injected into `streamConfig.__initialItems` via `DASHBOARD_KEY_MAP`
+
+### Step 3: Frontend Layer
+
+The frontend uses a similar registry pattern. Each integration provides a `DashboardTab` component for the stream configuration panel.
+
+**Quick start:**
+
+```bash
+cp myscrollr.com/src/integrations/_template/DashboardTab.tsx myscrollr.com/src/integrations/official/myservice/DashboardTab.tsx
+```
+
+1. Implement the `DashboardTab` component using shared UI components:
+
+```tsx
+import { StreamHeader, InfoCard } from '@/integrations/shared';
+import { Zap } from 'lucide-react';
+import type { DashboardTabProps, IntegrationManifest } from '@/integrations/types';
+
+function MyServiceDashboardTab({ stream, connected, onToggle, onDelete }: DashboardTabProps) {
+  return (
+    <div>
+      <StreamHeader
+        stream={stream}
+        icon={<Zap size={20} className="text-primary" />}
+        title="My Service"
+        subtitle="Description of your integration"
+        connected={connected}
+        onToggle={onToggle}
+        onDelete={onDelete}
+      />
+      <div className="grid grid-cols-3 gap-3">
+        <InfoCard label="Metric" value="42" />
+      </div>
+    </div>
+  );
+}
+
+export const myserviceIntegration: IntegrationManifest = {
+  id: 'myservice',
+  name: 'My Service',
+  tabLabel: 'MyServ',
+  description: 'Brief description',
+  icon: Zap,
+  DashboardTab: MyServiceDashboardTab,
+};
+```
+
+2. Register in `myscrollr.com/src/integrations/registry.ts`:
+
+```ts
+import { myserviceIntegration } from './official/myservice/DashboardTab';
+
+register(myserviceIntegration);
+
+// Update TAB_ORDER:
+export const TAB_ORDER = ['finance', 'sports', 'fantasy', 'rss', 'myservice'] as const;
+```
+
+**Key contracts:**
+
+| Type | Location | Purpose |
+|------|----------|---------|
+| `DashboardTabProps` | `integrations/types.ts` | `{ stream, getToken, onToggle, onDelete, onStreamUpdate, connected, extraProps }` |
+| `IntegrationManifest` | `integrations/types.ts` | `{ id, name, tabLabel, description, icon, DashboardTab }` |
+| `StreamHeader` | `integrations/shared.tsx` | Shared header with toggle switch, delete confirm, connection indicator |
+| `InfoCard` | `integrations/shared.tsx` | Small stat card for displaying metrics |
+
+**The `extraProps` pattern:**
+
+For integrations with state beyond the stream (e.g., Fantasy needs Yahoo OAuth status), the dashboard route passes extra data via `extraProps`:
+
+```tsx
+// In dashboard.tsx:
+extraProps={activeStream === 'fantasy' ? { yahooUser, yahooLeagues, ... } : undefined}
+```
+
+The DashboardTab component type-narrows `extraProps` to access integration-specific data.
+
+### Step 4: Infrastructure
+
+After implementing all three layers:
+
+1. **Database tables**: Create tables in your Rust ingestion service via `CREATE TABLE IF NOT EXISTS` on startup
+2. **Sequin CDC**: Configure Sequin to track your new tables and webhook changes to `POST /webhooks/sequin`
+3. **Environment variables**: If you have a new ingestion service, add `INTERNAL_MYSERVICE_URL` to the Go API's env
+4. **Stream type validation**: Handled automatically. `core/streams.go` builds `ValidStreamTypes` from the integration registry at startup via `BuildValidStreamTypes()` — no hardcoded lists
+5. **CDC processing in useRealtime.ts**: Add your table to the frontend's `useRealtime` hook if the frontend needs to process CDC records directly (for real-time dashboard updates)
+
+## API Discovery
+
+The Go API exposes a `GET /integrations` endpoint that returns all registered integrations with their capabilities. This is useful for frontend discovery and debugging.
+
+**Request:**
+
+```
+GET https://api.myscrollr.relentnet.dev/integrations
+```
+
+**Response:**
+
 ```json
-{
-  "user_id": "logto_sub_value",
-  "data_type": "price",
-  "data_key": "BTC-USD",
-  "payload": {
-    "symbol": "BTC",
-    "price": 45000.50,
-    "change_24h": 2.5
+[
+  {
+    "name": "finance",
+    "display_name": "Finance",
+    "capabilities": ["cdc", "dashboard", "health"]
   },
-  "ttl": 3600
-}
-```
-
-Batch (up to 100 items):
-```json
-{
-  "items": [
-    {
-      "user_id": "user_logto_sub_1",
-      "data_type": "price",
-      "data_key": "BTC-USD",
-      "payload": { "symbol": "BTC", "price": 45000.50 }
-    },
-    {
-      "user_id": "user_logto_sub_2",
-      "data_type": "price",
-      "data_key": "ETH-USD",
-      "payload": { "symbol": "ETH", "price": 2500.00 }
-    }
-  ]
-}
-```
-
-#### Response Format
-
-```json
-{
-  "status": "ok",
-  "processed": 2,
-  "errors": []
-}
-```
-
-With partial failures:
-```json
-{
-  "status": "partial",
-  "processed": 1,
-  "errors": [
-    { "index": 1, "error": "User not subscribed to integration" }
-  ]
-}
-```
-
-## Extension Implementation
-
-### New Types
-
-```typescript
-// extension/utils/types.ts additions
-
-export type IntegrationStatus = 'official' | 'verified' | 'unverified' | 'suspended';
-
-export interface IntegrationManifest {
-  id: string;
-  name: string;
-  version: string;
-  author: { name: string; github: string };
-  description: { short: string };
-  dataTypes: Record<string, { description: string }>;
-  ui: {
-    tab: { label: string; icon?: string; order?: number };
-    component: string;
-    modes: {
-      comfort: { columns?: number; itemHeight?: number };
-      compact: { columns?: number; itemHeight?: number };
-    };
-  };
-}
-
-export interface IntegrationDefinition {
-  id: string;              // UUID
-  slug: string;
-  name: string;
-  version: string;
-  description: string;
-  icon_url?: string;
-  status: IntegrationStatus;
-  manifest: IntegrationManifest;
-}
-
-export interface UserIntegration {
-  id: number;
-  integration_id: string;
-  integration: IntegrationDefinition;
-  config: Record<string, unknown>;
-  enabled: boolean;
-  visible: boolean;
-}
-
-export interface IntegrationDataPayload {
-  integration_id: string;
-  data_type: string;
-  data_key: string;
-  payload: Record<string, unknown>;
-}
-```
-
-### New Storage Items
-
-```typescript
-// extension/utils/storage.ts additions
-
-/** User's enabled integrations (synced from server) */
-export const userIntegrations = storage.defineItem<UserIntegration[]>(
-  'local:userIntegrations',
-  { fallback: [], version: 1 }
-);
-```
-
-### CDC Processing
-
-```typescript
-// extension/entrypoints/background/sse.ts additions
-
-// In-memory integration data state
-let integrationData: Record<string, Record<string, Record<string, unknown>>> = {};
-// Structure: integrationData[integration_id][data_type][data_key] = payload
-
-export function getIntegrationData() {
-  return integrationData;
-}
-
-function processIntegrationDataCDC(record: Record<string, unknown>) {
-  const integrationId = record.integration_id as string;
-  const dataType = record.data_type as string;
-  const dataKey = record.data_key as string;
-  const payload = record.payload as Record<string, unknown>;
-  
-  // Initialize nested structure
-  if (!integrationData[integrationId]) {
-    integrationData[integrationId] = {};
+  {
+    "name": "sports",
+    "display_name": "Sports",
+    "capabilities": ["cdc", "dashboard", "health"]
+  },
+  {
+    "name": "rss",
+    "display_name": "RSS",
+    "capabilities": ["cdc", "dashboard", "stream_lifecycle", "health"]
+  },
+  {
+    "name": "fantasy",
+    "display_name": "Fantasy",
+    "capabilities": ["cdc", "dashboard", "health"]
   }
-  if (!integrationData[integrationId][dataType]) {
-    integrationData[integrationId][dataType] = {};
-  }
-  
-  // Upsert
-  integrationData[integrationId][dataType][dataKey] = payload;
-}
-
-function removeIntegrationDataCDC(record: Record<string, unknown>) {
-  const integrationId = record.integration_id as string;
-  const dataType = record.data_type as string;
-  const dataKey = record.data_key as string;
-  
-  delete integrationData[integrationId]?.[dataType]?.[dataKey];
-}
-
-// Add to processCDCRecord switch statement:
-case 'integration_data':
-  if (cdc.action === 'delete') {
-    removeIntegrationDataCDC(cdc.record);
-  } else {
-    processIntegrationDataCDC(cdc.record);
-  }
-  // Broadcast update
-  onUpdate?.('integration', { 
-    integrationId: cdc.record.integration_id,
-    data: integrationData[cdc.record.integration_id as string] 
-  });
-  break;
-
-case 'user_integrations':
-  if (cdc.action === 'insert' || cdc.action === 'update') {
-    handleUserIntegrationUpdate(cdc.record);
-  } else if (cdc.action === 'delete') {
-    handleUserIntegrationDelete(cdc.record);
-  }
-  break;
+]
 ```
 
-### Webhook Routing
+**Capability values:**
 
-```go
-// api/handlers_webhook.go additions
+| Capability | Interface | Meaning |
+|-----------|-----------|---------|
+| `cdc` | `CDCHandler` | Receives and routes Sequin CDC events |
+| `dashboard` | `DashboardProvider` | Contributes data to `GET /dashboard` |
+| `stream_lifecycle` | `StreamLifecycle` | Reacts to stream create/update/delete |
+| `health` | `HealthChecker` | Has a backing service whose health is monitored |
+| `configurable` | `Configurable` | Advertises a JSON Schema for stream config |
 
-case "integration_data":
-    routeIntegrationData(ctx, rec.Record, payload)
+## Key Files Reference
 
-case "user_integrations":
-    routeToRecordOwner(rec.Record, "logto_sub", payload)
+### Go API
 
-func routeIntegrationData(ctx context.Context, record map[string]interface{}, payload []byte) {
-    logtoSub, ok := record["logto_sub"].(string)
-    if !ok || logtoSub == "" {
-        return
-    }
-    SendToUser(logtoSub, payload)
-}
-```
+| File | Purpose |
+|------|---------|
+| `api/integration/integration.go` | Core `Integration` interface (3 methods) + 5 optional capability interfaces, shared types |
+| `api/core/server.go` | `RegisterIntegration()`, `Setup()`, `GET /integrations`, `BuildValidStreamTypes()` |
+| `api/core/streams.go` | Streams CRUD, dynamic `ValidStreamTypes`, `StreamLifecycle` hook dispatch |
+| `api/core/handlers_webhook.go` | Sequin CDC webhook, iterates integrations for `CDCHandler` |
+| `api/integrations/_template/template.go` | Documented Go scaffold with all interfaces |
+| `api/integrations/finance/finance.go` | Finance: broadcast CDC, dashboard data, health proxy |
+| `api/integrations/sports/sports.go` | Sports: broadcast CDC, dashboard data, health proxy |
+| `api/integrations/rss/rss.go` | RSS: per-URL CDC routing, feed catalog, stream lifecycle |
+| `api/integrations/fantasy/fantasy.go` | Fantasy: join-based CDC routing, Yahoo OAuth flow |
+| `api/main.go` | Integration registration at startup |
+| `api/INTEGRATIONS.md` | Full Go-layer developer guide (interface reference, lifecycle, helpers) |
 
-## Developer Onboarding Flow
+### Browser Extension
 
-### 1. Repository Structure
+| File | Purpose |
+|------|---------|
+| `extension/integrations/types.ts` | `FeedTabProps`, `IntegrationManifest`, `IntegrationTier` |
+| `extension/integrations/registry.ts` | Registry Map, `getIntegration()`, `getAllIntegrations()`, `sortTabOrder()`, `TAB_ORDER` |
+| `extension/integrations/hooks/useScrollrCDC.ts` | Generic CDC subscription hook (subscribe, upsert/remove, sort, validate, cap) |
+| `extension/integrations/_template/FeedTab.tsx` | Documented scaffold for new FeedTab integrations |
+| `extension/integrations/official/finance/FeedTab.tsx` | Finance tab: `useScrollrCDC('trades')`, renders TradeItem grid |
+| `extension/integrations/official/sports/FeedTab.tsx` | Sports tab: `useScrollrCDC('games')`, renders GameItem grid |
+| `extension/integrations/official/rss/FeedTab.tsx` | RSS tab: `useScrollrCDC('rss_items')`, renders RssItem list |
+| `extension/entrypoints/scrollbar.content/FeedBar.tsx` | Generic feed shell, `DASHBOARD_KEY_MAP`, mounts active FeedTab |
+| `extension/entrypoints/scrollbar.content/FeedTabs.tsx` | Registry-driven tab switcher |
+| `extension/entrypoints/background/sse.ts` | SSE connection, CDC pass-through routing |
+| `extension/entrypoints/background/messaging.ts` | Per-tab CDC subscriptions, `CDC_BATCH` routing |
 
-```
-integrations/
-├── INTEGRATIONS.md              # This document
-├── _template/                   # Template for new integrations
-│   ├── scrollr.manifest.json
-│   ├── src/
-│   │   ├── index.ts             # Exports main component
-│   │   └── ExampleTab.tsx
-│   └── README.md
-├── crypto-prices/               # Example integration
-│   ├── scrollr.manifest.json
-│   ├── src/
-│   │   ├── index.ts
-│   │   ├── CryptoPricesTab.tsx
-│   │   └── CryptoItem.tsx
-│   └── README.md
-└── weather/
-    ├── scrollr.manifest.json
-    ├── src/
-    │   ├── index.ts
-    │   └── WeatherTab.tsx
-    └── README.md
-```
+### Web Frontend
 
-### 2. Development Workflow
-
-1. **Fork & Clone**: Developer forks the Scrollr repository
-2. **Create Integration**: Copy `_template/` to `integrations/{slug}/`
-3. **Implement Component**: Build React component following the contract
-4. **Update Manifest**: Fill in `scrollr.manifest.json` with metadata
-5. **Test Locally**: Run extension in dev mode with integration
-6. **Submit PR**: Open pull request to `main` branch
-
-### 3. PR Review Process
-
-```
-┌─────────────────┐
-│   PR Submitted  │
-└────────┬────────┘
-         │
-         v
-┌─────────────────────────────────────┐
-│  Automated Checks (CI)              │
-│  - Manifest schema validation       │
-│  - TypeScript compilation           │
-│  - Component exports check          │
-│  - No network imports               │
-│  - Bundle size limits               │
-└────────┬────────────────────────────┘
-         │
-         ├──── Pass ────┐
-         │              v
-         │     ┌─────────────────┐
-         │     │ Request Status? │
-         │     └────────┬────────┘
-         │              │
-         │    ┌─────────┴─────────┐
-         │    v                   v
-         │  Unverified        Verified
-         │    │                   │
-         │    v                   v
-         │  Auto-merge      Manual Review
-         │    │              - Security
-         │    │              - Code quality
-         │    │              - UX review
-         │    │                   │
-         │    └─────────┬─────────┘
-         │              v
-         │     ┌─────────────────┐
-         │     │ Merge & Deploy  │
-         │     └────────┬────────┘
-         │              │
-         v              v
-┌─────────────────────────────────────┐
-│  Integration Available              │
-│  - Entry added to registry          │
-│  - Developer can generate API keys  │
-└─────────────────────────────────────┘
-```
-
-### 4. API Key Generation
-
-After PR is merged:
-
-1. Developer authenticates via Scrollr
-2. Navigates to Developer Dashboard (or uses CLI)
-3. Generates API key for their integration
-4. Uses key to push data from their backend
-
-## Error Handling
-
-### Data Ingestion Errors
-
-| Error Code | Description |
-|------------|-------------|
-| `400` | Invalid request format |
-| `401` | Invalid or expired API key |
-| `403` | API key doesn't match integration |
-| `404` | Integration not found |
-| `422` | Payload validation failed (schema mismatch) |
-| `429` | Rate limit exceeded (1000 req/min default) |
-
-### Extension Errors
-
-- **Integration Load Failure**: Show error state in tab, log to console
-- **Component Crash**: Catch with error boundary, show fallback UI
-- **Data Parse Error**: Log warning, skip malformed record
-
-## Future Considerations
-
-### Revenue Share (Planned)
-
-- Paid integrations may be supported in the future
-- Revenue share model TBD
-- Will require Stripe integration
-
-### Potential Enhancements
-
-- Integration ratings/reviews
-- Usage analytics for developers
-- CLI tool for scaffolding
-- Hot-reload during development
-
----
-
-## TODO List
-
-### Phase 1: Database & Core API (Priority: High)
-
-- [ ] Create `integration_definitions` table in `api/database.go`
-- [ ] Create `user_integrations` table in `api/database.go`
-- [ ] Create `integration_data` table in `api/database.go`
-- [ ] Create `integration_api_keys` table in `api/database.go`
-- [ ] Add Sequin CDC tracking for `integration_data` table
-- [ ] Add Sequin CDC tracking for `user_integrations` table
-- [ ] Create `api/integrations.go` with CRUD handlers
-- [ ] Implement `GET /integrations` endpoint (marketplace list)
-- [ ] Implement `GET /integrations/:slug` endpoint
-- [ ] Implement `GET /users/me/integrations` endpoint
-- [ ] Implement `POST /users/me/integrations` endpoint
-- [ ] Implement `PUT /users/me/integrations/:id` endpoint
-- [ ] Implement `DELETE /users/me/integrations/:id` endpoint
-- [ ] Create `api/integrations_data.go` for data ingestion
-- [ ] Implement `POST /integrations/:slug/data` endpoint
-- [ ] Implement `DELETE /integrations/:slug/data` endpoint
-- [ ] Create API key authentication middleware
-- [ ] Create `api/integrations_keys.go` for key management
-- [ ] Update `api/handlers_webhook.go` to route `integration_data`
-- [ ] Update `api/handlers_webhook.go` to route `user_integrations`
-- [ ] Add integration data to dashboard response
-
-### Phase 2: Extension Framework (Priority: High)
-
-- [ ] Add integration types to `extension/utils/types.ts`
-- [ ] Add `userIntegrations` storage item to `extension/utils/storage.ts`
-- [ ] Update `extension/utils/messaging.ts` with integration message types
-- [ ] Add integration CDC processing to `extension/entrypoints/background/sse.ts`
-- [ ] Create `extension/entrypoints/background/integrations.ts` for state management
-- [ ] Update `extension/entrypoints/scrollbar.content/App.tsx` to handle integrations
-- [ ] Update `extension/entrypoints/scrollbar.content/FeedTabs.tsx` for dynamic tabs
-- [ ] Update `extension/entrypoints/scrollbar.content/FeedBar.tsx` to render integration tabs
-- [ ] Create `extension/entrypoints/scrollbar.content/IntegrationTab.tsx`
-- [ ] Add integration loading states to UI
-- [ ] Add integration error boundary
-
-### Phase 3: Sandboxing (Priority: Medium)
-
-- [ ] Define CSP policy for verified integrations in `extension/wxt.config.ts`
-- [ ] Create component loader with trust-level checks
-- [ ] Implement WebWorker sandbox for unverified integrations
-- [ ] Create WebWorker message protocol
-- [ ] Create `SandboxedIntegration` wrapper component
-- [ ] Test sandbox isolation (DOM, network, storage)
-- [ ] Document security model for reviewers
-
-### Phase 4: Developer Experience (Priority: Medium)
-
-- [ ] Create `integrations/_template/` directory structure
-- [ ] Create `scrollr.manifest.schema.json` for validation
-- [ ] Create `@scrollr/integration-types` package (or inline types)
-- [ ] Add manifest validation to extension build
-- [ ] Create example integration (`crypto-prices`)
-- [ ] Set up GitHub Actions for integration PR checks
-- [ ] Write integration developer guide (`integrations/DEVELOPER_GUIDE.md`)
-- [ ] Create integration testing utilities
-
-### Phase 5: Dashboard & Management (Priority: Low)
-
-- [ ] Add integrations marketplace page to `myscrollr.com`
-- [ ] Add "My Integrations" section to dashboard
-- [ ] Add integration enable/disable/configure UI
-- [ ] Create developer dashboard for API key management
-- [ ] Add integration usage analytics
-
-### Phase 6: Documentation & Polish (Priority: Low)
-
-- [ ] Write integration submission guidelines
-- [ ] Document all API endpoints with examples
-- [ ] Create integration showcase page
-- [ ] Add integration status badges
-- [ ] Create review checklist for maintainers
-- [ ] Add integration search/filtering to marketplace
-
-### Deferred / Future
-
-- [ ] Revenue share infrastructure
-- [ ] Paid integrations support
-- [ ] Integration ratings/reviews system
-- [ ] Integration update/versioning workflow
-- [ ] Integration deprecation workflow
-- [ ] CLI tool (`@scrollr/cli`) for development
-- [ ] Analytics dashboard for developers
-- [ ] Webhook notifications for developers
+| File | Purpose |
+|------|---------|
+| `myscrollr.com/src/integrations/types.ts` | `DashboardTabProps`, `IntegrationManifest` |
+| `myscrollr.com/src/integrations/registry.ts` | Registry Map, `register()`, `getIntegration()`, `sortTabOrder()`, `TAB_ORDER` |
+| `myscrollr.com/src/integrations/shared.tsx` | `StreamHeader`, `ToggleSwitch`, `InfoCard` shared components |
+| `myscrollr.com/src/integrations/_template/DashboardTab.tsx` | Documented scaffold for new DashboardTab integrations |
+| `myscrollr.com/src/integrations/official/finance/DashboardTab.tsx` | Finance stream config panel |
+| `myscrollr.com/src/integrations/official/sports/DashboardTab.tsx` | Sports stream config panel |
+| `myscrollr.com/src/integrations/official/fantasy/DashboardTab.tsx` | Fantasy stream config (Yahoo OAuth, league cards) |
+| `myscrollr.com/src/integrations/official/rss/DashboardTab.tsx` | RSS stream config (feed management, catalog browser) |
+| `myscrollr.com/src/routes/dashboard.tsx` | Generic dashboard shell (607 lines), renders active DashboardTab from registry |
+| `myscrollr.com/src/hooks/useRealtime.ts` | SSE client, processes CDC records for all tables |
