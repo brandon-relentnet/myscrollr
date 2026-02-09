@@ -245,7 +245,7 @@ function HubCard({
   }
 
   return (
-    <Link to={to} params={params} className="block h-full">
+    <Link to={to} params={params as any} className="block h-full">
       {content}
     </Link>
   )
