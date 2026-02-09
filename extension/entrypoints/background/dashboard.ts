@@ -42,7 +42,7 @@ async function fetchDashboardData(): Promise<DashboardResponse> {
 export async function refreshDashboard(): Promise<void> {
   try {
     const data: DashboardResponse = await fetchDashboardData();
-    mergeDashboardData(data.finance || [], data.sports || [], data.rss || []);
+    mergeDashboardData(data.data?.finance || [], data.data?.sports || [], data.data?.rss || []);
     broadcastFn?.({ type: 'INITIAL_DATA', payload: data });
 
     if (data.preferences) {

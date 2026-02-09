@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"context"
@@ -9,13 +9,13 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// getOrCreatePreferences fetches preferences for a user, creating defaults if none exist.
-func getOrCreatePreferences(logtoSub string) (*UserPreferences, error) {
+// GetOrCreatePreferences fetches preferences for a user, creating defaults if none exist.
+func GetOrCreatePreferences(logtoSub string) (*UserPreferences, error) {
 	var prefs UserPreferences
 	var enabledSites, disabledSites []byte
 	var updatedAt time.Time
 
-	err := dbPool.QueryRow(context.Background(),
+	err := DBPool.QueryRow(context.Background(),
 		`SELECT logto_sub, feed_mode, feed_position, feed_behavior, feed_enabled,
 		        enabled_sites, disabled_sites, updated_at
 		 FROM user_preferences WHERE logto_sub = $1`, logtoSub,
@@ -25,10 +25,9 @@ func getOrCreatePreferences(logtoSub string) (*UserPreferences, error) {
 	)
 
 	if err != nil {
-		// Row doesn't exist — insert defaults and return them
 		var esBytes, dsBytes []byte
 		var insertedAt time.Time
-		err = dbPool.QueryRow(context.Background(),
+		err = DBPool.QueryRow(context.Background(),
 			`INSERT INTO user_preferences (logto_sub)
 			 VALUES ($1)
 			 ON CONFLICT (logto_sub) DO UPDATE SET logto_sub = EXCLUDED.logto_sub
@@ -47,7 +46,6 @@ func getOrCreatePreferences(logtoSub string) (*UserPreferences, error) {
 		updatedAt = insertedAt
 	}
 
-	// Unmarshal JSONB fields
 	if err := json.Unmarshal(enabledSites, &prefs.EnabledSites); err != nil {
 		prefs.EnabledSites = []string{}
 	}
@@ -68,7 +66,7 @@ func getOrCreatePreferences(logtoSub string) (*UserPreferences, error) {
 // @Security LogtoAuth
 // @Router /users/me/preferences [get]
 func HandleGetPreferences(c *fiber.Ctx) error {
-	userID := getUserID(c)
+	userID := GetUserID(c)
 	if userID == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "unauthorized",
@@ -76,7 +74,7 @@ func HandleGetPreferences(c *fiber.Ctx) error {
 		})
 	}
 
-	prefs, err := getOrCreatePreferences(userID)
+	prefs, err := GetOrCreatePreferences(userID)
 	if err != nil {
 		log.Printf("[Preferences] Error fetching preferences for %s: %v", userID, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
@@ -98,7 +96,7 @@ func HandleGetPreferences(c *fiber.Ctx) error {
 // @Security LogtoAuth
 // @Router /users/me/preferences [put]
 func HandleUpdatePreferences(c *fiber.Ctx) error {
-	userID := getUserID(c)
+	userID := GetUserID(c)
 	if userID == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "unauthorized",
@@ -106,7 +104,6 @@ func HandleUpdatePreferences(c *fiber.Ctx) error {
 		})
 	}
 
-	// Parse partial update body
 	var body map[string]interface{}
 	if err := c.BodyParser(&body); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
@@ -115,7 +112,6 @@ func HandleUpdatePreferences(c *fiber.Ctx) error {
 		})
 	}
 
-	// Validate provided fields
 	if v, ok := body["feed_mode"]; ok {
 		s, isStr := v.(string)
 		if !isStr || (s != "comfort" && s != "compact") {
@@ -168,7 +164,6 @@ func HandleUpdatePreferences(c *fiber.Ctx) error {
 		}
 	}
 
-	// Build the UPSERT query dynamically based on provided fields
 	query := `
 		INSERT INTO user_preferences (logto_sub, feed_mode, feed_position, feed_behavior, feed_enabled, enabled_sites, disabled_sites, updated_at)
 		VALUES ($1,
@@ -192,7 +187,6 @@ func HandleUpdatePreferences(c *fiber.Ctx) error {
 		          enabled_sites, disabled_sites, updated_at
 	`
 
-	// Extract nullable parameters
 	var feedMode, feedPosition, feedBehavior *string
 	var feedEnabled *bool
 	var enabledSitesJSON, disabledSitesJSON []byte
@@ -222,7 +216,7 @@ func HandleUpdatePreferences(c *fiber.Ctx) error {
 	var esBytes, dsBytes []byte
 	var updatedAt time.Time
 
-	err := dbPool.QueryRow(context.Background(), query,
+	err := DBPool.QueryRow(context.Background(), query,
 		userID, feedMode, feedPosition, feedBehavior, feedEnabled,
 		enabledSitesJSON, disabledSitesJSON,
 	).Scan(
@@ -237,7 +231,6 @@ func HandleUpdatePreferences(c *fiber.Ctx) error {
 		})
 	}
 
-	// Unmarshal JSONB fields
 	if err := json.Unmarshal(esBytes, &prefs.EnabledSites); err != nil {
 		prefs.EnabledSites = []string{}
 	}

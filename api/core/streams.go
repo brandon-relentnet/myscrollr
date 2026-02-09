@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"context"
@@ -7,20 +7,38 @@ import (
 	"log"
 	"strings"
 
+	"github.com/brandon-relentnet/myscrollr/api/integration"
 	"github.com/gofiber/fiber/v2"
 )
 
-// validStreamTypes defines the allowed stream types.
-var validStreamTypes = map[string]bool{
-	"finance": true,
-	"sports":  true,
-	"fantasy": true,
-	"rss":     true,
+// IntegrationRegistry holds the registered integrations. Set by server.go
+// during startup so stream CRUD and sync can call integration hooks.
+var IntegrationRegistry []integration.Integration
+
+// ValidStreamTypes is built from the registered integrations at startup.
+var ValidStreamTypes map[string]bool
+
+// BuildValidStreamTypes populates ValidStreamTypes from the registry.
+func BuildValidStreamTypes() {
+	ValidStreamTypes = make(map[string]bool, len(IntegrationRegistry))
+	for _, intg := range IntegrationRegistry {
+		ValidStreamTypes[intg.Name()] = true
+	}
 }
 
-// getUserStreams fetches all streams for a user.
-func getUserStreams(logtoSub string) ([]Stream, error) {
-	rows, err := dbPool.Query(context.Background(), `
+// findIntegration returns the integration matching the given stream type, or nil.
+func findIntegration(streamType string) integration.Integration {
+	for _, intg := range IntegrationRegistry {
+		if intg.Name() == streamType {
+			return intg
+		}
+	}
+	return nil
+}
+
+// GetUserStreams fetches all streams for a user.
+func GetUserStreams(logtoSub string) ([]Stream, error) {
+	rows, err := DBPool.Query(context.Background(), `
 		SELECT id, logto_sub, stream_type, enabled, visible, config, created_at, updated_at
 		FROM user_streams
 		WHERE logto_sub = $1
@@ -48,11 +66,10 @@ func getUserStreams(logtoSub string) ([]Stream, error) {
 	return streams, nil
 }
 
-// syncStreamSubscriptions rebuilds Redis subscription sets for a user from their
-// current streams in the database. This ensures Redis is warm even after restart.
-// Called on dashboard load and after stream CRUD operations.
-func syncStreamSubscriptions(logtoSub string) {
-	streams, err := getUserStreams(logtoSub)
+// SyncStreamSubscriptions rebuilds Redis subscription sets for a user from their
+// current streams in the database. Called on dashboard load and after stream CRUD.
+func SyncStreamSubscriptions(logtoSub string) {
+	streams, err := GetUserStreams(logtoSub)
 	if err != nil {
 		log.Printf("[Streams] Failed to sync subscriptions for %s: %v", logtoSub, err)
 		return
@@ -67,32 +84,25 @@ func syncStreamSubscriptions(logtoSub string) {
 			RemoveSubscriber(ctx, setKey, logtoSub)
 		}
 
-		// For RSS streams, also maintain per-feed-URL sets
-		if s.StreamType == "rss" && s.Enabled {
-			feedURLs := extractFeedURLsFromStreamConfig(s.Config)
-			for _, url := range feedURLs {
-			AddSubscriber(ctx, RedisRSSSubscribersPrefix+url, logtoSub)
+		// Call integration-specific sync hook
+		intg := findIntegration(s.StreamType)
+		if intg != nil {
+			if err := intg.OnSyncSubscriptions(ctx, logtoSub, s.Config, s.Enabled); err != nil {
+				log.Printf("[Streams] OnSyncSubscriptions error for %s/%s: %v", s.StreamType, logtoSub, err)
 			}
 		}
 	}
 }
 
-// extractFeedURLsFromStreamConfig extracts feed URLs from a stream's config map.
-func extractFeedURLsFromStreamConfig(config map[string]interface{}) []string {
-	configJSON, err := json.Marshal(config)
-	if err != nil {
-		return nil
-	}
-	return extractFeedURLsFromConfig(configJSON)
-}
-
 // addStreamSubscriptions adds Redis subscription entries for a newly created/enabled stream.
 func addStreamSubscriptions(ctx context.Context, logtoSub, streamType string, config map[string]interface{}) {
 	AddSubscriber(ctx, RedisStreamSubscribersPrefix+streamType, logtoSub)
-	if streamType == "rss" {
-		feedURLs := extractFeedURLsFromStreamConfig(config)
-		for _, url := range feedURLs {
-			AddSubscriber(ctx, RedisRSSSubscribersPrefix+url, logtoSub)
+
+	// Call integration-specific hook
+	intg := findIntegration(streamType)
+	if intg != nil {
+		if err := intg.OnSyncSubscriptions(ctx, logtoSub, config, true); err != nil {
+			log.Printf("[Streams] addStreamSubscriptions hook error for %s: %v", streamType, err)
 		}
 	}
 }
@@ -100,10 +110,12 @@ func addStreamSubscriptions(ctx context.Context, logtoSub, streamType string, co
 // removeStreamSubscriptions removes Redis subscription entries for a deleted/disabled stream.
 func removeStreamSubscriptions(ctx context.Context, logtoSub, streamType string, config map[string]interface{}) {
 	RemoveSubscriber(ctx, RedisStreamSubscribersPrefix+streamType, logtoSub)
-	if streamType == "rss" {
-		feedURLs := extractFeedURLsFromStreamConfig(config)
-		for _, url := range feedURLs {
-			RemoveSubscriber(ctx, RedisRSSSubscribersPrefix+url, logtoSub)
+
+	// Call integration-specific hook
+	intg := findIntegration(streamType)
+	if intg != nil {
+		if err := intg.OnSyncSubscriptions(ctx, logtoSub, config, false); err != nil {
+			log.Printf("[Streams] removeStreamSubscriptions hook error for %s: %v", streamType, err)
 		}
 	}
 }
@@ -118,7 +130,7 @@ func removeStreamSubscriptions(ctx context.Context, logtoSub, streamType string,
 // @Security LogtoAuth
 // @Router /users/me/streams [get]
 func GetStreams(c *fiber.Ctx) error {
-	userID := getUserID(c)
+	userID := GetUserID(c)
 	if userID == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "unauthorized",
@@ -126,7 +138,7 @@ func GetStreams(c *fiber.Ctx) error {
 		})
 	}
 
-	streams, err := getUserStreams(userID)
+	streams, err := GetUserStreams(userID)
 	if err != nil {
 		log.Printf("[Streams] Error fetching streams: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
@@ -152,7 +164,7 @@ func GetStreams(c *fiber.Ctx) error {
 // @Security LogtoAuth
 // @Router /users/me/streams [post]
 func CreateStream(c *fiber.Ctx) error {
-	userID := getUserID(c)
+	userID := GetUserID(c)
 	if userID == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "unauthorized",
@@ -171,10 +183,10 @@ func CreateStream(c *fiber.Ctx) error {
 		})
 	}
 
-	if !validStreamTypes[req.StreamType] {
+	if !ValidStreamTypes[req.StreamType] {
 		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
 			Status: "error",
-			Error:  "Invalid stream type. Must be one of: finance, sports, fantasy, rss",
+			Error:  "Invalid stream type",
 		})
 	}
 
@@ -186,7 +198,7 @@ func CreateStream(c *fiber.Ctx) error {
 
 	var s Stream
 	var configBytes []byte
-	err := dbPool.QueryRow(context.Background(), `
+	err := DBPool.QueryRow(context.Background(), `
 		INSERT INTO user_streams (logto_sub, stream_type, config)
 		VALUES ($1, $2, $3)
 		RETURNING id, logto_sub, stream_type, enabled, visible, config, created_at, updated_at
@@ -218,9 +230,12 @@ func CreateStream(c *fiber.Ctx) error {
 		addStreamSubscriptions(ctx, userID, s.StreamType, s.Config)
 	}
 
-	// Sync RSS feed URLs to tracked_feeds so the ingestion service discovers them
-	if s.StreamType == "rss" {
-		go syncRSSFeedsToTracked(s.Config)
+	// Call integration OnStreamCreated hook
+	intg := findIntegration(s.StreamType)
+	if intg != nil {
+		if err := intg.OnStreamCreated(ctx, userID, s.Config); err != nil {
+			log.Printf("[Streams] OnStreamCreated error for %s: %v", s.StreamType, err)
+		}
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(s)
@@ -240,7 +255,7 @@ func CreateStream(c *fiber.Ctx) error {
 // @Security LogtoAuth
 // @Router /users/me/streams/{type} [put]
 func UpdateStream(c *fiber.Ctx) error {
-	userID := getUserID(c)
+	userID := GetUserID(c)
 	if userID == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "unauthorized",
@@ -249,7 +264,7 @@ func UpdateStream(c *fiber.Ctx) error {
 	}
 
 	streamType := c.Params("type")
-	if !validStreamTypes[streamType] {
+	if !ValidStreamTypes[streamType] {
 		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Invalid stream type",
@@ -268,18 +283,15 @@ func UpdateStream(c *fiber.Ctx) error {
 		})
 	}
 
-	// For RSS config changes, fetch old config before UPDATE so we can diff subscriber sets
-	var oldFeedURLs []string
-	if streamType == "rss" && req.Config != nil {
+	// Fetch old config before UPDATE so integrations can diff
+	var oldConfig map[string]interface{}
+	if req.Config != nil {
 		var oldConfigBytes []byte
-		_ = dbPool.QueryRow(context.Background(), `
+		_ = DBPool.QueryRow(context.Background(), `
 			SELECT config FROM user_streams WHERE logto_sub = $1 AND stream_type = $2
 		`, userID, streamType).Scan(&oldConfigBytes)
 		if len(oldConfigBytes) > 0 {
-			var oldConfig map[string]interface{}
-			if json.Unmarshal(oldConfigBytes, &oldConfig) == nil {
-				oldFeedURLs = extractFeedURLsFromStreamConfig(oldConfig)
-			}
+			json.Unmarshal(oldConfigBytes, &oldConfig)
 		}
 	}
 
@@ -314,7 +326,7 @@ func UpdateStream(c *fiber.Ctx) error {
 
 	var s Stream
 	var configBytes []byte
-	err := dbPool.QueryRow(context.Background(), query, args...).Scan(
+	err := DBPool.QueryRow(context.Background(), query, args...).Scan(
 		&s.ID, &s.LogtoSub, &s.StreamType, &s.Enabled, &s.Visible,
 		&configBytes, &s.CreatedAt, &s.UpdatedAt,
 	)
@@ -345,25 +357,12 @@ func UpdateStream(c *fiber.Ctx) error {
 		removeStreamSubscriptions(ctx, userID, s.StreamType, s.Config)
 	}
 
-	// For RSS config changes: remove stale per-feed subscriber sets and invalidate cache
-	if streamType == "rss" && req.Config != nil {
-		// Diff old vs new feed URLs and remove user from stale subscriber sets
-		newFeedURLs := extractFeedURLsFromStreamConfig(s.Config)
-		newURLSet := make(map[string]bool, len(newFeedURLs))
-		for _, u := range newFeedURLs {
-			newURLSet[u] = true
+	// Call integration OnStreamUpdated hook
+	intg := findIntegration(streamType)
+	if intg != nil {
+		if err := intg.OnStreamUpdated(ctx, userID, oldConfig, s.Config); err != nil {
+			log.Printf("[Streams] OnStreamUpdated error for %s: %v", streamType, err)
 		}
-		for _, u := range oldFeedURLs {
-			if !newURLSet[u] {
-				RemoveSubscriber(ctx, RedisRSSSubscribersPrefix+u, userID)
-			}
-		}
-
-		// Invalidate per-user RSS cache so /dashboard returns fresh data
-		rdb.Del(ctx, CacheKeyRSSPrefix+userID)
-
-		// Sync new feed URLs to tracked_feeds for the RSS service to discover
-		go syncRSSFeedsToTracked(s.Config)
 	}
 
 	return c.JSON(s)
@@ -381,7 +380,7 @@ func UpdateStream(c *fiber.Ctx) error {
 // @Security LogtoAuth
 // @Router /users/me/streams/{type} [delete]
 func DeleteStream(c *fiber.Ctx) error {
-	userID := getUserID(c)
+	userID := GetUserID(c)
 	if userID == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "unauthorized",
@@ -391,13 +390,13 @@ func DeleteStream(c *fiber.Ctx) error {
 
 	streamType := c.Params("type")
 
-	// Fetch the stream config before deleting (needed to clean up RSS subscriber sets)
+	// Fetch the stream config before deleting (needed for integration cleanup hooks)
 	var configBytes []byte
-	_ = dbPool.QueryRow(context.Background(), `
+	_ = DBPool.QueryRow(context.Background(), `
 		SELECT config FROM user_streams WHERE logto_sub = $1 AND stream_type = $2
 	`, userID, streamType).Scan(&configBytes)
 
-	tag, err := dbPool.Exec(context.Background(), `
+	tag, err := DBPool.Exec(context.Background(), `
 		DELETE FROM user_streams WHERE logto_sub = $1 AND stream_type = $2
 	`, userID, streamType)
 	if err != nil {
@@ -426,12 +425,13 @@ func DeleteStream(c *fiber.Ctx) error {
 	}
 	removeStreamSubscriptions(ctx, userID, streamType, config)
 
-	// Invalidate per-user RSS cache so /dashboard doesn't serve stale feed items
-	if streamType == "rss" {
-		rdb.Del(ctx, CacheKeyRSSPrefix+userID)
+	// Call integration OnStreamDeleted hook
+	intg := findIntegration(streamType)
+	if intg != nil {
+		if err := intg.OnStreamDeleted(ctx, userID, config); err != nil {
+			log.Printf("[Streams] OnStreamDeleted error for %s: %v", streamType, err)
+		}
 	}
 
 	return c.JSON(fiber.Map{"status": "ok", "message": "Stream removed"})
 }
-
-

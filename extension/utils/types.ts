@@ -76,9 +76,12 @@ export interface UserStream {
 // ── API Responses ────────────────────────────────────────────────
 
 export interface DashboardResponse {
-  finance: Trade[];
-  sports: Game[];
-  rss: RssItem[];
+  data: {
+    finance?: Trade[];
+    sports?: Game[];
+    rss?: RssItem[];
+    [key: string]: unknown;
+  };
   preferences?: UserPreferences;
   streams?: UserStream[];
 }

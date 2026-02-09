@@ -1,9 +1,10 @@
-package main
+package core
 
 import (
 	"time"
 )
 
+// Game represents a sports game from the ESPN ingestion service.
 type Game struct {
 	ID             int       `json:"id"`
 	League         string    `json:"league"`
@@ -20,6 +21,7 @@ type Game struct {
 	State          string    `json:"state"`
 }
 
+// Trade represents a financial trade from the Finnhub ingestion service.
 type Trade struct {
 	Symbol           string    `json:"symbol"`
 	Price            float64   `json:"price"`
@@ -30,6 +32,7 @@ type Trade struct {
 	LastUpdated      time.Time `json:"last_updated"`
 }
 
+// UserPreferences represents a user's extension display preferences.
 type UserPreferences struct {
 	LogtoSub      string   `json:"-"`
 	FeedMode      string   `json:"feed_mode"`
@@ -41,6 +44,7 @@ type UserPreferences struct {
 	UpdatedAt     string   `json:"updated_at"`
 }
 
+// Stream represents a user's subscription to a data integration.
 type Stream struct {
 	ID         int                    `json:"id"`
 	LogtoSub   string                 `json:"-"`
@@ -52,6 +56,7 @@ type Stream struct {
 	UpdatedAt  time.Time              `json:"updated_at"`
 }
 
+// RssItem represents an RSS feed article.
 type RssItem struct {
 	ID          int        `json:"id"`
 	FeedURL     string     `json:"feed_url"`
@@ -65,6 +70,7 @@ type RssItem struct {
 	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
+// TrackedFeed represents an RSS feed in the catalog.
 type TrackedFeed struct {
 	URL       string `json:"url"`
 	Name      string `json:"name"`
@@ -72,11 +78,24 @@ type TrackedFeed struct {
 	IsDefault bool   `json:"is_default"`
 }
 
+// DashboardResponse is the aggregated response for the /dashboard endpoint.
+// Data is a generic map keyed by integration name (e.g. "finance", "sports").
 type DashboardResponse struct {
-	Finance     []Trade          `json:"finance"`
-	Sports      []Game           `json:"sports"`
-	Rss         []RssItem        `json:"rss"`
-	Yahoo       *FantasyContent  `json:"yahoo,omitempty"`
-	Preferences *UserPreferences `json:"preferences,omitempty"`
-	Streams     []Stream         `json:"streams,omitempty"`
+	Data        map[string]interface{} `json:"data"`
+	Preferences *UserPreferences       `json:"preferences,omitempty"`
+	Streams     []Stream               `json:"streams,omitempty"`
+}
+
+// HealthResponse represents the aggregated health status.
+type HealthResponse struct {
+	Status   string            `json:"status"`
+	Database string            `json:"database"`
+	Redis    string            `json:"redis"`
+	Services map[string]string `json:"services"`
+}
+
+// ErrorResponse represents a standard API error.
+type ErrorResponse struct {
+	Status string `json:"status"`
+	Error  string `json:"error"`
 }

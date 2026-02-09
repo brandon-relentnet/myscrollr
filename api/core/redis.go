@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"context"
@@ -10,8 +10,11 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-var rdb *redis.Client
+// Rdb is the global Redis client. Exported so integration packages can access it
+// for direct operations (e.g. cache invalidation).
+var Rdb *redis.Client
 
+// ConnectRedis initialises the Redis client from the REDIS_URL env var.
 func ConnectRedis() {
 	redisURL := os.Getenv("REDIS_URL")
 	if redisURL == "" {
@@ -23,18 +26,18 @@ func ConnectRedis() {
 		log.Fatalf("Unable to parse REDIS_URL: %v", err)
 	}
 
-	rdb = redis.NewClient(opts)
+	Rdb = redis.NewClient(opts)
 
-	if err := rdb.Ping(context.Background()).Err(); err != nil {
+	if err := Rdb.Ping(context.Background()).Err(); err != nil {
 		log.Fatalf("Unable to connect to Redis: %v", err)
 	}
 
 	log.Println("Successfully connected to Redis")
 }
 
-// GetCache attempts to retrieve and deserialize a value from Redis
+// GetCache attempts to retrieve and deserialize a value from Redis.
 func GetCache(key string, target interface{}) bool {
-	val, err := rdb.Get(context.Background(), key).Result()
+	val, err := Rdb.Get(context.Background(), key).Result()
 	if err != nil {
 		return false
 	}
@@ -43,7 +46,7 @@ func GetCache(key string, target interface{}) bool {
 	return err == nil
 }
 
-// SetCache serializes and stores a value in Redis with an expiration
+// SetCache serializes and stores a value in Redis with an expiration.
 func SetCache(key string, value interface{}, expiration time.Duration) {
 	data, err := json.Marshal(value)
 	if err != nil {
@@ -51,20 +54,20 @@ func SetCache(key string, value interface{}, expiration time.Duration) {
 		return
 	}
 
-	err = rdb.Set(context.Background(), key, data, expiration).Err()
+	err = Rdb.Set(context.Background(), key, data, expiration).Err()
 	if err != nil {
 		log.Printf("[Redis Error] Failed to set cache for %s: %v", key, err)
 	}
 }
 
-// PublishRaw publishes pre-serialised bytes to a Redis channel
+// PublishRaw publishes pre-serialised bytes to a Redis channel.
 func PublishRaw(channel string, data []byte) error {
-	return rdb.Publish(context.Background(), channel, data).Err()
+	return Rdb.Publish(context.Background(), channel, data).Err()
 }
 
-// PSubscribe listens to Redis channels matching a pattern
+// PSubscribe listens to Redis channels matching a pattern.
 func PSubscribe(ctx context.Context, pattern string) *redis.PubSub {
-	return rdb.PSubscribe(ctx, pattern)
+	return Rdb.PSubscribe(ctx, pattern)
 }
 
 // --- Subscription Set Helpers ---
@@ -73,17 +76,17 @@ func PSubscribe(ctx context.Context, pattern string) *redis.PubSub {
 //   stream:subscribers:{type}  (e.g. stream:subscribers:finance)
 //   rss:subscribers:{feed_url} (e.g. rss:subscribers:https://example.com/feed.xml)
 
-// AddSubscriber adds a user to a subscription set
+// AddSubscriber adds a user to a subscription set.
 func AddSubscriber(ctx context.Context, setKey, userSub string) error {
-	return rdb.SAdd(ctx, setKey, userSub).Err()
+	return Rdb.SAdd(ctx, setKey, userSub).Err()
 }
 
-// RemoveSubscriber removes a user from a subscription set
+// RemoveSubscriber removes a user from a subscription set.
 func RemoveSubscriber(ctx context.Context, setKey, userSub string) error {
-	return rdb.SRem(ctx, setKey, userSub).Err()
+	return Rdb.SRem(ctx, setKey, userSub).Err()
 }
 
-// GetSubscribers returns all user subs in a subscription set
+// GetSubscribers returns all user subs in a subscription set.
 func GetSubscribers(ctx context.Context, setKey string) ([]string, error) {
-	return rdb.SMembers(ctx, setKey).Result()
+	return Rdb.SMembers(ctx, setKey).Result()
 }

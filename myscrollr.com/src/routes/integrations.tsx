@@ -1,6 +1,6 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useLogto } from '@logto/react'
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ArrowRight,
   BookOpen,
@@ -22,30 +22,13 @@ import {
 import { motion } from 'motion/react'
 import type { Stream, StreamType } from '@/api/client'
 import { usePageMeta } from '@/lib/usePageMeta'
+import { useGetToken } from '@/hooks/useGetToken'
+import { itemVariants, pageVariants } from '@/lib/animations'
 import { streamsApi } from '@/api/client'
 
 export const Route = createFileRoute('/integrations')({
   component: IntegrationsPage,
 })
-
-// ── Animation Variants ───────────────────────────────────────────
-
-const pageVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
-  },
-}
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 16 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { type: 'spring', stiffness: 400, damping: 28 } as const,
-  },
-}
 
 // ── Integration Definitions ──────────────────────────────────────
 
@@ -156,18 +139,11 @@ function IntegrationsPage() {
       'Browse and connect integrations to extend your Scrollr feed with real-time data from your favorite platforms.',
   })
 
-  const { isAuthenticated, getAccessToken, signIn } = useLogto()
+  const { isAuthenticated, signIn } = useLogto()
   const [streams, setStreams] = useState<Array<Stream>>([])
   const [loading, setLoading] = useState(false)
   const [adding, setAdding] = useState<string | null>(null)
-
-  const apiUrl =
-    import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'
-
-  const getToken = useCallback(async (): Promise<string | null> => {
-    const token = await getAccessToken(apiUrl)
-    return token ?? null
-  }, [getAccessToken, apiUrl])
+  const getToken = useGetToken()
 
   // Fetch user's streams when authenticated
   useEffect(() => {

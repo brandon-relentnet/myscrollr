@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"context"
@@ -9,14 +9,13 @@ import (
 
 // Client represents a single SSE connection tied to an authenticated user.
 type Client struct {
-	userID string
-	ch     chan []byte
+	UserID string
+	Ch     chan []byte
 }
 
 // Hub maintains per-user SSE client connections and routes messages from
 // Redis per-user channels to the correct clients.
 type Hub struct {
-	// userID → list of active clients for that user
 	clients map[string][]*Client
 
 	register   chan *Client
@@ -31,9 +30,8 @@ var globalHub = &Hub{
 	clients:    make(map[string][]*Client),
 }
 
-// Run starts the hub's main loop
+// Run starts the hub's main loop.
 func (h *Hub) Run() {
-	// Start listening to per-user Redis channels in the background
 	go h.listenToRedis()
 
 	log.Println("[EventHub] Hub started (per-user mode)")
@@ -42,22 +40,21 @@ func (h *Hub) Run() {
 		select {
 		case client := <-h.register:
 			h.lock.Lock()
-			h.clients[client.userID] = append(h.clients[client.userID], client)
+			h.clients[client.UserID] = append(h.clients[client.UserID], client)
 			h.lock.Unlock()
 
 		case client := <-h.unregister:
 			h.lock.Lock()
-			clients := h.clients[client.userID]
+			clients := h.clients[client.UserID]
 			for i, c := range clients {
 				if c == client {
-					h.clients[client.userID] = append(clients[:i], clients[i+1:]...)
-					close(c.ch)
+					h.clients[client.UserID] = append(clients[:i], clients[i+1:]...)
+					close(c.Ch)
 					break
 				}
 			}
-			// Clean up empty user entries
-			if len(h.clients[client.userID]) == 0 {
-				delete(h.clients, client.userID)
+			if len(h.clients[client.UserID]) == 0 {
+				delete(h.clients, client.UserID)
 			}
 			h.lock.Unlock()
 		}
@@ -76,7 +73,6 @@ func (h *Hub) listenToRedis() {
 	log.Printf("[EventHub] Listening to Redis pattern: %s*", RedisEventsUserPrefix)
 
 	for msg := range ch {
-		// Channel name is "events:user:{sub}" — extract the sub
 		parts := strings.SplitN(msg.Channel, RedisEventsUserPrefix, 2)
 		if len(parts) != 2 || parts[1] == "" {
 			continue
@@ -87,7 +83,7 @@ func (h *Hub) listenToRedis() {
 		clients := h.clients[userID]
 		for _, client := range clients {
 			select {
-			case client.ch <- []byte(msg.Payload):
+			case client.Ch <- []byte(msg.Payload):
 			default:
 				// Client buffer full, skip this message to avoid blocking
 			}
@@ -96,7 +92,7 @@ func (h *Hub) listenToRedis() {
 	}
 }
 
-// InitHub starts the global event hub
+// InitHub starts the global event hub.
 func InitHub() {
 	go globalHub.Run()
 }
@@ -111,22 +107,22 @@ func SendToUser(sub string, msg []byte) {
 	}()
 }
 
-// RegisterClient adds an authenticated client to the hub
+// RegisterClient adds an authenticated client to the hub.
 func RegisterClient(userID string) *Client {
 	client := &Client{
-		userID: userID,
-		ch:     make(chan []byte, SSEClientBufferSize),
+		UserID: userID,
+		Ch:     make(chan []byte, SSEClientBufferSize),
 	}
 	globalHub.register <- client
 	return client
 }
 
-// UnregisterClient removes a client from the hub
+// UnregisterClient removes a client from the hub.
 func UnregisterClient(client *Client) {
 	globalHub.unregister <- client
 }
 
-// ClientCount returns the total number of connected SSE clients across all users
+// ClientCount returns the total number of connected SSE clients across all users.
 func ClientCount() int {
 	globalHub.lock.Lock()
 	defer globalHub.lock.Unlock()
@@ -135,4 +131,25 @@ func ClientCount() int {
 		count += len(clients)
 	}
 	return count
+}
+
+// RouteToStreamSubscribers sends a CDC event to all users subscribed to a stream type.
+func RouteToStreamSubscribers(ctx context.Context, setKey string, payload []byte) {
+	subs, err := GetSubscribers(ctx, setKey)
+	if err != nil {
+		log.Printf("[Sequin] Failed to get subscribers for %s: %v", setKey, err)
+		return
+	}
+	for _, sub := range subs {
+		SendToUser(sub, payload)
+	}
+}
+
+// RouteToRecordOwner sends a CDC event directly to the user identified in the record.
+func RouteToRecordOwner(record map[string]interface{}, field string, payload []byte) {
+	sub, ok := record[field].(string)
+	if !ok || sub == "" {
+		return
+	}
+	SendToUser(sub, payload)
 }

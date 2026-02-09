@@ -12,8 +12,8 @@ COPY go.mod ./
 # Copy the source code
 COPY . .
 
-# Generate Swagger docs
-RUN swag init
+# Generate Swagger docs (--parseDependency scans sub-packages core/ and integrations/)
+RUN swag init --parseDependency
 
 # Fetch dependencies
 RUN go mod tidy

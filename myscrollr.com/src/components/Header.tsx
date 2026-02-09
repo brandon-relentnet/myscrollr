@@ -15,6 +15,7 @@ import { useLogto } from '@logto/react'
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
 import type { IdTokenClaims } from '@logto/react'
 import ScrollrSVG from '@/components/ScrollrSVG'
+import { API_BASE } from '@/api/client'
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
@@ -35,10 +36,8 @@ export default function Header() {
 
   // Poll active viewer count every 15s
   useEffect(() => {
-    const apiUrl =
-      import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'
     const fetchCount = () => {
-      fetch(`${apiUrl}/events/count`)
+      fetch(`${API_BASE}/events/count`)
         .then((r) => r.json())
         .then((d) => setViewerCount(d.count))
         .catch(() => {})

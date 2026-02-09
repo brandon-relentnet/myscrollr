@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { UserPreferences } from '@/api/client'
+import { API_BASE } from '@/api/client'
 
 // Yahoo data as stored in DB rows (keyed by league_key/team_key)
 interface YahooLeagueRecord {
@@ -61,8 +62,6 @@ export function useRealtime({ getToken }: UseRealtimeOptions) {
   getTokenRef.current = getToken
 
   useEffect(() => {
-    const apiUrl =
-      import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'
     let eventSource: EventSource | null = null
     let retryCount = 0
     let retryTimeout: ReturnType<typeof setTimeout> | null = null
@@ -83,7 +82,7 @@ export function useRealtime({ getToken }: UseRealtimeOptions) {
       }
 
       eventSource = new EventSource(
-        `${apiUrl}/events?token=${encodeURIComponent(token)}`,
+        `${API_BASE}/events?token=${encodeURIComponent(token)}`,
       )
 
       eventSource.onopen = () => {

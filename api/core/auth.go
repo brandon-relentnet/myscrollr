@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"fmt"
@@ -15,12 +15,11 @@ var (
 	jwks *keyfunc.JWKS
 )
 
+// InitAuth initialises the JWKS keyfunc for JWT validation.
 func InitAuth() {
-	// Use pre-derived ENV from Dockerfile (or direct COOLIFY_FQDN fallback)
 	jwksURL := os.Getenv("LOGTO_JWKS_URL")
 	if jwksURL == "" {
-		// Fallback: derive from COOLIFY_FQDN
-		fqdn := cleanFQDN()
+		fqdn := CleanFQDN()
 		if fqdn == "" {
 			log.Println("[Security Warning] COOLIFY_FQDN not set, authentication will fail")
 			return
@@ -47,8 +46,7 @@ func InitAuth() {
 }
 
 // ValidateToken validates a JWT token string and returns the subject (user ID)
-// and the full claims map. This is the shared validation logic used by both
-// the LogtoAuth middleware and the SSE endpoint's query-param authentication.
+// and the full claims map.
 func ValidateToken(tokenString string) (sub string, claims jwt.MapClaims, err error) {
 	if jwks == nil {
 		return "", nil, fmt.Errorf("JWKS not initialized")
@@ -68,16 +66,14 @@ func ValidateToken(tokenString string) (sub string, claims jwt.MapClaims, err er
 		return "", nil, fmt.Errorf("invalid token claims")
 	}
 
-	// Extract Logto User ID (sub)
 	sub, ok = mapClaims["sub"].(string)
 	if !ok {
 		return "", nil, fmt.Errorf("token missing 'sub' claim")
 	}
 
-	// Verify Issuer
 	expectedIssuer := os.Getenv("LOGTO_URL")
 	if expectedIssuer == "" {
-		if fqdn := cleanFQDN(); fqdn != "" {
+		if fqdn := CleanFQDN(); fqdn != "" {
 			expectedIssuer = fmt.Sprintf("https://%s/oidc", fqdn)
 		}
 	}
@@ -85,10 +81,9 @@ func ValidateToken(tokenString string) (sub string, claims jwt.MapClaims, err er
 		return "", nil, fmt.Errorf("invalid token issuer")
 	}
 
-	// Verify Audience
 	expectedAudience := os.Getenv("API_URL")
 	if expectedAudience == "" {
-		if fqdn := cleanFQDN(); fqdn != "" {
+		if fqdn := CleanFQDN(); fqdn != "" {
 			expectedAudience = fmt.Sprintf("https://%s", fqdn)
 		}
 	}
@@ -111,7 +106,7 @@ func ValidateToken(tokenString string) (sub string, claims jwt.MapClaims, err er
 	return sub, mapClaims, nil
 }
 
-// LogtoAuth is the middleware that validates the Logto JWT
+// LogtoAuth is the middleware that validates the Logto JWT.
 func LogtoAuth(c *fiber.Ctx) error {
 	tokenString := ""
 	authHeader := c.Get("Authorization")
@@ -123,7 +118,6 @@ func LogtoAuth(c *fiber.Ctx) error {
 		}
 	}
 
-	// Fallback to cookie
 	if tokenString == "" {
 		tokenString = c.Cookies("access_token")
 	}
@@ -144,8 +138,6 @@ func LogtoAuth(c *fiber.Ctx) error {
 		})
 	}
 
-	// Store user ID in context
 	c.Locals("user_id", sub)
-
 	return c.Next()
 }

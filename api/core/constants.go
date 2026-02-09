@@ -1,4 +1,4 @@
-package main
+package core
 
 import "time"
 
@@ -7,11 +7,11 @@ import "time"
 // =============================================================================
 
 const (
-	SportsCacheTTL    = 30 * time.Second
-	FinanceCacheTTL   = 30 * time.Second
-	RSSItemsCacheTTL  = 60 * time.Second
+	SportsCacheTTL     = 30 * time.Second
+	FinanceCacheTTL    = 30 * time.Second
+	RSSItemsCacheTTL   = 60 * time.Second
 	RSSCatalogCacheTTL = 5 * time.Minute
-	YahooCacheTTL     = 5 * time.Minute
+	YahooCacheTTL      = 5 * time.Minute
 )
 
 // =============================================================================

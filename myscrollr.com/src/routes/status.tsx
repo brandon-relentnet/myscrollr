@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { motion } from 'motion/react'
 import { usePageMeta } from '@/lib/usePageMeta'
+import { itemVariants, pageVariants } from '@/lib/animations'
 import { API_BASE } from '@/api/client'
 
 export const Route = createFileRoute('/status')({
@@ -36,25 +37,6 @@ interface ViewerData {
 }
 
 type ServiceState = 'healthy' | 'unhealthy' | 'down' | 'unknown' | 'loading'
-
-// --- Animation Variants ---
-
-const pageVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
-  },
-}
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 16 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { type: 'spring', stiffness: 400, damping: 28 } as const,
-  },
-}
 
 // --- Helpers ---
 

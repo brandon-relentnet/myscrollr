@@ -9,31 +9,12 @@ import {
   Shield,
 } from 'lucide-react'
 import { motion } from 'motion/react'
+import { pageVariants, sectionVariants } from '@/lib/animations'
 import { API_BASE, authenticatedFetch } from '@/api/client'
 
 export const Route = createFileRoute('/u/$username')({
   component: ProfilePage,
 })
-
-const pageVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.1,
-    },
-  },
-}
-
-const sectionVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { type: 'spring', stiffness: 300, damping: 24 } as const,
-  },
-}
 
 interface ProfileData {
   username: string
@@ -112,9 +93,7 @@ function ProfilePage() {
       ) {
         try {
           const getToken = async () => {
-            const token = await getAccessToken(
-              API_BASE || 'https://api.myscrollr.relentnet.dev',
-            )
+            const token = await getAccessToken(API_BASE)
             return token ?? null
           }
           const data = await authenticatedFetch<{ connected: boolean }>(

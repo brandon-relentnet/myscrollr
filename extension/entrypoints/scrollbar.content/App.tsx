@@ -89,10 +89,10 @@ export default function App({ ctx }: AppProps) {
 
       case 'INITIAL_DATA': {
         // Dashboard data after login
-        const { finance, sports, rss } = msg.payload;
-        if (finance) setTrades(finance as unknown as Trade[]);
-        if (sports) setGames(sports as unknown as Game[]);
-        if (rss) setRssItems(rss as unknown as RssItem[]);
+        const { finance, sports, rss } = msg.payload.data || {};
+        if (finance) setTrades(finance as Trade[]);
+        if (sports) setGames(sports as Game[]);
+        if (rss) setRssItems(rss as RssItem[]);
         break;
       }
 

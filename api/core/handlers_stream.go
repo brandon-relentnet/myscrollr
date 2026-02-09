@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"bufio"
@@ -10,7 +10,7 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
-// GetActiveViewers returns the count of connected SSE clients
+// GetActiveViewers returns the count of connected SSE clients.
 func GetActiveViewers(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"count": ClientCount()})
 }
@@ -68,7 +68,7 @@ func StreamEvents(c *fiber.Ctx) error {
 
 		for {
 			select {
-			case msg, ok := <-client.ch:
+			case msg, ok := <-client.Ch:
 				if !ok {
 					return
 				}

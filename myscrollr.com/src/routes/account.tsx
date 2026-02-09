@@ -12,30 +12,12 @@ import {
 } from 'lucide-react'
 import { motion } from 'motion/react'
 import type { IdTokenClaims } from '@logto/react'
+import LoadingSpinner from '@/components/LoadingSpinner'
+import { pageVariants, sectionVariants } from '@/lib/animations'
 
 export const Route = createFileRoute('/account')({
   component: AccountHub,
 })
-
-const pageVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.1,
-    },
-  },
-}
-
-const sectionVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { type: 'spring', stiffness: 300, damping: 24 } as const,
-  },
-}
 
 function AccountHub() {
   const { isAuthenticated, isLoading, getIdTokenClaims } = useLogto()
@@ -52,11 +34,7 @@ function AccountHub() {
   }, [isAuthenticated, isLoading, getIdTokenClaims, navigate])
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary" />
-      </div>
-    )
+    return <LoadingSpinner variant="spin" label="" />
   }
 
   if (!isAuthenticated) return null
@@ -267,7 +245,7 @@ function HubCard({
   }
 
   return (
-    <Link to={to!} params={params} className="block h-full">
+    <Link to={to} params={params} className="block h-full">
       {content}
     </Link>
   )

@@ -36,8 +36,11 @@ import type {
   TrackedFeed,
 } from '@/api/client'
 import { useRealtime } from '@/hooks/useRealtime'
+import { useGetToken } from '@/hooks/useGetToken'
 import SettingsPanel from '@/components/SettingsPanel'
-import { authenticatedFetch, rssApi, streamsApi } from '@/api/client'
+import LoadingSpinner from '@/components/LoadingSpinner'
+import { pageVariants, sectionVariants } from '@/lib/animations'
+import { API_BASE, authenticatedFetch, rssApi, streamsApi } from '@/api/client'
 
 const VALID_TABS = new Set<StreamType>(['finance', 'sports', 'fantasy', 'rss'])
 
@@ -53,26 +56,6 @@ export const Route = createFileRoute('/dashboard')({
     }
   },
 })
-
-const pageVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.1,
-    },
-  },
-}
-
-const sectionVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { type: 'spring', stiffness: 300, damping: 24 } as const,
-  },
-}
 
 const STREAM_META: Record<
   StreamType,
@@ -101,13 +84,7 @@ const STREAM_META: Record<
 }
 
 function DashboardPage() {
-  const {
-    isAuthenticated,
-    isLoading,
-    signIn,
-    getIdTokenClaims,
-    getAccessToken,
-  } = useLogto()
+  const { isAuthenticated, isLoading, signIn, getIdTokenClaims } = useLogto()
   const { tab } = useSearch({ from: '/dashboard' })
   const navigate = useNavigate({ from: '/dashboard' })
   const activeModule: StreamType = tab ?? 'finance'
@@ -126,8 +103,7 @@ function DashboardPage() {
     connected: boolean
     synced: boolean
   }>({ connected: false, synced: false })
-  const apiUrl =
-    import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'
+
   const [yahooPending, setYahooPending] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -141,33 +117,7 @@ function DashboardPage() {
   const hasAnimated = useRef(false)
   const autoSignInTriggered = useRef(false)
 
-  // Token cache to avoid calling getAccessToken() (which triggers
-  // Logto's setIsLoading) on every settings change.
-  const tokenCacheRef = useRef<{ token: string; expiry: number } | null>(null)
-
-  const getToken = useCallback(async (): Promise<string | null> => {
-    const cached = tokenCacheRef.current
-    if (cached && cached.expiry - Date.now() > 60_000) {
-      return cached.token
-    }
-
-    const token = await getAccessToken(apiUrl)
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]))
-        if (payload.exp) {
-          tokenCacheRef.current = {
-            token,
-            expiry: payload.exp * 1000,
-          }
-        }
-      } catch {
-        // If decoding fails, don't cache
-      }
-    }
-
-    return token ?? null
-  }, [getAccessToken, apiUrl])
+  const getToken = useGetToken()
 
   // useRealtime must come after getToken is defined
   const { yahoo, status, preferences, setInitialYahoo, clearYahoo } =
@@ -276,11 +226,10 @@ function DashboardPage() {
           {},
           getToken,
         ).catch(() => null),
-        authenticatedFetch<{ leagues?: any[]; standings?: Record<string, any> }>(
-          '/users/me/yahoo-leagues',
-          {},
-          getToken,
-        ).catch(() => null),
+        authenticatedFetch<{
+          leagues?: Array<any>
+          standings?: Record<string, any>
+        }>('/users/me/yahoo-leagues', {}, getToken).catch(() => null),
       ])
 
       if (statusData) {
@@ -362,7 +311,7 @@ function DashboardPage() {
     if (!sub) return
 
     const popup = window.open(
-      `${apiUrl}/yahoo/start?logto_sub=${sub}`,
+      `${API_BASE}/yahoo/start?logto_sub=${sub}`,
       'yahoo-auth',
       'width=600,height=700',
     )
@@ -393,20 +342,7 @@ function DashboardPage() {
 
   // ── Loading / auth guards ────────────────────────────────────────
   if (isLoading && !hasLoaded.current) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <motion.div
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
-          className="flex items-center gap-3"
-        >
-          <div className="h-2 w-2 rounded-full bg-primary" />
-          <span className="font-mono text-sm text-base-content/50 uppercase tracking-wider">
-            Loading...
-          </span>
-        </motion.div>
-      </div>
-    )
+    return <LoadingSpinner label="Loading..." />
   }
 
   if (!isAuthenticated && !hasLoaded.current) {
@@ -414,20 +350,7 @@ function DashboardPage() {
       autoSignInTriggered.current = true
       signIn(`${window.location.origin}/callback`)
     }
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <motion.div
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
-          className="flex items-center gap-3"
-        >
-          <div className="h-2 w-2 rounded-full bg-primary" />
-          <span className="font-mono text-sm text-base-content/50 uppercase tracking-wider">
-            Authenticating...
-          </span>
-        </motion.div>
-      </div>
-    )
+    return <LoadingSpinner label="Authenticating..." />
   }
 
   hasLoaded.current = true

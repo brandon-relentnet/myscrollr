@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ import (
 func getLogtoTokenURL() string {
 	logtoURL := os.Getenv("LOGTO_URL")
 	if logtoURL == "" {
-		if fqdn := cleanFQDN(); fqdn != "" {
+		if fqdn := CleanFQDN(); fqdn != "" {
 			logtoURL = fmt.Sprintf("https://%s/oidc", fqdn)
 		}
 	}
@@ -32,7 +32,7 @@ func getExtensionAppID() string {
 func getAPIResource() string {
 	apiURL := os.Getenv("API_URL")
 	if apiURL == "" {
-		if fqdn := cleanFQDN(); fqdn != "" {
+		if fqdn := CleanFQDN(); fqdn != "" {
 			apiURL = fmt.Sprintf("https://%s", fqdn)
 		}
 	}
@@ -40,8 +40,6 @@ func getAPIResource() string {
 }
 
 // setCORSHeaders sets permissive CORS headers for extension auth endpoints.
-// Extensions make requests from chrome-extension:// origins which don't match
-// standard CORS allow lists, so we use Access-Control-Allow-Origin: *.
 func setCORSHeaders(c *fiber.Ctx) {
 	c.Set("Access-Control-Allow-Origin", "*")
 	c.Set("Access-Control-Allow-Methods", "POST, OPTIONS")
@@ -49,8 +47,7 @@ func setCORSHeaders(c *fiber.Ctx) {
 }
 
 // HandleExtensionTokenExchange proxies an authorization_code token exchange
-// to Logto on behalf of the browser extension. It enforces that the client_id
-// matches the configured extension app ID, preventing misuse.
+// to Logto on behalf of the browser extension.
 //
 // @Summary Exchange authorization code for tokens (extension)
 // @Description Proxies PKCE code exchange to Logto for the browser extension client
@@ -74,7 +71,6 @@ func HandleExtensionTokenExchange(c *fiber.Ctx) error {
 		})
 	}
 
-	// Parse request body
 	var req struct {
 		Code         string `json:"code"`
 		RedirectURI  string `json:"redirect_uri"`
@@ -94,7 +90,6 @@ func HandleExtensionTokenExchange(c *fiber.Ctx) error {
 		})
 	}
 
-	// Build the token request to Logto — force the extension's client_id
 	formData := url.Values{
 		"grant_type":    {"authorization_code"},
 		"client_id":     {extensionAppID},
