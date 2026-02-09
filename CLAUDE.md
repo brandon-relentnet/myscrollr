@@ -156,7 +156,7 @@ The API uses a modular monolith architecture with a plugin-style integration sys
 | **`integration/`** | | |
 | `integration.go` | 127 | Core `Integration` interface + 5 optional capability interfaces (`CDCHandler`, `DashboardProvider`, `StreamLifecycle`, `HealthChecker`, `Configurable`), shared types (`CDCRecord`, `HealthStatus`, `SendToUserFunc`, etc.) |
 | **`core/`** | | |
-| `server.go` | 328 | Fiber app init, middleware (CORS, rate limiting, security headers), health checks, dashboard aggregation via type assertions |
+| `server.go` | 375 | Fiber app init, middleware (CORS, rate limiting, security headers), health checks, dashboard aggregation, `GET /integrations` discovery endpoint via type assertions |
 | `auth.go` | 143 | Logto JWT validation middleware (JWKS refresh, issuer/audience validation) |
 | `streams.go` | 437 | Streams CRUD API, Redis subscription set management, `syncStreamSubscriptions()`, `StreamLifecycle` hook dispatch |
 | `handlers_webhook.go` | 115 | Sequin CDC webhook receiver, delegates to `CDCHandler` integrations |
@@ -214,6 +214,7 @@ React 19 + Vite 7 + TanStack Router + Tailwind CSS v4 + Logto React SDK + Motion
 | `official/sports/DashboardTab.tsx` | Sports stream config — ESPN info, league grid |
 | `official/fantasy/DashboardTab.tsx` | Fantasy stream config — Yahoo OAuth, league cards with collapsible standings, active/past filter. Receives Yahoo state via `extraProps` |
 | `official/rss/DashboardTab.tsx` | RSS stream config — feed management, custom feed form, 117-feed catalog browser with category tabs and pagination |
+| `_template/DashboardTab.tsx` | Documented scaffold for new frontend integrations with all props, shared components, and registration instructions |
 
 **Key files**:
 - `src/hooks/useRealtime.ts` — EventSource SSE client, processes CDC records for trades/games/rss_items/yahoo/preferences/streams tables
@@ -259,6 +260,7 @@ WXT v0.20 + React 19 + Tailwind v4. Builds for Chrome MV3 and Firefox MV2. Built
 | `official/sports/GameItem.tsx` | Individual game display (teams, scores, state) |
 | `official/rss/FeedTab.tsx` | Uses `useScrollrCDC('rss_items')`, renders RssItem list sorted by published_at |
 | `official/rss/RssItem.tsx` | RSS article display (comfort/compact modes) |
+| `_template/FeedTab.tsx` | Documented scaffold for new extension integrations with useScrollrCDC, CDC table subscription, and registration instructions |
 
 **Messaging protocol** (background ↔ content script):
 - `SUBSCRIBE_CDC { tables: string[] }` — Content script tab subscribes to CDC tables
@@ -286,6 +288,7 @@ WXT v0.20 + React 19 + Tailwind v4. Builds for Chrome MV3 and Firefox MV2. Built
 - `GET /health` — Aggregated API health check (includes finance, sports, yahoo, rss service status)
 - `GET /events?token=` — Authenticated SSE stream (15s heartbeat, JWT via query param)
 - `GET /events/count` — Active viewer count
+- `GET /integrations` — List all registered integrations with capabilities (name, display_name, capabilities array)
 - `GET /sports/health`, `/finance/health`, `/yahoo/health`, `/rss/health` — Individual service health checks (proxy to internal URLs)
 - `GET /rss/feeds` — Public RSS feed catalog (enabled feeds with <3 consecutive failures, cached 5 min)
 - `GET /yahoo/start` — Initiate Yahoo OAuth flow
@@ -350,7 +353,7 @@ Tables are created programmatically on service startup via `CREATE TABLE IF NOT 
 | Table | Key Columns |
 |-------|-------------|
 | `yahoo_users` | `guid` (PK), `logto_sub` (UNIQUE), `refresh_token` (encrypted), `last_sync` |
-| `user_streams` | `id` (SERIAL PK), `logto_sub`, `stream_type` (finance/sports/fantasy/rss), `enabled`, `visible`, `config` (JSONB). UNIQUE on `(logto_sub, stream_type)` |
+| `user_streams` | `id` (SERIAL PK), `logto_sub`, `stream_type` (dynamically validated against registered integrations), `enabled`, `visible`, `config` (JSONB). UNIQUE on `(logto_sub, stream_type)` |
 | `user_preferences` | `logto_sub` (PK), `feed_mode`, `feed_position`, `feed_behavior`, `feed_enabled`, `enabled_sites` (JSONB), `disabled_sites` (JSONB), `updated_at` |
 
 ## Development Conventions

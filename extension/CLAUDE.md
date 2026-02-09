@@ -51,6 +51,8 @@ extension/
       rss/
         FeedTab.tsx             #     RSS tab: uses useScrollrCDC('rss_items')
         RssItem.tsx             #     RSS article display (comfort/compact modes)
+    _template/
+      FeedTab.tsx               #   Documented scaffold for new integrations
   entrypoints/
     background/                 # MV3 service worker / MV2 background page
       index.ts                  #   Entry: wires up SSE, messaging, auth, keepalive
@@ -265,7 +267,7 @@ Defined in `wxt.config.ts`:
 - **Auto-imports**: WXT auto-imports from `utils/`, `hooks/`, `components/` directories plus WXT APIs (`storage`, `defineContentScript`, `createShadowRootUi`, `browser`, etc.). Use `#imports` for explicit imports. **Note**: Files in `integrations/` are NOT auto-imported — use explicit imports.
 - **Type definitions**: Shared types live in `utils/types.ts`. Message types in `utils/messaging.ts`. Integration contracts in `integrations/types.ts`.
 - **State management**: No external state library. Background stores `lastDashboard` snapshot; each FeedTab manages its own items via `useScrollrCDC` hook. Preferences live in WXT storage with reactive watchers.
-- **Adding integrations**: Create a `FeedTab.tsx` in `integrations/official/<name>/` (or `integrations/verified/`/`integrations/community/`), add an `IntegrationManifest` to `integrations/registry.ts`. Official integrations use `useScrollrCDC` for CDC data; others fetch their own data.
+- **Adding integrations**: Copy `integrations/_template/` to `integrations/official/<name>/` (or `verified/`/`community/`), implement the FeedTab component, and register an `IntegrationManifest` in `integrations/registry.ts`. Official integrations use `useScrollrCDC` for CDC data; others fetch their own data. See `_template/FeedTab.tsx` for full instructions.
 
 ## Constants
 
@@ -292,6 +294,7 @@ Defined in `utils/constants.ts`:
 | `integrations/official/finance/FeedTab.tsx` | Finance tab — `useScrollrCDC('trades')`, renders TradeItem list |
 | `integrations/official/sports/FeedTab.tsx` | Sports tab — `useScrollrCDC('games')`, renders GameItem list |
 | `integrations/official/rss/FeedTab.tsx` | RSS tab — `useScrollrCDC('rss_items')`, renders RssItem list |
+| `integrations/_template/FeedTab.tsx` | Documented scaffold for new FeedTab integrations with useScrollrCDC, CDC subscription, and registration instructions |
 | `entrypoints/background/index.ts` | Background entry: wires SSE, messaging, auth, keepalive |
 | `entrypoints/background/sse.ts` | SSE connection, CDC pass-through routing, dashboard snapshot storage |
 | `entrypoints/background/messaging.ts` | Per-tab CDC subscriptions, CDC_BATCH routing, message handler |

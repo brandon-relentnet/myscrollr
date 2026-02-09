@@ -8,7 +8,7 @@
     "prettier.config.js",
     "vite.config.js"
   ],
-  "exclude": ["frontend_wxt/**/*"],
+  "exclude": ["frontend_wxt/**/*", "src/integrations/_template/**/*"],
 
   "compilerOptions": {
     "target": "ES2022",

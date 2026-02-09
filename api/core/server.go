@@ -97,6 +97,7 @@ func (s *Server) setupMiddleware() {
 		"/events":           true,
 		"/webhooks/sequin":  true,
 		"/rss/feeds":        true,
+		"/integrations":     true,
 	}
 	for _, intg := range s.integrations {
 		if _, ok := intg.(integration.HealthChecker); ok {
@@ -133,6 +134,7 @@ func (s *Server) setupRoutes() {
 	s.App.Options("/extension/token/refresh", HandleExtensionAuthPreflight)
 	s.App.Post("/extension/token/refresh", HandleExtensionTokenRefresh)
 
+	s.App.Get("/integrations", s.listIntegrations)
 	s.App.Get("/", s.landingPage)
 
 	// --- Protected Routes ---
@@ -266,6 +268,49 @@ func (s *Server) getDashboard(c *fiber.Ctx) error {
 	return c.JSON(res)
 }
 
+// IntegrationInfo describes a registered integration for the public API.
+type IntegrationInfo struct {
+	Name         string   `json:"name"`
+	DisplayName  string   `json:"display_name"`
+	Capabilities []string `json:"capabilities"`
+}
+
+// listIntegrations returns all registered integrations and their capabilities.
+// @Summary List registered integrations
+// @Description Returns every integration registered with the server, including
+// which optional capabilities each one supports.
+// @Tags Integrations
+// @Produce json
+// @Success 200 {array} IntegrationInfo
+// @Router /integrations [get]
+func (s *Server) listIntegrations(c *fiber.Ctx) error {
+	infos := make([]IntegrationInfo, 0, len(s.integrations))
+	for _, intg := range s.integrations {
+		caps := make([]string, 0, 5)
+		if _, ok := intg.(integration.CDCHandler); ok {
+			caps = append(caps, "cdc")
+		}
+		if _, ok := intg.(integration.DashboardProvider); ok {
+			caps = append(caps, "dashboard")
+		}
+		if _, ok := intg.(integration.StreamLifecycle); ok {
+			caps = append(caps, "stream_lifecycle")
+		}
+		if _, ok := intg.(integration.HealthChecker); ok {
+			caps = append(caps, "health")
+		}
+		if _, ok := intg.(integration.Configurable); ok {
+			caps = append(caps, "configurable")
+		}
+		infos = append(infos, IntegrationInfo{
+			Name:         intg.Name(),
+			DisplayName:  intg.DisplayName(),
+			Capabilities: caps,
+		})
+	}
+	return c.JSON(infos)
+}
+
 // landingPage returns basic API info.
 func (s *Server) landingPage(c *fiber.Ctx) error {
 	frontendURL := os.Getenv("FRONTEND_URL")
@@ -278,10 +323,11 @@ func (s *Server) landingPage(c *fiber.Ctx) error {
 		"version": "1.0",
 		"status":  "operational",
 		"links": fiber.Map{
-			"health":   "/health",
-			"docs":     "/swagger/index.html",
-			"frontend": frontendURL,
-			"status":   frontendURL + "/status",
+			"health":       "/health",
+			"integrations": "/integrations",
+			"docs":         "/swagger/index.html",
+			"frontend":     frontendURL,
+			"status":       frontendURL + "/status",
 		},
 	})
 }
