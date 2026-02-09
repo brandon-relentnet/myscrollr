@@ -84,10 +84,10 @@ func SyncStreamSubscriptions(logtoSub string) {
 			RemoveSubscriber(ctx, setKey, logtoSub)
 		}
 
-		// Call integration-specific sync hook
+		// Call integration-specific sync hook (only if it implements StreamLifecycle)
 		intg := findIntegration(s.StreamType)
-		if intg != nil {
-			if err := intg.OnSyncSubscriptions(ctx, logtoSub, s.Config, s.Enabled); err != nil {
+		if sl, ok := intg.(integration.StreamLifecycle); ok {
+			if err := sl.OnSyncSubscriptions(ctx, logtoSub, s.Config, s.Enabled); err != nil {
 				log.Printf("[Streams] OnSyncSubscriptions error for %s/%s: %v", s.StreamType, logtoSub, err)
 			}
 		}
@@ -98,10 +98,10 @@ func SyncStreamSubscriptions(logtoSub string) {
 func addStreamSubscriptions(ctx context.Context, logtoSub, streamType string, config map[string]interface{}) {
 	AddSubscriber(ctx, RedisStreamSubscribersPrefix+streamType, logtoSub)
 
-	// Call integration-specific hook
+	// Call integration-specific hook (only if it implements StreamLifecycle)
 	intg := findIntegration(streamType)
-	if intg != nil {
-		if err := intg.OnSyncSubscriptions(ctx, logtoSub, config, true); err != nil {
+	if sl, ok := intg.(integration.StreamLifecycle); ok {
+		if err := sl.OnSyncSubscriptions(ctx, logtoSub, config, true); err != nil {
 			log.Printf("[Streams] addStreamSubscriptions hook error for %s: %v", streamType, err)
 		}
 	}
@@ -111,10 +111,10 @@ func addStreamSubscriptions(ctx context.Context, logtoSub, streamType string, co
 func removeStreamSubscriptions(ctx context.Context, logtoSub, streamType string, config map[string]interface{}) {
 	RemoveSubscriber(ctx, RedisStreamSubscribersPrefix+streamType, logtoSub)
 
-	// Call integration-specific hook
+	// Call integration-specific hook (only if it implements StreamLifecycle)
 	intg := findIntegration(streamType)
-	if intg != nil {
-		if err := intg.OnSyncSubscriptions(ctx, logtoSub, config, false); err != nil {
+	if sl, ok := intg.(integration.StreamLifecycle); ok {
+		if err := sl.OnSyncSubscriptions(ctx, logtoSub, config, false); err != nil {
 			log.Printf("[Streams] removeStreamSubscriptions hook error for %s: %v", streamType, err)
 		}
 	}
@@ -230,10 +230,10 @@ func CreateStream(c *fiber.Ctx) error {
 		addStreamSubscriptions(ctx, userID, s.StreamType, s.Config)
 	}
 
-	// Call integration OnStreamCreated hook
+	// Call integration OnStreamCreated hook (only if it implements StreamLifecycle)
 	intg := findIntegration(s.StreamType)
-	if intg != nil {
-		if err := intg.OnStreamCreated(ctx, userID, s.Config); err != nil {
+	if sl, ok := intg.(integration.StreamLifecycle); ok {
+		if err := sl.OnStreamCreated(ctx, userID, s.Config); err != nil {
 			log.Printf("[Streams] OnStreamCreated error for %s: %v", s.StreamType, err)
 		}
 	}
@@ -357,10 +357,10 @@ func UpdateStream(c *fiber.Ctx) error {
 		removeStreamSubscriptions(ctx, userID, s.StreamType, s.Config)
 	}
 
-	// Call integration OnStreamUpdated hook
+	// Call integration OnStreamUpdated hook (only if it implements StreamLifecycle)
 	intg := findIntegration(streamType)
-	if intg != nil {
-		if err := intg.OnStreamUpdated(ctx, userID, oldConfig, s.Config); err != nil {
+	if sl, ok := intg.(integration.StreamLifecycle); ok {
+		if err := sl.OnStreamUpdated(ctx, userID, oldConfig, s.Config); err != nil {
 			log.Printf("[Streams] OnStreamUpdated error for %s: %v", streamType, err)
 		}
 	}
@@ -425,10 +425,10 @@ func DeleteStream(c *fiber.Ctx) error {
 	}
 	removeStreamSubscriptions(ctx, userID, streamType, config)
 
-	// Call integration OnStreamDeleted hook
+	// Call integration OnStreamDeleted hook (only if it implements StreamLifecycle)
 	intg := findIntegration(streamType)
-	if intg != nil {
-		if err := intg.OnStreamDeleted(ctx, userID, config); err != nil {
+	if sl, ok := intg.(integration.StreamLifecycle); ok {
+		if err := sl.OnStreamDeleted(ctx, userID, config); err != nil {
 			log.Printf("[Streams] OnStreamDeleted error for %s: %v", streamType, err)
 		}
 	}

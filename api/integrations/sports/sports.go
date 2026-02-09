@@ -2,7 +2,6 @@ package sports
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -13,7 +12,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Integration implements the integration.Integration interface for sports scores.
+// Integration implements the core Integration interface plus CDCHandler,
+// DashboardProvider, and HealthChecker for sports scores.
 type Integration struct {
 	db         *pgxpool.Pool
 	sendToUser integration.SendToUserFunc
@@ -29,15 +29,17 @@ func New(db *pgxpool.Pool, sendToUser integration.SendToUserFunc, routeToSub int
 	}
 }
 
-func (s *Integration) Name() string        { return "sports" }
-func (s *Integration) DisplayName() string  { return "Sports" }
-func (s *Integration) InternalServiceURL() string { return os.Getenv("INTERNAL_SPORTS_URL") }
-func (s *Integration) ConfigSchema() json.RawMessage { return nil }
+// --- Core Interface ---
+
+func (s *Integration) Name() string       { return "sports" }
+func (s *Integration) DisplayName() string { return "Sports" }
 
 func (s *Integration) RegisterRoutes(router fiber.Router, authMiddleware fiber.Handler) {
 	router.Get("/sports/health", s.healthHandler)
 	router.Get("/sports", authMiddleware, s.getSports)
 }
+
+// --- CDCHandler ---
 
 func (s *Integration) HandlesTable(tableName string) bool {
 	return tableName == "games"
@@ -47,6 +49,8 @@ func (s *Integration) RouteCDCRecord(ctx context.Context, record integration.CDC
 	s.routeToSub(ctx, core.RedisStreamSubscribersPrefix+"sports", payload)
 	return nil
 }
+
+// --- DashboardProvider ---
 
 func (s *Integration) GetDashboardData(ctx context.Context, userSub string, stream integration.StreamInfo) (interface{}, error) {
 	var games []core.Game
@@ -74,21 +78,9 @@ func (s *Integration) GetDashboardData(ctx context.Context, userSub string, stre
 	return games, nil
 }
 
-func (s *Integration) OnStreamCreated(ctx context.Context, userSub string, config map[string]interface{}) error {
-	return nil
-}
-func (s *Integration) OnStreamUpdated(ctx context.Context, userSub string, oldConfig, newConfig map[string]interface{}) error {
-	return nil
-}
-func (s *Integration) OnStreamDeleted(ctx context.Context, userSub string, config map[string]interface{}) error {
-	return nil
-}
-func (s *Integration) OnSyncSubscriptions(ctx context.Context, userSub string, config map[string]interface{}, enabled bool) error {
-	return nil
-}
-func (s *Integration) HealthCheck(ctx context.Context) (*integration.HealthStatus, error) {
-	return &integration.HealthStatus{Status: "healthy"}, nil
-}
+// --- HealthChecker ---
+
+func (s *Integration) InternalServiceURL() string { return os.Getenv("INTERNAL_SPORTS_URL") }
 
 // --- HTTP Handlers ---
 

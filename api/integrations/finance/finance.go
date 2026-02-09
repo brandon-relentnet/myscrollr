@@ -2,7 +2,6 @@ package finance
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -13,7 +12,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Integration implements the integration.Integration interface for finance/market data.
+// Integration implements the core Integration interface plus CDCHandler,
+// DashboardProvider, and HealthChecker for finance/market data.
 type Integration struct {
 	db         *pgxpool.Pool
 	sendToUser integration.SendToUserFunc
@@ -29,15 +29,17 @@ func New(db *pgxpool.Pool, sendToUser integration.SendToUserFunc, routeToSub int
 	}
 }
 
-func (f *Integration) Name() string        { return "finance" }
-func (f *Integration) DisplayName() string  { return "Finance" }
-func (f *Integration) InternalServiceURL() string { return os.Getenv("INTERNAL_FINANCE_URL") }
-func (f *Integration) ConfigSchema() json.RawMessage { return nil }
+// --- Core Interface ---
+
+func (f *Integration) Name() string       { return "finance" }
+func (f *Integration) DisplayName() string { return "Finance" }
 
 func (f *Integration) RegisterRoutes(router fiber.Router, authMiddleware fiber.Handler) {
 	router.Get("/finance/health", f.healthHandler)
 	router.Get("/finance", authMiddleware, f.getFinance)
 }
+
+// --- CDCHandler ---
 
 func (f *Integration) HandlesTable(tableName string) bool {
 	return tableName == "trades"
@@ -47,6 +49,8 @@ func (f *Integration) RouteCDCRecord(ctx context.Context, record integration.CDC
 	f.routeToSub(ctx, core.RedisStreamSubscribersPrefix+"finance", payload)
 	return nil
 }
+
+// --- DashboardProvider ---
 
 func (f *Integration) GetDashboardData(ctx context.Context, userSub string, stream integration.StreamInfo) (interface{}, error) {
 	var trades []core.Trade
@@ -74,21 +78,9 @@ func (f *Integration) GetDashboardData(ctx context.Context, userSub string, stre
 	return trades, nil
 }
 
-func (f *Integration) OnStreamCreated(ctx context.Context, userSub string, config map[string]interface{}) error {
-	return nil
-}
-func (f *Integration) OnStreamUpdated(ctx context.Context, userSub string, oldConfig, newConfig map[string]interface{}) error {
-	return nil
-}
-func (f *Integration) OnStreamDeleted(ctx context.Context, userSub string, config map[string]interface{}) error {
-	return nil
-}
-func (f *Integration) OnSyncSubscriptions(ctx context.Context, userSub string, config map[string]interface{}, enabled bool) error {
-	return nil
-}
-func (f *Integration) HealthCheck(ctx context.Context) (*integration.HealthStatus, error) {
-	return &integration.HealthStatus{Status: "healthy"}, nil
-}
+// --- HealthChecker ---
+
+func (f *Integration) InternalServiceURL() string { return os.Getenv("INTERNAL_FINANCE_URL") }
 
 // --- HTTP Handlers ---
 

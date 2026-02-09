@@ -99,8 +99,10 @@ func (s *Server) setupMiddleware() {
 		"/rss/feeds":        true,
 	}
 	for _, intg := range s.integrations {
-		healthPath := "/" + intg.Name() + "/health"
-		exemptPaths[healthPath] = true
+		if _, ok := intg.(integration.HealthChecker); ok {
+			healthPath := "/" + intg.Name() + "/health"
+			exemptPaths[healthPath] = true
+		}
 	}
 
 	s.App.Use(limiter.New(limiter.Config{
@@ -172,7 +174,11 @@ func (s *Server) healthCheck(c *fiber.Ctx) error {
 
 	httpClient := &http.Client{Timeout: HealthCheckTimeout}
 	for _, intg := range s.integrations {
-		serviceURL := intg.InternalServiceURL()
+		hc, ok := intg.(integration.HealthChecker)
+		if !ok {
+			continue
+		}
+		serviceURL := hc.InternalServiceURL()
 		if serviceURL == "" {
 			continue
 		}
@@ -243,7 +249,11 @@ func (s *Server) getDashboard(c *fiber.Ctx) error {
 		if !ok {
 			continue
 		}
-		data, err := intg.GetDashboardData(ctx, userID, info)
+		dp, ok := intg.(integration.DashboardProvider)
+		if !ok {
+			continue
+		}
+		data, err := dp.GetDashboardData(ctx, userID, info)
 		if err != nil {
 			log.Printf("[Dashboard] %s error: %v", intg.Name(), err)
 			continue

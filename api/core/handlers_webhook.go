@@ -97,10 +97,14 @@ func routeCDCRecord(ctx context.Context, rec integration.CDCRecord) {
 		return
 	}
 
-	// Delegate to integrations
+	// Delegate to integrations that implement CDCHandler
 	for _, intg := range IntegrationRegistry {
-		if intg.HandlesTable(table) {
-			if err := intg.RouteCDCRecord(ctx, rec, payload); err != nil {
+		h, ok := intg.(integration.CDCHandler)
+		if !ok {
+			continue
+		}
+		if h.HandlesTable(table) {
+			if err := h.RouteCDCRecord(ctx, rec, payload); err != nil {
 				log.Printf("[Sequin] Integration %s failed to route %s CDC: %v", intg.Name(), table, err)
 			}
 			return

@@ -10,7 +10,7 @@ MyScrollr is a multi-component platform aggregating financial market data (via F
 |-----------|------------|-------|---------|
 | **Frontend** | React 19, Vite 7, TanStack Router, Tailwind v4 | 26 TS/TSX | User interface at myscrollr.com |
 | **Extension** | WXT v0.20, React 19, Tailwind v4 | 19 TS/TSX | Chrome/Firefox browser extension with scrollbar feed overlay |
-| **API** | Go 1.21, Fiber v2, pgx, Redis | 15 Go files (~3.3k LOC) | Public API server (port 8080) |
+| **API** | Go 1.21, Fiber v2, pgx, Redis | 24 Go files (~4k LOC) | Public API server (port 8080), modular monolith with plugin-style integration system |
 | **Ingestion** | Rust (edition 2024), Axum, SQLx, tokio | 31 .rs files | 4 independent data collection services + 1 internal library |
 | **Database** | PostgreSQL | 13 tables | Data persistence (programmatic schema, no migrations) |
 | **Cache** | Redis | — | Caching, token storage, per-user Pub/Sub routing, subscription sets |
@@ -146,23 +146,44 @@ Four independent Rust crates (not a Cargo workspace). All services use Axum, SQL
 
 ### Go API (`api/`)
 
+The API uses a modular monolith architecture with a plugin-style integration system. Core server infrastructure lives in `core/`, the integration contract in `integration/`, and each data source is a self-contained package in `integrations/`.
+
+**Integration interface design**: A minimal core `Integration` interface (3 methods: `Name`, `DisplayName`, `RegisterRoutes`) plus 5 optional capability interfaces (`CDCHandler`, `DashboardProvider`, `StreamLifecycle`, `HealthChecker`, `Configurable`) checked via Go type assertions. This eliminates no-op stub methods — integrations only implement what they need.
+
 | File | Lines | Purpose |
 |------|-------|---------|
-| `main.go` | 466 | Fiber app init, middleware (CORS, rate limiting, security headers), route definitions, data handlers, health checks, stream-aware dashboard |
-| `auth.go` | 163 | Logto JWT validation middleware (JWKS refresh, issuer/audience validation) |
-| `yahoo.go` | 351 | Yahoo OAuth2 flow (start/callback), league/standings/matchups/roster proxy endpoints |
-| `yahoo_models.go` | 164 | XML/JSON model structs for Yahoo Fantasy API |
-| `users.go` | 218 | User profile, Yahoo status/leagues/disconnect |
-| `streams.go` | 438 | Streams CRUD API, Redis subscription set management, `syncStreamSubscriptions()` |
-| `preferences.go` | 250 | User preferences CRUD with auto-creation of defaults, field-level validation |
-| `rss.go` | 237 | RSS feed catalog, per-user RSS item queries, feed-to-tracked sync |
-| `database.go` | 170 | PostgreSQL pool (pgxpool), AES-256-GCM encryption helpers, table creation (yahoo_users, user_streams, user_preferences) |
-| `redis.go` | 89 | Redis client, GetCache/SetCache, PublishRaw, PSubscribe, subscription set helpers (AddSubscriber/RemoveSubscriber/GetSubscribers) |
-| `events.go` | 138 | Per-user Hub pattern for SSE via Redis Pub/Sub (`events:user:*` pattern subscription) |
+| `main.go` | 53 | Bootstrap: creates `core.Server`, registers integrations, starts listener |
+| **`integration/`** | | |
+| `integration.go` | 127 | Core `Integration` interface + 5 optional capability interfaces (`CDCHandler`, `DashboardProvider`, `StreamLifecycle`, `HealthChecker`, `Configurable`), shared types (`CDCRecord`, `HealthStatus`, `SendToUserFunc`, etc.) |
+| **`core/`** | | |
+| `server.go` | 328 | Fiber app init, middleware (CORS, rate limiting, security headers), health checks, dashboard aggregation via type assertions |
+| `auth.go` | 143 | Logto JWT validation middleware (JWKS refresh, issuer/audience validation) |
+| `streams.go` | 437 | Streams CRUD API, Redis subscription set management, `syncStreamSubscriptions()`, `StreamLifecycle` hook dispatch |
+| `handlers_webhook.go` | 115 | Sequin CDC webhook receiver, delegates to `CDCHandler` integrations |
 | `handlers_stream.go` | 91 | Authenticated SSE endpoint (`GET /events?token=`) with 15s heartbeat |
-| `handlers_webhook.go` | 227 | Sequin CDC webhook receiver with per-user routing logic |
-| `extension_auth.go` | 211 | Extension PKCE token exchange/refresh proxy to Logto (CORS `*`) |
-| `models.go` | 82 | Game, Trade, RssItem, TrackedFeed, Stream, UserPreferences, DashboardResponse structs |
+| `preferences.go` | 243 | User preferences CRUD with auto-creation of defaults, field-level validation |
+| `events.go` | 155 | Per-user Hub pattern for SSE via Redis Pub/Sub (`events:user:*` pattern subscription) |
+| `database.go` | 138 | PostgreSQL pool (pgxpool), AES-256-GCM encryption helpers, table creation |
+| `redis.go` | 92 | Redis client, GetCache/SetCache, PublishRaw, PSubscribe, subscription set helpers |
+| `extension_auth.go` | 197 | Extension PKCE token exchange/refresh proxy to Logto (CORS `*`) |
+| `models.go` | 101 | Game, Trade, RssItem, TrackedFeed, Stream, UserPreferences, DashboardResponse structs |
+| `constants.go` | 118 | Shared constants (URLs, timeouts, cache keys) |
+| `helpers.go` | 33 | Shared HTTP helper functions (`ProxyInternalHealth`) |
+| `users.go` | 28 | User profile handler |
+| **`integrations/finance/`** | | |
+| `finance.go` | 127 | Finance integration: CDC routing (broadcast to finance subscribers), dashboard data, health proxy. Implements `CDCHandler`, `DashboardProvider`, `HealthChecker`. |
+| **`integrations/sports/`** | | |
+| `sports.go` | 127 | Sports integration: CDC routing (broadcast to sports subscribers), dashboard data, health proxy. Implements `CDCHandler`, `DashboardProvider`, `HealthChecker`. |
+| **`integrations/rss/`** | | |
+| `rss.go` | 363 | RSS integration: CDC routing (per-feed-url subscriber sets), dashboard data, stream lifecycle hooks (sync RSS feeds to `tracked_feeds`), feed catalog routes, health proxy. Implements `CDCHandler`, `DashboardProvider`, `StreamLifecycle`, `HealthChecker`. |
+| **`integrations/fantasy/`** | | |
+| `fantasy.go` | 197 | Fantasy integration: CDC routing (join-based resolution via `yahoo_users`/`yahoo_leagues`), dashboard data, health proxy. Implements `CDCHandler`, `DashboardProvider`, `HealthChecker`. |
+| `handlers.go` | 210 | Yahoo OAuth2 flow (start/callback), league/standings/matchups/roster proxy endpoints |
+| `user_handlers.go` | 312 | User Yahoo status, leagues, disconnect handlers |
+| `models.go` | 171 | XML/JSON model structs for Yahoo Fantasy API |
+| `webhook.go` | 65 | Yahoo-specific CDC record routing helpers |
+| **`integrations/_template/`** | | |
+| `template.go` | ~240 | Documented scaffold for new integrations with all interfaces, CDC routing patterns, and registration examples |
 
 ### Frontend (`myscrollr.com/`)
 
@@ -357,7 +378,7 @@ Copy `.env.example` to `.env` (for local dev) or configure in Coolify.
 1. **Duplicated Rust code** — `database.rs` and `log.rs` are copy-pasted across all 4 Rust services. Planned migration to a shared common crate.
 2. **No migration system** — Database schema changes require manual intervention; tables are only created, never altered programmatically (except RSS service which uses idempotent `ALTER TABLE`).
 3. **Sequin webhook verification incomplete** — `HandleSequinWebhook` reads `SEQUIN_WEBHOOK_SECRET` but only does basic Bearer token comparison, not full signature verification.
-4. **Integrations directory** — `integrations/` contains 15 README/markdown files for a future marketplace system but no implementation code.
+4. **Integrations directory** — `integrations/` (root-level) contains 15 README/markdown files for a future marketplace system but no implementation code. Not to be confused with `api/integrations/` which contains the actual Go integration packages.
 5. **No workspace Cargo.toml** — Despite sharing the `ingestion/` directory and a `target/` folder, the Rust services are independent crates without a workspace. This means `cargo build` must be run individually per service.
 
 ## Important Files
@@ -374,7 +395,9 @@ Copy `.env.example` to `.env` (for local dev) or configure in Coolify.
 - `extension/entrypoints/background/preferences.ts` — Server preference sync and stream visibility management
 - `extension/entrypoints/scrollbar.content/RssItem.tsx` — RSS article display component (comfort/compact modes)
 - `extension/utils/storage.ts` — All 13 WXT storage item definitions
-- `api/events.go` — Per-user SSE Hub pattern (`events:user:*` pattern subscription)
-- `api/handlers_webhook.go` — Sequin CDC webhook with per-user routing logic (table-aware dispatch)
-- `api/streams.go` — Streams CRUD API with Redis subscription set management
-- `api/auth.go` — Logto JWT validation middleware
+- `api/integration/integration.go` — Core `Integration` interface + 5 optional capability interfaces, shared types
+- `api/INTEGRATIONS.md` — Developer guide for adding new integrations
+- `api/core/events.go` — Per-user SSE Hub pattern (`events:user:*` pattern subscription)
+- `api/core/handlers_webhook.go` — Sequin CDC webhook with per-user routing logic (table-aware dispatch)
+- `api/core/streams.go` — Streams CRUD API with Redis subscription set management
+- `api/core/auth.go` — Logto JWT validation middleware

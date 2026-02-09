@@ -15,7 +15,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// Integration implements the integration.Integration interface for Yahoo Fantasy Sports.
+// Integration implements the core Integration interface plus CDCHandler,
+// DashboardProvider, and HealthChecker for Yahoo Fantasy Sports.
 type Integration struct {
 	db          *pgxpool.Pool
 	rdb         *redis.Client
@@ -32,10 +33,10 @@ func New(db *pgxpool.Pool, rdb *redis.Client, sendToUser integration.SendToUserF
 	}
 }
 
-func (f *Integration) Name() string        { return "fantasy" }
-func (f *Integration) DisplayName() string  { return "Fantasy Sports" }
-func (f *Integration) InternalServiceURL() string { return os.Getenv("INTERNAL_YAHOO_URL") }
-func (f *Integration) ConfigSchema() json.RawMessage { return nil }
+// --- Core Interface ---
+
+func (f *Integration) Name() string       { return "fantasy" }
+func (f *Integration) DisplayName() string { return "Fantasy Sports" }
 
 // Init initialises the Yahoo OAuth2 config and ensures the yahoo_users table exists.
 // Must be called after core.ConnectDB().
@@ -108,6 +109,8 @@ func (f *Integration) RegisterRoutes(router fiber.Router, authMiddleware fiber.H
 	router.Delete("/users/me/yahoo", authMiddleware, f.DisconnectYahoo)
 }
 
+// --- CDCHandler ---
+
 // HandlesTable returns true for yahoo-owned tables.
 func (f *Integration) HandlesTable(tableName string) bool {
 	switch tableName {
@@ -132,9 +135,11 @@ func (f *Integration) RouteCDCRecord(ctx context.Context, record integration.CDC
 	return nil
 }
 
+// --- DashboardProvider ---
+
 // GetDashboardData fetches the user's Yahoo leagues from cache or DB.
 func (f *Integration) GetDashboardData(ctx context.Context, userSub string, stream integration.StreamInfo) (interface{}, error) {
-	// Resolve logto_sub → guid
+	// Resolve logto_sub -> guid
 	var guid string
 	err := f.db.QueryRow(ctx, "SELECT guid FROM yahoo_users WHERE logto_sub = $1", userSub).Scan(&guid)
 	if err != nil {
@@ -163,28 +168,9 @@ func (f *Integration) GetDashboardData(ctx context.Context, userSub string, stre
 	return nil, nil
 }
 
-// --- Stream Lifecycle Hooks ---
+// --- HealthChecker ---
 
-func (f *Integration) OnStreamCreated(ctx context.Context, userSub string, config map[string]interface{}) error {
-	return nil
-}
-
-func (f *Integration) OnStreamUpdated(ctx context.Context, userSub string, oldConfig, newConfig map[string]interface{}) error {
-	return nil
-}
-
-func (f *Integration) OnStreamDeleted(ctx context.Context, userSub string, config map[string]interface{}) error {
-	return nil
-}
-
-func (f *Integration) OnSyncSubscriptions(ctx context.Context, userSub string, config map[string]interface{}, enabled bool) error {
-	return nil
-}
-
-// HealthCheck returns the health status of the Yahoo ingestion service.
-func (f *Integration) HealthCheck(ctx context.Context) (*integration.HealthStatus, error) {
-	return &integration.HealthStatus{Status: "healthy"}, nil
-}
+func (f *Integration) InternalServiceURL() string { return os.Getenv("INTERNAL_YAHOO_URL") }
 
 func (f *Integration) healthHandler(c *fiber.Ctx) error {
 	return core.ProxyInternalHealth(c, f.InternalServiceURL())
@@ -209,5 +195,3 @@ func (f *Integration) UpsertYahooUser(guid, logtoSub, refreshToken string) error
 
 	return err
 }
-
-

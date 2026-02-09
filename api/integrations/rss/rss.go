@@ -14,7 +14,8 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// Integration implements the integration.Integration interface for RSS feeds.
+// Integration implements the core Integration interface plus CDCHandler,
+// DashboardProvider, StreamLifecycle, and HealthChecker for RSS feeds.
 type Integration struct {
 	db         *pgxpool.Pool
 	rdb        *redis.Client
@@ -30,16 +31,18 @@ func New(db *pgxpool.Pool, rdb *redis.Client, sendToUser integration.SendToUserF
 	}
 }
 
-func (r *Integration) Name() string        { return "rss" }
-func (r *Integration) DisplayName() string  { return "RSS" }
-func (r *Integration) InternalServiceURL() string { return os.Getenv("INTERNAL_RSS_URL") }
-func (r *Integration) ConfigSchema() json.RawMessage { return nil }
+// --- Core Interface ---
+
+func (r *Integration) Name() string       { return "rss" }
+func (r *Integration) DisplayName() string { return "RSS" }
 
 func (r *Integration) RegisterRoutes(router fiber.Router, authMiddleware fiber.Handler) {
 	router.Get("/rss/health", r.healthHandler)
 	router.Get("/rss/feeds", r.getRSSFeedCatalog)
 	router.Delete("/rss/feeds", authMiddleware, r.deleteCustomFeed)
 }
+
+// --- CDCHandler ---
 
 func (r *Integration) HandlesTable(tableName string) bool {
 	return tableName == "rss_items"
@@ -60,6 +63,8 @@ func (r *Integration) RouteCDCRecord(ctx context.Context, record integration.CDC
 	return nil
 }
 
+// --- DashboardProvider ---
+
 func (r *Integration) GetDashboardData(ctx context.Context, userSub string, stream integration.StreamInfo) (interface{}, error) {
 	feedURLs := r.getUserRSSFeedURLs(userSub)
 	if len(feedURLs) == 0 {
@@ -79,6 +84,8 @@ func (r *Integration) GetDashboardData(ctx context.Context, userSub string, stre
 	core.SetCache(cacheKey, items, core.RSSItemsCacheTTL)
 	return items, nil
 }
+
+// --- StreamLifecycle ---
 
 func (r *Integration) OnStreamCreated(ctx context.Context, userSub string, config map[string]interface{}) error {
 	go r.syncRSSFeedsToTracked(config)
@@ -128,9 +135,9 @@ func (r *Integration) OnSyncSubscriptions(ctx context.Context, userSub string, c
 	return nil
 }
 
-func (r *Integration) HealthCheck(ctx context.Context) (*integration.HealthStatus, error) {
-	return &integration.HealthStatus{Status: "healthy"}, nil
-}
+// --- HealthChecker ---
+
+func (r *Integration) InternalServiceURL() string { return os.Getenv("INTERNAL_RSS_URL") }
 
 // --- Internal helpers ---
 
