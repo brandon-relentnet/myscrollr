@@ -1,304 +1,391 @@
-# Scrollr Integration Developer Guide
+# Scrollr Integration Framework
 
-This guide explains how to add a new data integration to the Scrollr API.
+## Overview
 
-## Architecture Overview
+Scrollr uses a **compile-time, first-party, plugin-style integration system** spanning three layers: the Go API, the browser extension, and the web frontend. Each data source (finance, sports, RSS, fantasy) is a self-contained integration that plugs into shared infrastructure at each layer.
 
-Scrollr uses a **plugin-style integration system**. Each integration is an independent Go package under `api/integrations/` that plugs into the core server via a minimal interface + optional capability interfaces.
+This is **not** a runtime marketplace. There are no API keys, no database-driven registry, and no third-party publishing flow. Integrations are Go packages, React components, and registry entries checked into the monorepo and built at compile time.
+
+### How It Works
+
+Each integration plugs in at three levels:
+
+| Layer | Purpose | Key Pattern |
+|-------|---------|------------|
+| **Go API** (`api/integrations/`) | CDC routing, dashboard data, health checks, HTTP routes | Interface + capability type assertions |
+| **Extension** (`extension/integrations/`) | Feed bar tab with real-time CDC data | Registry + `useScrollrCDC` hook |
+| **Frontend** (`myscrollr.com/src/integrations/`) | Dashboard configuration panel | Registry + shared UI components |
+
+All three layers use the same integration ID (e.g. `"finance"`, `"sports"`, `"rss"`, `"fantasy"`) as the universal key that ties everything together. This ID matches the `stream_type` in `user_streams` and the dashboard response data keys.
+
+## Architecture
 
 ```
-main.go
-  └── Registers integrations into core.Server
-        └── core/ handles: middleware, auth, SSE, streams CRUD, webhooks
-              └── Delegates to integrations via type assertions
+                      ┌─────────────────────────────────────────────┐
+                      │          Rust Ingestion Services            │
+                      │  finance:3001  sports:3002  yahoo:3003      │
+                      │  rss:3004                                   │
+                      └────────────────────┬────────────────────────┘
+                                           │ write
+                                           v
+                      ┌─────────────────────────────────────────────┐
+                      │              PostgreSQL                     │
+                      │  trades, games, rss_items, yahoo_*          │
+                      └────────────────────┬────────────────────────┘
+                                           │ CDC
+                                           v
+                      ┌─────────────────────────────────────────────┐
+                      │          Sequin (external CDC)              │
+                      │  Detects row changes, sends webhooks        │
+                      └────────────────────┬────────────────────────┘
+                                           │ POST /webhooks/sequin
+                                           v
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          Go API (port 8080)                                  │
+│                                                                              │
+│  core/handlers_webhook.go                                                    │
+│    → For each CDC record, iterate IntegrationRegistry                        │
+│    → if intg.(CDCHandler) && HandlesTable(table) → RouteCDCRecord()          │
+│                                                                              │
+│  Per integration:                                                            │
+│    finance/  → broadcast to stream:subscribers:finance                        │
+│    sports/   → broadcast to stream:subscribers:sports                         │
+│    rss/      → per-feed-URL routing via rss:subscribers:{url}                │
+│    fantasy/  → join resolution (guid/league_key/team_key → logto_sub)        │
+│                                                                              │
+│  → Redis Pub/Sub → per-user channel events:user:{sub}                        │
+│  → SSE endpoint GET /events?token=                                           │
+└──────────────────────────────────────────────────────────────────────────────┘
+                         │                              │
+                         v                              v
+          ┌──────────────────────────┐   ┌──────────────────────────┐
+          │    Browser Extension     │   │    Web Frontend          │
+          │                          │   │    myscrollr.com         │
+          │  Background:             │   │                          │
+          │    CDC pass-through      │   │  useRealtime hook:       │
+          │    → CDC_BATCH to tabs   │   │    processes CDC records │
+          │                          │   │                          │
+          │  FeedTab components:     │   │  DashboardTab components:│
+          │    useScrollrCDC hook    │   │    stream config panels  │
+          │    manages own state     │   │    shared UI components  │
+          └──────────────────────────┘   └──────────────────────────┘
 ```
 
-**Key principle:** Only implement what you need. A simple "broadcast" integration (like finance/sports) only needs ~8 methods. A complex integration with per-resource routing and stream hooks (like RSS) implements more.
+## Current Integrations
 
-## Interface Reference
+| Integration | Go Capabilities | Extension FeedTab | Frontend DashboardTab | Rust Service | CDC Tables | Routing Strategy |
+|-------------|----------------|-------------------|----------------------|-------------|------------|-----------------|
+| **finance** | CDCHandler, DashboardProvider, HealthChecker | `useScrollrCDC('trades')` | Info cards, tracked symbols | finance_service:3001 | `trades` | Broadcast to `stream:subscribers:finance` |
+| **sports** | CDCHandler, DashboardProvider, HealthChecker | `useScrollrCDC('games')` | Info cards, league grid | sports_service:3002 | `games` | Broadcast to `stream:subscribers:sports` |
+| **rss** | CDCHandler, DashboardProvider, StreamLifecycle, HealthChecker | `useScrollrCDC('rss_items')` | Feed management, catalog browser | rss_service:3004 | `rss_items`, `tracked_feeds` | Per-feed-URL via `rss:subscribers:{url}` |
+| **fantasy** | CDCHandler, DashboardProvider, HealthChecker | Not in extension (dashboard-only) | Yahoo OAuth, league cards, standings | yahoo_service:3003 | `yahoo_leagues`, `yahoo_standings`, `yahoo_matchups`, `yahoo_rosters` | Join resolution (guid/league_key/team_key -> logto_sub) |
 
-### Core Interface (required)
+## Adding a New Integration
 
-Every integration **must** implement these 3 methods:
+This section walks through adding a complete integration across all three layers. Each layer has a `_template/` scaffold you can copy as a starting point.
+
+### Step 1: Go API Layer
+
+The Go API uses a core `Integration` interface (3 methods) plus 5 optional capability interfaces checked via type assertions. You only implement what you need.
+
+**Quick start:**
+
+```bash
+cp -r api/integrations/_template api/integrations/myservice
+```
+
+1. Change `package _template` to `package myservice`
+2. Implement the core interface: `Name()`, `DisplayName()`, `RegisterRoutes()`
+3. Implement optional capabilities as needed (uncomment in template, delete what you don't use)
+4. Register in `api/main.go`:
 
 ```go
-type Integration interface {
-    Name() string                                                    // "finance", "sports", etc.
-    DisplayName() string                                             // "Finance", "Sports", etc.
-    RegisterRoutes(router fiber.Router, authMiddleware fiber.Handler) // Mount HTTP endpoints
-}
+import "github.com/brandon-relentnet/myscrollr/api/integrations/myservice"
+
+srv.RegisterIntegration(myservice.New(core.DBPool, core.SendToUser, core.RouteToStreamSubscribers))
 ```
 
-| Method | Purpose |
-|--------|---------|
-| `Name()` | Short identifier. Used as stream type, dashboard key, health path, log prefix. Must be unique. |
-| `DisplayName()` | Human-readable label for logs and admin UIs. |
-| `RegisterRoutes()` | Mount your HTTP endpoints. Use `authMiddleware` for protected routes. |
+**Capability decision guide:**
 
-### Optional Capability Interfaces
-
-The core server checks for these via Go type assertions (`if h, ok := intg.(CDCHandler); ok`). **Only implement the ones you need** — no stub methods required.
-
-#### `CDCHandler`
-
-Enables your integration to receive and route Sequin CDC events.
-
-```go
-type CDCHandler interface {
-    HandlesTable(tableName string) bool
-    RouteCDCRecord(ctx context.Context, record CDCRecord, payload []byte) error
-}
-```
-
-**When to implement:** Your integration owns database tables whose changes should be pushed to users in real time.
+| Need | Implement | Example |
+|------|-----------|---------|
+| Push CDC events to users | `CDCHandler` | All current integrations |
+| Contribute data to `GET /dashboard` | `DashboardProvider` | All current integrations |
+| React to stream create/update/delete | `StreamLifecycle` | RSS (syncs feeds to tracked_feeds) |
+| Monitor a backing service's health | `HealthChecker` | All current integrations |
+| Advertise config JSON Schema | `Configurable` | None currently |
 
 **CDC routing patterns:**
 
-| Pattern | Use Case | Example |
-|---------|----------|---------|
-| Broadcast | All subscribers of a stream type | Finance, Sports |
-| Record owner | Route to user identified in the record | user_preferences |
-| Per-resource | Route to users subscribed to a specific resource | RSS (per feed URL) |
-| Join resolution | Resolve record fields via DB joins | Fantasy (guid → logto_sub) |
+| Pattern | Use Case | Implementation |
+|---------|----------|---------------|
+| Broadcast | All subscribers of a stream type | `RouteToStreamSubscribers(ctx, "stream:subscribers:<type>", payload)` |
+| Record owner | Route to user identified in record | `SendToUser(record["logto_sub"], payload)` |
+| Per-resource | Users subscribed to a specific resource | `RouteToStreamSubscribers(ctx, "rss:subscribers:<url>", payload)` |
+| Join resolution | Resolve via DB lookup | Query `yahoo_users`/`yahoo_leagues` to find `logto_sub` |
 
-#### `DashboardProvider`
+> **Full Go API guide:** See [`api/INTEGRATIONS.md`](../api/INTEGRATIONS.md) for the complete interface reference, lifecycle diagrams, available `core/` helpers, and step-by-step instructions.
 
-Enables your integration to contribute data to `GET /dashboard`.
+### Step 2: Extension Layer
 
-```go
-type DashboardProvider interface {
-    GetDashboardData(ctx context.Context, userSub string, stream StreamInfo) (interface{}, error)
+The extension uses a registry-driven framework. Each integration registers a `FeedTab` React component that manages its own data via the `useScrollrCDC` hook.
+
+**Quick start:**
+
+```bash
+cp extension/integrations/_template/FeedTab.tsx extension/integrations/official/myservice/FeedTab.tsx
+```
+
+1. Implement the `FeedTab` component using `useScrollrCDC` for CDC data:
+
+```tsx
+import { useScrollrCDC } from '~/integrations/hooks/useScrollrCDC';
+import type { FeedTabProps } from '~/integrations/types';
+
+export default function MyServiceFeedTab({ mode, streamConfig }: FeedTabProps) {
+  const initialItems = (streamConfig.__initialItems as MyItem[]) ?? [];
+
+  const { items } = useScrollrCDC<MyItem>({
+    table: 'my_table',           // CDC table name
+    initialItems,
+    keyOf: (item) => item.id,    // Unique key extractor
+    sort: (a, b) => ...,         // Optional sort
+    validate: (record) => ...,   // Optional validation
+  });
+
+  return (
+    <div className={clsx('grid gap-px', mode === 'comfort' ? 'grid-cols-4' : 'grid-cols-1')}>
+      {items.map((item) => <MyItem key={item.id} item={item} mode={mode} />)}
+    </div>
+  );
 }
 ```
 
-**When to implement:** Your integration has data to show on the user's dashboard.
+2. Register in `extension/integrations/registry.ts`:
 
-**Common pattern:** Check Redis cache first → query DB → cache the result → return.
+```ts
+import MyServiceFeedTab from './official/myservice/FeedTab';
 
-#### `StreamLifecycle`
+const myservice: IntegrationManifest = {
+  id: 'myservice',
+  name: 'My Service',
+  tabLabel: 'MyServ',
+  tier: 'official',
+  FeedTab: MyServiceFeedTab,
+};
 
-Enables your integration to react to stream CRUD events.
+// Add to the integrations Map:
+[myservice.id, myservice],
 
-```go
-type StreamLifecycle interface {
-    OnStreamCreated(ctx context.Context, userSub string, config map[string]interface{}) error
-    OnStreamUpdated(ctx context.Context, userSub string, oldConfig, newConfig map[string]interface{}) error
-    OnStreamDeleted(ctx context.Context, userSub string, config map[string]interface{}) error
-    OnSyncSubscriptions(ctx context.Context, userSub string, config map[string]interface{}, enabled bool) error
+// Add to TAB_ORDER:
+export const TAB_ORDER: readonly string[] = ['finance', 'sports', 'fantasy', 'rss', 'myservice'];
+```
+
+3. Add the dashboard key mapping in `extension/entrypoints/scrollbar.content/FeedBar.tsx`:
+
+```ts
+const DASHBOARD_KEY_MAP: Record<string, string> = {
+  finance: 'finance',
+  sports: 'sports',
+  rss: 'rss',
+  myservice: 'myservice',  // Must match the key in DashboardResponse.data
+};
+```
+
+**Key contracts:**
+
+| Type | Location | Purpose |
+|------|----------|---------|
+| `FeedTabProps` | `integrations/types.ts` | `{ mode, streamConfig }` — props every FeedTab receives |
+| `IntegrationManifest` | `integrations/types.ts` | `{ id, name, tabLabel, tier, FeedTab }` — registry entry |
+| `useScrollrCDC<T>` | `integrations/hooks/useScrollrCDC.ts` | Subscribe to CDC table, upsert/remove by key, sort, validate, cap at MAX_ITEMS |
+
+**How data flows to FeedTabs:**
+
+1. Background receives CDC records via SSE
+2. Background routes `CDC_BATCH { table, records }` to content script tabs that sent `SUBSCRIBE_CDC`
+3. `useScrollrCDC` hook receives the batch and upserts/removes items in local state
+4. For initial data: `GET /dashboard` response is stored as `lastDashboard`, broadcast as `INITIAL_DATA`, and injected into `streamConfig.__initialItems` via `DASHBOARD_KEY_MAP`
+
+### Step 3: Frontend Layer
+
+The frontend uses a similar registry pattern. Each integration provides a `DashboardTab` component for the stream configuration panel.
+
+**Quick start:**
+
+```bash
+cp myscrollr.com/src/integrations/_template/DashboardTab.tsx myscrollr.com/src/integrations/official/myservice/DashboardTab.tsx
+```
+
+1. Implement the `DashboardTab` component using shared UI components:
+
+```tsx
+import { StreamHeader, InfoCard } from '@/integrations/shared';
+import { Zap } from 'lucide-react';
+import type { DashboardTabProps, IntegrationManifest } from '@/integrations/types';
+
+function MyServiceDashboardTab({ stream, connected, onToggle, onDelete }: DashboardTabProps) {
+  return (
+    <div>
+      <StreamHeader
+        stream={stream}
+        icon={<Zap size={20} className="text-primary" />}
+        title="My Service"
+        subtitle="Description of your integration"
+        connected={connected}
+        onToggle={onToggle}
+        onDelete={onDelete}
+      />
+      <div className="grid grid-cols-3 gap-3">
+        <InfoCard label="Metric" value="42" />
+      </div>
+    </div>
+  );
 }
+
+export const myserviceIntegration: IntegrationManifest = {
+  id: 'myservice',
+  name: 'My Service',
+  tabLabel: 'MyServ',
+  description: 'Brief description',
+  icon: Zap,
+  DashboardTab: MyServiceDashboardTab,
+};
 ```
 
-**When to implement:** You need to manage per-resource Redis subscription sets, sync external resources, or invalidate caches when streams change.
+2. Register in `myscrollr.com/src/integrations/registry.ts`:
 
-**When NOT to implement:** Simple broadcast integrations (finance, sports, fantasy). The core already manages the basic `stream:subscribers:<type>` Redis sets automatically.
+```ts
+import { myserviceIntegration } from './official/myservice/DashboardTab';
 
-| Hook | Called when | Use case |
-|------|-----------|----------|
-| `OnStreamCreated` | After INSERT into user_streams | Sync config resources (e.g. RSS: upsert feed URLs to tracked_feeds) |
-| `OnStreamUpdated` | After UPDATE on user_streams | Diff old/new config, update subscription sets, invalidate caches |
-| `OnStreamDeleted` | After DELETE from user_streams | Clean up caches and subscription sets |
-| `OnSyncSubscriptions` | On dashboard load (warm-up) | Rebuild per-resource Redis sets from DB state |
+register(myserviceIntegration);
 
-#### `HealthChecker`
-
-Indicates your integration has a backing ingestion service.
-
-```go
-type HealthChecker interface {
-    InternalServiceURL() string // e.g. "http://finance:3001"
-}
+// Update TAB_ORDER:
+export const TAB_ORDER = ['finance', 'sports', 'fantasy', 'rss', 'myservice'] as const;
 ```
 
-**When to implement:** Your integration has a separate ingestion service whose health should be monitored.
+**Key contracts:**
 
-**Effect:** The core health endpoint (`GET /health`) will probe `<InternalServiceURL>/health` and include the result. The core also auto-exempts `/<name>/health` from rate limiting.
+| Type | Location | Purpose |
+|------|----------|---------|
+| `DashboardTabProps` | `integrations/types.ts` | `{ stream, getToken, onToggle, onDelete, onStreamUpdate, connected, extraProps }` |
+| `IntegrationManifest` | `integrations/types.ts` | `{ id, name, tabLabel, description, icon, DashboardTab }` |
+| `StreamHeader` | `integrations/shared.tsx` | Shared header with toggle switch, delete confirm, connection indicator |
+| `InfoCard` | `integrations/shared.tsx` | Small stat card for displaying metrics |
 
-#### `Configurable`
+**The `extraProps` pattern:**
 
-Advertises a JSON Schema for your stream config.
+For integrations with state beyond the stream (e.g., Fantasy needs Yahoo OAuth status), the dashboard route passes extra data via `extraProps`:
 
-```go
-type Configurable interface {
-    ConfigSchema() json.RawMessage
-}
+```tsx
+// In dashboard.tsx:
+extraProps={activeStream === 'fantasy' ? { yahooUser, yahooLeagues, ... } : undefined}
 ```
 
-**When to implement:** You want the frontend to validate or auto-generate forms for your stream config.
+The DashboardTab component type-narrows `extraProps` to access integration-specific data.
 
-## Lifecycle
+### Step 4: Infrastructure
 
-### Startup sequence
+After implementing all three layers:
 
-```
-1. main.go: Load env, connect DB, connect Redis, init Hub, init Auth
-2. main.go: Create integrations via New(...)
-3. main.go: Call Init() on integrations that need it (e.g. Fantasy)
-4. main.go: Register integrations via srv.RegisterIntegration(...)
-5. core:    srv.Setup() →
-              a. Publish registry to package-level IntegrationRegistry
-              b. Build ValidStreamTypes map from registered Names
-              c. Setup middleware (rate limit exemptions for health paths)
-              d. Setup routes (core routes + intg.RegisterRoutes for each)
-6. core:    srv.Listen() → start HTTP server
-```
+1. **Database tables**: Create tables in your Rust ingestion service via `CREATE TABLE IF NOT EXISTS` on startup
+2. **Sequin CDC**: Configure Sequin to track your new tables and webhook changes to `POST /webhooks/sequin`
+3. **Environment variables**: If you have a new ingestion service, add `INTERNAL_MYSERVICE_URL` to the Go API's env
+4. **Stream type validation**: Handled automatically. `core/streams.go` builds `ValidStreamTypes` from the integration registry at startup via `BuildValidStreamTypes()` — no hardcoded lists
+5. **CDC processing in useRealtime.ts**: Add your table to the frontend's `useRealtime` hook if the frontend needs to process CDC records directly (for real-time dashboard updates)
 
-### Runtime flow
+## API Discovery
 
-#### CDC Event Processing
+The Go API exposes a `GET /integrations` endpoint that returns all registered integrations with their capabilities. This is useful for frontend discovery and debugging.
+
+**Request:**
 
 ```
-Sequin CDC webhook → POST /webhooks/sequin
-  → Verify secret
-  → Parse records (batched or single)
-  → For each record:
-      → Check table name
-      → Core tables (user_preferences, user_streams) → RouteToRecordOwner
-      → Other tables → iterate IntegrationRegistry:
-          → if intg implements CDCHandler AND HandlesTable(table):
-              → RouteCDCRecord(ctx, record, payload)
+GET https://api.myscrollr.relentnet.dev/integrations
 ```
 
-#### Dashboard Aggregation
+**Response:**
 
-```
-GET /dashboard (authenticated)
-  → Get user preferences
-  → Get user streams
-  → Build enabledStreams map
-  → Kick off SyncStreamSubscriptions in background
-  → For each integration:
-      → if user has enabled stream of this type
-         AND intg implements DashboardProvider:
-          → GetDashboardData(ctx, userSub, streamInfo)
-          → Add result to response.data[intg.Name()]
-```
-
-#### Stream CRUD Lifecycle
-
-```
-POST /users/me/streams  (CreateStream)
-  → Validate stream type against ValidStreamTypes
-  → INSERT into user_streams
-  → If enabled: addStreamSubscriptions (core Redis set management)
-  → If intg implements StreamLifecycle: OnStreamCreated(ctx, userSub, config)
-
-PUT /users/me/streams/:type  (UpdateStream)
-  → Fetch old config for diffing
-  → UPDATE user_streams
-  → Update Redis subscription sets based on enabled state
-  → If intg implements StreamLifecycle: OnStreamUpdated(ctx, userSub, oldConfig, newConfig)
-
-DELETE /users/me/streams/:type  (DeleteStream)
-  → Fetch config before delete
-  → DELETE from user_streams
-  → removeStreamSubscriptions (core Redis set cleanup)
-  → If intg implements StreamLifecycle: OnStreamDeleted(ctx, userSub, config)
+```json
+[
+  {
+    "name": "finance",
+    "display_name": "Finance",
+    "capabilities": ["cdc", "dashboard", "health"]
+  },
+  {
+    "name": "sports",
+    "display_name": "Sports",
+    "capabilities": ["cdc", "dashboard", "health"]
+  },
+  {
+    "name": "rss",
+    "display_name": "RSS",
+    "capabilities": ["cdc", "dashboard", "stream_lifecycle", "health"]
+  },
+  {
+    "name": "fantasy",
+    "display_name": "Fantasy",
+    "capabilities": ["cdc", "dashboard", "health"]
+  }
+]
 ```
 
-## Available `core/` Helpers
+**Capability values:**
 
-These functions and variables are exported from `core/` for use by integration packages:
+| Capability | Interface | Meaning |
+|-----------|-----------|---------|
+| `cdc` | `CDCHandler` | Receives and routes Sequin CDC events |
+| `dashboard` | `DashboardProvider` | Contributes data to `GET /dashboard` |
+| `stream_lifecycle` | `StreamLifecycle` | Reacts to stream create/update/delete |
+| `health` | `HealthChecker` | Has a backing service whose health is monitored |
+| `configurable` | `Configurable` | Advertises a JSON Schema for stream config |
 
-### Database
+## Key Files Reference
 
-| Function | Signature | Purpose |
-|----------|-----------|---------|
-| `DBPool` | `*pgxpool.Pool` | Global Postgres connection pool |
-| `Encrypt` | `(plaintext string) (string, error)` | AES-256-GCM encrypt (for tokens) |
-| `Decrypt` | `(ciphertext string) (string, error)` | AES-256-GCM decrypt |
+### Go API
 
-### Redis
+| File | Purpose |
+|------|---------|
+| `api/integration/integration.go` | Core `Integration` interface (3 methods) + 5 optional capability interfaces, shared types |
+| `api/core/server.go` | `RegisterIntegration()`, `Setup()`, `GET /integrations`, `BuildValidStreamTypes()` |
+| `api/core/streams.go` | Streams CRUD, dynamic `ValidStreamTypes`, `StreamLifecycle` hook dispatch |
+| `api/core/handlers_webhook.go` | Sequin CDC webhook, iterates integrations for `CDCHandler` |
+| `api/integrations/_template/template.go` | Documented Go scaffold with all interfaces |
+| `api/integrations/finance/finance.go` | Finance: broadcast CDC, dashboard data, health proxy |
+| `api/integrations/sports/sports.go` | Sports: broadcast CDC, dashboard data, health proxy |
+| `api/integrations/rss/rss.go` | RSS: per-URL CDC routing, feed catalog, stream lifecycle |
+| `api/integrations/fantasy/fantasy.go` | Fantasy: join-based CDC routing, Yahoo OAuth flow |
+| `api/main.go` | Integration registration at startup |
+| `api/INTEGRATIONS.md` | Full Go-layer developer guide (interface reference, lifecycle, helpers) |
 
-| Function | Signature | Purpose |
-|----------|-----------|---------|
-| `Rdb` | `*redis.Client` | Global Redis client |
-| `GetCache` | `(key string, target interface{}) bool` | Deserialize cached value |
-| `SetCache` | `(key string, value interface{}, ttl time.Duration)` | Serialize and cache with TTL |
-| `AddSubscriber` | `(ctx, setKey, userSub string) error` | Add user to subscription set |
-| `RemoveSubscriber` | `(ctx, setKey, userSub string) error` | Remove user from subscription set |
-| `GetSubscribers` | `(ctx, setKey string) ([]string, error)` | Get all users in subscription set |
+### Browser Extension
 
-### Event Routing
+| File | Purpose |
+|------|---------|
+| `extension/integrations/types.ts` | `FeedTabProps`, `IntegrationManifest`, `IntegrationTier` |
+| `extension/integrations/registry.ts` | Registry Map, `getIntegration()`, `getAllIntegrations()`, `sortTabOrder()`, `TAB_ORDER` |
+| `extension/integrations/hooks/useScrollrCDC.ts` | Generic CDC subscription hook (subscribe, upsert/remove, sort, validate, cap) |
+| `extension/integrations/_template/FeedTab.tsx` | Documented scaffold for new FeedTab integrations |
+| `extension/integrations/official/finance/FeedTab.tsx` | Finance tab: `useScrollrCDC('trades')`, renders TradeItem grid |
+| `extension/integrations/official/sports/FeedTab.tsx` | Sports tab: `useScrollrCDC('games')`, renders GameItem grid |
+| `extension/integrations/official/rss/FeedTab.tsx` | RSS tab: `useScrollrCDC('rss_items')`, renders RssItem list |
+| `extension/entrypoints/scrollbar.content/FeedBar.tsx` | Generic feed shell, `DASHBOARD_KEY_MAP`, mounts active FeedTab |
+| `extension/entrypoints/scrollbar.content/FeedTabs.tsx` | Registry-driven tab switcher |
+| `extension/entrypoints/background/sse.ts` | SSE connection, CDC pass-through routing |
+| `extension/entrypoints/background/messaging.ts` | Per-tab CDC subscriptions, `CDC_BATCH` routing |
 
-| Function | Signature | Purpose |
-|----------|-----------|---------|
-| `SendToUser` | `(sub string, msg []byte)` | Publish to a user's Redis channel |
-| `RouteToStreamSubscribers` | `(ctx, setKey string, payload []byte)` | Send to all users in a set |
-| `RouteToRecordOwner` | `(record map[string]interface{}, field string, payload []byte)` | Send to user identified in record |
+### Web Frontend
 
-### HTTP
-
-| Function | Signature | Purpose |
-|----------|-----------|---------|
-| `ProxyInternalHealth` | `(c *fiber.Ctx, internalURL string) error` | Proxy a health check to a service |
-| `GetUserID` | `(c *fiber.Ctx) string` | Extract logto_sub from auth context |
-| `LogtoAuth` | `fiber.Handler` | JWT validation middleware |
-
-### Constants
-
-All Redis key prefixes, cache TTLs, and query limits are defined in `core/constants.go`.
-
-### Models
-
-Common model structs (`Trade`, `Game`, `RssItem`, `Stream`, `ErrorResponse`, etc.) are in `core/models.go`.
-
-## Step-by-Step: Adding a New Integration
-
-1. **Copy the template:**
-   ```bash
-   cp -r api/integrations/_template api/integrations/myservice
-   ```
-
-2. **Rename the package:**
-   - Change `package _template` to `package myservice`
-   - Find/replace `example` with `myservice` throughout the file
-
-3. **Define your struct and constructor:**
-   - Keep only the dependencies you need (`*pgxpool.Pool`, `*redis.Client`, `SendToUserFunc`, `RouteToStreamSubscribersFunc`)
-
-4. **Implement the core interface:**
-   - `Name()` — return your unique short name
-   - `DisplayName()` — return a human-readable label
-   - `RegisterRoutes()` — mount your endpoints
-
-5. **Implement optional interfaces:**
-   - Uncomment and fill in only what you need
-   - Delete the commented-out blocks for interfaces you don't use
-
-6. **Add models** (if needed):
-   - Add your model structs to `core/models.go` or create a `models.go` in your package
-
-7. **Add constants** (if needed):
-   - Add cache keys and TTLs to `core/constants.go`
-
-8. **Register in `main.go`:**
-   ```go
-   import "github.com/brandon-relentnet/myscrollr/api/integrations/myservice"
-
-   // Simple:
-   srv.RegisterIntegration(myservice.New(core.DBPool, core.SendToUser, core.RouteToStreamSubscribers))
-
-   // With Init:
-   myIntg := myservice.New(core.DBPool, core.Rdb, core.SendToUser)
-   myIntg.Init()
-   srv.RegisterIntegration(myIntg)
-   ```
-
-9. **Deploy:**
-   - Push to staging — the Dockerfile handles `go build`
-   - Configure any new env vars in Coolify
-   - If you have a new ingestion service, set up its `INTERNAL_*_URL` env var
-
-10. **Frontend:**
-    - Add your stream type to the dashboard UI
-    - Add CDC record processing to `useRealtime.ts`
-    - Add the stream type to the extension's `FeedCategory` type and tab order
-
-## Existing Integrations Reference
-
-| Integration | Interfaces | Tables | CDC Routing | Stream Hooks |
-|-------------|-----------|--------|-------------|-------------|
-| **Finance** | Core + CDCHandler + DashboardProvider + HealthChecker | `trades` | Broadcast to `stream:subscribers:finance` | None (core handles) |
-| **Sports** | Core + CDCHandler + DashboardProvider + HealthChecker | `games` | Broadcast to `stream:subscribers:sports` | None (core handles) |
-| **RSS** | Core + CDCHandler + DashboardProvider + StreamLifecycle + HealthChecker | `rss_items`, `tracked_feeds` | Per-feed-URL routing via `rss:subscribers:{url}` | Syncs feeds to tracked_feeds, manages per-URL subscription sets |
-| **Fantasy** | Core + CDCHandler + DashboardProvider + HealthChecker | `yahoo_leagues`, `yahoo_standings`, `yahoo_matchups`, `yahoo_rosters` | Join resolution (guid/league_key/team_key → logto_sub) | None (core handles) |
+| File | Purpose |
+|------|---------|
+| `myscrollr.com/src/integrations/types.ts` | `DashboardTabProps`, `IntegrationManifest` |
+| `myscrollr.com/src/integrations/registry.ts` | Registry Map, `register()`, `getIntegration()`, `sortTabOrder()`, `TAB_ORDER` |
+| `myscrollr.com/src/integrations/shared.tsx` | `StreamHeader`, `ToggleSwitch`, `InfoCard` shared components |
+| `myscrollr.com/src/integrations/_template/DashboardTab.tsx` | Documented scaffold for new DashboardTab integrations |
+| `myscrollr.com/src/integrations/official/finance/DashboardTab.tsx` | Finance stream config panel |
+| `myscrollr.com/src/integrations/official/sports/DashboardTab.tsx` | Sports stream config panel |
+| `myscrollr.com/src/integrations/official/fantasy/DashboardTab.tsx` | Fantasy stream config (Yahoo OAuth, league cards) |
+| `myscrollr.com/src/integrations/official/rss/DashboardTab.tsx` | RSS stream config (feed management, catalog browser) |
+| `myscrollr.com/src/routes/dashboard.tsx` | Generic dashboard shell (607 lines), renders active DashboardTab from registry |
+| `myscrollr.com/src/hooks/useRealtime.ts` | SSE client, processes CDC records for all tables |
