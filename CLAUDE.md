@@ -6,11 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 MyScrollr is a multi-component platform aggregating financial market data (via Finnhub), sports scores (via ESPN), RSS news feeds, and Yahoo Fantasy Sports integration. It includes a web frontend, browser extension, Go API, and Rust ingestion workers. Deployed on a self-hosted Coolify instance with PostgreSQL, Redis, Logto (auth), and Sequin (CDC) as supporting infrastructure.
 
+**Repository structure**: This is a monorepo where each top-level folder (`myscrollr.com/`, `api/`, `extension/`, and each service under `ingestion/`) is an independently deployable unit — each is configured as its own separate resource/application in Coolify with its own build pipeline. The extension is the only component not deployed via Coolify (built locally).
+
 | Component | Technology | Files | Purpose |
 |-----------|------------|-------|---------|
-| **Frontend** | React 19, Vite 7, TanStack Router, Tailwind v4 | 26 TS/TSX | User interface at myscrollr.com |
+| **Frontend** | React 19, Vite 7, TanStack Router, Tailwind v4 | 37 TS/TSX | User interface at myscrollr.com |
 | **Extension** | WXT v0.20, React 19, Tailwind v4 | 27 TS/TSX | Chrome/Firefox browser extension with scrollbar feed overlay |
-| **API** | Go 1.21, Fiber v2, pgx, Redis | 24 Go files (~4k LOC) | Public API server (port 8080), modular monolith with plugin-style integration system |
+| **API** | Go 1.21, Fiber v2, pgx, Redis | 25 Go files (~4.3k LOC) | Public API server (port 8080), modular monolith with plugin-style integration system |
 | **Ingestion** | Rust (edition 2024), Axum, SQLx, tokio | 31 .rs files | 4 independent data collection services + 1 internal library |
 | **Database** | PostgreSQL | 13 tables | Data persistence (programmatic schema, no migrations) |
 | **Cache** | Redis | — | Caching, token storage, per-user Pub/Sub routing, subscription sets |
@@ -75,7 +77,7 @@ cd myscrollr.com
 npm install             # Install dependencies
 npm run dev             # Development server (port 3000)
 npm run build           # Build for production
-npm run preview         # Serve production build
+npm run serve           # Serve production build
 npm run lint            # Lint
 npm run format          # Format
 ```
@@ -135,7 +137,7 @@ Four independent Rust crates (not a Cargo workspace). All services use Axum, SQL
 **Config files**:
 - `finance_service/configs/subscriptions.json` — 50 tracked symbols (45 stocks + 5 crypto via Binance)
 - `sports_service/configs/leagues.json` — 8 leagues (NFL, NBA, NHL, MLB, College Football, Men's College Basketball, Women's College Basketball, College Baseball)
-- `rss_service/configs/feeds.json` — 117 default feeds across 8 categories (Tech, Dev & AI, Business & Finance, News & Politics, Science & Health, Sports, Entertainment, Design)
+- `rss_service/configs/feeds.json` — 109 default feeds across 8 categories (Tech, Dev & AI, Business & Finance, News & Politics, Science & Health, Sports, Entertainment, Design)
 
 **RSS Service features**:
 - **Feed quarantine**: Feeds with 288+ consecutive failures (~24 hours) are excluded from regular polling and retried every 288 cycles
@@ -183,7 +185,7 @@ The API uses a modular monolith architecture with a plugin-style integration sys
 | `models.go` | 171 | XML/JSON model structs for Yahoo Fantasy API |
 | `webhook.go` | 65 | Yahoo-specific CDC record routing helpers |
 | **`integrations/_template/`** | | |
-| `template.go` | ~240 | Documented scaffold for new integrations with all interfaces, CDC routing patterns, and registration examples |
+| `template.go` | ~310 | Documented scaffold for new integrations with all interfaces, CDC routing patterns, and registration examples |
 
 ### Frontend (`myscrollr.com/`)
 
@@ -213,7 +215,7 @@ React 19 + Vite 7 + TanStack Router + Tailwind CSS v4 + Logto React SDK + Motion
 | `official/finance/DashboardTab.tsx` | Finance stream config — Finnhub info, tracked symbols preview |
 | `official/sports/DashboardTab.tsx` | Sports stream config — ESPN info, league grid |
 | `official/fantasy/DashboardTab.tsx` | Fantasy stream config — Yahoo OAuth, league cards with collapsible standings, active/past filter. Receives Yahoo state via `extraProps` |
-| `official/rss/DashboardTab.tsx` | RSS stream config — feed management, custom feed form, 117-feed catalog browser with category tabs and pagination |
+| `official/rss/DashboardTab.tsx` | RSS stream config — feed management, custom feed form, 109-feed catalog browser with category tabs and pagination |
 | `_template/DashboardTab.tsx` | Documented scaffold for new frontend integrations with all props, shared components, and registration instructions |
 
 **Key files**:
@@ -226,7 +228,7 @@ React 19 + Vite 7 + TanStack Router + Tailwind CSS v4 + Logto React SDK + Motion
 **Dashboard features**:
 - **Registry-driven UI**: Dashboard looks up active integration from registry and renders its `DashboardTab` — no if/else chain
 - **Stream management**: Users configure which data types they receive via stream CRUD, available types derived from registry
-- **RSS feed configuration**: Browse 117-feed catalog by category, add custom feeds, manage subscriptions
+- **RSS feed configuration**: Browse 109-feed catalog by category, add custom feeds, manage subscriptions
 - **Quick Start**: One-click creation of finance, sports, and RSS streams
 - **Conditional data loading**: Dashboard only fetches data for enabled streams, keeping responses lean
 - **Settings panel**: Server-persisted extension preferences with real-time CDC-based sync
@@ -280,7 +282,7 @@ WXT v0.20 + React 19 + Tailwind v4. Builds for Chrome MV3 and Firefox MV2. Built
 
 **Stream visibility**: The background tracks stream visibility from `user_streams` CDC records. Only streams with `visible === true` appear as tabs in the feed bar. The tab order is defined by `TAB_ORDER` in the integration registry: `['finance', 'sports', 'fantasy', 'rss']`.
 
-**Manifest config**: Permissions: `storage`, `identity`, `alarms`. Host permissions: `https://api.myscrollr.relentnet.dev/*`, `https://auth.myscrollr.relentnet.dev/*`. PostCSS rem-to-px for content script CSS isolation.
+**Manifest config**: Permissions: `storage`, `identity`, `alarms`. Host permissions: `https://api.myscrollr.relentnet.dev/*`, `https://auth.myscrollr.relentnet.dev/*`. PostCSS rem-to-responsive-pixel for content script CSS isolation.
 
 ## API Endpoints
 
@@ -298,16 +300,16 @@ WXT v0.20 + React 19 + Tailwind v4. Builds for Chrome MV3 and Firefox MV2. Built
 - `POST /extension/token/refresh` — Extension token refresh proxy (CORS `*`)
 - `GET /swagger/*` — Swagger API docs
 - `GET /` — JSON API info with links to health, docs, and frontend
+- `GET /users/:username` — Public user profile
 
 ### Protected Routes (LogtoAuth middleware)
 - `GET /sports` — Sports scores
 - `GET /finance` — Market data
 - `GET /dashboard` — Combined dashboard data (stream-aware: only loads data for enabled streams, includes preferences and streams)
 - `GET /yahoo/leagues` — User's Yahoo leagues
-- `GET /yahoo/league/:key/standings` — League standings
-- `GET /yahoo/team/:key/matchups` — Team matchups
-- `GET /yahoo/team/:key/roster` — Team roster
-- `GET /users/:username` — User profile
+- `GET /yahoo/league/:league_key/standings` — League standings
+- `GET /yahoo/team/:team_key/matchups` — Team matchups
+- `GET /yahoo/team/:team_key/roster` — Team roster
 - `GET /users/me/yahoo-status` — Current user Yahoo connection status
 - `GET /users/me/yahoo-leagues` — Current user Yahoo leagues
 - `DELETE /users/me/yahoo` — Disconnect Yahoo account
@@ -352,7 +354,7 @@ Tables are created programmatically on service startup via `CREATE TABLE IF NOT 
 ### Go API Tables
 | Table | Key Columns |
 |-------|-------------|
-| `yahoo_users` | `guid` (PK), `logto_sub` (UNIQUE), `refresh_token` (encrypted), `last_sync` |
+| `yahoo_users` | `guid` (PK), `logto_sub` (UNIQUE), `refresh_token` (encrypted), `last_sync`. Created independently by both Yahoo Service (Rust) and Go API Fantasy integration via `CREATE TABLE IF NOT EXISTS`. |
 | `user_streams` | `id` (SERIAL PK), `logto_sub`, `stream_type` (dynamically validated against registered integrations), `enabled`, `visible`, `config` (JSONB). UNIQUE on `(logto_sub, stream_type)` |
 | `user_preferences` | `logto_sub` (PK), `feed_mode`, `feed_position`, `feed_behavior`, `feed_enabled`, `enabled_sites` (JSONB), `disabled_sites` (JSONB), `updated_at` |
 
@@ -407,7 +409,7 @@ Copy `.env.example` to `.env` (for local dev) or configure in Coolify.
 
 | Component | Method | Details |
 |-----------|--------|---------|
-| **Frontend** | Nixpacks (Coolify) | `npm install && npm run build`, served via `npm run preview` |
+| **Frontend** | Nixpacks (Coolify) | `npm install && npm run build`, served via `npm run serve` |
 | **Go API** | Docker (Coolify) | Multi-stage: golang:1.21-alpine builder, alpine runtime, port 8080 |
 | **Finance Service** | Docker (Coolify) | cargo-chef multi-stage, debian:trixie-slim runtime, port 3001 |
 | **Sports Service** | Docker (Coolify) | cargo-chef multi-stage, debian:trixie-slim runtime, port 3002 |
@@ -417,7 +419,7 @@ Copy `.env.example` to `.env` (for local dev) or configure in Coolify.
 | **PostgreSQL** | Coolify resource | Shared by all ingestion services and Go API |
 | **Redis** | Coolify resource | Caching, per-user Pub/Sub, subscription sets |
 | **Logto** | Coolify resource | Self-hosted OIDC authentication provider |
-| **Sequin** | Coolify resource | External CDC — detects PostgreSQL changes and webhooks to Go API |
+| **Sequin** | Coolify resource | External CDC — detects PostgreSQL changes and webhooks to Go API. Has its own internal PostgreSQL and Redis instances managed within its Coolify resource |
 
 ## Known Issues / Technical Debt
 
