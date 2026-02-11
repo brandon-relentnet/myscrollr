@@ -4,13 +4,13 @@ WORKDIR /app
 
 # Copy module files and download dependencies
 COPY go.mod go.sum ./
-RUN go mod download
+RUN go mod download && go mod verify
 
 # Copy source code
 COPY . .
 
 # Build the binary
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o fantasy-api .
+RUN CGO_ENABLED=0 GOOS=linux go build -o fantasy-api .
 
 # --- Runtime stage ---
 FROM alpine:latest
