@@ -9,11 +9,11 @@ services:
     ports:
       - "8083:8083"
     environment:
-      - DATABASE_URL={{ environment.DATABASE_URL }}
-      - REDIS_URL={{ environment.REDIS_URL }}
-      - ENCRYPTION_KEY={{ environment.ENCRYPTION_KEY }}
-      - ALLOWED_ORIGINS={{ environment.ALLOWED_ORIGINS }}
-      - INTEGRATION_URL={{ environment.INTEGRATION_URL }}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - INTEGRATION_URL=${INTEGRATION_URL}
       - INTERNAL_RSS_URL=http://scrollr-rss-service:3004
     restart: unless-stopped
 
@@ -25,5 +25,5 @@ services:
     ports:
       - "3004:3004"
     environment:
-      - DATABASE_URL={{ environment.DATABASE_URL }}
+      - DATABASE_URL=${DATABASE_URL}
     restart: unless-stopped

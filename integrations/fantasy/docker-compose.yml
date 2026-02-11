@@ -9,15 +9,15 @@ services:
     ports:
       - "8084:8084"
     environment:
-      - DATABASE_URL={{ environment.DATABASE_URL }}
-      - REDIS_URL={{ environment.REDIS_URL }}
-      - ENCRYPTION_KEY={{ environment.ENCRYPTION_KEY }}
-      - ALLOWED_ORIGINS={{ environment.ALLOWED_ORIGINS }}
-      - INTEGRATION_URL={{ environment.INTEGRATION_URL }}
-      - COOLIFY_FQDN={{ environment.COOLIFY_FQDN }}
-      - YAHOO_CLIENT_ID={{ environment.YAHOO_CLIENT_ID }}
-      - YAHOO_CLIENT_SECRET={{ environment.YAHOO_CLIENT_SECRET }}
-      - FRONTEND_URL={{ environment.FRONTEND_URL }}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - INTEGRATION_URL=${INTEGRATION_URL}
+      - COOLIFY_FQDN=${COOLIFY_FQDN}
+      - YAHOO_CLIENT_ID=${YAHOO_CLIENT_ID}
+      - YAHOO_CLIENT_SECRET=${YAHOO_CLIENT_SECRET}
+      - FRONTEND_URL=${FRONTEND_URL}
       - INTERNAL_YAHOO_URL=http://scrollr-fantasy-service:3003
     restart: unless-stopped
 
@@ -29,10 +29,10 @@ services:
     ports:
       - "3003:3003"
     environment:
-      - DATABASE_URL={{ environment.DATABASE_URL }}
-      - REDIS_URL={{ environment.REDIS_URL }}
-      - ENCRYPTION_KEY={{ environment.ENCRYPTION_KEY }}
-      - YAHOO_CLIENT_ID={{ environment.YAHOO_CLIENT_ID }}
-      - YAHOO_CLIENT_SECRET={{ environment.YAHOO_CLIENT_SECRET }}
-      - SYNC_INTERVAL_SECS={{ environment.SYNC_INTERVAL_SECS }}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - YAHOO_CLIENT_ID=${YAHOO_CLIENT_ID}
+      - YAHOO_CLIENT_SECRET=${YAHOO_CLIENT_SECRET}
+      - SYNC_INTERVAL_SECS=${SYNC_INTERVAL_SECS}
     restart: unless-stopped

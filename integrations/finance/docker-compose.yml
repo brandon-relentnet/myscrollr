@@ -9,11 +9,11 @@ services:
     ports:
       - "8081:8081"
     environment:
-      - DATABASE_URL={{ environment.DATABASE_URL }}
-      - REDIS_URL={{ environment.REDIS_URL }}
-      - ENCRYPTION_KEY={{ environment.ENCRYPTION_KEY }}
-      - ALLOWED_ORIGINS={{ environment.ALLOWED_ORIGINS }}
-      - INTEGRATION_URL={{ environment.INTEGRATION_URL }}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - INTEGRATION_URL=${INTEGRATION_URL}
       - INTERNAL_FINANCE_URL=http://scrollr-finance-service:3001
     restart: unless-stopped
 
@@ -25,6 +25,6 @@ services:
     ports:
       - "3001:3001"
     environment:
-      - DATABASE_URL={{ environment.DATABASE_URL }}
-      - FINNHUB_API_KEY={{ environment.FINNHUB_API_KEY }}
+      - DATABASE_URL=${DATABASE_URL}
+      - FINNHUB_API_KEY=${FINNHUB_API_KEY}
     restart: unless-stopped
