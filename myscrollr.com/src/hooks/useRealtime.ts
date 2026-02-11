@@ -2,35 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import type { UserPreferences } from '@/api/client'
 import { API_BASE } from '@/api/client'
 
-// Yahoo data as stored in DB rows (keyed by league_key/team_key)
-interface YahooLeagueRecord {
-  league_key: string
-  guid: string
-  name: string
-  game_code: string
-  season: string
-  data: any // JSONB blob from yahoo API
-}
-
-interface YahooStandingsRecord {
-  league_key: string
-  data: any
-}
-
-interface YahooMatchupsRecord {
-  team_key: string
-  data: any
-}
-
-export interface YahooState {
-  leagues: Record<string, YahooLeagueRecord>
-  standings: Record<string, YahooStandingsRecord>
-  matchups: Record<string, YahooMatchupsRecord>
-}
-
 interface RealtimeState {
   status: 'connected' | 'disconnected' | 'reconnecting'
-  yahoo: YahooState
   preferences: UserPreferences | null
 }
 
@@ -53,7 +26,6 @@ interface SSEPayload {
 export function useRealtime({ getToken }: UseRealtimeOptions) {
   const [state, setState] = useState<RealtimeState>({
     status: 'disconnected',
-    yahoo: { leagues: {}, standings: {}, matchups: {} },
     preferences: null,
   })
 
@@ -130,46 +102,7 @@ export function useRealtime({ getToken }: UseRealtimeOptions) {
 
         if (!record) return
 
-        if (table === 'yahoo_leagues') {
-          const key = record.league_key as string
-          setState((prev) => ({
-            ...prev,
-            yahoo: {
-              ...prev.yahoo,
-              leagues: {
-                ...prev.yahoo.leagues,
-                [key]: record as unknown as YahooLeagueRecord,
-              },
-            },
-          }))
-        } else if (table === 'yahoo_standings') {
-          const key = record.league_key as string
-          setState((prev) => {
-            if (!prev.yahoo.leagues[key]) return prev
-            return {
-              ...prev,
-              yahoo: {
-                ...prev.yahoo,
-                standings: {
-                  ...prev.yahoo.standings,
-                  [key]: record as unknown as YahooStandingsRecord,
-                },
-              },
-            }
-          })
-        } else if (table === 'yahoo_matchups') {
-          const key = record.team_key as string
-          setState((prev) => ({
-            ...prev,
-            yahoo: {
-              ...prev.yahoo,
-              matchups: {
-                ...prev.yahoo.matchups,
-                [key]: record as unknown as YahooMatchupsRecord,
-              },
-            },
-          }))
-        } else if (table === 'user_preferences') {
+        if (table === 'user_preferences') {
           setState((prev) => ({
             ...prev,
             preferences: record as unknown as UserPreferences,
@@ -179,25 +112,5 @@ export function useRealtime({ getToken }: UseRealtimeOptions) {
     }
   }
 
-  const setInitialYahoo = (yahoo: YahooState) => {
-    // REST data is authoritative — it replaces SSE-accumulated state.
-    // SSE updates that arrived after this REST fetch are merged on top.
-    setState((prev) => ({
-      ...prev,
-      yahoo: {
-        leagues: { ...prev.yahoo.leagues, ...yahoo.leagues },
-        standings: { ...prev.yahoo.standings, ...yahoo.standings },
-        matchups: { ...prev.yahoo.matchups, ...yahoo.matchups },
-      },
-    }))
-  }
-
-  const clearYahoo = () => {
-    setState((prev) => ({
-      ...prev,
-      yahoo: { leagues: {}, standings: {}, matchups: {} },
-    }))
-  }
-
-  return { ...state, setInitialYahoo, clearYahoo }
+  return { ...state }
 }
