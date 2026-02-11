@@ -58,12 +58,12 @@ export function useScrollrCDC<T>({
   // Track whether we've received initialItems (they may arrive after mount)
   const initializedRef = useRef(false);
 
-  // Sync when initialItems changes (e.g., dashboard response arrives)
+  // Sync when initialItems changes (e.g., dashboard response arrives or user clears all)
   useEffect(() => {
-    if (initialItems.length > 0 || !initializedRef.current) {
-      initializedRef.current = true;
-      setItems(initialItems);
-    }
+    // Skip the very first empty array (dashboard hasn't loaded yet)
+    if (!initializedRef.current && initialItems.length === 0) return;
+    initializedRef.current = true;
+    setItems(initialItems);
   }, [initialItems]);
 
   // Subscribe to CDC table and handle incoming records
