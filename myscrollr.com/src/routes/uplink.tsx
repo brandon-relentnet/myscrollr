@@ -2,13 +2,15 @@ import { createFileRoute } from '@tanstack/react-router'
 import { motion } from 'motion/react'
 import {
   Check,
+  Clock,
   Crown,
-  Eye,
   Gauge,
   Rocket,
   Satellite,
   Shield,
   Signal,
+  Sparkles,
+  Star,
   TrendingUp,
   Trophy,
   Zap,
@@ -219,7 +221,7 @@ function UplinkPage() {
               </motion.div>
 
               <span className="text-[9px] font-mono text-base-content/20 uppercase tracking-wider">
-                Pricing TBD
+                Starting at $7.99 / quarter
               </span>
             </div>
           </motion.div>
@@ -233,7 +235,7 @@ function UplinkPage() {
             <TrendingUp size={16} /> Free vs Uplink
           </h2>
           <p className="text-[10px] font-mono text-base-content/30">
-            Values are placeholder — final numbers will be set before launch
+            What the free tier includes vs what Uplink adds
           </p>
         </motion.div>
 
@@ -340,6 +342,173 @@ function UplinkPage() {
         </div>
       </section>
 
+      {/* ── PRICING ─────────────────────────────────────────── */}
+      <section className="container pb-20">
+        <motion.div variants={itemVariants} className="mb-10">
+          <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
+            <Crown size={16} /> Pricing
+          </h2>
+          <p className="text-[10px] font-mono text-base-content/30">
+            Three tiers, no monthly billing — commit to what works for you
+          </p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Quarterly */}
+          <motion.div
+            variants={itemVariants}
+            whileHover={{ y: -2 }}
+            className="group bg-base-200 border border-base-300 rounded-xl p-6 hover:border-primary/20 transition-all relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-primary/[0.02] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="h-10 w-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+                  <Clock size={20} />
+                </div>
+                <span className="text-[9px] font-mono text-base-content/30 uppercase tracking-widest">
+                  Entry
+                </span>
+              </div>
+
+              <h3 className="text-sm font-bold uppercase tracking-wider text-base-content mb-1">
+                Quarterly
+              </h3>
+              <p className="text-[10px] font-mono text-primary/50 uppercase tracking-wider mb-4">
+                3-month access
+              </p>
+
+              <div className="flex items-baseline gap-1 mb-1">
+                <span className="text-3xl font-black text-base-content tracking-tight">
+                  $7.99
+                </span>
+                <span className="text-xs font-mono text-base-content/30">
+                  / 3 months
+                </span>
+              </div>
+              <p className="text-[10px] font-mono text-base-content/20 mb-5">
+                ~$2.66/mo
+              </p>
+
+              <div className="space-y-2">
+                <PricingFeature>Full Uplink access</PricingFeature>
+                <PricingFeature>All integrations maxed</PricingFeature>
+                <PricingFeature>Priority data pipeline</PricingFeature>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Annual — highlighted */}
+          <motion.div
+            variants={itemVariants}
+            whileHover={{ y: -2 }}
+            className="group bg-base-200 border-2 border-primary/30 rounded-xl p-6 hover:border-primary/50 transition-all relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-primary/[0.03] pointer-events-none" />
+
+            {/* Best value badge */}
+            <div className="absolute top-0 right-0">
+              <div className="bg-primary text-base-200 text-[8px] font-bold uppercase tracking-[0.2em] px-3 py-1 rounded-bl-lg">
+                Best Value
+              </div>
+            </div>
+
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="h-10 w-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+                  <Star size={20} />
+                </div>
+                <span className="text-[9px] font-mono text-primary/50 uppercase tracking-widest">
+                  Save 22%
+                </span>
+              </div>
+
+              <h3 className="text-sm font-bold uppercase tracking-wider text-base-content mb-1">
+                Annual
+              </h3>
+              <p className="text-[10px] font-mono text-primary/50 uppercase tracking-wider mb-4">
+                12-month access
+              </p>
+
+              <div className="flex items-baseline gap-1 mb-1">
+                <span className="text-3xl font-black text-base-content tracking-tight">
+                  $24.99
+                </span>
+                <span className="text-xs font-mono text-base-content/30">
+                  / year
+                </span>
+              </div>
+              <p className="text-[10px] font-mono text-base-content/20 mb-5">
+                ~$2.08/mo
+              </p>
+
+              <div className="space-y-2">
+                <PricingFeature>Full Uplink access</PricingFeature>
+                <PricingFeature>All integrations maxed</PricingFeature>
+                <PricingFeature>Priority data pipeline</PricingFeature>
+                <PricingFeature>Early access to new features</PricingFeature>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Lifetime */}
+          <motion.div
+            variants={itemVariants}
+            whileHover={{ y: -2 }}
+            className="group bg-base-200 border border-base-300 rounded-xl p-6 hover:border-primary/20 transition-all relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-primary/[0.02] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="h-10 w-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+                  <Sparkles size={20} />
+                </div>
+                <span className="text-[9px] font-mono text-warning/60 uppercase tracking-widest">
+                  Limited
+                </span>
+              </div>
+
+              <h3 className="text-sm font-bold uppercase tracking-wider text-base-content mb-1">
+                Lifetime
+              </h3>
+              <p className="text-[10px] font-mono text-primary/50 uppercase tracking-wider mb-4">
+                The First Byte
+              </p>
+
+              <div className="flex items-baseline gap-1 mb-1">
+                <span className="text-3xl font-black text-base-content tracking-tight">
+                  $199
+                </span>
+                <span className="text-xs font-mono text-base-content/30">
+                  / forever
+                </span>
+              </div>
+              <p className="text-[10px] font-mono text-warning/50 mb-5">
+                Only 256 available — 0x00 to 0xFF
+              </p>
+
+              <div className="space-y-2">
+                <PricingFeature>Everything in Annual</PricingFeature>
+                <PricingFeature>Permanent Uplink access</PricingFeature>
+                <PricingFeature>Founding member status</PricingFeature>
+                <PricingFeature>Shape the roadmap</PricingFeature>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Pricing footer */}
+        <motion.div
+          variants={itemVariants}
+          className="mt-6 text-center"
+        >
+          <p className="text-[9px] font-mono text-base-content/20 uppercase tracking-wider">
+            All plans include the full free tier &middot; Cancel anytime
+            &middot; Payments via Stripe
+          </p>
+        </motion.div>
+      </section>
+
       {/* ── TERMINAL BLOCK — Uplink Status ───────────────────── */}
       <section className="container pb-20">
         <motion.div
@@ -385,8 +554,18 @@ function UplinkPage() {
                 <span className="text-base-content/40">Q3 2026</span>
               </p>
               <p>
-                <span className="text-primary/60">PRICING</span>{' '}
-                <span className="text-base-content/40">TBD</span>
+                <span className="text-primary/60">QUARTERLY</span>{' '}
+                <span className="text-base-content/40">$7.99/3mo</span>
+              </p>
+              <p>
+                <span className="text-primary/60">ANNUAL</span>{' '}
+                <span className="text-base-content/40">$24.99/yr</span>
+              </p>
+              <p>
+                <span className="text-primary/60">LIFETIME</span>{' '}
+                <span className="text-base-content/40">
+                  $199 (256 slots)
+                </span>
               </p>
               <p>
                 <span className="text-primary/60">FREE_TIER</span>{' '}
@@ -417,7 +596,7 @@ function UplinkPage() {
         </motion.div>
       </section>
 
-      {/* ── BOTTOM CTA ───────────────────────────────────────── */}
+      {/* ── BOTTOM CTA ──────────────────────────────────────── */}
       <section className="container pb-24">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -487,7 +666,7 @@ function UplinkPage() {
               className="flex flex-wrap items-center justify-center gap-4"
             >
               <span className="inline-flex items-center gap-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-primary/50 border border-primary/15 rounded-sm bg-primary/5">
-                <Eye size={12} /> Pricing TBD
+                <Zap size={12} /> Starting at $7.99
               </span>
               <span className="inline-flex items-center gap-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-base-content/30 border border-base-300/50 rounded-sm">
                 <Trophy size={12} /> Free tier always included
@@ -497,5 +676,16 @@ function UplinkPage() {
         </motion.div>
       </section>
     </motion.div>
+  )
+}
+
+// ── Pricing Feature Line ──────────────────────────────────────────
+
+function PricingFeature({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2">
+      <Check size={12} className="text-primary/60 shrink-0" />
+      <span className="text-xs text-base-content/40">{children}</span>
+    </div>
   )
 }
