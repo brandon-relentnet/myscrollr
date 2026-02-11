@@ -100,6 +100,28 @@ function FinanceDashboardTab({
     updateSymbols(symbols.filter((s) => s !== symbol))
   }
 
+  // Bulk actions
+  const categorySymbols = (cat: string) =>
+    catalog.filter((s) => cat === 'All' || s.category === cat).map((s) => s.symbol)
+
+  const addCategory = (cat: string) => {
+    const toAdd = categorySymbols(cat).filter((s) => !symbolSet.has(s))
+    if (toAdd.length === 0) return
+    updateSymbols([...symbols, ...toAdd])
+  }
+
+  const removeCategory = (cat: string) => {
+    const toRemove = new Set(categorySymbols(cat))
+    updateSymbols(symbols.filter((s) => !toRemove.has(s)))
+  }
+
+  const clearAll = () => updateSymbols([])
+
+  // Derive counts for the active category
+  const activeCatSymbols = categorySymbols(activeCategory)
+  const activeCatAdded = activeCatSymbols.filter((s) => symbolSet.has(s)).length
+  const activeCatAvailable = activeCatSymbols.length - activeCatAdded
+
   return (
     <div className="space-y-6">
       <StreamHeader
@@ -121,9 +143,20 @@ function FinanceDashboardTab({
 
       {/* Selected Symbols */}
       <div className="space-y-3">
-        <p className="text-[10px] font-bold text-base-content/30 uppercase tracking-widest px-1">
-          Your Symbols ({symbols.length} selected)
-        </p>
+        <div className="flex items-center justify-between px-1">
+          <p className="text-[10px] font-bold text-base-content/30 uppercase tracking-widest">
+            Your Symbols ({symbols.length} selected)
+          </p>
+          {symbols.length > 0 && (
+            <button
+              onClick={clearAll}
+              disabled={saving}
+              className="text-[9px] font-bold text-base-content/30 uppercase tracking-widest px-2 py-1 rounded border border-base-300/40 hover:text-error hover:border-error/30 transition-colors disabled:opacity-30"
+            >
+              Clear All
+            </button>
+          )}
+        </div>
         {symbols.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {symbols.map((sym, i) => (
@@ -210,6 +243,28 @@ function FinanceDashboardTab({
               <span className="relative">{cat}</span>
             </button>
           ))}
+        </div>
+
+        {/* Bulk actions for active category */}
+        <div className="flex items-center gap-2 px-1">
+          {activeCatAvailable > 0 && (
+            <button
+              onClick={() => addCategory(activeCategory)}
+              disabled={saving}
+              className="text-[9px] font-bold text-base-content/30 uppercase tracking-widest px-2 py-1 rounded border border-base-300/40 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-30"
+            >
+              + Add All{activeCategory !== 'All' ? ` ${activeCategory}` : ''} ({activeCatAvailable})
+            </button>
+          )}
+          {activeCatAdded > 0 && (
+            <button
+              onClick={() => removeCategory(activeCategory)}
+              disabled={saving}
+              className="text-[9px] font-bold text-base-content/30 uppercase tracking-widest px-2 py-1 rounded border border-base-300/40 hover:text-error hover:border-error/30 transition-colors disabled:opacity-30"
+            >
+              Remove All{activeCategory !== 'All' ? ` ${activeCategory}` : ''} ({activeCatAdded})
+            </button>
+          )}
         </div>
 
         {/* Catalog Grid */}
