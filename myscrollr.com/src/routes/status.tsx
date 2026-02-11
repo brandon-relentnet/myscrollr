@@ -457,7 +457,7 @@ function ExternalLink({ href, label }: { href: string; label: string }) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      whileHover={{ y: -2 }}
+      whileHover={{ y: -2, transition: { type: 'tween', duration: 0.2 } }}
       whileTap={{ scale: 0.98 }}
       className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-base-200 border border-base-300 text-sm text-base-content/50 hover:text-primary hover:border-primary/30 transition-colors cursor-pointer"
     >
