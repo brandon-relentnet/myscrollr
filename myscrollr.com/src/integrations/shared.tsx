@@ -4,7 +4,7 @@ import { motion } from 'motion/react'
 import type { Stream } from '@/api/client'
 
 /** Toggle switch used in stream headers */
-export function ToggleSwitch({ active }: { active: boolean }) {
+function ToggleSwitch({ active }: { active: boolean }) {
   return (
     <span
       className={`block h-4 w-7 rounded-full relative transition-colors ml-1 ${

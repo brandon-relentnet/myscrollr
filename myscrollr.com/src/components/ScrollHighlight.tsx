@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from 'react'
 
 interface FeatureItem {
   name: string
-  subtitle: string
   description: string
   data?: {
     labels: Array<string>
@@ -15,7 +14,6 @@ interface FeatureItem {
 const features: Array<FeatureItem> = [
   {
     name: 'Sports',
-    subtitle: 'Live Scores & Fantasy',
     description:
       'Real-time NBA, NFL, and fantasy sports updates. Never miss a score while you work or stream.',
     data: {
@@ -26,7 +24,6 @@ const features: Array<FeatureItem> = [
   },
   {
     name: 'Finance',
-    subtitle: 'Stocks & Crypto',
     description:
       'Track BTC, ETH, and your portfolio in real-time. Green and red indicators for market moves.',
     data: {
@@ -37,7 +34,6 @@ const features: Array<FeatureItem> = [
   },
   {
     name: 'Custom',
-    subtitle: 'Layouts & Style',
     description:
       'Make it yours. Adjust transparency, control scroll speed, and customize the layout. Your ticker, your rules.',
     data: {

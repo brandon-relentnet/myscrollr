@@ -35,11 +35,6 @@ export function getIntegration(id: string): IntegrationManifest | undefined {
   return integrations.get(id);
 }
 
-/** Get all registered integrations in a stable order. */
-export function getAllIntegrations(): IntegrationManifest[] {
-  return Array.from(integrations.values());
-}
-
 /**
  * Sort a list of integration IDs into the canonical tab order.
  * Unknown IDs are appended alphabetically at the end.

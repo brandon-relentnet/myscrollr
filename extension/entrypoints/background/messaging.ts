@@ -1,5 +1,5 @@
 import type { ClientMessage, BackgroundMessage, StateSnapshotMessage } from '~/utils/messaging';
-import type { ConnectionStatus, CDCRecord } from '~/utils/types';
+import type { CDCRecord } from '~/utils/types';
 import { FRONTEND_URL } from '~/utils/constants';
 import { getConnectionStatus, getLastDashboard, setOnStatusChange, setOnCDCRecords } from './sse';
 import { login, logout, isAuthenticated } from './auth';

@@ -60,12 +60,10 @@ export interface UserPreferences {
 
 // ── User Streams ─────────────────────────────────────────────────
 
-export type StreamType = 'finance' | 'sports' | 'fantasy' | 'rss';
-
 export interface UserStream {
   id: number;
   logto_sub: string;
-  stream_type: StreamType;
+  stream_type: 'finance' | 'sports' | 'fantasy' | 'rss';
   enabled: boolean;
   visible: boolean;
   config: Record<string, unknown>;
@@ -108,4 +106,3 @@ export type ConnectionStatus = 'connected' | 'disconnected' | 'reconnecting';
 export type FeedPosition = 'top' | 'bottom';
 export type FeedMode = 'comfort' | 'compact';
 export type FeedBehavior = 'overlay' | 'push';
-export type FeedCategory = 'finance' | 'sports' | 'fantasy' | 'rss';

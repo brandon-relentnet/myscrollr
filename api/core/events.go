@@ -151,18 +151,6 @@ func ClientCount() int {
 	return count
 }
 
-// RouteToStreamSubscribers sends a CDC event to all users subscribed to a stream type.
-func RouteToStreamSubscribers(ctx context.Context, setKey string, payload []byte) {
-	subs, err := GetSubscribers(ctx, setKey)
-	if err != nil {
-		log.Printf("[Sequin] Failed to get subscribers for %s: %v", setKey, err)
-		return
-	}
-	for _, sub := range subs {
-		SendToUser(sub, payload)
-	}
-}
-
 // RouteToRecordOwner sends a CDC event directly to the user identified in the record.
 func RouteToRecordOwner(record map[string]interface{}, field string, payload []byte) {
 	sub, ok := record[field].(string)

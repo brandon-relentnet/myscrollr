@@ -2,12 +2,7 @@ package core
 
 import (
 	"context"
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"strings"
@@ -18,41 +13,6 @@ import (
 
 // DBPool is the global PostgreSQL connection pool.
 var DBPool *pgxpool.Pool
-
-// GetEncryptionKey reads and decodes the AES-256-GCM encryption key from env.
-func GetEncryptionKey() []byte {
-	key := os.Getenv("ENCRYPTION_KEY")
-	if key == "" {
-		log.Fatal("ENCRYPTION_KEY must be set for secure token storage")
-	}
-	decodedKey, err := base64.StdEncoding.DecodeString(key)
-	if err != nil || len(decodedKey) != 32 {
-		log.Fatal("ENCRYPTION_KEY must be a 32-byte base64 encoded string")
-	}
-	return decodedKey
-}
-
-// Encrypt encrypts a plaintext string using AES-256-GCM and returns a
-// base64-encoded ciphertext.
-func Encrypt(plaintext string) (string, error) {
-	block, err := aes.NewCipher(GetEncryptionKey())
-	if err != nil {
-		return "", err
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", err
-	}
-
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
-		return "", err
-	}
-
-	ciphertext := gcm.Seal(nonce, nonce, []byte(plaintext), nil)
-	return base64.StdEncoding.EncodeToString(ciphertext), nil
-}
 
 // ConnectDB initialises the PostgreSQL connection pool and creates core tables.
 func ConnectDB() {

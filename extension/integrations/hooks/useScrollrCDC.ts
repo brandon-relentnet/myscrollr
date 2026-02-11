@@ -55,11 +55,6 @@ export function useScrollrCDC<T>({
 }: UseScrollrCDCOptions<T>): UseScrollrCDCResult<T> {
   const [items, setItems] = useState<T[]>(initialItems);
 
-  // Keep a ref to the latest items so the message handler closure
-  // always operates on the current array without re-subscribing.
-  const itemsRef = useRef(items);
-  itemsRef.current = items;
-
   // Track whether we've received initialItems (they may arrive after mount)
   const initializedRef = useRef(false);
 

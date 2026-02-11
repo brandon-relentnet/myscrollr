@@ -2,10 +2,8 @@ package core
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"os"
-	"time"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -33,31 +31,6 @@ func ConnectRedis() {
 	}
 
 	log.Println("Successfully connected to Redis")
-}
-
-// GetCache attempts to retrieve and deserialize a value from Redis.
-func GetCache(key string, target interface{}) bool {
-	val, err := Rdb.Get(context.Background(), key).Result()
-	if err != nil {
-		return false
-	}
-
-	err = json.Unmarshal([]byte(val), target)
-	return err == nil
-}
-
-// SetCache serializes and stores a value in Redis with an expiration.
-func SetCache(key string, value interface{}, expiration time.Duration) {
-	data, err := json.Marshal(value)
-	if err != nil {
-		log.Printf("[Redis Error] Failed to marshal cache data for %s: %v", key, err)
-		return
-	}
-
-	err = Rdb.Set(context.Background(), key, data, expiration).Err()
-	if err != nil {
-		log.Printf("[Redis Error] Failed to set cache for %s: %v", key, err)
-	}
 }
 
 // PublishRaw publishes pre-serialised bytes to a Redis channel.

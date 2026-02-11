@@ -4,7 +4,7 @@ import { motion } from 'motion/react'
  * PULSE Logo - Abstract EKG/Heartbeat Line
  * Fits the trading terminal aesthetic
  */
-export function ScrollrSVG({ width = 48, height = 48, className = '' }) {
+function ScrollrSVG({ width = 48, height = 48, className = '' }) {
   return (
     <svg
       width={width}

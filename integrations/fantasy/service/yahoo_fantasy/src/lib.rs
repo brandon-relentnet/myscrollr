@@ -3,8 +3,6 @@ use std::error::Error;
 use oauth2::{AuthUrl, ClientId, ClientSecret, RedirectUrl, RefreshToken, TokenResponse, TokenUrl, basic::BasicClient, reqwest::Client};
 use secrecy::{SecretString, ExposeSecret};
 
-use crate::types::Tokens;
-
 
 const AUTH_URL: &str = "https://api.login.yahoo.com/oauth2/request_auth";
 const TOKEN_URL: &str = "https://api.login.yahoo.com/oauth2/get_token";
@@ -12,12 +10,7 @@ const TOKEN_URL: &str = "https://api.login.yahoo.com/oauth2/get_token";
 pub mod api;
 mod xml_leagues;
 mod xml_standings;
-mod xml_roster;
-mod xml_settings;
-mod xml_matchups;
 mod error;
-mod utilities;
-pub mod stats;
 pub mod types;
 
 pub use types::YahooHealth;

@@ -304,31 +304,4 @@ func (s *Server) Listen() error {
 	return s.App.Listen(":" + port)
 }
 
-// --- Helpers ---
 
-func buildHealthURL(baseURL string) string {
-	url := strings.TrimSuffix(baseURL, "/")
-	if !strings.HasSuffix(url, "/health") {
-		url = url + "/health"
-	}
-	return url
-}
-
-// ProxyInternalHealth proxies a health check to an internal service URL.
-func ProxyInternalHealth(c *fiber.Ctx, internalURL string) error {
-	if internalURL == "" {
-		return c.Status(fiber.StatusServiceUnavailable).JSON(ErrorResponse{Status: "unknown", Error: "Internal URL not configured"})
-	}
-
-	targetURL := buildHealthURL(internalURL)
-	httpClient := &http.Client{Timeout: HealthProxyTimeout}
-	resp, err := httpClient.Get(targetURL)
-	if err != nil {
-		return c.Status(fiber.StatusServiceUnavailable).JSON(ErrorResponse{Status: "down", Error: err.Error()})
-	}
-	defer resp.Body.Close()
-
-	body, _ := io.ReadAll(resp.Body)
-	c.Set("Content-Type", "application/json")
-	return c.Status(resp.StatusCode).Send(body)
-}

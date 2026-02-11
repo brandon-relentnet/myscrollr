@@ -45,10 +45,6 @@ export function getConnectionStatus(): ConnectionStatus {
   return connectionStatus;
 }
 
-// ── Framework CDC tables (handled by the background, not forwarded) ──
-
-const FRAMEWORK_TABLES = new Set(['user_preferences', 'user_streams']);
-
 // ── Process SSE payload ──────────────────────────────────────────
 
 function processPayload(payload: SSEPayload) {

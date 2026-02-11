@@ -26,9 +26,6 @@ const (
 	// FinanceSubscribersKey is the Redis set tracking finance stream subscribers.
 	FinanceSubscribersKey = "stream:subscribers:finance"
 
-	// DashboardTradesLimit caps the number of trades returned for dashboard.
-	DashboardTradesLimit = 50
-
 	// TradesQuery is the SQL used to fetch all trades.
 	TradesQuery = "SELECT symbol, price, previous_close, price_change, percentage_change, direction, last_updated FROM trades ORDER BY symbol ASC"
 )
