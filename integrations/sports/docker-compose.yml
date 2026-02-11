@@ -9,11 +9,11 @@ services:
     ports:
       - "8082:8082"
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
-      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
-      - INTEGRATION_URL=${INTEGRATION_URL}
+      - DATABASE_URL={{ environment.DATABASE_URL }}
+      - REDIS_URL={{ environment.REDIS_URL }}
+      - ENCRYPTION_KEY={{ environment.ENCRYPTION_KEY }}
+      - ALLOWED_ORIGINS={{ environment.ALLOWED_ORIGINS }}
+      - INTEGRATION_URL={{ environment.INTEGRATION_URL }}
       - INTERNAL_SPORTS_URL=http://scrollr-sports-service:3002
     restart: unless-stopped
 
@@ -25,5 +25,5 @@ services:
     ports:
       - "3002:3002"
     environment:
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL={{ environment.DATABASE_URL }}
     restart: unless-stopped
