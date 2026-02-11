@@ -33,8 +33,9 @@ export default function Footer() {
     ],
     company: [
       { label: 'About', href: '#' },
-      { label: 'Contact', href: '#' },
-      { label: 'Privacy', href: '#' },
+      { label: 'Terms', href: '/legal?doc=terms' },
+      { label: 'Privacy', href: '/legal?doc=privacy' },
+      { label: 'Legal', href: '/legal' },
     ],
     social: [
       { icon: Github, href: 'https://github.com/scrollr', label: 'GitHub' },
@@ -191,19 +192,32 @@ export default function Footer() {
               <ul className="space-y-3">
                 {links.company.map((link) => (
                   <li key={link.label}>
-                    <motion.a
-                      href={link.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      whileHover={{ x: 2 }}
-                      className="flex items-center gap-2 text-sm text-base-content/50 hover:text-primary transition-colors group cursor-pointer"
-                    >
-                      {link.label}
-                      <ArrowUpRight
-                        size={12}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
-                      />
-                    </motion.a>
+                    {link.href.startsWith('http') || link.href === '#' ? (
+                      <motion.a
+                        href={link.href}
+                        target={link.href.startsWith('http') ? '_blank' : undefined}
+                        rel={link.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                        whileHover={{ x: 2 }}
+                        className="flex items-center gap-2 text-sm text-base-content/50 hover:text-primary transition-colors group cursor-pointer"
+                      >
+                        {link.label}
+                        <ArrowUpRight
+                          size={12}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        />
+                      </motion.a>
+                    ) : (
+                      <Link
+                        to={link.href}
+                        className="flex items-center gap-2 text-sm text-base-content/50 hover:text-primary transition-colors group"
+                      >
+                        {link.label}
+                        <ArrowUpRight
+                          size={12}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        />
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>

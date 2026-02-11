@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UplinkRouteImport } from './routes/uplink'
 import { Route as StatusRouteImport } from './routes/status'
+import { Route as LegalRouteImport } from './routes/legal'
 import { Route as IntegrationsRouteImport } from './routes/integrations'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CallbackRouteImport } from './routes/callback'
@@ -26,6 +27,11 @@ const UplinkRoute = UplinkRouteImport.update({
 const StatusRoute = StatusRouteImport.update({
   id: '/status',
   path: '/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalRoute = LegalRouteImport.update({
+  id: '/legal',
+  path: '/legal',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IntegrationsRoute = IntegrationsRouteImport.update({
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/callback': typeof CallbackRoute
   '/dashboard': typeof DashboardRoute
   '/integrations': typeof IntegrationsRoute
+  '/legal': typeof LegalRoute
   '/status': typeof StatusRoute
   '/uplink': typeof UplinkRoute
   '/u/$username': typeof UUsernameRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByTo {
   '/callback': typeof CallbackRoute
   '/dashboard': typeof DashboardRoute
   '/integrations': typeof IntegrationsRoute
+  '/legal': typeof LegalRoute
   '/status': typeof StatusRoute
   '/uplink': typeof UplinkRoute
   '/u/$username': typeof UUsernameRoute
@@ -86,6 +94,7 @@ export interface FileRoutesById {
   '/callback': typeof CallbackRoute
   '/dashboard': typeof DashboardRoute
   '/integrations': typeof IntegrationsRoute
+  '/legal': typeof LegalRoute
   '/status': typeof StatusRoute
   '/uplink': typeof UplinkRoute
   '/u/$username': typeof UUsernameRoute
@@ -98,6 +107,7 @@ export interface FileRouteTypes {
     | '/callback'
     | '/dashboard'
     | '/integrations'
+    | '/legal'
     | '/status'
     | '/uplink'
     | '/u/$username'
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/callback'
     | '/dashboard'
     | '/integrations'
+    | '/legal'
     | '/status'
     | '/uplink'
     | '/u/$username'
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/callback'
     | '/dashboard'
     | '/integrations'
+    | '/legal'
     | '/status'
     | '/uplink'
     | '/u/$username'
@@ -129,6 +141,7 @@ export interface RootRouteChildren {
   CallbackRoute: typeof CallbackRoute
   DashboardRoute: typeof DashboardRoute
   IntegrationsRoute: typeof IntegrationsRoute
+  LegalRoute: typeof LegalRoute
   StatusRoute: typeof StatusRoute
   UplinkRoute: typeof UplinkRoute
   UUsernameRoute: typeof UUsernameRoute
@@ -148,6 +161,13 @@ declare module '@tanstack/react-router' {
       path: '/status'
       fullPath: '/status'
       preLoaderRoute: typeof StatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal': {
+      id: '/legal'
+      path: '/legal'
+      fullPath: '/legal'
+      preLoaderRoute: typeof LegalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/integrations': {
@@ -201,6 +221,7 @@ const rootRouteChildren: RootRouteChildren = {
   CallbackRoute: CallbackRoute,
   DashboardRoute: DashboardRoute,
   IntegrationsRoute: IntegrationsRoute,
+  LegalRoute: LegalRoute,
   StatusRoute: StatusRoute,
   UplinkRoute: UplinkRoute,
   UUsernameRoute: UUsernameRoute,
