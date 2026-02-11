@@ -18,7 +18,7 @@ export default function Footer() {
       { label: 'Features', href: '/#features' },
       { label: 'Terminal', href: '/dashboard' },
       { label: 'Extension', href: 'https://chrome.google.com/webstore' },
-      { label: 'Uplink', href: '/uplink#' },
+      { label: 'Uplink', href: '/uplink' },
     ],
     resources: [
       {
