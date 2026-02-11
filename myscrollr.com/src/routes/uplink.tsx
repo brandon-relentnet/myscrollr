@@ -3,9 +3,9 @@ import { motion } from 'motion/react'
 import {
   Check,
   Crown,
-  Infinity as InfinityIcon,
-  Lock,
-  Radio,
+  Eye,
+  Gauge,
+  Rocket,
   Satellite,
   Shield,
   Signal,
@@ -27,7 +27,7 @@ interface ComparisonRow {
   label: string
   free: string
   uplink: string
-  unlocked?: boolean
+  upgraded?: boolean
 }
 
 const COMPARISON: ComparisonRow[] = [
@@ -35,43 +35,43 @@ const COMPARISON: ComparisonRow[] = [
     label: 'Tracked Symbols',
     free: '10 symbols',
     uplink: 'Unlimited',
-    unlocked: true,
+    upgraded: true,
   },
   {
     label: 'RSS Feeds',
     free: '15 feeds',
     uplink: 'Unlimited',
-    unlocked: true,
+    upgraded: true,
   },
   {
     label: 'Custom RSS Feeds',
     free: '3 custom',
     uplink: 'Unlimited',
-    unlocked: true,
+    upgraded: true,
   },
   {
     label: 'Sports Leagues',
-    free: '4 leagues',
-    uplink: 'All leagues',
-    unlocked: true,
+    free: 'Pro leagues',
+    uplink: 'Pro + College',
+    upgraded: true,
   },
   {
     label: 'Fantasy Leagues',
-    free: '2 leagues',
+    free: '1 league',
     uplink: 'Unlimited',
-    unlocked: true,
+    upgraded: true,
   },
   {
     label: 'Refresh Priority',
     free: 'Standard',
     uplink: 'Priority',
-    unlocked: true,
+    upgraded: true,
   },
   {
-    label: 'Extension Site Filters',
-    free: '5 rules',
-    uplink: 'Unlimited',
-    unlocked: true,
+    label: 'Site Filter Mode',
+    free: 'Blacklist',
+    uplink: 'Blacklist + Whitelist',
+    upgraded: true,
   },
   {
     label: 'Dashboard Access',
@@ -95,10 +95,10 @@ interface Feature {
 
 const FEATURES: Feature[] = [
   {
-    icon: <InfinityIcon size={20} />,
-    title: 'No Caps',
+    icon: <Gauge size={20} />,
+    title: 'Every Stream, Maxed',
     description:
-      'Every usage limit removed. Track every symbol, subscribe to every feed, follow every league.',
+      'Track every symbol, subscribe to every feed, follow every league. Your feed, fully loaded.',
   },
   {
     icon: <Zap size={20} />,
@@ -110,7 +110,7 @@ const FEATURES: Feature[] = [
     icon: <Shield size={20} />,
     title: 'Early Access',
     description:
-      'First to test new integrations and features before they hit the free tier. Shape the roadmap.',
+      'First to test new integrations and features before they go live. Help shape the roadmap.',
   },
   {
     icon: <Signal size={20} />,
@@ -126,7 +126,7 @@ function UplinkPage() {
   usePageMeta({
     title: 'Uplink — Scrollr',
     description:
-      'Remove the limiters. Scrollr Uplink unlocks unlimited tracking, priority data, and early access to new integrations.',
+      'Total coverage for power users. Scrollr Uplink gives you unlimited tracking, priority data, and early access to new integrations.',
   })
 
   return (
@@ -154,7 +154,7 @@ function UplinkPage() {
         <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] bg-primary/3 rounded-full blur-[100px] pointer-events-none" />
 
-        {/* Diagonal scan line */}
+        {/* Scan line */}
         <motion.div
           className="absolute inset-0 pointer-events-none overflow-hidden"
           initial={{ opacity: 0 }}
@@ -177,15 +177,15 @@ function UplinkPage() {
               </span>
               <span className="h-px w-12 bg-base-300" />
               <span className="text-[10px] font-mono text-base-content/30 uppercase">
-                premium tier &middot; coming soon
+                power tier &middot; coming soon
               </span>
             </div>
 
             {/* Headline */}
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight uppercase mb-6 leading-[0.9]">
-              Remove the
+              Total
               <br />
-              <span className="text-primary">Limiters</span>
+              <span className="text-primary">Coverage</span>
             </h1>
 
             {/* Subtitle — terminal style */}
@@ -194,8 +194,9 @@ function UplinkPage() {
                 $
               </span>
               <p className="text-sm text-base-content/40 font-mono leading-relaxed">
-                Scrollr is free and open source. Uplink removes the usage caps —
-                unlimited symbols, feeds, leagues, and priority data delivery.
+                Scrollr is free and open source. Uplink is for power users who
+                want more — every symbol, every feed, every league, and priority
+                data delivery.
               </p>
             </div>
 
@@ -212,7 +213,7 @@ function UplinkPage() {
                   disabled
                   className="relative inline-flex items-center gap-2 px-6 py-3 text-[11px] font-bold uppercase tracking-[0.2em] border border-primary/40 text-primary bg-primary/5 rounded-sm cursor-not-allowed"
                 >
-                  <Radio size={14} className="animate-pulse" />
+                  <Rocket size={14} />
                   Coming Soon
                 </button>
               </motion.div>
@@ -232,8 +233,7 @@ function UplinkPage() {
             <TrendingUp size={16} /> Free vs Uplink
           </h2>
           <p className="text-[10px] font-mono text-base-content/30">
-            Usage limits are placeholder values — final numbers will be set
-            before launch
+            Values are placeholder — final numbers will be set before launch
           </p>
         </motion.div>
 
@@ -277,7 +277,7 @@ function UplinkPage() {
                 </span>
               </div>
               <div className="p-4 flex items-center justify-center border-l border-primary/10 bg-primary/[0.02]">
-                {row.unlocked ? (
+                {row.upgraded ? (
                   <span className="inline-flex items-center gap-1.5 text-xs font-bold font-mono text-primary/80">
                     <Check size={12} className="text-primary" />
                     {row.uplink}
@@ -294,7 +294,8 @@ function UplinkPage() {
           {/* Table Footer */}
           <div className="border-t border-base-300 bg-base-200/80 p-4 text-center">
             <span className="text-[9px] font-mono text-base-content/20 uppercase tracking-wider">
-              Limits are enforced per-account &middot; Upgrade anytime
+              Per-account &middot; Free tier is always included &middot; Upgrade
+              anytime
             </span>
           </div>
         </motion.div>
@@ -304,10 +305,10 @@ function UplinkPage() {
       <section className="container pb-20">
         <motion.div variants={itemVariants} className="mb-10">
           <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
-            <Zap size={16} /> What Uplink Unlocks
+            <Zap size={16} /> What You Get
           </h2>
           <p className="text-[10px] font-mono text-base-content/30">
-            Beyond the limits — dedicated infrastructure benefits
+            The full power-user experience
           </p>
         </motion.div>
 
@@ -370,7 +371,9 @@ function UplinkPage() {
           <div className="p-6 md:p-8 font-mono text-sm space-y-3">
             <div className="flex items-center gap-2">
               <span className="text-primary/40 select-none">$</span>
-              <span className="text-base-content/60">scrollr uplink status</span>
+              <span className="text-base-content/60">
+                scrollr uplink status
+              </span>
             </div>
             <div className="pl-5 space-y-1.5 text-base-content/30 text-xs">
               <p>
@@ -460,9 +463,9 @@ function UplinkPage() {
               transition={{ delay: 0.1 }}
               className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight uppercase mb-5 leading-tight"
             >
-              Scrollr stays <span className="text-primary">free</span>
+              Scrollr is <span className="text-primary">free forever</span>
               <br />
-              Uplink removes the ceiling
+              Uplink is for those who want more
             </motion.h2>
 
             <motion.p
@@ -472,8 +475,8 @@ function UplinkPage() {
               transition={{ delay: 0.2 }}
               className="text-base text-base-content/40 leading-relaxed mb-8 font-mono"
             >
-              The core platform is free and open source — forever. Uplink is for
-              power users who want everything uncapped.
+              The core platform stays open source with full real-time data.
+              Uplink gives power users total coverage across every integration.
             </motion.p>
 
             <motion.div
@@ -484,7 +487,7 @@ function UplinkPage() {
               className="flex flex-wrap items-center justify-center gap-4"
             >
               <span className="inline-flex items-center gap-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-primary/50 border border-primary/15 rounded-sm bg-primary/5">
-                <Lock size={12} /> Pricing TBD
+                <Eye size={12} /> Pricing TBD
               </span>
               <span className="inline-flex items-center gap-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-base-content/30 border border-base-300/50 rounded-sm">
                 <Trophy size={12} /> Free tier always included
