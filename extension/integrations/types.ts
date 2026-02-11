@@ -14,7 +14,7 @@ export interface FeedTabProps {
 
 // ── Integration manifest — one per integration ───────────────────
 
-export type IntegrationTier = 'official' | 'verified' | 'community';
+type IntegrationTier = 'official' | 'verified' | 'community';
 
 export interface IntegrationManifest {
   /** Unique identifier — matches stream_type in the API. */

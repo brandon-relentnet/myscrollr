@@ -17,7 +17,6 @@ const (
 // =============================================================================
 
 const (
-	HealthProxyTimeout = 5 * time.Second
 	HealthCheckTimeout = 2 * time.Second
 	LogtoProxyTimeout  = 10 * time.Second
 )

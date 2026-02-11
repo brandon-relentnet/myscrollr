@@ -59,7 +59,4 @@ func RemoveSubscriber(ctx context.Context, setKey, userSub string) error {
 	return Rdb.SRem(ctx, setKey, userSub).Err()
 }
 
-// GetSubscribers returns all user subs in a subscription set.
-func GetSubscribers(ctx context.Context, setKey string) ([]string, error) {
-	return Rdb.SMembers(ctx, setKey).Result()
-}
+

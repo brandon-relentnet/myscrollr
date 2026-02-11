@@ -7,13 +7,13 @@ import { MAX_ITEMS } from '~/utils/constants';
  * Uniqueness key extractor — given a record, returns a string key
  * used to identify it for upsert/remove operations.
  */
-export type KeyExtractor<T> = (item: T) => string;
+type KeyExtractor<T> = (item: T) => string;
 
 /**
  * Optional comparator for sorting items after upsert.
  * Return negative if a should come before b.
  */
-export type ItemComparator<T> = (a: T, b: T) => number;
+type ItemComparator<T> = (a: T, b: T) => number;
 
 interface UseScrollrCDCOptions<T> {
   /** CDC table name to subscribe to (e.g. 'trades', 'games', 'rss_items'). */

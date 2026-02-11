@@ -6,17 +6,17 @@ import type {
 
 // ── Background → Content Scripts / Popup ─────────────────────────
 
-export interface ConnectionStatusMessage {
+interface ConnectionStatusMessage {
   type: 'CONNECTION_STATUS';
   status: ConnectionStatus;
 }
 
-export interface InitialDataMessage {
+interface InitialDataMessage {
   type: 'INITIAL_DATA';
   payload: DashboardResponse;
 }
 
-export interface AuthStatusMessage {
+interface AuthStatusMessage {
   type: 'AUTH_STATUS';
   authenticated: boolean;
 }
@@ -25,7 +25,7 @@ export interface AuthStatusMessage {
  * A batch of CDC records for a specific table, forwarded from the
  * background's SSE stream to content scripts that subscribed to it.
  */
-export interface CDCBatchMessage {
+interface CDCBatchMessage {
   type: 'CDC_BATCH';
   table: string;
   records: CDCRecord[];
@@ -52,15 +52,15 @@ export type BackgroundMessage =
 
 // ── Content Script / Popup → Background ──────────────────────────
 
-export interface GetStateMessage {
+interface GetStateMessage {
   type: 'GET_STATE';
 }
 
-export interface LoginMessage {
+interface LoginMessage {
   type: 'LOGIN';
 }
 
-export interface LogoutMessage {
+interface LogoutMessage {
   type: 'LOGOUT';
 }
 
