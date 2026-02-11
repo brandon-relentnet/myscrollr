@@ -37,15 +37,15 @@ var globalDiscovery = &Discovery{
 	tableIndex:   make(map[string]string),
 }
 
-// StartDiscovery begins the background discovery loop.
+// StartDiscovery performs an initial synchronous scan to discover integrations,
+// then starts a background loop to refresh every 10 seconds.
+// The initial scan blocks so that proxy routes can be set up with known integrations.
 func StartDiscovery() {
+	globalDiscovery.refresh()
 	go globalDiscovery.run()
 }
 
 func (d *Discovery) run() {
-	// Do an initial scan immediately
-	d.refresh()
-
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
