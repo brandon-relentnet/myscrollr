@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { flushSync } from 'react-dom'
 import { Search, TrendingUp, X } from 'lucide-react'
 import { motion } from 'motion/react'
 import { streamsApi } from '@/api/client'
@@ -84,7 +83,7 @@ function FinanceDashboardTab({
         { config: { symbols: nextSymbols } },
         getToken,
       )
-      flushSync(() => onStreamUpdate(updated))
+      onStreamUpdate(updated)
     } catch {
       // Could show error
     } finally {
