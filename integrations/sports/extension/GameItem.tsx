@@ -28,7 +28,7 @@ export default function GameItem({ game, mode }: GameItemProps) {
 
   if (mode === 'compact') {
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 text-xs">
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-surface text-xs">
         {game.away_team_logo && (
           <img
             src={game.away_team_logo}
@@ -36,17 +36,17 @@ export default function GameItem({ game, mode }: GameItemProps) {
             className="w-4 h-4 object-contain"
           />
         )}
-        <span className="font-medium text-zinc-200 min-w-[28px]">
+        <span className="font-mono font-medium text-fg min-w-[28px]">
           {game.away_team_name.slice(0, 3).toUpperCase()}
         </span>
-        <span className="text-zinc-300">
+        <span className="font-mono text-fg tabular-nums">
           {formatScore(game.away_team_score)}
         </span>
-        <span className="text-zinc-600">-</span>
-        <span className="text-zinc-300">
+        <span className="text-fg-4 font-mono">&ndash;</span>
+        <span className="font-mono text-fg tabular-nums">
           {formatScore(game.home_team_score)}
         </span>
-        <span className="font-medium text-zinc-200 min-w-[28px]">
+        <span className="font-mono font-medium text-fg min-w-[28px]">
           {game.home_team_name.slice(0, 3).toUpperCase()}
         </span>
         {game.home_team_logo && (
@@ -58,12 +58,14 @@ export default function GameItem({ game, mode }: GameItemProps) {
         )}
         <span
           className={clsx(
-            'ml-auto text-[10px] uppercase tracking-wide',
-            live && 'text-red-400 font-semibold',
-            final && 'text-zinc-500',
-            !live && !final && 'text-zinc-500',
+            'ml-auto text-[9px] font-mono uppercase tracking-wider',
+            live && 'text-live font-bold',
+            !live && 'text-fg-3',
           )}
         >
+          {live && (
+            <span className="inline-block w-1 h-1 rounded-full bg-live mr-1 align-middle animate-pulse" />
+          )}
           {statusLabel(game)}
         </span>
       </div>
@@ -72,7 +74,10 @@ export default function GameItem({ game, mode }: GameItemProps) {
 
   // Comfort mode
   return (
-    <div className="px-3 py-2 bg-zinc-900">
+    <div className={clsx(
+      'px-3 py-2 bg-surface border-l-2',
+      live ? 'border-l-live/40' : 'border-l-transparent',
+    )}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {game.away_team_logo && (
@@ -82,9 +87,9 @@ export default function GameItem({ game, mode }: GameItemProps) {
               className="w-5 h-5 object-contain"
             />
           )}
-          <span className="text-sm text-zinc-200">{game.away_team_name}</span>
+          <span className="text-sm text-fg">{game.away_team_name}</span>
         </div>
-        <span className="text-sm font-semibold text-zinc-100 tabular-nums">
+        <span className="text-sm font-mono font-bold text-fg tabular-nums">
           {formatScore(game.away_team_score)}
         </span>
       </div>
@@ -98,20 +103,23 @@ export default function GameItem({ game, mode }: GameItemProps) {
               className="w-5 h-5 object-contain"
             />
           )}
-          <span className="text-sm text-zinc-200">{game.home_team_name}</span>
+          <span className="text-sm text-fg">{game.home_team_name}</span>
         </div>
-        <span className="text-sm font-semibold text-zinc-100 tabular-nums">
+        <span className="text-sm font-mono font-bold text-fg tabular-nums">
           {formatScore(game.home_team_score)}
         </span>
       </div>
 
-      <div className="mt-1 text-right">
+      <div className="mt-1.5 flex items-center justify-end gap-1.5">
+        {live && (
+          <span className="inline-block w-1 h-1 rounded-full bg-live animate-pulse" />
+        )}
         <span
           className={clsx(
-            'text-[10px] uppercase tracking-wide',
-            live && 'text-red-400 font-semibold',
-            final && 'text-zinc-500',
-            !live && !final && 'text-zinc-500',
+            'text-[9px] font-mono uppercase tracking-wider',
+            live && 'text-live font-bold',
+            final && 'text-fg-3',
+            !live && !final && 'text-fg-3',
           )}
         >
           {statusLabel(game)}

@@ -21,13 +21,15 @@ export const fantasyIntegration: IntegrationManifest = {
 
 export default function FantasyFeedTab({ mode: _mode }: FeedTabProps) {
   return (
-    <div className="flex items-center justify-center py-8 px-4">
-      <div className="text-center space-y-2">
-        <span className="text-2xl">Y!</span>
-        <p className="text-sm text-zinc-300 font-medium">Fantasy</p>
-        <p className="text-xs text-zinc-500 max-w-[240px]">
+    <div className="flex items-center justify-center py-10 px-4 bg-surface">
+      <div className="text-center space-y-3">
+        <div className="inline-flex items-center justify-center w-10 h-10 border border-edge-2 bg-surface-2 text-accent/60 font-mono font-bold text-sm">
+          Y!
+        </div>
+        <p className="text-xs font-mono text-fg-2 uppercase tracking-wider">Fantasy</p>
+        <p className="text-[11px] text-fg-3 max-w-[220px] leading-relaxed">
           Fantasy league data is best viewed on the Scrollr dashboard.
-          Visit myscrollr.com for full standings, matchups, and rosters.
+          Visit <span className="text-accent/60 font-mono">myscrollr.com</span> for standings, matchups, and rosters.
         </p>
       </div>
     </div>

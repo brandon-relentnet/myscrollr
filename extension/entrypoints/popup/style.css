@@ -1,1 +1,27 @@
 @import 'tailwindcss';
+
+@theme {
+  /* Surfaces — ultra-dark with a cool blue-black undertone */
+  --color-surface: #08080d;
+  --color-surface-2: #0f0f16;
+  --color-surface-hover: #15151d;
+
+  /* Borders */
+  --color-edge: #1c1c26;
+  --color-edge-2: #282834;
+
+  /* Primary accent — the Scrollr green */
+  --color-accent: #bfff00;
+
+  /* Foreground / text hierarchy */
+  --color-fg: #d4d4da;
+  --color-fg-2: #84848e;
+  --color-fg-3: #4e4e58;
+  --color-fg-4: #2e2e36;
+
+  /* Semantic */
+  --color-up: #22c55e;
+  --color-down: #ef4444;
+  --color-live: #ef4444;
+  --color-warn: #eab308;
+}

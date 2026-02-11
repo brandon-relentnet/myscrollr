@@ -21,19 +21,23 @@ export default function FeedTabs({ activeTab, onTabChange, availableTabs }: Feed
   if (tabs.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-0.5">
+    <div className="flex items-center gap-1">
       {tabs.map((tab) => (
         <button
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
           className={clsx(
-            'px-2 py-0.5 text-[11px] font-medium rounded transition-colors',
+            'px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider transition-colors relative',
             activeTab === tab.id
-              ? 'bg-zinc-700 text-zinc-100'
-              : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800',
+              ? 'text-accent'
+              : 'text-fg-3 hover:text-fg-2',
           )}
         >
           {tab.label}
+          {/* Active underline indicator */}
+          {activeTab === tab.id && (
+            <span className="absolute bottom-0 left-1 right-1 h-px bg-accent/50" />
+          )}
         </button>
       ))}
     </div>

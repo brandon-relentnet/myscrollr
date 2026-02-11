@@ -48,12 +48,12 @@ export default function RssFeedTab({ mode, streamConfig }: FeedTabProps) {
   });
 
   return (
-    <div className="grid gap-px bg-zinc-800 grid-cols-1">
+    <div className="grid gap-px bg-edge grid-cols-1">
       {rssItems.length === 0 && (
-        <div className="col-span-full text-center py-8 text-zinc-500 text-sm">
+        <div className="col-span-full text-center py-8 text-fg-3 text-xs font-mono">
           {dashboardLoaded && initialItems.length === 0
             ? 'No feeds configured \u2014 add feeds on myscrollr.com'
-            : 'Waiting for RSS articles...'}
+            : 'Waiting for RSS articles\u2026'}
         </div>
       )}
       {rssItems.map((item) => (

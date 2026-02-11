@@ -126,28 +126,35 @@ export default function FeedBar({
       <div
         ref={barRef}
         className={clsx(
-          'fixed left-0 right-0 bg-zinc-900 text-zinc-100 shadow-2xl border-zinc-700 font-sans',
-          position === 'bottom' ? 'bottom-0 border-t' : 'top-0 border-b',
+          'fixed left-0 right-0 bg-surface text-fg font-sans',
+          position === 'bottom' ? 'bottom-0' : 'top-0',
         )}
         style={{
           height: `${COLLAPSED_HEIGHT}px`,
           zIndex: 2147483647,
         }}
       >
+        {/* Accent line */}
+        <div className={clsx(
+          'absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent',
+          position === 'bottom' ? 'top-0' : 'bottom-0',
+        )} />
+
         <div className="flex items-center justify-between h-full px-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
-              Scrollr
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-mono font-bold tracking-[0.2em] text-accent uppercase">
+              scrollr
             </span>
-            <span className="text-xs text-zinc-500">
-              Sign in to see live market & sports data
+            <span className="h-3 w-px bg-edge" />
+            <span className="text-[11px] text-fg-3">
+              Sign in for live data
             </span>
           </div>
           <button
             onClick={onLogin}
-            className="text-xs font-medium px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
+            className="text-[10px] font-bold uppercase tracking-[0.15em] px-3 py-1 bg-accent text-surface font-mono hover:bg-accent/90 transition-colors"
           >
-            Sign In
+            Connect
           </button>
         </div>
       </div>
@@ -159,9 +166,9 @@ export default function FeedBar({
     <div
       ref={barRef}
       className={clsx(
-        'fixed left-0 right-0 bg-zinc-900 text-zinc-100 shadow-2xl border-zinc-700 font-sans',
+        'fixed left-0 right-0 bg-surface text-fg font-sans',
         'transition-[height] duration-200 ease-out',
-        position === 'bottom' ? 'bottom-0 border-t' : 'top-0 border-b',
+        position === 'bottom' ? 'bottom-0' : 'top-0',
         isDragging && 'select-none',
       )}
       style={{
@@ -169,31 +176,39 @@ export default function FeedBar({
         zIndex: 2147483647,
       }}
     >
+      {/* Accent line at visible edge */}
+      <div className={clsx(
+        'absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent',
+        position === 'bottom' ? 'top-0' : 'bottom-0',
+      )} />
+
       {/* Drag handle */}
       <div
         onMouseDown={handleDragStart}
         className={clsx(
-          'absolute left-0 right-0 h-1.5 cursor-row-resize group hover:bg-indigo-500/30 transition-colors',
+          'absolute left-0 right-0 h-2 cursor-row-resize group z-10',
           position === 'bottom' ? '-top-1' : '-bottom-1',
         )}
       >
-        <div className="mx-auto mt-0.5 h-0.5 w-12 rounded-full bg-zinc-600 group-hover:bg-indigo-400 transition-colors" />
+        <div className="mx-auto mt-1 h-0.5 w-10 rounded-full bg-fg-4 group-hover:bg-accent/60 transition-colors" />
       </div>
 
       {/* Header */}
-      <div className="flex items-center justify-between h-8 px-3 border-b border-zinc-800 shrink-0">
+      <div className="flex items-center justify-between h-8 px-3 border-b border-edge shrink-0">
         <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">
-            Scrollr
+          <span className="text-[10px] font-mono font-bold tracking-[0.2em] text-accent uppercase select-none">
+            scrollr
           </span>
+          <span className="h-3 w-px bg-edge" />
           <FeedTabs activeTab={activeTab} onTabChange={setActiveTab} availableTabs={activeTabs} />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <ConnectionIndicator status={connectionStatus} />
+          <span className="h-3 w-px bg-edge" />
           <button
             onClick={onToggleCollapse}
-            className="text-zinc-500 hover:text-zinc-300 transition-colors text-xs px-1"
+            className="text-fg-3 hover:text-accent transition-colors text-[10px] font-mono px-0.5"
             title={collapsed ? 'Expand' : 'Collapse'}
           >
             {collapsed ? (position === 'bottom' ? '\u25B2' : '\u25BC') : (position === 'bottom' ? '\u25BC' : '\u25B2')}
@@ -203,11 +218,11 @@ export default function FeedBar({
 
       {/* Content — render the active integration's FeedTab */}
       {!collapsed && (
-        <div className="overflow-y-auto overflow-x-hidden" style={{ height: `${height - COLLAPSED_HEIGHT}px` }}>
+        <div className="overflow-y-auto overflow-x-hidden scrollbar-thin" style={{ height: `${height - COLLAPSED_HEIGHT}px` }}>
           {FeedTabComponent ? (
             <FeedTabComponent mode={mode} streamConfig={streamConfig} />
           ) : (
-            <div className="text-center py-8 text-zinc-500 text-sm">
+            <div className="text-center py-8 text-fg-3 text-xs font-mono">
               No integration selected
             </div>
           )}

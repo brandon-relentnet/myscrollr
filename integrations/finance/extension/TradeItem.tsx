@@ -32,14 +32,14 @@ function timeAgo(dateStr: string | undefined): string {
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return '';
   const secs = Math.floor((Date.now() - d.getTime()) / 1000);
-  if (secs < 5) return 'just now';
-  if (secs < 60) return `${secs}s ago`;
+  if (secs < 5) return 'now';
+  if (secs < 60) return `${secs}s`;
   const mins = Math.floor(secs / 60);
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 60) return `${mins}m`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24) return `${hrs}h`;
   const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
+  return `${days}d`;
 }
 
 export default function TradeItem({ trade, mode }: TradeItemProps) {
@@ -69,11 +69,7 @@ export default function TradeItem({ trade, mode }: TradeItemProps) {
     prevPriceRef.current = currentPrice;
   }, [trade.price]);
 
-  const flashClass = flash === 'up'
-    ? 'bg-emerald-500/20'
-    : flash === 'down'
-      ? 'bg-red-500/20'
-      : '';
+  const dirColor = isUp ? 'text-up' : isDown ? 'text-down' : 'text-fg-3';
 
   if (mode === 'compact') {
     return (
@@ -82,23 +78,16 @@ export default function TradeItem({ trade, mode }: TradeItemProps) {
         target="_blank"
         rel="noopener noreferrer"
         className={clsx(
-          'flex items-center gap-2 px-3 py-1.5 bg-zinc-900 text-xs transition-colors duration-700 hover:bg-zinc-800',
-          flashClass,
+          'flex items-center gap-2 px-3 py-1.5 bg-surface text-xs font-mono transition-colors duration-700 hover:bg-surface-hover',
+          flash === 'up' && 'bg-up/8',
+          flash === 'down' && 'bg-down/8',
         )}
       >
-        <span className="font-semibold text-zinc-100 min-w-[52px]">
+        <span className="font-bold text-fg min-w-[52px] tracking-wide">
           {trade.symbol}
         </span>
-        <span className="text-zinc-300">{formatPrice(trade.price)}</span>
-        <span
-          className={clsx(
-            'font-medium',
-            isUp && 'text-emerald-400',
-            isDown && 'text-red-400',
-            !isUp && !isDown && 'text-zinc-500',
-          )}
-        >
-          {isUp ? '\u25B2' : isDown ? '\u25BC' : '\u2500'}
+        <span className="text-fg-2 tabular-nums">{formatPrice(trade.price)}</span>
+        <span className={clsx('tabular-nums', dirColor)}>
           {formatChange(trade.percentage_change)}
         </span>
       </a>
@@ -112,39 +101,35 @@ export default function TradeItem({ trade, mode }: TradeItemProps) {
       target="_blank"
       rel="noopener noreferrer"
       className={clsx(
-        'flex items-center justify-between px-3 py-2 bg-zinc-900 transition-colors duration-700 hover:bg-zinc-800',
-        flashClass,
+        'flex items-center justify-between px-3 py-2 bg-surface transition-colors duration-700 hover:bg-surface-hover border-l-2',
+        flash === 'up' && 'bg-up/6',
+        flash === 'down' && 'bg-down/6',
+        isUp && 'border-l-up/40',
+        isDown && 'border-l-down/40',
+        !isUp && !isDown && 'border-l-transparent',
       )}
     >
-      <div className="flex flex-col">
-        <span className="font-semibold text-sm text-zinc-100">
+      <div className="flex flex-col gap-0.5">
+        <span className="font-mono font-bold text-sm text-fg tracking-wide">
           {trade.symbol}
         </span>
         {trade.previous_close != null && (
-          <span className="text-xs text-zinc-500">
-            prev: {formatPrice(trade.previous_close)}
+          <span className="text-[10px] font-mono text-fg-3 tabular-nums">
+            prev {formatPrice(trade.previous_close)}
           </span>
         )}
       </div>
 
-      <div className="flex flex-col items-end">
-        <span className="text-sm font-medium text-zinc-200">
+      <div className="flex flex-col items-end gap-0.5">
+        <span className="text-sm font-mono font-medium text-fg tabular-nums">
           {formatPrice(trade.price)}
         </span>
-        <div className="flex items-center gap-1.5">
-          <span
-            className={clsx(
-              'text-xs font-medium',
-              isUp && 'text-emerald-400',
-              isDown && 'text-red-400',
-              !isUp && !isDown && 'text-zinc-500',
-            )}
-          >
-            {isUp ? '\u25B2 ' : isDown ? '\u25BC ' : ''}
+        <div className="flex items-center gap-2">
+          <span className={clsx('text-[11px] font-mono font-medium tabular-nums', dirColor)}>
             {formatChange(trade.percentage_change)}
           </span>
           {trade.last_updated && (
-            <span className="text-[10px] text-zinc-600">
+            <span className="text-[9px] font-mono text-fg-4 tabular-nums">
               {timeAgo(trade.last_updated)}
             </span>
           )}

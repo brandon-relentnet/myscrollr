@@ -17,6 +17,12 @@ import {
 } from '~/utils/storage';
 import { API_URL, FRONTEND_URL } from '~/utils/constants';
 
+const STATUS_CONFIG = {
+  connected: { dot: 'bg-accent', label: 'LIVE', labelClass: 'text-accent/70' },
+  reconnecting: { dot: 'bg-warn animate-pulse', label: 'SYNC', labelClass: 'text-warn/70' },
+  disconnected: { dot: 'bg-down/60', label: 'OFF', labelClass: 'text-fg-3' },
+} as const;
+
 export default function App() {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [enabled, setEnabled] = useState(true);
@@ -125,35 +131,37 @@ export default function App() {
     });
   };
 
+  const statusCfg = STATUS_CONFIG[status];
+
   return (
-    <div className="w-[320px] bg-zinc-900 text-zinc-100 text-sm">
+    <div className="w-[320px] bg-surface text-fg text-sm font-sans">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
-        <span className="font-bold text-base tracking-tight">Scrollr</span>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-edge">
+        <span className="text-[11px] font-mono font-bold tracking-[0.2em] text-accent uppercase">
+          scrollr
+        </span>
         <div className="flex items-center gap-1.5">
-          <div
-            className={clsx(
-              'w-2 h-2 rounded-full',
-              status === 'connected' && 'bg-emerald-400',
-              status === 'reconnecting' && 'bg-amber-400 animate-pulse',
-              status === 'disconnected' && 'bg-red-400',
-            )}
-          />
-          <span className="text-xs text-zinc-500 capitalize">{status}</span>
+          <div className={clsx('w-1.5 h-1.5 rounded-full', statusCfg.dot)} />
+          <span className={clsx('text-[9px] font-mono uppercase tracking-widest', statusCfg.labelClass)}>
+            {statusCfg.label}
+          </span>
         </div>
       </div>
+
+      {/* Accent line under header */}
+      <div className="h-px bg-gradient-to-r from-transparent via-accent/15 to-transparent" />
 
       {/* Controls */}
       <div className="px-4 py-3 space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-zinc-400">Feed</span>
+          <span className="text-[11px] font-mono text-fg-2 uppercase tracking-wider">Feed</span>
           <button
             onClick={toggleEnabled}
             className={clsx(
-              'px-3 py-1 rounded text-xs font-medium transition-colors',
+              'px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-wider transition-colors',
               enabled
-                ? 'bg-emerald-600 text-white hover:bg-emerald-500'
-                : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600',
+                ? 'bg-accent/15 text-accent border border-accent/30 hover:bg-accent/25'
+                : 'bg-surface-2 text-fg-3 border border-edge hover:text-fg-2',
             )}
           >
             {enabled ? 'ON' : 'OFF'}
@@ -161,11 +169,11 @@ export default function App() {
         </div>
 
         <div className="flex items-center justify-between">
-          <span className="text-zinc-400">Mode</span>
+          <span className="text-[11px] font-mono text-fg-2 uppercase tracking-wider">Mode</span>
           <select
             value={mode}
             onChange={(e) => changeMode(e.target.value as FeedMode)}
-            className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="bg-surface-2 border border-edge text-[11px] font-mono text-fg px-2 py-1 focus:outline-none focus:border-accent/30"
           >
             <option value="comfort">Comfort</option>
             <option value="compact">Compact</option>
@@ -173,11 +181,11 @@ export default function App() {
         </div>
 
         <div className="flex items-center justify-between">
-          <span className="text-zinc-400">Position</span>
+          <span className="text-[11px] font-mono text-fg-2 uppercase tracking-wider">Position</span>
           <select
             value={position}
             onChange={(e) => changePosition(e.target.value as FeedPosition)}
-            className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="bg-surface-2 border border-edge text-[11px] font-mono text-fg px-2 py-1 focus:outline-none focus:border-accent/30"
           >
             <option value="bottom">Bottom</option>
             <option value="top">Top</option>
@@ -185,11 +193,11 @@ export default function App() {
         </div>
 
         <div className="flex items-center justify-between">
-          <span className="text-zinc-400">Behavior</span>
+          <span className="text-[11px] font-mono text-fg-2 uppercase tracking-wider">Behavior</span>
           <select
             value={behavior}
             onChange={(e) => changeBehavior(e.target.value as FeedBehavior)}
-            className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="bg-surface-2 border border-edge text-[11px] font-mono text-fg px-2 py-1 focus:outline-none focus:border-accent/30"
           >
             <option value="overlay">Overlay</option>
             <option value="push">Push Content</option>
@@ -198,31 +206,31 @@ export default function App() {
       </div>
 
       {/* Auth */}
-      <div className="px-4 py-3 border-t border-zinc-800">
+      <div className="px-4 py-3 border-t border-edge">
         {authenticated ? (
           <button
             onClick={handleLogout}
-            className="w-full text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+            className="w-full text-[10px] font-mono text-fg-3 uppercase tracking-wider hover:text-fg-2 transition-colors"
           >
-            Sign Out
+            Disconnect
           </button>
         ) : (
           <button
             onClick={handleLogin}
-            className="w-full py-1.5 rounded text-xs font-medium bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
+            className="w-full py-1.5 text-[10px] font-mono font-bold uppercase tracking-[0.15em] bg-accent text-surface hover:bg-accent/90 transition-colors"
           >
-            Sign In
+            Connect
           </button>
         )}
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-2 border-t border-zinc-800">
+      <div className="px-4 py-2 border-t border-edge">
         <button
           onClick={openSettings}
-          className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+          className="text-[10px] font-mono text-fg-3 uppercase tracking-wider hover:text-accent transition-colors"
         >
-          Settings
+          Dashboard &rarr;
         </button>
       </div>
     </div>

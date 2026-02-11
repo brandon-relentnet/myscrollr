@@ -40,17 +40,17 @@ export default function FinanceFeedTab({ mode, streamConfig }: FeedTabProps) {
   return (
     <div
       className={clsx(
-        'grid gap-px bg-zinc-800',
+        'grid gap-px bg-edge',
         mode === 'compact'
           ? 'grid-cols-1'
           : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
       )}
     >
       {trades.length === 0 && (
-        <div className="col-span-full text-center py-8 text-zinc-500 text-sm">
+        <div className="col-span-full text-center py-8 text-fg-3 text-xs font-mono">
           {streamConfig.__dashboardLoaded && initialItems.length === 0
             ? 'No symbols selected \u2014 configure on myscrollr.com'
-            : 'Waiting for trade data...'}
+            : 'Waiting for trade data\u2026'}
         </div>
       )}
       {trades.map((trade) => (
