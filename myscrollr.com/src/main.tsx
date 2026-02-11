@@ -22,7 +22,7 @@ const router = createRouter({
   context: {},
   defaultPreload: 'intent',
   scrollRestoration: true,
-  defaultResetScroll: true,
+  scrollRestorationBehavior: 'smooth',
   defaultStructuralSharing: true,
   defaultPreloadStaleTime: 0,
 })
