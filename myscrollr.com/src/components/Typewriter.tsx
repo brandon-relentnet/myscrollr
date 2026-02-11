@@ -36,7 +36,7 @@ export default function TypewriterChangeContentExample() {
               scale: [1, 1.2, 1],
             }}
             transition={{ duration: 3, repeat: Infinity }}
-            className="absolute -right-6 top-1/2 -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-gradient-to-r from-primary to-info"
+            className="absolute -right-6 top-1/2 -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-linear-to-r from-primary to-info"
           />
         </span>
       </motion.div>
@@ -46,7 +46,7 @@ export default function TypewriterChangeContentExample() {
         initial={{ scaleX: 0, opacity: 0 }}
         animate={{ scaleX: 1, opacity: 1 }}
         transition={{ duration: 0.8, delay: 0.8, ease: 'anticipate' }}
-        className="h-1 w-32 bg-linear-to-r from-primary via-info to-secondary rounded-full mt-6 mx-auto lg:mx-0"
+        className="h-1 w-32 bg-linear-to-r from-primary via-info to-secondary rounded-full my-6 mx-auto lg:mx-0"
       />
     </div>
   )

@@ -69,7 +69,7 @@ export default function Footer() {
         {/* Main Footer Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 mb-16">
           {/* Brand Column */}
-          <div className="lg:col-span-4 space-y-8">
+          <div className="lg:col-span-4 space-y-6">
             <div className="flex items-center gap-4">
               <motion.div
                 whileHover={{ scale: 1.02 }}
@@ -91,7 +91,7 @@ export default function Footer() {
               </div>
             </div>
 
-            <p className="text-sm text-base-content/60 leading-relaxed max-w-sm">
+            <p className="text-sm text-base-content/60 leading-relaxed max-w-sm pb-2">
               Pin live sports scores, crypto prices, and custom feeds over any
               tab. Stop alt-tabping. Stay in your flow.
             </p>
@@ -260,7 +260,11 @@ export default function Footer() {
                 href={social.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                whileHover={{ scale: 1.1, y: -2, transition: { type: 'tween', duration: 0.2 } }}
+                whileHover={{
+                  scale: 1.1,
+                  y: -2,
+                  transition: { type: 'tween', duration: 0.2 },
+                }}
                 whileTap={{ scale: 0.95 }}
                 className="flex items-center justify-center w-10 h-10 rounded-sm bg-base-200/50 border border-base-300/30 text-base-content/40 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors cursor-pointer"
                 aria-label={social.label}

@@ -51,10 +51,10 @@ export function CallToAction() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-5"
+              className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-2"
             >
               Start{' '}
-              <span className="text-gradient-primary font-black uppercase tracking-tighter">
+              <span className="text-rainbow font-black uppercase tracking-tighter">
                 Scrolling
               </span>
             </motion.h2>
@@ -64,7 +64,7 @@ export function CallToAction() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.2 }}
-              className="text-base text-base-content/50 leading-relaxed mb-6"
+              className="text-base text-base-content/50 leading-relaxed pb-6"
             >
               Add to Chrome and pin live sports, market data, news, and fantasy
               scores over any tab. Free forever.
@@ -102,24 +102,8 @@ export function CallToAction() {
               <InstallButton className="relative w-full text-lg py-4 shadow-xl" />
             </div>
 
-            {/* Browser compat */}
-            <p className="text-[10px] font-mono text-base-content/40 text-center lg:text-right uppercase tracking-[0.2em] font-bold flex items-center gap-3">
-              <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary/50" />
-                Chrome
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-base-content/30" />
-                Brave
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-base-content/30" />
-                Edge
-              </span>
-            </p>
-
             {/* Uplink teaser */}
-            <div className="w-full pt-4 border-t border-base-300/30">
+            <div className="w-full border-t border-base-300/30">
               <Link
                 to="/uplink"
                 className="group flex items-center justify-center lg:justify-end gap-2 text-[10px] font-mono text-base-content/25 uppercase tracking-wider hover:text-primary/60 transition-colors"
@@ -138,6 +122,22 @@ export function CallToAction() {
                 />
               </Link>
             </div>
+
+            {/* Browser compat */}
+            <p className="text-[10px] font-mono text-base-content/40 text-center lg:text-right uppercase tracking-[0.2em] font-bold flex items-center gap-3">
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/50" />
+                Chrome
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-base-content/30" />
+                Brave
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-base-content/30" />
+                Edge
+              </span>
+            </p>
           </motion.div>
         </div>
       </motion.div>

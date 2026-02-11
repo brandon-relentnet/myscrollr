@@ -133,7 +133,7 @@ export function HeroSection() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 1 }}
-              className="mt-8 text-lg sm:text-xl text-base-content/60 max-w-md leading-relaxed"
+              className="text-lg sm:text-xl text-base-content/60 max-w-md leading-relaxed"
             >
               Pin live sports scores, crypto prices, and custom feeds over any
               tab.{' '}
@@ -151,7 +151,10 @@ export function HeroSection() {
               <InstallButton />
               <motion.button
                 type="button"
-                whileHover={{ y: 2, transition: { type: 'tween', duration: 0.2 } }}
+                whileHover={{
+                  y: 2,
+                  transition: { type: 'tween', duration: 0.2 },
+                }}
                 whileTap={{ y: 0 }}
                 className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-sm border border-base-300 bg-base-200/50 px-6 py-3 text-sm font-bold uppercase tracking-wider text-base-content hover:bg-base-300 transition-colors backdrop-blur-sm"
                 onClick={() => scrollToSection('how-it-works')}

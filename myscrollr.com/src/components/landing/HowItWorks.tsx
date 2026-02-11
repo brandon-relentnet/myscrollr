@@ -1,33 +1,39 @@
 import { motion } from 'motion/react'
-import { Download, Sliders, Globe } from 'lucide-react'
+import { Download, Globe, Sliders } from 'lucide-react'
 
 const steps = [
   {
     number: '01',
     icon: <Download size={22} />,
     title: 'Install',
-    description: 'Add Scrollr to Chrome in one click. Free, lightweight, no account required.',
+    description:
+      'Add Scrollr to Chrome in one click. Free, lightweight, no account required.',
     accent: 'primary',
   },
   {
     number: '02',
     icon: <Sliders size={22} />,
     title: 'Choose Your Streams',
-    description: 'Pick from sports scores, market data, news feeds, and fantasy leagues.',
+    description:
+      'Pick from sports scores, market data, news feeds, and fantasy leagues.',
     accent: 'info',
   },
   {
     number: '03',
     icon: <Globe size={22} />,
     title: 'Browse Anywhere',
-    description: 'Your data follows you across every tab. Always visible, never in the way.',
+    description:
+      'Your data follows you across every tab. Always visible, never in the way.',
     accent: 'secondary',
   },
 ]
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="container py-24 lg:py-32 relative scroll-m-20">
+    <section
+      id="how-it-works"
+      className="container py-24 lg:py-32 relative scroll-m-20"
+    >
       {/* Section Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -50,7 +56,7 @@ export function HowItWorks() {
           Three Steps to{' '}
           <span className="text-gradient-primary">Your Feed</span>
         </h2>
-        <p className="text-base text-base-content/40 max-w-lg mx-auto leading-relaxed">
+        <p className="text-base text-base-content/40 mx-auto leading-relaxed">
           Up and running in under a minute. No sign-up required.
         </p>
       </motion.div>
@@ -95,7 +101,9 @@ export function HowItWorks() {
                     <span className="text-5xl font-black text-base-content/[0.06] tracking-tighter font-mono leading-none select-none">
                       {step.number}
                     </span>
-                    <div className={`h-11 w-11 rounded-sm bg-${step.accent}/8 border border-${step.accent}/15 flex items-center justify-center text-${step.accent}`}>
+                    <div
+                      className={`h-11 w-11 rounded-sm bg-${step.accent}/8 border border-${step.accent}/15 flex items-center justify-center text-${step.accent}`}
+                    >
                       {step.icon}
                     </div>
                   </div>

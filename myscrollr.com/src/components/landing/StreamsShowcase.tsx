@@ -1,12 +1,6 @@
 import { motion } from 'motion/react'
 import { Link } from '@tanstack/react-router'
-import {
-  TrendingUp,
-  Trophy,
-  Rss,
-  Ghost,
-  ArrowRight,
-} from 'lucide-react'
+import { TrendingUp, Trophy, Rss, Ghost, ArrowRight } from 'lucide-react'
 
 // ── Ticker Data ──────────────────────────────────────────────────
 
@@ -26,7 +20,11 @@ const TICKER_CHIPS: TickerChip[] = [
   { label: 'ETH', value: '$3,412', color: 'primary', icon: '↓' },
   { label: 'Your Team', value: '2nd Place', color: 'accent' },
   { label: 'SPY', value: '$512.08', color: 'primary', icon: '↑' },
-  { label: 'Tech layoffs slow as AI hiring surges', value: 'TechCrunch', color: 'info' },
+  {
+    label: 'Tech layoffs slow as AI hiring surges',
+    value: 'TechCrunch',
+    color: 'info',
+  },
   { label: 'NYG 21', value: 'DAL 17', color: 'secondary', icon: 'HALF' },
   { label: 'AAPL', value: '$189.54', color: 'primary', icon: '↓' },
   { label: 'Matchup: W 6-4', value: 'vs Team Alpha', color: 'accent' },
@@ -137,14 +135,20 @@ function TickerBar() {
               key={`${chip.label}-${i}`}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-sm border ${colors.border} ${colors.bg} shrink-0`}
             >
-              <span className={`text-[11px] font-bold font-mono ${colors.text} whitespace-nowrap`}>
+              <span
+                className={`text-[11px] font-bold font-mono ${colors.text} whitespace-nowrap`}
+              >
                 {chip.label}
               </span>
-              <span className={`text-[10px] font-mono ${colors.sub} whitespace-nowrap`}>
+              <span
+                className={`text-[10px] font-mono ${colors.sub} whitespace-nowrap`}
+              >
                 {chip.value}
               </span>
               {chip.icon && (
-                <span className={`text-[9px] font-bold font-mono ${colors.text} opacity-70 whitespace-nowrap`}>
+                <span
+                  className={`text-[9px] font-bold font-mono ${colors.text} opacity-70 whitespace-nowrap`}
+                >
                   {chip.icon}
                 </span>
               )}
@@ -266,7 +270,7 @@ export function StreamsShowcase() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="mb-14 text-center"
+          className="mb-14 text-center flex flex-col items-center"
         >
           <div className="flex items-center justify-center gap-3 mb-8">
             <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-sm border border-primary/15 uppercase tracking-[0.2em]">
@@ -279,8 +283,7 @@ export function StreamsShowcase() {
           </div>
 
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight uppercase leading-[0.95] mb-5">
-            See It{' '}
-            <span className="text-gradient-primary">In Action</span>
+            See It <span className="text-gradient-primary">In Action</span>
           </h2>
           <p className="text-base text-base-content/40 max-w-xl mx-auto leading-relaxed">
             Four live integrations power your feed. Real-time data from finance,
@@ -306,7 +309,10 @@ export function StreamsShowcase() {
                 duration: 0.5,
                 ease: [0.22, 1, 0.36, 1],
               }}
-              whileHover={{ y: -3, transition: { type: 'tween', duration: 0.2 } }}
+              whileHover={{
+                y: -3,
+                transition: { type: 'tween', duration: 0.2 },
+              }}
               className="group relative bg-base-200/50 border border-base-300/50 rounded-sm p-6 hover:border-primary/20 transition-colors overflow-hidden"
             >
               {/* Hover gradient */}
@@ -318,17 +324,23 @@ export function StreamsShowcase() {
               <div className="relative z-10">
                 {/* Icon + color dot */}
                 <div className="flex items-center justify-between mb-5">
-                  <div className={`h-10 w-10 rounded-sm bg-base-300/30 border border-base-300/40 flex items-center justify-center ${integration.color}`}>
+                  <div
+                    className={`h-10 w-10 rounded-sm bg-base-300/30 border border-base-300/40 flex items-center justify-center ${integration.color}`}
+                  >
                     {integration.icon}
                   </div>
-                  <span className={`w-2 h-2 rounded-full ${integration.dotColor} opacity-60`} />
+                  <span
+                    className={`w-2 h-2 rounded-full ${integration.dotColor} opacity-60`}
+                  />
                 </div>
 
                 {/* Content */}
                 <h3 className="text-sm font-bold uppercase tracking-wider text-base-content mb-1">
                   {integration.name}
                 </h3>
-                <p className={`text-[10px] font-mono uppercase tracking-wider ${integration.color} opacity-60 mb-3`}>
+                <p
+                  className={`text-[10px] font-mono uppercase tracking-wider ${integration.color} opacity-60 mb-3`}
+                >
                   {integration.label}
                 </p>
                 <p className="text-xs text-base-content/30 leading-relaxed mb-5">
@@ -340,7 +352,9 @@ export function StreamsShowcase() {
                   <span className="text-[10px] font-mono text-base-content/20 uppercase tracking-wider">
                     In your feed:
                   </span>
-                  <span className={`block mt-1.5 text-xs font-bold font-mono ${integration.color} opacity-70`}>
+                  <span
+                    className={`block mt-1.5 text-xs font-bold font-mono ${integration.color} opacity-70`}
+                  >
                     {integration.example}
                   </span>
                 </div>
@@ -369,8 +383,8 @@ export function StreamsShowcase() {
           </Link>
           <span className="h-4 w-px bg-base-300/30" />
           <span className="text-[10px] font-mono text-base-content/20 uppercase tracking-wider flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-success/40" />
-            4 live &middot; 6 coming soon
+            <span className="w-1.5 h-1.5 rounded-full bg-success/40" />4 live
+            &middot; 6 coming soon
           </span>
         </motion.div>
       </div>
