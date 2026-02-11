@@ -13,12 +13,12 @@ services:
       - REDIS_URL=${REDIS_URL}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - INTEGRATION_URL=${INTEGRATION_URL}
+      - COOLIFY_FQDN=${COOLIFY_FQDN}
       - YAHOO_CLIENT_ID=${YAHOO_CLIENT_ID}
       - YAHOO_CLIENT_SECRET=${YAHOO_CLIENT_SECRET}
       - FRONTEND_URL=${FRONTEND_URL}
       - INTERNAL_YAHOO_URL=http://scrollr-fantasy-service:3003
-    networks:
-      - scrollr-network
     restart: unless-stopped
 
   scrollr-fantasy-service:
@@ -35,10 +35,4 @@ services:
       - YAHOO_CLIENT_ID=${YAHOO_CLIENT_ID}
       - YAHOO_CLIENT_SECRET=${YAHOO_CLIENT_SECRET}
       - SYNC_INTERVAL_SECS=${SYNC_INTERVAL_SECS}
-    networks:
-      - scrollr-network
     restart: unless-stopped
-
-networks:
-  scrollr-network:
-    external: true
