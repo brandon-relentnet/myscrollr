@@ -397,7 +397,6 @@ function DashboardPage() {
               {/* Registry-driven integration rendering */}
               {activeStream && activeIntegration && (
                 <activeIntegration.DashboardTab
-                  key={activeStream.updated_at}
                   stream={activeStream}
                   getToken={getToken}
                   connected={status === 'connected'}
