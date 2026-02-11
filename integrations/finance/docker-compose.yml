@@ -1,0 +1,37 @@
+version: "3.8"
+
+services:
+  scrollr-finance-api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: scrollr-finance-api
+    ports:
+      - "8081:8081"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - INTERNAL_FINANCE_URL=http://scrollr-finance-service:3001
+    networks:
+      - scrollr-network
+    restart: unless-stopped
+
+  scrollr-finance-service:
+    build:
+      context: ./service
+      dockerfile: Dockerfile
+    container_name: scrollr-finance-service
+    ports:
+      - "3001:3001"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - FINNHUB_API_KEY=${FINNHUB_API_KEY}
+    networks:
+      - scrollr-network
+    restart: unless-stopped
+
+networks:
+  scrollr-network:
+    external: true

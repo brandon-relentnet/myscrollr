@@ -1,0 +1,36 @@
+version: "3.8"
+
+services:
+  scrollr-sports-api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: scrollr-sports-api
+    ports:
+      - "8082:8082"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - INTERNAL_SPORTS_URL=http://scrollr-sports-service:3002
+    networks:
+      - scrollr-network
+    restart: unless-stopped
+
+  scrollr-sports-service:
+    build:
+      context: ./service
+      dockerfile: Dockerfile
+    container_name: scrollr-sports-service
+    ports:
+      - "3002:3002"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+    networks:
+      - scrollr-network
+    restart: unless-stopped
+
+networks:
+  scrollr-network:
+    external: true

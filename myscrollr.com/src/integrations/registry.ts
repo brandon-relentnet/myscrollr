@@ -1,25 +1,32 @@
 import type { IntegrationManifest } from './types'
 
-// Official integrations
-import { financeIntegration } from './official/finance/DashboardTab'
-import { sportsIntegration } from './official/sports/DashboardTab'
-import { fantasyIntegration } from './official/fantasy/DashboardTab'
-import { rssIntegration } from './official/rss/DashboardTab'
+// Convention-based discovery: scan integrations/*/web/DashboardTab.tsx at build time.
+// Each module must export a named `{name}Integration` conforming to IntegrationManifest.
+const modules = import.meta.glob<Record<string, IntegrationManifest>>(
+  '../../../integrations/*/web/DashboardTab.tsx',
+  { eager: true },
+)
 
 const integrations = new Map<string, IntegrationManifest>()
 
 /** Canonical display order for integration tabs */
 export const TAB_ORDER = ['finance', 'sports', 'fantasy', 'rss'] as const
 
-function register(manifest: IntegrationManifest) {
-  integrations.set(manifest.id, manifest)
+// Auto-register all discovered integrations.
+// Convention: each module exports `export const {id}Integration: IntegrationManifest`.
+for (const [, mod] of Object.entries(modules)) {
+  for (const [exportName, value] of Object.entries(mod)) {
+    if (
+      exportName.endsWith('Integration') &&
+      value &&
+      typeof value === 'object' &&
+      'id' in value &&
+      'DashboardTab' in value
+    ) {
+      integrations.set(value.id, value)
+    }
+  }
 }
-
-// Register official integrations
-register(financeIntegration)
-register(sportsIntegration)
-register(fantasyIntegration)
-register(rssIntegration)
 
 /** Get a single integration by ID */
 export function getIntegration(id: string): IntegrationManifest | undefined {

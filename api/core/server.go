@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -9,7 +10,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/brandon-relentnet/myscrollr/api/integration"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
@@ -17,10 +17,9 @@ import (
 	"github.com/gofiber/swagger"
 )
 
-// Server holds the Fiber app, integration registry, and shared dependencies.
+// Server holds the Fiber app and shared dependencies.
 type Server struct {
-	App          *fiber.App
-	integrations []integration.Integration
+	App *fiber.App
 }
 
 // NewServer creates a new Server with a configured Fiber app.
@@ -30,27 +29,18 @@ func NewServer() *Server {
 	})
 
 	return &Server{
-		App:          app,
-		integrations: make([]integration.Integration, 0),
+		App: app,
 	}
 }
 
-// RegisterIntegration adds an integration to the server's registry.
-func (s *Server) RegisterIntegration(intg integration.Integration) {
-	s.integrations = append(s.integrations, intg)
-	log.Printf("[Server] Registered integration: %s (%s)", intg.Name(), intg.DisplayName())
-}
-
-// Setup configures middleware, registers all routes, and initialises the
-// integration registry globals.
+// Setup configures middleware, registers all routes, and sets up integration
+// proxying based on Redis discovery.
 func (s *Server) Setup() {
-	// Publish the registry to the package-level variable so streams.go and
-	// handlers_webhook.go can access it.
-	IntegrationRegistry = s.integrations
-	BuildValidStreamTypes()
-
 	s.setupMiddleware()
 	s.setupRoutes()
+
+	// Setup proxy routes from discovered integrations
+	SetupProxyRoutes(s.App)
 }
 
 // setupMiddleware attaches logging, security headers, CORS, and rate limiting.
@@ -91,18 +81,18 @@ func (s *Server) setupMiddleware() {
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
 	}))
 
-	// Build the set of rate-limit-exempt paths from integration health endpoints
+	// Build rate-limit-exempt paths from discovered integrations
 	exemptPaths := map[string]bool{
-		"/health":           true,
-		"/events":           true,
-		"/webhooks/sequin":  true,
-		"/rss/feeds":        true,
-		"/integrations":     true,
+		"/health":          true,
+		"/events":          true,
+		"/webhooks/sequin": true,
+		"/integrations":    true,
 	}
-	for _, intg := range s.integrations {
-		if _, ok := intg.(integration.HealthChecker); ok {
-			healthPath := "/" + intg.Name() + "/health"
-			exemptPaths[healthPath] = true
+	for _, intg := range GetAllIntegrations() {
+		for _, route := range intg.Routes {
+			if !route.Auth {
+				exemptPaths[route.Path] = true
+			}
 		}
 	}
 
@@ -118,7 +108,8 @@ func (s *Server) setupMiddleware() {
 	}))
 }
 
-// setupRoutes mounts public, protected, and integration-specific routes.
+// setupRoutes mounts core public and protected routes.
+// Integration-specific routes are handled by SetupProxyRoutes.
 func (s *Server) setupRoutes() {
 	s.App.Get("/swagger/*", swagger.HandlerDefault)
 
@@ -138,23 +129,16 @@ func (s *Server) setupRoutes() {
 	s.App.Get("/", s.landingPage)
 
 	// --- Protected Routes ---
-	api := s.App.Group("/")
-
-	api.Get("/dashboard", LogtoAuth, s.getDashboard)
+	s.App.Get("/dashboard", LogtoAuth, s.getDashboard)
 
 	// User Routes
-	api.Get("/users/:username", GetProfileByUsername)
-	api.Get("/users/me/preferences", LogtoAuth, HandleGetPreferences)
-	api.Put("/users/me/preferences", LogtoAuth, HandleUpdatePreferences)
-	api.Get("/users/me/streams", LogtoAuth, GetStreams)
-	api.Post("/users/me/streams", LogtoAuth, CreateStream)
-	api.Put("/users/me/streams/:type", LogtoAuth, UpdateStream)
-	api.Delete("/users/me/streams/:type", LogtoAuth, DeleteStream)
-
-	// Let each integration register its own routes
-	for _, intg := range s.integrations {
-		intg.RegisterRoutes(s.App, LogtoAuth)
-	}
+	s.App.Get("/users/:username", GetProfileByUsername)
+	s.App.Get("/users/me/preferences", LogtoAuth, HandleGetPreferences)
+	s.App.Put("/users/me/preferences", LogtoAuth, HandleUpdatePreferences)
+	s.App.Get("/users/me/streams", LogtoAuth, GetStreams)
+	s.App.Post("/users/me/streams", LogtoAuth, CreateStream)
+	s.App.Put("/users/me/streams/:type", LogtoAuth, UpdateStream)
+	s.App.Delete("/users/me/streams/:type", LogtoAuth, DeleteStream)
 }
 
 // healthCheck returns the aggregated health status.
@@ -174,23 +158,20 @@ func (s *Server) healthCheck(c *fiber.Ctx) error {
 		res.Redis = "healthy"
 	}
 
+	// Check health of discovered integration services
 	httpClient := &http.Client{Timeout: HealthCheckTimeout}
-	for _, intg := range s.integrations {
-		hc, ok := intg.(integration.HealthChecker)
-		if !ok {
+	for _, intg := range GetAllIntegrations() {
+		if !intg.HasCapability("health_checker") {
 			continue
 		}
-		serviceURL := hc.InternalServiceURL()
-		if serviceURL == "" {
-			continue
-		}
-		targetURL := buildHealthURL(serviceURL)
+		targetURL := intg.InternalURL + "/internal/health"
 		resp, err := httpClient.Get(targetURL)
 		if err != nil || resp.StatusCode != http.StatusOK {
-			res.Services[intg.Name()] = "down"
+			res.Services[intg.Name] = "down"
 			res.Status = "degraded"
 		} else {
-			res.Services[intg.Name()] = "healthy"
+			res.Services[intg.Name] = "healthy"
+			resp.Body.Close()
 		}
 	}
 
@@ -198,13 +179,6 @@ func (s *Server) healthCheck(c *fiber.Ctx) error {
 }
 
 // getDashboard retrieves aggregated data for the user dashboard.
-// @Summary Get aggregated dashboard data
-// @Description Combines data from all enabled integrations in one call
-// @Tags Data
-// @Produce json
-// @Success 200 {object} DashboardResponse
-// @Security LogtoAuth
-// @Router /dashboard [get]
 func (s *Server) getDashboard(c *fiber.Ctx) error {
 	userID := GetUserID(c)
 	if userID == "" {
@@ -230,82 +204,62 @@ func (s *Server) getDashboard(c *fiber.Ctx) error {
 		res.Streams = streams
 	}
 
-	enabledStreams := make(map[string]integration.StreamInfo)
+	enabledStreams := make(map[string]bool)
 	for _, st := range streams {
 		if st.Enabled {
-			enabledStreams[st.StreamType] = integration.StreamInfo{
-				StreamType: st.StreamType,
-				Enabled:    st.Enabled,
-				Config:     st.Config,
-			}
+			enabledStreams[st.StreamType] = true
 		}
 	}
 
 	// Warm Redis subscription sets from current DB state
 	go SyncStreamSubscriptions(userID)
 
-	// 3. Ask each integration for its dashboard data
-	ctx := context.Background()
-	for _, intg := range s.integrations {
-		info, ok := enabledStreams[intg.Name()]
-		if !ok {
+	// 3. Fetch dashboard data from each enabled integration via HTTP
+	dashboardClient := &http.Client{Timeout: HealthCheckTimeout}
+	for _, intg := range GetAllIntegrations() {
+		if !enabledStreams[intg.Name] {
 			continue
 		}
-		dp, ok := intg.(integration.DashboardProvider)
-		if !ok {
+		if !intg.HasCapability("dashboard_provider") {
 			continue
 		}
-		data, err := dp.GetDashboardData(ctx, userID, info)
+
+		url := fmt.Sprintf("%s/internal/dashboard?user=%s", intg.InternalURL, userID)
+		resp, err := dashboardClient.Get(url)
 		if err != nil {
-			log.Printf("[Dashboard] %s error: %v", intg.Name(), err)
+			log.Printf("[Dashboard] %s fetch error: %v", intg.Name, err)
 			continue
 		}
-		if data != nil {
-			res.Data[intg.Name()] = data
+		body, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil || resp.StatusCode != 200 {
+			log.Printf("[Dashboard] %s returned status %d", intg.Name, resp.StatusCode)
+			continue
+		}
+
+		// Merge integration data into response
+		var data map[string]interface{}
+		if err := json.Unmarshal(body, &data); err != nil {
+			log.Printf("[Dashboard] %s unmarshal error: %v", intg.Name, err)
+			continue
+		}
+		for k, v := range data {
+			res.Data[k] = v
 		}
 	}
 
 	return c.JSON(res)
 }
 
-// IntegrationInfo describes a registered integration for the public API.
-type IntegrationInfo struct {
-	Name         string   `json:"name"`
-	DisplayName  string   `json:"display_name"`
-	Capabilities []string `json:"capabilities"`
-}
-
-// listIntegrations returns all registered integrations and their capabilities.
-// @Summary List registered integrations
-// @Description Returns every integration registered with the server, including
-// which optional capabilities each one supports.
-// @Tags Integrations
-// @Produce json
-// @Success 200 {array} IntegrationInfo
-// @Router /integrations [get]
+// listIntegrations returns all discovered integrations and their capabilities.
 func (s *Server) listIntegrations(c *fiber.Ctx) error {
-	infos := make([]IntegrationInfo, 0, len(s.integrations))
-	for _, intg := range s.integrations {
-		caps := make([]string, 0, 5)
-		if _, ok := intg.(integration.CDCHandler); ok {
-			caps = append(caps, "cdc")
-		}
-		if _, ok := intg.(integration.DashboardProvider); ok {
-			caps = append(caps, "dashboard")
-		}
-		if _, ok := intg.(integration.StreamLifecycle); ok {
-			caps = append(caps, "stream_lifecycle")
-		}
-		if _, ok := intg.(integration.HealthChecker); ok {
-			caps = append(caps, "health")
-		}
-		if _, ok := intg.(integration.Configurable); ok {
-			caps = append(caps, "configurable")
-		}
-		infos = append(infos, IntegrationInfo{
-			Name:         intg.Name(),
-			DisplayName:  intg.DisplayName(),
-			Capabilities: caps,
+	integrations := GetAllIntegrations()
+	infos := make([]fiber.Map, 0, len(integrations))
+	for _, intg := range integrations {
+		infos = append(infos, fiber.Map{
+			"name":         intg.Name,
+			"display_name": intg.DisplayName,
+			"capabilities": intg.Capabilities,
 		})
 	}
 	return c.JSON(infos)
@@ -343,7 +297,7 @@ func (s *Server) Listen() error {
 	return s.App.Listen(":" + port)
 }
 
-// --- Helpers used by healthCheck ---
+// --- Helpers ---
 
 func buildHealthURL(baseURL string) string {
 	url := strings.TrimSuffix(baseURL, "/")
@@ -354,7 +308,6 @@ func buildHealthURL(baseURL string) string {
 }
 
 // ProxyInternalHealth proxies a health check to an internal service URL.
-// Exported so integration packages can use it for their health endpoints.
 func ProxyInternalHealth(c *fiber.Ctx, internalURL string) error {
 	if internalURL == "" {
 		return c.Status(fiber.StatusServiceUnavailable).JSON(ErrorResponse{Status: "unknown", Error: "Internal URL not configured"})

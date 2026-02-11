@@ -6,15 +6,11 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/brandon-relentnet/myscrollr/api/core"
-	"github.com/brandon-relentnet/myscrollr/api/integrations/finance"
-	"github.com/brandon-relentnet/myscrollr/api/integrations/fantasy"
-	"github.com/brandon-relentnet/myscrollr/api/integrations/rss"
-	"github.com/brandon-relentnet/myscrollr/api/integrations/sports"
 )
 
 // @title Scrollr API
-// @version 1.0
-// @description High-performance data API for Scrollr finance, sports, RSS, and fantasy.
+// @version 2.0
+// @description Gateway API for Scrollr — routes requests to self-registered integration services.
 // @host api.myscrollr.relentnet.dev
 // @BasePath /
 // @securityDefinitions.apikey LogtoAuth
@@ -34,17 +30,11 @@ func main() {
 	core.InitHub()
 	core.InitAuth()
 
-	// Build the server and register integrations
+	// Start Redis-based integration discovery
+	core.StartDiscovery()
+
+	// Build and start the gateway server
 	srv := core.NewServer()
-
-	srv.RegisterIntegration(finance.New(core.DBPool, core.SendToUser, core.RouteToStreamSubscribers))
-	srv.RegisterIntegration(sports.New(core.DBPool, core.SendToUser, core.RouteToStreamSubscribers))
-	srv.RegisterIntegration(rss.New(core.DBPool, core.Rdb, core.SendToUser))
-
-	fantasyIntg := fantasy.New(core.DBPool, core.Rdb, core.SendToUser)
-	fantasyIntg.Init()
-	srv.RegisterIntegration(fantasyIntg)
-
 	srv.Setup()
 
 	if err := srv.Listen(); err != nil {

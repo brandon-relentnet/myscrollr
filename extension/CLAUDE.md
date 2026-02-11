@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code when working in the `extension/` directory.
 
-This is the **Scrollr browser extension**, part of the MyScrollr monorepo. It injects a real-time data feed bar into every webpage via a Shadow Root content script. The feed bar renders **integration-provided FeedTab components** — each integration owns its own data lifecycle and UI. The root `../CLAUDE.md` has full platform context (API endpoints, database schema, Rust ingestion services, frontend, deployment).
+This is the **Scrollr browser extension**, part of the MyScrollr monorepo. It injects a real-time data feed bar into every webpage via a Shadow Root content script. The feed bar renders **integration-provided FeedTab components** discovered at build time from `../integrations/*/extension/`. Each integration owns its own data lifecycle and UI. The root `../CLAUDE.md` has full platform context (API endpoints, database schema, Rust ingestion services, frontend, deployment).
 
 ## Build Commands
 
@@ -36,23 +36,16 @@ npm run postinstall     # wxt prepare (generates types in .wxt/)
 
 ```
 extension/
-  integrations/                 # Integration framework
+  integrations/                 # Integration framework (shared infrastructure)
     types.ts                    #   FeedTabProps, IntegrationManifest contracts
-    registry.ts                 #   Integration registry: getIntegration(), sortTabOrder()
+    registry.ts                 #   Convention-based discovery via import.meta.glob + META lookup
     hooks/
       useScrollrCDC.ts          #   Generic CDC subscription hook for official integrations
-    official/                   #   Official (first-party) integrations
-      finance/
-        FeedTab.tsx             #     Finance tab: uses useScrollrCDC('trades')
-        TradeItem.tsx           #     Trade row (symbol, price, change, direction arrow)
-      sports/
-        FeedTab.tsx             #     Sports tab: uses useScrollrCDC('games')
-        GameItem.tsx            #     Game row (teams, logos, scores, status)
-      rss/
-        FeedTab.tsx             #     RSS tab: uses useScrollrCDC('rss_items')
-        RssItem.tsx             #     RSS article display (comfort/compact modes)
-    _template/
-      FeedTab.tsx               #   Documented scaffold for new integrations
+  # NOTE: FeedTab components live in ../integrations/*/extension/ (monorepo-level)
+  #   finance: ../integrations/finance/extension/{FeedTab.tsx, TradeItem.tsx}
+  #   sports:  ../integrations/sports/extension/{FeedTab.tsx, GameItem.tsx}
+  #   rss:     ../integrations/rss/extension/{FeedTab.tsx, RssItem.tsx}
+  #   fantasy: ../integrations/fantasy/extension/FeedTab.tsx
   entrypoints/
     background/                 # MV3 service worker / MV2 background page
       index.ts                  #   Entry: wires up SSE, messaging, auth, keepalive
@@ -267,7 +260,7 @@ Defined in `wxt.config.ts`:
 - **Auto-imports**: WXT auto-imports from `utils/`, `hooks/`, `components/` directories plus WXT APIs (`storage`, `defineContentScript`, `createShadowRootUi`, `browser`, etc.). Use `#imports` for explicit imports. **Note**: Files in `integrations/` are NOT auto-imported — use explicit imports.
 - **Type definitions**: Shared types live in `utils/types.ts`. Message types in `utils/messaging.ts`. Integration contracts in `integrations/types.ts`.
 - **State management**: No external state library. Background stores `lastDashboard` snapshot; each FeedTab manages its own items via `useScrollrCDC` hook. Preferences live in WXT storage with reactive watchers.
-- **Adding integrations**: Copy `integrations/_template/` to `integrations/official/<name>/` (or `verified/`/`community/`), implement the FeedTab component, and register an `IntegrationManifest` in `integrations/registry.ts`. Official integrations use `useScrollrCDC` for CDC data; others fetch their own data. See `_template/FeedTab.tsx` for full instructions.
+- **Adding integrations**: Create a new directory at `../integrations/<name>/extension/` with a `FeedTab.tsx` component. The registry auto-discovers it via `import.meta.glob`. Official integrations use `useScrollrCDC` for CDC data; others fetch their own data.
 
 ## Constants
 
@@ -291,10 +284,11 @@ Defined in `utils/constants.ts`:
 | `integrations/types.ts` | `FeedTabProps`, `IntegrationManifest` — the integration contract |
 | `integrations/registry.ts` | Integration registry: `getIntegration()`, `getAllIntegrations()`, `sortTabOrder()`, `TAB_ORDER` |
 | `integrations/hooks/useScrollrCDC.ts` | Generic CDC subscription hook (subscribe, upsert/remove, sort, validate, cap) |
-| `integrations/official/finance/FeedTab.tsx` | Finance tab — `useScrollrCDC('trades')`, renders TradeItem list |
-| `integrations/official/sports/FeedTab.tsx` | Sports tab — `useScrollrCDC('games')`, renders GameItem list |
-| `integrations/official/rss/FeedTab.tsx` | RSS tab — `useScrollrCDC('rss_items')`, renders RssItem list |
-| `integrations/_template/FeedTab.tsx` | Documented scaffold for new FeedTab integrations with useScrollrCDC, CDC subscription, and registration instructions |
+| `../integrations/finance/extension/FeedTab.tsx` | Finance tab — `useScrollrCDC('trades')`, renders TradeItem list |
+| `../integrations/sports/extension/FeedTab.tsx` | Sports tab — `useScrollrCDC('games')`, renders GameItem list |
+| `../integrations/rss/extension/FeedTab.tsx` | RSS tab — `useScrollrCDC('rss_items')`, renders RssItem list |
+| `../integrations/fantasy/extension/FeedTab.tsx` | Fantasy tab — placeholder (data best viewed on web) |
+
 | `entrypoints/background/index.ts` | Background entry: wires SSE, messaging, auth, keepalive |
 | `entrypoints/background/sse.ts` | SSE connection, CDC pass-through routing, dashboard snapshot storage |
 | `entrypoints/background/messaging.ts` | Per-tab CDC subscriptions, CDC_BATCH routing, message handler |

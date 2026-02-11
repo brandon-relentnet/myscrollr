@@ -1,39 +1,21 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"strings"
+	"time"
 
-	"github.com/brandon-relentnet/myscrollr/api/integration"
 	"github.com/gofiber/fiber/v2"
 )
 
-// IntegrationRegistry holds the registered integrations. Set by server.go
-// during startup so stream CRUD and sync can call integration hooks.
-var IntegrationRegistry []integration.Integration
-
-// ValidStreamTypes is built from the registered integrations at startup.
-var ValidStreamTypes map[string]bool
-
-// BuildValidStreamTypes populates ValidStreamTypes from the registry.
-func BuildValidStreamTypes() {
-	ValidStreamTypes = make(map[string]bool, len(IntegrationRegistry))
-	for _, intg := range IntegrationRegistry {
-		ValidStreamTypes[intg.Name()] = true
-	}
-}
-
-// findIntegration returns the integration matching the given stream type, or nil.
-func findIntegration(streamType string) integration.Integration {
-	for _, intg := range IntegrationRegistry {
-		if intg.Name() == streamType {
-			return intg
-		}
-	}
-	return nil
+var lifecycleClient = &http.Client{
+	Timeout: 10 * time.Second,
 }
 
 // GetUserStreams fetches all streams for a user.
@@ -84,13 +66,8 @@ func SyncStreamSubscriptions(logtoSub string) {
 			RemoveSubscriber(ctx, setKey, logtoSub)
 		}
 
-		// Call integration-specific sync hook (only if it implements StreamLifecycle)
-		intg := findIntegration(s.StreamType)
-		if sl, ok := intg.(integration.StreamLifecycle); ok {
-			if err := sl.OnSyncSubscriptions(ctx, logtoSub, s.Config, s.Enabled); err != nil {
-				log.Printf("[Streams] OnSyncSubscriptions error for %s/%s: %v", s.StreamType, logtoSub, err)
-			}
-		}
+		// Call integration stream lifecycle hook via HTTP
+		callStreamLifecycle(ctx, s.StreamType, "sync", logtoSub, s.Config, nil, &s.Enabled)
 	}
 }
 
@@ -98,25 +75,61 @@ func SyncStreamSubscriptions(logtoSub string) {
 func addStreamSubscriptions(ctx context.Context, logtoSub, streamType string, config map[string]interface{}) {
 	AddSubscriber(ctx, RedisStreamSubscribersPrefix+streamType, logtoSub)
 
-	// Call integration-specific hook (only if it implements StreamLifecycle)
-	intg := findIntegration(streamType)
-	if sl, ok := intg.(integration.StreamLifecycle); ok {
-		if err := sl.OnSyncSubscriptions(ctx, logtoSub, config, true); err != nil {
-			log.Printf("[Streams] addStreamSubscriptions hook error for %s: %v", streamType, err)
-		}
-	}
+	enabled := true
+	callStreamLifecycle(ctx, streamType, "sync", logtoSub, config, nil, &enabled)
 }
 
 // removeStreamSubscriptions removes Redis subscription entries for a deleted/disabled stream.
 func removeStreamSubscriptions(ctx context.Context, logtoSub, streamType string, config map[string]interface{}) {
 	RemoveSubscriber(ctx, RedisStreamSubscribersPrefix+streamType, logtoSub)
 
-	// Call integration-specific hook (only if it implements StreamLifecycle)
-	intg := findIntegration(streamType)
-	if sl, ok := intg.(integration.StreamLifecycle); ok {
-		if err := sl.OnSyncSubscriptions(ctx, logtoSub, config, false); err != nil {
-			log.Printf("[Streams] removeStreamSubscriptions hook error for %s: %v", streamType, err)
-		}
+	enabled := false
+	callStreamLifecycle(ctx, streamType, "sync", logtoSub, config, nil, &enabled)
+}
+
+// callStreamLifecycle sends a lifecycle event to an integration if it has the stream_lifecycle capability.
+func callStreamLifecycle(ctx context.Context, streamType, event, userSub string, config, oldConfig map[string]interface{}, enabled *bool) {
+	intg := GetIntegration(streamType)
+	if intg == nil || !intg.HasCapability("stream_lifecycle") {
+		return
+	}
+
+	body := map[string]interface{}{
+		"event":  event,
+		"user":   userSub,
+		"config": config,
+	}
+	if oldConfig != nil {
+		body["old_config"] = oldConfig
+	}
+	if enabled != nil {
+		body["enabled"] = *enabled
+	}
+
+	reqBody, err := json.Marshal(body)
+	if err != nil {
+		log.Printf("[Streams] Failed to marshal lifecycle request: %v", err)
+		return
+	}
+
+	url := intg.InternalURL + "/internal/stream-lifecycle"
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(reqBody))
+	if err != nil {
+		log.Printf("[Streams] Failed to create lifecycle request: %v", err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := lifecycleClient.Do(req)
+	if err != nil {
+		log.Printf("[Streams] Lifecycle call to %s/%s failed: %v", intg.Name, event, err)
+		return
+	}
+	defer resp.Body.Close()
+	io.Copy(io.Discard, resp.Body)
+
+	if resp.StatusCode != 200 {
+		log.Printf("[Streams] Lifecycle call to %s/%s returned status %d", intg.Name, event, resp.StatusCode)
 	}
 }
 
@@ -183,7 +196,9 @@ func CreateStream(c *fiber.Ctx) error {
 		})
 	}
 
-	if !ValidStreamTypes[req.StreamType] {
+	// Validate stream type against discovered integrations
+	validTypes := GetValidStreamTypes()
+	if !validTypes[req.StreamType] {
 		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Invalid stream type",
@@ -230,13 +245,8 @@ func CreateStream(c *fiber.Ctx) error {
 		addStreamSubscriptions(ctx, userID, s.StreamType, s.Config)
 	}
 
-	// Call integration OnStreamCreated hook (only if it implements StreamLifecycle)
-	intg := findIntegration(s.StreamType)
-	if sl, ok := intg.(integration.StreamLifecycle); ok {
-		if err := sl.OnStreamCreated(ctx, userID, s.Config); err != nil {
-			log.Printf("[Streams] OnStreamCreated error for %s: %v", s.StreamType, err)
-		}
-	}
+	// Call integration OnStreamCreated hook via HTTP
+	callStreamLifecycle(ctx, s.StreamType, "created", userID, s.Config, nil, nil)
 
 	return c.Status(fiber.StatusCreated).JSON(s)
 }
@@ -264,7 +274,8 @@ func UpdateStream(c *fiber.Ctx) error {
 	}
 
 	streamType := c.Params("type")
-	if !ValidStreamTypes[streamType] {
+	validTypes := GetValidStreamTypes()
+	if !validTypes[streamType] {
 		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Invalid stream type",
@@ -357,13 +368,8 @@ func UpdateStream(c *fiber.Ctx) error {
 		removeStreamSubscriptions(ctx, userID, s.StreamType, s.Config)
 	}
 
-	// Call integration OnStreamUpdated hook (only if it implements StreamLifecycle)
-	intg := findIntegration(streamType)
-	if sl, ok := intg.(integration.StreamLifecycle); ok {
-		if err := sl.OnStreamUpdated(ctx, userID, oldConfig, s.Config); err != nil {
-			log.Printf("[Streams] OnStreamUpdated error for %s: %v", streamType, err)
-		}
-	}
+	// Call integration OnStreamUpdated hook via HTTP
+	callStreamLifecycle(ctx, streamType, "updated", userID, s.Config, oldConfig, nil)
 
 	return c.JSON(s)
 }
@@ -425,13 +431,8 @@ func DeleteStream(c *fiber.Ctx) error {
 	}
 	removeStreamSubscriptions(ctx, userID, streamType, config)
 
-	// Call integration OnStreamDeleted hook (only if it implements StreamLifecycle)
-	intg := findIntegration(streamType)
-	if sl, ok := intg.(integration.StreamLifecycle); ok {
-		if err := sl.OnStreamDeleted(ctx, userID, config); err != nil {
-			log.Printf("[Streams] OnStreamDeleted error for %s: %v", streamType, err)
-		}
-	}
+	// Call integration OnStreamDeleted hook via HTTP
+	callStreamLifecycle(ctx, streamType, "deleted", userID, config, nil, nil)
 
 	return c.JSON(fiber.Map{"status": "ok", "message": "Stream removed"})
 }

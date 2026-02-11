@@ -1,0 +1,34 @@
+[
+  {
+    "name": "NFL",
+    "slug": "football/nfl"
+  },
+  {
+    "name": "NBA",
+    "slug": "basketball/nba"
+  },
+  {
+    "name": "NHL",
+    "slug": "hockey/nhl"
+  },
+  {
+    "name": "MLB",
+    "slug": "baseball/mlb"
+  },
+  {
+    "name": "College Football",
+    "slug": "football/college-football"
+  },
+  {
+    "name": "Men's College Basketball",
+    "slug": "basketball/mens-college-basketball"
+  },
+  {
+    "name": "Women's College Basketball",
+    "slug": "basketball/womens-college-basketball"
+  },
+  {
+    "name": "College Baseball",
+    "slug": "baseball/college-baseball"
+  }
+]

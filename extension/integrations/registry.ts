@@ -1,42 +1,49 @@
-import type { IntegrationManifest } from './types';
-import FinanceFeedTab from './official/finance/FeedTab';
-import SportsFeedTab from './official/sports/FeedTab';
-import RssFeedTab from './official/rss/FeedTab';
+import type { IntegrationManifest, FeedTabProps } from './types';
 
-// ── Official integrations ────────────────────────────────────────
+// Convention-based discovery: scan integrations/*/extension/FeedTab.tsx at build time.
+// Each module default-exports a React FeedTab component.
+const modules = import.meta.glob<{ default: React.ComponentType<FeedTabProps> }>(
+  '../../integrations/*/extension/FeedTab.tsx',
+  { eager: true },
+);
 
-const finance: IntegrationManifest = {
-  id: 'finance',
-  name: 'Finance',
-  tabLabel: 'Finance',
-  tier: 'official',
-  FeedTab: FinanceFeedTab,
-};
+// ── Metadata for discovered integrations ──────────────────────────
+// Since glob-discovered modules only export a component, we define
+// metadata separately keyed by integration ID (derived from the path).
 
-const sports: IntegrationManifest = {
-  id: 'sports',
-  name: 'Sports',
-  tabLabel: 'Sports',
-  tier: 'official',
-  FeedTab: SportsFeedTab,
-};
+interface IntegrationMeta {
+  name: string;
+  tabLabel: string;
+  tier: 'official' | 'verified' | 'community';
+}
 
-const rss: IntegrationManifest = {
-  id: 'rss',
-  name: 'RSS',
-  tabLabel: 'RSS',
-  tier: 'official',
-  FeedTab: RssFeedTab,
+const META: Record<string, IntegrationMeta> = {
+  finance: { name: 'Finance', tabLabel: 'Finance', tier: 'official' },
+  sports: { name: 'Sports', tabLabel: 'Sports', tier: 'official' },
+  fantasy: { name: 'Fantasy', tabLabel: 'Fantasy', tier: 'official' },
+  rss: { name: 'RSS', tabLabel: 'RSS', tier: 'official' },
 };
 
 // ── Registry ─────────────────────────────────────────────────────
 
-/** All registered integrations, keyed by id. */
-const integrations = new Map<string, IntegrationManifest>([
-  [finance.id, finance],
-  [sports.id, sports],
-  [rss.id, rss],
-]);
+const integrations = new Map<string, IntegrationManifest>();
+
+for (const [path, mod] of Object.entries(modules)) {
+  // Path looks like: ../../integrations/<id>/extension/FeedTab.tsx
+  const match = path.match(/integrations\/([^/]+)\/extension\/FeedTab/);
+  if (!match) continue;
+
+  const id = match[1]!;
+  const meta = META[id] ?? { name: id, tabLabel: id, tier: 'community' as const };
+
+  integrations.set(id, {
+    id,
+    name: meta.name,
+    tabLabel: meta.tabLabel,
+    tier: meta.tier,
+    FeedTab: mod.default,
+  });
+}
 
 /** Look up an integration by id. */
 export function getIntegration(id: string): IntegrationManifest | undefined {

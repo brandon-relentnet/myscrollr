@@ -1,17 +1,35 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
+	"time"
 
-	"github.com/brandon-relentnet/myscrollr/api/integration"
 	"github.com/gofiber/fiber/v2"
 )
 
-// HandleSequinWebhook receives CDC events from Sequin and routes them
-// to the correct per-user Redis channels based on table and subscription sets.
+// CDCRecord represents a single Change Data Capture record from Sequin.
+type CDCRecord struct {
+	Action   string                 `json:"action"`
+	Record   map[string]interface{} `json:"record"`
+	Changes  map[string]interface{} `json:"changes"`
+	Metadata struct {
+		TableSchema string `json:"table_schema"`
+		TableName   string `json:"table_name"`
+	} `json:"metadata"`
+}
+
+var cdcClient = &http.Client{
+	Timeout: 10 * time.Second,
+}
+
+// HandleSequinWebhook processes incoming CDC events from Sequin.
 //
 // @Summary Receive Sequin CDC events
 // @Description Webhook for Sequin to push database changes (authenticated, per-user routing)
@@ -20,74 +38,74 @@ import (
 // @Produce json
 // @Router /webhooks/sequin [post]
 func HandleSequinWebhook(c *fiber.Ctx) error {
-	// 1. Verify webhook secret (Sequin sends Authorization header)
+	// Verify webhook secret
 	secret := os.Getenv("SEQUIN_WEBHOOK_SECRET")
 	if secret != "" {
-		authHeader := c.Get("Authorization")
-		expected := "Bearer " + secret
-		if authHeader != expected {
-			log.Printf("[Sequin] Webhook auth failed")
-			return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Status: "unauthorized", Error: "Unauthorized"})
+		auth := c.Get("Authorization")
+		if auth != "Bearer "+secret {
+			return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+				Status: "unauthorized",
+				Error:  "Invalid webhook secret",
+			})
 		}
 	}
 
-	// 2. Parse payload — Sequin may send batched or single records
-	body := c.Body()
-	records := parseCDCRecords(body)
-	if len(records) == 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Status: "error", Error: "No valid CDC records"})
+	records, err := parseCDCRecords(c.Body())
+	if err != nil {
+		log.Printf("[Sequin] Failed to parse CDC records: %v", err)
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+			Status: "error",
+			Error:  "Invalid CDC payload",
+		})
 	}
 
-	// 3. Route each record to the correct users
 	ctx := context.Background()
-	for _, record := range records {
-		routeCDCRecord(ctx, record)
+	for _, rec := range records {
+		routeCDCRecord(ctx, rec)
 	}
 
-	return c.SendStatus(fiber.StatusOK)
+	return c.JSON(fiber.Map{"status": "ok", "processed": len(records)})
 }
 
-// parseCDCRecords handles both batched {"data":[...]} and single record formats.
-func parseCDCRecords(body []byte) []integration.CDCRecord {
-	// Try batched format first: {"data": [...]}
+func parseCDCRecords(body []byte) ([]CDCRecord, error) {
+	// Try batched format: {"data": [...]}
 	var batched struct {
-		Data []integration.CDCRecord `json:"data"`
+		Data []CDCRecord `json:"data"`
 	}
 	if err := json.Unmarshal(body, &batched); err == nil && len(batched.Data) > 0 {
-		return batched.Data
+		return batched.Data, nil
 	}
 
-	// Try single record format
-	var single integration.CDCRecord
+	// Try single record
+	var single CDCRecord
 	if err := json.Unmarshal(body, &single); err == nil && single.Metadata.TableName != "" {
-		return []integration.CDCRecord{single}
+		return []CDCRecord{single}, nil
 	}
 
-	return nil
+	return nil, fmt.Errorf("unrecognized CDC payload format")
 }
 
-// routeCDCRecord inspects the table name and routes the record to subscribed users.
-// Core tables (user_preferences, user_streams) are handled directly.
-// All other tables are delegated to the integration registry.
-func routeCDCRecord(ctx context.Context, rec integration.CDCRecord) {
+func routeCDCRecord(ctx context.Context, rec CDCRecord) {
 	table := rec.Metadata.TableName
 
-	// Wrap the single record in the envelope format clients expect: {"data":[{...}]}
+	// Build the envelope payload that will be sent to users via SSE
 	envelope := map[string]interface{}{
-		"data": []interface{}{map[string]interface{}{
-			"action":   rec.Action,
-			"record":   rec.Record,
-			"changes":  rec.Changes,
-			"metadata": rec.Metadata,
-		}},
+		"data": []map[string]interface{}{
+			{
+				"action":   rec.Action,
+				"record":   rec.Record,
+				"changes":  rec.Changes,
+				"metadata": rec.Metadata,
+			},
+		},
 	}
 	payload, err := json.Marshal(envelope)
 	if err != nil {
-		log.Printf("[Sequin] Failed to marshal envelope for table %s: %v", table, err)
+		log.Printf("[Sequin] Failed to marshal payload for table %s: %v", table, err)
 		return
 	}
 
-	// Core tables handled directly
+	// Handle core-owned tables directly
 	switch table {
 	case "user_preferences":
 		RouteToRecordOwner(rec.Record, "logto_sub", payload)
@@ -97,19 +115,64 @@ func routeCDCRecord(ctx context.Context, rec integration.CDCRecord) {
 		return
 	}
 
-	// Delegate to integrations that implement CDCHandler
-	for _, intg := range IntegrationRegistry {
-		h, ok := intg.(integration.CDCHandler)
-		if !ok {
-			continue
-		}
-		if h.HandlesTable(table) {
-			if err := h.RouteCDCRecord(ctx, rec, payload); err != nil {
-				log.Printf("[Sequin] Integration %s failed to route %s CDC: %v", intg.Name(), table, err)
-			}
-			return
-		}
+	// Look up which integration handles this table
+	intg := GetIntegrationForTable(table)
+	if intg == nil {
+		// Unknown table — silently ignore
+		return
 	}
 
-	// Unknown table — silently ignore
+	// Forward CDC records to integration service
+	users, err := forwardCDCToIntegration(ctx, intg, []CDCRecord{rec})
+	if err != nil {
+		log.Printf("[Sequin] Failed to forward CDC for table %s to %s: %v", table, intg.Name, err)
+		return
+	}
+
+	// Publish the SSE payload to each user
+	for _, sub := range users {
+		SendToUser(sub, payload)
+	}
+}
+
+// forwardCDCToIntegration sends CDC records to an integration's /internal/cdc endpoint
+// and returns the list of user subs to route the event to.
+func forwardCDCToIntegration(ctx context.Context, intg *IntegrationInfo, records []CDCRecord) ([]string, error) {
+	reqBody, err := json.Marshal(map[string]interface{}{
+		"records": records,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("marshal error: %w", err)
+	}
+
+	url := intg.InternalURL + "/internal/cdc"
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(reqBody))
+	if err != nil {
+		return nil, fmt.Errorf("request creation error: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := cdcClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("HTTP error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read error: %w", err)
+	}
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var result struct {
+		Users []string `json:"users"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("unmarshal error: %w", err)
+	}
+
+	return result.Users, nil
 }

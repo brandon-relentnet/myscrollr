@@ -23,7 +23,7 @@ import LoadingSpinner from '@/components/LoadingSpinner'
 import { pageVariants, sectionVariants } from '@/lib/animations'
 import { API_BASE, authenticatedFetch, streamsApi } from '@/api/client'
 import { getIntegration, getAllIntegrations } from '@/integrations/registry'
-import type { FantasyExtraProps } from '@/integrations/official/fantasy/DashboardTab'
+import type { FantasyExtraProps } from '@scrollr/fantasy/web/DashboardTab'
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
