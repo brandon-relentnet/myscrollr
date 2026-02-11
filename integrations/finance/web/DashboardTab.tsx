@@ -39,19 +39,28 @@ function FinanceDashboardTab({
 }: DashboardTabProps) {
   const [catalog, setCatalog] = useState<TrackedSymbol[]>([])
   const [catalogLoading, setCatalogLoading] = useState(true)
+  const [catalogError, setCatalogError] = useState(false)
   const [activeCategory, setActiveCategory] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const config = stream.config as FinanceStreamConfig
   const symbols = Array.isArray(config?.symbols) ? config.symbols : []
   const symbolSet = new Set(symbols)
 
+  // Auto-dismiss errors
+  useEffect(() => {
+    if (!error) return
+    const t = setTimeout(() => setError(null), 4000)
+    return () => clearTimeout(t)
+  }, [error])
+
   // Fetch catalog on mount
   useEffect(() => {
     fetchCatalog()
       .then(setCatalog)
-      .catch(() => {})
+      .catch(() => setCatalogError(true))
       .finally(() => setCatalogLoading(false))
   }, [])
 
@@ -85,7 +94,7 @@ function FinanceDashboardTab({
       )
       onStreamUpdate(updated)
     } catch {
-      // Could show error
+      setError('Failed to save symbol changes')
     } finally {
       setSaving(false)
     }
@@ -133,6 +142,16 @@ function FinanceDashboardTab({
         onToggle={onToggle}
         onDelete={onDelete}
       />
+
+      {/* Error Banner */}
+      {error && (
+        <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-error/10 border border-error/20 text-error text-xs">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="p-0.5 hover:bg-error/10 rounded">
+            <X size={12} />
+          </button>
+        </div>
+      )}
 
       {/* Info Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -221,28 +240,37 @@ function FinanceDashboardTab({
 
         {/* Category Tabs */}
         <div className="flex flex-wrap gap-1 p-1 rounded-lg bg-base-200/60 border border-base-300/40">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => {
-                setActiveCategory(cat)
-              }}
-              className={`relative px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-colors ${
-                activeCategory === cat
-                  ? 'text-primary'
-                  : 'text-base-content/30 hover:text-base-content/50'
-              }`}
-            >
-              {activeCategory === cat && (
-                <motion.div
-                  layoutId="finance-category-bg"
-                  className="absolute inset-0 bg-primary/10 border border-primary/20 rounded-md"
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                />
-              )}
-              <span className="relative">{cat}</span>
-            </button>
-          ))}
+          {categories.map((cat) => {
+            const catTotal = catalog.filter((s) => cat === 'All' || s.category === cat).length
+            const catSelected = catalog.filter((s) => (cat === 'All' || s.category === cat) && symbolSet.has(s.symbol)).length
+            return (
+              <button
+                key={cat}
+                onClick={() => {
+                  setActiveCategory(cat)
+                }}
+                className={`relative px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-colors ${
+                  activeCategory === cat
+                    ? 'text-primary'
+                    : 'text-base-content/30 hover:text-base-content/50'
+                }`}
+              >
+                {activeCategory === cat && (
+                  <motion.div
+                    layoutId="finance-category-bg"
+                    className="absolute inset-0 bg-primary/10 border border-primary/20 rounded-md"
+                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                  />
+                )}
+                <span className="relative">
+                  {cat}
+                  <span className="ml-1 text-[8px] opacity-60">
+                    {catSelected}/{catTotal}
+                  </span>
+                </span>
+              </button>
+            )
+          })}
         </div>
 
         {/* Bulk actions for active category */}
@@ -322,7 +350,13 @@ function FinanceDashboardTab({
           </div>
         )}
 
-        {!catalogLoading && filteredCatalog.length === 0 && (
+        {!catalogLoading && catalogError && catalog.length === 0 && (
+          <p className="text-center text-[10px] text-error/60 uppercase tracking-wide py-4">
+            Failed to load symbol catalog — check your connection
+          </p>
+        )}
+
+        {!catalogLoading && !catalogError && filteredCatalog.length === 0 && (
           <p className="text-center text-[10px] text-base-content/25 uppercase tracking-wide py-4">
             {searchQuery
               ? 'No symbols match your search'

@@ -76,7 +76,7 @@ export default function FeedBar({
     const initialItems = dashboardKey
       ? (dashboard?.data?.[dashboardKey] as unknown[] | undefined) ?? []
       : [];
-    return { __initialItems: initialItems };
+    return { __initialItems: initialItems, __dashboardLoaded: dashboard !== null };
   }, [activeTab, dashboard]);
 
   // Look up the active integration's FeedTab component

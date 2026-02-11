@@ -18,10 +18,13 @@ type RssItem struct {
 
 // TrackedFeed represents an RSS feed in the catalog.
 type TrackedFeed struct {
-	URL       string `json:"url"`
-	Name      string `json:"name"`
-	Category  string `json:"category"`
-	IsDefault bool   `json:"is_default"`
+	URL                 string     `json:"url"`
+	Name                string     `json:"name"`
+	Category            string     `json:"category"`
+	IsDefault           bool       `json:"is_default"`
+	ConsecutiveFailures int        `json:"consecutive_failures"`
+	LastError           *string    `json:"last_error,omitempty"`
+	LastSuccessAt       *time.Time `json:"last_success_at,omitempty"`
 }
 
 // CDCRecord represents a Change Data Capture record from Sequin.

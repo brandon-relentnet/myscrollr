@@ -66,7 +66,7 @@ func (a *App) getRSSFeedCatalog(c *fiber.Ctx) error {
 	}
 
 	rows, err := a.db.Query(context.Background(),
-		fmt.Sprintf("SELECT url, name, category, is_default FROM tracked_feeds WHERE is_enabled = true AND consecutive_failures < %d ORDER BY category, name", MaxConsecutiveFailures))
+		fmt.Sprintf("SELECT url, name, category, is_default, consecutive_failures, last_error, last_success_at FROM tracked_feeds WHERE is_enabled = true AND consecutive_failures < %d ORDER BY category, name", MaxConsecutiveFailures))
 	if err != nil {
 		log.Printf("[RSS] Catalog query failed: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
@@ -79,7 +79,7 @@ func (a *App) getRSSFeedCatalog(c *fiber.Ctx) error {
 	catalog = make([]TrackedFeed, 0)
 	for rows.Next() {
 		var f TrackedFeed
-		if err := rows.Scan(&f.URL, &f.Name, &f.Category, &f.IsDefault); err != nil {
+		if err := rows.Scan(&f.URL, &f.Name, &f.Category, &f.IsDefault, &f.ConsecutiveFailures, &f.LastError, &f.LastSuccessAt); err != nil {
 			log.Printf("[RSS] Catalog scan error: %v", err)
 			continue
 		}
@@ -273,7 +273,7 @@ func (a *App) handleStreamLifecycle(c *fiber.Ctx) error {
 		a.onStreamUpdated(ctx, req.User, req.OldConfig, req.Config)
 
 	case "deleted":
-		a.onStreamDeleted(ctx, req.User)
+		a.onStreamDeleted(ctx, req.User, req.Config)
 
 	case "sync":
 		a.onSyncSubscriptions(ctx, req.User, req.Config, req.Enabled)
@@ -320,8 +320,13 @@ func (a *App) onStreamUpdated(ctx context.Context, userSub string, oldConfig, ne
 	go a.syncRSSFeedsToTracked(userSub, newConfig)
 }
 
-// onStreamDeleted invalidates per-user cache when a stream is removed.
-func (a *App) onStreamDeleted(ctx context.Context, userSub string) {
+// onStreamDeleted removes the user from all per-feed-URL subscriber sets and
+// invalidates per-user cache when a stream is removed.
+func (a *App) onStreamDeleted(ctx context.Context, userSub string, config map[string]interface{}) {
+	feedURLs := extractFeedURLsFromStreamConfig(config)
+	for _, url := range feedURLs {
+		RemoveSubscriber(a.rdb, ctx, RedisRSSSubscribersPrefix+url, userSub)
+	}
 	a.rdb.Del(ctx, CacheKeyRSSPrefix+userSub)
 }
 

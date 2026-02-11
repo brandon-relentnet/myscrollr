@@ -4,6 +4,7 @@ import {
   ChevronRight,
   Plus,
   Rss,
+  Search,
   Trash2,
   X,
 } from 'lucide-react'
@@ -24,24 +25,33 @@ function RssDashboardTab({
 }: DashboardTabProps) {
   const [newFeedName, setNewFeedName] = useState('')
   const [newFeedUrl, setNewFeedUrl] = useState('')
+  const [urlError, setUrlError] = useState<string | null>(null)
   const [catalog, setCatalog] = useState<Array<TrackedFeed>>([])
   const [catalogLoading, setCatalogLoading] = useState(true)
+  const [catalogError, setCatalogError] = useState(false)
   const [activeCategory, setActiveCategory] = useState('All')
+  const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const rssConfig = stream.config as RssStreamConfig
   const feeds = Array.isArray(rssConfig?.feeds) ? rssConfig.feeds : []
   const feedUrlSet = new Set(feeds.map((f) => f.url))
+
+  // Auto-dismiss errors
+  useEffect(() => {
+    if (!error) return
+    const t = setTimeout(() => setError(null), 4000)
+    return () => clearTimeout(t)
+  }, [error])
 
   // Fetch catalog on mount
   useEffect(() => {
     rssApi
       .getCatalog()
       .then(setCatalog)
-      .catch(() => {
-        // Catalog fetch is best-effort; user can still manage existing feeds
-      })
+      .catch(() => setCatalogError(true))
       .finally(() => setCatalogLoading(false))
   }, [])
 
@@ -49,10 +59,15 @@ function RssDashboardTab({
     'All',
     ...Array.from(new Set(catalog.map((f) => f.category))),
   ]
-  const filteredCatalog =
-    activeCategory === 'All'
-      ? catalog
-      : catalog.filter((f) => f.category === activeCategory)
+  const filteredCatalog = catalog.filter((f) => {
+    const matchesCategory =
+      activeCategory === 'All' || f.category === activeCategory
+    const matchesSearch =
+      !searchQuery ||
+      f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      f.url.toLowerCase().includes(searchQuery.toLowerCase())
+    return matchesCategory && matchesSearch
+  })
 
   const totalPages = Math.max(
     1,
@@ -75,7 +90,7 @@ function RssDashboardTab({
       )
       onStreamUpdate(updated)
     } catch {
-      // Could show error
+      setError('Failed to save feed changes')
     } finally {
       setSaving(false)
     }
@@ -85,6 +100,11 @@ function RssDashboardTab({
     const name = newFeedName.trim()
     const url = newFeedUrl.trim()
     if (!name || !url) return
+    if (!/^https?:\/\/.+/.test(url)) {
+      setUrlError('URL must start with http:// or https://')
+      return
+    }
+    setUrlError(null)
     if (feedUrlSet.has(url)) return
     updateFeeds([...feeds, { name, url }])
     setNewFeedName('')
@@ -108,7 +128,7 @@ function RssDashboardTab({
         updateFeeds(nextFeeds)
       }
     } catch {
-      // Could show error toast
+      setError('Failed to delete feed from catalog')
     }
   }
 
@@ -128,6 +148,16 @@ function RssDashboardTab({
         onToggle={onToggle}
         onDelete={onDelete}
       />
+
+      {/* Error Banner */}
+      {error && (
+        <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-error/10 border border-error/20 text-error text-xs">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="p-0.5 hover:bg-error/10 rounded">
+            <X size={12} />
+          </button>
+        </div>
+      )}
 
       {/* Info Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -211,6 +241,9 @@ function RssDashboardTab({
             <span className="text-xs uppercase tracking-wide">Add</span>
           </button>
         </div>
+        {urlError && (
+          <p className="text-[10px] text-error/70">{urlError}</p>
+        )}
       </div>
 
       {/* Feed Catalog Browser */}
@@ -219,31 +252,58 @@ function RssDashboardTab({
           Browse Feed Catalog
         </p>
 
+        {/* Search */}
+        <div className="relative">
+          <Search
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/20"
+          />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value)
+              setCurrentPage(1)
+            }}
+            placeholder="Search by feed name or URL..."
+            className="w-full pl-9 pr-3 py-2 rounded-lg bg-base-200/50 border border-base-300/40 text-xs font-mono text-base-content/60 placeholder:text-base-content/20 focus:outline-none focus:border-primary/30 transition-colors"
+          />
+        </div>
+
         {/* Category Tabs */}
         <div className="flex flex-wrap gap-1 p-1 rounded-lg bg-base-200/60 border border-base-300/40">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => {
-                setActiveCategory(cat)
-                setCurrentPage(1)
-              }}
-              className={`relative px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-colors ${
-                activeCategory === cat
-                  ? 'text-primary'
-                  : 'text-base-content/30 hover:text-base-content/50'
-              }`}
-            >
-              {activeCategory === cat && (
-                <motion.div
-                  layoutId="rss-category-bg"
-                  className="absolute inset-0 bg-primary/10 border border-primary/20 rounded-md"
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                />
-              )}
-              <span className="relative">{cat}</span>
-            </button>
-          ))}
+          {categories.map((cat) => {
+            const catTotal = catalog.filter((f) => cat === 'All' || f.category === cat).length
+            const catSelected = catalog.filter((f) => (cat === 'All' || f.category === cat) && feedUrlSet.has(f.url)).length
+            return (
+              <button
+                key={cat}
+                onClick={() => {
+                  setActiveCategory(cat)
+                  setCurrentPage(1)
+                }}
+                className={`relative px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-colors ${
+                  activeCategory === cat
+                    ? 'text-primary'
+                    : 'text-base-content/30 hover:text-base-content/50'
+                }`}
+              >
+                {activeCategory === cat && (
+                  <motion.div
+                    layoutId="rss-category-bg"
+                    className="absolute inset-0 bg-primary/10 border border-primary/20 rounded-md"
+                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                  />
+                )}
+                <span className="relative">
+                  {cat}
+                  <span className="ml-1 text-[8px] opacity-60">
+                    {catSelected}/{catTotal}
+                  </span>
+                </span>
+              </button>
+            )
+          })}
         </div>
 
         {/* Catalog Grid */}
@@ -344,9 +404,17 @@ function RssDashboardTab({
           </>
         )}
 
-        {!catalogLoading && filteredCatalog.length === 0 && (
+        {!catalogLoading && catalogError && catalog.length === 0 && (
+          <p className="text-center text-[10px] text-error/60 uppercase tracking-wide py-4">
+            Failed to load feed catalog — check your connection
+          </p>
+        )}
+
+        {!catalogLoading && !catalogError && filteredCatalog.length === 0 && (
           <p className="text-center text-[10px] text-base-content/25 uppercase tracking-wide py-4">
-            No feeds in this category
+            {searchQuery
+              ? 'No feeds match your search'
+              : 'No feeds in this category'}
           </p>
         )}
       </div>

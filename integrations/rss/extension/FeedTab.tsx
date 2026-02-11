@@ -22,6 +22,7 @@ export const rssIntegration: IntegrationManifest = {
 
 export default function RssFeedTab({ mode, streamConfig }: FeedTabProps) {
   const initialItems = useMemo(() => getInitialRssItems(streamConfig), [streamConfig]);
+  const dashboardLoaded = streamConfig.__dashboardLoaded as boolean | undefined;
 
   const keyOf = useCallback(
     (r: RssItemType) => `${r.feed_url}:${r.guid}`,
@@ -50,7 +51,9 @@ export default function RssFeedTab({ mode, streamConfig }: FeedTabProps) {
     <div className="grid gap-px bg-zinc-800 grid-cols-1">
       {rssItems.length === 0 && (
         <div className="col-span-full text-center py-8 text-zinc-500 text-sm">
-          Waiting for RSS articles...
+          {dashboardLoaded && initialItems.length === 0
+            ? 'No feeds configured \u2014 add feeds on myscrollr.com'
+            : 'Waiting for RSS articles...'}
         </div>
       )}
       {rssItems.map((item) => (

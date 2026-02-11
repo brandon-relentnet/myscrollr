@@ -48,7 +48,9 @@ export default function FinanceFeedTab({ mode, streamConfig }: FeedTabProps) {
     >
       {trades.length === 0 && (
         <div className="col-span-full text-center py-8 text-zinc-500 text-sm">
-          Waiting for trade data...
+          {streamConfig.__dashboardLoaded && initialItems.length === 0
+            ? 'No symbols selected \u2014 configure on myscrollr.com'
+            : 'Waiting for trade data...'}
         </div>
       )}
       {trades.map((trade) => (
