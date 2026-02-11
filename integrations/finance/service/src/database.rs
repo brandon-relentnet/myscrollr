@@ -76,9 +76,15 @@ pub async fn create_tables(pool: Arc<PgPool>) -> Result<()> {
         );
     ";
 
+    // Idempotent column additions for name and category
+    let add_name_col = "ALTER TABLE tracked_symbols ADD COLUMN IF NOT EXISTS name VARCHAR(100);";
+    let add_category_col = "ALTER TABLE tracked_symbols ADD COLUMN IF NOT EXISTS category VARCHAR(50);";
+
     let mut connection = pool.acquire().await?;
     query(trades_statement).execute(&mut *connection).await?;
     query(config_statement).execute(&mut *connection).await?;
+    query(add_name_col).execute(&mut *connection).await?;
+    query(add_category_col).execute(&mut *connection).await?;
     Ok(())
 }
 
@@ -99,11 +105,11 @@ pub async fn get_tracked_symbols(pool: Arc<PgPool>) -> Vec<String> {
     }
 }
 
-pub async fn seed_tracked_symbols(pool: Arc<PgPool>, symbols: Vec<String>) -> Result<()> {
-    let statement = "INSERT INTO tracked_symbols (symbol) VALUES ($1) ON CONFLICT (symbol) DO NOTHING";
+pub async fn seed_tracked_symbols(pool: Arc<PgPool>, symbols: Vec<crate::types::TrackedSymbolConfig>) -> Result<()> {
+    let statement = "INSERT INTO tracked_symbols (symbol, name, category) VALUES ($1, $2, $3) ON CONFLICT (symbol) DO UPDATE SET name = EXCLUDED.name, category = EXCLUDED.category";
     let mut connection = pool.acquire().await?;
-    for symbol in symbols {
-        query(statement).bind(symbol).execute(&mut *connection).await?;
+    for entry in symbols {
+        query(statement).bind(&entry.symbol).bind(&entry.name).bind(&entry.category).execute(&mut *connection).await?;
     }
     Ok(())
 }

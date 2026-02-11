@@ -1,13 +1,105 @@
-import { TrendingUp } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Search, TrendingUp, X } from 'lucide-react'
+import { motion } from 'motion/react'
+import { streamsApi } from '@/api/client'
 import type { IntegrationManifest, DashboardTabProps } from '@/integrations/types'
 import { StreamHeader, InfoCard } from '@/integrations/shared'
 
+// ── Types (self-contained) ──────────────────────────────────────
+
+interface TrackedSymbol {
+  symbol: string
+  name: string
+  category: string
+}
+
+interface FinanceStreamConfig {
+  symbols?: string[]
+}
+
+// ── API helper ──────────────────────────────────────────────────
+
+const API_BASE = import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'
+
+async function fetchCatalog(): Promise<TrackedSymbol[]> {
+  const res = await fetch(`${API_BASE}/finance/symbols`)
+  if (!res.ok) throw new Error('Failed to fetch symbol catalog')
+  return res.json()
+}
+
+// ── Component ───────────────────────────────────────────────────
+
 function FinanceDashboardTab({
   stream,
+  getToken,
   connected,
   onToggle,
   onDelete,
+  onStreamUpdate,
 }: DashboardTabProps) {
+  const [catalog, setCatalog] = useState<TrackedSymbol[]>([])
+  const [catalogLoading, setCatalogLoading] = useState(true)
+  const [activeCategory, setActiveCategory] = useState('All')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const config = stream.config as FinanceStreamConfig
+  const symbols = Array.isArray(config?.symbols) ? config.symbols : []
+  const symbolSet = new Set(symbols)
+
+  // Fetch catalog on mount
+  useEffect(() => {
+    fetchCatalog()
+      .then(setCatalog)
+      .catch(() => {})
+      .finally(() => setCatalogLoading(false))
+  }, [])
+
+  // Derive categories from catalog
+  const categories = [
+    'All',
+    ...Array.from(new Set(catalog.map((s) => s.category))),
+  ]
+
+  // Filter by category and search
+  const filteredCatalog = catalog.filter((s) => {
+    const matchesCategory =
+      activeCategory === 'All' || s.category === activeCategory
+    const matchesSearch =
+      !searchQuery ||
+      s.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.name.toLowerCase().includes(searchQuery.toLowerCase())
+    return matchesCategory && matchesSearch
+  })
+
+  // Helpers to look up name from catalog
+  const nameMap = new Map(catalog.map((s) => [s.symbol, s.name]))
+
+  const updateSymbols = async (nextSymbols: string[]) => {
+    setSaving(true)
+    try {
+      const updated = await streamsApi.update(
+        'finance',
+        { config: { symbols: nextSymbols } },
+        getToken,
+      )
+      onStreamUpdate(updated)
+    } catch {
+      // Could show error
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const addSymbol = (symbol: string) => {
+    if (symbolSet.has(symbol)) return
+    updateSymbols([...symbols, symbol])
+  }
+
+  const removeSymbol = (symbol: string) => {
+    updateSymbols(symbols.filter((s) => s !== symbol))
+  }
+
   return (
     <div className="space-y-6">
       <StreamHeader
@@ -22,35 +114,166 @@ function FinanceDashboardTab({
 
       {/* Info Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <InfoCard label="Data Source" value="Finnhub" />
-        <InfoCard label="Tracked Symbols" value="50" />
+        <InfoCard label="Your Symbols" value={String(symbols.length)} />
+        <InfoCard label="Available" value={String(catalog.length)} />
         <InfoCard label="Update Frequency" value="Real-time" />
       </div>
 
-      <div className="bg-base-200/30 border border-base-300/30 rounded-lg p-5 space-y-3">
-        <p className="text-[10px] font-bold text-base-content/30 uppercase tracking-widest">
-          About This Stream
+      {/* Selected Symbols */}
+      <div className="space-y-3">
+        <p className="text-[10px] font-bold text-base-content/30 uppercase tracking-widest px-1">
+          Your Symbols ({symbols.length} selected)
         </p>
-        <p className="text-xs text-base-content/50 leading-relaxed">
-          Tracks 45 stocks and 5 cryptocurrencies (via Binance) in real-time
-          using Finnhub's WebSocket API. Price updates, percentage changes, and
-          trend direction are delivered to your ticker as they happen.
-        </p>
-        <div className="flex flex-wrap gap-2 pt-2">
-          {['AAPL', 'TSLA', 'NVDA', 'GOOGL', 'AMZN', 'BTC', 'ETH'].map(
-            (sym) => (
-              <span
+        {symbols.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {symbols.map((sym, i) => (
+              <motion.div
                 key={sym}
-                className="px-2 py-1 rounded bg-base-300/30 border border-base-300/40 text-[10px] font-mono text-base-content/40"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.02 }}
+                className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded-lg"
               >
-                {sym}
-              </span>
-            ),
-          )}
-          <span className="px-2 py-1 text-[10px] font-mono text-base-content/25">
-            +43 more
-          </span>
+                <div className="min-w-0">
+                  <span className="text-xs font-bold font-mono">{sym}</span>
+                  {nameMap.has(sym) && (
+                    <span className="text-[9px] text-base-content/30 ml-1.5">
+                      {nameMap.get(sym)}
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => removeSymbol(sym)}
+                  disabled={saving}
+                  className="p-0.5 rounded hover:bg-error/10 text-base-content/20 hover:text-error transition-colors shrink-0 disabled:opacity-30"
+                >
+                  <X size={12} />
+                </button>
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-6">
+            <TrendingUp
+              size={28}
+              className="mx-auto text-base-content/15 mb-2"
+            />
+            <p className="text-[10px] text-base-content/25 uppercase tracking-wide">
+              No symbols selected — browse the catalog below
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Symbol Catalog Browser */}
+      <div className="space-y-4">
+        <p className="text-[10px] font-bold text-base-content/30 uppercase tracking-widest px-1">
+          Browse Symbol Catalog
+        </p>
+
+        {/* Search */}
+        <div className="relative">
+          <Search
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/20"
+          />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by ticker or company name..."
+            className="w-full pl-9 pr-3 py-2 rounded-lg bg-base-200/50 border border-base-300/40 text-xs font-mono text-base-content/60 placeholder:text-base-content/20 focus:outline-none focus:border-primary/30 transition-colors"
+          />
         </div>
+
+        {/* Category Tabs */}
+        <div className="flex flex-wrap gap-1 p-1 rounded-lg bg-base-200/60 border border-base-300/40">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => {
+                setActiveCategory(cat)
+              }}
+              className={`relative px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-colors ${
+                activeCategory === cat
+                  ? 'text-primary'
+                  : 'text-base-content/30 hover:text-base-content/50'
+              }`}
+            >
+              {activeCategory === cat && (
+                <motion.div
+                  layoutId="finance-category-bg"
+                  className="absolute inset-0 bg-primary/10 border border-primary/20 rounded-md"
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                />
+              )}
+              <span className="relative">{cat}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Catalog Grid */}
+        {catalogLoading ? (
+          <div className="text-center py-8">
+            <motion.span
+              animate={{ opacity: [0.3, 0.7, 0.3] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+              className="text-[10px] font-mono text-base-content/30 uppercase"
+            >
+              Loading catalog...
+            </motion.span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {filteredCatalog.map((entry) => {
+              const isAdded = symbolSet.has(entry.symbol)
+              return (
+                <motion.div
+                  key={entry.symbol}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                    isAdded
+                      ? 'bg-primary/5 border-primary/20'
+                      : 'bg-base-200/30 border-base-300/40 hover:border-base-300/60'
+                  }`}
+                >
+                  <div className="min-w-0 mr-2">
+                    <div className="text-xs font-bold font-mono">
+                      {entry.symbol}
+                    </div>
+                    <div className="text-[9px] text-base-content/30 truncate">
+                      {entry.name}
+                    </div>
+                  </div>
+                  <div className="shrink-0">
+                    {isAdded ? (
+                      <span className="text-[9px] font-bold text-primary uppercase tracking-widest px-2 py-1 rounded bg-primary/10">
+                        Added
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => addSymbol(entry.symbol)}
+                        disabled={saving}
+                        className="text-[9px] font-bold text-base-content/40 uppercase tracking-widest px-2 py-1 rounded border border-base-300/40 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-30"
+                      >
+                        + Add
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              )
+            })}
+          </div>
+        )}
+
+        {!catalogLoading && filteredCatalog.length === 0 && (
+          <p className="text-center text-[10px] text-base-content/25 uppercase tracking-wide py-4">
+            {searchQuery
+              ? 'No symbols match your search'
+              : 'No symbols in this category'}
+          </p>
+        )}
       </div>
     </div>
   )

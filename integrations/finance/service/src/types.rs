@@ -5,6 +5,14 @@ use serde::{Deserialize, Serialize};
 use tokio::time::Sleep;
 use crate::database::PgPool;
 
+/// A symbol entry from configs/subscriptions.json (categorized format).
+#[derive(Debug, Deserialize, Clone)]
+pub struct TrackedSymbolConfig {
+    pub symbol: String,
+    pub name: String,
+    pub category: String,
+}
+
 #[derive(Debug, Deserialize)]
 pub(crate) struct TradeUpdate {
     #[serde(rename = "type")]

@@ -6,7 +6,7 @@ use tokio::{sync::Mutex, time::{self, sleep}};
 use crate::log::{error, info, warn};
 use crate::database::{PgPool, create_tables, insert_symbol, update_previous_close, update_trade, get_tracked_symbols, seed_tracked_symbols};
 
-use crate::{types::{FinanceHealth, FinanceState, QuoteResponse}, websocket::connect};
+use crate::{types::{FinanceHealth, FinanceState, QuoteResponse, TrackedSymbolConfig}, websocket::connect};
 
 pub mod types;
 mod websocket;
@@ -20,14 +20,16 @@ pub async fn start_finance_services(pool: Arc<PgPool>, health_state: Arc<Mutex<F
         return;
     }
 
-    // Seed from JSON if database is empty
+    // Seed from JSON if database is empty, or update name/category for existing symbols
     let existing = get_tracked_symbols(pool.clone()).await;
-    if existing.is_empty() {
-        info!("Database tracked_symbols is empty, seeding from local config...");
-        if let Ok(file_contents) = fs::read_to_string("./configs/subscriptions.json") {
-            if let Ok(symbols) = serde_json::from_str::<Vec<String>>(&file_contents) {
-                let _ = seed_tracked_symbols(pool.clone(), symbols).await;
+    if let Ok(file_contents) = fs::read_to_string("./configs/subscriptions.json") {
+        if let Ok(entries) = serde_json::from_str::<Vec<TrackedSymbolConfig>>(&file_contents) {
+            if existing.is_empty() {
+                info!("Database tracked_symbols is empty, seeding from local config...");
+            } else {
+                info!("Syncing name/category metadata for tracked symbols...");
             }
+            let _ = seed_tracked_symbols(pool.clone(), entries).await;
         }
     }
 

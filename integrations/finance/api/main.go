@@ -118,10 +118,12 @@ func main() {
 	fiberApp.Post("/internal/cdc", app.handleInternalCDC)
 	fiberApp.Get("/internal/dashboard", app.handleInternalDashboard)
 	fiberApp.Get("/internal/health", app.handleInternalHealth)
+	fiberApp.Post("/internal/stream-lifecycle", app.handleStreamLifecycle)
 
 	// Public routes (proxied by core gateway)
 	fiberApp.Get("/finance", app.getFinance)
 	fiberApp.Get("/finance/health", app.healthHandler)
+	fiberApp.Get("/finance/symbols", app.getSymbolCatalog)
 
 	// -------------------------------------------------------------------------
 	// Start server with graceful shutdown
@@ -169,11 +171,12 @@ func startRegistration(ctx context.Context, rdb *redis.Client) {
 		Name:         "finance",
 		DisplayName:  "Finance",
 		InternalURL:  integrationURL,
-		Capabilities: []string{"cdc_handler", "dashboard_provider", "health_checker"},
+		Capabilities: []string{"cdc_handler", "dashboard_provider", "health_checker", "stream_lifecycle"},
 		CDCTables:    []string{"trades"},
 		Routes: []registrationRoute{
 			{Method: "GET", Path: "/finance", Auth: true},
 			{Method: "GET", Path: "/finance/health", Auth: false},
+			{Method: "GET", Path: "/finance/symbols", Auth: false},
 		},
 	}
 

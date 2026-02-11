@@ -24,6 +24,13 @@ type CDCRecord struct {
 	} `json:"metadata"`
 }
 
+// TrackedSymbol represents a symbol entry from the catalog.
+type TrackedSymbol struct {
+	Symbol   string `json:"symbol"`
+	Name     string `json:"name"`
+	Category string `json:"category"`
+}
+
 // ErrorResponse represents a standard API error.
 type ErrorResponse struct {
 	Status string `json:"status"`
