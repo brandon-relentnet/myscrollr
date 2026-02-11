@@ -87,10 +87,9 @@ func (a *App) YahooCallback(c *fiber.Ctx) error {
 		// return an error page if linking fails (instead of silently swallowing).
 		linkErr := a.fetchAndLinkYahooUser(token.AccessToken, token.RefreshToken, logtoSub)
 		if linkErr != nil {
-			log.Printf("[Yahoo Callback] Failed to link Yahoo account: %v", linkErr)
-			// Still show the user a meaningful error instead of a false success
-			frontendURL := ValidateURL(os.Getenv("FRONTEND_URL"), DefaultFrontendURL)
-			html := fmt.Sprintf(`<!doctype html><html><head><meta charset="utf-8"><title>Auth Error</title></head>
+		log.Printf("[Yahoo Callback] Failed to link Yahoo account: %v", linkErr)
+		// Still show the user a meaningful error instead of a false success
+		html := fmt.Sprintf(`<!doctype html><html><head><meta charset="utf-8"><title>Auth Error</title></head>
 				<body style="font-family: ui-sans-serif, system-ui;">
 				<p>Yahoo authentication succeeded, but we failed to link your account. Please try again.</p>
 				<script>setTimeout(function(){ window.close(); }, %d);</script>
