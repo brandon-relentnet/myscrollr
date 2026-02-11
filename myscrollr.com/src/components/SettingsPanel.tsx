@@ -147,7 +147,7 @@ export default function SettingsPanel({
                 )}
                 <button
                   onClick={onClose}
-                  className="p-1.5 rounded hover:bg-base-200 transition-colors text-base-content/40 hover:text-base-content/70"
+                  className="p-1.5 rounded-sm hover:bg-base-200 transition-colors text-base-content/40 hover:text-base-content/70"
                 >
                   <X size={16} />
                 </button>
@@ -334,7 +334,7 @@ function ToggleRow({
   return (
     <button
       onClick={onToggle}
-      className={`flex items-center gap-3 px-4 py-3 rounded-lg border transition-all w-full text-left ${
+      className={`flex items-center gap-3 px-4 py-3 rounded-sm border transition-all w-full text-left ${
         active
           ? 'bg-primary/8 border-primary/20 text-primary'
           : 'bg-base-200/40 border-base-300/40 text-base-content/40'
@@ -369,12 +369,12 @@ function SegmentedControl({
   onChange: (v: string) => void
 }) {
   return (
-    <div className="flex gap-1 p-1 rounded-lg bg-base-200/60 border border-base-300/40">
+    <div className="flex gap-1 p-1 rounded-sm bg-base-200/60 border border-base-300/40">
       {options.map((opt) => (
         <button
           key={opt.value}
           onClick={() => onChange(opt.value)}
-          className={`relative flex-1 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-colors ${
+          className={`relative flex-1 px-4 py-2 rounded-sm text-[10px] font-bold uppercase tracking-widest transition-colors ${
             value === opt.value
               ? 'text-primary'
               : 'text-base-content/30 hover:text-base-content/50'
@@ -383,7 +383,7 @@ function SegmentedControl({
           {value === opt.value && (
             <motion.div
               layoutId={`seg-${options.map((o) => o.value).join('-')}`}
-              className="absolute inset-0 bg-primary/10 border border-primary/20 rounded-md"
+              className="absolute inset-0 bg-primary/10 border border-primary/20 rounded-sm"
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
             />
           )}
@@ -416,14 +416,14 @@ function SiteList({
           key={site}
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between px-3 py-2 rounded bg-base-200/50 border border-base-300/40"
+          className="flex items-center justify-between px-3 py-2 rounded-sm bg-base-200/50 border border-base-300/40"
         >
           <span className="text-xs font-mono text-base-content/60 truncate">
             {site}
           </span>
           <button
             onClick={() => onRemove(i)}
-            className="p-1 rounded hover:bg-error/10 text-base-content/20 hover:text-error transition-colors shrink-0"
+            className="p-1 rounded-sm hover:bg-error/10 text-base-content/20 hover:text-error transition-colors shrink-0"
           >
             <Trash2 size={12} />
           </button>
@@ -440,11 +440,11 @@ function SiteList({
             if (e.key === 'Enter') onAdd(inputValue)
           }}
           placeholder={placeholder}
-          className="flex-1 px-3 py-2 rounded bg-base-200/50 border border-base-300/40 text-xs font-mono text-base-content/60 placeholder:text-base-content/20 focus:outline-none focus:border-primary/30 transition-colors"
+          className="flex-1 px-3 py-2 rounded-sm bg-base-200/50 border border-base-300/40 text-xs font-mono text-base-content/60 placeholder:text-base-content/20 focus:outline-none focus:border-primary/30 transition-colors"
         />
         <button
           onClick={() => onAdd(inputValue)}
-          className="px-3 py-2 rounded border border-base-300/40 text-base-content/30 hover:text-primary hover:border-primary/30 transition-colors"
+          className="px-3 py-2 rounded-sm border border-base-300/40 text-base-content/30 hover:text-primary hover:border-primary/30 transition-colors"
         >
           <Plus size={14} />
         </button>

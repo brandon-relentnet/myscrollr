@@ -135,7 +135,7 @@ function ProfilePage() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.4 }}
-          className="text-center space-y-6 max-w-md border border-base-300 p-12 rounded-lg bg-base-200 shadow-2xl"
+          className="text-center space-y-6 max-w-md border border-base-300/50 p-12 rounded-sm bg-base-200/50"
         >
           <AlertCircle className="h-16 w-16 text-warning mx-auto mb-4" />
           <h1 className="text-2xl font-bold tracking-[0.2em] uppercase">
@@ -146,7 +146,7 @@ function ProfilePage() {
           </p>
           <a
             href={`${window.location.origin}/callback`}
-            className="btn btn-primary px-12"
+            className="inline-flex items-center justify-center px-8 py-2.5 rounded-sm bg-primary text-primary-content text-[11px] font-bold uppercase tracking-[0.15em] hover:brightness-110 transition-all"
           >
             Sign In
           </a>
@@ -168,7 +168,7 @@ function ProfilePage() {
         {/* Profile Header */}
         <motion.div
           variants={sectionVariants}
-          className="bg-base-200 border border-base-300 rounded-xl p-10 shadow-2xl relative overflow-hidden"
+          className="bg-base-200/50 border border-base-300/50 rounded-sm p-10 relative overflow-hidden"
         >
           {/* Accent decoration */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full border-l border-b border-primary/10" />
@@ -178,7 +178,7 @@ function ProfilePage() {
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.2, type: 'spring' }}
-              className="h-28 w-28 rounded-xl bg-primary/10 border-2 border-primary/20 flex items-center justify-center text-4xl font-black text-primary shadow-lg uppercase"
+              className="h-28 w-28 rounded-sm bg-primary/8 border border-primary/15 flex items-center justify-center text-4xl font-black text-primary uppercase"
             >
               {profile.username ? profile.username[0] : '?'}
             </motion.div>
@@ -188,22 +188,22 @@ function ProfilePage() {
                   <h1 className="text-4xl font-black tracking-tight uppercase">
                     @{profile.username}
                   </h1>
-                  <span className="px-3 py-1 bg-success/10 text-success text-[10px] font-bold rounded-full border border-success/20 flex items-center gap-1.5 uppercase tracking-widest">
+                  <span className="px-3 py-1 bg-success/10 text-success text-[10px] font-bold rounded-sm border border-success/20 flex items-center gap-1.5 uppercase tracking-widest">
                     <Shield size={12} /> Active
                   </span>
                 </div>
                 {profile.display_name &&
                   profile.display_name !== profile.username && (
-                    <p className="text-xl text-base-content/60 font-medium">
+                    <p className="text-sm text-base-content/40 font-medium">
                       {profile.display_name}
                     </p>
                   )}
               </div>
               <div className="flex flex-wrap justify-center md:justify-start gap-2 pt-2">
-                <div className="px-3 py-1 bg-base-300 border border-base-300 rounded-md text-[10px] font-mono uppercase text-base-content/40">
+                <div className="px-3 py-1 bg-base-300/50 border border-base-300/50 rounded-sm text-[10px] font-mono uppercase text-base-content/40">
                   Status: Verified
                 </div>
-                <div className="px-3 py-1 bg-base-300 border border-base-300 rounded-md text-[10px] font-mono uppercase text-base-content/40">
+                <div className="px-3 py-1 bg-base-300/50 border border-base-300/50 rounded-sm text-[10px] font-mono uppercase text-base-content/40">
                   Tier: Power_User
                 </div>
               </div>
@@ -214,20 +214,20 @@ function ProfilePage() {
         {/* Connected Accounts */}
         <motion.div
           variants={sectionVariants}
-          className="bg-base-200 border border-base-300 rounded-xl p-10 shadow-xl"
+          className="bg-base-200/50 border border-base-300/50 rounded-sm p-10"
         >
-          <h2 className="text-xl font-black mb-8 flex items-center gap-3 uppercase tracking-tight">
-            <LinkIcon size={24} className="text-primary" />
-            Integration_Nodes
+          <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-8 flex items-center gap-2">
+            <LinkIcon size={16} />
+            Integration Nodes
           </h2>
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-base-300/50 border border-base-300 rounded-lg gap-6 group hover:border-primary/20 transition-all">
+            <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-base-300/50 border border-base-300/50 rounded-sm gap-6 group hover:border-primary/20 transition-all">
               <div className="flex items-center gap-5">
-                <div className="h-14 w-14 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary border border-secondary/20 shadow-inner group-hover:scale-105 transition-transform">
-                  <span className="text-2xl font-black">Y!</span>
+                <div className="h-10 w-10 rounded-sm bg-secondary/8 flex items-center justify-center text-secondary border border-secondary/15">
+                  <span className="text-lg font-black">Y!</span>
                 </div>
                 <div className="text-left">
-                  <p className="font-bold text-lg uppercase tracking-tight">
+                  <p className="text-sm font-bold uppercase tracking-tight">
                     Yahoo Fantasy
                   </p>
                   {profile.connected_yahoo ? (
@@ -247,14 +247,14 @@ function ProfilePage() {
                   {profile.connected_yahoo ? (
                     <a
                       href="/dashboard"
-                      className="btn btn-outline border-primary/30 text-primary hover:bg-primary hover:text-primary-content w-full sm:w-auto uppercase text-xs tracking-widest"
+                      className="inline-flex items-center justify-center px-6 py-2.5 rounded-sm border border-primary/30 text-primary text-[11px] font-bold uppercase tracking-[0.15em] hover:bg-primary hover:text-primary-content transition-all w-full sm:w-auto"
                     >
                       Enter Dashboard
                     </a>
                   ) : (
                     <a
                       href="/dashboard"
-                      className="btn btn-primary w-full sm:w-auto uppercase text-xs tracking-widest shadow-lg"
+                      className="inline-flex items-center justify-center px-6 py-2.5 rounded-sm bg-primary text-primary-content text-[11px] font-bold uppercase tracking-[0.15em] hover:brightness-110 transition-all w-full sm:w-auto"
                     >
                       Link Account
                     </a>

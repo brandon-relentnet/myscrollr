@@ -51,7 +51,7 @@ function AccountHub() {
         <div className="container relative z-10">
           <motion.div className="max-w-4xl" variants={sectionVariants}>
             <div className="flex items-center gap-3 mb-6">
-              <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded-md border border-primary/20 uppercase tracking-[0.2em] flex items-center gap-2">
+              <span className="px-3 py-1 bg-primary/8 text-primary text-[10px] font-bold rounded-sm border border-primary/15 uppercase tracking-[0.2em] flex items-center gap-2">
                 <ShieldCheck size={14} /> session_active
               </span>
               <span className="h-px w-12 bg-base-300" />
@@ -68,7 +68,7 @@ function AccountHub() {
               </span>
             </h1>
 
-            <p className="text-xl text-base-content/60 leading-relaxed mb-10 max-w-2xl">
+            <p className="text-sm text-base-content/40 leading-relaxed mb-10 max-w-2xl">
               Your personal data streams are ready for orchestration. Sync your
               leagues, track your assets, and stay in the flow.
             </p>
@@ -118,7 +118,7 @@ function AccountHub() {
         >
           <Link
             to="/status"
-            className="bg-base-200 border border-base-300 rounded-xl p-8 shadow-sm hover:border-primary/30 transition-all block group"
+            className="bg-base-200/50 border border-base-300/50 rounded-sm p-8 hover:border-primary/30 transition-all block group"
           >
             <h3 className="text-sm font-bold uppercase tracking-widest text-primary mb-4 flex items-center gap-2">
               <Settings size={16} /> System Status
@@ -133,13 +133,13 @@ function AccountHub() {
             </div>
           </Link>
 
-          <div className="bg-base-200 border border-base-300 rounded-xl p-8 shadow-sm relative overflow-hidden group">
+          <div className="bg-base-200/50 border border-base-300/50 rounded-sm p-8 relative overflow-hidden group">
             <div className="relative z-10">
               <h3 className="text-sm font-bold uppercase tracking-widest text-secondary mb-6 flex items-center gap-2">
                 <TrendingUp size={16} /> Quick Stats
               </h3>
               <div className="grid grid-cols-2 gap-4 text-center">
-                <div className="p-4 bg-base-300 rounded-lg">
+                <div className="p-4 bg-base-300/50 rounded-sm">
                   <div className="text-2xl font-black text-base-content">
                     12
                   </div>
@@ -147,7 +147,7 @@ function AccountHub() {
                     Active_Leagues
                   </div>
                 </div>
-                <div className="p-4 bg-base-300 rounded-lg">
+                <div className="p-4 bg-base-300/50 rounded-sm">
                   <div className="text-2xl font-black text-base-content">
                     482
                   </div>
@@ -193,8 +193,9 @@ function HubCard({
   }[accent]
 
   const content = (
-    <div
-      className={`p-8 rounded-xl border transition-all h-full flex flex-col justify-between group relative overflow-hidden ${disabled ? 'bg-base-200/50 border-base-300/50 opacity-50 cursor-not-allowed' : 'bg-base-200 border border-base-300 hover:border-primary/30 cursor-pointer shadow-lg hover:-translate-y-1'}`}
+    <motion.div
+      whileHover={disabled ? undefined : { y: -3, transition: { type: 'tween', duration: 0.2 } }}
+      className={`p-8 rounded-sm border transition-colors h-full flex flex-col justify-between group relative overflow-hidden ${disabled ? 'bg-base-200/50 border-base-300/50 opacity-50 cursor-not-allowed' : 'bg-base-200/50 border border-base-300/50 hover:border-primary/30 cursor-pointer'}`}
     >
       {!disabled && (
         <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -204,13 +205,13 @@ function HubCard({
 
       <div className="space-y-6">
         <div
-          className={`h-12 w-12 rounded-lg flex items-center justify-center border ${accentClasses}`}
+          className={`h-10 w-10 rounded-sm flex items-center justify-center border ${accentClasses}`}
         >
           {icon}
         </div>
         <div>
           <h3
-            className={`text-xl font-black uppercase tracking-tight ${disabled ? 'text-base-content/40' : 'text-base-content group-hover:text-primary transition-colors'}`}
+            className={`text-lg font-black uppercase tracking-tight ${disabled ? 'text-base-content/40' : 'text-base-content group-hover:text-primary transition-colors'}`}
           >
             {title}
           </h3>
@@ -225,7 +226,7 @@ function HubCard({
           <Lock size={10} /> Encrypted
         </div>
       )}
-    </div>
+    </motion.div>
   )
 
   if (disabled) return content

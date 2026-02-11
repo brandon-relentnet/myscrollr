@@ -63,7 +63,7 @@ export default function Header() {
         {/* Brand */}
         <div className="flex items-center gap-4">
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="relative flex items-center justify-center rounded-lg border border-base-300/50 bg-base-200/50 p-2.5 shadow-sm transition-all hover:scale-105 transition-spring group-hover:border-primary/30 group-hover:shadow-[0_0_20px_rgba(191,255,0,0.1)]">
+            <div className="relative flex items-center justify-center rounded-sm border border-base-300/50 bg-base-200/50 p-2.5 transition-all hover:scale-105 transition-spring group-hover:border-primary/30 group-hover:shadow-[0_0_20px_rgba(191,255,0,0.1)]">
               <ScrollrSVG className="size-8" />
               {/* Online indicator */}
               <span className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5">

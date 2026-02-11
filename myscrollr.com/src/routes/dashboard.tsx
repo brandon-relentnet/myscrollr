@@ -259,7 +259,7 @@ function DashboardPage() {
                       stiffness: 500,
                       damping: 30,
                     }}
-                    className="absolute right-0 top-full mt-2 w-56 bg-base-100 border border-base-300/60 rounded-lg shadow-xl z-50 overflow-hidden"
+                    className="absolute right-0 top-full mt-2 w-56 bg-base-100 border border-base-300/60 rounded-sm shadow-xl z-50 overflow-hidden"
                   >
                     <div className="p-2">
                       <p className="text-[9px] font-bold text-base-content/30 uppercase tracking-widest px-2 py-1.5">
@@ -273,7 +273,7 @@ function DashboardPage() {
                             onClick={() =>
                               handleAddStream(manifest.id as StreamType)
                             }
-                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-primary/8 text-left transition-colors group"
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-sm hover:bg-primary/8 text-left transition-colors group"
                           >
                             <span className="text-base-content/40 group-hover:text-primary transition-colors">
                               <Icon size={14} />
@@ -296,7 +296,7 @@ function DashboardPage() {
             </div>
             <button
               onClick={() => setSettingsOpen(true)}
-              className="p-2.5 rounded border border-base-300 hover:border-primary/30 transition-all text-base-content/50 hover:text-primary"
+              className="p-2.5 rounded-sm border border-base-300 hover:border-primary/30 transition-all text-base-content/50 hover:text-primary"
               title="Settings"
             >
               <Settings2 size={16} />
@@ -354,7 +354,7 @@ function DashboardPage() {
             </div>
 
             {/* Quick Stats */}
-            <div className="bg-base-200/40 border border-base-300/50 rounded-lg p-4 space-y-4">
+            <div className="bg-base-200/40 border border-base-300/50 rounded-sm p-4 space-y-4">
               <p className="text-[10px] font-bold text-base-content/30 uppercase tracking-widest">
                 Overview
               </p>
@@ -385,7 +385,7 @@ function DashboardPage() {
 
           {/* Main Content Area */}
           <motion.main
-            className="lg:col-span-9 bg-base-200/20 border border-base-300/40 rounded-xl p-8 min-h-[500px]"
+            className="lg:col-span-9 bg-base-200/20 border border-base-300/40 rounded-sm p-8 min-h-[500px]"
             variants={sectionVariants}
           >
             <motion.div
@@ -500,7 +500,7 @@ function StreamNavButton({
   return (
     <button
       onClick={onClick}
-      className={`flex items-center justify-between p-3.5 rounded-lg transition-all text-left group ${
+      className={`flex items-center justify-between p-3.5 rounded-sm transition-all text-left group ${
         active
           ? 'bg-primary/8 border border-primary/20 text-primary'
           : 'text-base-content/40 hover:bg-base-200/60 hover:text-base-content/70 border border-transparent'

@@ -150,7 +150,7 @@ function StatusPage() {
         <div className="container relative z-10">
           <motion.div className="max-w-4xl" variants={itemVariants}>
             <div className="flex items-center gap-3 mb-6">
-              <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded-md border border-primary/20 uppercase tracking-[0.2em] flex items-center gap-2">
+              <span className="px-3 py-1 bg-primary/8 text-primary text-[10px] font-bold rounded-sm border border-primary/15 uppercase tracking-[0.2em] flex items-center gap-2">
                 <Radio size={14} /> live_monitor
               </span>
               <span className="h-px w-12 bg-base-300" />
@@ -188,7 +188,7 @@ function StatusPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Infrastructure */}
           <motion.div
-            className="bg-base-200 border border-base-300 rounded-xl p-8"
+            className="bg-base-200/50 border border-base-300/50 rounded-sm p-8"
             variants={itemVariants}
           >
             <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-8 flex items-center gap-2">
@@ -210,7 +210,7 @@ function StatusPage() {
 
           {/* Ingestion Workers */}
           <motion.div
-            className="bg-base-200 border border-base-300 rounded-xl p-8"
+            className="bg-base-200/50 border border-base-300/50 rounded-sm p-8"
             variants={itemVariants}
           >
             <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-8 flex items-center gap-2">
@@ -300,7 +300,7 @@ function OverallBadge({
 }) {
   if (fetchError) {
     return (
-      <div className="flex items-center gap-2.5 px-4 py-2 rounded-lg bg-error/10 border border-error/20">
+      <div className="flex items-center gap-2.5 px-4 py-2 rounded-sm bg-error/10 border border-error/20">
         <XCircle size={16} className="text-error" />
         <span className="text-xs font-bold uppercase tracking-wider text-error">
           API Unreachable
@@ -311,7 +311,7 @@ function OverallBadge({
 
   if (!health) {
     return (
-      <div className="flex items-center gap-2.5 px-4 py-2 rounded-lg bg-base-300 border border-base-300">
+      <div className="flex items-center gap-2.5 px-4 py-2 rounded-sm bg-base-300 border border-base-300">
         <div className="h-3 w-3 rounded-full bg-base-content/20 animate-pulse" />
         <span className="text-xs font-bold uppercase tracking-wider text-base-content/40">
           Checking systems...
@@ -324,7 +324,7 @@ function OverallBadge({
 
   return (
     <div
-      className={`flex items-center gap-2.5 px-4 py-2 rounded-lg border ${
+      className={`flex items-center gap-2.5 px-4 py-2 rounded-sm border ${
         isHealthy
           ? 'bg-success/10 border-success/20'
           : 'bg-warning/10 border-warning/20'
@@ -356,12 +356,12 @@ function ServiceRow({
   port?: number
 }) {
   return (
-    <div className="flex items-center justify-between p-4 bg-base-300/50 rounded-lg group hover:bg-base-300/80 transition-colors">
+    <div className="flex items-center justify-between p-4 bg-base-300/50 rounded-sm group hover:bg-base-300/80 transition-colors">
       <div className="flex-1 min-w-0 mr-4">
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold text-base-content">{name}</span>
           {port && (
-            <span className="text-[9px] font-mono text-base-content/20 bg-base-200 px-1.5 py-0.5 rounded">
+            <span className="text-[9px] font-mono text-base-content/20 bg-base-200 px-1.5 py-0.5 rounded-sm">
               :{port}
             </span>
           )}
@@ -424,12 +424,12 @@ function MetricCard({
   error?: boolean
 }) {
   return (
-    <div className="bg-base-200 border border-base-300 rounded-xl p-6 flex items-start gap-4">
+    <div className="bg-base-200/50 border border-base-300/50 rounded-sm p-6 flex items-start gap-4">
       <div
-        className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 border ${
+        className={`h-10 w-10 rounded-sm flex items-center justify-center shrink-0 border ${
           error
-            ? 'bg-warning/10 border-warning/20 text-warning'
-            : 'bg-primary/10 border-primary/20 text-primary'
+            ? 'bg-warning/8 border-warning/15 text-warning'
+            : 'bg-primary/8 border-primary/15 text-primary'
         }`}
       >
         {icon}
@@ -459,7 +459,7 @@ function ExternalLink({ href, label }: { href: string; label: string }) {
       rel="noopener noreferrer"
       whileHover={{ y: -2, transition: { type: 'tween', duration: 0.2 } }}
       whileTap={{ scale: 0.98 }}
-      className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-base-200 border border-base-300 text-sm text-base-content/50 hover:text-primary hover:border-primary/30 transition-colors cursor-pointer"
+      className="flex items-center gap-2 px-4 py-2.5 rounded-sm bg-base-200/50 border border-base-300/50 text-sm text-base-content/50 hover:text-primary hover:border-primary/30 transition-colors cursor-pointer"
     >
       <Globe size={14} />
       {label}
