@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UplinkRouteImport } from './routes/uplink'
 import { Route as StatusRouteImport } from './routes/status'
 import { Route as IntegrationsRouteImport } from './routes/integrations'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -17,6 +18,11 @@ import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
 
+const UplinkRoute = UplinkRouteImport.update({
+  id: '/uplink',
+  path: '/uplink',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StatusRoute = StatusRouteImport.update({
   id: '/status',
   path: '/status',
@@ -60,6 +66,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/integrations': typeof IntegrationsRoute
   '/status': typeof StatusRoute
+  '/uplink': typeof UplinkRoute
   '/u/$username': typeof UUsernameRoute
 }
 export interface FileRoutesByTo {
@@ -69,6 +76,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/integrations': typeof IntegrationsRoute
   '/status': typeof StatusRoute
+  '/uplink': typeof UplinkRoute
   '/u/$username': typeof UUsernameRoute
 }
 export interface FileRoutesById {
@@ -79,6 +87,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/integrations': typeof IntegrationsRoute
   '/status': typeof StatusRoute
+  '/uplink': typeof UplinkRoute
   '/u/$username': typeof UUsernameRoute
 }
 export interface FileRouteTypes {
@@ -90,6 +99,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/integrations'
     | '/status'
+    | '/uplink'
     | '/u/$username'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -99,6 +109,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/integrations'
     | '/status'
+    | '/uplink'
     | '/u/$username'
   id:
     | '__root__'
@@ -108,6 +119,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/integrations'
     | '/status'
+    | '/uplink'
     | '/u/$username'
   fileRoutesById: FileRoutesById
 }
@@ -118,11 +130,19 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   IntegrationsRoute: typeof IntegrationsRoute
   StatusRoute: typeof StatusRoute
+  UplinkRoute: typeof UplinkRoute
   UUsernameRoute: typeof UUsernameRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/uplink': {
+      id: '/uplink'
+      path: '/uplink'
+      fullPath: '/uplink'
+      preLoaderRoute: typeof UplinkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/status': {
       id: '/status'
       path: '/status'
@@ -182,6 +202,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   IntegrationsRoute: IntegrationsRoute,
   StatusRoute: StatusRoute,
+  UplinkRoute: UplinkRoute,
   UUsernameRoute: UUsernameRoute,
 }
 export const routeTree = rootRouteImport
