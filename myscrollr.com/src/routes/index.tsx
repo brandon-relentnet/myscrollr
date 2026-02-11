@@ -1,10 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
-import ScrollHighlight from '@/components/ScrollHighlight'
 import { usePageMeta } from '@/lib/usePageMeta'
 import { HeroSection } from '@/components/landing/HeroSection'
-import { FeaturesGrid } from '@/components/landing/FeaturesGrid'
-import { CallToAction } from '@/components/landing/CallToAction'
+import { HowItWorks } from '@/components/landing/HowItWorks'
+import { StreamsShowcase } from '@/components/landing/StreamsShowcase'
 import { AboutPreview } from '@/components/landing/AboutPreview'
+import { CallToAction } from '@/components/landing/CallToAction'
 
 export const Route = createFileRoute('/')({
   component: HomePage,
@@ -21,13 +21,9 @@ function HomePage() {
     <main>
       <HeroSection />
 
-      <div className="container">
-        <FeaturesGrid />
-      </div>
+      <HowItWorks />
 
-      <section className="scroll-m-75" id="scroll-highlight">
-        <ScrollHighlight />
-      </section>
+      <StreamsShowcase />
 
       <AboutPreview />
 

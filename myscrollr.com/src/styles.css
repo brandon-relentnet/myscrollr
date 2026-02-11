@@ -843,6 +843,21 @@ pre,
   animation: float-reverse 4s ease-in-out infinite;
 }
 
+/* Ticker Scroll Animation */
+@keyframes ticker-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-ticker-scroll {
+  animation: ticker-scroll 40s linear infinite;
+  width: max-content;
+}
+
 /* Stagger Animation Delays */
 .stagger-1 {
   animation-delay: 0.1s;

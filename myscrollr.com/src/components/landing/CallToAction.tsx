@@ -1,4 +1,6 @@
 import { motion } from 'motion/react'
+import { Link } from '@tanstack/react-router'
+import { ChevronRight, Satellite } from 'lucide-react'
 import InstallButton from '@/components/InstallButton'
 
 export function CallToAction() {
@@ -51,9 +53,9 @@ export function CallToAction() {
               transition={{ delay: 0.1 }}
               className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-5"
             >
-              Bring your data <br />
+              Start{' '}
               <span className="text-gradient-primary font-black uppercase tracking-tighter">
-                everywhere
+                Scrolling
               </span>
             </motion.h2>
 
@@ -62,10 +64,10 @@ export function CallToAction() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.2 }}
-              className="text-lg text-base-content/60 leading-relaxed"
+              className="text-base text-base-content/50 leading-relaxed mb-6"
             >
-              Add to Chrome and pin your sports, crypto, and feeds over any tab.
-              Never miss a moment.
+              Add to Chrome and pin live sports, market data, news, and fantasy
+              scores over any tab. Free forever.
             </motion.p>
 
             <motion.div
@@ -73,7 +75,7 @@ export function CallToAction() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.3 }}
-              className="flex flex-wrap items-center justify-center lg:justify-start gap-4 mt-6"
+              className="flex flex-wrap items-center justify-center lg:justify-start gap-4"
             >
               <span className="tag tag-primary">
                 <span className="w-1 h-1 rounded-full bg-primary" />
@@ -86,21 +88,22 @@ export function CallToAction() {
             </motion.div>
           </div>
 
-          {/* CTA */}
+          {/* CTA Column */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.3 }}
-            className="w-full max-w-md mx-auto lg:mx-0 flex flex-col items-center lg:items-end"
+            className="w-full max-w-md mx-auto lg:mx-0 flex flex-col items-center lg:items-end gap-6"
           >
+            {/* Primary CTA */}
             <div className="relative w-full">
-              {/* Glow effect */}
               <div className="absolute -inset-3 bg-primary/10 rounded-lg blur-xl opacity-50" />
               <InstallButton className="relative w-full text-lg py-4 shadow-xl" />
             </div>
 
-            <p className="mt-5 text-[10px] font-mono text-base-content/40 text-center lg:text-right uppercase tracking-[0.2em] font-bold flex items-center gap-3">
+            {/* Browser compat */}
+            <p className="text-[10px] font-mono text-base-content/40 text-center lg:text-right uppercase tracking-[0.2em] font-bold flex items-center gap-3">
               <span className="flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary/50" />
                 Chrome
@@ -114,6 +117,27 @@ export function CallToAction() {
                 Edge
               </span>
             </p>
+
+            {/* Uplink teaser */}
+            <div className="w-full pt-4 border-t border-base-300/30">
+              <Link
+                to="/uplink"
+                className="group flex items-center justify-center lg:justify-end gap-2 text-[10px] font-mono text-base-content/25 uppercase tracking-wider hover:text-primary/60 transition-colors"
+              >
+                <Satellite size={11} className="opacity-50" />
+                <span>
+                  Power users{' '}
+                  <span className="text-primary/40 group-hover:text-primary/70 transition-colors">
+                    Uplink
+                  </span>{' '}
+                  arriving Q3 2026
+                </span>
+                <ChevronRight
+                  size={10}
+                  className="opacity-0 group-hover:opacity-60 transition-opacity"
+                />
+              </Link>
+            </div>
           </motion.div>
         </div>
       </motion.div>
