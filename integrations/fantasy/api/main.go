@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -17,11 +19,27 @@ import (
 )
 
 // =============================================================================
-// Registration
+// Registration Constants
 // =============================================================================
 
-// registrationPayload is the JSON structure written to Redis so the core
-// gateway can discover this integration at runtime.
+const (
+	// RegistrationKey is the Redis key where this integration registers itself.
+	RegistrationKey = "integration:fantasy"
+
+	// RegistrationTTL is how long the registration lives in Redis before expiring.
+	RegistrationTTL = 30 * time.Second
+
+	// RegistrationRefresh is how often we refresh the registration.
+	RegistrationRefresh = 20 * time.Second
+
+	// DefaultPort is the default HTTP listen port.
+	DefaultPort = "8084"
+
+	// DefaultIntegrationURL is the default internal URL for this service.
+	DefaultIntegrationURL = "http://localhost:8084"
+)
+
+// registrationPayload is the JSON structure stored in Redis for service discovery.
 type registrationPayload struct {
 	Name         string              `json:"name"`
 	DisplayName  string              `json:"display_name"`
@@ -37,24 +55,16 @@ type registrationRoute struct {
 	Auth   bool   `json:"auth"`
 }
 
-const (
-	registrationKey = "integration:fantasy"
-	registrationTTL = 30 * time.Second
-	heartbeatTick   = 20 * time.Second
-)
-
 // =============================================================================
 // Main
 // =============================================================================
 
 func main() {
-	// Load .env if present (optional, for local dev)
+	// Load .env (optional — don't fatal if missing)
 	_ = godotenv.Load()
 
-	ctx := context.Background()
-
 	// -------------------------------------------------------------------------
-	// PostgreSQL
+	// Connect to PostgreSQL
 	// -------------------------------------------------------------------------
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
@@ -71,19 +81,19 @@ func main() {
 		dbURL = strings.Replace(dbURL, "postgresql:", "postgresql://", 1)
 	}
 
-	pool, err := pgxpool.New(ctx, dbURL)
+	pool, err := pgxpool.New(context.Background(), dbURL)
 	if err != nil {
 		log.Fatalf("[Fantasy] Failed to connect to PostgreSQL: %v", err)
 	}
 	defer pool.Close()
 
-	if err := pool.Ping(ctx); err != nil {
+	if err := pool.Ping(context.Background()); err != nil {
 		log.Fatalf("[Fantasy] PostgreSQL ping failed: %v", err)
 	}
 	log.Println("[Fantasy] Connected to PostgreSQL")
 
 	// -------------------------------------------------------------------------
-	// Redis
+	// Connect to Redis
 	// -------------------------------------------------------------------------
 	redisURL := os.Getenv("REDIS_URL")
 	if redisURL == "" {
@@ -96,7 +106,9 @@ func main() {
 	}
 
 	rdb := redis.NewClient(opts)
-	if err := rdb.Ping(ctx).Err(); err != nil {
+	defer rdb.Close()
+
+	if err := rdb.Ping(context.Background()).Err(); err != nil {
 		log.Fatalf("[Fantasy] Redis ping failed: %v", err)
 	}
 	log.Println("[Fantasy] Connected to Redis")
@@ -136,54 +148,12 @@ func main() {
 	// The Rust yahoo_service owns that table and creates it on startup.
 
 	// -------------------------------------------------------------------------
-	// Self-Registration
+	// Start Redis self-registration heartbeat
 	// -------------------------------------------------------------------------
-	integrationURL := os.Getenv("INTEGRATION_URL")
-	if integrationURL == "" {
-		integrationURL = "http://localhost:8084"
-	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	payload := registrationPayload{
-		Name:         "fantasy",
-		DisplayName:  "Fantasy Sports",
-		InternalURL:  integrationURL,
-		Capabilities: []string{"cdc_handler", "dashboard_provider", "health_checker"},
-		CDCTables:    []string{"yahoo_leagues", "yahoo_standings", "yahoo_matchups", "yahoo_rosters"},
-		Routes: []registrationRoute{
-			{Method: "GET", Path: "/yahoo/start", Auth: false},
-			{Method: "GET", Path: "/yahoo/callback", Auth: false},
-			{Method: "GET", Path: "/yahoo/health", Auth: false},
-			{Method: "GET", Path: "/yahoo/leagues", Auth: true},
-			{Method: "GET", Path: "/yahoo/league/:league_key/standings", Auth: true},
-			{Method: "GET", Path: "/yahoo/team/:team_key/matchups", Auth: true},
-			{Method: "GET", Path: "/yahoo/team/:team_key/roster", Auth: true},
-			{Method: "GET", Path: "/users/me/yahoo-status", Auth: true},
-			{Method: "GET", Path: "/users/me/yahoo-leagues", Auth: true},
-			{Method: "DELETE", Path: "/users/me/yahoo", Auth: true},
-		},
-	}
-
-	regJSON, err := json.Marshal(payload)
-	if err != nil {
-		log.Fatalf("[Fantasy] Failed to marshal registration payload: %v", err)
-	}
-
-	// Initial registration
-	if err := rdb.Set(ctx, registrationKey, regJSON, registrationTTL).Err(); err != nil {
-		log.Fatalf("[Fantasy] Failed to register in Redis: %v", err)
-	}
-	log.Printf("[Fantasy] Registered as %s (TTL %s)", registrationKey, registrationTTL)
-
-	// Heartbeat goroutine — refresh registration before TTL expires
-	go func() {
-		ticker := time.NewTicker(heartbeatTick)
-		defer ticker.Stop()
-		for range ticker.C {
-			if err := rdb.Set(context.Background(), registrationKey, regJSON, registrationTTL).Err(); err != nil {
-				log.Printf("[Fantasy] Registration heartbeat failed: %v", err)
-			}
-		}
-	}()
+	go startRegistration(ctx, rdb)
 
 	// -------------------------------------------------------------------------
 	// Fiber HTTP Server
@@ -191,7 +161,8 @@ func main() {
 	app := &App{db: pool, rdb: rdb, yahooConfig: yahooConfig}
 
 	fiberApp := fiber.New(fiber.Config{
-		DisableStartupMessage: true,
+		AppName:               "Scrollr Fantasy API",
+		DisableStartupMessage: false,
 	})
 
 	// Public routes (proxied by core gateway)
@@ -215,13 +186,92 @@ func main() {
 	fiberApp.Get("/internal/dashboard", app.handleInternalDashboard)
 	fiberApp.Get("/internal/health", app.handleInternalHealth)
 
+	// -------------------------------------------------------------------------
+	// Start server with graceful shutdown
+	// -------------------------------------------------------------------------
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8084"
+		port = DefaultPort
 	}
 
-	log.Printf("[Fantasy] Starting server on :%s", port)
-	if err := fiberApp.Listen(":" + port); err != nil {
-		log.Fatalf("[Fantasy] Server failed: %v", err)
+	go func() {
+		if err := fiberApp.Listen(":" + port); err != nil {
+			log.Fatalf("[Fantasy] Server failed: %v", err)
+		}
+	}()
+
+	log.Printf("[Fantasy] Fantasy API listening on port %s", port)
+
+	// Wait for interrupt signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Println("[Fantasy] Shutting down Fantasy API...")
+	cancel()
+
+	// Deregister from Redis on shutdown
+	rdb.Del(context.Background(), RegistrationKey)
+	log.Println("[Fantasy] Removed registration from Redis")
+
+	if err := fiberApp.Shutdown(); err != nil {
+		log.Printf("[Fantasy] Fiber shutdown error: %v", err)
+	}
+}
+
+// startRegistration registers this service in Redis with a TTL and refreshes
+// the registration on a ticker. This allows the core gateway to discover
+// available integration services.
+func startRegistration(ctx context.Context, rdb *redis.Client) {
+	integrationURL := os.Getenv("INTEGRATION_URL")
+	if integrationURL == "" {
+		integrationURL = DefaultIntegrationURL
+	}
+
+	payload := registrationPayload{
+		Name:         "fantasy",
+		DisplayName:  "Fantasy Sports",
+		InternalURL:  integrationURL,
+		Capabilities: []string{"cdc_handler", "dashboard_provider", "health_checker"},
+		CDCTables:    []string{"yahoo_leagues", "yahoo_standings", "yahoo_matchups", "yahoo_rosters"},
+		Routes: []registrationRoute{
+			{Method: "GET", Path: "/yahoo/start", Auth: false},
+			{Method: "GET", Path: "/yahoo/callback", Auth: false},
+			{Method: "GET", Path: "/yahoo/health", Auth: false},
+			{Method: "GET", Path: "/yahoo/leagues", Auth: true},
+			{Method: "GET", Path: "/yahoo/league/:league_key/standings", Auth: true},
+			{Method: "GET", Path: "/yahoo/team/:team_key/matchups", Auth: true},
+			{Method: "GET", Path: "/yahoo/team/:team_key/roster", Auth: true},
+			{Method: "GET", Path: "/users/me/yahoo-status", Auth: true},
+			{Method: "GET", Path: "/users/me/yahoo-leagues", Auth: true},
+			{Method: "DELETE", Path: "/users/me/yahoo", Auth: true},
+		},
+	}
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		log.Fatalf("[Fantasy] Failed to marshal registration payload: %v", err)
+	}
+
+	// Register immediately on startup
+	if err := rdb.Set(ctx, RegistrationKey, data, RegistrationTTL).Err(); err != nil {
+		log.Printf("[Fantasy] Initial registration failed: %v", err)
+	} else {
+		log.Printf("[Fantasy] Registered as %s (TTL %s)", RegistrationKey, RegistrationTTL)
+	}
+
+	ticker := time.NewTicker(RegistrationRefresh)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("[Fantasy] Stopping registration heartbeat")
+			return
+		case <-ticker.C:
+			if err := rdb.Set(ctx, RegistrationKey, data, RegistrationTTL).Err(); err != nil {
+				log.Printf("[Fantasy] Registration heartbeat failed: %v", err)
+			}
+		}
 	}
 }

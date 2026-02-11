@@ -9,6 +9,16 @@ import type { FeedTabProps } from '~/integrations/types';
  * appears when a user has a fantasy stream, but the actual UI is
  * best consumed on the web dashboard.
  */
+import type { IntegrationManifest } from '~/integrations/types';
+
+export const fantasyIntegration: IntegrationManifest = {
+  id: 'fantasy',
+  name: 'Fantasy',
+  tabLabel: 'Fantasy',
+  tier: 'official',
+  FeedTab: FantasyFeedTab,
+};
+
 export default function FantasyFeedTab({ mode: _mode }: FeedTabProps) {
   return (
     <div className="flex items-center justify-center py-8 px-4">

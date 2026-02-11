@@ -14,14 +14,17 @@ const UPDATE_BATCH_SIZE_DELAY: u64 = 500;
 
 const LOG_THROTTLE_INTERVAL: Duration = Duration::from_secs(5);
 
-pub(crate) async fn connect(subscriptions: Vec<String>, api_key: String, client: Arc<Client>, pool: Arc<PgPool>, health_state: Arc<Mutex<FinanceHealth>>) {
+pub(crate) async fn connect(subscriptions: Vec<String>, api_key: String, client: Arc<Client>, pool: Arc<PgPool>, health_state: Arc<Mutex<FinanceHealth>>) -> Result<(), anyhow::Error> {
     let state = Arc::new(RwLock::new(WebSocketState::new()));
     
     // Security Note: Finnhub usually requires token as a query parameter for WebSockets.
     // Redacting this parameter from logs for security.
     let url = format!("wss://ws.finnhub.io/?token={}", api_key);
 
-    let (ws_stream, _) = connect_async(url).await.expect("Failed to connect to WebSocket (token redacted in logs)");
+    let (ws_stream, _) = connect_async(url).await.map_err(|e| {
+        error!("Failed to connect to WebSocket (token redacted in logs): {}", e);
+        e
+    })?;
     info!("WebSocket client connected to Finnhub");
 
     // Set connection status to connected
@@ -39,6 +42,8 @@ pub(crate) async fn connect(subscriptions: Vec<String>, api_key: String, client:
 
     tokio::spawn(ws_send(writer, subscriptions));
     ws_read(reader, Arc::clone(&state), client, pool, health_state.clone()).await;
+
+    Ok(())
 }
 
 async fn ws_send(mut writer: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>, subscriptions: Vec<String>) {

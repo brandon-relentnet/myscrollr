@@ -11,6 +11,16 @@ function getInitialTrades(config: Record<string, unknown>): Trade[] {
   return items ?? [];
 }
 
+import type { IntegrationManifest } from '~/integrations/types';
+
+export const financeIntegration: IntegrationManifest = {
+  id: 'finance',
+  name: 'Finance',
+  tabLabel: 'Finance',
+  tier: 'official',
+  FeedTab: FinanceFeedTab,
+};
+
 export default function FinanceFeedTab({ mode, streamConfig }: FeedTabProps) {
   const initialItems = useMemo(() => getInitialTrades(streamConfig), [streamConfig]);
 

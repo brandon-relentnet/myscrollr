@@ -10,6 +10,16 @@ function getInitialRssItems(config: Record<string, unknown>): RssItemType[] {
   return items ?? [];
 }
 
+import type { IntegrationManifest } from '~/integrations/types';
+
+export const rssIntegration: IntegrationManifest = {
+  id: 'rss',
+  name: 'RSS',
+  tabLabel: 'RSS',
+  tier: 'official',
+  FeedTab: RssFeedTab,
+};
+
 export default function RssFeedTab({ mode, streamConfig }: FeedTabProps) {
   const initialItems = useMemo(() => getInitialRssItems(streamConfig), [streamConfig]);
 

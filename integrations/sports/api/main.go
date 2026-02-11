@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -14,11 +16,27 @@ import (
 )
 
 // =============================================================================
-// Registration
+// Registration Constants
 // =============================================================================
 
-// registrationPayload is the JSON structure written to Redis so the core
-// gateway can discover this integration at runtime.
+const (
+	// RegistrationKey is the Redis key where this integration registers itself.
+	RegistrationKey = "integration:sports"
+
+	// RegistrationTTL is how long the registration lives in Redis before expiring.
+	RegistrationTTL = 30 * time.Second
+
+	// RegistrationRefresh is how often we refresh the registration.
+	RegistrationRefresh = 20 * time.Second
+
+	// DefaultPort is the default HTTP listen port.
+	DefaultPort = "8082"
+
+	// DefaultIntegrationURL is the default internal URL for this service.
+	DefaultIntegrationURL = "http://localhost:8082"
+)
+
+// registrationPayload is the JSON structure stored in Redis for service discovery.
 type registrationPayload struct {
 	Name         string              `json:"name"`
 	DisplayName  string              `json:"display_name"`
@@ -34,43 +52,35 @@ type registrationRoute struct {
 	Auth   bool   `json:"auth"`
 }
 
-const (
-	registrationKey = "integration:sports"
-	registrationTTL = 30 * time.Second
-	heartbeatTick   = 20 * time.Second
-)
-
 // =============================================================================
 // Main
 // =============================================================================
 
 func main() {
-	// Load .env if present (optional, for local dev)
+	// Load .env (optional — don't fatal if missing)
 	_ = godotenv.Load()
 
-	ctx := context.Background()
-
 	// -------------------------------------------------------------------------
-	// PostgreSQL
+	// Connect to PostgreSQL
 	// -------------------------------------------------------------------------
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
 		log.Fatal("[Sports] DATABASE_URL is required")
 	}
 
-	pool, err := pgxpool.New(ctx, dbURL)
+	pool, err := pgxpool.New(context.Background(), dbURL)
 	if err != nil {
 		log.Fatalf("[Sports] Failed to connect to PostgreSQL: %v", err)
 	}
 	defer pool.Close()
 
-	if err := pool.Ping(ctx); err != nil {
+	if err := pool.Ping(context.Background()); err != nil {
 		log.Fatalf("[Sports] PostgreSQL ping failed: %v", err)
 	}
 	log.Println("[Sports] Connected to PostgreSQL")
 
 	// -------------------------------------------------------------------------
-	// Redis
+	// Connect to Redis
 	// -------------------------------------------------------------------------
 	redisURL := os.Getenv("REDIS_URL")
 	if redisURL == "" {
@@ -83,17 +93,80 @@ func main() {
 	}
 
 	rdb := redis.NewClient(opts)
-	if err := rdb.Ping(ctx).Err(); err != nil {
+	defer rdb.Close()
+
+	if err := rdb.Ping(context.Background()).Err(); err != nil {
 		log.Fatalf("[Sports] Redis ping failed: %v", err)
 	}
 	log.Println("[Sports] Connected to Redis")
 
 	// -------------------------------------------------------------------------
-	// Self-Registration
+	// Start Redis self-registration heartbeat
 	// -------------------------------------------------------------------------
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go startRegistration(ctx, rdb)
+
+	// -------------------------------------------------------------------------
+	// Fiber HTTP Server
+	// -------------------------------------------------------------------------
+	app := &App{db: pool, rdb: rdb}
+
+	fiberApp := fiber.New(fiber.Config{
+		AppName:               "Scrollr Sports API",
+		DisableStartupMessage: false,
+	})
+
+	// Internal routes (called by core gateway only)
+	fiberApp.Post("/internal/cdc", app.handleInternalCDC)
+	fiberApp.Get("/internal/dashboard", app.handleInternalDashboard)
+	fiberApp.Get("/internal/health", app.handleInternalHealth)
+
+	// Public routes (proxied by core gateway)
+	fiberApp.Get("/sports", app.getSports)
+	fiberApp.Get("/sports/health", app.healthHandler)
+
+	// -------------------------------------------------------------------------
+	// Start server with graceful shutdown
+	// -------------------------------------------------------------------------
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = DefaultPort
+	}
+
+	go func() {
+		if err := fiberApp.Listen(":" + port); err != nil {
+			log.Fatalf("[Sports] Server failed: %v", err)
+		}
+	}()
+
+	log.Printf("[Sports] Sports API listening on port %s", port)
+
+	// Wait for interrupt signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Println("[Sports] Shutting down Sports API...")
+	cancel()
+
+	// Deregister from Redis on shutdown
+	rdb.Del(context.Background(), RegistrationKey)
+	log.Println("[Sports] Removed registration from Redis")
+
+	if err := fiberApp.Shutdown(); err != nil {
+		log.Printf("[Sports] Fiber shutdown error: %v", err)
+	}
+}
+
+// startRegistration registers this service in Redis with a TTL and refreshes
+// the registration on a ticker. This allows the core gateway to discover
+// available integration services.
+func startRegistration(ctx context.Context, rdb *redis.Client) {
 	integrationURL := os.Getenv("INTEGRATION_URL")
 	if integrationURL == "" {
-		integrationURL = "http://localhost:8082"
+		integrationURL = DefaultIntegrationURL
 	}
 
 	payload := registrationPayload{
@@ -108,53 +181,30 @@ func main() {
 		},
 	}
 
-	regJSON, err := json.Marshal(payload)
+	data, err := json.Marshal(payload)
 	if err != nil {
 		log.Fatalf("[Sports] Failed to marshal registration payload: %v", err)
 	}
 
-	// Initial registration
-	if err := rdb.Set(ctx, registrationKey, regJSON, registrationTTL).Err(); err != nil {
-		log.Fatalf("[Sports] Failed to register in Redis: %v", err)
+	// Register immediately on startup
+	if err := rdb.Set(ctx, RegistrationKey, data, RegistrationTTL).Err(); err != nil {
+		log.Printf("[Sports] Initial registration failed: %v", err)
+	} else {
+		log.Printf("[Sports] Registered as %s (TTL %s)", RegistrationKey, RegistrationTTL)
 	}
-	log.Printf("[Sports] Registered as %s (TTL %s)", registrationKey, registrationTTL)
 
-	// Heartbeat goroutine — refresh registration before TTL expires
-	go func() {
-		ticker := time.NewTicker(heartbeatTick)
-		defer ticker.Stop()
-		for range ticker.C {
-			if err := rdb.Set(context.Background(), registrationKey, regJSON, registrationTTL).Err(); err != nil {
+	ticker := time.NewTicker(RegistrationRefresh)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("[Sports] Stopping registration heartbeat")
+			return
+		case <-ticker.C:
+			if err := rdb.Set(ctx, RegistrationKey, data, RegistrationTTL).Err(); err != nil {
 				log.Printf("[Sports] Registration heartbeat failed: %v", err)
 			}
 		}
-	}()
-
-	// -------------------------------------------------------------------------
-	// Fiber HTTP Server
-	// -------------------------------------------------------------------------
-	app := &App{db: pool, rdb: rdb}
-
-	fiberApp := fiber.New(fiber.Config{
-		DisableStartupMessage: true,
-	})
-
-	// Public routes (proxied by core gateway)
-	fiberApp.Get("/sports", app.getSports)
-	fiberApp.Get("/sports/health", app.healthHandler)
-
-	// Internal routes (called by core gateway)
-	fiberApp.Post("/internal/cdc", app.handleInternalCDC)
-	fiberApp.Get("/internal/dashboard", app.handleInternalDashboard)
-	fiberApp.Get("/internal/health", app.handleInternalHealth)
-
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8082"
-	}
-
-	log.Printf("[Sports] Starting server on :%s", port)
-	if err := fiberApp.Listen(":" + port); err != nil {
-		log.Fatalf("[Sports] Server failed: %v", err)
 	}
 }

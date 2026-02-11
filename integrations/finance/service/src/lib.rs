@@ -36,10 +36,15 @@ pub async fn start_finance_services(pool: Arc<PgPool>, health_state: Arc<Mutex<F
     initialize_symbols(state.clone()).await;
     update_all_previous_closes(state.clone()).await;
 
-    let should_reconnect = true;
-    while should_reconnect {
-        connect(state.subscriptions.clone(), state.api_key.clone(), state.client.clone(), pool.clone(), health_state.clone()).await;
-        error!("Lost websocket, attempting reconnect in 5 minutes...");
+    loop {
+        match connect(state.subscriptions.clone(), state.api_key.clone(), state.client.clone(), pool.clone(), health_state.clone()).await {
+            Ok(()) => {
+                error!("WebSocket disconnected, attempting reconnect in 5 minutes...");
+            }
+            Err(e) => {
+                error!("WebSocket connection failed: {}, retrying in 5 minutes...", e);
+            }
+        }
         sleep(Duration::from_secs(300)).await;
     }
 }

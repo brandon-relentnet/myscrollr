@@ -39,8 +39,9 @@ func (s *Server) Setup() {
 	s.setupMiddleware()
 	s.setupRoutes()
 
-	// Setup proxy routes from discovered integrations
-	SetupProxyRoutes(s.App)
+	// Setup dynamic catch-all proxy for integration routes.
+	// MUST be last — Fiber matches in registration order, so core routes take priority.
+	SetupDynamicProxy(s.App)
 }
 
 // setupMiddleware attaches logging, security headers, CORS, and rate limiting.
@@ -81,19 +82,12 @@ func (s *Server) setupMiddleware() {
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
 	}))
 
-	// Build rate-limit-exempt paths from discovered integrations
-	exemptPaths := map[string]bool{
+	// Core paths always exempt from rate limiting
+	coreExemptPaths := map[string]bool{
 		"/health":          true,
 		"/events":          true,
 		"/webhooks/sequin": true,
 		"/integrations":    true,
-	}
-	for _, intg := range GetAllIntegrations() {
-		for _, route := range intg.Routes {
-			if !route.Auth {
-				exemptPaths[route.Path] = true
-			}
-		}
 	}
 
 	s.App.Use(limiter.New(limiter.Config{
@@ -103,7 +97,20 @@ func (s *Server) setupMiddleware() {
 			return c.IP()
 		},
 		Next: func(c *fiber.Ctx) bool {
-			return exemptPaths[c.Path()]
+			path := c.Path()
+			// Always exempt core paths
+			if coreExemptPaths[path] {
+				return true
+			}
+			// Dynamically check integration routes (handles late-discovered integrations)
+			for _, entry := range GetIntegrationRoutes() {
+				if !entry.Route.Auth {
+					if _, ok := matchRoute(entry.Route.Path, path); ok {
+						return true
+					}
+				}
+			}
+			return false
 		},
 	}))
 }

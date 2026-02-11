@@ -40,17 +40,24 @@ var globalDiscovery = &Discovery{
 // StartDiscovery performs an initial synchronous scan to discover integrations,
 // then starts a background loop to refresh every 10 seconds.
 // The initial scan blocks so that proxy routes can be set up with known integrations.
-func StartDiscovery() {
+// The background loop respects the provided context for graceful shutdown.
+func StartDiscovery(ctx context.Context) {
 	globalDiscovery.refresh()
-	go globalDiscovery.run()
+	go globalDiscovery.run(ctx)
 }
 
-func (d *Discovery) run() {
+func (d *Discovery) run(ctx context.Context) {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		d.refresh()
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("[Discovery] Shutting down discovery loop")
+			return
+		case <-ticker.C:
+			d.refresh()
+		}
 	}
 }
 

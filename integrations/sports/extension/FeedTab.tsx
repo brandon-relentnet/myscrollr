@@ -11,6 +11,16 @@ function getInitialGames(config: Record<string, unknown>): Game[] {
   return items ?? [];
 }
 
+import type { IntegrationManifest } from '~/integrations/types';
+
+export const sportsIntegration: IntegrationManifest = {
+  id: 'sports',
+  name: 'Sports',
+  tabLabel: 'Sports',
+  tier: 'official',
+  FeedTab: SportsFeedTab,
+};
+
 export default function SportsFeedTab({ mode, streamConfig }: FeedTabProps) {
   const initialItems = useMemo(() => getInitialGames(streamConfig), [streamConfig]);
 
