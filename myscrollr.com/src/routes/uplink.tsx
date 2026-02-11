@@ -436,7 +436,7 @@ function UplinkPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-80px' }}
+            viewport={{ once: true, margin: '-20%' }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="mb-10"
           >
@@ -451,7 +451,7 @@ function UplinkPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-80px' }}
+            viewport={{ once: true, margin: '-20%' }}
             transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
             className="relative overflow-hidden rounded-sm border border-base-300/60 bg-base-200/40 backdrop-blur-sm"
           >
@@ -480,7 +480,7 @@ function UplinkPage() {
                 key={row.label}
                 initial={{ opacity: 0, x: -10 }}
                 whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
+                viewport={{ once: true, margin: '-20%' }}
                 transition={{ delay: i * 0.04, duration: 0.4, ease: 'easeOut' }}
                 className={`grid grid-cols-3 ${i < COMPARISON.length - 1 ? 'border-b border-base-300/30' : ''} group hover:bg-base-200/30 transition-colors`}
               >
@@ -527,7 +527,7 @@ function UplinkPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-80px' }}
+            viewport={{ once: true, margin: '-20%' }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="mb-10"
           >
@@ -545,7 +545,7 @@ function UplinkPage() {
                 key={feature.title}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
+                viewport={{ once: true, margin: '-20%' }}
                 transition={{ delay: i * 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                 whileHover={{ y: -3, transition: { type: 'tween', duration: 0.2 } }}
                 className="group bg-base-200/50 border border-base-300/50 rounded-sm p-6 hover:border-primary/20 transition-colors relative overflow-hidden"
@@ -580,7 +580,7 @@ function UplinkPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-80px' }}
+            viewport={{ once: true, margin: '-20%' }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="mb-10"
           >
@@ -597,7 +597,7 @@ function UplinkPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, margin: '-20%' }}
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
               whileHover={{ y: -3, transition: { type: 'tween', duration: 0.2 } }}
               className="group bg-base-200/40 border border-base-300/50 rounded-sm p-7 hover:border-base-300 transition-colors relative overflow-hidden"
@@ -644,7 +644,7 @@ function UplinkPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, margin: '-20%' }}
               transition={{ delay: 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
               whileHover={{ y: -4, transition: { type: 'tween', duration: 0.2 } }}
               className="group relative rounded-sm overflow-hidden"
@@ -710,7 +710,7 @@ function UplinkPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, margin: '-20%' }}
               transition={{ delay: 0.16, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
               whileHover={{ y: -3, transition: { type: 'tween', duration: 0.2 } }}
               className="group bg-base-200/40 border border-base-300/50 rounded-sm p-7 hover:border-warning/20 transition-colors relative overflow-hidden"
@@ -761,7 +761,7 @@ function UplinkPage() {
                       className="h-full rounded-full bg-gradient-to-r from-warning/60 to-primary/60"
                       initial={{ width: 0 }}
                       whileInView={{ width: '100%' }}
-                      viewport={{ once: true }}
+                      viewport={{ once: true, margin: '-20%' }}
                       transition={{ duration: 1.5, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
                     />
                   </div>
@@ -781,7 +781,7 @@ function UplinkPage() {
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, margin: '-20%' }}
             transition={{ delay: 0.3 }}
             className="mt-8 text-center"
           >
@@ -799,7 +799,7 @@ function UplinkPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-80px' }}
+            viewport={{ once: true, margin: '-20%' }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           >
             <TerminalBlock />
@@ -813,7 +813,7 @@ function UplinkPage() {
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-80px' }}
+            viewport={{ once: true, margin: '-20%' }}
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
             className="relative overflow-hidden rounded-sm bg-base-200/40 border border-base-300/50 backdrop-blur-sm"
           >
@@ -846,7 +846,7 @@ function UplinkPage() {
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
+                viewport={{ once: true, margin: '-20%' }}
                 className="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-sm bg-primary/8 border border-primary/15"
               >
                 <span className="relative flex h-1.5 w-1.5">
@@ -861,7 +861,7 @@ function UplinkPage() {
               <motion.h2
                 initial={{ opacity: 0, y: 15 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
+                viewport={{ once: true, margin: '-20%' }}
                 transition={{ delay: 0.1, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight uppercase mb-6 leading-[0.95]"
               >
@@ -876,7 +876,7 @@ function UplinkPage() {
               <motion.p
                 initial={{ opacity: 0, y: 15 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
+                viewport={{ once: true, margin: '-20%' }}
                 transition={{ delay: 0.2, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                 className="text-sm text-base-content/35 leading-relaxed mb-10 font-mono max-w-lg mx-auto"
               >
@@ -887,7 +887,7 @@ function UplinkPage() {
               <motion.div
                 initial={{ opacity: 0, y: 15 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
+                viewport={{ once: true, margin: '-20%' }}
                 transition={{ delay: 0.3, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                 className="flex flex-wrap items-center justify-center gap-3"
               >
