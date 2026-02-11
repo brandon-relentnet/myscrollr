@@ -3,7 +3,7 @@ import { usePageMeta } from '@/lib/usePageMeta'
 import { HeroSection } from '@/components/landing/HeroSection'
 import { HowItWorks } from '@/components/landing/HowItWorks'
 import { StreamsShowcase } from '@/components/landing/StreamsShowcase'
-import { AboutPreview } from '@/components/landing/AboutPreview'
+import { CommunitySection } from '@/components/landing/CommunitySection'
 import { CallToAction } from '@/components/landing/CallToAction'
 
 export const Route = createFileRoute('/')({
@@ -25,7 +25,7 @@ function HomePage() {
 
       <StreamsShowcase />
 
-      <AboutPreview />
+      <CommunitySection />
 
       <CallToAction />
     </main>
