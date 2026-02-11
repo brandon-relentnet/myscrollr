@@ -260,9 +260,9 @@ export default function Footer() {
                 href={social.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                whileHover={{ scale: 1.1, y: -2 }}
+                whileHover={{ scale: 1.1, y: -2, transition: { type: 'tween', duration: 0.2 } }}
                 whileTap={{ scale: 0.95 }}
-                className="flex items-center justify-center w-10 h-10 rounded-sm bg-base-200/50 border border-base-300/30 text-base-content/40 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer"
+                className="flex items-center justify-center w-10 h-10 rounded-sm bg-base-200/50 border border-base-300/30 text-base-content/40 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors cursor-pointer"
                 aria-label={social.label}
               >
                 <social.icon size={16} />

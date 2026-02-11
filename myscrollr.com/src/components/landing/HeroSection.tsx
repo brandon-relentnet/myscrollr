@@ -153,9 +153,9 @@ export function HeroSection() {
                 <InstallButton />
                 <motion.button
                   type="button"
-                  whileHover={{ y: 2 }}
+                  whileHover={{ y: 2, transition: { type: 'tween', duration: 0.2 } }}
                   whileTap={{ y: 0 }}
-                  className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-sm border border-base-300 bg-base-200/50 px-6 py-3 text-sm font-bold uppercase tracking-wider text-base-content hover:bg-base-300 transition-all backdrop-blur-sm"
+                  className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-sm border border-base-300 bg-base-200/50 px-6 py-3 text-sm font-bold uppercase tracking-wider text-base-content hover:bg-base-300 transition-colors backdrop-blur-sm"
                   onClick={() => scrollToSection('welcome')}
                 >
                   How It Works
@@ -234,15 +234,13 @@ export function HeroSection() {
             </p>
 
             <div className="flex flex-wrap gap-3 mt-8 justify-center lg:justify-start items-center">
-              <motion.button
+              <button
                 type="button"
-                whileHover={{ y: 2 }}
-                whileTap={{ y: 0 }}
                 className="btn-pulse rounded-sm text-sm shadow-lg cursor-pointer"
                 onClick={() => scrollToSection('scroll-highlight')}
               >
                 See Features
-              </motion.button>
+              </button>
               <a
                 href="https://chromewebstore.google.com/detail/scrollr/pjeafpgbpfbcaddipkcbacohhbfakclb"
                 target="_blank"

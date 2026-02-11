@@ -108,7 +108,7 @@ export function FeaturesGrid() {
               y: -4,
               transition: { duration: 0.2 },
             }}
-            className="group relative p-8 rounded-sm bg-base-200/60 backdrop-blur-xl border border-base-300/50 hover:border-primary/30 transition-all duration-300"
+            className="group relative p-8 rounded-sm bg-base-200/60 backdrop-blur-xl border border-base-300/50 hover:border-primary/30 transition-colors duration-300"
           >
             {/* Card-specific ambient glow */}
             <div
