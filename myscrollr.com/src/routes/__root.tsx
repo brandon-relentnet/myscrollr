@@ -1,8 +1,4 @@
-import {
-  Outlet,
-  ScrollRestoration,
-  createRootRoute,
-} from '@tanstack/react-router'
+import { Outlet, createRootRoute } from '@tanstack/react-router'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { CommandBackground } from '@/components/CommandBackground'
@@ -10,8 +6,6 @@ import { CommandBackground } from '@/components/CommandBackground'
 export const Route = createRootRoute({
   component: () => (
     <div className="min-h-screen relative">
-      <ScrollRestoration />
-
       {/* Particle Background */}
       <CommandBackground />
 
