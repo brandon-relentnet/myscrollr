@@ -2,6 +2,7 @@ use axum::{routing::get, Router, Json, extract::State};
 use dotenv::dotenv;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tokio_util::sync::CancellationToken;
 use sports_service::{start_sports_service, SportsHealth, log::init_async_logger, database::initialize_pool};
 
 #[derive(Clone)]
@@ -30,14 +31,26 @@ async fn main() {
     };
     let health = Arc::new(Mutex::new(SportsHealth::new()));
 
+    // Cancellation token for coordinated shutdown
+    let cancel = CancellationToken::new();
+
     // Start the background service (Periodic ingest)
     let pool_clone = pool.clone();
     let health_clone = health.clone();
+    let cancel_clone = cancel.clone();
     tokio::spawn(async move {
         println!("Starting periodic sports ingest loop (1 minute interval)...");
         loop {
-            start_sports_service(pool_clone.clone(), health_clone.clone()).await;
-            tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+            tokio::select! {
+                _ = cancel_clone.cancelled() => {
+                    println!("Sports ingest loop shutting down...");
+                    break;
+                }
+                _ = async {
+                    start_sports_service(pool_clone.clone(), health_clone.clone()).await;
+                    tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+                } => {}
+            }
         }
     });
 
@@ -53,7 +66,38 @@ async fn main() {
     let addr = format!("0.0.0.0:{}", port);
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     println!("Sports Service listening on {}", addr);
-    axum::serve(listener, app).await.unwrap();
+
+    let cancel_for_shutdown = cancel.clone();
+    axum::serve(listener, app)
+        .with_graceful_shutdown(async move {
+            shutdown_signal().await;
+            println!("Sports Service received shutdown signal");
+            cancel_for_shutdown.cancel();
+        })
+        .await
+        .unwrap();
+
+    println!("Sports Service shut down gracefully");
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c().await.expect("failed to install Ctrl+C handler");
+    };
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install SIGTERM handler")
+            .recv()
+            .await;
+    };
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
 }
 
 async fn health_handler(State(state): State<AppState>) -> Json<SportsHealth> {

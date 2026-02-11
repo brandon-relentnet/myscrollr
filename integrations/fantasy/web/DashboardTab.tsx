@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ChevronDown,
   Ghost,
@@ -6,17 +6,29 @@ import {
   Unlink,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import type { YahooState } from '@/hooks/useRealtime'
 import type { IntegrationManifest, DashboardTabProps } from '@/integrations/types'
 import { StreamHeader } from '@/integrations/shared'
+import { API_BASE, authenticatedFetch } from '@/api/client'
 
-/** Extra props specific to the Fantasy integration */
-export interface FantasyExtraProps {
-  yahoo: YahooState
-  yahooStatus: { connected: boolean; synced: boolean }
-  yahooPending?: boolean
-  onYahooConnect?: () => void
-  onYahooDisconnect?: () => void
+// ── Yahoo Data Types ──────────────────────────────────────────────
+
+interface YahooLeagueRecord {
+  league_key: string
+  guid: string
+  name: string
+  game_code: string
+  season: string
+  data: any
+}
+
+interface YahooStandingsRecord {
+  league_key: string
+  data: any
+}
+
+interface YahooState {
+  leagues: Record<string, YahooLeagueRecord>
+  standings: Record<string, YahooStandingsRecord>
 }
 
 const GAME_CODE_LABELS: Record<string, string> = {
@@ -30,24 +42,161 @@ const LEAGUES_PER_PAGE = 5
 
 function FantasyDashboardTab({
   stream,
+  getToken,
   onToggle,
   onDelete,
-  extraProps,
 }: DashboardTabProps) {
-  const {
-    yahoo,
-    yahooStatus,
-    yahooPending,
-    onYahooConnect,
-    onYahooDisconnect,
-  } = (extraProps ?? {}) as unknown as FantasyExtraProps
+  // ── Yahoo State (self-contained) ────────────────────────────────
+  const [yahoo, setYahoo] = useState<YahooState>({ leagues: {}, standings: {} })
+  const [yahooStatus, setYahooStatus] = useState<{
+    connected: boolean
+    synced: boolean
+  }>({ connected: false, synced: false })
+  const [yahooPending, setYahooPending] = useState(false)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const [filter, setFilter] = useState<'active' | 'finished'>('active')
   const [leagueVisibleCount, setLeagueVisibleCount] = useState(LEAGUES_PER_PAGE)
 
-  const allLeagues = Object.values(yahoo?.leagues ?? {})
+  // ── Fetch Yahoo Data ────────────────────────────────────────────
+
+  const fetchYahooData = useCallback(async (): Promise<boolean> => {
+    try {
+      const [statusData, leaguesData] = await Promise.all([
+        authenticatedFetch<{ connected: boolean; synced: boolean }>(
+          '/users/me/yahoo-status',
+          {},
+          getToken,
+        ).catch(() => null),
+        authenticatedFetch<{
+          leagues?: Array<any>
+          standings?: Record<string, any>
+        }>('/users/me/yahoo-leagues', {}, getToken).catch(() => null),
+      ])
+
+      if (statusData) {
+        setYahooStatus(statusData)
+      }
+
+      if (leaguesData) {
+        const leagues: Record<string, YahooLeagueRecord> = {}
+        const standings: Record<string, YahooStandingsRecord> = {}
+        for (const league of leaguesData.leagues || []) {
+          leagues[league.league_key] = league
+        }
+        for (const [key, val] of Object.entries(leaguesData.standings || {})) {
+          standings[key] = { league_key: key, data: val }
+        }
+        setYahoo({ leagues, standings })
+
+        if (Object.keys(leagues).length > 0) {
+          setYahooPending(false)
+          return true
+        }
+      }
+    } catch {
+      // Silently fail
+    }
+    return false
+  }, [getToken])
+
+  // ── Sync Polling ────────────────────────────────────────────────
+
+  const startSyncPolling = useCallback(async () => {
+    setYahooPending(true)
+    if (pollRef.current) clearInterval(pollRef.current)
+    pollRef.current = null
+
+    const found = await fetchYahooData()
+    if (found) {
+      setYahooPending(false)
+      return
+    }
+
+    let elapsed = 0
+    pollRef.current = setInterval(async () => {
+      elapsed += 5000
+      const found = await fetchYahooData()
+      if (found || elapsed >= 180000) {
+        if (pollRef.current) clearInterval(pollRef.current)
+        pollRef.current = null
+        setYahooPending(false)
+      }
+    }, 5000)
+  }, [fetchYahooData])
+
+  // ── Initial Fetch + Cleanup ─────────────────────────────────────
+
+  useEffect(() => {
+    fetchYahooData()
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+    }
+  }, [fetchYahooData])
+
+  // ── Listen for Yahoo auth popup completion ──────────────────────
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'yahoo-auth-complete') {
+        startSyncPolling()
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [startSyncPolling])
+
+  // ── Yahoo Connect / Disconnect ──────────────────────────────────
+
+  const handleYahooConnect = useCallback(async () => {
+    const token = await getToken()
+    if (!token) return
+
+    // Decode JWT to get the sub claim for the OAuth start URL
+    let sub: string | undefined
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]))
+      sub = payload.sub
+    } catch {
+      // Fallback: try without sub (server may reject)
+    }
+    if (!sub) return
+
+    const popup = window.open(
+      `${API_BASE}/yahoo/start?logto_sub=${sub}`,
+      'yahoo-auth',
+      'width=600,height=700',
+    )
+
+    if (popup) {
+      const checkClosed = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkClosed)
+          startSyncPolling()
+        }
+      }, 500)
+    }
+  }, [getToken, startSyncPolling])
+
+  const handleYahooDisconnect = useCallback(async () => {
+    try {
+      await authenticatedFetch(
+        '/users/me/yahoo',
+        { method: 'DELETE' },
+        getToken,
+      )
+      setYahooStatus({ connected: false, synced: false })
+      setYahoo({ leagues: {}, standings: {} })
+    } catch {
+      // Silently fail
+    }
+  }, [getToken])
+
+  // ── Derived Data ────────────────────────────────────────────────
+
+  const allLeagues = Object.values(yahoo.leagues)
     .map((league) => {
-      const standings = yahoo?.standings?.[league.league_key]
+      const standings = yahoo.standings[league.league_key]
       return {
         league_key: league.league_key,
         name: league.name,
@@ -84,7 +233,7 @@ function FantasyDashboardTab({
       />
 
       {/* Yahoo Connection Status */}
-      {yahooStatus?.connected && (
+      {yahooStatus.connected && (
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1.5 px-2 py-1 rounded bg-primary/10 border border-primary/20">
             <span
@@ -107,7 +256,7 @@ function FantasyDashboardTab({
       )}
 
       {/* Not Connected */}
-      {!yahooStatus?.connected && !yahooPending && (
+      {!yahooStatus.connected && !yahooPending && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -124,7 +273,7 @@ function FantasyDashboardTab({
             </p>
           </div>
           <motion.button
-            onClick={onYahooConnect}
+            onClick={handleYahooConnect}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="inline-flex items-center gap-2 btn btn-primary btn-sm"
@@ -137,7 +286,7 @@ function FantasyDashboardTab({
 
       {/* Syncing / Waiting state */}
       {(yahooPending ||
-        (yahooStatus?.connected && allLeagues.length === 0)) && (
+        (yahooStatus.connected && allLeagues.length === 0)) && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -164,10 +313,10 @@ function FantasyDashboardTab({
           </div>
           <div className="space-y-2">
             <p className="text-sm font-bold uppercase text-primary/70">
-              {yahooStatus?.connected ? 'Syncing Leagues' : 'Connecting Yahoo'}
+              {yahooStatus.connected ? 'Syncing Leagues' : 'Connecting Yahoo'}
             </p>
             <p className="text-xs text-base-content/30 max-w-xs mx-auto text-center">
-              {yahooStatus?.synced
+              {yahooStatus.synced
                 ? 'Your account is synced. League data will appear here shortly.'
                 : 'Fetching your fantasy data from Yahoo. This usually takes under two minutes.'}
             </p>
@@ -300,10 +449,10 @@ function FantasyDashboardTab({
       )}
 
       {/* Account Actions */}
-      {yahooStatus?.connected && (
+      {yahooStatus.connected && (
         <div className="flex gap-3">
           <motion.button
-            onClick={onYahooConnect}
+            onClick={handleYahooConnect}
             whileHover={{ scale: 1.01 }}
             className="flex-1 p-4 rounded-lg border border-dashed border-base-300/50 text-base-content/40 hover:text-primary hover:border-primary/30 transition-all flex items-center justify-center gap-2"
           >
@@ -313,7 +462,7 @@ function FantasyDashboardTab({
             </span>
           </motion.button>
           <motion.button
-            onClick={onYahooDisconnect}
+            onClick={handleYahooDisconnect}
             whileHover={{ scale: 1.01 }}
             className="p-4 rounded-lg border border-dashed border-base-300/50 text-base-content/40 hover:text-error hover:border-error/30 transition-all flex items-center justify-center gap-2"
           >

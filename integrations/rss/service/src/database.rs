@@ -107,12 +107,14 @@ pub async fn create_tables(pool: &Arc<PgPool>) -> Result<()> {
     query(tracked_feeds_statement).execute(&mut *connection).await?;
     query(rss_items_statement).execute(&mut *connection).await?;
 
-    // Idempotent schema migrations — add health tracking columns
+    // Idempotent schema migrations
     let migrations = [
         "ALTER TABLE tracked_feeds ADD COLUMN IF NOT EXISTS consecutive_failures INT NOT NULL DEFAULT 0",
         "ALTER TABLE tracked_feeds ADD COLUMN IF NOT EXISTS last_error TEXT",
         "ALTER TABLE tracked_feeds ADD COLUMN IF NOT EXISTS last_error_at TIMESTAMPTZ",
         "ALTER TABLE tracked_feeds ADD COLUMN IF NOT EXISTS last_success_at TIMESTAMPTZ",
+        // Track who added custom feeds for authorization on delete
+        "ALTER TABLE tracked_feeds ADD COLUMN IF NOT EXISTS added_by TEXT",
     ];
     for migration in &migrations {
         query(migration).execute(&mut *connection).await?;

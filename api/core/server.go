@@ -138,14 +138,14 @@ func (s *Server) setupRoutes() {
 	// --- Protected Routes ---
 	s.App.Get("/dashboard", LogtoAuth, s.getDashboard)
 
-	// User Routes
-	s.App.Get("/users/:username", GetProfileByUsername)
+	// User Routes — specific /users/me/* paths BEFORE parameterized /users/:username
 	s.App.Get("/users/me/preferences", LogtoAuth, HandleGetPreferences)
 	s.App.Put("/users/me/preferences", LogtoAuth, HandleUpdatePreferences)
 	s.App.Get("/users/me/streams", LogtoAuth, GetStreams)
 	s.App.Post("/users/me/streams", LogtoAuth, CreateStream)
 	s.App.Put("/users/me/streams/:type", LogtoAuth, UpdateStream)
 	s.App.Delete("/users/me/streams/:type", LogtoAuth, DeleteStream)
+	s.App.Get("/users/:username", GetProfileByUsername)
 }
 
 // healthCheck returns the aggregated health status.

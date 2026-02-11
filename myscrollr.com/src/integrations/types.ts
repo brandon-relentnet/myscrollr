@@ -9,11 +9,6 @@ export interface DashboardTabProps {
   onStreamUpdate: (updated: Stream) => void
   /** SSE connection status */
   connected: boolean
-  /**
-   * Integration-specific extra props.
-   * Each integration can type-narrow this via its own interface.
-   */
-  extraProps?: Record<string, unknown>
 }
 
 /** Manifest describing a single integration */

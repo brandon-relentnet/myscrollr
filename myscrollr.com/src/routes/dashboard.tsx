@@ -21,9 +21,8 @@ import { useGetToken } from '@/hooks/useGetToken'
 import SettingsPanel from '@/components/SettingsPanel'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { pageVariants, sectionVariants } from '@/lib/animations'
-import { API_BASE, authenticatedFetch, streamsApi } from '@/api/client'
+import { streamsApi } from '@/api/client'
 import { getIntegration, getAllIntegrations } from '@/integrations/registry'
-import type { FantasyExtraProps } from '@scrollr/fantasy/web/DashboardTab'
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
@@ -52,13 +51,6 @@ function DashboardPage() {
   )
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [userClaims, setUserClaims] = useState<IdTokenClaims>()
-  const [yahooStatus, setYahooStatus] = useState<{
-    connected: boolean
-    synced: boolean
-  }>({ connected: false, synced: false })
-
-  const [yahooPending, setYahooPending] = useState(false)
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // ── Streams state ────────────────────────────────────────────────
   const [streams, setStreams] = useState<Array<Stream>>([])
@@ -73,8 +65,7 @@ function DashboardPage() {
   const getToken = useGetToken()
 
   // useRealtime must come after getToken is defined
-  const { yahoo, status, preferences, setInitialYahoo, clearYahoo } =
-    useRealtime({ getToken })
+  const { status, preferences } = useRealtime({ getToken })
 
   // ── Fetch streams ────────────────────────────────────────────────
   const fetchStreams = useCallback(async () => {
@@ -170,128 +161,14 @@ function DashboardPage() {
     }
   }
 
-  // Returns true if leagues were found
-  const fetchYahooData = async (): Promise<boolean> => {
-    try {
-      const [statusData, leaguesData] = await Promise.all([
-        authenticatedFetch<{ connected: boolean; synced: boolean }>(
-          '/users/me/yahoo-status',
-          {},
-          getToken,
-        ).catch(() => null),
-        authenticatedFetch<{
-          leagues?: Array<any>
-          standings?: Record<string, any>
-        }>('/users/me/yahoo-leagues', {}, getToken).catch(() => null),
-      ])
-
-      if (statusData) {
-        setYahooStatus(statusData)
-      }
-
-      if (leaguesData) {
-        const leagues: Record<string, any> = {}
-        const standings: Record<string, any> = {}
-        for (const league of leaguesData.leagues || []) {
-          leagues[league.league_key] = league
-        }
-        for (const [key, val] of Object.entries(leaguesData.standings || {})) {
-          standings[key] = { league_key: key, data: val }
-        }
-        setInitialYahoo({ leagues, standings, matchups: {} })
-
-        if (Object.keys(leagues).length > 0) {
-          setYahooPending(false)
-          return true
-        }
-      }
-    } catch {
-      // Silently fail
-    }
-    return false
-  }
-
-  // Start polling every 5s until leagues appear, then stop
-  const startSyncPolling = async () => {
-    setYahooPending(true)
-    if (pollRef.current) clearInterval(pollRef.current)
-    pollRef.current = null
-
-    const found = await fetchYahooData()
-    if (found) {
-      setYahooPending(false)
-      return
-    }
-
-    let elapsed = 0
-    pollRef.current = setInterval(async () => {
-      elapsed += 5000
-      const found = await fetchYahooData()
-      if (found || elapsed >= 180000) {
-        if (pollRef.current) clearInterval(pollRef.current)
-        pollRef.current = null
-        setYahooPending(false)
-      }
-    }, 5000)
-  }
-
   useEffect(() => {
     if (isAuthenticated) {
       getIdTokenClaims().then((claims) => {
         setUserClaims(claims)
       })
-      fetchYahooData()
       fetchStreams()
     }
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current)
-    }
   }, [isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Listen for Yahoo auth popup completion
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'yahoo-auth-complete') {
-        startSyncPolling()
-      }
-    }
-    window.addEventListener('message', handleMessage)
-    return () => window.removeEventListener('message', handleMessage)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleYahooConnect = async () => {
-    const sub = userClaims?.sub || (await getIdTokenClaims())?.sub
-    if (!sub) return
-
-    const popup = window.open(
-      `${API_BASE}/yahoo/start?logto_sub=${sub}`,
-      'yahoo-auth',
-      'width=600,height=700',
-    )
-
-    if (popup) {
-      const checkClosed = setInterval(() => {
-        if (popup.closed) {
-          clearInterval(checkClosed)
-          startSyncPolling()
-        }
-      }, 500)
-    }
-  }
-
-  const handleYahooDisconnect = async () => {
-    try {
-      await authenticatedFetch(
-        '/users/me/yahoo',
-        { method: 'DELETE' },
-        getToken,
-      )
-      setYahooStatus({ connected: false, synced: false })
-      clearYahoo()
-    } catch {
-      // Silently fail
-    }
-  }
 
   // ── Loading / auth guards ────────────────────────────────────────
   if (isLoading && !hasLoaded.current) {
@@ -319,20 +196,6 @@ function DashboardPage() {
   const availableTypes = allIntegrations.filter(
     (m) => !existingTypes.has(m.id as StreamType),
   )
-
-  // ── Build extra props for the active integration ─────────────────
-  const buildExtraProps = (): Record<string, unknown> | undefined => {
-    if (activeModule === 'fantasy') {
-      return {
-        yahoo,
-        yahooStatus,
-        yahooPending,
-        onYahooConnect: handleYahooConnect,
-        onYahooDisconnect: handleYahooDisconnect,
-      } satisfies FantasyExtraProps as unknown as Record<string, unknown>
-    }
-    return undefined
-  }
 
   // ── Look up active integration from registry ─────────────────────
   const activeIntegration = getIntegration(activeModule)
@@ -550,7 +413,6 @@ function DashboardPage() {
                       ),
                     )
                   }
-                  extraProps={buildExtraProps()}
                 />
               )}
 

@@ -83,36 +83,21 @@ func (a *App) YahooCallback(c *fiber.Ctx) error {
 			HTTPOnly: true, Secure: true, SameSite: "Strict", Path: "/",
 		})
 
-		// Fetch GUID and persist for Active Sync
-		go func(accessToken, refreshToken string, sub string) {
-			client := &http.Client{Timeout: YahooAPITimeout}
-			req, _ := http.NewRequest("GET", "https://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1", nil)
-			req.Header.Set("Authorization", "Bearer "+accessToken)
-			resp, err := client.Do(req)
-			if err == nil {
-				defer resp.Body.Close()
-				body, _ := io.ReadAll(resp.Body)
-				var content FantasyContent
-				if err := xml.Unmarshal(body, &content); err == nil && content.Users != nil && len(content.Users.User) > 0 {
-					guid := content.Users.User[0].Guid
-					if guid != "" {
-						// Use the passed sub if available, otherwise use guid
-						logtoIdentifier := sub
-						if logtoIdentifier == "" {
-							logtoIdentifier = guid // Fallback to Yahoo GUID
-						}
-						a.UpsertYahooUser(guid, logtoIdentifier, refreshToken)
-						log.Printf("[Yahoo Sync] Registered user %s (Logto: %s) for active sync", guid, logtoIdentifier)
-
-						// Hash token for Redis key
-						h := sha256.Sum256([]byte(accessToken))
-						tokenHash := hex.EncodeToString(h[:])
-
-						a.rdb.Set(context.Background(), RedisTokenToGuidPrefix+tokenHash, guid, TokenToGuidTTL)
-					}
-				}
-			}
-		}(token.AccessToken, token.RefreshToken, logtoSub)
+		// Fetch GUID and persist for Active Sync — synchronous so we can
+		// return an error page if linking fails (instead of silently swallowing).
+		linkErr := a.fetchAndLinkYahooUser(token.AccessToken, token.RefreshToken, logtoSub)
+		if linkErr != nil {
+			log.Printf("[Yahoo Callback] Failed to link Yahoo account: %v", linkErr)
+			// Still show the user a meaningful error instead of a false success
+			frontendURL := ValidateURL(os.Getenv("FRONTEND_URL"), DefaultFrontendURL)
+			html := fmt.Sprintf(`<!doctype html><html><head><meta charset="utf-8"><title>Auth Error</title></head>
+				<body style="font-family: ui-sans-serif, system-ui;">
+				<p>Yahoo authentication succeeded, but we failed to link your account. Please try again.</p>
+				<script>setTimeout(function(){ window.close(); }, %d);</script>
+				</body></html>`, AuthPopupCloseDelayMs)
+			c.Set("Content-Type", "text/html")
+			return c.Status(fiber.StatusInternalServerError).SendString(html)
+		}
 	}
 
 	frontendURL := ValidateURL(os.Getenv("FRONTEND_URL"), DefaultFrontendURL)
@@ -125,6 +110,66 @@ func (a *App) YahooCallback(c *fiber.Ctx) error {
             <p>Authentication successful. You can close this window.</p></body></html>`, frontendURL, AuthPopupCloseDelayMs)
 	c.Set("Content-Type", "text/html")
 	return c.Status(fiber.StatusOK).SendString(html)
+}
+
+// =============================================================================
+// Yahoo Account Linking
+// =============================================================================
+
+// fetchAndLinkYahooUser fetches the Yahoo GUID for the given access token,
+// upserts the yahoo_users row, and caches the token→GUID mapping in Redis.
+// Returns an error if any step fails (instead of silently swallowing).
+func (a *App) fetchAndLinkYahooUser(accessToken, refreshToken, logtoSub string) error {
+	client := &http.Client{Timeout: YahooAPITimeout}
+	req, err := http.NewRequest("GET", "https://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1", nil)
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("fetch Yahoo user: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("read response body: %w", err)
+	}
+
+	var content FantasyContent
+	if err := xml.Unmarshal(body, &content); err != nil {
+		return fmt.Errorf("unmarshal Yahoo response: %w", err)
+	}
+
+	if content.Users == nil || len(content.Users.User) == 0 {
+		return fmt.Errorf("no Yahoo user found in response")
+	}
+
+	guid := content.Users.User[0].Guid
+	if guid == "" {
+		return fmt.Errorf("empty GUID in Yahoo response")
+	}
+
+	// Use the logto_sub if available, otherwise fall back to Yahoo GUID
+	logtoIdentifier := logtoSub
+	if logtoIdentifier == "" {
+		logtoIdentifier = guid
+	}
+
+	if err := a.UpsertYahooUser(guid, logtoIdentifier, refreshToken); err != nil {
+		return fmt.Errorf("upsert Yahoo user: %w", err)
+	}
+
+	log.Printf("[Yahoo Sync] Registered user %s (Logto: %s) for active sync", guid, logtoIdentifier)
+
+	// Cache token→GUID mapping in Redis
+	h := sha256.Sum256([]byte(accessToken))
+	tokenHash := hex.EncodeToString(h[:])
+	a.rdb.Set(context.Background(), RedisTokenToGuidPrefix+tokenHash, guid, TokenToGuidTTL)
+
+	return nil
 }
 
 // =============================================================================

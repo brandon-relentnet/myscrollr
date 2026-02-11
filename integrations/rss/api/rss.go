@@ -93,7 +93,16 @@ func (a *App) getRSSFeedCatalog(c *fiber.Ctx) error {
 
 // deleteCustomFeed removes a non-default feed from the catalog.
 // The core gateway sets X-User-Sub header for authenticated requests.
+// Only the user who added the feed (added_by) can delete it.
 func (a *App) deleteCustomFeed(c *fiber.Ctx) error {
+	userSub := c.Get("X-User-Sub")
+	if userSub == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Status: "unauthorized",
+			Error:  "Authentication required",
+		})
+	}
+
 	var req struct {
 		URL string `json:"url"`
 	}
@@ -105,8 +114,9 @@ func (a *App) deleteCustomFeed(c *fiber.Ctx) error {
 	}
 
 	var isDefault bool
+	var addedBy *string
 	err := a.db.QueryRow(context.Background(),
-		"SELECT is_default FROM tracked_feeds WHERE url = $1", req.URL).Scan(&isDefault)
+		"SELECT is_default, added_by FROM tracked_feeds WHERE url = $1", req.URL).Scan(&isDefault, &addedBy)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
 			Status: "error",
@@ -117,6 +127,13 @@ func (a *App) deleteCustomFeed(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusForbidden).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Cannot delete a built-in default feed",
+		})
+	}
+	// Only the user who added the feed can delete it
+	if addedBy != nil && *addedBy != userSub {
+		return c.Status(fiber.StatusForbidden).JSON(ErrorResponse{
+			Status: "error",
+			Error:  "You can only delete feeds that you added",
 		})
 	}
 
@@ -133,6 +150,7 @@ func (a *App) deleteCustomFeed(c *fiber.Ctx) error {
 	a.rdb.Del(context.Background(), RedisRSSSubscribersPrefix+req.URL)
 	a.rdb.Del(context.Background(), CacheKeyRSSCatalog)
 
+	log.Printf("[RSS] User %s deleted custom feed: %s", userSub, req.URL)
 	return c.JSON(fiber.Map{"status": "ok", "message": "Custom feed deleted"})
 }
 
@@ -249,7 +267,7 @@ func (a *App) handleStreamLifecycle(c *fiber.Ctx) error {
 
 	switch req.Event {
 	case "created":
-		a.onStreamCreated(req.Config)
+		a.onStreamCreated(req.User, req.Config)
 
 	case "updated":
 		a.onStreamUpdated(ctx, req.User, req.OldConfig, req.Config)
@@ -269,8 +287,8 @@ func (a *App) handleStreamLifecycle(c *fiber.Ctx) error {
 
 // onStreamCreated syncs feeds to tracked_feeds table when a new RSS stream
 // is created. Runs in a goroutine so it doesn't block the response.
-func (a *App) onStreamCreated(config map[string]interface{}) {
-	go a.syncRSSFeedsToTracked(config)
+func (a *App) onStreamCreated(userSub string, config map[string]interface{}) {
+	go a.syncRSSFeedsToTracked(userSub, config)
 }
 
 // onStreamUpdated handles feed list changes when a stream is updated.
@@ -299,7 +317,7 @@ func (a *App) onStreamUpdated(ctx context.Context, userSub string, oldConfig, ne
 	a.rdb.Del(ctx, CacheKeyRSSPrefix+userSub)
 
 	// Sync new feed URLs to tracked_feeds
-	go a.syncRSSFeedsToTracked(newConfig)
+	go a.syncRSSFeedsToTracked(userSub, newConfig)
 }
 
 // onStreamDeleted invalidates per-user cache when a stream is removed.
@@ -375,7 +393,7 @@ func (a *App) queryRSSItems(feedURLs []string) []RssItem {
 // syncRSSFeedsToTracked upserts feed URLs from a user's RSS stream config
 // into the tracked_feeds table so the RSS ingestion service discovers and
 // fetches them.
-func (a *App) syncRSSFeedsToTracked(config map[string]interface{}) {
+func (a *App) syncRSSFeedsToTracked(userSub string, config map[string]interface{}) {
 	configJSON, err := json.Marshal(config)
 	if err != nil {
 		log.Printf("[RSS] Failed to marshal config for sync: %v", err)
@@ -403,10 +421,10 @@ func (a *App) syncRSSFeedsToTracked(config map[string]interface{}) {
 		}
 
 		_, err := a.db.Exec(context.Background(), `
-			INSERT INTO tracked_feeds (url, name, category, is_default, is_enabled)
-			VALUES ($1, $2, 'Custom', false, true)
+			INSERT INTO tracked_feeds (url, name, category, is_default, is_enabled, added_by)
+			VALUES ($1, $2, 'Custom', false, true, $3)
 			ON CONFLICT (url) DO NOTHING
-		`, feed.URL, name)
+		`, feed.URL, name, userSub)
 		if err != nil {
 			log.Printf("[RSS] Failed to sync feed %s to tracked_feeds: %v", feed.URL, err)
 		}

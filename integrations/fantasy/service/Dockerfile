@@ -24,18 +24,6 @@ RUN cargo build --release --bin yahoo_service
 FROM debian:trixie-slim
 WORKDIR /app
 
-# Define Build Args
-ARG YAHOO_CALLBACK_URL
-ARG DOMAIN_NAME
-ARG CONTACT_EMAIL
-ARG ACME_ENABLED
-
-# Set Envs for Runtime
-ENV YAHOO_CALLBACK_URL=$YAHOO_CALLBACK_URL
-ENV DOMAIN_NAME=$DOMAIN_NAME
-ENV CONTACT_EMAIL=$CONTACT_EMAIL
-ENV ACME_ENABLED=$ACME_ENABLED
-
 RUN apt-get update && apt-get install -y ca-certificates libssl-dev curl && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/target/release/yahoo_service .
 

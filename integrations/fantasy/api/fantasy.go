@@ -31,7 +31,6 @@ const (
 	RedisYahooStateLogtoPrefix   = "yahoo_state_logto:"
 	RedisTokenToGuidPrefix       = "token_to_guid:"
 	TokenToGuidTTL               = 24 * time.Hour
-	TokenCacheKeyPrefixLen       = 10
 	RedisScanCount               = 100
 	OAuthStateExpiry             = 10 * time.Minute
 	OAuthStateBytes              = 16

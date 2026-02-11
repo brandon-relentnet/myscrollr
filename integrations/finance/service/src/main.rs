@@ -2,6 +2,7 @@ use axum::{routing::get, Router, Json, extract::State};
 use dotenv::dotenv;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tokio_util::sync::CancellationToken;
 use finance_service::{start_finance_services, types::FinanceHealth, log::init_async_logger, database::initialize_pool};
 
 #[derive(Clone)]
@@ -12,8 +13,6 @@ struct AppState {
 #[tokio::main]
 async fn main() {
     dotenv().ok();
-    // Use a unique log directory or stdout? The existing code uses ./logs.
-    // In Docker, stdout is better, but let's stick to existing pattern or just ignore if it fails.
     let _ = init_async_logger("./logs");
 
     let mut retries = 5;
@@ -32,11 +31,20 @@ async fn main() {
     };
     let health = Arc::new(Mutex::new(FinanceHealth::new()));
 
+    // Cancellation token for coordinated shutdown
+    let cancel = CancellationToken::new();
+
     // Start the background service (WebSocket)
     let pool_clone = pool.clone();
     let health_clone = health.clone();
+    let cancel_clone = cancel.clone();
     tokio::spawn(async move {
-        start_finance_services(pool_clone, health_clone).await;
+        tokio::select! {
+            _ = start_finance_services(pool_clone, health_clone) => {},
+            _ = cancel_clone.cancelled() => {
+                println!("Finance background service shutting down...");
+            }
+        }
     });
 
     let state = AppState {
@@ -51,7 +59,38 @@ async fn main() {
     let addr = format!("0.0.0.0:{}", port);
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     println!("Finance Service listening on {}", addr);
-    axum::serve(listener, app).await.unwrap();
+
+    let cancel_for_shutdown = cancel.clone();
+    axum::serve(listener, app)
+        .with_graceful_shutdown(async move {
+            shutdown_signal().await;
+            println!("Finance Service received shutdown signal");
+            cancel_for_shutdown.cancel();
+        })
+        .await
+        .unwrap();
+
+    println!("Finance Service shut down gracefully");
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c().await.expect("failed to install Ctrl+C handler");
+    };
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install SIGTERM handler")
+            .recv()
+            .await;
+    };
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
 }
 
 async fn health_handler(State(state): State<AppState>) -> Json<FinanceHealth> {

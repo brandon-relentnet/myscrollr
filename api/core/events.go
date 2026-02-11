@@ -30,14 +30,26 @@ var globalHub = &Hub{
 	clients:    make(map[string][]*Client),
 }
 
-// Run starts the hub's main loop.
-func (h *Hub) Run() {
-	go h.listenToRedis()
+// Run starts the hub's main loop. It exits when ctx is cancelled.
+func (h *Hub) Run(ctx context.Context) {
+	go h.listenToRedis(ctx)
 
 	log.Println("[EventHub] Hub started (per-user mode)")
 
 	for {
 		select {
+		case <-ctx.Done():
+			log.Println("[EventHub] Hub shutting down")
+			h.lock.Lock()
+			for _, clients := range h.clients {
+				for _, c := range clients {
+					close(c.Ch)
+				}
+			}
+			h.clients = make(map[string][]*Client)
+			h.lock.Unlock()
+			return
+
 		case client := <-h.register:
 			h.lock.Lock()
 			h.clients[client.UserID] = append(h.clients[client.UserID], client)
@@ -62,9 +74,8 @@ func (h *Hub) Run() {
 }
 
 // listenToRedis subscribes to all per-user channels via pattern and routes
-// messages to the correct SSE clients.
-func (h *Hub) listenToRedis() {
-	ctx := context.Background()
+// messages to the correct SSE clients. Exits when ctx is cancelled.
+func (h *Hub) listenToRedis(ctx context.Context) {
 	pubsub := PSubscribe(ctx, RedisEventsUserPrefix+"*")
 	defer pubsub.Close()
 
@@ -72,39 +83,46 @@ func (h *Hub) listenToRedis() {
 
 	log.Printf("[EventHub] Listening to Redis pattern: %s*", RedisEventsUserPrefix)
 
-	for msg := range ch {
-		parts := strings.SplitN(msg.Channel, RedisEventsUserPrefix, 2)
-		if len(parts) != 2 || parts[1] == "" {
-			continue
-		}
-		userID := parts[1]
-
-		h.lock.Lock()
-		clients := h.clients[userID]
-		for _, client := range clients {
-			select {
-			case client.Ch <- []byte(msg.Payload):
-			default:
-				// Client buffer full, skip this message to avoid blocking
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("[EventHub] Redis listener shutting down")
+			return
+		case msg, ok := <-ch:
+			if !ok {
+				return
 			}
+			parts := strings.SplitN(msg.Channel, RedisEventsUserPrefix, 2)
+			if len(parts) != 2 || parts[1] == "" {
+				continue
+			}
+			userID := parts[1]
+
+			h.lock.Lock()
+			clients := h.clients[userID]
+			for _, client := range clients {
+				select {
+				case client.Ch <- []byte(msg.Payload):
+				default:
+					// Client buffer full, skip this message to avoid blocking
+				}
+			}
+			h.lock.Unlock()
 		}
-		h.lock.Unlock()
 	}
 }
 
-// InitHub starts the global event hub.
-func InitHub() {
-	go globalHub.Run()
+// InitHub starts the global event hub with context for graceful shutdown.
+func InitHub(ctx context.Context) {
+	go globalHub.Run(ctx)
 }
 
 // SendToUser publishes a pre-serialised message to a specific user's Redis channel.
 // This is called by the webhook handler after routing CDC events.
 func SendToUser(sub string, msg []byte) {
-	go func() {
-		if err := PublishRaw(RedisEventsUserPrefix+sub, msg); err != nil {
-			log.Printf("[EventHub] Failed to send to user %s: %v", sub, err)
-		}
-	}()
+	if err := PublishRaw(RedisEventsUserPrefix+sub, msg); err != nil {
+		log.Printf("[EventHub] Failed to send to user %s: %v", sub, err)
+	}
 }
 
 // RegisterClient adds an authenticated client to the hub.

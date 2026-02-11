@@ -39,10 +39,9 @@ func InitAuth() {
 		RefreshUnknownKID: true,
 	})
 	if err != nil {
-		log.Printf("Failed to create JWKS from resource at %s: %s", jwksURL, err.Error())
-	} else {
-		log.Printf("Successfully initialized Logto JWKS from %s", jwksURL)
+		log.Fatalf("Failed to create JWKS from resource at %s: %s", jwksURL, err.Error())
 	}
+	log.Printf("Successfully initialized Logto JWKS from %s", jwksURL)
 }
 
 // ValidateToken validates a JWT token string and returns the subject (user ID)

@@ -1,6 +1,8 @@
 package core
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -106,13 +108,17 @@ func proxyRequest(c *fiber.Ctx, intg *IntegrationInfo, route IntegrationRoute, t
 		targetURL += "?" + queryString
 	}
 
-	// Create the proxy request
+	// Create the proxy request with an independent context (Fiber's c.Context()
+	// is pooled and may be recycled before the proxy completes).
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+	defer cancel()
+
 	var bodyReader io.Reader
 	if len(c.Body()) > 0 {
-		bodyReader = strings.NewReader(string(c.Body()))
+		bodyReader = bytes.NewReader(c.Body())
 	}
 
-	req, err := http.NewRequestWithContext(c.Context(), c.Method(), targetURL, bodyReader)
+	req, err := http.NewRequestWithContext(ctx, c.Method(), targetURL, bodyReader)
 	if err != nil {
 		log.Printf("[Proxy] Failed to create request for %s: %v", targetURL, err)
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
@@ -165,12 +171,14 @@ func proxyRequest(c *fiber.Ctx, intg *IntegrationInfo, route IntegrationRoute, t
 		})
 	}
 
-	// Forward response headers
+	// Forward response headers.
+	// Set-Cookie needs Header.Add() because c.Set() overwrites previous values
+	// and integrations (e.g. Yahoo OAuth) may send multiple Set-Cookie headers.
 	for key, values := range resp.Header {
 		for _, value := range values {
-			// Forward Set-Cookie and Location headers (important for OAuth)
-			if strings.EqualFold(key, "Set-Cookie") ||
-				strings.EqualFold(key, "Location") ||
+			if strings.EqualFold(key, "Set-Cookie") {
+				c.Response().Header.Add(key, value)
+			} else if strings.EqualFold(key, "Location") ||
 				strings.EqualFold(key, "Content-Type") {
 				c.Set(key, value)
 			}

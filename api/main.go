@@ -35,7 +35,7 @@ func main() {
 	core.ConnectRedis()
 	defer core.Rdb.Close()
 
-	core.InitHub()
+	core.InitHub(ctx)
 	core.InitAuth()
 
 	// Start Redis-based integration discovery (ctx-aware)

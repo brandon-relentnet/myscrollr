@@ -18,12 +18,6 @@ RUN cargo build --release --bin sports_service
 FROM debian:trixie-slim
 WORKDIR /app
 
-# Define Build Args
-ARG DATABASE_URL
-
-# Set Envs for Runtime
-ENV DATABASE_URL=$DATABASE_URL
-
 RUN apt-get update && apt-get install -y ca-certificates libssl-dev curl && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/target/release/sports_service .
 COPY --from=builder /app/configs ./configs

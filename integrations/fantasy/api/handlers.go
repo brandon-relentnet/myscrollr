@@ -136,7 +136,8 @@ func (a *App) YahooLeagues(c *fiber.Ctx) error {
 	if guid == "" {
 		token := a.getToken(c)
 		if token != "" {
-			cacheKey = CacheKeyYahooLeaguesPrefix + token[:min(TokenCacheKeyPrefixLen, len(token))]
+			h := sha256.Sum256([]byte(token))
+			cacheKey = CacheKeyYahooLeaguesPrefix + "tok:" + hex.EncodeToString(h[:])
 		}
 	}
 
