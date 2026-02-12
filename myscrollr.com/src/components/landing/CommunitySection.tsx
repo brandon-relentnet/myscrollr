@@ -68,13 +68,13 @@ export function CommunitySection() {
           className="text-center mb-14 flex flex-col items-center"
         >
           <div className="flex items-center justify-center gap-3 mb-8">
-            <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-sm border border-primary/15 tracking-wider">
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-sm border border-primary/15 uppercase tracking-[0.2em]">
               <Users size={12} />
               Open Ecosystem
             </span>
           </div>
 
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-5">
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight uppercase leading-[0.95] mb-5">
             Built{' '}
             <span className="text-gradient-primary">Together</span>
           </h2>
@@ -109,7 +109,7 @@ export function CommunitySection() {
                   <Code2 size={18} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold tracking-wide text-base-content">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-base-content">
                     Create an Integration
                   </h3>
                   <p className="text-[10px] font-mono text-primary/50 uppercase tracking-wider">
@@ -211,7 +211,7 @@ export function CommunitySection() {
                   <Lightbulb size={18} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold tracking-wide text-base-content whitespace-nowrap">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-base-content whitespace-nowrap">
                     Suggest an Integration
                   </h3>
                   <p className="text-[10px] font-mono text-info/50 uppercase tracking-wider">

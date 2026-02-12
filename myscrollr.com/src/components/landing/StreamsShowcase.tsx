@@ -273,7 +273,7 @@ export function StreamsShowcase() {
           className="mb-14 text-center flex flex-col items-center"
         >
           <div className="flex items-center justify-center gap-3 mb-8">
-            <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-sm border border-primary/15 tracking-wider">
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-sm border border-primary/15 uppercase tracking-[0.2em]">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
@@ -282,7 +282,7 @@ export function StreamsShowcase() {
             </span>
           </div>
 
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-5">
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight uppercase leading-[0.95] mb-5">
             See It <span className="text-gradient-primary">In Action</span>
           </h2>
           <p className="text-sm text-base-content/40 max-w-xl mx-auto leading-relaxed">
@@ -335,7 +335,7 @@ export function StreamsShowcase() {
                 </div>
 
                 {/* Content */}
-                <h3 className="text-sm font-bold tracking-wide text-base-content mb-1">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-base-content mb-1">
                   {integration.name}
                 </h3>
                 <p
@@ -373,7 +373,7 @@ export function StreamsShowcase() {
         >
           <Link
             to="/integrations"
-            className="group inline-flex items-center gap-2 text-sm font-bold tracking-wide text-base-content/40 hover:text-primary transition-colors"
+            className="group inline-flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-base-content/40 hover:text-primary transition-colors"
           >
             Browse All Integrations
             <ArrowRight
