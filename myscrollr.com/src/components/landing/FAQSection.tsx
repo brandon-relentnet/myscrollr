@@ -44,7 +44,7 @@ export function FAQSection() {
 
   return (
     <section className="container py-24 lg:py-32 relative">
-      <div className="relative z-10">
+      <div className="relative">
         {/* Section Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

@@ -28,7 +28,7 @@ export function CallToAction() {
           }}
         />
 
-        <div className="relative z-10 flex flex-col gap-10 lg:flex-row lg:items-center lg:justify-between">
+        <div className="relative flex flex-col gap-10 lg:flex-row lg:items-center lg:justify-between">
           {/* Content */}
           <div className="max-w-xl mx-auto lg:mx-0 text-center lg:text-left">
             <motion.span

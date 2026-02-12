@@ -74,7 +74,7 @@ export function HowItWorks() {
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-5 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-5 relative">
           {steps.map((step, i) => (
             <motion.div
               key={step.number}

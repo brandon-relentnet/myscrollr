@@ -12,8 +12,8 @@ export function HeroSection() {
   }
 
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden pt-20 z-10">
-      <div className="container relative z-10">
+    <section className="relative min-h-screen flex items-center overflow-hidden pt-20">
+      <div className="container relative">
         <div className="flex lg:flex-row flex-col justify-center items-center gap-12 lg:gap-20">
           {/* Abstract Pulse Visualization */}
           <motion.div
