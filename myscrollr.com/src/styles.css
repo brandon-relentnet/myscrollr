@@ -95,7 +95,7 @@ body {
   line-height: 1.6;
   color: var(--color-base-content);
   background-color: var(--color-base-100);
-  overflow-x: hidden;
+  overflow-x: clip;
   min-height: 100dvh;
 
   /* Primary Background - Deep Space */
@@ -343,7 +343,8 @@ pre,
 @layer components {
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-sm px-5 py-2.5 text-sm font-bold duration-200 cursor-pointer active:scale-97 disabled:opacity-50 disabled:pointer-events-none uppercase tracking-wider;
-    transition-property: color, background-color, border-color, opacity, transform, box-shadow;
+    transition-property:
+      color, background-color, border-color, opacity, transform, box-shadow;
     transition-timing-function: var(--default-transition-timing-function);
     font-family: var(--font-display);
   }

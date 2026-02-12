@@ -60,7 +60,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-base-100/80 backdrop-blur-2xl border-b border-base-300/50 px-5 py-4 h-20">
+      <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-base-100/80 backdrop-blur-2xl border-b border-base-300/50 px-5 py-4 h-20 will-change-transform">
         {/* Brand */}
         <div className="flex items-center gap-4">
           <Link to="/" className="flex items-center gap-3 group">
