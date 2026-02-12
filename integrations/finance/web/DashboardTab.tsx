@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Search, TrendingUp, X, Zap } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, TrendingUp, X, Zap } from 'lucide-react'
 import { motion } from 'motion/react'
 import { streamsApi } from '@/api/client'
 import type { IntegrationManifest, DashboardTabProps } from '@/integrations/types'
@@ -16,6 +16,8 @@ interface TrackedSymbol {
 interface FinanceStreamConfig {
   symbols?: string[]
 }
+
+const SYMBOLS_PER_PAGE = 24
 
 // ── API helper ──────────────────────────────────────────────────
 
@@ -44,6 +46,7 @@ function FinanceDashboardTab({
   const [catalogError, setCatalogError] = useState(false)
   const [activeCategory, setActiveCategory] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -82,6 +85,15 @@ function FinanceDashboardTab({
       s.name.toLowerCase().includes(searchQuery.toLowerCase())
     return matchesCategory && matchesSearch
   })
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredCatalog.length / SYMBOLS_PER_PAGE),
+  )
+  const paginatedCatalog = filteredCatalog.slice(
+    (currentPage - 1) * SYMBOLS_PER_PAGE,
+    currentPage * SYMBOLS_PER_PAGE,
+  )
 
   // Helpers to look up name from catalog
   const nameMap = new Map(catalog.map((s) => [s.symbol, s.name]))
@@ -251,7 +263,10 @@ function FinanceDashboardTab({
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value)
+              setCurrentPage(1)
+            }}
             placeholder="Search by ticker or company name..."
             className="w-full pl-9 pr-3 py-2 rounded-lg bg-base-200/50 border border-base-300/40 text-xs font-mono text-base-content/60 placeholder:text-base-content/20 focus:outline-none focus:border-primary/30 transition-colors"
           />
@@ -267,6 +282,7 @@ function FinanceDashboardTab({
                 key={cat}
                 onClick={() => {
                   setActiveCategory(cat)
+                  setCurrentPage(1)
                 }}
                 className={`relative px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-colors ${
                   activeCategory === cat
@@ -326,8 +342,9 @@ function FinanceDashboardTab({
             </motion.span>
           </div>
         ) : (
+          <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {filteredCatalog.map((entry) => {
+            {paginatedCatalog.map((entry) => {
               const isAdded = symbolSet.has(entry.symbol)
               return (
                 <motion.div
@@ -367,6 +384,34 @@ function FinanceDashboardTab({
               )
             })}
           </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-2">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded border border-base-300/40 text-[10px] font-bold uppercase tracking-widest text-base-content/40 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-20 disabled:pointer-events-none"
+                >
+                  <ChevronLeft size={12} />
+                  Prev
+                </button>
+                <span className="text-[10px] font-mono text-base-content/30">
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                  }
+                  disabled={currentPage === totalPages}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded border border-base-300/40 text-[10px] font-bold uppercase tracking-widest text-base-content/40 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-20 disabled:pointer-events-none"
+                >
+                  Next
+                  <ChevronRight size={12} />
+                </button>
+              </div>
+            )}
+          </>
         )}
 
         {!catalogLoading && catalogError && catalog.length === 0 && (

@@ -151,13 +151,13 @@ function TickerBar() {
   const allChips = [...TICKER_CHIPS, ...TICKER_CHIPS]
 
   return (
-    <div className="relative overflow-hidden bg-base-100/95 border-t border-base-300/40">
+    <div className="group/ticker relative overflow-hidden bg-base-100/95 border-t border-base-300/40">
       {/* Left/Right fade masks */}
       <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-base-100/95 to-transparent z-10 pointer-events-none" />
       <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-base-100/95 to-transparent z-10 pointer-events-none" />
 
-      {/* Scrolling track */}
-      <div className="flex items-center gap-3 py-2.5 px-4 animate-ticker-scroll">
+      {/* Scrolling track — pauses on hover */}
+      <div className="flex items-center gap-3 py-2.5 px-4 animate-ticker-scroll group-hover/ticker:[animation-play-state:paused]">
         {allChips.map((chip, i) => {
           const colors = chipColorMap[chip.color]
           return (
