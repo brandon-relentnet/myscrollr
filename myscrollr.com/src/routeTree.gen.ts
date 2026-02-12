@@ -11,10 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UplinkRouteImport } from './routes/uplink'
 import { Route as StatusRouteImport } from './routes/status'
+import { Route as OnboardRouteImport } from './routes/onboard'
 import { Route as LegalRouteImport } from './routes/legal'
 import { Route as IntegrationsRouteImport } from './routes/integrations'
+import { Route as DiscoverRouteImport } from './routes/discover'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CallbackRouteImport } from './routes/callback'
+import { Route as ArchitectureRouteImport } from './routes/architecture'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
@@ -29,6 +32,11 @@ const StatusRoute = StatusRouteImport.update({
   path: '/status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OnboardRoute = OnboardRouteImport.update({
+  id: '/onboard',
+  path: '/onboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LegalRoute = LegalRouteImport.update({
   id: '/legal',
   path: '/legal',
@@ -39,6 +47,11 @@ const IntegrationsRoute = IntegrationsRouteImport.update({
   path: '/integrations',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DiscoverRoute = DiscoverRouteImport.update({
+  id: '/discover',
+  path: '/discover',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -47,6 +60,11 @@ const DashboardRoute = DashboardRouteImport.update({
 const CallbackRoute = CallbackRouteImport.update({
   id: '/callback',
   path: '/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArchitectureRoute = ArchitectureRouteImport.update({
+  id: '/architecture',
+  path: '/architecture',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AccountRoute = AccountRouteImport.update({
@@ -68,10 +86,13 @@ const UUsernameRoute = UUsernameRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/architecture': typeof ArchitectureRoute
   '/callback': typeof CallbackRoute
   '/dashboard': typeof DashboardRoute
+  '/discover': typeof DiscoverRoute
   '/integrations': typeof IntegrationsRoute
   '/legal': typeof LegalRoute
+  '/onboard': typeof OnboardRoute
   '/status': typeof StatusRoute
   '/uplink': typeof UplinkRoute
   '/u/$username': typeof UUsernameRoute
@@ -79,10 +100,13 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/architecture': typeof ArchitectureRoute
   '/callback': typeof CallbackRoute
   '/dashboard': typeof DashboardRoute
+  '/discover': typeof DiscoverRoute
   '/integrations': typeof IntegrationsRoute
   '/legal': typeof LegalRoute
+  '/onboard': typeof OnboardRoute
   '/status': typeof StatusRoute
   '/uplink': typeof UplinkRoute
   '/u/$username': typeof UUsernameRoute
@@ -91,10 +115,13 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/architecture': typeof ArchitectureRoute
   '/callback': typeof CallbackRoute
   '/dashboard': typeof DashboardRoute
+  '/discover': typeof DiscoverRoute
   '/integrations': typeof IntegrationsRoute
   '/legal': typeof LegalRoute
+  '/onboard': typeof OnboardRoute
   '/status': typeof StatusRoute
   '/uplink': typeof UplinkRoute
   '/u/$username': typeof UUsernameRoute
@@ -104,10 +131,13 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/account'
+    | '/architecture'
     | '/callback'
     | '/dashboard'
+    | '/discover'
     | '/integrations'
     | '/legal'
+    | '/onboard'
     | '/status'
     | '/uplink'
     | '/u/$username'
@@ -115,10 +145,13 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/account'
+    | '/architecture'
     | '/callback'
     | '/dashboard'
+    | '/discover'
     | '/integrations'
     | '/legal'
+    | '/onboard'
     | '/status'
     | '/uplink'
     | '/u/$username'
@@ -126,10 +159,13 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/account'
+    | '/architecture'
     | '/callback'
     | '/dashboard'
+    | '/discover'
     | '/integrations'
     | '/legal'
+    | '/onboard'
     | '/status'
     | '/uplink'
     | '/u/$username'
@@ -138,10 +174,13 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRoute
+  ArchitectureRoute: typeof ArchitectureRoute
   CallbackRoute: typeof CallbackRoute
   DashboardRoute: typeof DashboardRoute
+  DiscoverRoute: typeof DiscoverRoute
   IntegrationsRoute: typeof IntegrationsRoute
   LegalRoute: typeof LegalRoute
+  OnboardRoute: typeof OnboardRoute
   StatusRoute: typeof StatusRoute
   UplinkRoute: typeof UplinkRoute
   UUsernameRoute: typeof UUsernameRoute
@@ -163,6 +202,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/onboard': {
+      id: '/onboard'
+      path: '/onboard'
+      fullPath: '/onboard'
+      preLoaderRoute: typeof OnboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/legal': {
       id: '/legal'
       path: '/legal'
@@ -177,6 +223,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IntegrationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/discover': {
+      id: '/discover'
+      path: '/discover'
+      fullPath: '/discover'
+      preLoaderRoute: typeof DiscoverRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -189,6 +242,13 @@ declare module '@tanstack/react-router' {
       path: '/callback'
       fullPath: '/callback'
       preLoaderRoute: typeof CallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/architecture': {
+      id: '/architecture'
+      path: '/architecture'
+      fullPath: '/architecture'
+      preLoaderRoute: typeof ArchitectureRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/account': {
@@ -218,10 +278,13 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
+  ArchitectureRoute: ArchitectureRoute,
   CallbackRoute: CallbackRoute,
   DashboardRoute: DashboardRoute,
+  DiscoverRoute: DiscoverRoute,
   IntegrationsRoute: IntegrationsRoute,
   LegalRoute: LegalRoute,
+  OnboardRoute: OnboardRoute,
   StatusRoute: StatusRoute,
   UplinkRoute: UplinkRoute,
   UUsernameRoute: UUsernameRoute,

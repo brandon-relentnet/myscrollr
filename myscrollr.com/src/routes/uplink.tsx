@@ -35,6 +35,12 @@ interface ComparisonRow {
 
 const COMPARISON: ComparisonRow[] = [
   {
+    label: 'Data Delivery',
+    free: '30s polling',
+    uplink: 'Real-time',
+    upgraded: true,
+  },
+  {
     label: 'Tracked Symbols',
     free: '10 symbols',
     uplink: 'Unlimited',
@@ -65,12 +71,6 @@ const COMPARISON: ComparisonRow[] = [
     upgraded: true,
   },
   {
-    label: 'Refresh Priority',
-    free: 'Standard',
-    uplink: 'Priority',
-    upgraded: true,
-  },
-  {
     label: 'Site Filter Mode',
     free: 'Blacklist',
     uplink: 'Blacklist + Whitelist',
@@ -78,11 +78,6 @@ const COMPARISON: ComparisonRow[] = [
   },
   {
     label: 'Dashboard Access',
-    free: 'Full',
-    uplink: 'Full',
-  },
-  {
-    label: 'Real-time CDC',
     free: 'Full',
     uplink: 'Full',
   },
@@ -107,9 +102,9 @@ const FEATURES: Feature[] = [
   },
   {
     icon: <Zap size={20} />,
-    title: 'Priority Pipeline',
+    title: 'Real-time Pipeline',
     description:
-      'Your data streams get priority processing. Faster refreshes, lower latency, first in queue.',
+      'Instant data delivery via CDC push. No polling, no delays — your feed updates the moment the data changes.',
     accent: 'from-info/20 to-info/0',
   },
   {
@@ -136,9 +131,10 @@ const TERMINAL_LINES = [
   { label: 'TIER', value: 'UPLINK', valueClass: 'text-primary' },
   { label: 'STATUS', value: 'IN_DEVELOPMENT', valueClass: 'text-warning' },
   { label: 'ETA', value: 'Q3 2026', valueClass: 'text-base-content/50' },
-  { label: 'QUARTERLY', value: '$7.99/3mo', valueClass: 'text-base-content/50' },
-  { label: 'ANNUAL', value: '$24.99/yr', valueClass: 'text-base-content/50' },
-  { label: 'LIFETIME', value: '$199 (256 slots)', valueClass: 'text-base-content/50' },
+  { label: 'MONTHLY', value: '$4.99/mo', valueClass: 'text-base-content/50' },
+  { label: 'QUARTERLY', value: '$11.99/3mo', valueClass: 'text-base-content/50' },
+  { label: 'ANNUAL', value: '$39.99/yr', valueClass: 'text-base-content/50' },
+  { label: 'LIFETIME', value: '$349 (128 slots)', valueClass: 'text-base-content/50' },
   { label: 'FREE_TIER', value: 'ALWAYS_FREE', valueClass: 'text-success/70' },
   { prompt: true, text: 'scrollr uplink subscribe --notify' },
   { label: '→', value: 'Notifications not available yet. Check back soon.', valueClass: 'text-base-content/30' },
@@ -282,7 +278,7 @@ function UplinkPage() {
   usePageMeta({
     title: 'Uplink — Scrollr',
     description:
-      'Total coverage for power users. Scrollr Uplink gives you unlimited tracking, priority data, and early access to new integrations.',
+      'Total coverage for power users. Scrollr Uplink gives you unlimited tracking, real-time data delivery, and early access to new integrations.',
   })
 
   return (
@@ -389,7 +385,7 @@ function UplinkPage() {
               <span className="text-primary/30 font-mono text-sm mt-0.5 select-none shrink-0">$</span>
               <p className="text-base text-base-content/40 font-mono leading-relaxed">
                 Scrollr is free and open source. Uplink is for power users who want
-                more — every symbol, every feed, every league, and priority data
+                more — every symbol, every feed, every league, and real-time data
                 delivery.
               </p>
             </motion.div>
@@ -420,7 +416,7 @@ function UplinkPage() {
               <div className="flex items-center gap-3">
                 <span className="h-px w-6 bg-base-300/50" />
                 <span className="text-[10px] font-mono text-base-content/20 uppercase tracking-wider">
-                  Starting at $2.08/mo
+                  Starting at $3.33/mo
                 </span>
               </div>
             </motion.div>
@@ -589,54 +585,101 @@ function UplinkPage() {
               <Crown size={16} /> Pricing
             </h2>
             <p className="text-[10px] font-mono text-base-content/30">
-              No monthly billing — commit to what works for you
+              Flexible billing — pick what works for you
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-start">
-            {/* ─── Quarterly ─── */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+            {/* ─── Monthly ─── */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
               whileHover={{ y: -3, transition: { type: 'tween', duration: 0.2 } }}
-              className="group bg-base-200/40 border border-base-300/50 rounded-sm p-7 hover:border-base-300 transition-colors relative overflow-hidden"
+              className="group bg-base-200/40 border border-base-300/50 rounded-sm p-6 hover:border-base-300 transition-colors relative overflow-hidden"
             >
               <div className="absolute inset-0 bg-gradient-to-b from-base-content/[0.01] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
               <div className="relative z-10">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="h-10 w-10 rounded-sm bg-base-300/50 border border-base-300/50 flex items-center justify-center text-base-content/40">
-                    <Clock size={20} />
+                <div className="flex items-center justify-between mb-5">
+                  <div className="h-9 w-9 rounded-sm bg-base-300/50 border border-base-300/50 flex items-center justify-center text-base-content/40">
+                    <Clock size={18} />
                   </div>
                   <span className="text-[9px] font-mono text-base-content/25 uppercase tracking-widest">
-                    Entry
+                    Flexible
+                  </span>
+                </div>
+
+                <h3 className="text-sm font-bold uppercase tracking-wider text-base-content mb-1">
+                  Monthly
+                </h3>
+                <p className="text-[10px] font-mono text-base-content/25 uppercase tracking-wider mb-4">
+                  Cancel anytime
+                </p>
+
+                <div className="flex items-baseline gap-1.5 mb-1">
+                  <span className="text-3xl font-black text-base-content tracking-tight">
+                    $4.99
+                  </span>
+                  <span className="text-xs font-mono text-base-content/25">
+                    / month
+                  </span>
+                </div>
+                <p className="text-[10px] font-mono text-base-content/20 mb-5">
+                  No commitment
+                </p>
+
+                <div className="space-y-2.5">
+                  <PricingFeature>Full Uplink access</PricingFeature>
+                  <PricingFeature>Real-time data delivery</PricingFeature>
+                  <PricingFeature>All integrations maxed</PricingFeature>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* ─── Quarterly ─── */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.06, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              whileHover={{ y: -3, transition: { type: 'tween', duration: 0.2 } }}
+              className="group bg-base-200/40 border border-base-300/50 rounded-sm p-6 hover:border-info/20 transition-colors relative overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-info/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-5">
+                  <div className="h-9 w-9 rounded-sm bg-info/8 border border-info/15 flex items-center justify-center text-info/70">
+                    <Rocket size={18} />
+                  </div>
+                  <span className="text-[9px] font-mono text-info/50 uppercase tracking-widest">
+                    Save 20%
                   </span>
                 </div>
 
                 <h3 className="text-sm font-bold uppercase tracking-wider text-base-content mb-1">
                   Quarterly
                 </h3>
-                <p className="text-[10px] font-mono text-base-content/25 uppercase tracking-wider mb-5">
+                <p className="text-[10px] font-mono text-base-content/25 uppercase tracking-wider mb-4">
                   3-month access
                 </p>
 
                 <div className="flex items-baseline gap-1.5 mb-1">
-                  <span className="text-4xl font-black text-base-content tracking-tight">
-                    $7.99
+                  <span className="text-3xl font-black text-base-content tracking-tight">
+                    $11.99
                   </span>
                   <span className="text-xs font-mono text-base-content/25">
                     / 3 months
                   </span>
                 </div>
-                <p className="text-[10px] font-mono text-base-content/20 mb-6">
-                  ~$2.66/mo
+                <p className="text-[10px] font-mono text-base-content/20 mb-5">
+                  ~$4.00/mo
                 </p>
 
                 <div className="space-y-2.5">
                   <PricingFeature>Full Uplink access</PricingFeature>
+                  <PricingFeature>Real-time data delivery</PricingFeature>
                   <PricingFeature>All integrations maxed</PricingFeature>
-                  <PricingFeature>Priority data pipeline</PricingFeature>
                 </div>
               </div>
             </motion.div>
@@ -646,7 +689,7 @@ function UplinkPage() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ delay: 0.12, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
               whileHover={{ y: -4, transition: { type: 'tween', duration: 0.2 } }}
               className="group relative rounded-sm overflow-hidden"
             >
@@ -657,7 +700,7 @@ function UplinkPage() {
                 transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
               />
 
-              <div className="relative bg-base-200/80 backdrop-blur-sm p-7 border border-primary/20 rounded-sm">
+              <div className="relative bg-base-200/80 backdrop-blur-sm p-6 border border-primary/20 rounded-sm">
                 {/* Ambient gradient */}
                 <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.04] to-transparent pointer-events-none" />
 
@@ -669,39 +712,39 @@ function UplinkPage() {
                 </div>
 
                 <div className="relative z-10">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="h-10 w-10 rounded-sm bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
-                      <Star size={20} />
+                  <div className="flex items-center justify-between mb-5">
+                    <div className="h-9 w-9 rounded-sm bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+                      <Star size={18} />
                     </div>
                     <span className="text-[9px] font-mono text-primary/60 uppercase tracking-widest">
-                      Save 22%
+                      Save 33%
                     </span>
                   </div>
 
                   <h3 className="text-sm font-bold uppercase tracking-wider text-base-content mb-1">
                     Annual
                   </h3>
-                  <p className="text-[10px] font-mono text-primary/40 uppercase tracking-wider mb-5">
+                  <p className="text-[10px] font-mono text-primary/40 uppercase tracking-wider mb-4">
                     12-month access
                   </p>
 
                   <div className="flex items-baseline gap-1.5 mb-1">
-                    <span className="text-4xl font-black text-base-content tracking-tight">
-                      $24.99
+                    <span className="text-3xl font-black text-base-content tracking-tight">
+                      $39.99
                     </span>
                     <span className="text-xs font-mono text-base-content/25">
                       / year
                     </span>
                   </div>
-                  <p className="text-[10px] font-mono text-primary/40 mb-6">
-                    ~$2.08/mo
+                  <p className="text-[10px] font-mono text-primary/40 mb-5">
+                    ~$3.33/mo
                   </p>
 
                   <div className="space-y-2.5">
-                    <PricingFeature highlight>Full Uplink access</PricingFeature>
+                    <PricingFeature highlight>Real-time data delivery</PricingFeature>
                     <PricingFeature highlight>All integrations maxed</PricingFeature>
-                    <PricingFeature highlight>Priority data pipeline</PricingFeature>
-                    <PricingFeature highlight>Early access to new features</PricingFeature>
+                    <PricingFeature highlight>Early access to features</PricingFeature>
+                    <PricingFeature highlight>Priority support</PricingFeature>
                   </div>
                 </div>
               </div>
@@ -712,16 +755,16 @@ function UplinkPage() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: 0.16, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ delay: 0.18, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
               whileHover={{ y: -3, transition: { type: 'tween', duration: 0.2 } }}
-              className="group bg-base-200/40 border border-base-300/50 rounded-sm p-7 hover:border-warning/20 transition-colors relative overflow-hidden"
+              className="group bg-base-200/40 border border-base-300/50 rounded-sm p-6 hover:border-warning/20 transition-colors relative overflow-hidden"
             >
               <div className="absolute inset-0 bg-gradient-to-b from-warning/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
               <div className="relative z-10">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="h-10 w-10 rounded-sm bg-warning/8 border border-warning/15 flex items-center justify-center text-warning/70">
-                    <Sparkles size={20} />
+                <div className="flex items-center justify-between mb-5">
+                  <div className="h-9 w-9 rounded-sm bg-warning/8 border border-warning/15 flex items-center justify-center text-warning/70">
+                    <Sparkles size={18} />
                   </div>
                   <span className="text-[9px] font-mono text-warning/50 uppercase tracking-widest">
                     Limited
@@ -731,30 +774,30 @@ function UplinkPage() {
                 <h3 className="text-sm font-bold uppercase tracking-wider text-base-content mb-1">
                   Lifetime
                 </h3>
-                <p className="text-[10px] font-mono text-warning/40 uppercase tracking-wider mb-5">
+                <p className="text-[10px] font-mono text-warning/40 uppercase tracking-wider mb-4">
                   The First Byte
                 </p>
 
                 <div className="flex items-baseline gap-1.5 mb-1">
-                  <span className="text-4xl font-black text-base-content tracking-tight">
-                    $199
+                  <span className="text-3xl font-black text-base-content tracking-tight">
+                    $349
                   </span>
                   <span className="text-xs font-mono text-base-content/25">
                     / forever
                   </span>
                 </div>
-                <p className="text-[10px] font-mono text-warning/40 mb-6">
-                  Only 256 available — 0x00 to 0xFF
+                <p className="text-[10px] font-mono text-warning/40 mb-3">
+                  Only 128 available — 0x00 to 0x7F
                 </p>
 
                 {/* Slot counter */}
-                <div className="mb-6 p-3 rounded-sm bg-base-100/60 border border-base-300/30">
+                <div className="mb-5 p-3 rounded-sm bg-base-100/60 border border-base-300/30">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[9px] font-mono text-base-content/25 uppercase tracking-widest">
-                      Slots Remaining
+                      Slots
                     </span>
                     <span className="text-[9px] font-mono text-warning/50">
-                      <AnimatedNumber target={256} duration={2} /> / 256
+                      <AnimatedNumber target={128} duration={2} /> / 128
                     </span>
                   </div>
                   <div className="h-1 rounded-full bg-base-300/50 overflow-hidden">
@@ -770,9 +813,8 @@ function UplinkPage() {
 
                 <div className="space-y-2.5">
                   <PricingFeature>Everything in Annual</PricingFeature>
-                  <PricingFeature>Permanent Uplink access</PricingFeature>
+                  <PricingFeature>Permanent access</PricingFeature>
                   <PricingFeature>Founding member status</PricingFeature>
-                  <PricingFeature>Shape the roadmap</PricingFeature>
                 </div>
               </div>
             </motion.div>
@@ -881,8 +923,8 @@ function UplinkPage() {
                 transition={{ delay: 0.2, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                 className="text-sm text-base-content/35 leading-relaxed mb-10 font-mono max-w-lg mx-auto"
               >
-                The core platform stays open source with full real-time data.
-                Uplink gives power users total coverage across every integration.
+                The core platform stays open source and always free.
+                Uplink unlocks real-time delivery and total coverage across every integration.
               </motion.p>
 
               <motion.div
@@ -893,7 +935,7 @@ function UplinkPage() {
                 className="flex flex-wrap items-center justify-center gap-3"
               >
                 <span className="inline-flex items-center gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-primary/60 border border-primary/15 rounded-sm bg-primary/5">
-                  <Zap size={12} /> Starting at $2.08/mo
+                  <Zap size={12} /> Starting at $3.33/mo
                 </span>
                 <span className="inline-flex items-center gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-base-content/25 border border-base-300/30 rounded-sm">
                   <ChevronRight size={12} /> Free tier always included

@@ -481,21 +481,21 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       {
         heading: 'Pricing and Plans',
         content: [
-          'Uplink is available in three pricing tiers: Quarterly at $7.99 per quarter (billed every 3 months), Annual at $24.99 per year (billed annually, approximately 22% savings), and Lifetime at $199.00 (one-time payment, permanent access).',
+          'Uplink is available in four pricing tiers: Monthly at $4.99 per month, Quarterly at $11.99 per quarter (billed every 3 months, approximately 20% savings), Annual at $39.99 per year (billed annually, approximately 33% savings), and Lifetime at $349.00 (one-time payment, permanent access, limited to 128 slots).',
           'All prices are in US Dollars (USD). Prices may be adjusted with notice to existing subscribers. Existing subscribers will be honored at their original rate for the remainder of their current billing period.',
         ],
       },
       {
         heading: 'Billing and Renewal',
         content: [
-          'Quarterly and Annual subscriptions automatically renew at the end of each billing period unless cancelled before the renewal date. You will be charged the applicable subscription fee at the beginning of each billing period.',
+          'Monthly, Quarterly, and Annual subscriptions automatically renew at the end of each billing period unless cancelled before the renewal date. You will be charged the applicable subscription fee at the beginning of each billing period.',
           'Lifetime subscriptions are a one-time payment and do not renew. Lifetime access is valid for as long as the Scrollr platform operates.',
         ],
       },
       {
         heading: 'Cancellation',
         content: [
-          'You may cancel your Quarterly or Annual subscription at any time through your account settings. Cancellation takes effect at the end of your current billing period. You will continue to have Uplink access until the end of the period you have already paid for.',
+          'You may cancel your Monthly, Quarterly, or Annual subscription at any time through your account settings. Cancellation takes effect at the end of your current billing period. You will continue to have Uplink access until the end of the period you have already paid for.',
           'We do not offer pro-rated refunds for partial billing periods. For refund eligibility, see our Refund Policy.',
         ],
       },
