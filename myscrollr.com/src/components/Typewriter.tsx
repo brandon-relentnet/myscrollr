@@ -1,25 +1,46 @@
+import { Typewriter } from 'motion-plus/react'
 import { motion } from 'motion/react'
+import { delay, wrap } from 'motion'
+import { useState } from 'react'
 
-export default function TypewriterChangeContentExample() {
+const WORDS = [
+  'Scores',
+  'Markets',
+  'Headlines',
+  'Leagues',
+  'Feed',
+]
+
+export default function HeroTypewriter() {
+  const [index, setIndex] = useState(0)
+
   return (
     <div className="text-center lg:text-left">
-      {/* Your Feed, */}
-      <div className="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-none overflow-hidden">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3 }}
+      {/* Your [word], */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4 }}
+        className="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-none overflow-hidden"
+      >
+        <span className="text-base-content">Your </span>
+        <Typewriter
+          as="span"
+          cursorStyle={{
+            background: 'var(--color-primary)',
+            width: 3,
+            height: '1.1em',
+            marginLeft: 2,
+          }}
+          onComplete={() => {
+            delay(() => setIndex(wrap(0, WORDS.length, index + 1)), 2)
+          }}
+          className="text-gradient-primary"
         >
-          <span className="text-base-content relative inline-block">
-            Your Feed,
-            <motion.span
-              animate={{ opacity: [0.3, 1, 0.3] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className="absolute -right-4 top-1/2 -translate-y-1/2 w-2 h-8 sm:h-10 bg-primary rounded-sm"
-            />
-          </span>
-        </motion.div>
-      </div>
+          {WORDS[index]}
+        </Typewriter>
+        <span className="text-base-content">,</span>
+      </motion.div>
 
       {/* Uninterrupted. */}
       <motion.div
@@ -28,17 +49,7 @@ export default function TypewriterChangeContentExample() {
         transition={{ duration: 0.6, delay: 0.4, ease: 'easeOut' }}
         className="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-none mt-2"
       >
-        <span className="text-rainbow relative inline-block">
-          Uninterrupted.
-          <motion.span
-            animate={{
-              opacity: [0, 1, 0],
-              scale: [1, 1.2, 1],
-            }}
-            transition={{ duration: 3, repeat: Infinity }}
-            className="absolute -right-6 top-1/2 -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-linear-to-r from-primary to-info"
-          />
-        </span>
+        <span className="text-rainbow">Uninterrupted.</span>
       </motion.div>
 
       {/* Decorative underline */}
