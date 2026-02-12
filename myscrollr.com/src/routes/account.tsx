@@ -1,19 +1,23 @@
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useScrollrAuth } from '@/hooks/useScrollrAuth'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   ArrowRight,
   BarChart3,
   Globe,
   Lock,
+  Radio,
   Settings,
   ShieldCheck,
   TrendingUp,
+  Wifi,
 } from 'lucide-react'
 import { motion } from 'motion/react'
 import type { IdTokenClaims } from '@logto/react'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { pageVariants, sectionVariants } from '@/lib/animations'
+import { streamsApi } from '@/api/client'
+import { useGetToken } from '@/hooks/useGetToken'
 
 export const Route = createFileRoute('/account')({
   component: AccountHub,
@@ -23,6 +27,22 @@ function AccountHub() {
   const { isAuthenticated, isLoading, getIdTokenClaims } = useScrollrAuth()
   const [userClaims, setUserClaims] = useState<IdTokenClaims>()
   const navigate = useNavigate()
+  const getToken = useGetToken()
+
+  // ── Quick Stats state ──────────────────────────────────────────
+  const [streamCount, setStreamCount] = useState<number | null>(null)
+  const [enabledCount, setEnabledCount] = useState<number | null>(null)
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const data = await streamsApi.getAll(getToken)
+      const all = data.streams || []
+      setStreamCount(all.length)
+      setEnabledCount(all.filter((s) => s.enabled).length)
+    } catch {
+      // Silently fail — stats are non-critical
+    }
+  }, [getToken])
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -30,8 +50,9 @@ function AccountHub() {
       navigate({ to: '/' })
     } else if (isAuthenticated) {
       getIdTokenClaims().then(setUserClaims)
+      fetchStats()
     }
-  }, [isAuthenticated, isLoading, getIdTokenClaims, navigate])
+  }, [isAuthenticated, isLoading, getIdTokenClaims, navigate, fetchStats])
 
   if (isLoading) {
     return <LoadingSpinner variant="spin" label="" />
@@ -104,8 +125,8 @@ function AccountHub() {
           {/* Account Settings — opens Logto Account Center */}
           <HubCard
             title="Security Node"
-            desc="Manage identity & keys"
-            href="https://auth.myscrollr.relentnet.dev/account"
+            desc="Manage password, MFA & linked accounts"
+            href={`https://auth.myscrollr.relentnet.dev/account?${new URLSearchParams({ client_id: 'ogbulfshvf934eeli4t9u' })}`}
             icon={<Lock className="size-6" />}
             accent="secondary"
           />
@@ -140,19 +161,21 @@ function AccountHub() {
               </h3>
               <div className="grid grid-cols-2 gap-4 text-center">
                 <div className="p-4 bg-base-300/50 rounded-sm">
-                  <div className="text-2xl font-black text-base-content">
-                    12
+                  <div className="text-2xl font-black text-base-content tabular-nums">
+                    {streamCount ?? '—'}
                   </div>
-                  <div className="text-[10px] uppercase font-mono opacity-40">
-                    Active_Leagues
+                  <div className="text-[10px] uppercase font-mono opacity-40 flex items-center justify-center gap-1">
+                    <Radio size={10} />
+                    Streams
                   </div>
                 </div>
                 <div className="p-4 bg-base-300/50 rounded-sm">
-                  <div className="text-2xl font-black text-base-content">
-                    482
+                  <div className="text-2xl font-black text-base-content tabular-nums">
+                    {enabledCount ?? '—'}
                   </div>
-                  <div className="text-[10px] uppercase font-mono opacity-40">
-                    Data_Signals
+                  <div className="text-[10px] uppercase font-mono opacity-40 flex items-center justify-center gap-1">
+                    <Wifi size={10} />
+                    Active
                   </div>
                 </div>
               </div>

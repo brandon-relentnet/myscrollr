@@ -113,7 +113,7 @@ export default function Header() {
         </LayoutGroup>
 
         {/* Auth Section */}
-        <div className="hidden lg:flex items-center gap-4">
+        <div className="hidden lg:flex items-center gap-4 min-w-[280px] justify-end">
           {/* Viewer count — always visible */}
           <div
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm bg-primary/8 border border-primary/15"

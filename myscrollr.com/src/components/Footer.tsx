@@ -2,11 +2,15 @@ import { Link } from '@tanstack/react-router'
 import { motion } from 'motion/react'
 import {
   ArrowUpRight,
+  Braces,
+  Code2,
   Cpu,
   Database,
   Github,
-
+  Paintbrush,
+  Server,
   Terminal,
+  Zap,
 } from 'lucide-react'
 import ScrollrSVG from '@/components/ScrollrSVG'
 
@@ -15,9 +19,16 @@ export default function Footer() {
 
   const links = {
     product: [
-      { label: 'Features', href: '/#features' },
+      { label: 'Features', href: '/#streams' },
       { label: 'Terminal', href: '/dashboard' },
-      { label: 'Extension', href: 'https://chrome.google.com/webstore' },
+      {
+        label: 'Chrome Extension',
+        href: 'https://chrome.google.com/webstore',
+      },
+      {
+        label: 'Firefox Add-on',
+        href: 'https://addons.mozilla.org',
+      },
       { label: 'Uplink', href: '/uplink' },
     ],
     resources: [
@@ -32,7 +43,6 @@ export default function Footer() {
       { label: 'Status', href: '/status' },
     ],
     company: [
-      { label: 'About', href: '#' },
       { label: 'Terms', href: '/legal?doc=terms' },
       { label: 'Privacy', href: '/legal?doc=privacy' },
       { label: 'Legal', href: '/legal' },
@@ -46,6 +56,11 @@ export default function Footer() {
     { icon: Terminal, label: 'Rust', desc: 'Ingestion Services' },
     { icon: Cpu, label: 'Go', desc: 'API Layer' },
     { icon: Database, label: 'PostgreSQL', desc: 'Data Storage' },
+    { icon: Server, label: 'Redis', desc: 'Cache & Pub/Sub' },
+    { icon: Braces, label: 'React', desc: 'Frontend UI' },
+    { icon: Code2, label: 'TypeScript', desc: 'Type Safety' },
+    { icon: Paintbrush, label: 'Tailwind', desc: 'Styling' },
+    { icon: Zap, label: 'Vite', desc: 'Build Tool' },
   ]
 
   return (
@@ -191,11 +206,11 @@ export default function Footer() {
               <ul className="space-y-3">
                 {links.company.map((link) => (
                   <li key={link.label}>
-                    {link.href.startsWith('http') || link.href === '#' ? (
+                    {link.href.startsWith('http') ? (
                       <motion.a
                         href={link.href}
-                        target={link.href.startsWith('http') ? '_blank' : undefined}
-                        rel={link.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         whileHover={{ x: 2 }}
                         className="flex items-center gap-2 text-sm text-base-content/50 hover:text-primary transition-colors group cursor-pointer"
                       >

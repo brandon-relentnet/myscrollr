@@ -32,11 +32,40 @@ interface HealthData {
   services: Record<string, string>
 }
 
+interface IntegrationEntry {
+  name: string
+  display_name: string
+  capabilities: string[]
+}
+
 interface ViewerData {
-  viewers: number
+  count: number
 }
 
 type ServiceState = 'healthy' | 'unhealthy' | 'down' | 'unknown' | 'loading'
+
+/** Known integration metadata — used for descriptions and port display. */
+const INTEGRATION_META: Record<
+  string,
+  { description: string; port?: number }
+> = {
+  finance: {
+    description: 'Finnhub WebSocket — real-time market data',
+    port: 3001,
+  },
+  sports: {
+    description: 'ESPN API — scores polling every 60s',
+    port: 3002,
+  },
+  fantasy: {
+    description: 'Yahoo Fantasy — active user sync',
+    port: 3003,
+  },
+  rss: {
+    description: 'RSS/Atom/JSON — feed aggregation every 5 min',
+    port: 3004,
+  },
+}
 
 // --- Helpers ---
 
@@ -77,6 +106,7 @@ function StatusPage() {
   })
 
   const [health, setHealth] = useState<HealthData | null>(null)
+  const [integrations, setIntegrations] = useState<IntegrationEntry[]>([])
   const [viewers, setViewers] = useState<number | null>(null)
   const [lastChecked, setLastChecked] = useState<Date | null>(null)
   const [fetchError, setFetchError] = useState(false)
@@ -84,9 +114,10 @@ function StatusPage() {
 
   const fetchHealth = useCallback(async () => {
     try {
-      const [healthRes, viewerRes] = await Promise.allSettled([
+      const [healthRes, viewerRes, intgRes] = await Promise.allSettled([
         fetch(`${API_BASE}/health`),
         fetch(`${API_BASE}/events/count`),
+        fetch(`${API_BASE}/integrations`),
       ])
 
       if (healthRes.status === 'fulfilled' && healthRes.value.ok) {
@@ -99,7 +130,12 @@ function StatusPage() {
 
       if (viewerRes.status === 'fulfilled' && viewerRes.value.ok) {
         const data: ViewerData = await viewerRes.value.json()
-        setViewers(data.viewers)
+        setViewers(data.count)
+      }
+
+      if (intgRes.status === 'fulfilled' && intgRes.value.ok) {
+        const data: IntegrationEntry[] = await intgRes.value.json()
+        setIntegrations(data)
       }
 
       setLastChecked(new Date())
@@ -117,7 +153,7 @@ function StatusPage() {
     }
   }, [fetchHealth])
 
-  // Derive service states
+  // Derive infrastructure states
   const dbState: ServiceState = !health
     ? 'loading'
     : health.database === 'healthy'
@@ -128,15 +164,12 @@ function StatusPage() {
     : health.redis === 'healthy'
       ? 'healthy'
       : 'unhealthy'
-  const financeState: ServiceState = !health
-    ? 'loading'
-    : ((health.services.finance || 'unknown') as ServiceState)
-  const sportsState: ServiceState = !health
-    ? 'loading'
-    : ((health.services.sports || 'unknown') as ServiceState)
-  const yahooState: ServiceState = !health
-    ? 'loading'
-    : ((health.services.yahoo || 'unknown') as ServiceState)
+
+  // Derive integration service states dynamically
+  const getServiceState = (name: string): ServiceState => {
+    if (!health) return 'loading'
+    return (health.services[name] || 'unknown') as ServiceState
+  }
 
   return (
     <motion.div
@@ -208,33 +241,56 @@ function StatusPage() {
             </div>
           </motion.div>
 
-          {/* Ingestion Workers */}
+          {/* Integration Services — dynamically discovered */}
           <motion.div
             className="bg-base-200/50 border border-base-300/50 rounded-sm p-8"
             variants={itemVariants}
           >
             <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-8 flex items-center gap-2">
-              <Server size={16} /> Ingestion Workers
+              <Server size={16} /> Integration Services
+              {integrations.length > 0 && (
+                <span className="text-[9px] font-mono text-base-content/20 bg-base-200 px-1.5 py-0.5 rounded-sm ml-auto">
+                  {integrations.length} registered
+                </span>
+              )}
             </h2>
             <div className="space-y-4">
-              <ServiceRow
-                name="Finance Service"
-                description="Finnhub WebSocket — real-time market data"
-                state={financeState}
-                port={3001}
-              />
-              <ServiceRow
-                name="Sports Service"
-                description="ESPN API — scores polling every 1 min"
-                state={sportsState}
-                port={3002}
-              />
-              <ServiceRow
-                name="Yahoo Service"
-                description="Yahoo Fantasy — active user sync"
-                state={yahooState}
-                port={3003}
-              />
+              {integrations.length > 0 ? (
+                integrations.map((intg) => {
+                  const meta = INTEGRATION_META[intg.name]
+                  return (
+                    <ServiceRow
+                      key={intg.name}
+                      name={`${intg.display_name} Service`}
+                      description={
+                        meta?.description ?? (intg.capabilities.join(', ') || 'Integration service')
+                      }
+                      state={getServiceState(intg.name)}
+                      port={meta?.port}
+                    />
+                  )
+                })
+              ) : !fetchError ? (
+                <>
+                  {/* Fallback skeleton while loading */}
+                  {['finance', 'sports', 'fantasy', 'rss'].map((name) => {
+                    const meta = INTEGRATION_META[name]
+                    return (
+                      <ServiceRow
+                        key={name}
+                        name={`${name.charAt(0).toUpperCase() + name.slice(1)} Service`}
+                        description={meta?.description ?? 'Integration service'}
+                        state={getServiceState(name)}
+                        port={meta?.port}
+                      />
+                    )
+                  })}
+                </>
+              ) : (
+                <div className="text-xs font-mono text-base-content/30 text-center py-4">
+                  Unable to discover integrations
+                </div>
+              )}
             </div>
           </motion.div>
         </div>
