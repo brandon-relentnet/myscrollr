@@ -1,25 +1,25 @@
 import { useEffect, useRef } from 'react'
 
 /**
- * Pre-render a glow sprite to an offscreen canvas.
- * Returns the canvas so it can be stamped via drawImage.
+ * Pre-render a particle glow sprite using the real canvas shadow engine.
+ * This produces an identical result to drawing arc() + shadowBlur per frame,
+ * but the expensive Gaussian blur runs once at init instead of 50×/frame.
  */
-function createGlowSprite(radius: number, glowRadius: number): HTMLCanvasElement {
-  const size = (radius + glowRadius) * 2
+function createGlowSprite(radius: number, blur: number): HTMLCanvasElement {
+  const padding = blur * 2
+  const size = (radius + padding) * 2
   const sprite = document.createElement('canvas')
   sprite.width = size
   sprite.height = size
   const sCtx = sprite.getContext('2d')
   if (!sCtx) return sprite
 
-  const center = size / 2
-  const gradient = sCtx.createRadialGradient(center, center, 0, center, center, center)
-  gradient.addColorStop(0, 'rgba(191, 255, 0, 0.6)')
-  gradient.addColorStop(radius / center, 'rgba(191, 255, 0, 0.4)')
-  gradient.addColorStop(1, 'rgba(191, 255, 0, 0)')
-
-  sCtx.fillStyle = gradient
-  sCtx.fillRect(0, 0, size, size)
+  sCtx.shadowBlur = blur
+  sCtx.shadowColor = 'rgba(191, 255, 0, 0.6)'
+  sCtx.fillStyle = 'rgba(191, 255, 0, 0.4)'
+  sCtx.beginPath()
+  sCtx.arc(size / 2, size / 2, radius, 0, Math.PI * 2)
+  sCtx.fill()
 
   return sprite
 }
@@ -53,9 +53,7 @@ export function CommandBackground() {
     const particleCount = 50
 
     // Pre-render glow sprite once — replaces per-particle shadowBlur
-    const maxParticleRadius = 3
-    const glowRadius = 10
-    const glowSprite = createGlowSprite(maxParticleRadius, glowRadius)
+    const glowSprite = createGlowSprite(3, 10)
     const spriteHalf = glowSprite.width / 2
 
     class Particle {
