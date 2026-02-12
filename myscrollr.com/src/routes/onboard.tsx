@@ -2,7 +2,6 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { motion } from 'motion/react'
 import {
   ArrowRight,
-  Chrome,
   Eye,
   Globe,
   Layers,
@@ -12,6 +11,7 @@ import {
   Settings,
   Shield,
   Sliders,
+  Sparkles,
   TrendingUp,
   Trophy,
   UserPlus,
@@ -24,6 +24,47 @@ export const Route = createFileRoute('/onboard')({
   component: OnboardPage,
 })
 
+// ── Ticker chips for the hero preview ───────────────────────────
+
+interface TickerChip {
+  label: string
+  value: string
+  color: 'primary' | 'secondary' | 'info'
+  icon?: string
+}
+
+const HERO_TICKER: TickerChip[] = [
+  { label: 'BTC', value: '$67,241', color: 'primary', icon: '↑' },
+  { label: 'LAL 118', value: 'BOS 112', color: 'secondary', icon: 'FINAL' },
+  { label: 'NVDA', value: '$891.20', color: 'primary', icon: '↑' },
+  { label: 'Fed holds rates steady', value: 'Reuters', color: 'info' },
+  { label: 'MIA 94', value: 'GSW 88', color: 'secondary', icon: 'Q4' },
+  { label: 'ETH', value: '$3,412', color: 'primary', icon: '↓' },
+  { label: 'SPY', value: '$512.08', color: 'primary', icon: '↑' },
+  { label: 'NYG 21', value: 'DAL 17', color: 'secondary', icon: 'HALF' },
+]
+
+const chipColorMap = {
+  primary: {
+    border: 'border-primary/25',
+    text: 'text-primary',
+    bg: 'bg-primary/[0.06]',
+    sub: 'text-primary/60',
+  },
+  secondary: {
+    border: 'border-secondary/25',
+    text: 'text-secondary',
+    bg: 'bg-secondary/[0.06]',
+    sub: 'text-secondary/60',
+  },
+  info: {
+    border: 'border-info/25',
+    text: 'text-info',
+    bg: 'bg-info/[0.06]',
+    sub: 'text-info/60',
+  },
+}
+
 // ── Step Data ───────────────────────────────────────────────────
 
 const HOW_IT_WORKS = [
@@ -31,21 +72,21 @@ const HOW_IT_WORKS = [
     icon: <Eye size={20} />,
     title: 'The Feed Bar',
     description:
-      'A thin ticker pinned to the bottom of your browser. It scrolls live data across every tab you visit — always visible, never in the way.',
+      'A thin ticker pinned to the bottom of your browser. Scores, prices, and headlines scroll by while you browse — always visible, never in the way.',
     accent: 'primary' as const,
   },
   {
     icon: <Layers size={20} />,
     title: 'Streams',
     description:
-      'Each data source is a "stream." Finance, sports, RSS, fantasy — toggle them on or off. The feed bar shows what you enable.',
+      'Each data source is a "stream." Finance and sports are on right now. Toggle them on or off — the feed bar shows whatever you enable.',
     accent: 'info' as const,
   },
   {
     icon: <Sliders size={20} />,
     title: 'Your Controls',
     description:
-      'Click the Scrollr icon in your toolbar to toggle the feed bar, switch between streams, or adjust position and behavior.',
+      'Click the Scrollr icon in your toolbar to toggle the feed bar, switch streams, or reposition it. You are in full control.',
     accent: 'secondary' as const,
   },
 ]
@@ -53,50 +94,51 @@ const HOW_IT_WORKS = [
 const WITHOUT_ACCOUNT = [
   {
     icon: <TrendingUp size={16} />,
-    label: 'Live market data',
-    description: 'Default tracked symbols streaming prices',
+    label: 'Live market prices',
+    description: '50 tracked symbols — stocks and crypto updating in real time',
   },
   {
     icon: <Trophy size={16} />,
     label: 'Live sports scores',
-    description: 'NFL, NBA, NHL, MLB and more from ESPN',
-  },
-  {
-    icon: <Rss size={16} />,
-    label: 'Default news feeds',
-    description: 'Curated RSS feeds across 8 categories',
+    description: 'NFL, NBA, NHL, MLB and college sports from ESPN',
   },
   {
     icon: <Monitor size={16} />,
-    label: 'Feed bar controls',
-    description: 'Toggle, reposition, and customize display',
+    label: 'Full feed bar controls',
+    description: 'Toggle, reposition, resize — make it yours',
   },
 ]
 
 const WITH_ACCOUNT = [
   {
+    icon: <Rss size={16} />,
+    title: 'RSS News Feeds',
+    description:
+      '100+ curated feeds across 8 categories — tech, finance, world news, and more. Pick the sources you actually read.',
+  },
+  {
     icon: <Sliders size={16} />,
     title: 'Personalized Streams',
     description:
-      'Choose exactly which symbols, feeds, leagues, and fantasy teams appear in your ticker.',
+      'Choose exactly which symbols, leagues, feeds, and fantasy teams appear in your ticker.',
   },
   {
     icon: <Globe size={16} />,
     title: 'Sync Across Browsers',
     description:
-      'Your stream config and preferences sync via your account — log in anywhere and pick up where you left off.',
+      'Your config and preferences travel with your account. Log in anywhere, pick up where you left off.',
   },
   {
     icon: <Settings size={16} />,
     title: 'Dashboard Access',
     description:
-      'Full web dashboard at myscrollr.com to manage streams, browse catalogs, and monitor your setup.',
+      'Full web dashboard to manage streams, browse feed catalogs, connect Yahoo Fantasy, and monitor your setup.',
   },
   {
     icon: <Shield size={16} />,
     title: 'Site Filtering',
     description:
-      'Control which websites show the feed bar with blacklist mode. Keep it focused where you want it.',
+      'Control which websites show the feed bar. Keep it focused where you want it.',
   },
 ]
 
@@ -117,13 +159,54 @@ const accentMap = {
   },
 } as const
 
+// ── Hero Ticker Preview ─────────────────────────────────────────
+
+function HeroTicker() {
+  const allChips = [...HERO_TICKER, ...HERO_TICKER]
+  return (
+    <div className="group/ticker relative overflow-hidden rounded-sm border border-base-300/40 bg-base-100/80">
+      <div className="absolute left-0 top-0 bottom-0 w-10 bg-gradient-to-r from-base-100/80 to-transparent z-10 pointer-events-none" />
+      <div className="absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-base-100/80 to-transparent z-10 pointer-events-none" />
+      <div className="flex items-center gap-3 py-2.5 px-4 animate-ticker-scroll group-hover/ticker:[animation-play-state:paused]">
+        {allChips.map((chip, i) => {
+          const colors = chipColorMap[chip.color]
+          return (
+            <div
+              key={`${chip.label}-${i}`}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-sm border ${colors.border} ${colors.bg} shrink-0`}
+            >
+              <span
+                className={`text-[11px] font-bold font-mono ${colors.text} whitespace-nowrap`}
+              >
+                {chip.label}
+              </span>
+              <span
+                className={`text-[10px] font-mono ${colors.sub} whitespace-nowrap`}
+              >
+                {chip.value}
+              </span>
+              {chip.icon && (
+                <span
+                  className={`text-[9px] font-bold font-mono ${colors.text} opacity-70 whitespace-nowrap`}
+                >
+                  {chip.icon}
+                </span>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ── Page Component ──────────────────────────────────────────────
 
 function OnboardPage() {
   usePageMeta({
     title: 'Welcome to Scrollr',
     description:
-      'You just installed Scrollr. Here is what you have access to right now and how to get the most out of it.',
+      'You just installed Scrollr. Here is what you have right now and how to get the most out of it.',
   })
 
   return (
@@ -143,10 +226,19 @@ function OnboardPage() {
             className="absolute top-[-10%] left-[20%] w-[600px] h-[600px] rounded-full"
             style={{
               background:
-                'radial-gradient(circle, rgba(191, 255, 0, 0.05) 0%, transparent 70%)',
+                'radial-gradient(circle, rgba(191, 255, 0, 0.06) 0%, transparent 70%)',
             }}
-            animate={{ scale: [1, 1.06, 1], opacity: [0.5, 0.8, 0.5] }}
-            transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+            animate={{ scale: [1, 1.08, 1], opacity: [0.5, 0.9, 0.5] }}
+            transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+          />
+          <motion.div
+            className="absolute bottom-[10%] right-[10%] w-[400px] h-[400px] rounded-full"
+            style={{
+              background:
+                'radial-gradient(circle, rgba(191, 255, 0, 0.04) 0%, transparent 70%)',
+            }}
+            animate={{ scale: [1, 1.06, 1], opacity: [0.3, 0.6, 0.3] }}
+            transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
           />
         </div>
 
@@ -161,8 +253,11 @@ function OnboardPage() {
             className="flex items-center gap-4 mb-8"
           >
             <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-success/8 text-success text-[10px] font-bold rounded-sm border border-success/15 uppercase tracking-[0.2em]">
-              <Chrome size={12} />
-              Installed
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-success" />
+              </span>
+              Extension Active
             </span>
             <span className="h-px w-12 bg-gradient-to-r from-base-300 to-transparent" />
             <span className="text-[10px] font-mono text-base-content/25 uppercase tracking-wider">
@@ -179,12 +274,10 @@ function OnboardPage() {
               delay: 0.15,
               ease: [0.22, 1, 0.36, 1],
             }}
-            className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight uppercase leading-[0.85] mb-8 max-w-4xl"
+            className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight uppercase leading-[0.85] mb-6 max-w-4xl"
           >
             You're{' '}
-            <span className="text-primary">
-              Live
-            </span>
+            <span className="text-primary">Live</span>
           </motion.h1>
 
           <motion.p
@@ -195,11 +288,34 @@ function OnboardPage() {
               delay: 0.3,
               ease: [0.22, 1, 0.36, 1],
             }}
-            className="text-base text-base-content/40 max-w-xl leading-relaxed font-mono"
+            className="text-base md:text-lg text-base-content/45 max-w-lg leading-relaxed mb-10"
           >
-            Scrollr is running. Your feed bar is active on every tab. Here's
-            what you have right now and how to unlock more.
+            Your feed bar is running right now. Scores, stock prices, and
+            headlines are scrolling at the bottom of every tab you open.
           </motion.p>
+
+          {/* Live ticker preview */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              duration: 0.7,
+              delay: 0.5,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+            className="max-w-3xl"
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
+              </span>
+              <span className="text-[10px] font-mono text-base-content/30 uppercase tracking-wider">
+                This is what your feed bar looks like
+              </span>
+            </div>
+            <HeroTicker />
+          </motion.div>
         </div>
 
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-base-300/50 to-transparent" />
@@ -275,14 +391,14 @@ function OnboardPage() {
             className="mb-10"
           >
             <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
-              <Monitor size={16} /> What You Have Now
+              <Sparkles size={16} /> Ready Right Now
             </h2>
             <p className="text-[10px] font-mono text-base-content/30">
-              No account needed — this works out of the box
+              No account needed — these are already running
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {WITHOUT_ACCOUNT.map((item, i) => (
               <motion.div
                 key={item.label}
@@ -294,9 +410,9 @@ function OnboardPage() {
                   duration: 0.4,
                   ease: [0.22, 1, 0.36, 1],
                 }}
-                className="flex items-start gap-3 p-4 bg-base-200/40 border border-base-300/40 rounded-sm"
+                className="group flex items-start gap-3 p-5 bg-base-200/40 border border-base-300/40 rounded-sm hover:border-success/20 transition-colors"
               >
-                <div className="h-8 w-8 rounded-sm bg-success/8 border border-success/15 flex items-center justify-center text-success shrink-0 mt-0.5">
+                <div className="h-9 w-9 rounded-sm bg-success/8 border border-success/15 flex items-center justify-center text-success shrink-0 mt-0.5 group-hover:border-success/30 transition-colors">
                   {item.icon}
                 </div>
                 <div>
@@ -327,7 +443,7 @@ function OnboardPage() {
               <UserPlus size={16} /> Unlock More
             </h2>
             <p className="text-[10px] font-mono text-base-content/30">
-              Create a free account to personalize everything
+              Create a free account and the whole platform opens up
             </p>
           </motion.div>
 
@@ -432,8 +548,8 @@ function OnboardPage() {
                 transition={{ delay: 0.2 }}
                 className="text-sm text-base-content/35 leading-relaxed mb-8 font-mono max-w-md mx-auto"
               >
-                Personalize your streams, sync across devices, and access the
-                full dashboard. Takes 30 seconds.
+                Unlock RSS feeds, personalize your streams, sync across devices,
+                and access the full dashboard. Takes 30 seconds.
               </motion.p>
 
               <motion.div

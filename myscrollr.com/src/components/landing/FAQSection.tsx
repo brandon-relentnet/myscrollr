@@ -26,7 +26,7 @@ const FAQ_ITEMS: FAQItem[] = [
   {
     question: 'What browsers are supported?',
     answer:
-      'Chrome, Brave, Edge, and any Chromium-based browser. Firefox support is planned. The extension is available on the Chrome Web Store today.',
+      'Chrome, Brave, Edge, Firefox, and any Chromium-based browser. Available on the Chrome Web Store and Firefox Add-ons.',
   },
   {
     question: 'Do I need an account?',

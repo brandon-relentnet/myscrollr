@@ -415,45 +415,133 @@ function ArchitecturePage() {
             </p>
           </motion.div>
 
-          {/* Vertical flow diagram */}
-          <div className="max-w-md mx-auto space-y-0">
-            {CDC_FLOW.map((step, i) => (
-              <motion.div
-                key={step.label}
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{
-                  delay: i * 0.08,
-                  duration: 0.4,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
+          {/* Two-column: flow diagram left, decorative SVG right */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+            {/* Flow diagram — left-aligned */}
+            <div className="space-y-0">
+              {CDC_FLOW.map((step, i) => (
+                <motion.div
+                  key={step.label}
+                  initial={{ opacity: 0, x: -20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{
+                    delay: i * 0.08,
+                    duration: 0.4,
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
+                >
+                  <div className="flex items-center gap-4 p-4 bg-base-200/40 border border-base-300/40 rounded-sm">
+                    <div
+                      className={`h-8 w-8 rounded-sm bg-base-300/20 border border-base-300/30 flex items-center justify-center ${step.accent} shrink-0`}
+                    >
+                      {step.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold uppercase tracking-wider text-base-content">
+                        {step.label}
+                      </p>
+                      <p className="text-[10px] font-mono text-base-content/25 truncate">
+                        {step.detail}
+                      </p>
+                    </div>
+                    <span className="text-[9px] font-mono text-base-content/15 font-black shrink-0">
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                  </div>
+                  {i < CDC_FLOW.length - 1 && (
+                    <div className="flex justify-start pl-7 py-1.5">
+                      <ArrowDown size={14} className="text-primary/25" />
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Decorative node graph — right side (desktop only) */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 1, delay: 0.3 }}
+              className="hidden lg:flex items-center justify-center"
+            >
+              <svg
+                viewBox="0 0 320 400"
+                fill="none"
+                className="w-full max-w-xs text-primary"
+                aria-hidden
               >
-                <div className="flex items-center gap-4 p-4 bg-base-200/40 border border-base-300/40 rounded-sm">
-                  <div
-                    className={`h-8 w-8 rounded-sm bg-base-300/20 border border-base-300/30 flex items-center justify-center ${step.accent} shrink-0`}
-                  >
-                    {step.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold uppercase tracking-wider text-base-content">
-                      {step.label}
-                    </p>
-                    <p className="text-[10px] font-mono text-base-content/25 truncate">
-                      {step.detail}
-                    </p>
-                  </div>
-                  <span className="text-[9px] font-mono text-base-content/15 font-black shrink-0">
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                </div>
-                {i < CDC_FLOW.length - 1 && (
-                  <div className="flex justify-center py-1.5">
-                    <ArrowDown size={14} className="text-primary/25" />
-                  </div>
+                {/* Grid dots */}
+                {Array.from({ length: 8 }).map((_, row) =>
+                  Array.from({ length: 6 }).map((_, col) => (
+                    <circle
+                      key={`dot-${row}-${col}`}
+                      cx={30 + col * 52}
+                      cy={25 + row * 50}
+                      r={1}
+                      fill="currentColor"
+                      opacity={0.08}
+                    />
+                  )),
                 )}
-              </motion.div>
-            ))}
+
+                {/* Connection lines */}
+                <line x1="82" y1="75" x2="238" y2="75" stroke="currentColor" strokeWidth="1" opacity="0.08" />
+                <line x1="160" y1="75" x2="160" y2="175" stroke="currentColor" strokeWidth="1" opacity="0.1" />
+                <line x1="82" y1="175" x2="238" y2="175" stroke="currentColor" strokeWidth="1" opacity="0.08" />
+                <line x1="82" y1="175" x2="82" y2="275" stroke="currentColor" strokeWidth="1" opacity="0.1" />
+                <line x1="238" y1="175" x2="238" y2="275" stroke="currentColor" strokeWidth="1" opacity="0.1" />
+                <line x1="82" y1="275" x2="238" y2="275" stroke="currentColor" strokeWidth="1" opacity="0.08" />
+                <line x1="160" y1="275" x2="160" y2="350" stroke="currentColor" strokeWidth="1" opacity="0.1" />
+
+                {/* Animated pulse lines */}
+                <motion.line
+                  x1="160" y1="75" x2="160" y2="175"
+                  stroke="currentColor" strokeWidth="1.5" opacity="0.25"
+                  strokeDasharray="6 6"
+                  animate={{ strokeDashoffset: [0, -24] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                />
+                <motion.line
+                  x1="160" y1="275" x2="160" y2="350"
+                  stroke="currentColor" strokeWidth="1.5" opacity="0.25"
+                  strokeDasharray="6 6"
+                  animate={{ strokeDashoffset: [0, -24] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'linear', delay: 0.5 }}
+                />
+
+                {/* Nodes */}
+                {/* Source node */}
+                <rect x="134" y="50" width="52" height="52" rx="4" fill="currentColor" opacity="0.05" stroke="currentColor" strokeWidth="1" strokeOpacity="0.15" />
+                <text x="160" y="80" textAnchor="middle" fill="currentColor" opacity="0.3" fontSize="9" fontFamily="monospace" fontWeight="bold">SRC</text>
+
+                {/* CDC node */}
+                <rect x="134" y="150" width="52" height="52" rx="4" fill="currentColor" opacity="0.08" stroke="currentColor" strokeWidth="1" strokeOpacity="0.2" />
+                <text x="160" y="180" textAnchor="middle" fill="currentColor" opacity="0.4" fontSize="9" fontFamily="monospace" fontWeight="bold">CDC</text>
+
+                {/* Left route node */}
+                <rect x="56" y="250" width="52" height="52" rx="4" fill="currentColor" opacity="0.05" stroke="currentColor" strokeWidth="1" strokeOpacity="0.15" />
+                <text x="82" y="280" textAnchor="middle" fill="currentColor" opacity="0.3" fontSize="8" fontFamily="monospace" fontWeight="bold">USR:A</text>
+
+                {/* Right route node */}
+                <rect x="212" y="250" width="52" height="52" rx="4" fill="currentColor" opacity="0.05" stroke="currentColor" strokeWidth="1" strokeOpacity="0.15" />
+                <text x="238" y="280" textAnchor="middle" fill="currentColor" opacity="0.3" fontSize="8" fontFamily="monospace" fontWeight="bold">USR:B</text>
+
+                {/* Delivery node */}
+                <rect x="134" y="330" width="52" height="52" rx="4" fill="currentColor" opacity="0.06" stroke="currentColor" strokeWidth="1" strokeOpacity="0.2" />
+                <text x="160" y="360" textAnchor="middle" fill="currentColor" opacity="0.35" fontSize="9" fontFamily="monospace" fontWeight="bold">SSE</text>
+
+                {/* Pulsing center dot */}
+                <motion.circle
+                  cx="160" cy="176"
+                  r="3"
+                  fill="currentColor"
+                  animate={{ opacity: [0.2, 0.6, 0.2], r: [3, 5, 3] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                />
+              </svg>
+            </motion.div>
           </div>
         </div>
       </section>

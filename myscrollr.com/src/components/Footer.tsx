@@ -19,33 +19,28 @@ export default function Footer() {
 
   const links = {
     product: [
-      { label: 'Features', href: '/#streams' },
-      { label: 'Terminal', href: '/dashboard' },
+      { label: 'Integrations', href: '/integrations' },
       {
         label: 'Chrome Extension',
-        href: 'https://chrome.google.com/webstore',
+        href: 'https://chromewebstore.google.com/detail/scrollr/pjeafpgbpfbcaddipkcbacohhbfakclb',
       },
       {
         label: 'Firefox Add-on',
-        href: 'https://addons.mozilla.org',
+        href: 'https://addons.mozilla.org/en-US/firefox/addon/scrollr/',
       },
       { label: 'Uplink', href: '/uplink' },
     ],
     resources: [
-      {
-        label: 'Documentation',
-        href: 'https://api.myscrollr.relentnet.dev/swagger/index.html',
-      },
-      {
-        label: 'API',
-        href: 'https://api.myscrollr.relentnet.dev/swagger/index.html',
-      },
       { label: 'Status', href: '/status' },
+      { label: 'Architecture', href: '/architecture' },
+      { label: 'Discover', href: '/discover' },
+      { label: 'Onboard', href: '/onboard' },
     ],
     company: [
       { label: 'Terms', href: '/legal?doc=terms' },
       { label: 'Privacy', href: '/legal?doc=privacy' },
       { label: 'Legal', href: '/legal' },
+      { label: 'License', href: '/legal?doc=license' },
     ],
     social: [
       { icon: Github, href: 'https://github.com/brandon-relentnet/myscrollr', label: 'GitHub' },

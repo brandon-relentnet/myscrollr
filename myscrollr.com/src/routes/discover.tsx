@@ -116,25 +116,25 @@ const STEPS = [
   {
     num: '01',
     icon: <Download size={20} />,
-    title: 'Install the Extension',
+    title: 'Install It',
     description:
-      'One click from the Chrome Web Store. No account needed, no setup wizard. It just works.',
+      'One click. No account, no setup wizard, no permissions popup. It installs and it works.',
     accent: 'primary' as const,
   },
   {
     num: '02',
     icon: <Eye size={20} />,
-    title: 'See Your Feed Bar',
+    title: 'Browse Like Normal',
     description:
-      'A thin ticker appears at the bottom of every tab. Live data scrolls by — stocks, scores, news, fantasy.',
+      'A thin ticker appears at the bottom of whatever you\'re doing. Stocks, scores, headlines — scrolling by quietly.',
     accent: 'info' as const,
   },
   {
     num: '03',
     icon: <Settings size={20} />,
-    title: 'Make It Yours',
+    title: 'Tweak It Later',
     description:
-      'Toggle streams, pick your symbols, choose your feeds. Create an account to sync and unlock the full dashboard.',
+      'Turn off what you don\'t care about. Add symbols you do. Create an account when you\'re ready for the full thing.',
     accent: 'secondary' as const,
   },
 ]
@@ -156,7 +156,7 @@ const INTEGRATIONS: IntegrationInfo[] = [
     name: 'Finance',
     label: 'Market data',
     description:
-      '50 tracked symbols across stocks and crypto. Live prices, changes, and direction indicators.',
+      'You\'re reading an article and Bitcoin just moved 4%. You see it immediately — no app switching, no new tab.',
     accent: 'primary',
     example: 'BTC $67.2K ↑2.4%',
   },
@@ -165,7 +165,7 @@ const INTEGRATIONS: IntegrationInfo[] = [
     name: 'Sports',
     label: 'Live scores',
     description:
-      'NFL, NBA, NHL, MLB, and college sports from ESPN. Scores update every 60 seconds.',
+      'The Lakers are playing while you\'re on Reddit. The score just updates in the corner. You never left the page.',
     accent: 'secondary',
     example: 'LAL 118 - BOS 112',
   },
@@ -174,7 +174,7 @@ const INTEGRATIONS: IntegrationInfo[] = [
     name: 'RSS Feeds',
     label: 'News streams',
     description:
-      '100+ curated feeds across 8 categories. Subscribe to sources you care about.',
+      'Headlines from 100+ sources scroll by while you work. You catch the big stories without doomscrolling Twitter.',
     accent: 'info',
     example: 'Fed holds rates steady...',
   },
@@ -183,7 +183,7 @@ const INTEGRATIONS: IntegrationInfo[] = [
     name: 'Yahoo Fantasy',
     label: 'Fantasy leagues',
     description:
-      'Connect Yahoo for league standings, rosters, matchups, and live scoring.',
+      'Your matchup score updates while you\'re doing literally anything else. No more refreshing the Yahoo app.',
     accent: 'accent',
     example: 'Your Team: 2nd Place',
   },
@@ -369,7 +369,7 @@ function DiscoverPage() {
             </span>
             <span className="h-px w-12 bg-gradient-to-r from-base-300 to-transparent" />
             <span className="text-[10px] font-mono text-base-content/25 uppercase tracking-wider">
-              Chrome &middot; Firefox soon
+              Chrome &middot; Firefox
             </span>
           </motion.div>
 
@@ -384,8 +384,8 @@ function DiscoverPage() {
             }}
             className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight uppercase leading-[0.85] mb-8 max-w-5xl"
           >
-            Live Data in{' '}
-            <span className="text-primary">Every Tab</span>
+            Stop{' '}
+            <span className="text-primary">Tab-Hopping</span>
           </motion.h1>
 
           <motion.p
@@ -398,8 +398,8 @@ function DiscoverPage() {
             }}
             className="text-base text-base-content/40 max-w-xl leading-relaxed font-mono mb-10"
           >
-            Scrollr pins a live ticker to the bottom of your browser. Stocks,
-            scores, news, fantasy — one glance, zero tab-switching.
+            Stocks, scores, news, and fantasy stats — scrolling at the bottom
+            of every tab. You see everything without leaving what you're doing.
           </motion.p>
 
           {/* CTA */}
@@ -437,7 +437,7 @@ function DiscoverPage() {
               <Eye size={16} /> What It Looks Like
             </h2>
             <p className="text-[10px] font-mono text-base-content/30">
-              Your feed bar, pinned to the bottom of every page
+              This is what it looks like on every page you visit
             </p>
           </motion.div>
 
@@ -461,7 +461,7 @@ function DiscoverPage() {
               <Zap size={16} /> How It Works
             </h2>
             <p className="text-[10px] font-mono text-base-content/30">
-              Three steps, thirty seconds
+              Seriously, this takes 30 seconds
             </p>
           </motion.div>
 
@@ -506,7 +506,7 @@ function DiscoverPage() {
         </div>
       </section>
 
-      {/* ── WHAT CAN IT SHOW ─────────────────────────────────── */}
+      {/* ── PEOPLE USE SCROLLR TO ────────────────────────────── */}
       <section className="relative">
         <div className="container">
           <motion.div
@@ -517,11 +517,52 @@ function DiscoverPage() {
             className="mb-10"
           >
             <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
-              <Layers size={16} /> What It Shows
+              <Layers size={16} /> People Use Scrollr To
             </h2>
             <p className="text-[10px] font-mono text-base-content/30">
-              Four live integrations, one ticker
+              Real scenarios, not feature lists
             </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-16">
+            {[
+              'Watch the Lakers score while browsing Reddit',
+              'See Bitcoin move while reading the news',
+              'Catch breaking headlines without opening Twitter',
+              'Check their fantasy matchup during a work call',
+              'Track NVDA while shopping on Amazon',
+              'Know when their team is winning without refreshing ESPN',
+            ].map((scenario, i) => (
+              <motion.div
+                key={scenario}
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{
+                  delay: i * 0.05,
+                  duration: 0.4,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+                className="flex items-center gap-3 px-4 py-3 bg-base-200/30 border border-base-300/30 rounded-sm"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/50 shrink-0" />
+                <span className="text-xs text-base-content/40 leading-snug">
+                  {scenario}
+                </span>
+              </motion.div>
+            ))}
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="mb-8"
+          >
+            <h3 className="text-xs font-bold uppercase tracking-widest text-base-content/30 flex items-center gap-2">
+              Four streams, one ticker
+            </h3>
           </motion.div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -664,8 +705,8 @@ function DiscoverPage() {
                 transition={{ delay: 0.2 }}
                 className="text-sm text-base-content/35 leading-relaxed mb-8 font-mono max-w-md mx-auto"
               >
-                Free to use, no account required. Install the extension and your
-                feed bar goes live on every tab.
+                Free, no account, no setup. Install it and your feed bar is
+                live on every tab in about 10 seconds.
               </motion.p>
 
               <motion.div
