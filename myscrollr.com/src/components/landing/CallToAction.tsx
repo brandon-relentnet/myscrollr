@@ -10,7 +10,7 @@ export function CallToAction() {
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
-        className="relative overflow-hidden rounded-sm bg-base-200/60 border border-base-300 p-8 md:p-12 lg:p-16 shadow-2xl"
+        className="relative overflow-hidden rounded-sm bg-base-200/60 border border-base-300 p-8 md:p-12 lg:p-16"
       >
         {/* Foreground Glow Effects */}
         <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-primary/5 rounded-full blur-[80px] pointer-events-none" />
@@ -35,13 +35,13 @@ export function CallToAction() {
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
-              className="inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-full bg-primary/10 border border-primary/20"
+              className="inline-flex items-center gap-2 mb-6 px-3 py-1.5 rounded-sm bg-primary/8 border border-primary/15"
             >
               <span className="relative flex h-1.5 w-1.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
               </span>
-              <span className="text-xs font-mono uppercase tracking-widest text-primary">
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
                 Get Started
               </span>
             </motion.span>
@@ -51,10 +51,10 @@ export function CallToAction() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-2"
+              className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight uppercase leading-[0.95] mb-2"
             >
               Start{' '}
-              <span className="text-rainbow font-black uppercase tracking-tighter">
+              <span className="text-rainbow">
                 Scrolling
               </span>
             </motion.h2>
@@ -64,7 +64,7 @@ export function CallToAction() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.2 }}
-              className="text-base text-base-content/50 leading-relaxed pb-6"
+              className="text-sm text-base-content/40 leading-relaxed pb-6"
             >
               Add to Chrome and pin live sports, market data, news, and fantasy
               scores over any tab. Free forever.

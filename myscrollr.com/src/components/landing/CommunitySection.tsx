@@ -78,7 +78,7 @@ export function CommunitySection() {
             Built{' '}
             <span className="text-gradient-primary">Together</span>
           </h2>
-          <p className="text-base text-base-content/40 max-w-xl mx-auto leading-relaxed">
+          <p className="text-sm text-base-content/40 max-w-xl mx-auto leading-relaxed">
             Scrollr is open source and community-driven. Build your own
             integration, or tell us what data matters to you.
           </p>

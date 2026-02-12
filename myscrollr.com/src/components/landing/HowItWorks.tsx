@@ -56,7 +56,7 @@ export function HowItWorks() {
           Three Steps to{' '}
           <span className="text-gradient-primary">Your Feed</span>
         </h2>
-        <p className="text-base text-base-content/40 mx-auto leading-relaxed">
+        <p className="text-sm text-base-content/40 mx-auto leading-relaxed">
           Up and running in under a minute. No sign-up required.
         </p>
       </motion.div>

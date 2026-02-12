@@ -133,7 +133,7 @@ export function HeroSection() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 1 }}
-              className="text-lg sm:text-xl text-base-content/60 max-w-md leading-relaxed"
+              className="text-base text-base-content/50 max-w-md leading-relaxed"
             >
               Pin live sports scores, crypto prices, and custom feeds over any
               tab.{' '}

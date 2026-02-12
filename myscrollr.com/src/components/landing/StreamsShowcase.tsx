@@ -285,7 +285,7 @@ export function StreamsShowcase() {
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight uppercase leading-[0.95] mb-5">
             See It <span className="text-gradient-primary">In Action</span>
           </h2>
-          <p className="text-base text-base-content/40 max-w-xl mx-auto leading-relaxed">
+          <p className="text-sm text-base-content/40 max-w-xl mx-auto leading-relaxed">
             Four live integrations power your feed. Real-time data from finance,
             sports, news, and fantasy — all in one scrolling ticker.
           </p>
@@ -343,7 +343,7 @@ export function StreamsShowcase() {
                 >
                   {integration.label}
                 </p>
-                <p className="text-xs text-base-content/30 leading-relaxed mb-5">
+                <p className="text-sm text-base-content/30 leading-relaxed mb-5">
                   {integration.description}
                 </p>
 
