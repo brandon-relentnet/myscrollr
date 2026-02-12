@@ -35,11 +35,10 @@ export default function HeroTypewriter() {
           onComplete={() => {
             delay(() => setIndex(wrap(0, WORDS.length, index + 1)), 2)
           }}
-          className="text-gradient-primary"
+          className="text-rainbow"
         >
           {WORDS[index]}
         </Typewriter>
-        <span className="text-base-content">,</span>
       </motion.div>
 
       {/* Uninterrupted. */}
@@ -49,7 +48,7 @@ export default function HeroTypewriter() {
         transition={{ duration: 0.6, delay: 0.4, ease: 'easeOut' }}
         className="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-none mt-2"
       >
-        <span className="text-rainbow">Uninterrupted.</span>
+        <span className="italic text-base-content/60">Uninterrupted.</span>
       </motion.div>
 
       {/* Decorative underline */}
