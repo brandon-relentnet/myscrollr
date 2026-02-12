@@ -96,7 +96,7 @@ body {
   color: var(--color-base-content);
   background-color: var(--color-base-100);
   overflow-x: hidden;
-  min-height: 100vh;
+  min-height: 100dvh;
 
   /* Primary Background - Deep Space */
   background-image:
@@ -120,7 +120,6 @@ body {
     60px 60px,
     60px 60px,
     60px 60px;
-  background-attachment: fixed;
   position: relative;
 }
 
