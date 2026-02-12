@@ -39,6 +39,7 @@ interface IntegrationCard {
   description: string
   color: string
   dotColor: string
+  accent: 'primary' | 'secondary' | 'info' | 'accent'
   example: string
 }
 
@@ -51,6 +52,7 @@ const INTEGRATIONS: IntegrationCard[] = [
       '50 tracked symbols across stocks and crypto. Live prices, percentage changes, and directional indicators pushed the instant they update.',
     color: 'text-primary',
     dotColor: 'bg-primary',
+    accent: 'primary',
     example: 'BTC $67.2K ↑2.4%',
   },
   {
@@ -61,6 +63,7 @@ const INTEGRATIONS: IntegrationCard[] = [
       'NFL, NBA, NHL, MLB, and college sports from ESPN. Game states, matchups, and scores updating every minute.',
     color: 'text-secondary',
     dotColor: 'bg-secondary',
+    accent: 'secondary',
     example: 'LAL 118 - BOS 112',
   },
   {
@@ -71,6 +74,7 @@ const INTEGRATIONS: IntegrationCard[] = [
       '100+ curated feeds across 8 categories. Subscribe to the sources you care about and get articles as they publish.',
     color: 'text-info',
     dotColor: 'bg-info',
+    accent: 'info',
     example: 'Fed holds rates steady...',
   },
   {
@@ -81,9 +85,35 @@ const INTEGRATIONS: IntegrationCard[] = [
       'Connect your Yahoo account for league standings, rosters, weekly matchups, and live scoring across all your leagues.',
     color: 'text-accent',
     dotColor: 'bg-accent',
+    accent: 'accent',
     example: 'Your Team: 2nd Place',
   },
 ]
+
+// ── Color map for integration card hover effects ────────────────
+
+const cardAccentMap = {
+  primary: {
+    hoverBorder: 'hover:border-primary/20',
+    hoverGradient: 'from-primary/[0.03]',
+    accentLine: 'group-hover:via-primary/20',
+  },
+  secondary: {
+    hoverBorder: 'hover:border-secondary/20',
+    hoverGradient: 'from-secondary/[0.03]',
+    accentLine: 'group-hover:via-secondary/20',
+  },
+  info: {
+    hoverBorder: 'hover:border-info/20',
+    hoverGradient: 'from-info/[0.03]',
+    accentLine: 'group-hover:via-info/20',
+  },
+  accent: {
+    hoverBorder: 'hover:border-accent/20',
+    hoverGradient: 'from-accent/[0.03]',
+    accentLine: 'group-hover:via-accent/20',
+  },
+} as const
 
 // ── Color map for ticker chips ───────────────────────────────────
 
@@ -313,13 +343,17 @@ export function StreamsShowcase() {
                 y: -3,
                 transition: { type: 'tween', duration: 0.2 },
               }}
-              className="group relative bg-base-200/50 border border-base-300/50 rounded-sm p-6 hover:border-primary/20 transition-colors overflow-hidden"
+              className={`group relative bg-base-200/50 border border-base-300/50 rounded-sm p-6 ${cardAccentMap[integration.accent].hoverBorder} transition-colors overflow-hidden`}
             >
               {/* Hover gradient */}
-              <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-primary/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+              <div
+                className={`absolute top-0 left-0 right-0 h-24 bg-gradient-to-b ${cardAccentMap[integration.accent].hoverGradient} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none`}
+              />
 
               {/* Top accent */}
-              <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-primary/0 group-hover:via-primary/20 to-transparent transition-all duration-500" />
+              <div
+                className={`absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-transparent ${cardAccentMap[integration.accent].accentLine} to-transparent transition-all duration-500`}
+              />
 
               <div className="relative z-10">
                 {/* Icon + color dot */}

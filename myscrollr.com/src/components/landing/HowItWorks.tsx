@@ -1,6 +1,27 @@
 import { motion } from 'motion/react'
 import { Download, Globe, Sliders } from 'lucide-react'
 
+const accentMap = {
+  primary: {
+    icon: 'bg-primary/8 border-primary/15 text-primary',
+    hoverGradient: 'from-primary/[0.03]',
+    hoverBorder: 'hover:border-primary/20',
+    accentLine: 'group-hover:via-primary/20',
+  },
+  info: {
+    icon: 'bg-info/8 border-info/15 text-info',
+    hoverGradient: 'from-info/[0.03]',
+    hoverBorder: 'hover:border-info/20',
+    accentLine: 'group-hover:via-info/20',
+  },
+  secondary: {
+    icon: 'bg-secondary/8 border-secondary/15 text-secondary',
+    hoverGradient: 'from-secondary/[0.03]',
+    hoverBorder: 'hover:border-secondary/20',
+    accentLine: 'group-hover:via-secondary/20',
+  },
+} as const
+
 const steps = [
   {
     number: '01',
@@ -8,7 +29,7 @@ const steps = [
     title: 'Install',
     description:
       'Add Scrollr to Chrome in one click. Free, lightweight, no account required.',
-    accent: 'primary',
+    accent: 'primary' as const,
   },
   {
     number: '02',
@@ -16,7 +37,7 @@ const steps = [
     title: 'Choose Your Streams',
     description:
       'Pick from sports scores, market data, news feeds, and fantasy leagues.',
-    accent: 'info',
+    accent: 'info' as const,
   },
   {
     number: '03',
@@ -24,7 +45,7 @@ const steps = [
     title: 'Browse Anywhere',
     description:
       'Your data follows you across every tab. Always visible, never in the way.',
-    accent: 'secondary',
+    accent: 'secondary' as const,
   },
 ]
 
@@ -88,12 +109,18 @@ export function HowItWorks() {
               }}
               className="group relative"
             >
-              <div className="relative bg-base-200/50 border border-base-300/50 rounded-sm p-8 hover:border-primary/20 transition-colors overflow-hidden">
+              <div
+                className={`relative bg-base-200/50 border border-base-300/50 rounded-sm p-8 ${accentMap[step.accent].hoverBorder} transition-colors overflow-hidden`}
+              >
                 {/* Hover gradient */}
-                <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-primary/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                <div
+                  className={`absolute top-0 left-0 right-0 h-32 bg-gradient-to-b ${accentMap[step.accent].hoverGradient} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none`}
+                />
 
                 {/* Top accent line */}
-                <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-primary/0 group-hover:via-primary/20 to-transparent transition-all duration-500" />
+                <div
+                  className={`absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-transparent ${accentMap[step.accent].accentLine} to-transparent transition-all duration-500`}
+                />
 
                 <div className="relative z-10">
                   {/* Number + Icon row */}
@@ -102,7 +129,7 @@ export function HowItWorks() {
                       {step.number}
                     </span>
                     <div
-                      className={`h-11 w-11 rounded-sm bg-${step.accent}/8 border border-${step.accent}/15 flex items-center justify-center text-${step.accent}`}
+                      className={`h-11 w-11 rounded-sm flex items-center justify-center ${accentMap[step.accent].icon}`}
                     >
                       {step.icon}
                     </div>
