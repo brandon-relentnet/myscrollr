@@ -1,5 +1,29 @@
 import { useEffect, useRef } from 'react'
 
+/**
+ * Pre-render a glow sprite to an offscreen canvas.
+ * Returns the canvas so it can be stamped via drawImage.
+ */
+function createGlowSprite(radius: number, glowRadius: number): HTMLCanvasElement {
+  const size = (radius + glowRadius) * 2
+  const sprite = document.createElement('canvas')
+  sprite.width = size
+  sprite.height = size
+  const sCtx = sprite.getContext('2d')
+  if (!sCtx) return sprite
+
+  const center = size / 2
+  const gradient = sCtx.createRadialGradient(center, center, 0, center, center, center)
+  gradient.addColorStop(0, 'rgba(191, 255, 0, 0.6)')
+  gradient.addColorStop(radius / center, 'rgba(191, 255, 0, 0.4)')
+  gradient.addColorStop(1, 'rgba(191, 255, 0, 0)')
+
+  sCtx.fillStyle = gradient
+  sCtx.fillRect(0, 0, size, size)
+
+  return sprite
+}
+
 export function CommandBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -27,6 +51,12 @@ export function CommandBackground() {
     // Configuration
     const gridSize = 60
     const particleCount = 50
+
+    // Pre-render glow sprite once — replaces per-particle shadowBlur
+    const maxParticleRadius = 3
+    const glowRadius = 10
+    const glowSprite = createGlowSprite(maxParticleRadius, glowRadius)
+    const spriteHalf = glowSprite.width / 2
 
     class Particle {
       x = 0
@@ -86,14 +116,9 @@ export function CommandBackground() {
 
       draw() {
         if (!ctx) return
-        ctx.beginPath()
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2)
-        // Softened nodes
-        ctx.fillStyle = `rgba(191, 255, 0, ${this.opacity * 0.4})`
-        ctx.fill()
-
-        ctx.shadowBlur = 10
-        ctx.shadowColor = 'rgba(191, 255, 0, 0.6)'
+        // Stamp pre-rendered glow sprite (no per-particle shadowBlur)
+        ctx.globalAlpha = this.opacity
+        ctx.drawImage(glowSprite, this.x - spriteHalf, this.y - spriteHalf)
       }
     }
 
@@ -104,13 +129,14 @@ export function CommandBackground() {
 
     const render = () => {
       ctx.clearRect(0, 0, width, height)
+      ctx.globalAlpha = 1
 
       particles.forEach((p) => {
         p.update()
         p.draw()
       })
 
-      ctx.shadowBlur = 0
+      ctx.globalAlpha = 1
       animationFrameId = requestAnimationFrame(render)
     }
 

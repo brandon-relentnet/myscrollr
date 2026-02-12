@@ -758,9 +758,9 @@ function UplinkPage() {
                   </div>
                   <div className="h-1 rounded-full bg-base-300/50 overflow-hidden">
                     <motion.div
-                      className="h-full rounded-full bg-gradient-to-r from-warning/60 to-primary/60"
-                      initial={{ width: 0 }}
-                      whileInView={{ width: '100%' }}
+                      className="h-full rounded-full bg-gradient-to-r from-warning/60 to-primary/60 origin-left"
+                      initial={{ scaleX: 0 }}
+                      whileInView={{ scaleX: 1 }}
                       viewport={{ once: true }}
                       transition={{ duration: 1.5, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
                     />

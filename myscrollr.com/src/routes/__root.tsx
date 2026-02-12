@@ -1,10 +1,12 @@
 import { Outlet, createRootRoute } from '@tanstack/react-router'
+import { MotionConfig } from 'motion/react'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { CommandBackground } from '@/components/CommandBackground'
 
 export const Route = createRootRoute({
   component: () => (
+    <MotionConfig reducedMotion="user">
     <div className="min-h-screen relative">
       {/* Particle Background */}
       <CommandBackground />
@@ -30,5 +32,6 @@ export const Route = createRootRoute({
       {/* Footer */}
       <Footer />
     </div>
+    </MotionConfig>
   ),
 })
