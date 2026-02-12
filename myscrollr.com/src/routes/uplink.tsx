@@ -131,18 +131,36 @@ const TERMINAL_LINES = [
   { label: 'TIER', value: 'UPLINK', valueClass: 'text-primary' },
   { label: 'STATUS', value: 'IN_DEVELOPMENT', valueClass: 'text-warning' },
   { label: 'ETA', value: 'Q3 2026', valueClass: 'text-base-content/50' },
-  { label: 'MONTHLY', value: '$4.99/mo', valueClass: 'text-base-content/50' },
-  { label: 'QUARTERLY', value: '$11.99/3mo', valueClass: 'text-base-content/50' },
-  { label: 'ANNUAL', value: '$39.99/yr', valueClass: 'text-base-content/50' },
-  { label: 'LIFETIME', value: '$349 (128 slots)', valueClass: 'text-base-content/50' },
+  { label: 'MONTHLY', value: '$8.99/mo', valueClass: 'text-base-content/50' },
+  {
+    label: 'QUARTERLY',
+    value: '$21.99/3mo',
+    valueClass: 'text-base-content/50',
+  },
+  { label: 'ANNUAL', value: '$69.99/yr', valueClass: 'text-base-content/50' },
+  {
+    label: 'LIFETIME',
+    value: '$549 (128 slots)',
+    valueClass: 'text-base-content/50',
+  },
   { label: 'FREE_TIER', value: 'ALWAYS_FREE', valueClass: 'text-success/70' },
   { prompt: true, text: 'scrollr uplink subscribe --notify' },
-  { label: '→', value: 'Notifications not available yet. Check back soon.', valueClass: 'text-base-content/30' },
+  {
+    label: '→',
+    value: 'Notifications not available yet. Check back soon.',
+    valueClass: 'text-base-content/30',
+  },
 ]
 
 // ── Animated Counter ────────────────────────────────────────────
 
-function AnimatedNumber({ target, duration = 1.5 }: { target: number; duration?: number }) {
+function AnimatedNumber({
+  target,
+  duration = 1.5,
+}: {
+  target: number
+  duration?: number
+}) {
   const count = useMotionValue(0)
   const rounded = useTransform(count, (v) => Math.floor(v))
   const [display, setDisplay] = useState(0)
@@ -153,7 +171,10 @@ function AnimatedNumber({ target, duration = 1.5 }: { target: number; duration?:
       ease: [0.22, 1, 0.36, 1],
     })
     const unsub = rounded.on('change', (v) => setDisplay(v))
-    return () => { controls.stop(); unsub() }
+    return () => {
+      controls.stop()
+      unsub()
+    }
   }, [target, duration, count, rounded])
 
   return <span>{display}</span>
@@ -171,7 +192,11 @@ function SignalBars() {
           style={{ height: 4 + i * 4 }}
           initial={{ scaleY: 0, opacity: 0 }}
           animate={{ scaleY: 1, opacity: 1 }}
-          transition={{ delay: 0.8 + i * 0.12, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          transition={{
+            delay: 0.8 + i * 0.12,
+            duration: 0.4,
+            ease: [0.22, 1, 0.36, 1],
+          }}
         />
       ))}
     </div>
@@ -205,7 +230,10 @@ function TerminalBlock() {
   }, [])
 
   return (
-    <div ref={containerRef} className="relative overflow-hidden rounded-sm border border-base-300/60 bg-base-100/80 backdrop-blur-sm">
+    <div
+      ref={containerRef}
+      className="relative overflow-hidden rounded-sm border border-base-300/60 bg-base-100/80 backdrop-blur-sm"
+    >
       {/* Grid overlay */}
       <div
         className="absolute inset-0 opacity-[0.015] pointer-events-none"
@@ -243,8 +271,14 @@ function TerminalBlock() {
               </div>
             ) : (
               <div className="pl-5 text-xs">
-                <span className="text-primary/60">{'label' in line ? line.label : ''}</span>{' '}
-                <span className={'valueClass' in line ? (line.valueClass ?? '') : ''}>
+                <span className="text-primary/60">
+                  {'label' in line ? line.label : ''}
+                </span>{' '}
+                <span
+                  className={
+                    'valueClass' in line ? (line.valueClass ?? '') : ''
+                  }
+                >
                   {'value' in line ? line.value : ''}
                 </span>
               </div>
@@ -300,7 +334,8 @@ function UplinkPage() {
           <motion.div
             className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] rounded-full"
             style={{
-              background: 'radial-gradient(circle, rgba(191, 255, 0, 0.06) 0%, transparent 70%)',
+              background:
+                'radial-gradient(circle, rgba(191, 255, 0, 0.06) 0%, transparent 70%)',
             }}
             animate={{
               scale: [1, 1.08, 1],
@@ -313,7 +348,8 @@ function UplinkPage() {
           <motion.div
             className="absolute bottom-[-30%] left-[-10%] w-[600px] h-[600px] rounded-full"
             style={{
-              background: 'radial-gradient(circle, rgba(0, 212, 255, 0.04) 0%, transparent 70%)',
+              background:
+                'radial-gradient(circle, rgba(0, 212, 255, 0.04) 0%, transparent 70%)',
             }}
             animate={{
               scale: [1.08, 1, 1.08],
@@ -358,7 +394,11 @@ function UplinkPage() {
             <motion.h1
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+              transition={{
+                duration: 0.7,
+                delay: 0.15,
+                ease: [0.22, 1, 0.36, 1],
+              }}
               className="text-6xl md:text-8xl lg:text-9xl font-black tracking-tight uppercase leading-[0.85] mb-8"
             >
               Total
@@ -370,7 +410,11 @@ function UplinkPage() {
                   className="absolute -bottom-2 left-0 right-0 h-[3px] bg-gradient-to-r from-primary via-primary/60 to-transparent origin-left"
                   initial={{ scaleX: 0 }}
                   animate={{ scaleX: 1 }}
-                  transition={{ duration: 0.8, delay: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                  transition={{
+                    duration: 0.8,
+                    delay: 0.8,
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
                 />
               </span>
             </motion.h1>
@@ -379,14 +423,20 @@ function UplinkPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
+              transition={{
+                duration: 0.6,
+                delay: 0.35,
+                ease: [0.22, 1, 0.36, 1],
+              }}
               className="flex items-start gap-3 mb-12 max-w-xl"
             >
-              <span className="text-primary/30 font-mono text-sm mt-0.5 select-none shrink-0">$</span>
+              <span className="text-primary/30 font-mono text-sm mt-0.5 select-none shrink-0">
+                $
+              </span>
               <p className="text-base text-base-content/40 font-mono leading-relaxed">
-                Scrollr is free and open source. Uplink is for power users who want
-                more — every symbol, every feed, every league, and real-time data
-                delivery.
+                Scrollr is free and open source. Uplink is for power users who
+                want more — every symbol, every feed, every league, and
+                real-time data delivery.
               </p>
             </motion.div>
 
@@ -394,14 +444,22 @@ function UplinkPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              transition={{
+                duration: 0.6,
+                delay: 0.5,
+                ease: [0.22, 1, 0.36, 1],
+              }}
               className="flex flex-wrap items-center gap-5"
             >
               <div className="relative group">
                 <motion.div
                   className="absolute -inset-1 bg-primary/15 rounded-sm blur-lg"
                   animate={{ opacity: [0.3, 0.6, 0.3] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                  }}
                 />
                 <button
                   type="button"
@@ -416,7 +474,7 @@ function UplinkPage() {
               <div className="flex items-center gap-3">
                 <span className="h-px w-6 bg-base-300/50" />
                 <span className="text-[10px] font-mono text-base-content/20 uppercase tracking-wider">
-                  Starting at $3.33/mo
+                  Starting at $5.83/mo
                 </span>
               </div>
             </motion.div>
@@ -543,12 +601,21 @@ function UplinkPage() {
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                whileHover={{ y: -3, transition: { type: 'tween', duration: 0.2 } }}
+                transition={{
+                  delay: i * 0.08,
+                  duration: 0.5,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+                whileHover={{
+                  y: -3,
+                  transition: { type: 'tween', duration: 0.2 },
+                }}
                 className="group bg-base-200/50 border border-base-300/50 rounded-sm p-6 hover:border-primary/20 transition-colors relative overflow-hidden"
               >
                 {/* Gradient accent on hover */}
-                <div className={`absolute top-0 left-0 right-0 h-32 bg-gradient-to-b ${feature.accent} opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none`} />
+                <div
+                  className={`absolute top-0 left-0 right-0 h-32 bg-gradient-to-b ${feature.accent} opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none`}
+                />
 
                 {/* Top accent line */}
                 <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-primary/0 group-hover:via-primary/20 to-transparent transition-all duration-500" />
@@ -596,7 +663,10 @@ function UplinkPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              whileHover={{ y: -3, transition: { type: 'tween', duration: 0.2 } }}
+              whileHover={{
+                y: -3,
+                transition: { type: 'tween', duration: 0.2 },
+              }}
               className="group bg-base-200/40 border border-base-300/50 rounded-sm p-6 hover:border-base-300 transition-colors relative overflow-hidden"
             >
               <div className="absolute inset-0 bg-gradient-to-b from-base-content/[0.01] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
@@ -619,7 +689,7 @@ function UplinkPage() {
 
                 <div className="flex items-baseline gap-1.5 mb-1">
                   <span className="text-3xl font-black text-base-content tracking-tight">
-                    $4.99
+                    $8.99
                   </span>
                   <span className="text-xs font-mono text-base-content/25">
                     / month
@@ -642,8 +712,15 @@ function UplinkPage() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: 0.06, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              whileHover={{ y: -3, transition: { type: 'tween', duration: 0.2 } }}
+              transition={{
+                delay: 0.06,
+                duration: 0.5,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              whileHover={{
+                y: -3,
+                transition: { type: 'tween', duration: 0.2 },
+              }}
               className="group bg-base-200/40 border border-base-300/50 rounded-sm p-6 hover:border-info/20 transition-colors relative overflow-hidden"
             >
               <div className="absolute inset-0 bg-gradient-to-b from-info/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
@@ -653,7 +730,7 @@ function UplinkPage() {
                     <Rocket size={18} />
                   </div>
                   <span className="text-[9px] font-mono text-info/50 uppercase tracking-widest">
-                    Save 20%
+                    Save 18%
                   </span>
                 </div>
 
@@ -666,14 +743,14 @@ function UplinkPage() {
 
                 <div className="flex items-baseline gap-1.5 mb-1">
                   <span className="text-3xl font-black text-base-content tracking-tight">
-                    $11.99
+                    $21.99
                   </span>
                   <span className="text-xs font-mono text-base-content/25">
                     / 3 months
                   </span>
                 </div>
                 <p className="text-[10px] font-mono text-base-content/20 mb-5">
-                  ~$4.00/mo
+                  ~$7.33/mo
                 </p>
 
                 <div className="space-y-2.5">
@@ -689,15 +766,26 @@ function UplinkPage() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: 0.12, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              whileHover={{ y: -4, transition: { type: 'tween', duration: 0.2 } }}
+              transition={{
+                delay: 0.12,
+                duration: 0.5,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              whileHover={{
+                y: -4,
+                transition: { type: 'tween', duration: 0.2 },
+              }}
               className="group relative rounded-sm overflow-hidden"
             >
               {/* Outer glow */}
               <motion.div
                 className="absolute -inset-px rounded-sm bg-gradient-to-b from-primary/30 via-primary/10 to-primary/5"
                 animate={{ opacity: [0.7, 1, 0.7] }}
-                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
               />
 
               <div className="relative bg-base-200/80 backdrop-blur-sm p-6 border border-primary/20 rounded-sm">
@@ -717,7 +805,7 @@ function UplinkPage() {
                       <Star size={18} />
                     </div>
                     <span className="text-[9px] font-mono text-primary/60 uppercase tracking-widest">
-                      Save 33%
+                      Save 35%
                     </span>
                   </div>
 
@@ -730,20 +818,26 @@ function UplinkPage() {
 
                   <div className="flex items-baseline gap-1.5 mb-1">
                     <span className="text-3xl font-black text-base-content tracking-tight">
-                      $39.99
+                      $69.99
                     </span>
                     <span className="text-xs font-mono text-base-content/25">
                       / year
                     </span>
                   </div>
                   <p className="text-[10px] font-mono text-primary/40 mb-5">
-                    ~$3.33/mo
+                    ~$5.83/mo
                   </p>
 
                   <div className="space-y-2.5">
-                    <PricingFeature highlight>Real-time data delivery</PricingFeature>
-                    <PricingFeature highlight>All integrations maxed</PricingFeature>
-                    <PricingFeature highlight>Early access to features</PricingFeature>
+                    <PricingFeature highlight>
+                      Real-time data delivery
+                    </PricingFeature>
+                    <PricingFeature highlight>
+                      All integrations maxed
+                    </PricingFeature>
+                    <PricingFeature highlight>
+                      Early access to features
+                    </PricingFeature>
                     <PricingFeature highlight>Priority support</PricingFeature>
                   </div>
                 </div>
@@ -755,8 +849,15 @@ function UplinkPage() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: 0.18, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              whileHover={{ y: -3, transition: { type: 'tween', duration: 0.2 } }}
+              transition={{
+                delay: 0.18,
+                duration: 0.5,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              whileHover={{
+                y: -3,
+                transition: { type: 'tween', duration: 0.2 },
+              }}
               className="group bg-base-200/40 border border-base-300/50 rounded-sm p-6 hover:border-warning/20 transition-colors relative overflow-hidden"
             >
               <div className="absolute inset-0 bg-gradient-to-b from-warning/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
@@ -780,7 +881,7 @@ function UplinkPage() {
 
                 <div className="flex items-baseline gap-1.5 mb-1">
                   <span className="text-3xl font-black text-base-content tracking-tight">
-                    $349
+                    $549
                   </span>
                   <span className="text-xs font-mono text-base-content/25">
                     / forever
@@ -806,7 +907,11 @@ function UplinkPage() {
                       initial={{ scaleX: 0 }}
                       whileInView={{ scaleX: 1 }}
                       viewport={{ once: true }}
-                      transition={{ duration: 1.5, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                      transition={{
+                        duration: 1.5,
+                        delay: 0.3,
+                        ease: [0.22, 1, 0.36, 1],
+                      }}
                     />
                   </div>
                 </div>
@@ -865,13 +970,18 @@ function UplinkPage() {
               <motion.div
                 className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full"
                 style={{
-                  background: 'radial-gradient(circle, rgba(191, 255, 0, 0.05) 0%, transparent 70%)',
+                  background:
+                    'radial-gradient(circle, rgba(191, 255, 0, 0.05) 0%, transparent 70%)',
                 }}
                 animate={{
                   scale: [1, 1.1, 1],
                   opacity: [0.5, 0.8, 0.5],
                 }}
-                transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+                transition={{
+                  duration: 6,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
               />
               <div
                 className="absolute inset-0 opacity-[0.015]"
@@ -905,11 +1015,14 @@ function UplinkPage() {
                 initial={{ opacity: 0, y: 15 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: 0.1, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                transition={{
+                  delay: 0.1,
+                  duration: 0.6,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
                 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight uppercase mb-6 leading-[0.95]"
               >
-                Scrollr is{' '}
-                <span className="text-primary">free forever</span>
+                Scrollr is <span className="text-primary">free forever</span>
                 <br />
                 <span className="text-base-content/60">
                   Uplink is for those who want more
@@ -920,22 +1033,31 @@ function UplinkPage() {
                 initial={{ opacity: 0, y: 15 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: 0.2, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                transition={{
+                  delay: 0.2,
+                  duration: 0.6,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
                 className="text-sm text-base-content/35 leading-relaxed mb-10 font-mono max-w-lg mx-auto"
               >
-                The core platform stays open source and always free.
-                Uplink unlocks real-time delivery and total coverage across every integration.
+                The core platform stays open source and always free. Uplink
+                unlocks real-time delivery and total coverage across every
+                integration.
               </motion.p>
 
               <motion.div
                 initial={{ opacity: 0, y: 15 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: 0.3, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                transition={{
+                  delay: 0.3,
+                  duration: 0.6,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
                 className="flex flex-wrap items-center justify-center gap-3"
               >
                 <span className="inline-flex items-center gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-primary/60 border border-primary/15 rounded-sm bg-primary/5">
-                  <Zap size={12} /> Starting at $3.33/mo
+                  <Zap size={12} /> Starting at $5.83/mo
                 </span>
                 <span className="inline-flex items-center gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-base-content/25 border border-base-300/30 rounded-sm">
                   <ChevronRight size={12} /> Free tier always included
@@ -951,11 +1073,24 @@ function UplinkPage() {
 
 // ── Pricing Feature Line ──────────────────────────────────────────
 
-function PricingFeature({ children, highlight }: { children: React.ReactNode; highlight?: boolean }) {
+function PricingFeature({
+  children,
+  highlight,
+}: {
+  children: React.ReactNode
+  highlight?: boolean
+}) {
   return (
     <div className="flex items-center gap-2.5">
-      <Check size={12} className={highlight ? 'text-primary shrink-0' : 'text-base-content/20 shrink-0'} />
-      <span className={`text-xs ${highlight ? 'text-base-content/60' : 'text-base-content/35'}`}>
+      <Check
+        size={12}
+        className={
+          highlight ? 'text-primary shrink-0' : 'text-base-content/20 shrink-0'
+        }
+      />
+      <span
+        className={`text-xs ${highlight ? 'text-base-content/60' : 'text-base-content/35'}`}
+      >
         {children}
       </span>
     </div>

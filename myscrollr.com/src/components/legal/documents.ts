@@ -71,7 +71,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       {
         heading: 'Eligibility',
         content: [
-          'You must be at least 13 years of age to use the Platform. If you are under 18, you represent that you have your parent or guardian\'s permission to use the Platform. By using the Platform, you represent and warrant that you meet these eligibility requirements.',
+          "You must be at least 13 years of age to use the Platform. If you are under 18, you represent that you have your parent or guardian's permission to use the Platform. By using the Platform, you represent and warrant that you meet these eligibility requirements.",
         ],
       },
       {
@@ -199,7 +199,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
         ],
       },
       {
-        heading: 'Children\'s Privacy',
+        heading: "Children's Privacy",
         content: [
           'The Platform is not directed to children under 13 years of age. We do not knowingly collect personal information from children under 13. If we learn that we have collected information from a child under 13, we will take steps to delete it promptly.',
         ],
@@ -247,9 +247,9 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       {
         heading: 'Browser Extension Storage',
         content: [
-          'The Scrollr browser extension uses the browser\'s built-in extension storage API (browser.storage.local) to store the following data locally on your device:',
+          "The Scrollr browser extension uses the browser's built-in extension storage API (browser.storage.local) to store the following data locally on your device:",
           'Authentication tokens: Your access token and refresh token for communicating with our API. Feed preferences: Your display settings (position, mode, behavior, visibility). Dashboard state: Cached dashboard data for faster loading. Connection state: SSE connection status and subscription information.',
-          'This data is stored locally on your device and is not transmitted to third parties. It is only sent to Scrollr\'s API servers to authenticate requests and retrieve your personalized data.',
+          "This data is stored locally on your device and is not transmitted to third parties. It is only sent to Scrollr's API servers to authenticate requests and retrieve your personalized data.",
         ],
       },
       {
@@ -263,7 +263,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
         heading: 'Managing Storage',
         content: [
           'Website cookies: You can clear cookies through your browser settings. Note that clearing authentication cookies will sign you out of the Platform.',
-          'Extension storage: You can clear extension data by removing and re-installing the extension, or through your browser\'s extension management page. You can also manage your preferences through the extension\'s settings panel or the web dashboard.',
+          "Extension storage: You can clear extension data by removing and re-installing the extension, or through your browser's extension management page. You can also manage your preferences through the extension's settings panel or the web dashboard.",
           'Disabling cookies entirely may prevent you from using authenticated features of the Platform.',
         ],
       },
@@ -324,7 +324,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       {
         heading: 'Third-Party Data Provider',
         content: [
-          'Financial data is provided by Finnhub (finnhub.io). Finnhub\'s terms of service and data usage policies apply to the data we display. We are not responsible for the accuracy, availability, or completeness of data provided by Finnhub or any other third-party data source.',
+          "Financial data is provided by Finnhub (finnhub.io). Finnhub's terms of service and data usage policies apply to the data we display. We are not responsible for the accuracy, availability, or completeness of data provided by Finnhub or any other third-party data source.",
         ],
       },
     ],
@@ -351,21 +351,21 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       {
         heading: 'Financial Market Data — Finnhub',
         content: [
-          'Real-time and historical market data is provided by Finnhub (finnhub.io). This includes stock prices, cryptocurrency prices, trade data, and derived calculations. Finnhub\'s data is sourced from various exchanges and data providers. Use of this data is subject to Finnhub\'s terms of service.',
+          "Real-time and historical market data is provided by Finnhub (finnhub.io). This includes stock prices, cryptocurrency prices, trade data, and derived calculations. Finnhub's data is sourced from various exchanges and data providers. Use of this data is subject to Finnhub's terms of service.",
           'We track approximately 50 symbols including 45 stocks and 5 cryptocurrency pairs. Data is received via WebSocket connection for real-time updates.',
         ],
       },
       {
         heading: 'Sports Data — ESPN',
         content: [
-          'Live sports scores, game schedules, and team information are sourced from ESPN\'s publicly available APIs. This data covers NFL, NBA, NHL, MLB, College Football, Men\'s College Basketball, Women\'s College Basketball, and College Baseball. ESPN is a trademark of ESPN Inc. We are not affiliated with or endorsed by ESPN.',
+          "Live sports scores, game schedules, and team information are sourced from ESPN's publicly available APIs. This data covers NFL, NBA, NHL, MLB, College Football, Men's College Basketball, Women's College Basketball, and College Baseball. ESPN is a trademark of ESPN Inc. We are not affiliated with or endorsed by ESPN.",
           'Sports data is polled at regular intervals (approximately every 60 seconds) and may not reflect the absolute latest scores during live games.',
         ],
       },
       {
         heading: 'Fantasy Sports Data — Yahoo',
         content: [
-          'Yahoo Fantasy Sports data is accessed through Yahoo\'s official API with explicit user authorization via OAuth 2.0. We only access fantasy sports data for users who have actively connected their Yahoo account. Yahoo and Yahoo Fantasy are trademarks of Yahoo Inc. We are not affiliated with or endorsed by Yahoo.',
+          "Yahoo Fantasy Sports data is accessed through Yahoo's official API with explicit user authorization via OAuth 2.0. We only access fantasy sports data for users who have actively connected their Yahoo account. Yahoo and Yahoo Fantasy are trademarks of Yahoo Inc. We are not affiliated with or endorsed by Yahoo.",
           'Fantasy data includes league information, standings, matchups, and roster details. This data is synced periodically for active users.',
         ],
       },
@@ -422,7 +422,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
         heading: 'What the Extension Cannot Access',
         content: [
           'The extension does NOT read the content of web pages you visit. It does NOT collect your browsing history. It does NOT monitor your keystrokes or form inputs. It does NOT inject advertisements. It does NOT access your bookmarks, downloads, or other browser data.',
-          'The extension uses a Shadow Root to render its UI, which is a browser technology that creates an isolated DOM tree. This means the extension\'s interface is completely isolated from the web page content, and the web page cannot access the extension\'s internal state.',
+          "The extension uses a Shadow Root to render its UI, which is a browser technology that creates an isolated DOM tree. This means the extension's interface is completely isolated from the web page content, and the web page cannot access the extension's internal state.",
         ],
       },
       {
@@ -437,7 +437,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
         heading: 'Local Data Storage',
         content: [
           'The extension stores the following data locally using browser.storage.local: access and refresh tokens (for API authentication), user preferences (feed position, mode, behavior, visibility), dashboard cache (for faster initial loads), feed subscriptions (which data streams you are subscribed to), and connection state.',
-          'This data never leaves your device except when sent to Scrollr\'s API servers for authentication and data retrieval. It is not shared with any third party.',
+          "This data never leaves your device except when sent to Scrollr's API servers for authentication and data retrieval. It is not shared with any third party.",
         ],
       },
       {
@@ -481,7 +481,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       {
         heading: 'Pricing and Plans',
         content: [
-          'Uplink is available in four pricing tiers: Monthly at $4.99 per month, Quarterly at $11.99 per quarter (billed every 3 months, approximately 20% savings), Annual at $39.99 per year (billed annually, approximately 33% savings), and Lifetime at $349.00 (one-time payment, permanent access, limited to 128 slots).',
+          'Uplink is available in four pricing tiers: Monthly at $8.99 per month, Quarterly at $21.99 per quarter (billed every 3 months, approximately 18% savings), Annual at $69.99 per year (billed annually, approximately 35% savings), and Lifetime at $549.00 (one-time payment, permanent access, limited to 128 slots).',
           'All prices are in US Dollars (USD). Prices may be adjusted with notice to existing subscribers. Existing subscribers will be honored at their original rate for the remainder of their current billing period.',
         ],
       },
@@ -699,7 +699,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       {
         heading: 'Prohibited Activities',
         content: [
-          'You may not use the Platform to: scrape, crawl, or systematically download data from our APIs or website beyond normal personal use; redistribute, resell, or commercially exploit data obtained through the Platform; attempt to circumvent rate limits, authentication mechanisms, or access controls; interfere with or disrupt the Platform\'s infrastructure, including denial-of-service attacks; impersonate other users or misrepresent your identity; use the browser extension to inject malicious code, advertisements, or unauthorized content into web pages; access or attempt to access other users\' accounts or data; or use automated tools (bots, scripts) to interact with the Platform in ways not explicitly supported by our APIs.',
+          "You may not use the Platform to: scrape, crawl, or systematically download data from our APIs or website beyond normal personal use; redistribute, resell, or commercially exploit data obtained through the Platform; attempt to circumvent rate limits, authentication mechanisms, or access controls; interfere with or disrupt the Platform's infrastructure, including denial-of-service attacks; impersonate other users or misrepresent your identity; use the browser extension to inject malicious code, advertisements, or unauthorized content into web pages; access or attempt to access other users' accounts or data; or use automated tools (bots, scripts) to interact with the Platform in ways not explicitly supported by our APIs.",
         ],
       },
       {
@@ -807,7 +807,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
         heading: 'Responsible Disclosure',
         content: [
           'If you discover a security vulnerability in Scrollr, we appreciate your help in disclosing it to us responsibly. Please do NOT publicly disclose the vulnerability until we have had a chance to address it.',
-          'To report a vulnerability, please contact us through our GitHub repository\'s security advisory feature, or reach out via our community Discord server with a private message to a maintainer.',
+          "To report a vulnerability, please contact us through our GitHub repository's security advisory feature, or reach out via our community Discord server with a private message to a maintainer.",
         ],
       },
       {
@@ -860,13 +860,13 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       {
         heading: 'Current Status',
         content: [
-          'We recognize that our platform is in active development and may not yet fully meet all WCAG 2.1 AA criteria. Known areas for improvement include: ensuring all interactive elements have sufficient color contrast ratios, providing complete keyboard navigation support across all features, adding comprehensive ARIA labels to dynamic content (especially the real-time data feed), and ensuring screen reader compatibility with the browser extension\'s shadow root UI.',
+          "We recognize that our platform is in active development and may not yet fully meet all WCAG 2.1 AA criteria. Known areas for improvement include: ensuring all interactive elements have sufficient color contrast ratios, providing complete keyboard navigation support across all features, adding comprehensive ARIA labels to dynamic content (especially the real-time data feed), and ensuring screen reader compatibility with the browser extension's shadow root UI.",
         ],
       },
       {
         heading: 'Browser Extension',
         content: [
-          'The Scrollr browser extension renders its UI within a Shadow Root DOM, which presents unique accessibility challenges. We are working to ensure that the extension\'s feed overlay is navigable via keyboard and compatible with screen readers.',
+          "The Scrollr browser extension renders its UI within a Shadow Root DOM, which presents unique accessibility challenges. We are working to ensure that the extension's feed overlay is navigable via keyboard and compatible with screen readers.",
         ],
       },
       {
