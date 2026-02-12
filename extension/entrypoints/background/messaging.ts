@@ -6,7 +6,7 @@ import {
   subscriptionTier as subscriptionTierStorage,
 } from '~/utils/storage';
 import { getConnectionStatus, getLastDashboard, setOnStatusChange, setOnCDCRecords } from './sse';
-import { login, logout, isAuthenticated } from './auth';
+import { login, loginFromBridge, logout, isAuthenticated, getValidToken } from './auth';
 import { refreshDashboard } from './dashboard';
 import { startPolling, stopPolling } from './polling';
 
@@ -74,6 +74,20 @@ export function broadcast(message: BackgroundMessage) {
         browser.tabs.sendMessage(tab.id, message).catch(() => {
           // Content script not injected in this tab, ignore
         });
+      }
+    }
+  });
+}
+
+/**
+ * Send a message only to content scripts running on myscrollr.com tabs.
+ * Used to relay extension auth events to the website.
+ */
+function sendToFrontendTabs(message: BackgroundMessage) {
+  browser.tabs.query({ url: `${FRONTEND_URL}/*` }).then((tabs) => {
+    for (const tab of tabs) {
+      if (tab.id != null) {
+        browser.tabs.sendMessage(tab.id, message).catch(() => {});
       }
     }
   });
@@ -169,12 +183,35 @@ export function setupMessageListeners() {
 
               // Now start the appropriate delivery mode based on tier
               await startAuthenticatedDelivery();
+
+              // Relay auth event to myscrollr.com tabs so the website can sync
+              const token = await getValidToken();
+              if (token) {
+                const expiry = await import('~/utils/storage').then((s) =>
+                  s.authTokenExpiry.getValue(),
+                );
+                const refresh = await import('~/utils/storage').then((s) =>
+                  s.authRefreshToken.getValue(),
+                );
+                sendToFrontendTabs({
+                  type: 'DISPATCH_AUTH_EVENT',
+                  event: 'login',
+                  tokens: {
+                    accessToken: token,
+                    refreshToken: refresh,
+                    expiresAt: expiry ?? Date.now() + 3600_000,
+                  },
+                });
+              }
             }
           });
           return true;
         }
 
         case 'LOGOUT': {
+          // Relay auth-logout to myscrollr.com tabs BEFORE clearing tokens
+          sendToFrontendTabs({ type: 'DISPATCH_AUTH_EVENT', event: 'logout' });
+
           logout().then(async () => {
             // Tear down authenticated connections
             stopSSE();
@@ -188,6 +225,41 @@ export function setupMessageListeners() {
             sendResponse({ type: 'AUTH_STATUS', authenticated: false });
 
             // Start anonymous polling
+            startPolling();
+          });
+          return true;
+        }
+
+        case 'AUTH_SYNC_LOGIN': {
+          // Website logged in → bridge tokens into the extension
+          loginFromBridge({
+            accessToken: msg.accessToken,
+            refreshToken: msg.refreshToken,
+            expiresAt: msg.expiresAt,
+          }).then(async (success) => {
+            if (success) {
+              stopPolling();
+              await refreshDashboard();
+              await startAuthenticatedDelivery();
+            }
+            broadcast({ type: 'AUTH_STATUS', authenticated: success });
+            sendResponse({ type: 'AUTH_STATUS', authenticated: success });
+          });
+          return true;
+        }
+
+        case 'AUTH_SYNC_LOGOUT': {
+          // Website logged out → log the extension out too
+          logout().then(async () => {
+            stopSSE();
+            stopPolling();
+
+            await deliveryModeStorage.setValue('polling');
+            await subscriptionTierStorage.setValue('anonymous');
+
+            broadcast({ type: 'AUTH_STATUS', authenticated: false });
+            sendResponse({ type: 'AUTH_STATUS', authenticated: false });
+
             startPolling();
           });
           return true;

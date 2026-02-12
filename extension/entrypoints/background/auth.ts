@@ -179,6 +179,42 @@ async function doLogin(): Promise<boolean> {
   }
 }
 
+/**
+ * Authenticate the extension using tokens provided by the website via the
+ * content script bridge.  This bypasses the PKCE flow entirely — the
+ * website's access token is valid for API calls because both Logto apps
+ * target the same tenant / audience / issuer.
+ */
+export async function loginFromBridge(tokens: {
+  accessToken: string;
+  refreshToken: string | null;
+  expiresAt: number;
+}): Promise<boolean> {
+  try {
+    await authToken.setValue(tokens.accessToken);
+    await authTokenExpiry.setValue(tokens.expiresAt);
+
+    if (tokens.refreshToken) {
+      await authRefreshToken.setValue(tokens.refreshToken);
+    }
+
+    // Extract and store the user's sub claim for CDC filtering
+    try {
+      const payload = JSON.parse(atob(tokens.accessToken.split('.')[1]));
+      if (payload.sub) {
+        await userSub.setValue(payload.sub);
+      }
+    } catch {
+      // JWT decode failed — non-critical
+    }
+
+    return true;
+  } catch (err) {
+    console.error('[Scrollr] Bridge login failed:', err);
+    return false;
+  }
+}
+
 export async function logout(): Promise<void> {
   await authToken.setValue(null);
   await authTokenExpiry.setValue(null);

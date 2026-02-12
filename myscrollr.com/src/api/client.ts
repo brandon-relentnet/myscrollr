@@ -17,6 +17,40 @@ function notifyExtensionConfigChanged(): void {
   }
 }
 
+/**
+ * Notify the Scrollr extension that the user has logged in on the website.
+ * The content script relays these tokens to the extension background so
+ * it can authenticate without a separate PKCE flow.  Both Logto apps share
+ * the same tenant / audience / issuer, so website tokens work for the API.
+ */
+export function notifyExtensionAuthLogin(
+  accessToken: string,
+  refreshToken: string | null,
+  expiresAt: number,
+): void {
+  try {
+    document.dispatchEvent(
+      new CustomEvent('scrollr:auth-login', {
+        detail: { accessToken, refreshToken, expiresAt },
+      }),
+    )
+  } catch {
+    // Extension not installed — ignore
+  }
+}
+
+/**
+ * Notify the Scrollr extension that the user is about to log out on the
+ * website.  Must be called BEFORE the Logto signOut redirect.
+ */
+export function notifyExtensionAuthLogout(): void {
+  try {
+    document.dispatchEvent(new CustomEvent('scrollr:auth-logout'))
+  } catch {
+    // Extension not installed — ignore
+  }
+}
+
 // ── Shared Types ──────────────────────────────────────────────────
 
 export interface UserPreferences {

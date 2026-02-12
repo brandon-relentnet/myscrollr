@@ -45,12 +45,28 @@ export interface StateSnapshotMessage {
   deliveryMode: DeliveryMode;
 }
 
+/**
+ * Sent by the background to content scripts on myscrollr.com tabs after an
+ * extension-initiated login or logout. The content script relays the event
+ * to the website via CustomEvent so the website can sync its auth state.
+ */
+interface DispatchAuthEventMessage {
+  type: 'DISPATCH_AUTH_EVENT';
+  event: 'login' | 'logout';
+  tokens?: {
+    accessToken: string;
+    refreshToken: string | null;
+    expiresAt: number;
+  };
+}
+
 export type BackgroundMessage =
   | ConnectionStatusMessage
   | InitialDataMessage
   | AuthStatusMessage
   | CDCBatchMessage
-  | StateSnapshotMessage;
+  | StateSnapshotMessage
+  | DispatchAuthEventMessage;
 
 // ── Content Script / Popup → Background ──────────────────────────
 
@@ -89,10 +105,33 @@ interface ForceRefreshMessage {
   type: 'FORCE_REFRESH';
 }
 
+/**
+ * Sent by the content script on myscrollr.com when the website dispatches
+ * a scrollr:auth-login CustomEvent after a successful Logto sign-in.
+ * Contains the website's access token (and optional refresh token) so the
+ * extension can authenticate without a separate PKCE flow.
+ */
+export interface AuthSyncLoginMessage {
+  type: 'AUTH_SYNC_LOGIN';
+  accessToken: string;
+  refreshToken: string | null;
+  expiresAt: number;
+}
+
+/**
+ * Sent by the content script on myscrollr.com when the website dispatches
+ * a scrollr:auth-logout CustomEvent before the user signs out.
+ */
+interface AuthSyncLogoutMessage {
+  type: 'AUTH_SYNC_LOGOUT';
+}
+
 export type ClientMessage =
   | GetStateMessage
   | LoginMessage
   | LogoutMessage
   | SubscribeCDCMessage
   | UnsubscribeCDCMessage
-  | ForceRefreshMessage;
+  | ForceRefreshMessage
+  | AuthSyncLoginMessage
+  | AuthSyncLogoutMessage;

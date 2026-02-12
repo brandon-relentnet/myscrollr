@@ -1,5 +1,5 @@
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useLogto } from '@logto/react'
+import { useScrollrAuth } from '@/hooks/useScrollrAuth'
 import { useEffect, useState } from 'react'
 import {
   ArrowRight,
@@ -20,7 +20,7 @@ export const Route = createFileRoute('/account')({
 })
 
 function AccountHub() {
-  const { isAuthenticated, isLoading, getIdTokenClaims } = useLogto()
+  const { isAuthenticated, isLoading, getIdTokenClaims } = useScrollrAuth()
   const [userClaims, setUserClaims] = useState<IdTokenClaims>()
   const navigate = useNavigate()
 

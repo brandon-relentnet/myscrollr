@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useLogto } from '@logto/react'
+import { useScrollrAuth } from '@/hooks/useScrollrAuth'
 import { useEffect, useState } from 'react'
 import {
   AlertCircle,
@@ -25,7 +25,7 @@ interface ProfileData {
 
 function ProfilePage() {
   const { username } = Route.useParams()
-  const { isAuthenticated, getIdTokenClaims, getAccessToken } = useLogto()
+  const { isAuthenticated, getIdTokenClaims, getAccessToken } = useScrollrAuth()
   const [profile, setProfile] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
   const [, setError] = useState<string | null>(null)

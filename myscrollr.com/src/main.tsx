@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { LogtoProvider } from '@logto/react'
 import type { LogtoConfig } from '@logto/react'
+import { ScrollrAuthProvider } from '@/hooks/useScrollrAuth'
 import { routeTree } from '@/routeTree.gen'
 
 // Import the generated route tree
@@ -40,7 +41,9 @@ if (rootElement && !rootElement.innerHTML) {
   root.render(
     <StrictMode>
       <LogtoProvider config={logtoConfig}>
-        <RouterProvider router={router} />
+        <ScrollrAuthProvider>
+          <RouterProvider router={router} />
+        </ScrollrAuthProvider>
       </LogtoProvider>
     </StrictMode>,
   )

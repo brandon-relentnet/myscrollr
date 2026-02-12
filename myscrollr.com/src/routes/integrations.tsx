@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { useLogto } from '@logto/react'
+import { useScrollrAuth } from '@/hooks/useScrollrAuth'
 import { useEffect, useState } from 'react'
 import {
   ArrowRight,
@@ -142,7 +142,7 @@ function IntegrationsPage() {
       'Browse and connect integrations to extend your Scrollr feed with real-time data from your favorite platforms.',
   })
 
-  const { isAuthenticated, signIn } = useLogto()
+  const { isAuthenticated, signIn } = useScrollrAuth()
   const [streams, setStreams] = useState<Array<Stream>>([])
   const [loading, setLoading] = useState(false)
   const [adding, setAdding] = useState<string | null>(null)

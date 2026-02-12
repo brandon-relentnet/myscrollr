@@ -11,16 +11,16 @@ import {
   X,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { useLogto } from '@logto/react'
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
 import type { IdTokenClaims } from '@logto/react'
+import { useScrollrAuth } from '@/hooks/useScrollrAuth'
 import ScrollrSVG from '@/components/ScrollrSVG'
 import { API_BASE } from '@/api/client'
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
   const { signIn, signOut, isAuthenticated, isLoading, getIdTokenClaims } =
-    useLogto()
+    useScrollrAuth()
   const [userClaims, setUserClaims] = useState<IdTokenClaims>()
 
   const [viewerCount, setViewerCount] = useState<number | null>(null)
@@ -54,6 +54,7 @@ export default function Header() {
   }
 
   const handleSignOut = () => {
+    // signOut() in ScrollrAuthProvider notifies extension + calls Logto signOut
     signOut(`${window.location.origin}`)
   }
 

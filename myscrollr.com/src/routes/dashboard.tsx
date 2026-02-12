@@ -4,7 +4,7 @@ import {
   useNavigate,
   useSearch,
 } from '@tanstack/react-router'
-import { useLogto } from '@logto/react'
+import { useScrollrAuth } from '@/hooks/useScrollrAuth'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Activity,
@@ -36,7 +36,7 @@ export const Route = createFileRoute('/dashboard')({
 })
 
 function DashboardPage() {
-  const { isAuthenticated, isLoading, signIn, getIdTokenClaims } = useLogto()
+  const { isAuthenticated, isLoading, signIn, getIdTokenClaims } = useScrollrAuth()
   const { tab } = useSearch({ from: '/dashboard' })
   const navigate = useNavigate({ from: '/dashboard' })
   const activeModule: string = tab ?? 'finance'
