@@ -171,9 +171,10 @@ function SignalBars() {
       {[1, 2, 3, 4, 5].map((i) => (
         <motion.div
           key={i}
-          className="w-[3px] rounded-full bg-primary"
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: 4 + i * 4, opacity: 1 }}
+          className="w-[3px] rounded-full bg-primary origin-bottom"
+          style={{ height: 4 + i * 4 }}
+          initial={{ scaleY: 0, opacity: 0 }}
+          animate={{ scaleY: 1, opacity: 1 }}
           transition={{ delay: 0.8 + i * 0.12, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
         />
       ))}
@@ -370,9 +371,9 @@ function UplinkPage() {
                 <span className="text-primary">Coverage</span>
                 {/* Underline accent */}
                 <motion.span
-                  className="absolute -bottom-2 left-0 h-[3px] bg-gradient-to-r from-primary via-primary/60 to-transparent"
-                  initial={{ width: 0 }}
-                  animate={{ width: '100%' }}
+                  className="absolute -bottom-2 left-0 right-0 h-[3px] bg-gradient-to-r from-primary via-primary/60 to-transparent origin-left"
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
                   transition={{ duration: 0.8, delay: 0.8, ease: [0.22, 1, 0.36, 1] }}
                 />
               </span>
