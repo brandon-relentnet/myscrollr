@@ -19,7 +19,7 @@ function HomePage() {
   })
 
   return (
-    <main>
+    <>
       <HeroSection />
 
       <HowItWorks />
@@ -31,6 +31,6 @@ function HomePage() {
       <FAQSection />
 
       <CallToAction />
-    </main>
+    </>
   )
 }

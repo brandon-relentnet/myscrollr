@@ -12,7 +12,7 @@ export function HeroSection() {
   }
 
   return (
-    <section className="relative min-h-dvh flex items-center overflow-hidden pt-20">
+    <section className="relative min-h-dvh flex items-center overflow-hidden">
       <div className="container relative">
         <div className="flex lg:flex-row flex-col justify-center items-center gap-12 lg:gap-20">
           {/* Abstract Pulse Visualization */}
