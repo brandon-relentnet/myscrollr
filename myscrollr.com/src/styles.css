@@ -95,7 +95,7 @@ body {
   line-height: 1.6;
   color: var(--color-base-content);
   background-color: var(--color-base-100);
-  overflow-x: clip;
+  overflow-x: hidden;
   min-height: 100dvh;
 
   /* Primary Background - Deep Space */

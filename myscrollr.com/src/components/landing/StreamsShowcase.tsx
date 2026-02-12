@@ -174,7 +174,7 @@ function BrowserMockup() {
       {/* Ambient glow behind mockup */}
       <div className="absolute -inset-8 bg-primary/[0.03] rounded-2xl blur-3xl pointer-events-none" />
 
-        <div className="relative rounded-sm border border-base-300/60 overflow-hidden shadow-lg shadow-black/20 bg-base-200/60 backdrop-blur-sm">
+      <div className="relative rounded-sm border border-base-300/60 overflow-hidden shadow-lg shadow-black/20 bg-base-200/60 backdrop-blur-sm">
         {/* Browser chrome */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-base-300/40 bg-base-200/80">
           {/* Traffic lights */}
@@ -292,7 +292,7 @@ export function StreamsShowcase() {
         </motion.div>
 
         {/* Browser Mockup */}
-        <div className="max-w-4xl mx-auto mb-20">
+        <div className="max-w-4xl mx-auto mb-20 overflow-hidden">
           <BrowserMockup />
         </div>
 
