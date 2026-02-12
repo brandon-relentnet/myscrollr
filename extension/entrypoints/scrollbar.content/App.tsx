@@ -5,6 +5,7 @@ import type {
   FeedMode,
   FeedBehavior,
   DashboardResponse,
+  DeliveryMode,
 } from '~/utils/types';
 import type { BackgroundMessage, ClientMessage, StateSnapshotMessage } from '~/utils/messaging';
 import {
@@ -15,6 +16,7 @@ import {
   feedCollapsed as feedCollapsedStorage,
   feedBehavior as feedBehaviorStorage,
   activeFeedTabs as activeFeedTabsStorage,
+  deliveryMode as deliveryModeStorage,
 } from '~/utils/storage';
 import type { ContentScriptContext } from '#imports';
 import FeedBar from './FeedBar';
@@ -29,6 +31,7 @@ export default function App({ ctx }: AppProps) {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [enabled, setEnabled] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
+  const [_deliveryMode, setDeliveryMode] = useState<DeliveryMode>('polling');
 
   // ── Preference state ─────────────────────────────────────────
   const [position, setPosition] = useState<FeedPosition>('bottom');
@@ -52,6 +55,7 @@ export default function App({ ctx }: AppProps) {
           setDashboard(snapshot.dashboard);
           setStatus(snapshot.connectionStatus);
           setAuthenticated(snapshot.authenticated);
+          setDeliveryMode(snapshot.deliveryMode);
         }
       })
       .catch(() => {
@@ -66,6 +70,7 @@ export default function App({ ctx }: AppProps) {
     feedCollapsedStorage.getValue().then(setCollapsed).catch(() => {});
     feedBehaviorStorage.getValue().then(setBehavior).catch(() => {});
     activeFeedTabsStorage.getValue().then((v) => setActiveTabs(v as string[])).catch(() => {});
+    deliveryModeStorage.getValue().then(setDeliveryMode).catch(() => {});
   }, [ctx]);
 
   // ── Listen for broadcasts from background ────────────────────
@@ -120,6 +125,7 @@ export default function App({ ctx }: AppProps) {
       feedCollapsedStorage.watch((v) => setCollapsed(v)),
       feedBehaviorStorage.watch((v) => setBehavior(v)),
       activeFeedTabsStorage.watch((v) => setActiveTabs(v as string[])),
+      deliveryModeStorage.watch((v) => setDeliveryMode(v)),
     ];
 
     const cleanup = () => unwatchers.forEach((unwatch) => unwatch());
@@ -137,7 +143,7 @@ export default function App({ ctx }: AppProps) {
       document.body.style.marginBottom = '';
     };
 
-    if (!ctx.isValid || behavior !== 'push' || collapsed || !authenticated) {
+    if (!ctx.isValid || behavior !== 'push' || collapsed) {
       resetMargins();
       return;
     }
@@ -149,7 +155,7 @@ export default function App({ ctx }: AppProps) {
     ctx.onInvalidated(resetMargins);
 
     return resetMargins;
-  }, [behavior, position, height, collapsed, authenticated, ctx]);
+  }, [behavior, position, height, collapsed, ctx]);
 
   // ── Login handler ──────────────────────────────────────────────
   const handleLogin = useCallback(() => {
@@ -163,6 +169,7 @@ export default function App({ ctx }: AppProps) {
     <FeedBar
       dashboard={dashboard}
       connectionStatus={status}
+      deliveryMode={_deliveryMode}
       position={position}
       height={height}
       mode={mode}

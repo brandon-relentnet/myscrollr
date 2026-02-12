@@ -122,6 +122,7 @@ func main() {
 
 	// Public routes (proxied by core gateway)
 	fiberApp.Get("/finance", app.getFinance)
+	fiberApp.Get("/finance/public", app.getFinance) // Unauthenticated: returns all trades (same handler, same cache)
 	fiberApp.Get("/finance/health", app.healthHandler)
 	fiberApp.Get("/finance/symbols", app.getSymbolCatalog)
 
@@ -175,6 +176,7 @@ func startRegistration(ctx context.Context, rdb *redis.Client) {
 		CDCTables:    []string{"trades"},
 		Routes: []registrationRoute{
 			{Method: "GET", Path: "/finance", Auth: true},
+			{Method: "GET", Path: "/finance/public", Auth: false},
 			{Method: "GET", Path: "/finance/health", Auth: false},
 			{Method: "GET", Path: "/finance/symbols", Auth: false},
 		},

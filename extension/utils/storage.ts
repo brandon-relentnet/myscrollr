@@ -3,6 +3,8 @@ import type {
   FeedPosition,
   FeedMode,
   FeedBehavior,
+  DeliveryMode,
+  SubscriptionTier,
 } from './types';
 
 // ── Feed bar position & layout ───────────────────────────────────
@@ -83,4 +85,18 @@ export const authTokenExpiry = storage.defineItem<number | null>(
 export const authRefreshToken = storage.defineItem<string | null>(
   'local:authRefreshToken',
   { fallback: null, version: 1 },
+);
+
+// ── Tiered delivery ──────────────────────────────────────────────
+
+/** Current data delivery mode: polling for anonymous/free, sse for uplink. */
+export const deliveryMode = storage.defineItem<DeliveryMode>(
+  'local:deliveryMode',
+  { fallback: 'polling', version: 1 },
+);
+
+/** User's subscription tier — determines delivery mode and available features. */
+export const subscriptionTier = storage.defineItem<SubscriptionTier>(
+  'local:subscriptionTier',
+  { fallback: 'free', version: 1 },
 );

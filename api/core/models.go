@@ -6,14 +6,15 @@ import (
 
 // UserPreferences represents a user's extension display preferences.
 type UserPreferences struct {
-	LogtoSub      string   `json:"-"`
-	FeedMode      string   `json:"feed_mode"`
-	FeedPosition  string   `json:"feed_position"`
-	FeedBehavior  string   `json:"feed_behavior"`
-	FeedEnabled   bool     `json:"feed_enabled"`
-	EnabledSites  []string `json:"enabled_sites"`
-	DisabledSites []string `json:"disabled_sites"`
-	UpdatedAt     string   `json:"updated_at"`
+	LogtoSub         string   `json:"-"`
+	FeedMode         string   `json:"feed_mode"`
+	FeedPosition     string   `json:"feed_position"`
+	FeedBehavior     string   `json:"feed_behavior"`
+	FeedEnabled      bool     `json:"feed_enabled"`
+	EnabledSites     []string `json:"enabled_sites"`
+	DisabledSites    []string `json:"disabled_sites"`
+	SubscriptionTier string   `json:"subscription_tier"`
+	UpdatedAt        string   `json:"updated_at"`
 }
 
 // Stream represents a user's subscription to a data integration.

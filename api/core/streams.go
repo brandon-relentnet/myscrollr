@@ -248,6 +248,9 @@ func CreateStream(c *fiber.Ctx) error {
 	// Call integration OnStreamCreated hook via HTTP
 	callStreamLifecycle(ctx, s.StreamType, "created", userID, s.Config, nil, nil)
 
+	// Invalidate dashboard cache so next poll gets fresh data
+	InvalidateDashboardCache(userID)
+
 	return c.Status(fiber.StatusCreated).JSON(s)
 }
 
@@ -371,6 +374,9 @@ func UpdateStream(c *fiber.Ctx) error {
 	// Call integration OnStreamUpdated hook via HTTP
 	callStreamLifecycle(ctx, streamType, "updated", userID, s.Config, oldConfig, nil)
 
+	// Invalidate dashboard cache so next poll gets fresh data
+	InvalidateDashboardCache(userID)
+
 	return c.JSON(s)
 }
 
@@ -433,6 +439,9 @@ func DeleteStream(c *fiber.Ctx) error {
 
 	// Call integration OnStreamDeleted hook via HTTP
 	callStreamLifecycle(ctx, streamType, "deleted", userID, config, nil, nil)
+
+	// Invalidate dashboard cache so next poll gets fresh data
+	InvalidateDashboardCache(userID)
 
 	return c.JSON(fiber.Map{"status": "ok", "message": "Stream removed"})
 }

@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import type { CDCRecord } from '~/utils/types';
+import type { DeliveryMode } from '~/utils/types';
 import type { BackgroundMessage, ClientMessage } from '~/utils/messaging';
 import { MAX_ITEMS } from '~/utils/constants';
+import { deliveryMode as deliveryModeStorage } from '~/utils/storage';
 
 /**
  * Uniqueness key extractor — given a record, returns a string key
@@ -42,6 +44,9 @@ interface UseScrollrCDCResult<T> {
  * background SSE connection. Manages an in-memory array with upsert/remove
  * logic and returns the current items.
  *
+ * In polling mode, CDC subscriptions are skipped — items are driven
+ * entirely by the dashboard snapshot arriving via INITIAL_DATA broadcasts.
+ *
  * Only used by official Scrollr integrations — community integrations
  * fetch their own data and don't use this hook.
  */
@@ -54,11 +59,19 @@ export function useScrollrCDC<T>({
   validate,
 }: UseScrollrCDCOptions<T>): UseScrollrCDCResult<T> {
   const [items, setItems] = useState<T[]>(initialItems);
+  const [mode, setMode] = useState<DeliveryMode>('polling');
 
   // Track whether we've received initialItems (they may arrive after mount)
   const initializedRef = useRef(false);
 
-  // Sync when initialItems changes (e.g., dashboard response arrives or user clears all)
+  // Load delivery mode from storage on mount + watch for changes
+  useEffect(() => {
+    deliveryModeStorage.getValue().then(setMode).catch(() => {});
+    const unwatch = deliveryModeStorage.watch((v) => setMode(v));
+    return () => unwatch();
+  }, []);
+
+  // Sync when initialItems changes (e.g., dashboard response arrives or polling refresh)
   useEffect(() => {
     // Skip the very first empty array (dashboard hasn't loaded yet)
     if (!initializedRef.current && initialItems.length === 0) return;
@@ -66,8 +79,11 @@ export function useScrollrCDC<T>({
     setItems(initialItems);
   }, [initialItems]);
 
-  // Subscribe to CDC table and handle incoming records
+  // Subscribe to CDC table and handle incoming records — only in SSE mode
   useEffect(() => {
+    // In polling mode, items are driven by INITIAL_DATA; skip CDC subscriptions
+    if (mode !== 'sse') return;
+
     // Tell background we want records for this table
     browser.runtime
       .sendMessage({ type: 'SUBSCRIBE_CDC', tables: [table] } satisfies ClientMessage)
@@ -119,7 +135,7 @@ export function useScrollrCDC<T>({
         .sendMessage({ type: 'UNSUBSCRIBE_CDC', tables: [table] } satisfies ClientMessage)
         .catch(() => {});
     };
-  }, [table, keyOf, sort, maxItems, validate]);
+  }, [table, keyOf, sort, maxItems, validate, mode]);
 
   return { items };
 }

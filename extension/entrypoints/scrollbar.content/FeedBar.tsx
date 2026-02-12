@@ -6,6 +6,7 @@ import type {
   FeedMode,
   FeedBehavior,
   DashboardResponse,
+  DeliveryMode,
 } from '~/utils/types';
 import { getIntegration } from '~/integrations/registry';
 import FeedTabs from './FeedTabs';
@@ -15,6 +16,7 @@ interface FeedBarProps {
   /** Raw dashboard response — each FeedTab extracts its initial data from here. */
   dashboard: DashboardResponse | null;
   connectionStatus: ConnectionStatus;
+  deliveryMode: DeliveryMode;
   position: FeedPosition;
   height: number;
   mode: FeedMode;
@@ -47,6 +49,7 @@ const DASHBOARD_KEY_MAP: Record<string, string> = {
 export default function FeedBar({
   dashboard,
   connectionStatus,
+  deliveryMode,
   position,
   height,
   mode,
@@ -114,54 +117,9 @@ export default function FeedBar({
     [height, position, onHeightChange, onHeightCommit],
   );
 
-  const effectiveHeight = !authenticated
-    ? COLLAPSED_HEIGHT
-    : collapsed
-      ? COLLAPSED_HEIGHT
-      : height;
+  const effectiveHeight = collapsed ? COLLAPSED_HEIGHT : height;
 
-  // ── Unauthenticated: show a minimal CTA bar ──────────────────
-  if (!authenticated) {
-    return (
-      <div
-        ref={barRef}
-        className={clsx(
-          'fixed left-0 right-0 bg-surface text-fg font-sans',
-          position === 'bottom' ? 'bottom-0' : 'top-0',
-        )}
-        style={{
-          height: `${COLLAPSED_HEIGHT}px`,
-          zIndex: 2147483647,
-        }}
-      >
-        {/* Accent line */}
-        <div className={clsx(
-          'absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent',
-          position === 'bottom' ? 'top-0' : 'bottom-0',
-        )} />
-
-        <div className="flex items-center justify-between h-full px-3">
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] font-mono font-bold tracking-[0.2em] text-accent uppercase">
-              scrollr
-            </span>
-            <span className="h-3 w-px bg-edge" />
-            <span className="text-[11px] text-fg-3">
-              Sign in for live data
-            </span>
-          </div>
-          <button
-            onClick={onLogin}
-            className="text-[10px] font-bold uppercase tracking-[0.15em] px-3 py-1 bg-accent text-surface font-mono hover:bg-accent/90 transition-colors"
-          >
-            Connect
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Authenticated: full feed bar ──────────────────────────────
+  // ── Full feed bar (works for all tiers, including anonymous) ──
   return (
     <div
       ref={barRef}
@@ -204,7 +162,7 @@ export default function FeedBar({
         </div>
 
         <div className="flex items-center gap-3">
-          <ConnectionIndicator status={connectionStatus} />
+          <ConnectionIndicator status={connectionStatus} deliveryMode={deliveryMode} />
           <span className="h-3 w-px bg-edge" />
           <button
             onClick={onToggleCollapse}
@@ -219,6 +177,20 @@ export default function FeedBar({
       {/* Content — render the active integration's FeedTab */}
       {!collapsed && (
         <div className="overflow-y-auto overflow-x-hidden scrollbar-thin" style={{ height: `${height - COLLAPSED_HEIGHT}px` }}>
+          {/* Sign-in banner for anonymous users */}
+          {!authenticated && (
+            <div className="flex items-center justify-between px-3 py-1.5 bg-accent/5 border-b border-accent/10">
+              <span className="text-[10px] text-fg-3 font-mono">
+                Sign in to customize your feed &amp; unlock all integrations
+              </span>
+              <button
+                onClick={onLogin}
+                className="text-[9px] font-bold uppercase tracking-[0.15em] px-2 py-0.5 bg-accent text-surface font-mono hover:bg-accent/90 transition-colors shrink-0 ml-2"
+              >
+                Connect
+              </button>
+            </div>
+          )}
           {FeedTabComponent ? (
             <FeedTabComponent mode={mode} streamConfig={streamConfig} />
           ) : (

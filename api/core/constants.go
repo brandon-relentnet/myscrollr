@@ -59,6 +59,15 @@ const (
 const (
 	RedisStreamSubscribersPrefix = "stream:subscribers:"
 	RedisEventsUserPrefix        = "events:user:"
+	RedisDashboardCachePrefix    = "cache:dashboard:"
+)
+
+// =============================================================================
+// Dashboard Cache
+// =============================================================================
+
+const (
+	DashboardCacheTTL = 30 * time.Second
 )
 
 // =============================================================================

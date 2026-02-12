@@ -55,6 +55,7 @@ export interface UserPreferences {
   feed_enabled: boolean;
   enabled_sites: string[];
   disabled_sites: string[];
+  subscription_tier?: SubscriptionTier;
   updated_at: string;
 }
 
@@ -84,6 +85,18 @@ export interface DashboardResponse {
   streams?: UserStream[];
 }
 
+/**
+ * Response from GET /public/feed for anonymous users.
+ * Contains only finance + sports data, no preferences or streams.
+ */
+export interface PublicFeedResponse {
+  data: {
+    finance?: Trade[];
+    sports?: Game[];
+    [key: string]: unknown;
+  };
+}
+
 // ── SSE / CDC Payloads ───────────────────────────────────────────
 
 export interface CDCRecord {
@@ -106,3 +119,8 @@ export type ConnectionStatus = 'connected' | 'disconnected' | 'reconnecting';
 export type FeedPosition = 'top' | 'bottom';
 export type FeedMode = 'comfort' | 'compact';
 export type FeedBehavior = 'overlay' | 'push';
+
+// ── Tiered delivery ──────────────────────────────────────────────
+
+export type DeliveryMode = 'polling' | 'sse';
+export type SubscriptionTier = 'anonymous' | 'free' | 'uplink';

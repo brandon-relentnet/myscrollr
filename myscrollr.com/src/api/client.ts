@@ -2,6 +2,21 @@
 
 export const API_BASE = import.meta.env.VITE_API_URL || ''
 
+/**
+ * Dispatches a CustomEvent on the document to notify the Scrollr extension's
+ * content script that config has changed. The content script listens for this
+ * on myscrollr.com pages and sends FORCE_REFRESH to the background, which
+ * immediately re-fetches dashboard data — giving free-tier users instant
+ * config sync without needing SSE/CDC.
+ */
+function notifyExtensionConfigChanged(): void {
+  try {
+    document.dispatchEvent(new CustomEvent('scrollr:config-changed'))
+  } catch {
+    // Extension not installed or content script not loaded — ignore
+  }
+}
+
 // ── Shared Types ──────────────────────────────────────────────────
 
 export interface UserPreferences {
@@ -101,12 +116,12 @@ export const streamsApi = {
       getToken,
     ),
 
-  create: (
+  create: async (
     streamType: StreamType,
     config: Record<string, unknown>,
     getToken: () => Promise<string | null>,
-  ) =>
-    authenticatedFetch<Stream>(
+  ) => {
+    const result = await authenticatedFetch<Stream>(
       '/users/me/streams',
       {
         method: 'POST',
@@ -114,9 +129,12 @@ export const streamsApi = {
         body: JSON.stringify({ stream_type: streamType, config }),
       },
       getToken,
-    ),
+    )
+    notifyExtensionConfigChanged()
+    return result
+  },
 
-  update: (
+  update: async (
     streamType: StreamType,
     data: {
       enabled?: boolean
@@ -124,8 +142,8 @@ export const streamsApi = {
       config?: Record<string, unknown>
     },
     getToken: () => Promise<string | null>,
-  ) =>
-    authenticatedFetch<Stream>(
+  ) => {
+    const result = await authenticatedFetch<Stream>(
       `/users/me/streams/${streamType}`,
       {
         method: 'PUT',
@@ -133,14 +151,20 @@ export const streamsApi = {
         body: JSON.stringify(data),
       },
       getToken,
-    ),
+    )
+    notifyExtensionConfigChanged()
+    return result
+  },
 
-  delete: (streamType: StreamType, getToken: () => Promise<string | null>) =>
-    authenticatedFetch<{ status: string; message: string }>(
+  delete: async (streamType: StreamType, getToken: () => Promise<string | null>) => {
+    const result = await authenticatedFetch<{ status: string; message: string }>(
       `/users/me/streams/${streamType}`,
       { method: 'DELETE' },
       getToken,
-    ),
+    )
+    notifyExtensionConfigChanged()
+    return result
+  },
 }
 
 // ── RSS Types & API ──────────────────────────────────────────────
@@ -185,7 +209,7 @@ export async function updatePreferences(
   prefs: Partial<UserPreferences>,
   getToken: () => Promise<string | null>,
 ): Promise<UserPreferences> {
-  return authenticatedFetch<UserPreferences>(
+  const result = await authenticatedFetch<UserPreferences>(
     '/users/me/preferences',
     {
       method: 'PUT',
@@ -194,4 +218,6 @@ export async function updatePreferences(
     },
     getToken,
   )
+  notifyExtensionConfigChanged()
+  return result
 }

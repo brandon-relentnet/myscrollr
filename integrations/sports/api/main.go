@@ -125,6 +125,7 @@ func main() {
 
 	// Public routes (proxied by core gateway)
 	fiberApp.Get("/sports", app.getSports)
+	fiberApp.Get("/sports/public", app.getSports) // Unauthenticated: returns all games (same handler, same cache)
 	fiberApp.Get("/sports/health", app.healthHandler)
 
 	// -------------------------------------------------------------------------
@@ -177,6 +178,7 @@ func startRegistration(ctx context.Context, rdb *redis.Client) {
 		CDCTables:    []string{"games"},
 		Routes: []registrationRoute{
 			{Method: "GET", Path: "/sports", Auth: true},
+			{Method: "GET", Path: "/sports/public", Auth: false},
 			{Method: "GET", Path: "/sports/health", Auth: false},
 		},
 	}

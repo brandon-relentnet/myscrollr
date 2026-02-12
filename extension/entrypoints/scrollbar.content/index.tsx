@@ -2,6 +2,8 @@ import './style.css';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { feedEnabled, disabledSites, enabledSites } from '~/utils/storage';
+import { FRONTEND_URL } from '~/utils/constants';
+import type { ClientMessage } from '~/utils/messaging';
 
 /** Check if the feed should show on the current URL. */
 async function shouldShowOnSite(url: string): Promise<boolean> {
@@ -73,5 +75,17 @@ export default defineContentScript({
     ctx.addEventListener(window, 'wxt:locationchange', ({ newUrl }) => {
       evaluate(newUrl.href);
     });
+
+    // ── Content script bridge ──────────────────────────────────────
+    // On myscrollr.com, listen for config-changed events dispatched by
+    // the website after stream CRUD or preference updates. This gives
+    // free-tier users instant config sync without needing SSE/CDC.
+    if (window.location.origin === FRONTEND_URL) {
+      ctx.addEventListener(document, 'scrollr:config-changed' as any, () => {
+        browser.runtime
+          .sendMessage({ type: 'FORCE_REFRESH' } satisfies ClientMessage)
+          .catch(() => {});
+      });
+    }
   },
 });

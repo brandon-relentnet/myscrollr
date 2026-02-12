@@ -82,17 +82,27 @@ func ConnectDB() {
 
 	_, err = DBPool.Exec(context.Background(), `
 		CREATE TABLE IF NOT EXISTS user_preferences (
-			logto_sub      TEXT PRIMARY KEY,
-			feed_mode      TEXT NOT NULL DEFAULT 'comfort',
-			feed_position  TEXT NOT NULL DEFAULT 'bottom',
-			feed_behavior  TEXT NOT NULL DEFAULT 'overlay',
-			feed_enabled   BOOLEAN NOT NULL DEFAULT true,
-			enabled_sites  JSONB NOT NULL DEFAULT '[]',
-			disabled_sites JSONB NOT NULL DEFAULT '[]',
-			updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+			logto_sub         TEXT PRIMARY KEY,
+			feed_mode         TEXT NOT NULL DEFAULT 'comfort',
+			feed_position     TEXT NOT NULL DEFAULT 'bottom',
+			feed_behavior     TEXT NOT NULL DEFAULT 'overlay',
+			feed_enabled      BOOLEAN NOT NULL DEFAULT true,
+			enabled_sites     JSONB NOT NULL DEFAULT '[]',
+			disabled_sites    JSONB NOT NULL DEFAULT '[]',
+			subscription_tier TEXT NOT NULL DEFAULT 'free',
+			updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 		);
 	`)
 	if err != nil {
 		log.Printf("Warning: Failed to create user_preferences table: %v", err)
+	}
+
+	// Add subscription_tier column if it doesn't exist (for existing tables)
+	_, err = DBPool.Exec(context.Background(), `
+		ALTER TABLE user_preferences
+		ADD COLUMN IF NOT EXISTS subscription_tier TEXT NOT NULL DEFAULT 'free';
+	`)
+	if err != nil {
+		log.Printf("Warning: Failed to add subscription_tier column: %v", err)
 	}
 }

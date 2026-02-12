@@ -122,6 +122,7 @@ func (s *Server) setupRoutes() {
 
 	// --- Public Routes ---
 	s.App.Get("/health", s.healthCheck)
+	s.App.Get("/public/feed", HandlePublicFeed)
 	s.App.Get("/events", StreamEvents)
 	s.App.Get("/events/count", GetActiveViewers)
 	s.App.Post("/webhooks/sequin", HandleSequinWebhook)
@@ -186,6 +187,7 @@ func (s *Server) healthCheck(c *fiber.Ctx) error {
 }
 
 // getDashboard retrieves aggregated data for the user dashboard.
+// Results are cached per-user in Redis for 30s to support efficient polling.
 func (s *Server) getDashboard(c *fiber.Ctx) error {
 	userID := GetUserID(c)
 	if userID == "" {
@@ -193,6 +195,16 @@ func (s *Server) getDashboard(c *fiber.Ctx) error {
 			Status: "unauthorized",
 			Error:  "Authentication required",
 		})
+	}
+
+	// Check per-user Redis cache first
+	cacheKey := RedisDashboardCachePrefix + userID
+	if val, err := Rdb.Get(context.Background(), cacheKey).Result(); err == nil {
+		var cached DashboardResponse
+		if json.Unmarshal([]byte(val), &cached) == nil {
+			c.Set("X-Cache", "HIT")
+			return c.JSON(cached)
+		}
 	}
 
 	res := DashboardResponse{
@@ -255,6 +267,12 @@ func (s *Server) getDashboard(c *fiber.Ctx) error {
 		}
 	}
 
+	// Cache the assembled dashboard response
+	if cacheData, err := json.Marshal(res); err == nil {
+		Rdb.Set(context.Background(), cacheKey, cacheData, DashboardCacheTTL)
+	}
+
+	c.Set("X-Cache", "MISS")
 	return c.JSON(res)
 }
 

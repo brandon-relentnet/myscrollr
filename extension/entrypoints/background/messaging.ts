@@ -1,9 +1,14 @@
 import type { ClientMessage, BackgroundMessage, StateSnapshotMessage } from '~/utils/messaging';
 import type { CDCRecord } from '~/utils/types';
 import { FRONTEND_URL } from '~/utils/constants';
+import {
+  deliveryMode as deliveryModeStorage,
+  subscriptionTier as subscriptionTierStorage,
+} from '~/utils/storage';
 import { getConnectionStatus, getLastDashboard, setOnStatusChange, setOnCDCRecords } from './sse';
 import { login, logout, isAuthenticated } from './auth';
 import { refreshDashboard } from './dashboard';
+import { startPolling, stopPolling } from './polling';
 
 // ── Per-tab CDC subscriptions ─────────────────────────────────────
 // Maps tab ID → set of table names the tab wants CDC records for.
@@ -32,6 +37,26 @@ function setupTabCleanup() {
   browser.tabs.onRemoved?.addListener((tabId) => {
     tabSubscriptions.delete(tabId);
   });
+}
+
+// ── Delivery mode helpers ─────────────────────────────────────────
+
+/**
+ * Starts the appropriate delivery mode for an authenticated user based
+ * on their subscription tier (already synced to storage by refreshDashboard).
+ */
+export async function startAuthenticatedDelivery(): Promise<void> {
+  const tier = await subscriptionTierStorage.getValue();
+
+  if (tier === 'uplink') {
+    // Uplink tier gets real-time SSE + CDC push
+    await deliveryModeStorage.setValue('sse');
+    startSSE();
+  } else {
+    // Free tier gets polling at 30s intervals
+    await deliveryModeStorage.setValue('polling');
+    startPolling();
+  }
 }
 
 // ── Broadcast to all listeners ───────────────────────────────────
@@ -101,15 +126,18 @@ export function setupMessageListeners() {
 
       switch (msg.type) {
         case 'GET_STATE': {
-          isAuthenticated().then((authed) => {
-            const snapshot: StateSnapshotMessage = {
-              type: 'STATE_SNAPSHOT',
-              dashboard: getLastDashboard(),
-              connectionStatus: getConnectionStatus(),
-              authenticated: authed,
-            };
-            sendResponse(snapshot);
-          });
+          Promise.all([isAuthenticated(), deliveryModeStorage.getValue()]).then(
+            ([authed, mode]) => {
+              const snapshot: StateSnapshotMessage = {
+                type: 'STATE_SNAPSHOT',
+                dashboard: getLastDashboard(),
+                connectionStatus: getConnectionStatus(),
+                authenticated: authed,
+                deliveryMode: mode,
+              };
+              sendResponse(snapshot);
+            },
+          );
           return true; // Keep channel open for async response
         }
 
@@ -126,25 +154,49 @@ export function setupMessageListeners() {
         }
 
         case 'LOGIN': {
-          login().then((success) => {
+          login().then(async (success) => {
             broadcast({ type: 'AUTH_STATUS', authenticated: success });
             sendResponse({ type: 'AUTH_STATUS', authenticated: success });
 
             if (success) {
-              startSSE();
               browser.tabs.create({ url: `${FRONTEND_URL}/dashboard` }).catch(() => {});
-              refreshDashboard();
+
+              // Stop anonymous polling before switching to authenticated mode
+              stopPolling();
+
+              // Fetch dashboard first — this syncs subscription_tier to storage
+              await refreshDashboard();
+
+              // Now start the appropriate delivery mode based on tier
+              await startAuthenticatedDelivery();
             }
           });
           return true;
         }
 
         case 'LOGOUT': {
-          logout().then(() => {
-            // Tear down authenticated SSE connection before broadcasting
+          logout().then(async () => {
+            // Tear down authenticated connections
             stopSSE();
+            stopPolling();
+
+            // Reset to anonymous mode
+            await deliveryModeStorage.setValue('polling');
+            await subscriptionTierStorage.setValue('anonymous');
+
             broadcast({ type: 'AUTH_STATUS', authenticated: false });
             sendResponse({ type: 'AUTH_STATUS', authenticated: false });
+
+            // Start anonymous polling
+            startPolling();
+          });
+          return true;
+        }
+
+        case 'FORCE_REFRESH': {
+          // Content script bridge: website changed config, immediately re-fetch
+          refreshDashboard().then(() => {
+            sendResponse({ ok: true });
           });
           return true;
         }

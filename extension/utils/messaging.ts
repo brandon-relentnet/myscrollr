@@ -2,6 +2,7 @@ import type {
   DashboardResponse,
   ConnectionStatus,
   CDCRecord,
+  DeliveryMode,
 } from './types';
 
 // ── Background → Content Scripts / Popup ─────────────────────────
@@ -33,7 +34,7 @@ interface CDCBatchMessage {
 
 /**
  * Full state snapshot sent in response to GET_STATE.
- * Includes connection status, auth state, and the raw dashboard
+ * Includes connection status, auth state, delivery mode, and the raw dashboard
  * payload so each FeedTab can extract its own initial data.
  */
 export interface StateSnapshotMessage {
@@ -41,6 +42,7 @@ export interface StateSnapshotMessage {
   dashboard: DashboardResponse | null;
   connectionStatus: ConnectionStatus;
   authenticated: boolean;
+  deliveryMode: DeliveryMode;
 }
 
 export type BackgroundMessage =
@@ -78,9 +80,19 @@ export interface UnsubscribeCDCMessage {
   tables: string[];
 }
 
+/**
+ * Sent by content scripts when the website dispatches a config-changed
+ * event (e.g. stream CRUD or preference update). Background immediately
+ * fetches fresh dashboard data and broadcasts INITIAL_DATA.
+ */
+interface ForceRefreshMessage {
+  type: 'FORCE_REFRESH';
+}
+
 export type ClientMessage =
   | GetStateMessage
   | LoginMessage
   | LogoutMessage
   | SubscribeCDCMessage
-  | UnsubscribeCDCMessage;
+  | UnsubscribeCDCMessage
+  | ForceRefreshMessage;

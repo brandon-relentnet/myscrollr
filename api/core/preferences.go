@@ -17,11 +17,11 @@ func GetOrCreatePreferences(logtoSub string) (*UserPreferences, error) {
 
 	err := DBPool.QueryRow(context.Background(),
 		`SELECT logto_sub, feed_mode, feed_position, feed_behavior, feed_enabled,
-		        enabled_sites, disabled_sites, updated_at
+		        enabled_sites, disabled_sites, subscription_tier, updated_at
 		 FROM user_preferences WHERE logto_sub = $1`, logtoSub,
 	).Scan(
 		&prefs.LogtoSub, &prefs.FeedMode, &prefs.FeedPosition, &prefs.FeedBehavior,
-		&prefs.FeedEnabled, &enabledSites, &disabledSites, &updatedAt,
+		&prefs.FeedEnabled, &enabledSites, &disabledSites, &prefs.SubscriptionTier, &updatedAt,
 	)
 
 	if err != nil {
@@ -32,11 +32,11 @@ func GetOrCreatePreferences(logtoSub string) (*UserPreferences, error) {
 			 VALUES ($1)
 			 ON CONFLICT (logto_sub) DO UPDATE SET logto_sub = EXCLUDED.logto_sub
 			 RETURNING logto_sub, feed_mode, feed_position, feed_behavior, feed_enabled,
-			           enabled_sites, disabled_sites, updated_at`,
+			           enabled_sites, disabled_sites, subscription_tier, updated_at`,
 			logtoSub,
 		).Scan(
 			&prefs.LogtoSub, &prefs.FeedMode, &prefs.FeedPosition, &prefs.FeedBehavior,
-			&prefs.FeedEnabled, &esBytes, &dsBytes, &insertedAt,
+			&prefs.FeedEnabled, &esBytes, &dsBytes, &prefs.SubscriptionTier, &insertedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -238,6 +238,9 @@ func HandleUpdatePreferences(c *fiber.Ctx) error {
 		prefs.DisabledSites = []string{}
 	}
 	prefs.UpdatedAt = updatedAt.Format(time.RFC3339)
+
+	// Invalidate dashboard cache so next poll gets fresh preferences
+	InvalidateDashboardCache(userID)
 
 	return c.JSON(prefs)
 }

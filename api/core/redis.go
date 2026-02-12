@@ -43,6 +43,14 @@ func PSubscribe(ctx context.Context, pattern string) *redis.PubSub {
 	return Rdb.PSubscribe(ctx, pattern)
 }
 
+// InvalidateDashboardCache removes the cached dashboard response for a user.
+// Called after stream CRUD or preference updates to ensure the next poll gets fresh data.
+func InvalidateDashboardCache(userSub string) {
+	if err := Rdb.Del(context.Background(), RedisDashboardCachePrefix+userSub).Err(); err != nil {
+		log.Printf("[Cache] Failed to invalidate dashboard cache for %s: %v", userSub, err)
+	}
+}
+
 // --- Subscription Set Helpers ---
 // Used to track which users subscribe to which data types.
 // Keys follow the convention:

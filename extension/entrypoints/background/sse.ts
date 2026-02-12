@@ -2,6 +2,7 @@ import { SSE_URL, SSE_RECONNECT_BASE, SSE_RECONNECT_MAX } from '~/utils/constant
 import type { ConnectionStatus, SSEPayload, CDCRecord, DashboardResponse } from '~/utils/types';
 import { handlePreferenceUpdate, handleStreamUpdate, handleStreamDelete } from './preferences';
 import { getValidToken, isAuthenticated } from './auth';
+import { deliveryMode as deliveryModeStorage } from '~/utils/storage';
 
 // ── Connection state ──────────────────────────────────────────────
 
@@ -179,10 +180,11 @@ export function setupKeepAlive() {
   // Create a periodic alarm to keep the service worker alive
   browser.alarms?.create('scrollr-keepalive', { periodInMinutes: 0.5 });
 
-  browser.alarms?.onAlarm.addListener((alarm) => {
+  browser.alarms?.onAlarm.addListener(async (alarm) => {
     if (alarm.name === 'scrollr-keepalive') {
-      // If SSE got disconnected, try to reconnect (startSSE checks auth)
-      if (connectionStatus === 'disconnected') {
+      // Only try to reconnect SSE for uplink users
+      const mode = await deliveryModeStorage.getValue();
+      if (mode === 'sse' && connectionStatus === 'disconnected') {
         startSSE();
       }
     }
