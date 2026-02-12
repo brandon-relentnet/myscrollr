@@ -232,7 +232,7 @@ export function CommunitySection() {
                 <p className="text-[9px] font-mono text-base-content/20 uppercase tracking-widest mb-4">
                   Community requested &middot; On the roadmap
                 </p>
-                <div className="grid grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                   {COMING_SOON_ICONS.map((item, i) => (
                     <motion.div
                       key={item.name}

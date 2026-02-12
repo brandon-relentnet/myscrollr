@@ -104,7 +104,7 @@ export default function Footer() {
           </div>
 
           {/* Links Columns */}
-          <div className="lg:col-span-8 grid grid-cols-3 gap-8 lg:gap-12">
+          <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-8 lg:gap-12">
             {/* Product */}
             <div className="space-y-5">
               <h4 className="text-xs font-bold font-mono uppercase tracking-[0.2em] text-primary/80">

@@ -58,7 +58,7 @@ export function HeroSection() {
                 rotate: 2,
                 transition: { duration: 0.2 },
               }}
-              className="absolute top-8 -right-4 px-4 py-2.5 rounded-sm border border-primary/40 bg-base-200/90 backdrop-blur-sm shadow-lg cursor-default"
+              className="absolute top-8 right-0 sm:-right-4 px-4 py-2.5 rounded-sm border border-primary/40 bg-base-200/90 backdrop-blur-sm shadow-lg cursor-default"
             >
               <span className="flex items-center gap-2.5 text-primary">
                 <span className="relative flex h-2 w-2">
@@ -125,7 +125,7 @@ export function HeroSection() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3, ease: 'easeOut' }}
-            className="w-fit min-w-140 order-1 lg:order-2"
+            className="w-full lg:w-fit lg:min-w-140 order-1 lg:order-2"
           >
             <TypewriterChangeContentExample />
 
@@ -171,7 +171,7 @@ export function HeroSection() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, delay: 1.5 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 text-base-content/40"
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 hidden sm:flex flex-col items-center gap-3 text-base-content/40"
       >
         <span className="text-xs font-mono uppercase tracking-widest">
           Scroll

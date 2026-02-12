@@ -98,7 +98,7 @@ export function CallToAction() {
           >
             {/* Primary CTA */}
             <div className="relative w-full">
-              <div className="absolute -inset-3 bg-primary/10 rounded-lg blur-xl opacity-50" />
+              <div className="absolute -inset-3 bg-primary/10 rounded-sm blur-xl opacity-50" />
               <InstallButton className="relative w-full text-lg py-4 shadow-xl" />
             </div>
 

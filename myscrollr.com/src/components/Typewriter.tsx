@@ -21,7 +21,7 @@ export default function HeroTypewriter() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4 }}
-        className="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-none overflow-hidden"
+        className="text-4xl sm:text-5xl lg:text-7xl font-black tracking-tight leading-none overflow-hidden"
       >
         <span className="text-base-content">Your </span>
         <Typewriter
@@ -46,7 +46,7 @@ export default function HeroTypewriter() {
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6, delay: 0.4, ease: 'easeOut' }}
-        className="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-none mt-2"
+        className="text-4xl sm:text-5xl lg:text-7xl font-black tracking-tight leading-none mt-2"
       >
         <span className="italic text-base-content/60">Uninterrupted.</span>
       </motion.div>
