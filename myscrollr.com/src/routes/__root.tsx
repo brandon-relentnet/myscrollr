@@ -25,7 +25,7 @@ export const Route = createRootRoute({
       <Header />
 
       {/* Main Content */}
-      <main className="relative z-10">
+      <main className="relative">
         <Outlet />
       </main>
 
