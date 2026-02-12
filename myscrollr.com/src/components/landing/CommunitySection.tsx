@@ -161,7 +161,7 @@ export function CommunitySection() {
 
               {/* CTA */}
               <a
-                href="https://github.com/scrollr"
+                href="https://github.com/brandon-relentnet/myscrollr"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group/link inline-flex items-center gap-2.5 px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.15em] border border-base-300/50 text-base-content/60 rounded-sm hover:border-primary/30 hover:text-primary transition-colors"
@@ -211,7 +211,7 @@ export function CommunitySection() {
                   <Lightbulb size={18} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-base-content">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-base-content whitespace-nowrap">
                     Suggest an Integration
                   </h3>
                   <p className="text-[10px] font-mono text-info/50 uppercase tracking-wider">
@@ -267,7 +267,7 @@ export function CommunitySection() {
               {/* CTAs */}
               <div className="flex flex-wrap items-center gap-4">
                 <a
-                  href="https://discord.gg/scrollr"
+                  href="https://discord.gg/85b49TcGJa"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="group/link inline-flex items-center gap-2.5 px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.15em] border border-base-300/50 text-base-content/60 rounded-sm hover:border-info/30 hover:text-info transition-colors"
@@ -280,7 +280,7 @@ export function CommunitySection() {
                   />
                 </a>
                 <a
-                  href="https://github.com/scrollr/discussions"
+                  href="https://github.com/brandon-relentnet/myscrollr/discussions/categories/integration-requests"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="group/link inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.15em] text-base-content/30 hover:text-info transition-colors"
@@ -328,7 +328,7 @@ export function CommunitySection() {
             {/* Secondary links */}
             <div className="flex items-center gap-4">
               <a
-                href="https://github.com/scrollr"
+                href="https://github.com/brandon-relentnet/myscrollr"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-[10px] font-mono text-base-content/20 uppercase tracking-wider hover:text-primary transition-colors"

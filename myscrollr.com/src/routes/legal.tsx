@@ -439,7 +439,7 @@ function DocumentContent({ doc }: { doc: LegalDocument }) {
         <p className="mt-3 text-xs text-base-content/25 leading-relaxed max-w-2xl">
           Questions about this document? Reach out via{' '}
           <a
-            href="https://github.com/scrollr"
+            href="https://github.com/brandon-relentnet/myscrollr"
             target="_blank"
             rel="noopener noreferrer"
             className="text-primary/50 hover:text-primary transition-colors"
@@ -448,7 +448,7 @@ function DocumentContent({ doc }: { doc: LegalDocument }) {
           </a>{' '}
           or{' '}
           <a
-            href="https://discord.gg/scrollr"
+            href="https://discord.gg/85b49TcGJa"
             target="_blank"
             rel="noopener noreferrer"
             className="text-primary/50 hover:text-primary transition-colors"

@@ -5,7 +5,7 @@ import {
   Cpu,
   Database,
   Github,
-  Globe,
+
   Terminal,
 } from 'lucide-react'
 import ScrollrSVG from '@/components/ScrollrSVG'
@@ -38,8 +38,7 @@ export default function Footer() {
       { label: 'Legal', href: '/legal' },
     ],
     social: [
-      { icon: Github, href: 'https://github.com/scrollr', label: 'GitHub' },
-      { icon: Globe, href: 'https://twitter.com/scrollr', label: 'Twitter' },
+      { icon: Github, href: 'https://github.com/brandon-relentnet/myscrollr', label: 'GitHub' },
     ],
   }
 
