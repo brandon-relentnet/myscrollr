@@ -6,13 +6,7 @@ import {
 } from '@tanstack/react-router'
 import { useScrollrAuth } from '@/hooks/useScrollrAuth'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  Activity,
-  Plus,
-  Puzzle,
-  Settings2,
-  Zap,
-} from 'lucide-react'
+import { Activity, Plus, Puzzle, Settings2, Zap } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import type { IdTokenClaims } from '@logto/react'
 import type { Stream, StreamType } from '@/api/client'
@@ -36,7 +30,8 @@ export const Route = createFileRoute('/dashboard')({
 })
 
 function DashboardPage() {
-  const { isAuthenticated, isLoading, signIn, getIdTokenClaims } = useScrollrAuth()
+  const { isAuthenticated, isLoading, signIn, getIdTokenClaims } =
+    useScrollrAuth()
   const { tab } = useSearch({ from: '/dashboard' })
   const navigate = useNavigate({ from: '/dashboard' })
   const activeModule: string = tab ?? 'finance'
@@ -190,16 +185,25 @@ function DashboardPage() {
     }
   }, [isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Auto sign-in (side effect, must be in useEffect) ─────────────
+  useEffect(() => {
+    if (
+      !isLoading &&
+      !isAuthenticated &&
+      !hasLoaded.current &&
+      !autoSignInTriggered.current
+    ) {
+      autoSignInTriggered.current = true
+      signIn(`${window.location.origin}/callback`)
+    }
+  }, [isLoading, isAuthenticated, signIn])
+
   // ── Loading / auth guards ────────────────────────────────────────
   if (isLoading && !hasLoaded.current) {
     return <LoadingSpinner label="Loading..." />
   }
 
   if (!isAuthenticated && !hasLoaded.current) {
-    if (!autoSignInTriggered.current) {
-      autoSignInTriggered.current = true
-      signIn(`${window.location.origin}/callback`)
-    }
     return <LoadingSpinner label="Authenticating..." />
   }
 
@@ -431,9 +435,7 @@ function DashboardPage() {
                   subscriptionTier={subscriptionTier}
                   onToggle={() => handleToggleStream(activeStream)}
                   onDelete={() =>
-                    handleDeleteStream(
-                      activeStream.stream_type as StreamType,
-                    )
+                    handleDeleteStream(activeStream.stream_type as StreamType)
                   }
                   onStreamUpdate={(updated) =>
                     setStreams((prev) =>

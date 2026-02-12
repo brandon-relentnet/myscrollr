@@ -98,25 +98,32 @@ const ScrollrAuthContext = createContext<ScrollrAuthContextValue | null>(null)
 
 // ── Provider ──────────────────────────────────────────────────────
 
-const API_RESOURCE = import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'
+const API_RESOURCE =
+  import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'
 
 export function ScrollrAuthProvider({ children }: { children: ReactNode }) {
   const logto = useLogto()
   const [bridge, setBridge] = useState<BridgeAuth | null>(loadBridge)
 
-  // Ref to avoid stale closures in event listeners
+  // Refs to avoid stale closures — the logto context object and bridge
+  // state get new references on every internal state change, so we
+  // store them in refs so callbacks below have stable identities.
   const logtoRef = useRef(logto)
   logtoRef.current = logto
+  const bridgeRef = useRef(bridge)
+  bridgeRef.current = bridge
 
   // ── Listen for extension auth events ──────────────────────────
 
   useEffect(() => {
     function handleExtLogin(e: Event) {
-      const detail = (e as CustomEvent).detail as {
-        accessToken: string
-        refreshToken: string | null
-        expiresAt: number
-      } | undefined
+      const detail = (e as CustomEvent).detail as
+        | {
+            accessToken: string
+            refreshToken: string | null
+            expiresAt: number
+          }
+        | undefined
       if (!detail?.accessToken) return
 
       const newBridge: BridgeAuth = {
@@ -168,51 +175,49 @@ export function ScrollrAuthProvider({ children }: { children: ReactNode }) {
 
   // ── Methods ───────────────────────────────────────────────────
 
-  const signIn = useCallback(
-    (redirectUri: string) => {
-      logto.signIn(redirectUri)
-    },
-    [logto],
-  )
+  const signIn = useCallback((redirectUri: string) => {
+    logtoRef.current.signIn(redirectUri)
+  }, [])
 
-  const signOut = useCallback(
-    (postLogoutRedirectUri: string) => {
-      clearBridge()
-      setBridge(null)
-      notifyExtensionAuthLogout()
-      logto.signOut(postLogoutRedirectUri)
-    },
-    [logto],
-  )
+  const signOut = useCallback((postLogoutRedirectUri: string) => {
+    clearBridge()
+    setBridge(null)
+    notifyExtensionAuthLogout()
+    logtoRef.current.signOut(postLogoutRedirectUri)
+  }, [])
 
   const getAccessToken = useCallback(
     async (resource?: string): Promise<string | null> => {
-      // Prefer Logto SDK token
-      if (logtoAuthed) {
-        const token = await logto.getAccessToken(resource || API_RESOURCE)
+      // Prefer Logto SDK token — read from refs for stable identity
+      if (logtoRef.current.isAuthenticated) {
+        const token = await logtoRef.current.getAccessToken(
+          resource || API_RESOURCE,
+        )
         return token ?? null
       }
       // Fall back to bridge token
-      if (bridge && bridge.expiresAt > Date.now()) {
-        return bridge.accessToken
+      const currentBridge = bridgeRef.current
+      if (currentBridge && currentBridge.expiresAt > Date.now()) {
+        return currentBridge.accessToken
       }
       return null
     },
-    [logtoAuthed, logto, bridge],
+    [],
   )
 
   const getIdTokenClaims = useCallback(async (): Promise<
     IdTokenClaims | undefined
   > => {
-    if (logtoAuthed) {
-      return logto.getIdTokenClaims()
+    if (logtoRef.current.isAuthenticated) {
+      return logtoRef.current.getIdTokenClaims()
     }
     // Bridge: construct minimal claims from JWT sub
-    if (bridge?.sub) {
-      return { sub: bridge.sub } as IdTokenClaims
+    const currentBridge = bridgeRef.current
+    if (currentBridge?.sub) {
+      return { sub: currentBridge.sub } as IdTokenClaims
     }
     return undefined
-  }, [logtoAuthed, logto, bridge])
+  }, [])
 
   // ── Render ────────────────────────────────────────────────────
 

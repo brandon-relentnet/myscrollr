@@ -7,10 +7,19 @@ import { useScrollrAuth } from '@/hooks/useScrollrAuth'
  * bridge tokens).  The cached token is reused as long as it has more than
  * 60 s of lifetime remaining, which avoids triggering Logto's internal
  * `setIsLoading` on every call.
+ *
+ * The returned `getToken` has a stable identity (never changes reference)
+ * so it is safe to use in dependency arrays without causing re-renders.
  */
 export function useGetToken() {
   const { getAccessToken } = useScrollrAuth()
   const tokenCacheRef = useRef<{ token: string; expiry: number } | null>(null)
+
+  // Store getAccessToken in a ref so getToken's identity never changes.
+  // getAccessToken is already stable (empty deps) from useScrollrAuth,
+  // but this adds defense-in-depth.
+  const getAccessTokenRef = useRef(getAccessToken)
+  getAccessTokenRef.current = getAccessToken
 
   const getToken = useCallback(async (): Promise<string | null> => {
     const cached = tokenCacheRef.current
@@ -18,7 +27,7 @@ export function useGetToken() {
       return cached.token
     }
 
-    const token = await getAccessToken()
+    const token = await getAccessTokenRef.current()
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split('.')[1]))
@@ -34,7 +43,7 @@ export function useGetToken() {
     }
 
     return token ?? null
-  }, [getAccessToken])
+  }, [])
 
   return getToken
 }
