@@ -1,6 +1,6 @@
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useScrollrAuth } from '@/hooks/useScrollrAuth'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ArrowRight,
   BarChart3,
@@ -29,6 +29,10 @@ function AccountHub() {
   const navigate = useNavigate()
   const getToken = useGetToken()
 
+  // ── Prevent remount/re-animation on token refresh ──────────────
+  const hasLoaded = useRef(false)
+  const autoRedirectTriggered = useRef(false)
+
   // ── Quick Stats state ──────────────────────────────────────────
   const [streamCount, setStreamCount] = useState<number | null>(null)
   const [enabledCount, setEnabledCount] = useState<number | null>(null)
@@ -44,21 +48,35 @@ function AccountHub() {
     }
   }, [getToken])
 
+  // ── Redirect if not authenticated (one-time) ─────────────────
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      // Redirect if not logged in
+    if (
+      !isLoading &&
+      !isAuthenticated &&
+      !hasLoaded.current &&
+      !autoRedirectTriggered.current
+    ) {
+      autoRedirectTriggered.current = true
       navigate({ to: '/' })
-    } else if (isAuthenticated) {
-      getIdTokenClaims().then(setUserClaims)
+    }
+  }, [isLoading, isAuthenticated, navigate])
+
+  // ── Fetch data when authenticated ─────────────────────────────
+  useEffect(() => {
+    if (isAuthenticated) {
+      getIdTokenClaims().then(setUserClaims).catch(() => {})
       fetchStats()
     }
-  }, [isAuthenticated, isLoading, getIdTokenClaims, navigate, fetchStats])
+  }, [isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (isLoading) {
+  // ── Loading / auth guards ─────────────────────────────────────
+  if (isLoading && !hasLoaded.current) {
     return <LoadingSpinner variant="spin" label="" />
   }
 
-  if (!isAuthenticated) return null
+  if (!isAuthenticated && !hasLoaded.current) return null
+
+  hasLoaded.current = true
 
   return (
     <motion.main
