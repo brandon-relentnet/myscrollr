@@ -41,7 +41,7 @@ export function CallToAction() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
               </span>
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
+              <span className="text-[10px] font-bold tracking-wider text-primary">
                 Get Started
               </span>
             </motion.span>
@@ -51,7 +51,7 @@ export function CallToAction() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight uppercase leading-[0.95] mb-2"
+              className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-[0.95] mb-2"
             >
               Start{' '}
               <span className="text-rainbow">

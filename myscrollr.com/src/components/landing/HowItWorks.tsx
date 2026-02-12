@@ -43,7 +43,7 @@ export function HowItWorks() {
         className="mb-16 text-center"
       >
         <div className="flex items-center justify-center gap-3 mb-8">
-          <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-sm border border-primary/15 uppercase tracking-[0.2em]">
+          <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-sm border border-primary/15 tracking-wider">
             <span className="relative flex h-1.5 w-1.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
@@ -52,7 +52,7 @@ export function HowItWorks() {
           </span>
         </div>
 
-        <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight uppercase leading-[0.95] mb-5">
+        <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-5">
           Three Steps to{' '}
           <span className="text-gradient-primary">Your Feed</span>
         </h2>
@@ -109,7 +109,7 @@ export function HowItWorks() {
                   </div>
 
                   {/* Content */}
-                  <h3 className="text-lg font-bold uppercase tracking-wider text-base-content mb-3">
+                  <h3 className="text-lg font-bold tracking-wide text-base-content mb-3">
                     {step.title}
                   </h3>
                   <p className="text-sm text-base-content/40 leading-relaxed">

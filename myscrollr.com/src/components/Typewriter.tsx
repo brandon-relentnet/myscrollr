@@ -4,7 +4,7 @@ export default function TypewriterChangeContentExample() {
   return (
     <div className="text-center lg:text-left">
       {/* Your Feed, */}
-      <div className="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tight uppercase leading-none overflow-hidden">
+      <div className="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-none overflow-hidden">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -26,7 +26,7 @@ export default function TypewriterChangeContentExample() {
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6, delay: 0.4, ease: 'easeOut' }}
-        className="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tight uppercase leading-none mt-2"
+        className="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-none mt-2"
       >
         <span className="text-rainbow relative inline-block">
           Uninterrupted.
