@@ -27,6 +27,7 @@ export function StreamHeader({
   title,
   subtitle,
   connected,
+  subscriptionTier,
   onToggle,
   onDelete,
 }: {
@@ -35,11 +36,36 @@ export function StreamHeader({
   title: string
   subtitle: string
   connected?: boolean
+  subscriptionTier?: string
   onToggle: () => void
   onDelete: () => void
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const active = stream.visible
+  const isUplink = subscriptionTier === 'uplink'
+
+  // Determine badge text and style based on tier
+  const badgeLabel = isUplink
+    ? connected
+      ? 'Live'
+      : 'Offline'
+    : 'Polling'
+  const badgeActive = isUplink ? !!connected : true
+  const badgeColor = isUplink
+    ? connected
+      ? 'bg-primary/10 border-primary/20'
+      : 'bg-base-300/30 border-base-300'
+    : 'bg-info/10 border-info/20'
+  const dotColor = isUplink
+    ? connected
+      ? 'bg-primary'
+      : 'bg-base-content/30'
+    : 'bg-info'
+  const textColor = isUplink
+    ? connected
+      ? 'text-primary'
+      : 'text-base-content/50'
+    : 'text-info'
 
   return (
     <div className="space-y-5 mb-6">
@@ -53,17 +79,17 @@ export function StreamHeader({
             {subtitle}
           </p>
         </div>
-        {connected !== undefined && (
+        {(connected !== undefined || subscriptionTier) && (
           <span
-            className={`flex items-center gap-1.5 px-2 py-1 rounded ${connected ? 'bg-primary/10 border-primary/20' : 'bg-base-300/30 border-base-300'} border`}
+            className={`flex items-center gap-1.5 px-2 py-1 rounded ${badgeColor} border`}
           >
             <span
-              className={`h-1.5 w-1.5 rounded-full ${connected ? 'bg-primary' : 'bg-base-content/30'} animate-pulse`}
+              className={`h-1.5 w-1.5 rounded-full ${dotColor} ${badgeActive ? 'animate-pulse' : ''}`}
             />
             <span
-              className={`text-[9px] font-mono ${connected ? 'text-primary' : 'text-base-content/50'} uppercase`}
+              className={`text-[9px] font-mono ${textColor} uppercase`}
             >
-              {connected ? 'Connected' : 'Offline'}
+              {badgeLabel}
             </span>
           </span>
         )}

@@ -211,8 +211,8 @@ func (s *Server) getDashboard(c *fiber.Ctx) error {
 		Data: make(map[string]interface{}),
 	}
 
-	// 1. User preferences
-	prefs, err := GetOrCreatePreferences(userID)
+	// 1. User preferences (sync tier from JWT roles)
+	prefs, err := GetOrCreatePreferences(userID, GetUserRoles(c))
 	if err == nil {
 		res.Preferences = prefs
 	}

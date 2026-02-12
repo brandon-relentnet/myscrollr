@@ -9,8 +9,20 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+// tierFromRoles determines the subscription tier based on JWT roles.
+// If the user has the "uplink" role, they get "uplink"; otherwise "free".
+func tierFromRoles(roles []string) string {
+	for _, r := range roles {
+		if r == "uplink" {
+			return "uplink"
+		}
+	}
+	return "free"
+}
+
 // GetOrCreatePreferences fetches preferences for a user, creating defaults if none exist.
-func GetOrCreatePreferences(logtoSub string) (*UserPreferences, error) {
+// If roles are provided, the subscription_tier is synced from JWT roles → DB.
+func GetOrCreatePreferences(logtoSub string, roles ...[]string) (*UserPreferences, error) {
 	var prefs UserPreferences
 	var enabledSites, disabledSites []byte
 	var updatedAt time.Time
@@ -54,6 +66,23 @@ func GetOrCreatePreferences(logtoSub string) (*UserPreferences, error) {
 	}
 	prefs.UpdatedAt = updatedAt.Format(time.RFC3339)
 
+	// Sync subscription tier from JWT roles if provided
+	if len(roles) > 0 && roles[0] != nil {
+		expectedTier := tierFromRoles(roles[0])
+		if prefs.SubscriptionTier != expectedTier {
+			_, syncErr := DBPool.Exec(context.Background(),
+				`UPDATE user_preferences SET subscription_tier = $1 WHERE logto_sub = $2`,
+				expectedTier, logtoSub,
+			)
+			if syncErr != nil {
+				log.Printf("[Preferences] Failed to sync tier for %s: %v", logtoSub, syncErr)
+			} else {
+				log.Printf("[Preferences] Synced tier for %s: %s → %s", logtoSub, prefs.SubscriptionTier, expectedTier)
+				prefs.SubscriptionTier = expectedTier
+			}
+		}
+	}
+
 	return &prefs, nil
 }
 
@@ -74,7 +103,7 @@ func HandleGetPreferences(c *fiber.Ctx) error {
 		})
 	}
 
-	prefs, err := GetOrCreatePreferences(userID)
+	prefs, err := GetOrCreatePreferences(userID, GetUserRoles(c))
 	if err != nil {
 		log.Printf("[Preferences] Error fetching preferences for %s: %v", userID, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{

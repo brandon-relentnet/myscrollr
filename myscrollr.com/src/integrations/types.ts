@@ -9,6 +9,8 @@ export interface DashboardTabProps {
   onStreamUpdate: (updated: Stream) => void
   /** SSE connection status */
   connected: boolean
+  /** User's subscription tier: 'free' | 'uplink' */
+  subscriptionTier: string
 }
 
 /** Manifest describing a single integration */

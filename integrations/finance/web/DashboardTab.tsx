@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Search, TrendingUp, X } from 'lucide-react'
+import { Search, TrendingUp, X, Zap } from 'lucide-react'
 import { motion } from 'motion/react'
 import { streamsApi } from '@/api/client'
 import type { IntegrationManifest, DashboardTabProps } from '@/integrations/types'
@@ -33,10 +33,12 @@ function FinanceDashboardTab({
   stream,
   getToken,
   connected,
+  subscriptionTier,
   onToggle,
   onDelete,
   onStreamUpdate,
 }: DashboardTabProps) {
+  const isUplink = subscriptionTier === 'uplink'
   const [catalog, setCatalog] = useState<TrackedSymbol[]>([])
   const [catalogLoading, setCatalogLoading] = useState(true)
   const [catalogError, setCatalogError] = useState(false)
@@ -139,6 +141,7 @@ function FinanceDashboardTab({
         title="Finance Stream"
         subtitle="Real-time market data via Finnhub WebSocket"
         connected={connected}
+        subscriptionTier={subscriptionTier}
         onToggle={onToggle}
         onDelete={onDelete}
       />
@@ -157,8 +160,24 @@ function FinanceDashboardTab({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <InfoCard label="Your Symbols" value={String(symbols.length)} />
         <InfoCard label="Available" value={String(catalog.length)} />
-        <InfoCard label="Update Frequency" value="Real-time" />
+        <InfoCard
+          label="Delivery"
+          value={isUplink ? 'Real-time' : 'Polling · 30s'}
+        />
       </div>
+
+      {/* Upgrade CTA for free users */}
+      {!isUplink && (
+        <a
+          href="/uplink"
+          className="flex items-center gap-2 px-4 py-3 rounded-sm bg-primary/5 border border-primary/15 hover:border-primary/30 transition-all group"
+        >
+          <Zap size={14} className="text-primary/60 group-hover:text-primary transition-colors" />
+          <span className="text-[10px] font-bold text-base-content/50 uppercase tracking-widest group-hover:text-base-content/70 transition-colors">
+            Upgrade to Uplink for real-time data delivery
+          </span>
+        </a>
+      )}
 
       {/* Selected Symbols */}
       <div className="space-y-3">

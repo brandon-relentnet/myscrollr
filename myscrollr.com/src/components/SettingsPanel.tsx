@@ -30,6 +30,7 @@ const DEFAULT_PREFS: UserPreferences = {
   feed_enabled: true,
   enabled_sites: [],
   disabled_sites: [],
+  subscription_tier: 'free',
   updated_at: '',
 }
 

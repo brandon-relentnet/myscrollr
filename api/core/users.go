@@ -12,6 +12,24 @@ func GetUserID(c *fiber.Ctx) string {
 	return ""
 }
 
+// GetUserRoles extracts the user roles from the Fiber context (set by LogtoAuth middleware).
+func GetUserRoles(c *fiber.Ctx) []string {
+	if roles, ok := c.Locals("user_roles").([]string); ok {
+		return roles
+	}
+	return nil
+}
+
+// HasRole checks if the user has a specific role.
+func HasRole(c *fiber.Ctx, role string) bool {
+	for _, r := range GetUserRoles(c) {
+		if r == role {
+			return true
+		}
+	}
+	return false
+}
+
 // GetProfileByUsername returns basic profile info (Logto-sourced username).
 func GetProfileByUsername(c *fiber.Ctx) error {
 	username := c.Params("username")

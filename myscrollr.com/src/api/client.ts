@@ -26,6 +26,7 @@ export interface UserPreferences {
   feed_enabled: boolean
   enabled_sites: Array<string>
   disabled_sites: Array<string>
+  subscription_tier: 'free' | 'uplink'
   updated_at: string
 }
 

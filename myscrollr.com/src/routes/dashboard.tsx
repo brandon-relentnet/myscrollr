@@ -21,7 +21,7 @@ import { useGetToken } from '@/hooks/useGetToken'
 import SettingsPanel from '@/components/SettingsPanel'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { pageVariants, sectionVariants } from '@/lib/animations'
-import { streamsApi } from '@/api/client'
+import { streamsApi, getPreferences } from '@/api/client'
 import { getIntegration, getAllIntegrations } from '@/integrations/registry'
 
 export const Route = createFileRoute('/dashboard')({
@@ -52,6 +52,9 @@ function DashboardPage() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [userClaims, setUserClaims] = useState<IdTokenClaims>()
 
+  // ── Tier state ───────────────────────────────────────────────────
+  const [subscriptionTier, setSubscriptionTier] = useState<string>('free')
+
   // ── Streams state ────────────────────────────────────────────────
   const [streams, setStreams] = useState<Array<Stream>>([])
   const [streamsLoading, setStreamsLoading] = useState(true)
@@ -66,6 +69,13 @@ function DashboardPage() {
 
   // useRealtime must come after getToken is defined
   const { status, preferences } = useRealtime({ getToken })
+
+  // Sync tier from SSE preference updates
+  useEffect(() => {
+    if (preferences?.subscription_tier) {
+      setSubscriptionTier(preferences.subscription_tier)
+    }
+  }, [preferences?.subscription_tier])
 
   // ── Fetch streams ────────────────────────────────────────────────
   const fetchStreams = useCallback(async () => {
@@ -167,6 +177,16 @@ function DashboardPage() {
         setUserClaims(claims)
       })
       fetchStreams()
+      // Fetch preferences to get subscription tier (synced from JWT roles on backend)
+      getPreferences(getToken)
+        .then((prefs) => {
+          if (prefs.subscription_tier) {
+            setSubscriptionTier(prefs.subscription_tier)
+          }
+        })
+        .catch(() => {
+          // Silently fail — tier defaults to 'free'
+        })
     }
   }, [isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -371,12 +391,20 @@ function DashboardPage() {
                   }
                 />
                 <QuickStat
-                  label="Connection"
-                  value={status === 'connected' ? 'Live' : 'Offline'}
+                  label="Delivery"
+                  value={
+                    subscriptionTier === 'uplink'
+                      ? status === 'connected'
+                        ? 'Live'
+                        : 'Offline'
+                      : 'Polling'
+                  }
                   color={
-                    status === 'connected'
-                      ? 'text-primary'
-                      : 'text-base-content/40'
+                    subscriptionTier === 'uplink'
+                      ? status === 'connected'
+                        ? 'text-primary'
+                        : 'text-base-content/40'
+                      : 'text-info'
                   }
                 />
               </div>
@@ -400,6 +428,7 @@ function DashboardPage() {
                   stream={activeStream}
                   getToken={getToken}
                   connected={status === 'connected'}
+                  subscriptionTier={subscriptionTier}
                   onToggle={() => handleToggleStream(activeStream)}
                   onDelete={() =>
                     handleDeleteStream(

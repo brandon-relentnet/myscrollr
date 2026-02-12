@@ -128,7 +128,7 @@ func LogtoAuth(c *fiber.Ctx) error {
 		})
 	}
 
-	sub, _, err := ValidateToken(tokenString)
+	sub, claims, err := ValidateToken(tokenString)
 	if err != nil {
 		log.Printf("[Auth Error] %v", err)
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
@@ -138,5 +138,19 @@ func LogtoAuth(c *fiber.Ctx) error {
 	}
 
 	c.Locals("user_id", sub)
+
+	// Extract roles injected by Logto Custom JWT (e.g. ["uplink"])
+	var roles []string
+	if rawRoles, ok := claims["roles"]; ok {
+		if roleSlice, ok := rawRoles.([]interface{}); ok {
+			for _, r := range roleSlice {
+				if s, ok := r.(string); ok {
+					roles = append(roles, s)
+				}
+			}
+		}
+	}
+	c.Locals("user_roles", roles)
+
 	return c.Next()
 }
