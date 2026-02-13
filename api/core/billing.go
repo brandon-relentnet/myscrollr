@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -50,6 +51,8 @@ func planFromPriceID(priceID string) string {
 }
 
 // getOrCreateStripeCustomer looks up or creates a Stripe customer for the user.
+// If a cached customer ID is stale (e.g. Stripe mode switch, deleted customer),
+// it deletes the stale record and creates a fresh customer.
 func getOrCreateStripeCustomer(logtoSub, email string) (string, error) {
 	// Check DB first
 	var customerID string
@@ -57,7 +60,15 @@ func getOrCreateStripeCustomer(logtoSub, email string) (string, error) {
 		`SELECT stripe_customer_id FROM stripe_customers WHERE logto_sub = $1`, logtoSub,
 	).Scan(&customerID)
 	if err == nil && customerID != "" {
-		return customerID, nil
+		// Verify the cached customer still exists in Stripe
+		_, stripeErr := stripecustomer.Get(customerID, nil)
+		if stripeErr == nil {
+			return customerID, nil
+		}
+		// Stale or invalid customer (e.g. mode switch) — purge and recreate
+		log.Printf("[Billing] Stale Stripe customer %s for %s, recreating: %v", customerID, logtoSub, stripeErr)
+		_, _ = DBPool.Exec(context.Background(),
+			`DELETE FROM stripe_customers WHERE logto_sub = $1`, logtoSub)
 	}
 
 	// Create Stripe customer
@@ -84,7 +95,19 @@ func getOrCreateStripeCustomer(logtoSub, email string) (string, error) {
 	return c.ID, nil
 }
 
-// HandleCreateCheckoutSession creates a Stripe Checkout Session (custom UI mode)
+// getFrontendURL determines the frontend origin for Stripe return URLs.
+// Prefers the request's Origin header so redirects always match the caller.
+func getFrontendURL(c *fiber.Ctx) string {
+	if origin := c.Get("Origin"); origin != "" {
+		return strings.TrimSuffix(origin, "/")
+	}
+	if url := os.Getenv("FRONTEND_URL"); url != "" {
+		return url
+	}
+	return DefaultFrontendURL
+}
+
+// HandleCreateCheckoutSession creates a Stripe Checkout Session (embedded UI mode)
 // for recurring subscriptions (monthly, quarterly, annual).
 func HandleCreateCheckoutSession(c *fiber.Ctx) error {
 	userID := GetUserID(c)
@@ -132,10 +155,7 @@ func HandleCreateCheckoutSession(c *fiber.Ctx) error {
 		})
 	}
 
-	frontendURL := os.Getenv("FRONTEND_URL")
-	if frontendURL == "" {
-		frontendURL = DefaultFrontendURL
-	}
+	frontendURL := getFrontendURL(c)
 
 	params := &stripe.CheckoutSessionParams{
 		Customer: stripe.String(customerID),
@@ -212,10 +232,7 @@ func HandleCreateLifetimeCheckout(c *fiber.Ctx) error {
 		})
 	}
 
-	frontendURL := os.Getenv("FRONTEND_URL")
-	if frontendURL == "" {
-		frontendURL = DefaultFrontendURL
-	}
+	frontendURL := getFrontendURL(c)
 
 	params := &stripe.CheckoutSessionParams{
 		Customer: stripe.String(customerID),
