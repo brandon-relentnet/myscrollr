@@ -343,8 +343,12 @@ func HandleCancelSubscription(c *fiber.Ctx) error {
 		})
 	}
 
-	// Update local DB
-	periodEnd := time.Unix(sub.CurrentPeriodEnd, 0)
+	// Update local DB — in stripe-go v82, CurrentPeriodEnd moved to SubscriptionItem
+	var periodEndUnix int64
+	if sub.Items != nil && len(sub.Items.Data) > 0 {
+		periodEndUnix = sub.Items.Data[0].CurrentPeriodEnd
+	}
+	periodEnd := time.Unix(periodEndUnix, 0)
 	_, _ = DBPool.Exec(context.Background(),
 		`UPDATE stripe_customers SET status = 'canceling', current_period_end = $2, updated_at = now()
 		 WHERE logto_sub = $1`,

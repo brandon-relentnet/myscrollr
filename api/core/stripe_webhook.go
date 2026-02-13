@@ -28,7 +28,7 @@ func HandleStripeWebhook(c *fiber.Ctx) error {
 	payload := c.Body()
 	sigHeader := c.Get("Stripe-Signature")
 
-	event, err := webhook.ConstructEventWithOptions(string(payload), sigHeader, webhookSecret,
+	event, err := webhook.ConstructEventWithOptions(payload, sigHeader, webhookSecret,
 		webhook.ConstructEventOptions{IgnoreAPIVersionMismatch: true})
 	if err != nil {
 		log.Printf("[Stripe Webhook] Signature verification failed: %v", err)
@@ -135,7 +135,12 @@ func handleSubscriptionUpdated(event stripe.Event) {
 	}
 
 	status := string(sub.Status)
-	periodEnd := time.Unix(sub.CurrentPeriodEnd, 0)
+	// In stripe-go v82, CurrentPeriodEnd moved to SubscriptionItem
+	var periodEndUnix int64
+	if sub.Items != nil && len(sub.Items.Data) > 0 {
+		periodEndUnix = sub.Items.Data[0].CurrentPeriodEnd
+	}
+	periodEnd := time.Unix(periodEndUnix, 0)
 
 	// Determine plan from the first line item
 	plan := "unknown"
