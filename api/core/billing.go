@@ -140,7 +140,7 @@ func HandleCreateCheckoutSession(c *fiber.Ctx) error {
 	params := &stripe.CheckoutSessionParams{
 		Customer: stripe.String(customerID),
 		Mode:     stripe.String(string(stripe.CheckoutSessionModeSubscription)),
-		UIMode:   stripe.String(string(stripe.CheckoutSessionUIModeCustom)),
+		UIMode:   stripe.String(string(stripe.CheckoutSessionUIModeEmbedded)),
 		LineItems: []*stripe.CheckoutSessionLineItemParams{
 			{
 				Price:    stripe.String(req.PriceID),
@@ -220,7 +220,7 @@ func HandleCreateLifetimeCheckout(c *fiber.Ctx) error {
 	params := &stripe.CheckoutSessionParams{
 		Customer: stripe.String(customerID),
 		Mode:     stripe.String(string(stripe.CheckoutSessionModePayment)),
-		UIMode:   stripe.String(string(stripe.CheckoutSessionUIModeCustom)),
+		UIMode:   stripe.String(string(stripe.CheckoutSessionUIModeEmbedded)),
 		LineItems: []*stripe.CheckoutSessionLineItemParams{
 			{
 				Price:    stripe.String(lifetimePrice),
