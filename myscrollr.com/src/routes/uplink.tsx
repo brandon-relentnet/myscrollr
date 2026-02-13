@@ -1,12 +1,14 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { motion, useMotionValue, useTransform, animate } from 'motion/react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, lazy, Suspense } from 'react'
 import {
   Check,
+  CheckCircle2,
   ChevronRight,
   Clock,
   Crown,
   Gauge,
+  Loader2,
   Minus,
   Rocket,
   Satellite,
@@ -19,8 +21,25 @@ import {
 } from 'lucide-react'
 
 import { usePageMeta } from '@/lib/usePageMeta'
+import { useScrollrAuth } from '@/hooks/useScrollrAuth'
+import { useGetToken } from '@/hooks/useGetToken'
+import { billingApi } from '@/api/client'
+
+const CheckoutForm = lazy(() => import('@/components/billing/CheckoutForm'))
+
+// ── Price IDs (from Stripe) ────────────────────────────────────
+const PRICE_IDS = {
+  monthly: 'price_1T0AvUC2uHc0J8jttIKY5r6t',
+  quarterly: 'price_1T0AvXC2uHc0J8jthRuaI9s4',
+  annual: 'price_1T0AvbC2uHc0J8jtZKPVzdd9',
+} as const
+
+type PlanKey = keyof typeof PRICE_IDS
 
 export const Route = createFileRoute('/uplink')({
+  validateSearch: (search: Record<string, unknown>) => ({
+    session_id: (search.session_id as string) || undefined,
+  }),
   component: UplinkPage,
 })
 
@@ -129,26 +148,25 @@ const TERMINAL_LINES = [
   { prompt: true, text: 'scrollr uplink --status' },
   { label: 'SIGNAL', value: 'LOCKED', valueClass: 'text-primary' },
   { label: 'TIER', value: 'UPLINK', valueClass: 'text-primary' },
-  { label: 'STATUS', value: 'IN_DEVELOPMENT', valueClass: 'text-warning' },
-  { label: 'ETA', value: 'Q3 2026', valueClass: 'text-base-content/50' },
+  { label: 'STATUS', value: 'ACTIVE', valueClass: 'text-success' },
   { label: 'MONTHLY', value: '$8.99/mo', valueClass: 'text-base-content/50' },
   {
     label: 'QUARTERLY',
     value: '$21.99/3mo',
     valueClass: 'text-base-content/50',
   },
-  { label: 'ANNUAL', value: '$69.99/yr', valueClass: 'text-base-content/50' },
+  { label: 'ANNUAL', value: '$69.99/yr', valueClass: 'text-primary/60' },
   {
     label: 'LIFETIME',
     value: '$549 (128 slots)',
-    valueClass: 'text-base-content/50',
+    valueClass: 'text-warning/60',
   },
   { label: 'FREE_TIER', value: 'ALWAYS_FREE', valueClass: 'text-success/70' },
-  { prompt: true, text: 'scrollr uplink subscribe --notify' },
+  { prompt: true, text: 'scrollr uplink subscribe --plan annual' },
   {
     label: '→',
-    value: 'Notifications not available yet. Check back soon.',
-    valueClass: 'text-base-content/30',
+    value: 'Checkout session created. Redirecting...',
+    valueClass: 'text-primary/50',
   },
 ]
 
@@ -315,8 +333,105 @@ function UplinkPage() {
       'Total coverage for power users. Scrollr Uplink gives you unlimited tracking, real-time data delivery, and early access to new integrations.',
   })
 
+  const { isAuthenticated, signIn } = useScrollrAuth()
+  const getToken = useGetToken()
+  const navigate = useNavigate()
+  const { session_id } = Route.useSearch()
+
+  const [selectedPlan, setSelectedPlan] = useState<PlanKey | null>(null)
+  const [showCheckout, setShowCheckout] = useState(false)
+  const [checkoutSuccess, setCheckoutSuccess] = useState(false)
+  const [checkingSession, setCheckingSession] = useState(false)
+
+  // Handle return from Stripe checkout via ?session_id=
+  useEffect(() => {
+    if (!session_id) return
+    setCheckingSession(true)
+    billingApi
+      .getCheckoutReturn(session_id, getToken)
+      .then((res) => {
+        if (res.status === 'complete') {
+          setCheckoutSuccess(true)
+        }
+      })
+      .catch(() => {
+        // Session check failed — not critical, user can check account
+      })
+      .finally(() => {
+        setCheckingSession(false)
+        // Clean the URL
+        navigate({ to: '/uplink', search: { session_id: undefined }, replace: true })
+      })
+  }, [session_id, getToken, navigate])
+
+  const handleSelectPlan = (plan: PlanKey) => {
+    if (!isAuthenticated) {
+      signIn(window.location.origin + '/uplink')
+      return
+    }
+    setSelectedPlan(plan)
+    setShowCheckout(true)
+  }
+
+  const handleCloseCheckout = () => {
+    setShowCheckout(false)
+    setSelectedPlan(null)
+  }
+
   return (
     <div className="min-h-screen pt-20">
+      {/* ── Checkout Modal ──────────────────────────────────── */}
+      {showCheckout && selectedPlan && (
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+              <Loader2 size={24} className="animate-spin text-primary" />
+            </div>
+          }
+        >
+          <CheckoutForm
+            priceId={PRICE_IDS[selectedPlan]}
+            getToken={getToken}
+            onClose={handleCloseCheckout}
+          />
+        </Suspense>
+      )}
+
+      {/* ── Checkout Success Banner ─────────────────────────── */}
+      {checkoutSuccess && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="fixed top-24 left-1/2 -translate-x-1/2 z-40 px-6 py-4 bg-success/10 border border-success/30 rounded-sm backdrop-blur-sm flex items-center gap-3"
+        >
+          <CheckCircle2 size={18} className="text-success" />
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-success">
+              Uplink Activated
+            </p>
+            <p className="text-[10px] text-base-content/40 font-mono">
+              Your subscription is active. Welcome to total coverage.
+            </p>
+          </div>
+          <button
+            onClick={() => setCheckoutSuccess(false)}
+            className="ml-4 text-base-content/30 hover:text-base-content/60 transition-colors text-xs"
+          >
+            ✕
+          </button>
+        </motion.div>
+      )}
+
+      {/* ── Session Checking Indicator ──────────────────────── */}
+      {checkingSession && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-40 px-6 py-3 bg-base-200/90 border border-base-content/10 rounded-sm backdrop-blur-sm flex items-center gap-3">
+          <Loader2 size={14} className="animate-spin text-primary" />
+          <span className="text-[10px] font-mono text-base-content/40 uppercase tracking-wider">
+            Confirming payment...
+          </span>
+        </div>
+      )}
+
       {/* ── HERO ─────────────────────────────────────────────── */}
       <section className="relative pt-32 pb-28 overflow-hidden">
         {/* Layered background system */}
@@ -463,11 +578,11 @@ function UplinkPage() {
                 />
                 <button
                   type="button"
-                  disabled
-                  className="relative inline-flex items-center gap-2.5 px-7 py-3.5 text-[11px] font-bold uppercase tracking-[0.2em] border border-primary/30 text-primary bg-primary/5 rounded-sm cursor-not-allowed backdrop-blur-sm"
+                  onClick={() => handleSelectPlan('annual')}
+                  className="relative inline-flex items-center gap-2.5 px-7 py-3.5 text-[11px] font-bold uppercase tracking-[0.2em] border border-primary/30 text-primary bg-primary/5 rounded-sm hover:bg-primary/10 hover:border-primary/50 transition-colors backdrop-blur-sm cursor-pointer"
                 >
                   <Rocket size={14} />
-                  Coming Soon
+                  Get Uplink
                 </button>
               </div>
 
@@ -667,7 +782,8 @@ function UplinkPage() {
                 y: -3,
                 transition: { type: 'tween', duration: 0.2 },
               }}
-              className="group bg-base-200/40 border border-base-300/50 rounded-sm p-6 hover:border-base-300 transition-colors relative overflow-hidden"
+              onClick={() => handleSelectPlan('monthly')}
+              className="group bg-base-200/40 border border-base-300/50 rounded-sm p-6 hover:border-base-300 transition-colors relative overflow-hidden cursor-pointer"
             >
               <div className="absolute inset-0 bg-gradient-to-b from-base-content/[0.01] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
               <div className="relative z-10">
@@ -704,6 +820,13 @@ function UplinkPage() {
                   <PricingFeature>Real-time data delivery</PricingFeature>
                   <PricingFeature>All integrations maxed</PricingFeature>
                 </div>
+
+                <button
+                  type="button"
+                  className="mt-5 w-full py-2.5 text-[10px] font-bold uppercase tracking-[0.2em] border border-base-content/15 text-base-content/50 rounded-sm hover:border-base-content/30 hover:text-base-content/70 transition-colors"
+                >
+                  Select Monthly
+                </button>
               </div>
             </motion.div>
 
@@ -721,7 +844,8 @@ function UplinkPage() {
                 y: -3,
                 transition: { type: 'tween', duration: 0.2 },
               }}
-              className="group bg-base-200/40 border border-base-300/50 rounded-sm p-6 hover:border-info/20 transition-colors relative overflow-hidden"
+              onClick={() => handleSelectPlan('quarterly')}
+              className="group bg-base-200/40 border border-base-300/50 rounded-sm p-6 hover:border-info/20 transition-colors relative overflow-hidden cursor-pointer"
             >
               <div className="absolute inset-0 bg-gradient-to-b from-info/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
               <div className="relative z-10">
@@ -758,6 +882,13 @@ function UplinkPage() {
                   <PricingFeature>Real-time data delivery</PricingFeature>
                   <PricingFeature>All integrations maxed</PricingFeature>
                 </div>
+
+                <button
+                  type="button"
+                  className="mt-5 w-full py-2.5 text-[10px] font-bold uppercase tracking-[0.2em] border border-info/20 text-info/60 rounded-sm hover:border-info/40 hover:text-info/80 transition-colors"
+                >
+                  Select Quarterly
+                </button>
               </div>
             </motion.div>
 
@@ -775,7 +906,8 @@ function UplinkPage() {
                 y: -4,
                 transition: { type: 'tween', duration: 0.2 },
               }}
-              className="group relative rounded-sm overflow-hidden"
+              onClick={() => handleSelectPlan('annual')}
+              className="group relative rounded-sm overflow-hidden cursor-pointer"
             >
               {/* Outer glow */}
               <motion.div
@@ -840,89 +972,105 @@ function UplinkPage() {
                     </PricingFeature>
                     <PricingFeature highlight>Priority support</PricingFeature>
                   </div>
+
+                  <button
+                    type="button"
+                    className="mt-5 w-full py-2.5 text-[10px] font-bold uppercase tracking-[0.2em] bg-primary/10 border border-primary/30 text-primary rounded-sm hover:bg-primary/20 hover:border-primary/50 transition-colors"
+                  >
+                    Get Annual — Best Value
+                  </button>
                 </div>
               </div>
             </motion.div>
 
             {/* ─── Lifetime — The First Byte ─── */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{
-                delay: 0.18,
-                duration: 0.5,
-                ease: [0.22, 1, 0.36, 1],
-              }}
-              whileHover={{
-                y: -3,
-                transition: { type: 'tween', duration: 0.2 },
-              }}
-              className="group bg-base-200/40 border border-base-300/50 rounded-sm p-6 hover:border-warning/20 transition-colors relative overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-gradient-to-b from-warning/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+            <Link to="/uplink/lifetime" search={{ session_id: undefined }} className="block">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{
+                  delay: 0.18,
+                  duration: 0.5,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+                whileHover={{
+                  y: -3,
+                  transition: { type: 'tween', duration: 0.2 },
+                }}
+                className="group bg-base-200/40 border border-base-300/50 rounded-sm p-6 hover:border-warning/20 transition-colors relative overflow-hidden cursor-pointer"
+              >
+                <div className="absolute inset-0 bg-gradient-to-b from-warning/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-5">
-                  <div className="h-9 w-9 rounded-sm bg-warning/8 border border-warning/15 flex items-center justify-center text-warning/70">
-                    <Sparkles size={18} />
-                  </div>
-                  <span className="text-[9px] font-mono text-warning/50 uppercase tracking-widest">
-                    Limited
-                  </span>
-                </div>
-
-                <h3 className="text-sm font-bold uppercase tracking-wider text-base-content mb-1">
-                  Lifetime
-                </h3>
-                <p className="text-[10px] font-mono text-warning/40 uppercase tracking-wider mb-4">
-                  The First Byte
-                </p>
-
-                <div className="flex items-baseline gap-1.5 mb-1">
-                  <span className="text-3xl font-black text-base-content tracking-tight">
-                    $549
-                  </span>
-                  <span className="text-xs font-mono text-base-content/25">
-                    / forever
-                  </span>
-                </div>
-                <p className="text-[10px] font-mono text-warning/40 mb-3">
-                  Only 128 available — 0x00 to 0x7F
-                </p>
-
-                {/* Slot counter */}
-                <div className="mb-5 p-3 rounded-sm bg-base-100/60 border border-base-300/30">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[9px] font-mono text-base-content/25 uppercase tracking-widest">
-                      Slots
-                    </span>
-                    <span className="text-[9px] font-mono text-warning/50">
-                      <AnimatedNumber target={128} duration={2} /> / 128
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-5">
+                    <div className="h-9 w-9 rounded-sm bg-warning/8 border border-warning/15 flex items-center justify-center text-warning/70">
+                      <Sparkles size={18} />
+                    </div>
+                    <span className="text-[9px] font-mono text-warning/50 uppercase tracking-widest">
+                      Limited
                     </span>
                   </div>
-                  <div className="h-1 rounded-full bg-base-300/50 overflow-hidden">
-                    <motion.div
-                      className="h-full rounded-full bg-gradient-to-r from-warning/60 to-primary/60 origin-left"
-                      initial={{ scaleX: 0 }}
-                      whileInView={{ scaleX: 1 }}
-                      viewport={{ once: true }}
-                      transition={{
-                        duration: 1.5,
-                        delay: 0.3,
-                        ease: [0.22, 1, 0.36, 1],
-                      }}
-                    />
-                  </div>
-                </div>
 
-                <div className="space-y-2.5">
-                  <PricingFeature>Everything in Annual</PricingFeature>
-                  <PricingFeature>Permanent access</PricingFeature>
-                  <PricingFeature>Founding member status</PricingFeature>
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-base-content mb-1">
+                    Lifetime
+                  </h3>
+                  <p className="text-[10px] font-mono text-warning/40 uppercase tracking-wider mb-4">
+                    The First Byte
+                  </p>
+
+                  <div className="flex items-baseline gap-1.5 mb-1">
+                    <span className="text-3xl font-black text-base-content tracking-tight">
+                      $549
+                    </span>
+                    <span className="text-xs font-mono text-base-content/25">
+                      / forever
+                    </span>
+                  </div>
+                  <p className="text-[10px] font-mono text-warning/40 mb-3">
+                    Only 128 available — 0x00 to 0x7F
+                  </p>
+
+                  {/* Slot counter */}
+                  <div className="mb-5 p-3 rounded-sm bg-base-100/60 border border-base-300/30">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[9px] font-mono text-base-content/25 uppercase tracking-widest">
+                        Slots
+                      </span>
+                      <span className="text-[9px] font-mono text-warning/50">
+                        <AnimatedNumber target={128} duration={2} /> / 128
+                      </span>
+                    </div>
+                    <div className="h-1 rounded-full bg-base-300/50 overflow-hidden">
+                      <motion.div
+                        className="h-full rounded-full bg-gradient-to-r from-warning/60 to-primary/60 origin-left"
+                        initial={{ scaleX: 0 }}
+                        whileInView={{ scaleX: 1 }}
+                        viewport={{ once: true }}
+                        transition={{
+                          duration: 1.5,
+                          delay: 0.3,
+                          ease: [0.22, 1, 0.36, 1],
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <PricingFeature>Everything in Annual</PricingFeature>
+                    <PricingFeature>Permanent access</PricingFeature>
+                    <PricingFeature>Founding member status</PricingFeature>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="mt-5 w-full py-2.5 text-[10px] font-bold uppercase tracking-[0.2em] border border-warning/20 text-warning/60 rounded-sm hover:border-warning/40 hover:text-warning/80 transition-colors"
+                  >
+                    View Lifetime →
+                  </button>
                 </div>
-              </div>
-            </motion.div>
+              </motion.div>
+            </Link>
           </div>
 
           {/* Pricing footer */}
@@ -1007,7 +1155,7 @@ function UplinkPage() {
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
                 </span>
                 <span className="text-[10px] font-mono uppercase tracking-widest text-primary">
-                  In Development
+                  Available Now
                 </span>
               </motion.div>
 
@@ -1054,11 +1202,15 @@ function UplinkPage() {
                   duration: 0.6,
                   ease: [0.22, 1, 0.36, 1],
                 }}
-                className="flex flex-wrap items-center justify-center gap-3"
+                className="flex flex-wrap items-center justify-center gap-4"
               >
-                <span className="inline-flex items-center gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-primary/60 border border-primary/15 rounded-sm bg-primary/5">
-                  <Zap size={12} /> Starting at $5.83/mo
-                </span>
+                <button
+                  type="button"
+                  onClick={() => handleSelectPlan('annual')}
+                  className="inline-flex items-center gap-2 px-6 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-primary border border-primary/30 rounded-sm bg-primary/5 hover:bg-primary/10 hover:border-primary/50 transition-colors cursor-pointer"
+                >
+                  <Rocket size={12} /> Get Uplink — $5.83/mo
+                </button>
                 <span className="inline-flex items-center gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-base-content/25 border border-base-300/30 rounded-sm">
                   <ChevronRight size={12} /> Free tier always included
                 </span>

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ArrowRight,
   BarChart3,
+  Crown,
   Globe,
   Lock,
   Radio,
@@ -18,6 +19,7 @@ import LoadingSpinner from '@/components/LoadingSpinner'
 import { pageVariants, sectionVariants } from '@/lib/animations'
 import { streamsApi } from '@/api/client'
 import { useGetToken } from '@/hooks/useGetToken'
+import SubscriptionStatus from '@/components/billing/SubscriptionStatus'
 
 export const Route = createFileRoute('/account')({
   component: AccountHub,
@@ -118,7 +120,7 @@ function AccountHub() {
       {/* Hub Grid */}
       <section className="container py-16">
         <motion.div
-          className="grid grid-cols-1 md:grid-cols-3 gap-6"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
           variants={sectionVariants}
         >
           {/* Main Terminal */}
@@ -147,6 +149,16 @@ function AccountHub() {
             href={`https://auth.myscrollr.relentnet.dev/account?${new URLSearchParams({ client_id: 'ogbulfshvf934eeli4t9u' })}`}
             icon={<Lock className="size-6" />}
             accent="secondary"
+          />
+
+          {/* Uplink Subscription */}
+          <HubCard
+            title="Uplink"
+            desc="Manage your subscription tier"
+            to="/uplink"
+            search={{ session_id: undefined }}
+            icon={<Crown className="size-6" />}
+            accent="primary"
           />
         </motion.div>
 
@@ -202,6 +214,21 @@ function AccountHub() {
               <BarChart3 size={120} />
             </div>
           </div>
+
+          {/* Subscription Status */}
+          <div className="bg-base-200/50 border border-base-300/50 rounded-sm p-8 relative overflow-hidden">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-primary mb-6 flex items-center gap-2">
+              <Crown size={16} /> Subscription
+            </h3>
+            <SubscriptionStatus getToken={getToken} />
+            <Link
+              to="/uplink"
+              search={{ session_id: undefined }}
+              className="mt-4 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary/60 hover:text-primary transition-colors"
+            >
+              View Plans <ArrowRight size={14} />
+            </Link>
+          </div>
         </motion.div>
       </section>
     </motion.main>
@@ -213,6 +240,7 @@ function HubCard({
   desc,
   to,
   params,
+  search,
   href,
   icon,
   accent,
@@ -222,6 +250,7 @@ function HubCard({
   desc: string
   to?: string
   params?: Record<string, string>
+  search?: Record<string, unknown>
   href?: string
   icon: React.ReactNode
   accent: 'primary' | 'secondary' | 'info'
@@ -287,7 +316,7 @@ function HubCard({
   }
 
   return (
-    <Link to={to} params={params as any} className="block h-full">
+    <Link to={to} params={params as any} search={search as any} className="block h-full">
       {content}
     </Link>
   )

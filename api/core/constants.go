@@ -71,6 +71,19 @@ const (
 )
 
 // =============================================================================
+// Billing / Stripe
+// =============================================================================
+
+const (
+	// Logto M2M token is cached and refreshed before expiry.
+	LogtoM2MTokenBufferSecs = 60
+	LogtoM2MTokenTimeout    = 10 * time.Second
+
+	// Stripe webhook signature tolerance.
+	StripeWebhookTolerance = 300 // seconds
+)
+
+// =============================================================================
 // Miscellaneous
 // =============================================================================
 

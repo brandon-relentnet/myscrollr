@@ -50,3 +50,47 @@ type ErrorResponse struct {
 	Status string `json:"status"`
 	Error  string `json:"error"`
 }
+
+// =============================================================================
+// Billing
+// =============================================================================
+
+// StripeCustomer maps a Logto user to their Stripe customer and subscription.
+type StripeCustomer struct {
+	LogtoSub             string     `json:"logto_sub"`
+	StripeCustomerID     string     `json:"stripe_customer_id"`
+	StripeSubscriptionID *string    `json:"stripe_subscription_id,omitempty"`
+	Plan                 string     `json:"plan"`
+	Status               string     `json:"status"`
+	CurrentPeriodEnd     *time.Time `json:"current_period_end,omitempty"`
+	Lifetime             bool       `json:"lifetime"`
+	CreatedAt            time.Time  `json:"created_at"`
+	UpdatedAt            time.Time  `json:"updated_at"`
+}
+
+// CheckoutRequest is the body for POST /checkout/session.
+type CheckoutRequest struct {
+	PriceID string `json:"price_id"`
+}
+
+// CheckoutResponse returns the client secret for the Payment Element.
+type CheckoutResponse struct {
+	ClientSecret    string `json:"client_secret"`
+	SessionID       string `json:"session_id"`
+	PublishableKey  string `json:"publishable_key"`
+}
+
+// SubscriptionResponse returns the user's subscription state.
+type SubscriptionResponse struct {
+	Plan             string     `json:"plan"`
+	Status           string     `json:"status"`
+	CurrentPeriodEnd *time.Time `json:"current_period_end,omitempty"`
+	Lifetime         bool       `json:"lifetime"`
+	CancelURL        string     `json:"cancel_url,omitempty"`
+}
+
+// CheckoutReturnResponse tells the frontend about the checkout outcome.
+type CheckoutReturnResponse struct {
+	Status    string `json:"status"`
+	SessionID string `json:"session_id,omitempty"`
+}

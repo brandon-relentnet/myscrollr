@@ -10,6 +10,7 @@ require (
 	github.com/jackc/pgx/v5 v5.5.3
 	github.com/joho/godotenv v1.5.1
 	github.com/redis/go-redis/v9 v9.4.0
+	github.com/stripe/stripe-go/v82 v82.1.0
 	github.com/swaggo/swag v1.16.3
 )
 

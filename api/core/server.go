@@ -36,6 +36,7 @@ func NewServer() *Server {
 // Setup configures middleware, registers all routes, and sets up integration
 // proxying based on Redis discovery.
 func (s *Server) Setup() {
+	initStripe()
 	s.setupMiddleware()
 	s.setupRoutes()
 
@@ -87,6 +88,7 @@ func (s *Server) setupMiddleware() {
 		"/health":          true,
 		"/events":          true,
 		"/webhooks/sequin": true,
+		"/webhooks/stripe": true,
 		"/integrations":    true,
 	}
 
@@ -126,6 +128,7 @@ func (s *Server) setupRoutes() {
 	s.App.Get("/events", StreamEvents)
 	s.App.Get("/events/count", GetActiveViewers)
 	s.App.Post("/webhooks/sequin", HandleSequinWebhook)
+	s.App.Post("/webhooks/stripe", HandleStripeWebhook)
 
 	// Extension auth proxy
 	s.App.Options("/extension/token", HandleExtensionAuthPreflight)
@@ -138,6 +141,13 @@ func (s *Server) setupRoutes() {
 
 	// --- Protected Routes ---
 	s.App.Get("/dashboard", LogtoAuth, s.getDashboard)
+
+	// Billing Routes
+	s.App.Post("/checkout/session", LogtoAuth, HandleCreateCheckoutSession)
+	s.App.Post("/checkout/lifetime", LogtoAuth, HandleCreateLifetimeCheckout)
+	s.App.Get("/checkout/return", LogtoAuth, HandleCheckoutReturn)
+	s.App.Get("/users/me/subscription", LogtoAuth, HandleGetSubscription)
+	s.App.Post("/users/me/subscription/cancel", LogtoAuth, HandleCancelSubscription)
 
 	// User Routes — specific /users/me/* paths BEFORE parameterized /users/:username
 	s.App.Get("/users/me/preferences", LogtoAuth, HandleGetPreferences)

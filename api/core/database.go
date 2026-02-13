@@ -105,4 +105,31 @@ func ConnectDB() {
 	if err != nil {
 		log.Printf("Warning: Failed to add subscription_tier column: %v", err)
 	}
+
+	// Stripe billing table — maps Logto users to Stripe customers + subscriptions
+	_, err = DBPool.Exec(context.Background(), `
+		CREATE TABLE IF NOT EXISTS stripe_customers (
+			logto_sub              TEXT PRIMARY KEY,
+			stripe_customer_id     TEXT UNIQUE NOT NULL,
+			stripe_subscription_id TEXT,
+			plan                   TEXT NOT NULL DEFAULT 'free',
+			status                 TEXT NOT NULL DEFAULT 'active',
+			current_period_end     TIMESTAMPTZ,
+			lifetime               BOOLEAN NOT NULL DEFAULT false,
+			created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+			updated_at             TIMESTAMPTZ NOT NULL DEFAULT now()
+		);
+	`)
+	if err != nil {
+		log.Printf("Warning: Failed to create stripe_customers table: %v", err)
+	}
+
+	// Add lifetime column if it doesn't exist (for existing tables)
+	_, err = DBPool.Exec(context.Background(), `
+		ALTER TABLE stripe_customers
+		ADD COLUMN IF NOT EXISTS lifetime BOOLEAN NOT NULL DEFAULT false;
+	`)
+	if err != nil {
+		log.Printf("Warning: Failed to add lifetime column: %v", err)
+	}
 }

@@ -20,6 +20,7 @@ import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as ArchitectureRouteImport } from './routes/architecture'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as UplinkLifetimeRouteImport } from './routes/uplink_.lifetime'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
 
 const UplinkRoute = UplinkRouteImport.update({
@@ -77,6 +78,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UplinkLifetimeRoute = UplinkLifetimeRouteImport.update({
+  id: '/uplink_/lifetime',
+  path: '/uplink/lifetime',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UUsernameRoute = UUsernameRouteImport.update({
   id: '/u/$username',
   path: '/u/$username',
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/status': typeof StatusRoute
   '/uplink': typeof UplinkRoute
   '/u/$username': typeof UUsernameRoute
+  '/uplink/lifetime': typeof UplinkLifetimeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -110,6 +117,7 @@ export interface FileRoutesByTo {
   '/status': typeof StatusRoute
   '/uplink': typeof UplinkRoute
   '/u/$username': typeof UUsernameRoute
+  '/uplink/lifetime': typeof UplinkLifetimeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/status': typeof StatusRoute
   '/uplink': typeof UplinkRoute
   '/u/$username': typeof UUsernameRoute
+  '/uplink_/lifetime': typeof UplinkLifetimeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -141,6 +150,7 @@ export interface FileRouteTypes {
     | '/status'
     | '/uplink'
     | '/u/$username'
+    | '/uplink/lifetime'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -155,6 +165,7 @@ export interface FileRouteTypes {
     | '/status'
     | '/uplink'
     | '/u/$username'
+    | '/uplink/lifetime'
   id:
     | '__root__'
     | '/'
@@ -169,6 +180,7 @@ export interface FileRouteTypes {
     | '/status'
     | '/uplink'
     | '/u/$username'
+    | '/uplink_/lifetime'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -184,6 +196,7 @@ export interface RootRouteChildren {
   StatusRoute: typeof StatusRoute
   UplinkRoute: typeof UplinkRoute
   UUsernameRoute: typeof UUsernameRoute
+  UplinkLifetimeRoute: typeof UplinkLifetimeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -265,6 +278,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/uplink_/lifetime': {
+      id: '/uplink_/lifetime'
+      path: '/uplink/lifetime'
+      fullPath: '/uplink/lifetime'
+      preLoaderRoute: typeof UplinkLifetimeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/u/$username': {
       id: '/u/$username'
       path: '/u/$username'
@@ -288,6 +308,7 @@ const rootRouteChildren: RootRouteChildren = {
   StatusRoute: StatusRoute,
   UplinkRoute: UplinkRoute,
   UUsernameRoute: UUsernameRoute,
+  UplinkLifetimeRoute: UplinkLifetimeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

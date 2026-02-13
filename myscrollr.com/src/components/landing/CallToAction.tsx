@@ -106,6 +106,7 @@ export function CallToAction() {
             <div className="w-full border-t border-base-300/30">
               <Link
                 to="/uplink"
+                search={{ session_id: undefined }}
                 className="group flex items-center justify-center lg:justify-end gap-2 text-[10px] font-mono text-base-content/25 uppercase tracking-wider hover:text-primary/60 transition-colors"
               >
                 <Satellite size={11} className="opacity-50" />

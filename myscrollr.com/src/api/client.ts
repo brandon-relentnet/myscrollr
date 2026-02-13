@@ -256,3 +256,75 @@ export async function updatePreferences(
   notifyExtensionConfigChanged()
   return result
 }
+
+// ── Billing Types & API ────────────────────────────────────────────
+
+export interface CheckoutResponse {
+  client_secret: string
+  session_id: string
+  publishable_key: string
+}
+
+export interface SubscriptionStatus {
+  plan: 'free' | 'monthly' | 'quarterly' | 'annual' | 'lifetime'
+  status: 'none' | 'active' | 'canceling' | 'canceled' | 'past_due'
+  current_period_end?: string
+  lifetime: boolean
+}
+
+export interface CheckoutReturnStatus {
+  status: string
+  session_id?: string
+}
+
+export const billingApi = {
+  /** Create a subscription checkout session (monthly/quarterly/annual) */
+  createCheckoutSession: (
+    priceId: string,
+    getToken: () => Promise<string | null>,
+  ) =>
+    authenticatedFetch<CheckoutResponse>(
+      '/checkout/session',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ price_id: priceId }),
+      },
+      getToken,
+    ),
+
+  /** Create a lifetime checkout session */
+  createLifetimeCheckout: (getToken: () => Promise<string | null>) =>
+    authenticatedFetch<CheckoutResponse>(
+      '/checkout/lifetime',
+      { method: 'POST' },
+      getToken,
+    ),
+
+  /** Get checkout session return status */
+  getCheckoutReturn: (
+    sessionId: string,
+    getToken: () => Promise<string | null>,
+  ) =>
+    authenticatedFetch<CheckoutReturnStatus>(
+      `/checkout/return?session_id=${sessionId}`,
+      {},
+      getToken,
+    ),
+
+  /** Get current subscription status */
+  getSubscription: (getToken: () => Promise<string | null>) =>
+    authenticatedFetch<SubscriptionStatus>(
+      '/users/me/subscription',
+      {},
+      getToken,
+    ),
+
+  /** Cancel subscription at period end */
+  cancelSubscription: (getToken: () => Promise<string | null>) =>
+    authenticatedFetch<{ status: string; current_period_end: string; message: string }>(
+      '/users/me/subscription/cancel',
+      { method: 'POST' },
+      getToken,
+    ),
+}
