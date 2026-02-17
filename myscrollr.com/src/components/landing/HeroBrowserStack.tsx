@@ -1,4 +1,4 @@
-import { motion } from 'motion/react'
+import { easeIn, mix, motion, progress, wrap } from 'motion/react'
 
 // ── Accent color map ─────────────────────────────────────────────
 
@@ -91,18 +91,12 @@ const MOCKUPS: MockupConfig[] = [
   },
 ]
 
-// ── Stack position calculation ───────────────────────────────────
+// ── Constants ────────────────────────────────────────────────────
 
-function getStackPosition(cardIndex: number, activeIndex: number) {
-  const distance = (cardIndex - activeIndex + MOCKUPS.length) % MOCKUPS.length
-  return {
-    scale: 1 - distance * 0.04,
-    x: distance * 10,
-    y: distance * -10,
-    opacity: distance === 0 ? 1 : Math.max(0.3, 0.75 - distance * 0.15),
-    zIndex: MOCKUPS.length - distance,
-  }
-}
+const TOTAL = MOCKUPS.length
+const MAX_ROTATE = 3
+const CASCADE_X = -28
+const CASCADE_Y = -20
 
 // ── Fake page content per category ───────────────────────────────
 
@@ -131,32 +125,32 @@ function ScoresContent() {
     },
   ]
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       {games.map((g) => (
         <div
           key={g.away}
-          className="flex items-center justify-between px-2.5 py-1.5 rounded-sm bg-base-300/8 border border-base-300/10"
+          className="flex items-center justify-between px-3 py-2 rounded-sm bg-base-300/8 border border-base-300/10"
         >
-          <div className="flex items-center gap-2">
-            <div className="w-3.5 h-3.5 rounded-sm bg-secondary/15 shrink-0" />
-            <span className="text-[9px] font-bold font-mono text-base-content/60">
+          <div className="flex items-center gap-2.5">
+            <div className="w-4.5 h-4.5 rounded-sm bg-secondary/15 shrink-0" />
+            <span className="text-[11px] font-bold font-mono text-base-content/60">
               {g.away}
             </span>
-            <span className="text-[10px] font-black font-mono text-base-content/80">
+            <span className="text-xs font-black font-mono text-base-content/80">
               {g.aScore}
             </span>
           </div>
-          <span className="text-[7px] font-mono text-secondary/60 uppercase tracking-wide">
+          <span className="text-[9px] font-mono text-secondary/60 uppercase tracking-wide">
             {g.status}
           </span>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black font-mono text-base-content/80">
+          <div className="flex items-center gap-2.5">
+            <span className="text-xs font-black font-mono text-base-content/80">
               {g.hScore}
             </span>
-            <span className="text-[9px] font-bold font-mono text-base-content/60">
+            <span className="text-[11px] font-bold font-mono text-base-content/60">
               {g.home}
             </span>
-            <div className="w-3.5 h-3.5 rounded-sm bg-secondary/15 shrink-0" />
+            <div className="w-4.5 h-4.5 rounded-sm bg-secondary/15 shrink-0" />
           </div>
         </div>
       ))}
@@ -171,9 +165,9 @@ function MarketsContent() {
     { ticker: 'ETH', price: '$3,412', change: '-1.21%', up: false },
   ]
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       {/* Mini chart */}
-      <div className="h-10 rounded-sm bg-base-300/5 border border-base-300/8 flex items-end px-1.5 pb-1 overflow-hidden">
+      <div className="h-14 rounded-sm bg-base-300/5 border border-base-300/8 flex items-end px-2 pb-1.5 overflow-hidden">
         <svg
           viewBox="0 0 200 40"
           className="w-full h-full"
@@ -204,16 +198,16 @@ function MarketsContent() {
       {stocks.map((s) => (
         <div
           key={s.ticker}
-          className="flex items-center justify-between px-2.5 py-1"
+          className="flex items-center justify-between px-3 py-1.5"
         >
-          <span className="text-[9px] font-bold font-mono text-base-content/60 w-8">
+          <span className="text-[11px] font-bold font-mono text-base-content/60 w-10">
             {s.ticker}
           </span>
-          <span className="text-[9px] font-mono text-base-content/35">
+          <span className="text-[11px] font-mono text-base-content/35">
             {s.price}
           </span>
           <span
-            className={`text-[9px] font-bold font-mono ${s.up ? 'text-primary' : 'text-secondary'}`}
+            className={`text-[11px] font-bold font-mono ${s.up ? 'text-primary' : 'text-secondary'}`}
           >
             {s.change} {s.up ? '↑' : '↓'}
           </span>
@@ -242,23 +236,23 @@ function HeadlinesContent() {
     },
   ]
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       {posts.map((p) => (
         <div
           key={p.votes}
-          className="flex items-start gap-2.5 px-2.5 py-1.5 rounded-sm bg-base-300/5 border border-base-300/8"
+          className="flex items-start gap-3 px-3 py-2 rounded-sm bg-base-300/5 border border-base-300/8"
         >
           <div className="flex flex-col items-center shrink-0 pt-0.5">
-            <span className="text-info/40 text-[7px] leading-none">▲</span>
-            <span className="text-[8px] font-bold font-mono text-info/50">
+            <span className="text-info/40 text-[9px] leading-none">▲</span>
+            <span className="text-[10px] font-bold font-mono text-info/50">
               {p.votes}
             </span>
           </div>
           <div className="min-w-0">
-            <p className="text-[9px] font-medium text-base-content/60 leading-snug line-clamp-2">
+            <p className="text-[11px] font-medium text-base-content/60 leading-snug line-clamp-2">
               {p.title}
             </p>
-            <span className="text-[7px] font-mono text-base-content/20 block mt-0.5">
+            <span className="text-[9px] font-mono text-base-content/20 block mt-0.5">
               {p.source}
             </span>
           </div>
@@ -275,29 +269,29 @@ function LeaguesContent() {
     { pos: 'RB', name: 'D. Henry', pts: '18.7' },
   ]
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between px-2.5 py-1.5 rounded-sm bg-accent/5 border border-accent/10">
-        <span className="text-[8px] font-bold font-mono text-accent/60 uppercase tracking-wide">
+    <div className="space-y-2">
+      <div className="flex items-center justify-between px-3 py-2 rounded-sm bg-accent/5 border border-accent/10">
+        <span className="text-[10px] font-bold font-mono text-accent/60 uppercase tracking-wide">
           Your Team
         </span>
-        <span className="text-[8px] font-bold font-mono text-accent/80">
+        <span className="text-[10px] font-bold font-mono text-accent/80">
           2nd Place · 6-4
         </span>
       </div>
       {players.map((p) => (
         <div
           key={p.name}
-          className="flex items-center justify-between px-2.5 py-1.5"
+          className="flex items-center justify-between px-3 py-2"
         >
-          <div className="flex items-center gap-2">
-            <span className="text-[7px] font-bold font-mono text-accent/30 w-4">
+          <div className="flex items-center gap-2.5">
+            <span className="text-[9px] font-bold font-mono text-accent/30 w-5">
               {p.pos}
             </span>
-            <span className="text-[9px] font-medium text-base-content/60">
+            <span className="text-[11px] font-medium text-base-content/60">
               {p.name}
             </span>
           </div>
-          <span className="text-[9px] font-bold font-mono text-accent/70">
+          <span className="text-[11px] font-bold font-mono text-accent/70">
             {p.pts}
           </span>
         </div>
@@ -325,84 +319,93 @@ export function HeroBrowserStack({ activeIndex }: HeroBrowserStackProps) {
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.8, ease: 'easeOut' }}
-      className="relative w-72 sm:w-80 lg:w-[420px] aspect-[4/3]"
+      className="relative w-[360px] sm:w-[480px] lg:w-[720px] aspect-[4/3]"
     >
       {/* Ambient glow behind the stack */}
       <div className="absolute -inset-8 bg-primary/[0.04] rounded-3xl blur-3xl pointer-events-none" />
 
       {MOCKUPS.map((mockup, i) => {
-        const { scale, x, y, opacity, zIndex } = getStackPosition(
-          i,
-          activeIndex,
-        )
+        const zIndex = TOTAL - wrap(TOTAL, 0, i - activeIndex + 1)
+        const stackProgress = progress(0, TOTAL - 1, zIndex)
+        const scale = mix(0.85, 1, easeIn(stackProgress))
+        const opacity = progress(TOTAL * 0.1, TOTAL * 0.7, zIndex)
+        const baseRotate = mix(-MAX_ROTATE, MAX_ROTATE, Math.sin(i))
+        const distFromFront = TOTAL - zIndex
+        const x = distFromFront * CASCADE_X
+        const y = distFromFront * CASCADE_Y
+
         const colors = accentMap[mockup.accent]
-        const isFront =
-          (i - activeIndex + MOCKUPS.length) % MOCKUPS.length === 0
+        const isFront = zIndex === TOTAL
         const ContentComponent = CONTENT_RENDERERS[mockup.word]
 
         return (
           <motion.div
             key={mockup.word}
-            animate={{ scale, x, y, opacity }}
+            animate={{ scale, opacity, x, y }}
             style={{
               zIndex,
+              rotate: baseRotate,
               boxShadow: isFront ? colors.shadow : undefined,
             }}
-            transition={{ type: 'spring', bounce: 0.15, duration: 0.4 }}
+            transition={{
+              type: 'spring',
+              stiffness: 500,
+              damping: 35,
+            }}
             className={`absolute inset-0 rounded-sm overflow-hidden flex flex-col border ${
               isFront ? colors.borderActive : 'border-base-300/40'
             } bg-base-200/80 backdrop-blur-sm`}
           >
             {/* ── Browser chrome ── */}
-            <div className="shrink-0 flex items-center gap-2.5 px-3 py-2 border-b border-base-300/30 bg-base-200/90">
+            <div className="shrink-0 flex items-center gap-3 px-4 py-2.5 border-b border-base-300/30 bg-base-200/90">
               {/* Traffic lights */}
-              <div className="flex gap-1">
-                <div className="w-2 h-2 rounded-full bg-error/25" />
-                <div className="w-2 h-2 rounded-full bg-warning/25" />
-                <div className="w-2 h-2 rounded-full bg-success/25" />
+              <div className="flex gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-error/25" />
+                <div className="w-2.5 h-2.5 rounded-full bg-warning/25" />
+                <div className="w-2.5 h-2.5 rounded-full bg-success/25" />
               </div>
 
               {/* URL bar */}
               <div className="flex-1 flex items-center justify-center">
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-sm bg-base-100/50 border border-base-300/20 w-full max-w-[200px]">
-                  <div className="w-2.5 h-2.5 rounded-full bg-success/25 shrink-0" />
-                  <span className="text-[8px] font-mono text-base-content/20 truncate">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-sm bg-base-100/50 border border-base-300/20 w-full max-w-[280px]">
+                  <div className="w-3 h-3 rounded-full bg-success/25 shrink-0" />
+                  <span className="text-[11px] font-mono text-base-content/25 truncate">
                     {mockup.url}
                   </span>
                 </div>
               </div>
 
               {/* Scrollr badge */}
-              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-sm bg-primary/6 border border-primary/12">
-                <span className="relative flex h-1 w-1">
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-sm bg-primary/6 border border-primary/12">
+                <span className="relative flex h-1.5 w-1.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1 w-1 bg-primary" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
                 </span>
-                <span className="text-[7px] font-bold font-mono text-primary uppercase tracking-wider">
+                <span className="text-[9px] font-bold font-mono text-primary uppercase tracking-wider">
                   Scrollr
                 </span>
               </div>
             </div>
 
             {/* ── Page content ── */}
-            <div className="flex-1 min-h-0 px-3 py-2.5 bg-base-100/30 overflow-hidden">
+            <div className="flex-1 min-h-0 px-4 py-3 bg-base-100/30 overflow-hidden">
               {ContentComponent && <ContentComponent />}
             </div>
 
             {/* ── Mini ticker bar ── */}
-            <div className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 border-t border-base-300/25 bg-base-100/50 overflow-hidden">
+            <div className="shrink-0 flex items-center gap-2 px-3 py-2 border-t border-base-300/25 bg-base-100/50 overflow-hidden">
               {mockup.tickerChips.map((chip) => (
                 <div
                   key={chip.label}
-                  className={`flex items-center gap-1 px-1.5 py-0.5 rounded-sm border ${colors.chipBorder} ${colors.chipBg} shrink-0`}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded-sm border ${colors.chipBorder} ${colors.chipBg} shrink-0`}
                 >
                   <span
-                    className={`text-[7px] font-bold font-mono ${colors.chipText} whitespace-nowrap`}
+                    className={`text-[9px] font-bold font-mono ${colors.chipText} whitespace-nowrap`}
                   >
                     {chip.label}
                   </span>
                   <span
-                    className={`text-[6px] font-mono ${colors.chipSub} whitespace-nowrap`}
+                    className={`text-[8px] font-mono ${colors.chipSub} whitespace-nowrap`}
                   >
                     {chip.value}
                   </span>

@@ -35,7 +35,7 @@ export default function HeroTypewriter({ onWordChange }: HeroTypewriterProps) {
               const next = wrap(0, WORDS.length, index + 1)
               setIndex(next)
               onWordChange?.(next)
-            }, 2)
+            }, 3.5)
           }}
           className="text-rainbow"
         >
