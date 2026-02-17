@@ -1,6 +1,7 @@
 import { motion } from 'motion/react'
 import { Link } from '@tanstack/react-router'
 import { TrendingUp, Trophy, Rss, Ghost, ArrowRight } from 'lucide-react'
+import ScrollrSVG from '@/components/ScrollrSVG'
 
 // ── Ticker Data ──────────────────────────────────────────────────
 
@@ -201,8 +202,103 @@ function BrowserMockup() {
       transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
       className="relative"
     >
-      {/* Ambient glow behind mockup */}
-      <div className="absolute inset-0 bg-primary/[0.03] rounded-2xl blur-3xl pointer-events-none" />
+      {/* Animated pulse backdrop */}
+      <div className="absolute inset-0 pointer-events-none">
+        {/* Ambient glow */}
+        <div className="absolute inset-0 bg-primary/[0.03] rounded-2xl blur-3xl" />
+
+        {/* Pulse SVG */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 1, delay: 0.3 }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+        >
+          <motion.div
+            whileInView={{
+              scale: [1, 1.02, 1],
+              rotate: [0, 0.3, 0, -0.3, 0],
+            }}
+            viewport={{ once: false }}
+            transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <ScrollrSVG
+              width={240}
+              height={240}
+              className="w-48 h-48 lg:w-60 lg:h-60 opacity-30"
+            />
+          </motion.div>
+        </motion.div>
+
+        {/* Floating data indicators */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.6 }}
+          whileHover={{
+            scale: 1.05,
+            rotate: 2,
+            transition: { duration: 0.2 },
+          }}
+          className="absolute top-6 right-6 sm:right-12 px-3 py-2 rounded-sm border border-primary/30 bg-base-200/80 backdrop-blur-sm shadow-lg cursor-default pointer-events-auto z-10"
+        >
+          <span className="flex items-center gap-2 text-primary">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
+            </span>
+            <span className="text-[10px] font-bold font-mono uppercase tracking-wider">
+              LIVE
+            </span>
+          </span>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.7 }}
+          whileHover={{
+            scale: 1.05,
+            rotate: -2,
+            transition: { duration: 0.2 },
+          }}
+          className="absolute bottom-20 left-4 sm:left-8 px-3 py-2 rounded-sm border border-info/30 bg-base-200/80 backdrop-blur-sm shadow-lg cursor-default pointer-events-auto z-10"
+        >
+          <span className="flex items-center gap-2">
+            <span className="text-xs font-bold font-mono text-info">
+              +2.47%
+            </span>
+            <span className="text-[10px] font-mono text-base-content/40 uppercase tracking-wider">
+              BTC
+            </span>
+          </span>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.8 }}
+          whileHover={{
+            scale: 1.05,
+            rotate: 2,
+            transition: { duration: 0.2 },
+          }}
+          className="absolute bottom-10 right-8 sm:right-16 px-3 py-2 rounded-sm border border-secondary/30 bg-base-200/80 backdrop-blur-sm shadow-lg cursor-default pointer-events-auto z-10"
+        >
+          <span className="flex items-center gap-2">
+            <span className="text-xs font-bold font-mono text-secondary">
+              Q4 2:34
+            </span>
+            <span className="text-[10px] font-mono text-base-content/40 uppercase tracking-wider">
+              LAL
+            </span>
+          </span>
+        </motion.div>
+      </div>
 
       <div className="relative rounded-sm border border-base-300/60 overflow-hidden shadow-lg shadow-black/20 bg-base-200/60 backdrop-blur-sm">
         {/* Browser chrome */}

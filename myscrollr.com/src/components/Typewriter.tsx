@@ -3,15 +3,13 @@ import { motion } from 'motion/react'
 import { delay, wrap } from 'motion'
 import { useState } from 'react'
 
-const WORDS = [
-  'Scores',
-  'Markets',
-  'Headlines',
-  'Leagues',
-  'Feed',
-]
+export const WORDS = ['Scores', 'Markets', 'Headlines', 'Leagues'] as const
 
-export default function HeroTypewriter() {
+interface HeroTypewriterProps {
+  onWordChange?: (index: number) => void
+}
+
+export default function HeroTypewriter({ onWordChange }: HeroTypewriterProps) {
   const [index, setIndex] = useState(0)
 
   return (
@@ -33,7 +31,11 @@ export default function HeroTypewriter() {
             marginLeft: 2,
           }}
           onComplete={() => {
-            delay(() => setIndex(wrap(0, WORDS.length, index + 1)), 2)
+            delay(() => {
+              const next = wrap(0, WORDS.length, index + 1)
+              setIndex(next)
+              onWordChange?.(next)
+            }, 2)
           }}
           className="text-rainbow"
         >

@@ -1,9 +1,12 @@
+import { useState } from 'react'
 import { motion } from 'motion/react'
-import TypewriterChangeContentExample from '@/components/Typewriter'
-import ScrollrSVG from '@/components/ScrollrSVG'
+import HeroTypewriter from '@/components/Typewriter'
+import { HeroBrowserStack } from '@/components/landing/HeroBrowserStack'
 import InstallButton from '@/components/InstallButton'
 
 export function HeroSection() {
+  const [activeWordIndex, setActiveWordIndex] = useState(0)
+
   const scrollToSection = (sectionId: string) => {
     const section = document.getElementById(sectionId)
     if (section) {
@@ -15,110 +18,10 @@ export function HeroSection() {
     <section className="relative min-h-dvh flex items-center overflow-hidden">
       <div className="container relative">
         <div className="flex lg:flex-row flex-col justify-center items-center gap-12 lg:gap-20">
-          {/* Abstract Pulse Visualization */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, ease: 'easeOut' }}
-            className="relative order-2 lg:order-1"
-          >
-            {/* Decorative glow */}
-            <div className="absolute inset-0 bg-primary/10 rounded-full blur-[100px]" />
-
-            {/* Large animated pulse */}
-            <motion.div
-              animate={{
-                scale: [1, 1.02, 1],
-                rotate: [0, 0.3, 0, -0.3, 0],
-              }}
-              transition={{
-                duration: 8,
-                repeat: Infinity,
-                ease: 'easeInOut',
-              }}
-              className="relative"
-            >
-              <ScrollrSVG
-                width={400}
-                height={400}
-                className="w-64 h-64 lg:w-96 lg:h-96"
-              />
-            </motion.div>
-
-            {/* Floating data indicators */}
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              animate={{
-                opacity: 1,
-                x: 0,
-                transition: { duration: 0.5, delay: 0.6 },
-              }}
-              whileHover={{
-                scale: 1.05,
-                rotate: 2,
-                transition: { duration: 0.2 },
-              }}
-              className="absolute top-8 right-0 sm:-right-4 px-4 py-2.5 rounded-sm border border-primary/40 bg-base-200/90 backdrop-blur-sm shadow-lg cursor-default"
-            >
-              <span className="flex items-center gap-2.5 text-primary">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
-                </span>
-                <span className="text-xs font-bold font-mono uppercase tracking-wider">
-                  LIVE
-                </span>
-              </span>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              animate={{
-                opacity: 1,
-                x: 0,
-                transition: { duration: 0.5, delay: 0.7 },
-              }}
-              whileHover={{
-                scale: 1.05,
-                rotate: -2,
-                transition: { duration: 0.2 },
-              }}
-              className="absolute bottom-24 -left-2 px-4 py-2.5 rounded-sm border border-info/40 bg-base-200/90 backdrop-blur-sm shadow-lg cursor-default"
-            >
-              <span className="flex items-center gap-2.5">
-                <span className="text-sm font-bold font-mono text-info">
-                  +2.47%
-                </span>
-                <span className="text-xs font-mono text-base-content/50 uppercase tracking-wider">
-                  BTC
-                </span>
-              </span>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              animate={{
-                opacity: 1,
-                x: 0,
-                transition: { duration: 0.5, delay: 0.8 },
-              }}
-              whileHover={{
-                scale: 1.05,
-                rotate: 2,
-                transition: { duration: 0.2 },
-              }}
-              className="absolute bottom-6 right-8 px-4 py-2.5 rounded-sm border border-secondary/40 bg-base-200/90 backdrop-blur-sm shadow-lg cursor-default"
-            >
-              <span className="flex items-center gap-2.5">
-                <span className="text-sm font-bold font-mono text-secondary">
-                  Q4 2:34
-                </span>
-                <span className="text-xs font-mono text-base-content/50 uppercase tracking-wider">
-                  LAL
-                </span>
-              </span>
-            </motion.div>
-          </motion.div>
+          {/* Stacked Browser Mockups */}
+          <div className="relative order-2 lg:order-1">
+            <HeroBrowserStack activeIndex={activeWordIndex} />
+          </div>
 
           {/* Hero Text */}
           <motion.div
@@ -127,7 +30,7 @@ export function HeroSection() {
             transition={{ duration: 0.6, delay: 0.3, ease: 'easeOut' }}
             className="w-full lg:w-fit lg:min-w-140 order-1 lg:order-2"
           >
-            <TypewriterChangeContentExample />
+            <HeroTypewriter onWordChange={setActiveWordIndex} />
 
             <motion.p
               initial={{ opacity: 0, y: 20 }}
