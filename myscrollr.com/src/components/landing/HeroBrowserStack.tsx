@@ -95,8 +95,8 @@ const MOCKUPS: MockupConfig[] = [
 
 const TOTAL = MOCKUPS.length
 const MAX_ROTATE = 3
-const CASCADE_X = -28
-const CASCADE_Y = -20
+const CASCADE_X = -40
+const CASCADE_Y = -28
 
 // ── Fake page content per category ───────────────────────────────
 
