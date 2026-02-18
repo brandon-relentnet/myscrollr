@@ -160,7 +160,7 @@ export function TrustSection() {
         {/* ── "What we refuse" badges ── */}
         <motion.div
           style={{ opacity: 0 }}
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 15 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-40px' }}
           transition={{ duration: 0.5, ease: EASE }}
@@ -174,7 +174,7 @@ export function TrustSection() {
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{
-                delay: 0.06 + i * 0.07,
+                delay: 0.06 + i * 0.08,
                 duration: 0.4,
                 ease: EASE,
               }}
@@ -226,11 +226,11 @@ export function TrustSection() {
                 <motion.div
                   key={pledge.title}
                   style={{ opacity: 0 }}
-                  initial={{ opacity: 0, y: 16 }}
+                  initial={{ opacity: 0, y: 15 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: '-30px' }}
                   transition={{
-                    delay: 0.08 + i * 0.1,
+                    delay: 0.08 + i * 0.08,
                     duration: 0.5,
                     ease: EASE,
                   }}
@@ -257,9 +257,9 @@ export function TrustSection() {
             <motion.div
               key={stat.label}
               style={{ opacity: 0 }}
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 15 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, margin: '-40px' }}
               transition={{
                 delay: 0.08 + i * 0.08,
                 duration: 0.5,

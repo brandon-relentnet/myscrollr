@@ -13,6 +13,8 @@ import InstallButton from '@/components/InstallButton'
 /*  Constants                                                                */
 /* ────────────────────────────────────────────────────────────────────────── */
 
+const EASE = [0.22, 1, 0.36, 1] as const
+
 const STREAMS = [
   { color: '#34d399', label: 'Finance' },
   { color: '#ff4757', label: 'Sports' },
@@ -100,7 +102,7 @@ function ConvergenceBeam({
       transition={{
         delay,
         duration: 2,
-        ease: [0.22, 1, 0.36, 1],
+        ease: EASE,
       }}
     />
   )
@@ -254,10 +256,10 @@ export function CallToAction() {
           {/* Pill badge */}
           <motion.div
             style={{ opacity: 0 }}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.5, ease: EASE }}
           >
             <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-medium text-primary backdrop-blur-sm">
               <Zap className="size-3" aria-hidden />
@@ -268,13 +270,13 @@ export function CallToAction() {
           {/* Main headline */}
           <motion.h2
             style={{ opacity: 0 }}
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, margin: '-80px' }}
             transition={{
               delay: 0.1,
-              duration: 0.7,
-              ease: [0.22, 1, 0.36, 1],
+              duration: 0.6,
+              ease: EASE,
             }}
             className="mt-8 text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black tracking-tight leading-[0.9]"
           >
@@ -287,13 +289,13 @@ export function CallToAction() {
           {/* Sub-copy */}
           <motion.span
             style={{ opacity: 0 }}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{
               delay: 0.25,
-              duration: 0.6,
-              ease: [0.22, 1, 0.36, 1],
+              duration: 0.5,
+              ease: EASE,
             }}
             className="block mt-6 text-lg sm:text-xl text-base-content/50 max-w-lg leading-relaxed"
           >
@@ -305,13 +307,13 @@ export function CallToAction() {
           <motion.div
             className="relative mt-10"
             style={{ opacity: 0 }}
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             transition={{
               delay: 0.4,
-              duration: 0.7,
-              ease: [0.22, 1, 0.36, 1],
+              duration: 0.6,
+              ease: EASE,
             }}
           >
             {/* Central glow behind button */}
@@ -335,7 +337,7 @@ export function CallToAction() {
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.6, duration: 0.5 }}
+            transition={{ delay: 0.6, duration: 0.5, ease: EASE }}
             className="mt-6 flex items-center gap-4 text-xs text-base-content/30"
           >
             {['Chrome', 'Firefox', 'Edge', 'Brave', 'Safari'].map((browser) => (
@@ -350,10 +352,10 @@ export function CallToAction() {
           <motion.div
             ref={statsRef}
             style={{ opacity: 0 }}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.7, duration: 0.6 }}
+            transition={{ delay: 0.7, duration: 0.5, ease: EASE }}
             className="mt-16 grid grid-cols-3 gap-8 sm:gap-16 max-w-lg w-full"
           >
             {[
@@ -381,7 +383,7 @@ export function CallToAction() {
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.85, duration: 0.5 }}
+            transition={{ delay: 0.85, duration: 0.5, ease: EASE }}
             className="mt-12 flex items-center gap-6"
           >
             <a

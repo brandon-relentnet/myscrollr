@@ -207,9 +207,13 @@ function InstallVisual() {
           ].map((feat, i) => (
             <motion.div
               key={feat.label}
-              initial={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 + i * 0.08, duration: 0.35 }}
+              transition={{
+                delay: 0.6 + i * 0.08,
+                duration: 0.4,
+                ease: VISUAL_EASE,
+              }}
               className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-base-100/40 border border-base-300/15"
             >
               <feat.icon size={14} className="text-base-content/30" />
@@ -316,7 +320,7 @@ function ChooseVisual() {
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1.2 }}
+          transition={{ delay: 1.2, duration: 0.5, ease: VISUAL_EASE }}
           className="text-[11px] text-base-content/25 text-center pt-2"
         >
           Change anytime from the extension popup
@@ -403,7 +407,11 @@ function BrowseVisual() {
                   key={chip.label}
                   initial={{ opacity: 0, x: 15 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.6 + i * 0.1 }}
+                  transition={{
+                    delay: 0.6 + i * 0.08,
+                    duration: 0.4,
+                    ease: VISUAL_EASE,
+                  }}
                   className={`flex items-center gap-1.5 px-2 py-1 rounded border ${cs.border} ${cs.bg} shrink-0`}
                 >
                   <span className={`text-[9px] font-bold font-mono ${cs.text}`}>

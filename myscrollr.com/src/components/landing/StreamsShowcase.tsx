@@ -499,7 +499,7 @@ export function StreamsShowcase() {
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true }}
-        transition={{ delay: 0.3, duration: 0.6 }}
+        transition={{ delay: 0.3, duration: 0.6, ease: EASE }}
         className="relative bg-base-200/60 border-y border-base-300/30 py-3"
       >
         {/* Left/Right fade masks */}
@@ -555,7 +555,7 @@ export function StreamsShowcase() {
           style={{ opacity: 0 }}
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
+          viewport={{ once: true, margin: '-40px' }}
           className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 mt-12"
         >
           <Link

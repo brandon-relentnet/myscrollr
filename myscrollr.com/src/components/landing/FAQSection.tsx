@@ -254,7 +254,7 @@ function AccordionItem({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{
-        delay: 0.06 + index * 0.05,
+        delay: 0.06 + index * 0.08,
         duration: 0.5,
         ease: EASE,
       }}
