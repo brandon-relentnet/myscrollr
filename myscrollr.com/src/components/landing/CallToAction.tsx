@@ -8,7 +8,7 @@ export function CallToAction() {
       <div className="absolute inset-0 bg-gradient-to-b from-base-200/40 via-base-200/60 to-base-200/40 pointer-events-none" />
 
       <div className="container relative py-24 lg:py-32">
-        <div className="flex flex-col items-center text-center max-w-2xl mx-auto">
+        <div className="flex flex-col items-center text-center max-w-2xl mx-auto gap-5">
           {/* Headline */}
           <motion.h2
             style={{ opacity: 0 }}
@@ -16,13 +16,13 @@ export function CallToAction() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-5"
+            className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95]"
           >
             Start <span className="text-rainbow">Scrolling</span>
           </motion.h2>
 
           {/* Subtext */}
-          <motion.p
+          <motion.span
             style={{ opacity: 0 }}
             initial={{ opacity: 0, y: 15 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -32,11 +32,11 @@ export function CallToAction() {
               duration: 0.5,
               ease: [0.22, 1, 0.36, 1],
             }}
-            className="text-base text-base-content/45 leading-relaxed mb-10 max-w-md"
+            className="text-base text-base-content/45 leading-relaxed max-w-md block pb-5"
           >
-            Live sports, markets, news, and fantasy — pinned to every tab. Free,
+            Live sports, markets, news, and fantasy pinned to every tab. Free,
             private, and open source.
-          </motion.p>
+          </motion.span>
 
           {/* Single CTA button */}
           <motion.div
@@ -49,13 +49,13 @@ export function CallToAction() {
               duration: 0.5,
               ease: [0.22, 1, 0.36, 1],
             }}
-            className="mb-8"
+            className="pb-3"
           >
             <InstallButton className="text-base px-8 py-4 shadow-xl" />
           </motion.div>
 
           {/* Browser compat line */}
-          <motion.p
+          <motion.span
             style={{ opacity: 0 }}
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
@@ -79,7 +79,7 @@ export function CallToAction() {
               <span className="w-1.5 h-1.5 rounded-full bg-base-content/20" />
               Firefox
             </span>
-          </motion.p>
+          </motion.span>
         </div>
       </div>
     </section>
