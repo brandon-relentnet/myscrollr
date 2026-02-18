@@ -67,6 +67,7 @@ func (a *App) YahooCallback(c *fiber.Ctx) error {
 
 	token, err := a.yahooConfig.Exchange(context.Background(), code)
 	if err != nil {
+		log.Printf("[Yahoo Callback] Token exchange failed: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to exchange code"})
 	}
 

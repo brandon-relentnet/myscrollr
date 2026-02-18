@@ -138,8 +138,9 @@ func main() {
 		ClientSecret: clientSecret,
 		Scopes:       []string{"fspt-r"},
 		Endpoint: oauth2.Endpoint{
-			AuthURL:  "https://api.login.yahoo.com/oauth2/request_auth",
-			TokenURL: "https://api.login.yahoo.com/oauth2/get_token",
+			AuthURL:   "https://api.login.yahoo.com/oauth2/request_auth",
+			TokenURL:  "https://api.login.yahoo.com/oauth2/get_token",
+			AuthStyle: oauth2.AuthStyleInHeader,
 		},
 		RedirectURL: redirectURL,
 	}
