@@ -27,6 +27,9 @@ import { billingApi } from '@/api/client'
 
 const CheckoutForm = lazy(() => import('@/components/billing/CheckoutForm'))
 
+// ── Signature easing (matches homepage) ────────────────────────
+const EASE = [0.22, 1, 0.36, 1] as const
+
 // ── Price IDs (from Stripe) ────────────────────────────────────
 const PRICE_IDS = {
   monthly: 'price_1T0AvUC2uHc0J8jttIKY5r6t',
@@ -105,40 +108,40 @@ const COMPARISON: ComparisonRow[] = [
 // ── Feature Cards ───────────────────────────────────────────────
 
 interface Feature {
-  icon: React.ReactNode
+  Icon: typeof Gauge
   title: string
   description: string
-  accent: string
+  hex: string
 }
 
 const FEATURES: Feature[] = [
   {
-    icon: <Gauge size={20} />,
+    Icon: Gauge,
     title: 'Every Stream, Maxed',
     description:
       'Track every symbol, subscribe to every feed, follow every league. Your feed, fully loaded.',
-    accent: 'from-primary/20 to-primary/0',
+    hex: '#34d399',
   },
   {
-    icon: <Zap size={20} />,
+    Icon: Zap,
     title: 'Real-time Pipeline',
     description:
       'Instant data delivery via CDC push. No polling, no delays — your feed updates the moment the data changes.',
-    accent: 'from-info/20 to-info/0',
+    hex: '#00b8db',
   },
   {
-    icon: <Shield size={20} />,
+    Icon: Shield,
     title: 'Early Access',
     description:
       'First to test new integrations and features before they go live. Help shape the roadmap.',
-    accent: 'from-accent/20 to-accent/0',
+    hex: '#a855f7',
   },
   {
-    icon: <Signal size={20} />,
+    Icon: Signal,
     title: 'Extended Retention',
     description:
       'Longer data retention windows for historical lookback on trades, scores, and articles.',
-    accent: 'from-secondary/20 to-secondary/0',
+    hex: '#ff4757',
   },
 ]
 
@@ -164,7 +167,7 @@ const TERMINAL_LINES = [
   { label: 'FREE_TIER', value: 'ALWAYS_FREE', valueClass: 'text-success/70' },
   { prompt: true, text: 'scrollr uplink subscribe --plan annual' },
   {
-    label: '→',
+    label: '\u2192',
     value: 'Checkout session created. Redirecting...',
     valueClass: 'text-primary/50',
   },
@@ -213,7 +216,7 @@ function SignalBars() {
           transition={{
             delay: 0.8 + i * 0.12,
             duration: 0.4,
-            ease: [0.22, 1, 0.36, 1],
+            ease: EASE,
           }}
         />
       ))}
@@ -262,6 +265,13 @@ function TerminalBlock() {
           `,
           backgroundSize: '32px 32px',
         }}
+      />
+
+      {/* Watermark */}
+      <Satellite
+        size={120}
+        strokeWidth={0.4}
+        className="absolute -bottom-6 -right-6 text-base-content/[0.025] pointer-events-none"
       />
 
       {/* Terminal chrome */}
@@ -324,11 +334,37 @@ function TerminalBlock() {
   )
 }
 
+// ── Pricing Feature Line ──────────────────────────────────────────
+
+function PricingFeature({
+  children,
+  highlight,
+}: {
+  children: React.ReactNode
+  highlight?: boolean
+}) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <Check
+        size={12}
+        className={
+          highlight ? 'text-primary shrink-0' : 'text-base-content/20 shrink-0'
+        }
+      />
+      <span
+        className={`text-xs ${highlight ? 'text-base-content/60' : 'text-base-content/35'}`}
+      >
+        {children}
+      </span>
+    </div>
+  )
+}
+
 // ── Page Component ──────────────────────────────────────────────
 
 function UplinkPage() {
   usePageMeta({
-    title: 'Uplink — Scrollr',
+    title: 'Uplink \u2014 Scrollr',
     description:
       'Total coverage for power users. Scrollr Uplink gives you unlimited tracking, real-time data delivery, and early access to new integrations.',
     canonicalUrl: 'https://myscrollr.com/uplink',
@@ -360,7 +396,6 @@ function UplinkPage() {
       })
       .finally(() => {
         setCheckingSession(false)
-        // Clean the URL
         navigate({
           to: '/uplink',
           search: { session_id: undefined },
@@ -420,7 +455,7 @@ function UplinkPage() {
             onClick={() => setCheckoutSuccess(false)}
             className="ml-4 text-base-content/30 hover:text-base-content/60 transition-colors text-xs"
           >
-            ✕
+            \u2715
           </button>
         </motion.div>
       )}
@@ -435,7 +470,9 @@ function UplinkPage() {
         </div>
       )}
 
-      {/* ── HERO ─────────────────────────────────────────────── */}
+      {/* ================================================================
+          HERO
+          ================================================================ */}
       <section className="relative pt-32 pb-28 overflow-hidden">
         {/* Layered background system */}
         <div className="absolute inset-0 pointer-events-none">
@@ -455,11 +492,10 @@ function UplinkPage() {
               background:
                 'radial-gradient(circle, var(--glow-primary-subtle) 0%, transparent 70%)',
             }}
-            whileInView={{
+            animate={{
               scale: [1, 1.08, 1],
               opacity: [0.6, 1, 0.6],
             }}
-            viewport={{ once: false, margin: '200px' }}
             transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
           />
 
@@ -470,11 +506,10 @@ function UplinkPage() {
               background:
                 'radial-gradient(circle, var(--glow-info-subtle) 0%, transparent 70%)',
             }}
-            whileInView={{
+            animate={{
               scale: [1.08, 1, 1.08],
               opacity: [0.4, 0.7, 0.4],
             }}
-            viewport={{ once: false, margin: '200px' }}
             transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
           />
 
@@ -495,7 +530,7 @@ function UplinkPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.6, ease: EASE }}
             className="flex items-center gap-4 mb-10"
           >
             <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-lg border border-primary/15 uppercase tracking-wide">
@@ -514,27 +549,19 @@ function UplinkPage() {
             <motion.h1
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.7,
-                delay: 0.15,
-                ease: [0.22, 1, 0.36, 1],
-              }}
+              transition={{ duration: 0.7, delay: 0.15, ease: EASE }}
               className="text-6xl md:text-8xl lg:text-9xl font-black tracking-tight leading-[0.85] mb-8"
             >
               Total
               <br />
               <span className="relative inline-block">
-                <span className="text-primary">Coverage</span>
+                <span className="text-gradient-primary">Coverage</span>
                 {/* Underline accent */}
                 <motion.span
                   className="absolute -bottom-2 left-0 right-0 h-[3px] bg-gradient-to-r from-primary via-primary/60 to-transparent origin-left"
                   initial={{ scaleX: 0 }}
                   animate={{ scaleX: 1 }}
-                  transition={{
-                    duration: 0.8,
-                    delay: 0.8,
-                    ease: [0.22, 1, 0.36, 1],
-                  }}
+                  transition={{ duration: 0.8, delay: 0.8, ease: EASE }}
                 />
               </span>
             </motion.h1>
@@ -543,11 +570,7 @@ function UplinkPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.6,
-                delay: 0.35,
-                ease: [0.22, 1, 0.36, 1],
-              }}
+              transition={{ duration: 0.6, delay: 0.35, ease: EASE }}
               className="flex items-start gap-3 mb-12 max-w-xl"
             >
               <span className="text-primary/30 font-mono text-sm mt-0.5 select-none shrink-0">
@@ -564,32 +587,17 @@ function UplinkPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.6,
-                delay: 0.5,
-                ease: [0.22, 1, 0.36, 1],
-              }}
+              transition={{ duration: 0.6, delay: 0.5, ease: EASE }}
               className="flex flex-wrap items-center gap-5"
             >
-              <div className="relative group">
-                <motion.div
-                  className="absolute -inset-1 bg-primary/15 rounded-lg blur-lg"
-                  animate={{ opacity: [0.3, 0.6, 0.3] }}
-                  transition={{
-                    duration: 3,
-                    repeat: Infinity,
-                    ease: 'easeInOut',
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => handleSelectPlan('annual')}
-                  className="relative inline-flex items-center gap-2.5 px-7 py-3.5 text-[11px] font-semibold border border-primary/30 text-primary bg-primary/5 rounded-lg hover:bg-primary/10 hover:border-primary/50 transition-colors backdrop-blur-sm cursor-pointer"
-                >
-                  <Rocket size={14} />
-                  Get Uplink
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => handleSelectPlan('annual')}
+                className="btn btn-pulse btn-lg gap-2.5"
+              >
+                <Rocket size={14} />
+                Get Uplink
+              </button>
 
               <div className="flex items-center gap-3">
                 <span className="h-px w-6 bg-base-300/50" />
@@ -605,31 +613,52 @@ function UplinkPage() {
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-base-300/50 to-transparent" />
       </section>
 
-      {/* ── COMPARISON TABLE ─────────────────────────────────── */}
-      <section className="relative">
+      {/* ================================================================
+          COMPARISON TABLE
+          ================================================================ */}
+      <section className="relative overflow-hidden">
         <div className="container">
+          {/* Section header — homepage pattern */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="mb-10"
+            transition={{ duration: 0.7, ease: EASE }}
+            className="text-center mb-12 sm:mb-16"
           >
-            <h2 className="text-sm font-bold text-primary mb-2 flex items-center gap-2">
-              <TrendingUp size={16} /> Free vs Uplink
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
+              Free vs <span className="text-gradient-primary">Uplink</span>
             </h2>
-            <p className="text-[10px] text-base-content/30">
+            <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
               Everything in Free, plus full bandwidth
             </p>
           </motion.div>
 
           <motion.div
+            style={{ opacity: 0 }}
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.6, delay: 0.1, ease: EASE }}
             className="relative overflow-hidden rounded-xl border border-base-300/60 bg-base-200/40 backdrop-blur-sm"
           >
+            {/* Top accent line */}
+            <div
+              className="absolute top-0 left-0 right-0 h-px"
+              style={{
+                background:
+                  'linear-gradient(90deg, transparent, #34d399 50%, transparent)',
+              }}
+            />
+
+            {/* Watermark */}
+            <TrendingUp
+              size={140}
+              strokeWidth={0.4}
+              className="absolute -bottom-6 -right-6 text-base-content/[0.025] pointer-events-none"
+            />
+
             {/* Table Header */}
             <div className="grid grid-cols-3 border-b border-base-300/60 bg-base-200/60">
               <div className="p-4 pl-6">
@@ -653,6 +682,7 @@ function UplinkPage() {
             {COMPARISON.map((row, i) => (
               <motion.div
                 key={row.label}
+                style={{ opacity: 0 }}
                 initial={{ opacity: 0, x: -10 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
@@ -696,20 +726,27 @@ function UplinkPage() {
         </div>
       </section>
 
-      {/* ── FEATURE GRID ─────────────────────────────────────── */}
-      <section className="relative">
-        <div className="container">
+      {/* ================================================================
+          FEATURE GRID
+          ================================================================ */}
+      <section className="relative overflow-hidden">
+        {/* Tinted background for visual separation */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-base-200/20 to-transparent pointer-events-none" />
+
+        <div className="container relative z-10">
+          {/* Section header — homepage pattern */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="mb-10"
+            transition={{ duration: 0.7, ease: EASE }}
+            className="text-center mb-12 sm:mb-16"
           >
-            <h2 className="text-sm font-bold text-primary mb-2 flex items-center gap-2">
-              <Zap size={16} /> What You Get
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
+              What You <span className="text-gradient-primary">Get</span>
             </h2>
-            <p className="text-[10px] text-base-content/30">
+            <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
               The full power-user experience
             </p>
           </motion.div>
@@ -718,37 +755,64 @@ function UplinkPage() {
             {FEATURES.map((feature, i) => (
               <motion.div
                 key={feature.title}
+                style={{ opacity: 0 }}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{
-                  delay: i * 0.08,
-                  duration: 0.5,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
+                transition={{ delay: i * 0.1, duration: 0.5, ease: EASE }}
                 whileHover={{
                   y: -3,
                   transition: { type: 'tween', duration: 0.2 },
                 }}
-                className="group bg-base-200/50 border border-base-300/50 rounded-xl p-6 hover:border-primary/20 transition-colors relative overflow-hidden"
+                className="group relative bg-base-200/40 border border-base-300/25 rounded-xl p-6 hover:border-base-300/50 transition-colors overflow-hidden"
               >
-                {/* Gradient accent on hover */}
+                {/* Top accent line */}
                 <div
-                  className={`absolute top-0 left-0 right-0 h-32 bg-gradient-to-b ${feature.accent} opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none`}
+                  className="absolute top-0 left-0 right-0 h-px"
+                  style={{
+                    background: `linear-gradient(90deg, transparent, ${feature.hex} 50%, transparent)`,
+                  }}
                 />
 
-                {/* Top accent line */}
-                <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-primary/0 group-hover:via-primary/20 to-transparent transition-[background] duration-500" />
+                {/* Corner dot grid */}
+                <div
+                  className="absolute top-0 right-0 w-20 h-20 opacity-[0.04] text-base-content"
+                  style={{
+                    backgroundImage:
+                      'radial-gradient(circle, currentColor 1px, transparent 1px)',
+                    backgroundSize: '8px 8px',
+                  }}
+                />
+
+                {/* Watermark icon */}
+                <feature.Icon
+                  size={80}
+                  strokeWidth={0.4}
+                  className="absolute -bottom-3 -right-3 text-base-content/[0.025] pointer-events-none"
+                />
+
+                {/* Ambient glow on hover */}
+                <div
+                  className="absolute -top-10 -right-10 w-32 h-32 rounded-full pointer-events-none blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{ background: `${feature.hex}10` }}
+                />
 
                 <div className="relative z-10">
-                  <div className="h-10 w-10 rounded-lg bg-primary/8 border border-primary/15 flex items-center justify-center text-primary mb-5 group-hover:border-primary/30 transition-colors">
-                    {feature.icon}
+                  {/* Icon badge — DESIGN.md pattern */}
+                  <div
+                    className="w-11 h-11 rounded-xl flex items-center justify-center mb-5"
+                    style={{
+                      background: `${feature.hex}15`,
+                      boxShadow: `0 0 20px ${feature.hex}15, 0 0 0 1px ${feature.hex}20`,
+                    }}
+                  >
+                    <feature.Icon size={20} className="text-base-content/80" />
                   </div>
 
                   <h3 className="text-sm font-bold text-base-content mb-2">
                     {feature.title}
                   </h3>
-                  <p className="text-xs text-base-content/30 leading-relaxed">
+                  <p className="text-xs text-base-content/40 leading-relaxed">
                     {feature.description}
                   </p>
                 </div>
@@ -758,20 +822,24 @@ function UplinkPage() {
         </div>
       </section>
 
-      {/* ── PRICING ─────────────────────────────────────────── */}
-      <section className="relative">
+      {/* ================================================================
+          PRICING
+          ================================================================ */}
+      <section className="relative overflow-hidden">
         <div className="container">
+          {/* Section header — homepage pattern */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="mb-10"
+            transition={{ duration: 0.7, ease: EASE }}
+            className="text-center mb-12 sm:mb-16"
           >
-            <h2 className="text-sm font-bold text-primary mb-2 flex items-center gap-2">
-              <Crown size={16} /> Pricing
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
+              Pick Your <span className="text-gradient-primary">Plan</span>
             </h2>
-            <p className="text-[10px] text-base-content/30">
+            <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
               Flexible billing — pick what works for you
             </p>
           </motion.div>
@@ -779,10 +847,11 @@ function UplinkPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
             {/* ─── Monthly ─── */}
             <motion.div
+              style={{ opacity: 0 }}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 0.5, ease: EASE }}
               whileHover={{
                 y: -3,
                 transition: { type: 'tween', duration: 0.2 },
@@ -797,12 +866,31 @@ function UplinkPage() {
                   handleSelectPlan('monthly')
                 }
               }}
-              className="group bg-base-200/40 border border-base-300/50 rounded-xl p-6 hover:border-base-300 transition-colors relative overflow-hidden cursor-pointer"
+              className="group relative bg-base-200/40 border border-base-300/25 rounded-xl p-6 hover:border-base-300/50 transition-colors overflow-hidden cursor-pointer"
             >
-              <div className="absolute inset-0 bg-gradient-to-b from-base-content/[0.01] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+              {/* Accent top line */}
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-base-300/50 to-transparent" />
+
+              {/* Corner dot grid */}
+              <div
+                className="absolute top-0 right-0 w-16 h-16 opacity-[0.04] text-base-content"
+                style={{
+                  backgroundImage:
+                    'radial-gradient(circle, currentColor 1px, transparent 1px)',
+                  backgroundSize: '8px 8px',
+                }}
+              />
+
+              {/* Watermark */}
+              <Clock
+                size={100}
+                strokeWidth={0.4}
+                className="absolute -bottom-4 -right-4 text-base-content/[0.025] pointer-events-none"
+              />
+
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-5">
-                  <div className="h-9 w-9 rounded-lg bg-base-300/50 border border-base-300/50 flex items-center justify-center text-base-content/40">
+                  <div className="h-9 w-9 rounded-lg bg-base-300/30 border border-base-300/40 flex items-center justify-center text-base-content/40">
                     <Clock size={18} />
                   </div>
                   <span className="text-[9px] text-base-content/25 uppercase tracking-wide">
@@ -835,25 +923,19 @@ function UplinkPage() {
                   <PricingFeature>All integrations maxed</PricingFeature>
                 </div>
 
-                <button
-                  type="button"
-                  className="mt-5 w-full py-2.5 text-[10px] font-semibold border border-base-content/15 text-base-content/50 rounded-lg hover:border-base-content/30 hover:text-base-content/70 transition-colors"
-                >
+                <div className="mt-5 w-full py-2.5 text-center text-[10px] font-semibold border border-base-content/15 text-base-content/50 rounded-lg group-hover:border-base-content/30 group-hover:text-base-content/70 transition-colors">
                   Select Monthly
-                </button>
+                </div>
               </div>
             </motion.div>
 
             {/* ─── Quarterly ─── */}
             <motion.div
+              style={{ opacity: 0 }}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{
-                delay: 0.06,
-                duration: 0.5,
-                ease: [0.22, 1, 0.36, 1],
-              }}
+              transition={{ delay: 0.06, duration: 0.5, ease: EASE }}
               whileHover={{
                 y: -3,
                 transition: { type: 'tween', duration: 0.2 },
@@ -868,13 +950,47 @@ function UplinkPage() {
                   handleSelectPlan('quarterly')
                 }
               }}
-              className="group bg-base-200/40 border border-base-300/50 rounded-xl p-6 hover:border-info/20 transition-colors relative overflow-hidden cursor-pointer"
+              className="group relative bg-base-200/40 border border-base-300/25 rounded-xl p-6 hover:border-base-300/50 transition-colors overflow-hidden cursor-pointer"
             >
-              <div className="absolute inset-0 bg-gradient-to-b from-info/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+              {/* Accent top line */}
+              <div
+                className="absolute top-0 left-0 right-0 h-px"
+                style={{
+                  background:
+                    'linear-gradient(90deg, transparent, #00b8db 50%, transparent)',
+                }}
+              />
+
+              {/* Corner dot grid */}
+              <div
+                className="absolute top-0 right-0 w-16 h-16 opacity-[0.04] text-base-content"
+                style={{
+                  backgroundImage:
+                    'radial-gradient(circle, currentColor 1px, transparent 1px)',
+                  backgroundSize: '8px 8px',
+                }}
+              />
+
+              {/* Watermark */}
+              <Rocket
+                size={100}
+                strokeWidth={0.4}
+                className="absolute -bottom-4 -right-4 text-base-content/[0.025] pointer-events-none"
+              />
+
+              {/* Ambient glow on hover */}
+              <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full pointer-events-none blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-info/[0.06]" />
+
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-5">
-                  <div className="h-9 w-9 rounded-lg bg-info/8 border border-info/15 flex items-center justify-center text-info/70">
-                    <Rocket size={18} />
+                  <div
+                    className="h-9 w-9 rounded-lg flex items-center justify-center"
+                    style={{
+                      background: '#00b8db15',
+                      boxShadow: '0 0 20px #00b8db15, 0 0 0 1px #00b8db20',
+                    }}
+                  >
+                    <Rocket size={18} className="text-base-content/80" />
                   </div>
                   <span className="text-[9px] text-info/50 uppercase tracking-wide">
                     Save 18%
@@ -906,25 +1022,19 @@ function UplinkPage() {
                   <PricingFeature>All integrations maxed</PricingFeature>
                 </div>
 
-                <button
-                  type="button"
-                  className="mt-5 w-full py-2.5 text-[10px] font-semibold border border-info/20 text-info/60 rounded-lg hover:border-info/40 hover:text-info/80 transition-colors"
-                >
+                <div className="mt-5 w-full py-2.5 text-center text-[10px] font-semibold border border-info/20 text-info/60 rounded-lg group-hover:border-info/40 group-hover:text-info/80 transition-colors">
                   Select Quarterly
-                </button>
+                </div>
               </div>
             </motion.div>
 
             {/* ─── Annual — THE ONE ─── */}
             <motion.div
+              style={{ opacity: 0 }}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{
-                delay: 0.12,
-                duration: 0.5,
-                ease: [0.22, 1, 0.36, 1],
-              }}
+              transition={{ delay: 0.12, duration: 0.5, ease: EASE }}
               whileHover={{
                 y: -4,
                 transition: { type: 'tween', duration: 0.2 },
@@ -953,8 +1063,34 @@ function UplinkPage() {
               />
 
               <div className="relative bg-base-200/80 backdrop-blur-sm p-6 border border-primary/20 rounded-xl">
+                {/* Top accent line */}
+                <div
+                  className="absolute top-0 left-0 right-0 h-px"
+                  style={{
+                    background:
+                      'linear-gradient(90deg, transparent, #34d399 50%, transparent)',
+                  }}
+                />
+
                 {/* Ambient gradient */}
-                <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.04] to-transparent pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.04] to-transparent pointer-events-none rounded-xl" />
+
+                {/* Corner dot grid */}
+                <div
+                  className="absolute top-0 right-0 w-20 h-20 opacity-[0.04] text-base-content"
+                  style={{
+                    backgroundImage:
+                      'radial-gradient(circle, currentColor 1px, transparent 1px)',
+                    backgroundSize: '8px 8px',
+                  }}
+                />
+
+                {/* Watermark */}
+                <Star
+                  size={100}
+                  strokeWidth={0.4}
+                  className="absolute -bottom-4 -right-4 text-base-content/[0.025] pointer-events-none"
+                />
 
                 {/* Best value badge */}
                 <div className="absolute top-0 right-0">
@@ -965,8 +1101,14 @@ function UplinkPage() {
 
                 <div className="relative z-10">
                   <div className="flex items-center justify-between mb-5">
-                    <div className="h-9 w-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
-                      <Star size={18} />
+                    <div
+                      className="h-9 w-9 rounded-lg flex items-center justify-center"
+                      style={{
+                        background: '#34d39915',
+                        boxShadow: '0 0 20px #34d39915, 0 0 0 1px #34d39920',
+                      }}
+                    >
+                      <Star size={18} className="text-base-content/80" />
                     </div>
                     <span className="text-[9px] text-primary/60 uppercase tracking-wide">
                       Save 35%
@@ -1005,12 +1147,9 @@ function UplinkPage() {
                     <PricingFeature highlight>Priority support</PricingFeature>
                   </div>
 
-                  <button
-                    type="button"
-                    className="mt-5 w-full py-2.5 text-[10px] font-semibold bg-primary/10 border border-primary/30 text-primary rounded-lg hover:bg-primary/20 hover:border-primary/50 transition-colors"
-                  >
+                  <div className="mt-5 w-full py-2.5 text-center text-[10px] font-semibold bg-primary/10 border border-primary/30 text-primary rounded-lg group-hover:bg-primary/20 group-hover:border-primary/50 transition-colors">
                     Get Annual — Best Value
-                  </button>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -1022,26 +1161,56 @@ function UplinkPage() {
               className="block"
             >
               <motion.div
+                style={{ opacity: 0 }}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{
-                  delay: 0.18,
-                  duration: 0.5,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
+                transition={{ delay: 0.18, duration: 0.5, ease: EASE }}
                 whileHover={{
                   y: -3,
                   transition: { type: 'tween', duration: 0.2 },
                 }}
-                className="group bg-base-200/40 border border-base-300/50 rounded-xl p-6 hover:border-warning/20 transition-colors relative overflow-hidden cursor-pointer"
+                className="group relative bg-base-200/40 border border-base-300/25 rounded-xl p-6 hover:border-warning/20 transition-colors overflow-hidden cursor-pointer"
               >
-                <div className="absolute inset-0 bg-gradient-to-b from-warning/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                {/* Accent top line */}
+                <div
+                  className="absolute top-0 left-0 right-0 h-px"
+                  style={{
+                    background:
+                      'linear-gradient(90deg, transparent, #f59e0b 50%, transparent)',
+                  }}
+                />
+
+                {/* Corner dot grid */}
+                <div
+                  className="absolute top-0 right-0 w-16 h-16 opacity-[0.04] text-base-content"
+                  style={{
+                    backgroundImage:
+                      'radial-gradient(circle, currentColor 1px, transparent 1px)',
+                    backgroundSize: '8px 8px',
+                  }}
+                />
+
+                {/* Watermark */}
+                <Sparkles
+                  size={100}
+                  strokeWidth={0.4}
+                  className="absolute -bottom-4 -right-4 text-base-content/[0.025] pointer-events-none"
+                />
+
+                {/* Ambient glow on hover */}
+                <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full pointer-events-none blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-warning/[0.06]" />
 
                 <div className="relative z-10">
                   <div className="flex items-center justify-between mb-5">
-                    <div className="h-9 w-9 rounded-lg bg-warning/8 border border-warning/15 flex items-center justify-center text-warning/70">
-                      <Sparkles size={18} />
+                    <div
+                      className="h-9 w-9 rounded-lg flex items-center justify-center"
+                      style={{
+                        background: '#f59e0b15',
+                        boxShadow: '0 0 20px #f59e0b15, 0 0 0 1px #f59e0b20',
+                      }}
+                    >
+                      <Sparkles size={18} className="text-base-content/80" />
                     </div>
                     <span className="text-[9px] text-warning/50 uppercase tracking-wide">
                       Limited
@@ -1086,7 +1255,7 @@ function UplinkPage() {
                         transition={{
                           duration: 1.5,
                           delay: 0.3,
-                          ease: [0.22, 1, 0.36, 1],
+                          ease: EASE,
                         }}
                       />
                     </div>
@@ -1098,12 +1267,10 @@ function UplinkPage() {
                     <PricingFeature>Founding member status</PricingFeature>
                   </div>
 
-                  <button
-                    type="button"
-                    className="mt-5 w-full py-2.5 text-[10px] font-semibold border border-warning/20 text-warning/60 rounded-lg hover:border-warning/40 hover:text-warning/80 transition-colors"
-                  >
-                    View Lifetime →
-                  </button>
+                  <div className="mt-5 w-full py-2.5 text-center text-[10px] font-semibold border border-warning/20 text-warning/60 rounded-lg group-hover:border-warning/40 group-hover:text-warning/80 transition-colors flex items-center justify-center gap-1.5">
+                    View Lifetime
+                    <ChevronRight size={12} />
+                  </div>
                 </div>
               </motion.div>
             </Link>
@@ -1111,10 +1278,11 @@ function UplinkPage() {
 
           {/* Pricing footer */}
           <motion.div
+            style={{ opacity: 0 }}
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.3 }}
+            transition={{ delay: 0.3, duration: 0.5 }}
             className="mt-8 text-center"
           >
             <p className="text-[9px] text-base-content/20">
@@ -1125,30 +1293,48 @@ function UplinkPage() {
         </div>
       </section>
 
-      {/* ── TERMINAL BLOCK ───────────────────────────────────── */}
-      <section className="relative">
-        <div className="container">
+      {/* ================================================================
+          TERMINAL BLOCK
+          ================================================================ */}
+      <section className="relative overflow-hidden">
+        {/* Tinted background */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-base-200/20 to-transparent pointer-events-none" />
+
+        <div className="container relative z-10">
           <motion.div
+            style={{ opacity: 0 }}
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.6, ease: EASE }}
           >
             <TerminalBlock />
           </motion.div>
         </div>
       </section>
 
-      {/* ── BOTTOM CTA ──────────────────────────────────────── */}
-      <section className="relative">
+      {/* ================================================================
+          BOTTOM CTA
+          ================================================================ */}
+      <section className="relative overflow-hidden">
         <div className="container pb-8">
           <motion.div
+            style={{ opacity: 0 }}
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="relative overflow-hidden rounded-xl bg-base-200/40 border border-base-300/50 backdrop-blur-sm"
+            transition={{ duration: 0.7, ease: EASE }}
+            className="relative overflow-hidden rounded-2xl bg-base-200/40 border border-base-300/25 backdrop-blur-sm"
           >
+            {/* Top accent line */}
+            <div
+              className="absolute top-0 left-0 right-0 h-px"
+              style={{
+                background:
+                  'linear-gradient(90deg, transparent, #34d399 50%, transparent)',
+              }}
+            />
+
             {/* Background layers */}
             <div className="absolute inset-0 pointer-events-none">
               <motion.div
@@ -1179,8 +1365,16 @@ function UplinkPage() {
               />
             </div>
 
+            {/* Watermark */}
+            <Satellite
+              size={160}
+              strokeWidth={0.4}
+              className="absolute -bottom-8 -right-8 text-base-content/[0.025] pointer-events-none"
+            />
+
             <div className="relative z-10 p-10 md:p-16 lg:p-20 text-center max-w-3xl mx-auto">
               <motion.div
+                style={{ opacity: 0 }}
                 initial={{ opacity: 0, scale: 0.9 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
@@ -1196,17 +1390,15 @@ function UplinkPage() {
               </motion.div>
 
               <motion.h2
+                style={{ opacity: 0 }}
                 initial={{ opacity: 0, y: 15 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{
-                  delay: 0.1,
-                  duration: 0.6,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
+                transition={{ delay: 0.1, duration: 0.6, ease: EASE }}
                 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mb-6 leading-[0.95]"
               >
-                Scrollr is <span className="text-primary">free forever</span>
+                Scrollr is{' '}
+                <span className="text-gradient-primary">free forever</span>
                 <br />
                 <span className="text-base-content/60">
                   Uplink is for those who want more
@@ -1214,14 +1406,11 @@ function UplinkPage() {
               </motion.h2>
 
               <motion.p
+                style={{ opacity: 0 }}
                 initial={{ opacity: 0, y: 15 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{
-                  delay: 0.2,
-                  duration: 0.6,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
+                transition={{ delay: 0.2, duration: 0.6, ease: EASE }}
                 className="text-sm text-base-content/35 leading-relaxed mb-10 max-w-lg mx-auto"
               >
                 The core platform stays open source and always free. Uplink
@@ -1230,24 +1419,21 @@ function UplinkPage() {
               </motion.p>
 
               <motion.div
+                style={{ opacity: 0 }}
                 initial={{ opacity: 0, y: 15 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{
-                  delay: 0.3,
-                  duration: 0.6,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
+                transition={{ delay: 0.3, duration: 0.6, ease: EASE }}
                 className="flex flex-wrap items-center justify-center gap-4"
               >
                 <button
                   type="button"
                   onClick={() => handleSelectPlan('annual')}
-                  className="inline-flex items-center gap-2 px-6 py-3 text-[10px] font-semibold text-primary border border-primary/30 rounded-lg bg-primary/5 hover:bg-primary/10 hover:border-primary/50 transition-colors cursor-pointer"
+                  className="btn btn-pulse gap-2"
                 >
                   <Rocket size={12} /> Get Uplink — $5.83/mo
                 </button>
-                <span className="inline-flex items-center gap-2 px-4 py-2 text-[10px] font-bold text-base-content/25 border border-base-300/30 rounded-lg">
+                <span className="btn btn-outline btn-sm gap-2">
                   <ChevronRight size={12} /> Free tier always included
                 </span>
               </motion.div>
@@ -1255,32 +1441,6 @@ function UplinkPage() {
           </motion.div>
         </div>
       </section>
-    </div>
-  )
-}
-
-// ── Pricing Feature Line ──────────────────────────────────────────
-
-function PricingFeature({
-  children,
-  highlight,
-}: {
-  children: React.ReactNode
-  highlight?: boolean
-}) {
-  return (
-    <div className="flex items-center gap-2.5">
-      <Check
-        size={12}
-        className={
-          highlight ? 'text-primary shrink-0' : 'text-base-content/20 shrink-0'
-        }
-      />
-      <span
-        className={`text-xs ${highlight ? 'text-base-content/60' : 'text-base-content/35'}`}
-      >
-        {children}
-      </span>
     </div>
   )
 }

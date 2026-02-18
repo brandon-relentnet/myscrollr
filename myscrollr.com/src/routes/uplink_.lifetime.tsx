@@ -20,6 +20,12 @@ import { billingApi } from '@/api/client'
 
 const CheckoutForm = lazy(() => import('@/components/billing/CheckoutForm'))
 
+// ── Signature easing (matches homepage) ────────────────────────
+const EASE = [0.22, 1, 0.36, 1] as const
+
+// ── Warning hex for inline style accents ───────────────────────
+const HEX_WARNING = '#f59e0b'
+
 export const Route = createFileRoute('/uplink_/lifetime')({
   validateSearch: (search: Record<string, unknown>) => ({
     session_id: (search.session_id as string) || undefined,
@@ -139,10 +145,13 @@ function LifetimePage() {
         </div>
       )}
 
-      {/* ── HERO ─────────────────────────────────────────────── */}
+      {/* ================================================================
+          HERO
+          ================================================================ */}
       <section className="relative pt-28 pb-20 overflow-hidden">
-        {/* Background */}
+        {/* Layered background system */}
         <div className="absolute inset-0 pointer-events-none">
+          {/* Fine dot matrix */}
           <div
             className="absolute inset-0 opacity-[0.03]"
             style={{
@@ -150,18 +159,37 @@ function LifetimePage() {
               backgroundSize: '24px 24px',
             }}
           />
+
+          {/* Primary orbital glow */}
           <motion.div
             className="absolute top-[-10%] right-[-5%] w-[600px] h-[600px] rounded-full"
             style={{
               background:
                 'radial-gradient(circle, rgba(245, 158, 11, 0.04) 0%, transparent 70%)',
             }}
-            whileInView={{ scale: [1, 1.08, 1], opacity: [0.5, 0.8, 0.5] }}
-            viewport={{ once: false, margin: '200px' }}
+            animate={{
+              scale: [1, 1.08, 1],
+              opacity: [0.5, 0.8, 0.5],
+            }}
             transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+          />
+
+          {/* Secondary glow */}
+          <motion.div
+            className="absolute bottom-[-20%] left-[-10%] w-[400px] h-[400px] rounded-full"
+            style={{
+              background:
+                'radial-gradient(circle, rgba(245, 158, 11, 0.02) 0%, transparent 70%)',
+            }}
+            animate={{
+              scale: [1.08, 1, 1.08],
+              opacity: [0.3, 0.6, 0.3],
+            }}
+            transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
           />
         </div>
 
+        {/* Top border accent */}
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-warning/20 to-transparent" />
 
         <div className="container relative z-10 !py-0">
@@ -169,7 +197,7 @@ function LifetimePage() {
           <motion.div
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.4 }}
+            transition={{ duration: 0.4, ease: EASE }}
           >
             <Link
               to="/uplink"
@@ -183,10 +211,11 @@ function LifetimePage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             {/* Left — Copy */}
             <div>
+              {/* Badge row */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ duration: 0.6, ease: EASE }}
                 className="flex items-center gap-3 mb-8"
               >
                 <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-warning/8 text-warning text-[10px] font-semibold rounded-lg border border-warning/15 uppercase tracking-wide">
@@ -199,14 +228,11 @@ function LifetimePage() {
                 </span>
               </motion.div>
 
+              {/* Headline */}
               <motion.h1
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  duration: 0.7,
-                  delay: 0.1,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
+                transition={{ duration: 0.7, delay: 0.1, ease: EASE }}
                 className="text-5xl md:text-7xl font-black tracking-tight leading-[0.9] mb-6"
               >
                 One Payment
@@ -214,14 +240,11 @@ function LifetimePage() {
                 <span className="text-warning">Forever</span>
               </motion.h1>
 
+              {/* Subtitle */}
               <motion.p
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  duration: 0.6,
-                  delay: 0.2,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
+                transition={{ duration: 0.6, delay: 0.2, ease: EASE }}
                 className="text-sm text-base-content/40 leading-relaxed max-w-md mb-10"
               >
                 Lifetime Uplink is a one-time payment for permanent access. No
@@ -229,14 +252,11 @@ function LifetimePage() {
                 created — 0x00 through 0x7F.
               </motion.p>
 
+              {/* Feature list */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  duration: 0.6,
-                  delay: 0.3,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
+                transition={{ duration: 0.6, delay: 0.3, ease: EASE }}
                 className="space-y-3 mb-10"
               >
                 <Feature>Everything in Annual, permanently</Feature>
@@ -252,16 +272,12 @@ function LifetimePage() {
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.7,
-                delay: 0.2,
-                ease: [0.22, 1, 0.36, 1],
-              }}
+              transition={{ duration: 0.7, delay: 0.2, ease: EASE }}
               className="relative"
             >
-              {/* Glow */}
+              {/* Outer glow */}
               <motion.div
-                className="absolute -inset-2 rounded-xl bg-gradient-to-b from-warning/20 via-warning/5 to-transparent blur-xl"
+                className="absolute -inset-px rounded-2xl bg-gradient-to-b from-warning/20 via-warning/5 to-transparent"
                 animate={{ opacity: [0.4, 0.7, 0.4] }}
                 transition={{
                   duration: 5,
@@ -270,15 +286,46 @@ function LifetimePage() {
                 }}
               />
 
-              <div className="relative bg-base-200/80 backdrop-blur-sm border border-warning/20 rounded-xl p-8 lg:p-10">
-                {/* Ambient */}
-                <div className="absolute inset-0 bg-gradient-to-b from-warning/[0.03] to-transparent pointer-events-none rounded-xl" />
+              <div className="relative bg-base-200/80 backdrop-blur-sm border border-warning/20 rounded-2xl overflow-hidden">
+                {/* Top accent line */}
+                <div
+                  className="absolute top-0 left-0 right-0 h-px"
+                  style={{
+                    background: `linear-gradient(90deg, transparent, ${HEX_WARNING} 50%, transparent)`,
+                  }}
+                />
 
-                <div className="relative z-10">
-                  {/* Icon + badge */}
+                {/* Ambient gradient */}
+                <div className="absolute inset-0 bg-gradient-to-b from-warning/[0.03] to-transparent pointer-events-none" />
+
+                {/* Corner dot grid */}
+                <div
+                  className="absolute top-0 right-0 w-24 h-24 opacity-[0.04] text-base-content"
+                  style={{
+                    backgroundImage:
+                      'radial-gradient(circle, currentColor 1px, transparent 1px)',
+                    backgroundSize: '8px 8px',
+                  }}
+                />
+
+                {/* Watermark icon */}
+                <Crown
+                  size={140}
+                  strokeWidth={0.4}
+                  className="absolute -bottom-6 -right-6 text-base-content/[0.025] pointer-events-none"
+                />
+
+                <div className="relative z-10 p-8 lg:p-10">
+                  {/* Icon badge + slot count */}
                   <div className="flex items-center justify-between mb-8">
-                    <div className="h-12 w-12 rounded-lg bg-warning/10 border border-warning/20 flex items-center justify-center text-warning">
-                      <Crown size={24} />
+                    <div
+                      className="h-12 w-12 rounded-xl flex items-center justify-center"
+                      style={{
+                        background: `${HEX_WARNING}15`,
+                        boxShadow: `0 0 20px ${HEX_WARNING}15, 0 0 0 1px ${HEX_WARNING}20`,
+                      }}
+                    >
+                      <Crown size={24} className="text-base-content/80" />
                     </div>
                     <span className="text-[9px] text-warning/50 uppercase tracking-wide">
                       128 Slots Total
@@ -318,7 +365,7 @@ function LifetimePage() {
                         transition={{
                           duration: 1.5,
                           delay: 0.5,
-                          ease: [0.22, 1, 0.36, 1],
+                          ease: EASE,
                         }}
                       />
                     </div>
@@ -328,7 +375,7 @@ function LifetimePage() {
                   <button
                     type="button"
                     onClick={handlePurchase}
-                    className="w-full py-4 text-[11px] font-semibold bg-warning/10 border border-warning/30 text-warning rounded-lg hover:bg-warning/20 hover:border-warning/50 transition-colors cursor-pointer flex items-center justify-center gap-2"
+                    className="btn btn-lg w-full gap-2.5 bg-warning/10 border-warning/30 text-warning hover:bg-warning/20 hover:border-warning/50"
                   >
                     <Sparkles size={14} />
                     {isAuthenticated
@@ -354,6 +401,7 @@ function LifetimePage() {
           </div>
         </div>
 
+        {/* Bottom border */}
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-base-300/50 to-transparent" />
       </section>
     </div>
