@@ -28,24 +28,24 @@ const FAQ_ITEMS: Array<FAQItem> = [
   {
     icon: Gift,
     question: 'Is Scrollr really free?',
-    highlight: 'Completely free with no trials, ads, or paywalls — ever.',
+    highlight: 'Completely free with no trials, ads, or paywalls. Ever.',
     answer:
-      'Completely free, no strings attached. There are no trials, no premium gates on core features, and no ads. The entire codebase is open source under the AGPL-3.0 license — you can inspect every line.',
+      'Completely free, no strings attached. There are no trials, no premium gates on core features, and no ads. The entire codebase is open source under the AGPL-3.0 license, so you can inspect every line.',
     accent: 'emerald',
   },
   {
     icon: Zap,
     question: 'Does it slow down my browser?',
     highlight:
-      'A single background connection handles everything — lightweight by design.',
+      'A single background connection handles everything. Lightweight by design.',
     answer:
-      'Not noticeably. All data flows through a single connection in the background — not one per tab. The feed bar runs in an isolated Shadow DOM with at most 50 items in memory, and nothing gets written to disk.',
+      'Not noticeably. All data flows through a single connection in the background, not one per tab. The feed bar runs in an isolated Shadow DOM with at most 50 items in memory, and nothing gets written to disk.',
     accent: 'amber',
   },
   {
     icon: ShieldCheck,
     question: 'Is my browsing data private?',
-    highlight: 'No analytics, no tracking pixels, and no telemetry — period.',
+    highlight: 'No analytics, no tracking pixels, and no telemetry. Period.',
     answer:
       "The extension contains zero analytics, zero tracking pixels, and zero telemetry. Your preferences are stored in your browser's local extension storage and never transmitted anywhere. The only network requests go to the Scrollr API to fetch your feed data.",
     accent: 'sky',
@@ -61,9 +61,9 @@ const FAQ_ITEMS: Array<FAQItem> = [
   {
     icon: UserX,
     question: 'Do I need an account?',
-    highlight: 'Just install and go — no sign-up required to start.',
+    highlight: 'Just install and go. No sign-up required to start.',
     answer:
-      'Install the extension and you\u2019ll immediately receive live stock and sports data with no sign-up. Creating a free account unlocks all four integrations (finance, sports, news, and fantasy), the web dashboard, and cross-device preference sync.',
+      "Install the extension and you'll immediately receive live stock and sports data with no sign-up. Creating a free account unlocks all four integrations (finance, sports, news, and fantasy), the web dashboard, and cross-device preference sync.",
     accent: 'rose',
   },
   {
@@ -87,9 +87,9 @@ const FAQ_ITEMS: Array<FAQItem> = [
   {
     icon: Code,
     question: 'Is Scrollr open source?',
-    highlight: 'Every line of code is public — inspect, fork, or contribute.',
+    highlight: 'Every line of code is public. Inspect, fork, or contribute.',
     answer:
-      'Every component — the browser extension, the web app, the API, and all integration services — is publicly available on GitHub under the GNU Affero General Public License v3.0. You can inspect, fork, or contribute to any part of it.',
+      'Every component, from the browser extension and web app to the API and integration services, is publicly available on GitHub under the GNU Affero General Public License v3.0. You can inspect, fork, or contribute to any part of it.',
     accent: 'fuchsia',
   },
 ]
@@ -201,12 +201,12 @@ function AnswerPanel({ item }: { item: FAQItem }) {
       </div>
 
       {/* ── Highlight TLDR ── */}
-      <p className="relative text-lg sm:text-xl font-bold text-base-content leading-snug mb-4">
+      <p className="relative text-lg sm:text-xl font-bold text-base-content leading-snug mb-6">
         {item.highlight}
       </p>
 
       {/* ── Divider ── */}
-      <div className="relative flex items-center gap-3 mb-6">
+      <div className="relative flex items-center gap-3 mb-4">
         <div
           className="h-px flex-1"
           style={{
