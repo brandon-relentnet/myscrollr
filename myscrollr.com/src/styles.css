@@ -5,23 +5,23 @@
 @theme {
   /* Core Colors - Emerald-led Palette */
   --color-primary: #34d399;
-  --color-primary-content: #111118;
+  --color-primary-content: #141420;
   --color-primary/10: rgba(52, 211, 153, 0.1);
   --color-primary/20: rgba(52, 211, 153, 0.2);
   --color-primary/30: rgba(52, 211, 153, 0.3);
   --color-primary/40: rgba(52, 211, 153, 0.4);
 
   --color-secondary: #ff4757;
-  --color-secondary-content: #111118;
+  --color-secondary-content: #141420;
   --color-secondary/10: rgba(255, 71, 87, 0.1);
   --color-secondary/20: rgba(255, 71, 87, 0.2);
 
   --color-accent: #a855f7;
-  --color-accent-content: #111118;
+  --color-accent-content: #141420;
   --color-accent/10: rgba(168, 85, 247, 0.1);
 
   --color-info: #00d4ff;
-  --color-info-content: #111118;
+  --color-info-content: #141420;
   --color-info/10: rgba(0, 212, 255, 0.1);
   --color-info/20: rgba(0, 212, 255, 0.2);
 
@@ -34,20 +34,23 @@
   --color-error: #ef4444;
   --color-error/10: rgba(239, 68, 68, 0.1);
 
-  /* Base Theme - Warmer Dark */
+  /* Base Theme - OLED-friendly Dark
+     Lifted ~12% luminance from pure-black for readable card separation
+     and text contrast on true-black OLED panels */
   --color-base-50: #f8f8fc;
-  --color-base-100: #111118;
-  --color-base-150: #131320;
-  --color-base-200: #171720;
-  --color-base-250: #1a1a24;
-  --color-base-300: #1f1f2a;
-  --color-base-350: #262632;
-  --color-base-400: #2e2e3c;
-  --color-base-content: #d8d8e2;
-  --color-base-content/60: rgba(216, 216, 226, 0.6);
-  --color-base-content/40: rgba(216, 216, 226, 0.4);
-  --color-base-content/30: rgba(216, 216, 226, 0.3);
-  --color-base-content/20: rgba(216, 216, 226, 0.2);
+  --color-base-100: #141420;
+  --color-base-150: #171726;
+  --color-base-200: #1c1c2a;
+  --color-base-250: #21212e;
+  --color-base-300: #282838;
+  --color-base-350: #303040;
+  --color-base-400: #383848;
+  --color-base-content: #e2e2ec;
+  --color-base-content/60: rgba(226, 226, 236, 0.6);
+  --color-base-content/50: rgba(226, 226, 236, 0.5);
+  --color-base-content/40: rgba(226, 226, 236, 0.4);
+  --color-base-content/30: rgba(226, 226, 236, 0.3);
+  --color-base-content/20: rgba(226, 226, 236, 0.2);
 
   /* Typography */
   --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
@@ -64,9 +67,9 @@
   --shadow-glow-lg: 0 0 50px rgba(52, 211, 153, 0.12);
   --shadow-glow-xl: 0 0 80px rgba(52, 211, 153, 0.15);
 
-  --shadow-soft-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
-  --shadow-soft-md: 0 4px 16px rgba(0, 0, 0, 0.25);
-  --shadow-soft-lg: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --shadow-soft-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --shadow-soft-md: 0 4px 16px rgba(0, 0, 0, 0.3);
+  --shadow-soft-lg: 0 8px 32px rgba(0, 0, 0, 0.35);
 
   --shadow-inner-glow: inset 0 0 20px rgba(52, 211, 153, 0.02);
 
@@ -112,12 +115,12 @@ body::before {
   background:
     radial-gradient(
       ellipse 70% 50% at 50% 0%,
-      rgba(52, 211, 153, 0.04) 0%,
+      rgba(52, 211, 153, 0.05) 0%,
       transparent 60%
     ),
     radial-gradient(
       ellipse 50% 50% at 80% 80%,
-      rgba(0, 212, 255, 0.02) 0%,
+      rgba(0, 212, 255, 0.03) 0%,
       transparent 50%
     );
   pointer-events: none;
