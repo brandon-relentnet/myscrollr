@@ -15,6 +15,9 @@ import (
 
 var proxyClient = &http.Client{
 	Timeout: 30 * time.Second,
+	CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	},
 }
 
 // SetupDynamicProxy registers a single catch-all route that dynamically resolves
