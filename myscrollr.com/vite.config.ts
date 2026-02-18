@@ -19,26 +19,26 @@ const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 
 /**
  * Vite plugin that resolves bare module imports from files outside the project
- * directory (e.g. integrations/star/web/) to this project's node_modules.
+ * directory (e.g. channels/star/web/) to this project's node_modules.
  *
  * This is needed because Vite's default Node resolution walks up from the
  * importer's directory, which won't find our node_modules for files in
- * ../integrations/.
+ * ../channels/.
  *
  * We re-resolve using a synthetic importer path inside the project root so
  * Vite uses its normal ESM-aware resolution (respecting package.json exports
  * maps) but searches our node_modules.
  */
-function resolveExternalIntegrations(): Plugin {
+function resolveExternalChannels(): Plugin {
   // A synthetic importer inside the project root — used to trick Vite's
   // resolver into searching myscrollr.com/node_modules with full ESM support.
   const syntheticImporter = resolve(projectRoot, '__virtual_importer__.tsx')
 
   return {
-    name: 'resolve-external-integrations',
+    name: 'resolve-external-channels',
     enforce: 'pre',
     async resolveId(source, importer, options) {
-      // Only handle bare imports from integration files outside this project
+      // Only handle bare imports from channel files outside this project
       if (
         !importer ||
         source.startsWith('.') ||
@@ -54,7 +54,7 @@ function resolveExternalIntegrations(): Plugin {
 
       // Re-resolve the same import as if it came from inside this project.
       // This makes Vite walk node_modules from myscrollr.com/ instead of
-      // from the external integrations/ directory.
+      // from the external channels/ directory.
       const resolved = await this.resolve(source, syntheticImporter, {
         ...options,
         skipSelf: true,
@@ -67,7 +67,7 @@ function resolveExternalIntegrations(): Plugin {
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    resolveExternalIntegrations(),
+    resolveExternalChannels(),
     tanstackRouter({
       target: 'react',
       autoCodeSplitting: true,
@@ -78,7 +78,7 @@ export default defineConfig({
   server: {
     allowedHosts: ['dev.olvyx.com'],
     fs: {
-      // Allow serving files from the monorepo root (for integrations/*/web/)
+      // Allow serving files from the monorepo root (for channels/*/web/)
       allow: [monorepoRoot],
     },
   },
@@ -88,7 +88,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
-      '@scrollr': fileURLToPath(new URL('../integrations', import.meta.url)),
+      '@scrollr': fileURLToPath(new URL('../channels', import.meta.url)),
     },
   },
 })

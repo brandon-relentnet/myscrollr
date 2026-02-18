@@ -7,8 +7,8 @@
     "eslint.config.js",
     "prettier.config.js",
     "vite.config.js",
-    "../integrations/*/web/**/*.ts",
-    "../integrations/*/web/**/*.tsx"
+    "../channels/*/web/**/*.ts",
+    "../channels/*/web/**/*.tsx"
   ],
   "exclude": ["frontend_wxt/**/*"],
 
@@ -36,7 +36,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@scrollr/*": ["../integrations/*"]
+      "@scrollr/*": ["../channels/*"]
     }
   }
 }

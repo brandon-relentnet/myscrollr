@@ -1,5 +1,5 @@
-@import 'tailwindcss';
-@source "../../../integrations/*/extension/**/*.tsx";
+@import "tailwindcss";
+@source "../../../channels/*/extension/**/*.tsx";
 
 @theme {
   /* Surfaces — ultra-dark with a cool blue-black undertone */

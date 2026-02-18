@@ -261,8 +261,8 @@ function LifetimePage() {
               >
                 <Feature>Everything in Annual, permanently</Feature>
                 <Feature>Real-time data delivery — forever</Feature>
-                <Feature>Unlimited tracking across all integrations</Feature>
-                <Feature>Early access to new features & integrations</Feature>
+                <Feature>Unlimited tracking across all channels</Feature>
+                <Feature>Early access to new features & channels</Feature>
                 <Feature>Founding member badge & priority support</Feature>
                 <Feature>All future Uplink features included</Feature>
               </motion.div>

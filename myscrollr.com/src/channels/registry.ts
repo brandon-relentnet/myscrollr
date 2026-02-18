@@ -3,7 +3,7 @@ import type { ChannelManifest } from './types'
 // Convention-based discovery: scan channels/*/web/DashboardTab.tsx at build time.
 // Each module must export a named `{name}Channel` conforming to ChannelManifest.
 const modules = import.meta.glob<Record<string, ChannelManifest>>(
-  '../../../integrations/*/web/DashboardTab.tsx',
+  '../../../channels/*/web/DashboardTab.tsx',
   { eager: true },
 )
 

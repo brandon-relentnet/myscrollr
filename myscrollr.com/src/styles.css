@@ -53,7 +53,7 @@
 }
 
 @import 'tailwindcss';
-@source "../../integrations/*/web/**/*.tsx";
+@source "../../channels/*/web/**/*.tsx";
 
 /* Class-based dark mode for toggle support */
 @custom-variant dark (&:where(.dark, .dark *));
