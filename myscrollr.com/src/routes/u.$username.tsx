@@ -17,6 +17,17 @@ export const Route = createFileRoute('/u/$username')({
   component: ProfilePage,
 })
 
+// ── Signature easing (matches homepage) ────────────────────────
+const EASE = [0.22, 1, 0.36, 1] as const
+
+// ── Hex colors ─────────────────────────────────────────────────
+const HEX = {
+  primary: '#34d399',
+  secondary: '#ff4757',
+  info: '#00b8db',
+  accent: '#a855f7',
+} as const
+
 interface ProfileData {
   username: string
   display_name?: string
@@ -121,36 +132,46 @@ function ProfilePage() {
     loadProfile()
   }, [username, isAuthenticated, getIdTokenClaims, getAccessToken])
 
+  // ── Loading state ──
   if (loading) {
     return (
-      <div className="min-h-screen text-primary flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
-          <Loader2 className="animate-spin h-12 w-12 text-primary mx-auto" />
-          <p className="text-xs text-primary/60">Accessing Identity_Logs...</p>
+          <Loader2 className="animate-spin h-12 w-12 text-base-content/30 mx-auto" />
+          <p className="text-xs text-base-content/30">Loading profile...</p>
         </div>
       </div>
     )
   }
 
-  // Sign-in prompt for unauthenticated users
+  // ── Sign-in prompt for unauthenticated /u/me ──
   if (username === 'me' && !isAuthenticated) {
     return (
-      <div className="min-h-screen text-base-content flex items-center justify-center p-6">
+      <div className="min-h-screen flex items-center justify-center p-6">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4 }}
-          className="text-center space-y-6 max-w-md border border-base-300/50 p-12 rounded-xl bg-base-200/50"
+          transition={{ duration: 0.5, ease: EASE }}
+          className="relative bg-base-200/40 border border-base-300/25 rounded-xl p-12 overflow-hidden text-center max-w-md"
         >
-          <AlertCircle className="h-16 w-16 text-warning mx-auto mb-4" />
-          <h1 className="text-2xl font-bold">Auth Required</h1>
-          <p className="text-base-content/60 text-xs leading-loose">
-            Identity verification required to access private profile node.
+          {/* Accent top line */}
+          <div
+            className="absolute top-0 left-0 right-0 h-px"
+            style={{
+              background: `linear-gradient(90deg, transparent, ${HEX.primary} 50%, transparent)`,
+            }}
+          />
+          <AlertCircle className="h-16 w-16 text-warning mx-auto mb-6" />
+          <h1 className="text-2xl font-black tracking-tight mb-3">
+            Auth Required
+          </h1>
+          <p className="text-base-content/45 text-sm leading-relaxed mb-8">
+            Sign in to access your profile and connected integrations.
           </p>
           <button
             type="button"
             onClick={() => signIn(`${window.location.origin}/callback`)}
-            className="inline-flex items-center justify-center px-8 py-2.5 rounded-lg bg-primary text-primary-content text-[11px] font-semibold hover:brightness-110 transition-[filter] cursor-pointer"
+            className="btn btn-pulse btn-lg"
           >
             Sign In
           </button>
@@ -159,18 +180,28 @@ function ProfilePage() {
     )
   }
 
+  // ── Profile not found ──
   if (!profile) {
     return (
-      <div className="min-h-screen text-base-content flex items-center justify-center p-6">
+      <div className="min-h-screen flex items-center justify-center p-6">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4 }}
-          className="text-center space-y-6 max-w-md border border-base-300/50 p-12 rounded-xl bg-base-200/50"
+          transition={{ duration: 0.5, ease: EASE }}
+          className="relative bg-base-200/40 border border-base-300/25 rounded-xl p-12 overflow-hidden text-center max-w-md"
         >
-          <AlertCircle className="h-16 w-16 text-error mx-auto mb-4" />
-          <h1 className="text-2xl font-bold">Profile Not Found</h1>
-          <p className="text-base-content/60 text-xs leading-loose">
+          {/* Accent top line */}
+          <div
+            className="absolute top-0 left-0 right-0 h-px"
+            style={{
+              background: `linear-gradient(90deg, transparent, ${HEX.secondary} 50%, transparent)`,
+            }}
+          />
+          <AlertCircle className="h-16 w-16 text-error mx-auto mb-6" />
+          <h1 className="text-2xl font-black tracking-tight mb-3">
+            Profile Not Found
+          </h1>
+          <p className="text-base-content/45 text-sm leading-relaxed">
             {error || `Unable to load profile for @${username}.`}
           </p>
         </motion.div>
@@ -178,86 +209,129 @@ function ProfilePage() {
     )
   }
 
+  // ── Main profile view ──
   return (
     <motion.div
-      className="min-h-screen text-base-content pt-28 pb-20 px-6"
+      className="min-h-screen pt-20"
       variants={pageVariants}
       initial="hidden"
       animate="visible"
     >
-      <div className="max-w-4xl mx-auto space-y-8">
-        {/* Profile Header */}
-        <motion.div
-          variants={sectionVariants}
-          className="bg-base-200/50 border border-base-300/50 rounded-xl p-10 relative overflow-hidden"
-        >
-          {/* Accent decoration */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full border-l border-b border-primary/10" />
-
-          <div className="flex flex-col md:flex-row items-center md:items-start gap-8 relative z-10 text-center md:text-left">
+      {/* ── Profile Hero ── */}
+      <section className="relative pt-24 pb-20 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-base-200/20 to-transparent pointer-events-none" />
+        <div className="container relative z-10">
+          <motion.div className="text-center" variants={sectionVariants}>
+            {/* Avatar */}
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.2, type: 'spring' }}
-              className="h-28 w-28 rounded-lg bg-primary/8 border border-primary/15 flex items-center justify-center text-4xl font-black text-primary uppercase"
+              transition={{ delay: 0.2, duration: 0.5, ease: EASE }}
+              className="mx-auto mb-6 w-28 h-28 rounded-xl flex items-center justify-center text-4xl font-black text-base-content/80 uppercase"
+              style={{
+                background: `${HEX.primary}15`,
+                boxShadow: `0 0 40px ${HEX.primary}15, 0 0 0 1px ${HEX.primary}20`,
+              }}
             >
               {profile.username ? profile.username[0] : '?'}
             </motion.div>
-            <div className="flex-1 space-y-4">
-              <div className="space-y-1">
-                <div className="flex items-center justify-center md:justify-start gap-3">
-                  <h1 className="text-4xl font-black tracking-tight">
-                    @{profile.username}
-                  </h1>
-                  <span className="px-3 py-1 bg-success/10 text-success text-[10px] font-bold rounded-lg border border-success/20 flex items-center gap-1.5 uppercase tracking-wide">
-                    <Shield size={12} /> Active
+
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
+              <span className="text-gradient-primary">@{profile.username}</span>
+            </h1>
+
+            {profile.display_name &&
+              profile.display_name !== profile.username && (
+                <p className="text-base text-base-content/45 mb-4">
+                  {profile.display_name}
+                </p>
+              )}
+
+            <div className="flex items-center justify-center gap-2 mt-4">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-success/10 text-success text-xs font-semibold rounded-full border border-success/20">
+                <Shield size={12} /> Active
+              </span>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── Connected Accounts ── */}
+      <section className="relative overflow-hidden">
+        <div className="container py-16 lg:py-24 max-w-4xl mx-auto">
+          <motion.div
+            className="text-center mb-12 sm:mb-16"
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.7, ease: EASE }}
+          >
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
+              Connected{' '}
+              <span className="text-gradient-primary">Integrations</span>
+            </h2>
+            <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
+              Linked services and data sources for this profile
+            </p>
+          </motion.div>
+
+          {/* Yahoo Card */}
+          <motion.div
+            className="relative bg-base-200/40 border border-base-300/25 rounded-xl p-8 overflow-hidden group"
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.6, ease: EASE }}
+          >
+            {/* Accent top line */}
+            <div
+              className="absolute top-0 left-0 right-0 h-px"
+              style={{
+                background: `linear-gradient(90deg, transparent, ${HEX.accent} 50%, transparent)`,
+              }}
+            />
+            {/* Corner dot grid */}
+            <div
+              className="absolute top-0 right-0 w-20 h-20 opacity-[0.04] text-base-content"
+              style={{
+                backgroundImage:
+                  'radial-gradient(circle, currentColor 1px, transparent 1px)',
+                backgroundSize: '8px 8px',
+              }}
+            />
+            {/* Hover glow orb */}
+            <div
+              className="absolute -top-10 -right-10 w-32 h-32 rounded-full pointer-events-none blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+              style={{ background: `${HEX.accent}10` }}
+            />
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10">
+              <div className="flex items-center gap-5">
+                {/* Icon badge */}
+                <div
+                  className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                  style={{
+                    background: `${HEX.accent}15`,
+                    boxShadow: `0 0 20px ${HEX.accent}15, 0 0 0 1px ${HEX.accent}20`,
+                  }}
+                >
+                  <span className="text-base font-black text-base-content/80">
+                    Y!
                   </span>
                 </div>
-                {profile.display_name &&
-                  profile.display_name !== profile.username && (
-                    <p className="text-sm text-base-content/40 font-medium">
-                      {profile.display_name}
-                    </p>
-                  )}
-              </div>
-              <div className="flex flex-wrap justify-center md:justify-start gap-2 pt-2">
-                <div className="px-3 py-1 bg-base-300/50 border border-base-300/50 rounded-lg text-[10px] font-mono uppercase tracking-wide text-base-content/40">
-                  Status: Verified
-                </div>
-                <div className="px-3 py-1 bg-base-300/50 border border-base-300/50 rounded-lg text-[10px] font-mono uppercase tracking-wide text-base-content/40">
-                  Tier: Power_User
-                </div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Connected Accounts */}
-        <motion.div
-          variants={sectionVariants}
-          className="bg-base-200/50 border border-base-300/50 rounded-xl p-10"
-        >
-          <h2 className="text-sm font-bold text-primary mb-8 flex items-center gap-2">
-            <LinkIcon size={16} />
-            Integration Nodes
-          </h2>
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-base-300/50 border border-base-300/50 rounded-xl gap-6 group hover:border-primary/20 transition-colors">
-              <div className="flex items-center gap-5">
-                <div className="h-10 w-10 rounded-lg bg-secondary/8 flex items-center justify-center text-secondary border border-secondary/15">
-                  <span className="text-lg font-black">Y!</span>
-                </div>
                 <div className="text-left">
-                  <p className="text-sm font-bold tracking-tight">
+                  <p className="text-base font-black tracking-tight text-base-content">
                     Yahoo Fantasy
                   </p>
                   {profile.connected_yahoo ? (
-                    <p className="text-xs text-success flex items-center gap-1.5 font-bold uppercase tracking-wide mt-1">
-                      <Check size={14} strokeWidth={3} /> Connection Established
+                    <p className="text-xs text-success flex items-center gap-1.5 font-semibold mt-1">
+                      <Check size={14} strokeWidth={3} /> Connected
                     </p>
                   ) : (
-                    <p className="text-xs text-base-content/30 font-bold uppercase tracking-wide mt-1">
-                      Status: Disconnected
+                    <p className="text-xs text-base-content/30 font-semibold mt-1">
+                      Disconnected
                     </p>
                   )}
                 </div>
@@ -268,14 +342,14 @@ function ProfilePage() {
                   {profile.connected_yahoo ? (
                     <a
                       href="/dashboard"
-                      className="inline-flex items-center justify-center px-6 py-2.5 rounded-lg border border-primary/30 text-primary text-[11px] font-semibold hover:bg-primary hover:text-primary-content transition-colors w-full sm:w-auto"
+                      className="btn btn-outline btn-sm w-full sm:w-auto"
                     >
                       Enter Dashboard
                     </a>
                   ) : (
                     <a
                       href="/dashboard"
-                      className="inline-flex items-center justify-center px-6 py-2.5 rounded-lg bg-primary text-primary-content text-[11px] font-semibold hover:brightness-110 transition-[filter] w-full sm:w-auto"
+                      className="btn btn-pulse w-full sm:w-auto"
                     >
                       Link Account
                     </a>
@@ -283,19 +357,30 @@ function ProfilePage() {
                 </div>
               )}
             </div>
-          </div>
-        </motion.div>
 
-        {/* Footer info */}
-        <motion.div
-          variants={sectionVariants}
-          className="flex items-center justify-center gap-4 text-base-content/20 text-[10px] uppercase tracking-wide pt-4"
-        >
-          <span className="h-px w-12 bg-current opacity-20" />
-          <span>Security Provided by Logto OSS</span>
-          <span className="h-px w-12 bg-current opacity-20" />
-        </motion.div>
-      </div>
+            {/* Watermark */}
+            <LinkIcon
+              size={130}
+              strokeWidth={0.4}
+              className="absolute -bottom-4 -right-4 text-base-content/[0.025] pointer-events-none"
+            />
+          </motion.div>
+
+          {/* Footer */}
+          <motion.div
+            className="flex items-center justify-center gap-4 text-base-content/20 text-[10px] uppercase tracking-wide pt-12"
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, ease: EASE, delay: 0.2 }}
+          >
+            <span className="h-px w-12 bg-current opacity-20" />
+            <span>Identity Provided by Logto OSS</span>
+            <span className="h-px w-12 bg-current opacity-20" />
+          </motion.div>
+        </div>
+      </section>
     </motion.div>
   )
 }

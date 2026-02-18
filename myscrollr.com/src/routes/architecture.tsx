@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { motion } from 'motion/react'
+import type { ComponentType } from 'react'
 import {
   Activity,
   ArrowDown,
@@ -8,18 +9,15 @@ import {
   Cable,
   CircuitBoard,
   Cloud,
-  Code2,
   Cpu,
   Database,
   Globe,
-  Layers,
   MonitorSmartphone,
   Radio,
   RefreshCw,
   Server,
   Shield,
   Workflow,
-  Zap,
 } from 'lucide-react'
 
 import { usePageMeta } from '@/lib/usePageMeta'
@@ -28,194 +26,257 @@ export const Route = createFileRoute('/architecture')({
   component: ArchitecturePage,
 })
 
-// ── Pipeline Steps (public-facing) ──────────────────────────────
+// ── Signature easing (matches homepage) ────────────────────────
+const EASE = [0.22, 1, 0.36, 1] as const
 
-const PIPELINE_STEPS = [
+// ── Integration hex map ────────────────────────────────────────
+const HEX = {
+  primary: '#34d399',
+  secondary: '#ff4757',
+  info: '#00b8db',
+  accent: '#a855f7',
+} as const
+
+// ── Pipeline Steps ─────────────────────────────────────────────
+
+interface PipelineStep {
+  Icon: ComponentType<{ size?: number; className?: string }>
+  title: string
+  description: string
+  hex: string
+  label: string
+  items: string[]
+  Watermark: ComponentType<{
+    size?: number
+    strokeWidth?: number
+    className?: string
+  }>
+}
+
+const PIPELINE_STEPS: PipelineStep[] = [
   {
-    icon: <Globe size={20} />,
+    Icon: Globe,
     title: 'Data Sources',
     description:
       'Finnhub WebSocket for market data, ESPN API for scores, RSS/Atom feeds for news, Yahoo Fantasy API for leagues.',
-    accent: 'primary' as const,
+    hex: HEX.primary,
     label: 'INGEST',
     items: ['Finnhub WS', 'ESPN HTTP', 'Yahoo API', 'RSS Feeds'],
+    Watermark: Globe,
   },
   {
-    icon: <Cpu size={20} />,
+    Icon: Cpu,
     title: 'Ingestion Services',
     description:
       'Four independent Rust services collect, normalize, and write data to PostgreSQL. Each runs its own schedule and connection strategy.',
-    accent: 'info' as const,
+    hex: HEX.info,
     label: 'PROCESS',
     items: ['Finance :3001', 'Sports :3002', 'Fantasy :3003', 'RSS :3004'],
+    Watermark: Cpu,
   },
   {
-    icon: <Database size={20} />,
+    Icon: Database,
     title: 'PostgreSQL + CDC',
     description:
       'All data lands in PostgreSQL. Sequin monitors table changes via CDC (Change Data Capture) and fires webhooks to the core API.',
-    accent: 'secondary' as const,
+    hex: HEX.secondary,
     label: 'DETECT',
     items: ['trades', 'games', 'rss_items', 'yahoo_*'],
+    Watermark: Database,
   },
   {
-    icon: <Radio size={20} />,
+    Icon: Radio,
     title: 'Real-time Delivery',
     description:
       'Core API routes CDC records to integration APIs, which return affected user lists. Core publishes to per-user Redis channels via SSE.',
-    accent: 'accent' as const,
+    hex: HEX.accent,
     label: 'DELIVER',
     items: ['CDC Routing', 'Redis Pub/Sub', 'SSE Stream', 'Per-user'],
+    Watermark: Radio,
   },
 ]
 
-const pipelineAccent = {
-  primary: {
-    icon: 'bg-primary/8 border-primary/15 text-primary',
-    tag: 'bg-primary/10 text-primary border-primary/20',
-    line: 'bg-primary/30',
-  },
-  info: {
-    icon: 'bg-info/8 border-info/15 text-info',
-    tag: 'bg-info/10 text-info border-info/20',
-    line: 'bg-info/30',
-  },
-  secondary: {
-    icon: 'bg-secondary/8 border-secondary/15 text-secondary',
-    tag: 'bg-secondary/10 text-secondary border-secondary/20',
-    line: 'bg-secondary/30',
-  },
-  accent: {
-    icon: 'bg-accent/8 border-accent/15 text-accent',
-    tag: 'bg-accent/10 text-accent border-accent/20',
-    line: 'bg-accent/30',
-  },
-} as const
+// ── CDC Flow Steps ─────────────────────────────────────────────
 
-// ── Architecture Principles ─────────────────────────────────────
+interface CdcStep {
+  label: string
+  detail: string
+  Icon: ComponentType<{ size?: number; className?: string }>
+  hex: string
+}
 
-const PRINCIPLES = [
+const CDC_FLOW: CdcStep[] = [
   {
-    icon: <Box size={16} />,
+    label: 'Rust Service',
+    detail: 'Writes to PostgreSQL',
+    Icon: Cpu,
+    hex: HEX.info,
+  },
+  {
+    label: 'Sequin CDC',
+    detail: 'Detects row changes',
+    Icon: Activity,
+    hex: HEX.secondary,
+  },
+  {
+    label: 'Core API',
+    detail: 'POST /webhooks/sequin',
+    Icon: Server,
+    hex: HEX.primary,
+  },
+  {
+    label: 'Integration API',
+    detail: 'POST /internal/cdc → users[]',
+    Icon: Cable,
+    hex: HEX.info,
+  },
+  {
+    label: 'Redis Pub/Sub',
+    detail: 'events:user:{sub}',
+    Icon: Radio,
+    hex: HEX.accent,
+  },
+  {
+    label: 'SSE → Client',
+    detail: 'Frontend / Extension',
+    Icon: MonitorSmartphone,
+    hex: HEX.primary,
+  },
+]
+
+// ── Architecture Principles ────────────────────────────────────
+
+interface Principle {
+  Icon: ComponentType<{ size?: number; className?: string }>
+  title: string
+  description: string
+  hex: string
+  Watermark: ComponentType<{
+    size?: number
+    strokeWidth?: number
+    className?: string
+  }>
+}
+
+const PRINCIPLES: Principle[] = [
+  {
+    Icon: Box,
     title: 'Decoupled Integrations',
     description:
       'Each integration is a fully self-contained unit with its own Go API, Rust service, frontend components, and config. No shared code between integrations.',
+    hex: HEX.primary,
+    Watermark: Box,
   },
   {
-    icon: <Shield size={16} />,
+    Icon: Shield,
     title: 'Zero-trust Proxying',
     description:
       'Core API validates JWTs and injects X-User-Sub headers. Integration APIs never see tokens — they trust the core gateway.',
+    hex: HEX.secondary,
+    Watermark: Shield,
   },
   {
-    icon: <RefreshCw size={16} />,
+    Icon: RefreshCw,
     title: 'Self-registration',
     description:
       'Integration APIs register in Redis on startup with a 30s TTL heartbeat. Core discovers them dynamically — no hardcoded routes.',
+    hex: HEX.info,
+    Watermark: RefreshCw,
   },
   {
-    icon: <Workflow size={16} />,
+    Icon: Workflow,
     title: 'Convention-based UI',
     description:
       'Frontend and extension discover integration components at build time via import.meta.glob. Drop a file in the right folder and it appears.',
+    hex: HEX.accent,
+    Watermark: Workflow,
   },
 ]
 
-// ── Tech Stack ──────────────────────────────────────────────────
+// ── Tech Stack ─────────────────────────────────────────────────
 
-const TECH_STACK = [
+interface TechGroup {
+  category: string
+  Icon: ComponentType<{ size?: number; className?: string }>
+  hex: string
+  items: { name: string; detail: string }[]
+  Watermark: ComponentType<{
+    size?: number
+    strokeWidth?: number
+    className?: string
+  }>
+}
+
+const TECH_STACK: TechGroup[] = [
   {
     category: 'Core API',
+    Icon: Server,
+    hex: HEX.primary,
     items: [
       { name: 'Go 1.21', detail: 'Fiber v2, pgx, Redis' },
       { name: 'SSE Hub', detail: 'Per-user Redis Pub/Sub channels' },
       { name: 'Logto', detail: 'Self-hosted OIDC, JWT validation' },
     ],
+    Watermark: Server,
   },
   {
     category: 'Ingestion',
+    Icon: Cpu,
+    hex: HEX.info,
     items: [
       { name: 'Rust', detail: 'tokio async runtime' },
       { name: 'WebSocket', detail: 'Finnhub persistent connection' },
       { name: 'HTTP Polling', detail: 'ESPN 60s, RSS 5min, Yahoo 120s' },
     ],
+    Watermark: Cpu,
   },
   {
     category: 'Frontend',
+    Icon: MonitorSmartphone,
+    hex: HEX.accent,
     items: [
       { name: 'React 19', detail: 'Vite 7, TanStack Router' },
       { name: 'Tailwind v4', detail: 'daisyUI theme system' },
       { name: 'Motion', detail: 'Framer Motion animations' },
     ],
+    Watermark: MonitorSmartphone,
   },
   {
     category: 'Extension',
+    Icon: Globe,
+    hex: HEX.secondary,
     items: [
       { name: 'WXT v0.20', detail: 'Chrome MV3 / Firefox MV2' },
       { name: 'Shadow DOM', detail: 'Isolated feed bar UI' },
       { name: 'Background SSE', detail: 'CDC pass-through routing' },
     ],
+    Watermark: Globe,
   },
   {
     category: 'Infrastructure',
+    Icon: Database,
+    hex: HEX.primary,
     items: [
       { name: 'PostgreSQL', detail: 'Shared DB, natural table isolation' },
       { name: 'Redis', detail: 'Cache, Pub/Sub, registration' },
       { name: 'Sequin', detail: 'CDC webhooks from PostgreSQL' },
     ],
+    Watermark: Database,
   },
   {
     category: 'Deployment',
+    Icon: Cloud,
+    hex: HEX.info,
     items: [
       { name: 'Coolify', detail: 'Self-hosted PaaS' },
       { name: 'Docker Compose', detail: 'Per-integration bundles' },
       { name: 'Nixpacks', detail: 'Frontend builds' },
     ],
+    Watermark: Cloud,
   },
 ]
 
-// ── CDC Flow Diagram ────────────────────────────────────────────
-
-const CDC_FLOW = [
-  {
-    label: 'Rust Service',
-    detail: 'Writes to PostgreSQL',
-    icon: <Cpu size={14} />,
-    accent: 'text-info',
-  },
-  {
-    label: 'Sequin CDC',
-    detail: 'Detects row changes',
-    icon: <Activity size={14} />,
-    accent: 'text-secondary',
-  },
-  {
-    label: 'Core API',
-    detail: 'POST /webhooks/sequin',
-    icon: <Server size={14} />,
-    accent: 'text-primary',
-  },
-  {
-    label: 'Integration API',
-    detail: 'POST /internal/cdc → users[]',
-    icon: <Cable size={14} />,
-    accent: 'text-info',
-  },
-  {
-    label: 'Redis Pub/Sub',
-    detail: 'events:user:{sub}',
-    icon: <Radio size={14} />,
-    accent: 'text-accent',
-  },
-  {
-    label: 'SSE → Client',
-    detail: 'Frontend / Extension',
-    icon: <MonitorSmartphone size={14} />,
-    accent: 'text-primary',
-  },
-]
-
-// ── Page Component ──────────────────────────────────────────────
+// ── Page Component ─────────────────────────────────────────────
 
 function ArchitecturePage() {
   usePageMeta({
@@ -229,6 +290,7 @@ function ArchitecturePage() {
     <div className="min-h-screen pt-20">
       {/* ── HERO ─────────────────────────────────────────────── */}
       <section className="relative pt-28 pb-20 overflow-hidden">
+        {/* Background grid */}
         <div className="absolute inset-0 pointer-events-none">
           <div
             className="absolute inset-0 opacity-[0.02]"
@@ -254,45 +316,33 @@ function ArchitecturePage() {
 
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
 
-        <div className="container relative z-10 !py-0">
+        <div className="container relative z-10 !py-0 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="flex items-center gap-4 mb-8"
+            transition={{ duration: 0.6, ease: EASE }}
+            className="flex items-center justify-center gap-3 mb-8"
           >
             <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-lg border border-primary/15 uppercase tracking-wide">
               <CircuitBoard size={12} />
               System Design
-            </span>
-            <span className="h-px w-12 bg-gradient-to-r from-base-300 to-transparent" />
-            <span className="text-[10px] text-base-content/25">
-              open architecture
             </span>
           </motion.div>
 
           <motion.h1
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{
-              duration: 0.7,
-              delay: 0.15,
-              ease: [0.22, 1, 0.36, 1],
-            }}
-            className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[0.85] mb-8 max-w-5xl"
+            transition={{ duration: 0.7, delay: 0.15, ease: EASE }}
+            className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black tracking-tight leading-[0.95] mb-6"
           >
-            How Scrollr <span className="text-primary">Works</span>
+            How Scrollr <span className="text-gradient-primary">Works</span>
           </motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{
-              duration: 0.6,
-              delay: 0.3,
-              ease: [0.22, 1, 0.36, 1],
-            }}
-            className="text-base text-base-content/40 max-w-xl leading-relaxed"
+            transition={{ duration: 0.6, delay: 0.3, ease: EASE }}
+            className="text-base text-base-content/45 max-w-xl mx-auto leading-relaxed"
           >
             From source API to your browser in milliseconds. A decoupled,
             CDC-driven pipeline built on Go, Rust, React, and Redis.
@@ -302,146 +352,195 @@ function ArchitecturePage() {
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-base-300/50 to-transparent" />
       </section>
 
-      {/* ── DATA PIPELINE (Public-facing) ────────────────────── */}
-      <section className="relative">
-        <div className="container">
+      {/* ── DATA PIPELINE ────────────────────────────────────── */}
+      <section className="relative overflow-hidden">
+        {/* Tinted section background */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-base-200/20 to-transparent pointer-events-none" />
+
+        <div className="container relative z-10">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="mb-12"
+            transition={{ duration: 0.7, ease: EASE }}
+            className="text-center mb-12 sm:mb-16"
           >
-            <h2 className="text-sm font-bold uppercase tracking-wide text-primary mb-2 flex items-center gap-2">
-              <Zap size={16} /> The Pipeline
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
+              The <span className="text-gradient-primary">Pipeline</span>
             </h2>
-            <p className="text-[10px] text-base-content/30">
+            <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
               Four stages from data source to your screen
             </p>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            {PIPELINE_STEPS.map((step, i) => {
-              const colors = pipelineAccent[step.accent]
-              return (
-                <motion.div
-                  key={step.title}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{
-                    delay: i * 0.1,
-                    duration: 0.5,
-                    ease: [0.22, 1, 0.36, 1],
+            {PIPELINE_STEPS.map((step, i) => (
+              <motion.div
+                key={step.title}
+                style={{ opacity: 0 }}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{
+                  delay: i * 0.1,
+                  duration: 0.6,
+                  ease: EASE,
+                }}
+                className="group relative bg-base-200/40 border border-base-300/25 rounded-xl p-6 overflow-hidden hover:border-base-300/50 transition-colors"
+              >
+                {/* Accent top line */}
+                <div
+                  className="absolute top-0 left-0 right-0 h-px"
+                  style={{
+                    background: `linear-gradient(90deg, transparent, ${step.hex} 50%, transparent)`,
                   }}
-                  className="group relative bg-base-200/50 border border-base-300/50 rounded-xl p-6 hover:border-base-300 transition-colors overflow-hidden"
-                >
-                  <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-transparent group-hover:via-primary/20 to-transparent transition-[background] duration-500" />
+                />
 
-                  <div className="relative z-10">
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-5">
-                      <div
-                        className={`h-10 w-10 rounded-lg border flex items-center justify-center ${colors.icon}`}
-                      >
-                        {step.icon}
-                      </div>
-                      <span
-                        className={`text-[9px] font-bold uppercase tracking-wide px-2 py-1 rounded-lg border ${colors.tag}`}
-                      >
-                        {step.label}
-                      </span>
+                {/* Corner dot grid */}
+                <div
+                  className="absolute top-0 right-0 w-20 h-20 opacity-[0.04] text-base-content"
+                  style={{
+                    backgroundImage:
+                      'radial-gradient(circle, currentColor 1px, transparent 1px)',
+                    backgroundSize: '8px 8px',
+                  }}
+                />
+
+                {/* Ambient glow orb on hover */}
+                <div
+                  className="absolute -top-10 -right-10 w-32 h-32 rounded-full pointer-events-none blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{ background: `${step.hex}10` }}
+                />
+
+                <div className="relative z-10">
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-5">
+                    <div
+                      className="w-11 h-11 rounded-xl flex items-center justify-center"
+                      style={{
+                        background: `${step.hex}15`,
+                        boxShadow: `0 0 20px ${step.hex}15, 0 0 0 1px ${step.hex}20`,
+                      }}
+                    >
+                      <step.Icon size={20} className="text-base-content/80" />
                     </div>
-
-                    <h3 className="text-sm font-semibold text-base-content mb-2">
-                      {step.title}
-                    </h3>
-                    <p className="text-xs text-base-content/30 leading-relaxed mb-4">
-                      {step.description}
-                    </p>
-
-                    {/* Items */}
-                    <div className="space-y-1.5 pt-4 border-t border-base-300/30">
-                      {step.items.map((item) => (
-                        <div key={item} className="flex items-center gap-2">
-                          <span
-                            className={`w-1 h-1 rounded-full ${colors.line}`}
-                          />
-                          <span className="text-[10px] font-mono text-base-content/25">
-                            {item}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                    <span
+                      className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border font-mono"
+                      style={{
+                        background: `${step.hex}10`,
+                        color: step.hex,
+                        borderColor: `${step.hex}30`,
+                      }}
+                    >
+                      {step.label}
+                    </span>
                   </div>
-                </motion.div>
-              )
-            })}
+
+                  <h3 className="text-sm font-semibold text-base-content mb-2">
+                    {step.title}
+                  </h3>
+                  <p className="text-xs text-base-content/40 leading-relaxed mb-4">
+                    {step.description}
+                  </p>
+
+                  {/* Items */}
+                  <div className="space-y-1.5 pt-4 border-t border-base-300/25">
+                    {step.items.map((item) => (
+                      <div key={item} className="flex items-center gap-2">
+                        <span
+                          className="w-1 h-1 rounded-full"
+                          style={{ background: `${step.hex}60` }}
+                        />
+                        <span className="text-[10px] font-mono text-base-content/30">
+                          {item}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Watermark icon */}
+                <step.Watermark
+                  size={100}
+                  strokeWidth={0.4}
+                  className="absolute -bottom-3 -right-3 text-base-content/[0.025] pointer-events-none"
+                />
+              </motion.div>
+            ))}
           </div>
 
           {/* Flow arrows between cards (desktop) */}
-          <div className="hidden lg:flex items-center justify-center gap-2 mt-6">
-            {['INGEST', 'PROCESS', 'DETECT', 'DELIVER'].map((label, i) => (
-              <div key={label} className="flex items-center gap-2">
-                <span className="text-[9px] font-semibold uppercase tracking-wide text-base-content/15">
-                  {label}
+          <div className="hidden lg:flex items-center justify-center gap-2 mt-8">
+            {PIPELINE_STEPS.map((step, i) => (
+              <div key={step.label} className="flex items-center gap-2">
+                <span className="text-[9px] font-semibold uppercase tracking-wide text-base-content/20 font-mono">
+                  {step.label}
                 </span>
-                {i < 3 && <ArrowRight size={12} className="text-primary/30" />}
+                {i < PIPELINE_STEPS.length - 1 && (
+                  <ArrowRight size={12} className="text-primary/30" />
+                )}
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── CDC FLOW (Technical) ─────────────────────────────── */}
-      <section className="relative">
+      {/* ── CDC FLOW ─────────────────────────────────────────── */}
+      <section className="relative overflow-hidden">
         <div className="container">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="mb-10"
+            transition={{ duration: 0.7, ease: EASE }}
+            className="text-center mb-12 sm:mb-16"
           >
-            <h2 className="text-sm font-bold uppercase tracking-wide text-primary mb-2 flex items-center gap-2">
-              <Activity size={16} /> CDC Record Flow
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
+              CDC Record <span className="text-gradient-primary">Flow</span>
             </h2>
-            <p className="text-[10px] text-base-content/30">
+            <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
               How a single data change reaches the right user
             </p>
           </motion.div>
 
           {/* Two-column: flow diagram left, decorative SVG right */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-            {/* Flow diagram — left-aligned */}
+            {/* Flow diagram */}
             <div className="space-y-0">
               {CDC_FLOW.map((step, i) => (
                 <motion.div
                   key={step.label}
+                  style={{ opacity: 0 }}
                   initial={{ opacity: 0, x: -20 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
                   transition={{
                     delay: i * 0.08,
-                    duration: 0.4,
-                    ease: [0.22, 1, 0.36, 1],
+                    duration: 0.5,
+                    ease: EASE,
                   }}
                 >
-                  <div className="flex items-center gap-4 p-4 bg-base-200/40 border border-base-300/40 rounded-xl">
+                  <div className="group flex items-center gap-4 p-4 bg-base-200/40 border border-base-300/25 rounded-xl hover:border-base-300/50 transition-colors">
                     <div
-                      className={`h-8 w-8 rounded-lg bg-base-300/20 border border-base-300/30 flex items-center justify-center ${step.accent} shrink-0`}
+                      className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                      style={{
+                        background: `${step.hex}15`,
+                        boxShadow: `0 0 20px ${step.hex}15, 0 0 0 1px ${step.hex}20`,
+                      }}
                     >
-                      {step.icon}
+                      <step.Icon size={16} className="text-base-content/80" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-base-content">
                         {step.label}
                       </p>
-                      <p className="text-[10px] font-mono text-base-content/25 truncate">
+                      <p className="text-[10px] font-mono text-base-content/30 truncate">
                         {step.detail}
                       </p>
                     </div>
-                    <span className="text-[9px] font-mono text-base-content/15 font-black shrink-0">
+                    <span className="text-[9px] font-mono text-base-content/20 font-black shrink-0">
                       {String(i + 1).padStart(2, '0')}
                     </span>
                   </div>
@@ -456,10 +555,11 @@ function ArchitecturePage() {
 
             {/* Decorative node graph — right side (desktop only) */}
             <motion.div
+              style={{ opacity: 0 }}
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
-              transition={{ duration: 1, delay: 0.3 }}
+              transition={{ duration: 1, delay: 0.3, ease: EASE }}
               className="hidden lg:flex items-center justify-center"
             >
               <svg
@@ -558,7 +658,11 @@ function ArchitecturePage() {
                   opacity="0.25"
                   strokeDasharray="6 6"
                   animate={{ strokeDashoffset: [0, -24] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: 'linear',
+                  }}
                 />
                 <motion.line
                   x1="160"
@@ -579,7 +683,6 @@ function ArchitecturePage() {
                 />
 
                 {/* Nodes */}
-                {/* Source node */}
                 <rect
                   x="134"
                   y="50"
@@ -605,7 +708,6 @@ function ArchitecturePage() {
                   SRC
                 </text>
 
-                {/* CDC node */}
                 <rect
                   x="134"
                   y="150"
@@ -631,7 +733,6 @@ function ArchitecturePage() {
                   CDC
                 </text>
 
-                {/* Left route node */}
                 <rect
                   x="56"
                   y="250"
@@ -657,7 +758,6 @@ function ArchitecturePage() {
                   USR:A
                 </text>
 
-                {/* Right route node */}
                 <rect
                   x="212"
                   y="250"
@@ -683,7 +783,6 @@ function ArchitecturePage() {
                   USR:B
                 </text>
 
-                {/* Delivery node */}
                 <rect
                   x="134"
                   y="330"
@@ -715,7 +814,10 @@ function ArchitecturePage() {
                   cy="176"
                   r="3"
                   fill="currentColor"
-                  animate={{ opacity: [0.2, 0.6, 0.2], scale: [1, 1.67, 1] }}
+                  animate={{
+                    opacity: [0.2, 0.6, 0.2],
+                    scale: [1, 1.67, 1],
+                  }}
                   transition={{
                     duration: 2,
                     repeat: Infinity,
@@ -729,48 +831,95 @@ function ArchitecturePage() {
       </section>
 
       {/* ── ARCHITECTURE PRINCIPLES ──────────────────────────── */}
-      <section className="relative">
-        <div className="container">
+      <section className="relative overflow-hidden">
+        {/* Tinted section background */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-base-200/20 to-transparent pointer-events-none" />
+
+        <div className="container relative z-10">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="mb-10"
+            transition={{ duration: 0.7, ease: EASE }}
+            className="text-center mb-12 sm:mb-16"
           >
-            <h2 className="text-sm font-bold uppercase tracking-wide text-primary mb-2 flex items-center gap-2">
-              <Layers size={16} /> Design Principles
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
+              Design <span className="text-gradient-primary">Principles</span>
             </h2>
-            <p className="text-[10px] text-base-content/30">
+            <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
               The rules that shape every architectural decision
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-4xl mx-auto">
             {PRINCIPLES.map((principle, i) => (
               <motion.div
                 key={principle.title}
-                initial={{ opacity: 0, y: 15 }}
+                style={{ opacity: 0 }}
+                initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{
-                  delay: i * 0.06,
-                  duration: 0.4,
-                  ease: [0.22, 1, 0.36, 1],
+                  delay: i * 0.1,
+                  duration: 0.6,
+                  ease: EASE,
                 }}
-                className="group flex items-start gap-4 p-5 bg-base-200/40 border border-base-300/40 rounded-xl hover:border-primary/15 transition-colors"
+                className="group relative bg-base-200/40 border border-base-300/25 rounded-xl p-6 overflow-hidden hover:border-base-300/50 transition-colors"
               >
-                <div className="h-9 w-9 rounded-lg bg-primary/8 border border-primary/15 flex items-center justify-center text-primary shrink-0 mt-0.5 group-hover:border-primary/30 transition-colors">
-                  {principle.icon}
+                {/* Accent top line */}
+                <div
+                  className="absolute top-0 left-0 right-0 h-px"
+                  style={{
+                    background: `linear-gradient(90deg, transparent, ${principle.hex} 50%, transparent)`,
+                  }}
+                />
+
+                {/* Corner dot grid */}
+                <div
+                  className="absolute top-0 right-0 w-20 h-20 opacity-[0.04] text-base-content"
+                  style={{
+                    backgroundImage:
+                      'radial-gradient(circle, currentColor 1px, transparent 1px)',
+                    backgroundSize: '8px 8px',
+                  }}
+                />
+
+                {/* Ambient glow orb on hover */}
+                <div
+                  className="absolute -top-10 -right-10 w-32 h-32 rounded-full pointer-events-none blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{ background: `${principle.hex}10` }}
+                />
+
+                <div className="relative z-10 flex items-start gap-4">
+                  <div
+                    className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+                    style={{
+                      background: `${principle.hex}15`,
+                      boxShadow: `0 0 20px ${principle.hex}15, 0 0 0 1px ${principle.hex}20`,
+                    }}
+                  >
+                    <principle.Icon
+                      size={20}
+                      className="text-base-content/80"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-base-content mb-1">
+                      {principle.title}
+                    </p>
+                    <p className="text-xs text-base-content/40 leading-relaxed">
+                      {principle.description}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-semibold text-base-content mb-1">
-                    {principle.title}
-                  </p>
-                  <p className="text-xs text-base-content/30 leading-relaxed">
-                    {principle.description}
-                  </p>
-                </div>
+
+                {/* Watermark icon */}
+                <principle.Watermark
+                  size={100}
+                  strokeWidth={0.4}
+                  className="absolute -bottom-3 -right-3 text-base-content/[0.025] pointer-events-none"
+                />
               </motion.div>
             ))}
           </div>
@@ -778,69 +927,113 @@ function ArchitecturePage() {
       </section>
 
       {/* ── TECH STACK ───────────────────────────────────────── */}
-      <section className="relative">
+      <section className="relative overflow-hidden">
         <div className="container pb-8">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="mb-10"
+            transition={{ duration: 0.7, ease: EASE }}
+            className="text-center mb-12 sm:mb-16"
           >
-            <h2 className="text-sm font-bold uppercase tracking-wide text-primary mb-2 flex items-center gap-2">
-              <Code2 size={16} /> Tech Stack
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
+              Tech <span className="text-gradient-primary">Stack</span>
             </h2>
-            <p className="text-[10px] text-base-content/30">
+            <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
               What powers each layer
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {TECH_STACK.map((group, i) => (
               <motion.div
                 key={group.category}
-                initial={{ opacity: 0, y: 15 }}
+                style={{ opacity: 0 }}
+                initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{
-                  delay: i * 0.06,
-                  duration: 0.4,
-                  ease: [0.22, 1, 0.36, 1],
+                  delay: i * 0.08,
+                  duration: 0.6,
+                  ease: EASE,
                 }}
-                className="bg-base-200/40 border border-base-300/40 rounded-xl p-5"
+                className="group relative bg-base-200/40 border border-base-300/25 rounded-xl p-6 overflow-hidden hover:border-base-300/50 transition-colors"
               >
-                <div className="flex items-center gap-2 mb-4">
-                  <Cloud size={14} className="text-primary" />
-                  <h3 className="text-[10px] font-bold uppercase tracking-wide text-primary">
-                    {group.category}
-                  </h3>
-                </div>
-                <div className="space-y-3">
-                  {group.items.map((item) => (
-                    <div key={item.name}>
-                      <p className="text-xs font-bold text-base-content mb-0.5">
-                        {item.name}
-                      </p>
-                      <p className="text-[10px] font-mono text-base-content/25">
-                        {item.detail}
-                      </p>
+                {/* Accent top line */}
+                <div
+                  className="absolute top-0 left-0 right-0 h-px"
+                  style={{
+                    background: `linear-gradient(90deg, transparent, ${group.hex} 50%, transparent)`,
+                  }}
+                />
+
+                {/* Corner dot grid */}
+                <div
+                  className="absolute top-0 right-0 w-20 h-20 opacity-[0.04] text-base-content"
+                  style={{
+                    backgroundImage:
+                      'radial-gradient(circle, currentColor 1px, transparent 1px)',
+                    backgroundSize: '8px 8px',
+                  }}
+                />
+
+                {/* Ambient glow orb on hover */}
+                <div
+                  className="absolute -top-10 -right-10 w-32 h-32 rounded-full pointer-events-none blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{ background: `${group.hex}10` }}
+                />
+
+                <div className="relative z-10">
+                  <div className="flex items-center gap-3 mb-5">
+                    <div
+                      className="w-9 h-9 rounded-lg flex items-center justify-center"
+                      style={{
+                        background: `${group.hex}15`,
+                        boxShadow: `0 0 20px ${group.hex}15, 0 0 0 1px ${group.hex}20`,
+                      }}
+                    >
+                      <group.Icon size={16} className="text-base-content/80" />
                     </div>
-                  ))}
+                    <h3 className="text-xs font-bold uppercase tracking-wide text-base-content/60">
+                      {group.category}
+                    </h3>
+                  </div>
+                  <div className="space-y-3">
+                    {group.items.map((item) => (
+                      <div key={item.name}>
+                        <p className="text-xs font-bold text-base-content mb-0.5">
+                          {item.name}
+                        </p>
+                        <p className="text-[10px] font-mono text-base-content/30">
+                          {item.detail}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+
+                {/* Watermark icon */}
+                <group.Watermark
+                  size={100}
+                  strokeWidth={0.4}
+                  className="absolute -bottom-3 -right-3 text-base-content/[0.025] pointer-events-none"
+                />
               </motion.div>
             ))}
           </div>
 
           {/* Source link */}
           <motion.div
+            style={{ opacity: 0 }}
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.3 }}
-            className="flex items-center justify-center gap-4 mt-10"
+            transition={{ delay: 0.3, duration: 0.6, ease: EASE }}
+            className="flex items-center justify-center gap-4 mt-12"
           >
             <span className="h-px w-8 bg-base-300/30" />
-            <span className="text-[10px] text-base-content/20">
+            <span className="text-xs text-base-content/25">
               Built and deployed on self-hosted infrastructure
             </span>
             <span className="h-px w-8 bg-base-300/30" />

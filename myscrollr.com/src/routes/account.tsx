@@ -1,6 +1,7 @@
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useScrollrAuth } from '@/hooks/useScrollrAuth'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { ComponentType } from 'react'
 import {
   ArrowRight,
   BarChart3,
@@ -9,7 +10,6 @@ import {
   Lock,
   Radio,
   Settings,
-  ShieldCheck,
   TrendingUp,
   Wifi,
 } from 'lucide-react'
@@ -25,6 +25,75 @@ import { usePageMeta } from '@/lib/usePageMeta'
 export const Route = createFileRoute('/account')({
   component: AccountHub,
 })
+
+// ── Signature easing (matches homepage) ────────────────────────
+const EASE = [0.22, 1, 0.36, 1] as const
+
+// ── Hex colors ─────────────────────────────────────────────────
+const HEX = {
+  primary: '#34d399',
+  secondary: '#ff4757',
+  info: '#00b8db',
+  accent: '#a855f7',
+} as const
+
+// ── Hub card definitions ───────────────────────────────────────
+interface HubCardDef {
+  title: string
+  desc: string
+  to?: string
+  params?: Record<string, string>
+  search?: Record<string, unknown>
+  href?: string
+  Icon: ComponentType<{
+    size?: number
+    strokeWidth?: number
+    className?: string
+  }>
+  hex: string
+  WatermarkIcon: ComponentType<{
+    size?: number
+    strokeWidth?: number
+    className?: string
+  }>
+}
+
+const HUB_CARDS: HubCardDef[] = [
+  {
+    title: 'Data Terminal',
+    desc: 'Market overview & live scores',
+    to: '/dashboard',
+    Icon: BarChart3,
+    hex: HEX.primary,
+    WatermarkIcon: BarChart3,
+  },
+  {
+    title: 'Public Profile',
+    desc: 'View your public presence',
+    to: '/u/$username',
+    params: { username: 'me' },
+    Icon: Globe,
+    hex: HEX.info,
+    WatermarkIcon: Globe,
+  },
+  {
+    title: 'Security Node',
+    desc: 'Manage password, MFA & linked accounts',
+    href: `https://auth.myscrollr.relentnet.dev/account?${new URLSearchParams({ client_id: 'ogbulfshvf934eeli4t9u' })}`,
+    Icon: Lock,
+    hex: HEX.secondary,
+    WatermarkIcon: Lock,
+  },
+  {
+    title: 'Uplink',
+    desc: 'Manage your subscription tier',
+    to: '/uplink',
+    search: { session_id: undefined },
+    Icon: Crown,
+    hex: HEX.accent,
+    WatermarkIcon: Crown,
+  },
+]
 
 function AccountHub() {
   usePageMeta({
@@ -96,25 +165,18 @@ function AccountHub() {
       initial="hidden"
       animate="visible"
     >
-      {/* Personalized Hero */}
-      <section className="relative pt-24 pb-16 overflow-hidden border-b border-base-300 bg-base-200/30">
+      {/* ── Personalized Hero ── */}
+      <section className="relative pt-24 pb-20 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-base-200/20 to-transparent pointer-events-none" />
         <div className="container relative z-10">
-          <motion.div className="max-w-4xl" variants={sectionVariants}>
-            <div className="flex items-center gap-3 mb-6">
-              <span className="px-3 py-1 bg-primary/8 text-primary text-[10px] font-semibold rounded-lg border border-primary/15 uppercase tracking-wide flex items-center gap-2">
-                <ShieldCheck size={14} /> Session Active
-              </span>
-            </div>
-
-            <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-8 leading-none">
-              Welcome back,
-              <br />
-              <span className="text-primary">
+          <motion.div className="text-center" variants={sectionVariants}>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
+              Welcome back,{' '}
+              <span className="text-gradient-primary">
                 {userClaims?.name || userClaims?.username || 'User'}
               </span>
             </h1>
-
-            <p className="text-sm text-base-content/40 leading-relaxed mb-10 max-w-2xl">
+            <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
               Your personal data streams are ready for orchestration. Sync your
               leagues, track your assets, and stay in the flow.
             </p>
@@ -122,176 +184,323 @@ function AccountHub() {
         </div>
       </section>
 
-      {/* Hub Grid */}
-      <section className="container py-16">
-        <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
-          variants={sectionVariants}
-        >
-          {/* Main Terminal */}
-          <HubCard
-            title="Data Terminal"
-            desc="Market overview & live scores"
-            to="/dashboard"
-            icon={<BarChart3 className="size-6" />}
-            accent="primary"
-          />
-
-          {/* Public Profile */}
-          <HubCard
-            title="Public Profile"
-            desc="View your public presence"
-            to="/u/$username"
-            params={{ username: 'me' }}
-            icon={<Globe className="size-6" />}
-            accent="info"
-          />
-
-          {/* Account Settings — opens Logto Account Center */}
-          <HubCard
-            title="Security Node"
-            desc="Manage password, MFA & linked accounts"
-            href={`https://auth.myscrollr.relentnet.dev/account?${new URLSearchParams({ client_id: 'ogbulfshvf934eeli4t9u' })}`}
-            icon={<Lock className="size-6" />}
-            accent="secondary"
-          />
-
-          {/* Uplink Subscription */}
-          <HubCard
-            title="Uplink"
-            desc="Manage your subscription tier"
-            to="/uplink"
-            search={{ session_id: undefined }}
-            icon={<Crown className="size-6" />}
-            accent="primary"
-          />
-        </motion.div>
-
-        {/* Detailed Stats / Status */}
-        <motion.div
-          className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-8"
-          variants={sectionVariants}
-        >
-          <Link
-            to="/status"
-            className="bg-base-200/50 border border-base-300/50 rounded-xl p-8 hover:border-primary/30 transition-colors block group"
+      {/* ── Hub Grid ── */}
+      <section className="relative overflow-hidden">
+        <div className="container py-16 lg:py-24">
+          <motion.div
+            className="text-center mb-12 sm:mb-16"
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.7, ease: EASE }}
           >
-            <h3 className="text-sm font-semibold text-primary mb-4 flex items-center gap-2">
-              <Settings size={16} /> System Status
-            </h3>
-            <p className="text-sm text-base-content/50 mb-6">
-              Monitor infrastructure health, ingestion workers, and live
-              connection status.
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
+              Control <span className="text-gradient-primary">Center</span>
+            </h2>
+            <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
+              Navigate your account, streams, and subscription
             </p>
-            <div className="flex items-center gap-2 text-xs font-semibold text-primary/60 group-hover:text-primary transition-colors">
-              View Status Dashboard
-              <ArrowRight size={14} />
-            </div>
-          </Link>
+          </motion.div>
 
-          <div className="bg-base-200/50 border border-base-300/50 rounded-xl p-8 relative overflow-hidden group">
-            <div className="relative z-10">
-              <h3 className="text-sm font-semibold text-secondary mb-6 flex items-center gap-2">
-                <TrendingUp size={16} /> Quick Stats
-              </h3>
-              <div className="grid grid-cols-2 gap-4 text-center">
-                <div className="p-4 bg-base-300/50 rounded-lg">
-                  <div className="text-2xl font-black text-base-content tabular-nums">
-                    {streamCount ?? '—'}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {HUB_CARDS.map((card, i) => (
+              <HubCard key={card.title} card={card} index={i} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Stats & Status ── */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-base-200/20 to-transparent pointer-events-none" />
+        <div className="container py-16 lg:py-24">
+          <motion.div
+            className="text-center mb-12 sm:mb-16"
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.7, ease: EASE }}
+          >
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
+              Your <span className="text-gradient-primary">Dashboard</span>
+            </h2>
+            <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
+              Subscription, streams, and system health at a glance
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* System Status Link Card */}
+            <motion.div
+              style={{ opacity: 0 }}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-80px' }}
+              transition={{ duration: 0.6, ease: EASE }}
+            >
+              <Link
+                to="/status"
+                className="relative bg-base-200/40 border border-base-300/25 rounded-xl p-8 overflow-hidden group block h-full hover:border-base-300/50 transition-colors"
+              >
+                {/* Accent top line */}
+                <div
+                  className="absolute top-0 left-0 right-0 h-px"
+                  style={{
+                    background: `linear-gradient(90deg, transparent, ${HEX.primary} 50%, transparent)`,
+                  }}
+                />
+                {/* Corner dot grid */}
+                <div
+                  className="absolute top-0 right-0 w-20 h-20 opacity-[0.04] text-base-content"
+                  style={{
+                    backgroundImage:
+                      'radial-gradient(circle, currentColor 1px, transparent 1px)',
+                    backgroundSize: '8px 8px',
+                  }}
+                />
+                {/* Hover glow orb */}
+                <div
+                  className="absolute -top-10 -right-10 w-32 h-32 rounded-full pointer-events-none blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{ background: `${HEX.primary}10` }}
+                />
+
+                <div className="flex items-center gap-3 mb-6">
+                  <div
+                    className="w-11 h-11 rounded-xl flex items-center justify-center"
+                    style={{
+                      background: `${HEX.primary}15`,
+                      boxShadow: `0 0 20px ${HEX.primary}15, 0 0 0 1px ${HEX.primary}20`,
+                    }}
+                  >
+                    <Settings size={20} className="text-base-content/80" />
                   </div>
-                  <div className="text-[10px] opacity-40 flex items-center justify-center gap-1">
-                    <Radio size={10} />
-                    Streams
-                  </div>
+                  <h3 className="text-lg font-black tracking-tight text-base-content">
+                    System Status
+                  </h3>
                 </div>
-                <div className="p-4 bg-base-300/50 rounded-lg">
-                  <div className="text-2xl font-black text-base-content tabular-nums">
-                    {enabledCount ?? '—'}
+                <p className="text-sm text-base-content/45 mb-6 leading-relaxed">
+                  Monitor infrastructure health, ingestion workers, and live
+                  connection status.
+                </p>
+                <div className="flex items-center gap-2 text-xs font-semibold text-base-content/40 group-hover:text-base-content/70 transition-colors">
+                  View Status Dashboard
+                  <ArrowRight size={14} />
+                </div>
+
+                {/* Watermark */}
+                <Settings
+                  size={130}
+                  strokeWidth={0.4}
+                  className="absolute -bottom-4 -right-4 text-base-content/[0.025] pointer-events-none"
+                />
+              </Link>
+            </motion.div>
+
+            {/* Quick Stats Card */}
+            <motion.div
+              className="relative bg-base-200/40 border border-base-300/25 rounded-xl p-8 overflow-hidden group"
+              style={{ opacity: 0 }}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-80px' }}
+              transition={{ duration: 0.6, ease: EASE, delay: 0.1 }}
+            >
+              {/* Accent top line */}
+              <div
+                className="absolute top-0 left-0 right-0 h-px"
+                style={{
+                  background: `linear-gradient(90deg, transparent, ${HEX.secondary} 50%, transparent)`,
+                }}
+              />
+              {/* Corner dot grid */}
+              <div
+                className="absolute top-0 right-0 w-20 h-20 opacity-[0.04] text-base-content"
+                style={{
+                  backgroundImage:
+                    'radial-gradient(circle, currentColor 1px, transparent 1px)',
+                  backgroundSize: '8px 8px',
+                }}
+              />
+              {/* Hover glow orb */}
+              <div
+                className="absolute -top-10 -right-10 w-32 h-32 rounded-full pointer-events-none blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                style={{ background: `${HEX.secondary}10` }}
+              />
+
+              <div className="relative z-10">
+                <div className="flex items-center gap-3 mb-6">
+                  <div
+                    className="w-11 h-11 rounded-xl flex items-center justify-center"
+                    style={{
+                      background: `${HEX.secondary}15`,
+                      boxShadow: `0 0 20px ${HEX.secondary}15, 0 0 0 1px ${HEX.secondary}20`,
+                    }}
+                  >
+                    <TrendingUp size={20} className="text-base-content/80" />
                   </div>
-                  <div className="text-[10px] opacity-40 flex items-center justify-center gap-1">
-                    <Wifi size={10} />
-                    Active
+                  <h3 className="text-lg font-black tracking-tight text-base-content">
+                    Quick Stats
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-center">
+                  <div className="p-4 bg-base-200/40 border border-base-300/25 rounded-xl">
+                    <div className="text-2xl font-black text-base-content font-mono tabular-nums">
+                      {streamCount ?? '—'}
+                    </div>
+                    <div className="text-[10px] text-base-content/30 flex items-center justify-center gap-1 mt-1">
+                      <Radio size={10} />
+                      Streams
+                    </div>
+                  </div>
+                  <div className="p-4 bg-base-200/40 border border-base-300/25 rounded-xl">
+                    <div className="text-2xl font-black text-base-content font-mono tabular-nums">
+                      {enabledCount ?? '—'}
+                    </div>
+                    <div className="text-[10px] text-base-content/30 flex items-center justify-center gap-1 mt-1">
+                      <Wifi size={10} />
+                      Active
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-              <BarChart3 size={120} />
-            </div>
-          </div>
 
-          {/* Subscription Status */}
-          <div className="bg-base-200/50 border border-base-300/50 rounded-xl p-8 relative overflow-hidden">
-            <h3 className="text-sm font-semibold text-primary mb-6 flex items-center gap-2">
-              <Crown size={16} /> Subscription
-            </h3>
-            <SubscriptionStatus getToken={getToken} />
-            <Link
-              to="/uplink"
-              search={{ session_id: undefined }}
-              className="mt-4 flex items-center gap-2 text-xs font-semibold text-primary/60 hover:text-primary transition-colors"
+              {/* Watermark */}
+              <BarChart3
+                size={130}
+                strokeWidth={0.4}
+                className="absolute -bottom-4 -right-4 text-base-content/[0.025] pointer-events-none"
+              />
+            </motion.div>
+
+            {/* Subscription Status Card */}
+            <motion.div
+              className="relative bg-base-200/40 border border-base-300/25 rounded-xl p-8 overflow-hidden group lg:col-span-2"
+              style={{ opacity: 0 }}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-80px' }}
+              transition={{ duration: 0.6, ease: EASE, delay: 0.2 }}
             >
-              View Plans <ArrowRight size={14} />
-            </Link>
+              {/* Accent top line */}
+              <div
+                className="absolute top-0 left-0 right-0 h-px"
+                style={{
+                  background: `linear-gradient(90deg, transparent, ${HEX.accent} 50%, transparent)`,
+                }}
+              />
+              {/* Corner dot grid */}
+              <div
+                className="absolute top-0 right-0 w-20 h-20 opacity-[0.04] text-base-content"
+                style={{
+                  backgroundImage:
+                    'radial-gradient(circle, currentColor 1px, transparent 1px)',
+                  backgroundSize: '8px 8px',
+                }}
+              />
+              {/* Hover glow orb */}
+              <div
+                className="absolute -top-10 -right-10 w-32 h-32 rounded-full pointer-events-none blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                style={{ background: `${HEX.accent}10` }}
+              />
+
+              <div className="flex items-center gap-3 mb-6">
+                <div
+                  className="w-11 h-11 rounded-xl flex items-center justify-center"
+                  style={{
+                    background: `${HEX.accent}15`,
+                    boxShadow: `0 0 20px ${HEX.accent}15, 0 0 0 1px ${HEX.accent}20`,
+                  }}
+                >
+                  <Crown size={20} className="text-base-content/80" />
+                </div>
+                <h3 className="text-lg font-black tracking-tight text-base-content">
+                  Subscription
+                </h3>
+              </div>
+
+              <SubscriptionStatus getToken={getToken} />
+
+              <Link
+                to="/uplink"
+                search={{ session_id: undefined }}
+                className="mt-6 inline-flex items-center gap-2 text-xs font-semibold text-base-content/40 hover:text-base-content/70 transition-colors"
+              >
+                View Plans <ArrowRight size={14} />
+              </Link>
+
+              {/* Watermark */}
+              <Crown
+                size={130}
+                strokeWidth={0.4}
+                className="absolute -bottom-4 -right-4 text-base-content/[0.025] pointer-events-none"
+              />
+            </motion.div>
           </div>
-        </motion.div>
+        </div>
       </section>
     </motion.main>
   )
 }
 
-function HubCard({
-  title,
-  desc,
-  to,
-  params,
-  search,
-  href,
-  icon,
-  accent,
-  disabled = false,
-}: {
-  title: string
-  desc: string
-  to?: string
-  params?: Record<string, string>
-  search?: Record<string, unknown>
-  href?: string
-  icon: React.ReactNode
-  accent: 'primary' | 'secondary' | 'info'
-  disabled?: boolean
-}) {
-  const accentClasses = {
-    primary: 'text-primary bg-primary/10 border-primary/20',
-    secondary: 'text-secondary bg-secondary/10 border-secondary/20',
-    info: 'text-info bg-info/10 border-info/20',
-  }[accent]
+// ── Hub Card ───────────────────────────────────────────────────
 
-  const content = (
+function HubCard({ card, index }: { card: HubCardDef; index: number }) {
+  const { title, desc, to, params, search, href, Icon, hex, WatermarkIcon } =
+    card
+
+  const inner = (
     <motion.div
-      whileHover={
-        disabled
-          ? undefined
-          : { y: -3, transition: { type: 'tween', duration: 0.2 } }
-      }
-      className={`p-8 rounded-xl border transition-colors h-full flex flex-col justify-between group relative overflow-hidden ${disabled ? 'bg-base-200/50 border-base-300/50 opacity-50 cursor-not-allowed' : 'bg-base-200/50 border border-base-300/50 hover:border-primary/30 cursor-pointer'}`}
+      className="relative bg-base-200/40 border border-base-300/25 rounded-xl p-6 overflow-hidden group h-full flex flex-col justify-between cursor-pointer hover:border-base-300/50 transition-colors"
+      style={{ opacity: 0 }}
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-80px' }}
+      transition={{ duration: 0.6, ease: EASE, delay: index * 0.1 }}
+      whileHover={{ y: -3, transition: { type: 'tween', duration: 0.2 } }}
     >
-      {!disabled && (
-        <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-          <ArrowRight size={20} className="text-primary" />
-        </div>
-      )}
+      {/* Accent top line */}
+      <div
+        className="absolute top-0 left-0 right-0 h-px"
+        style={{
+          background: `linear-gradient(90deg, transparent, ${hex} 50%, transparent)`,
+        }}
+      />
+      {/* Corner dot grid */}
+      <div
+        className="absolute top-0 right-0 w-16 h-16 opacity-[0.04] text-base-content"
+        style={{
+          backgroundImage:
+            'radial-gradient(circle, currentColor 1px, transparent 1px)',
+          backgroundSize: '8px 8px',
+        }}
+      />
+      {/* Hover glow orb */}
+      <div
+        className="absolute -top-8 -right-8 w-24 h-24 rounded-full pointer-events-none blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+        style={{ background: `${hex}10` }}
+      />
 
-      <div className="space-y-6">
+      {/* Arrow indicator */}
+      <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+        <ArrowRight size={16} className="text-base-content/40" />
+      </div>
+
+      <div className="space-y-5">
+        {/* Icon badge */}
         <div
-          className={`h-10 w-10 rounded-xl flex items-center justify-center border ${accentClasses}`}
+          className="w-11 h-11 rounded-xl flex items-center justify-center"
+          style={{
+            background: `${hex}15`,
+            boxShadow: `0 0 20px ${hex}15, 0 0 0 1px ${hex}20`,
+          }}
         >
-          {icon}
+          <Icon size={20} className="text-base-content/80" />
         </div>
         <div>
-          <h3
-            className={`text-lg font-bold tracking-tight ${disabled ? 'text-base-content/40' : 'text-base-content group-hover:text-primary transition-colors'}`}
-          >
+          <h3 className="text-lg font-black tracking-tight text-base-content group-hover:text-base-content/80 transition-colors">
             {title}
           </h3>
           <p className="text-xs text-base-content/40 mt-2 leading-relaxed">
@@ -300,15 +509,14 @@ function HubCard({
         </div>
       </div>
 
-      {disabled && (
-        <div className="mt-6 flex items-center gap-2 text-[10px] font-medium text-base-content/20">
-          <Lock size={10} /> Encrypted
-        </div>
-      )}
+      {/* Watermark */}
+      <WatermarkIcon
+        size={80}
+        strokeWidth={0.4}
+        className="absolute -bottom-2 -right-2 text-base-content/[0.025] pointer-events-none"
+      />
     </motion.div>
   )
-
-  if (disabled) return content
 
   // External link (e.g. Logto Account Center)
   if (href) {
@@ -319,7 +527,7 @@ function HubCard({
         rel="noopener noreferrer"
         className="block h-full"
       >
-        {content}
+        {inner}
       </a>
     )
   }
@@ -331,7 +539,7 @@ function HubCard({
       search={search as any}
       className="block h-full"
     >
-      {content}
+      {inner}
     </Link>
   )
 }
