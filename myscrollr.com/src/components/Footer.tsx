@@ -5,6 +5,11 @@ import ScrollrSVG from '@/components/ScrollrSVG'
 
 declare const __APP_VERSION__: string
 
+const isExternalHref = (href: string) =>
+  href.startsWith('http') ||
+  href.startsWith('mailto:') ||
+  href.startsWith('tel:')
+
 export default function Footer() {
   const year = new Date().getFullYear()
 
@@ -113,7 +118,7 @@ export default function Footer() {
               <ul className="space-y-3">
                 {links.product.map((link) => (
                   <li key={link.label}>
-                    {link.href.startsWith('http') ? (
+                    {isExternalHref(link.href) ? (
                       <motion.a
                         href={link.href}
                         target="_blank"
@@ -152,7 +157,7 @@ export default function Footer() {
               <ul className="space-y-3">
                 {links.resources.map((link) => (
                   <li key={link.label}>
-                    {link.href.startsWith('http') ? (
+                    {isExternalHref(link.href) ? (
                       <motion.a
                         href={link.href}
                         target="_blank"
@@ -191,7 +196,7 @@ export default function Footer() {
               <ul className="space-y-3">
                 {links.company.map((link) => (
                   <li key={link.label}>
-                    {link.href.startsWith('http') ? (
+                    {isExternalHref(link.href) ? (
                       <motion.a
                         href={link.href}
                         target="_blank"
