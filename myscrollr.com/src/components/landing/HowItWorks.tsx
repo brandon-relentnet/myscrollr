@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion, useInView } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import {
   Download,
   Ghost,
@@ -441,7 +441,6 @@ export function HowItWorks() {
   const [cycleKey, setCycleKey] = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const sectionRef = useRef<HTMLElement>(null)
-  const isInView = useInView(sectionRef, { amount: 0.2 })
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) {
@@ -450,8 +449,9 @@ export function HowItWorks() {
     }
   }, [])
 
-  const startTimer = useCallback(() => {
+  const startCycle = useCallback(() => {
     stopTimer()
+    setActiveStep(0)
     setCycleKey((k) => k + 1)
     timerRef.current = setInterval(() => {
       setActiveStep((prev) => (prev + 1) % STEPS.length)
@@ -459,23 +459,46 @@ export function HowItWorks() {
     }, CYCLE_MS)
   }, [stopTimer])
 
-  // Reset to step 0 and restart when section scrolls into view; pause when out
+  // IntersectionObserver: reset & play when visible, pause when not
   useEffect(() => {
-    if (isInView) {
-      setActiveStep(0)
-      startTimer()
-    } else {
-      stopTimer()
+    const el = sectionRef.current
+    if (!el) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          // Reset to first step and start cycling
+          setActiveStep(0)
+          setCycleKey((k) => k + 1)
+          if (timerRef.current) clearInterval(timerRef.current)
+          timerRef.current = setInterval(() => {
+            setActiveStep((prev) => (prev + 1) % STEPS.length)
+            setCycleKey((k) => k + 1)
+          }, CYCLE_MS)
+        } else {
+          // Stop cycling when out of view
+          if (timerRef.current) {
+            clearInterval(timerRef.current)
+            timerRef.current = null
+          }
+        }
+      },
+      { threshold: 0.2 },
+    )
+
+    observer.observe(el)
+    return () => {
+      observer.disconnect()
+      if (timerRef.current) clearInterval(timerRef.current)
     }
-    return stopTimer
-  }, [isInView, startTimer, stopTimer])
+  }, [])
 
   const handleSelect = useCallback(
     (index: number) => {
       setActiveStep(index)
-      startTimer()
+      startCycle()
     },
-    [startTimer],
+    [startCycle],
   )
 
   const ActiveVisual = VISUALS[activeStep]
