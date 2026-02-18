@@ -27,7 +27,7 @@ export default function HeroTextSwap({ activeIndex }: HeroTextSwapProps) {
               transition={{
                 type: 'spring',
                 stiffness: 500,
-                damping: 35,
+                damping: 50,
               }}
               className="inline-block text-rainbow"
             >
