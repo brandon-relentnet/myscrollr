@@ -9,14 +9,15 @@ Monorepo with independently deployable components. Each top-level folder is its 
 - `api/` — Core gateway API (Go 1.21, Fiber v2)
 - `myscrollr.com/` — Frontend (React 19, Vite 7, TanStack Router, Tailwind v4)
 - `extension/` — Browser extension (WXT v0.20, React 19, Tailwind v4)
-- `integrations/{finance,sports,rss,fantasy}/api/` — Integration Go APIs (each independent go module)
-- `integrations/{finance,sports,rss,fantasy}/service/` — Rust ingestion services (each independent cargo crate)
-- `integrations/*/web/` — Frontend dashboard tab components
-- `integrations/*/extension/` — Extension feed tab components
+- `channels/{finance,sports,rss,fantasy}/api/` — Channel Go APIs (each independent go module)
+- `channels/{finance,sports,rss,fantasy}/service/` — Rust ingestion services (each independent cargo crate)
+- `channels/*/web/` — Frontend dashboard tab components
+- `channels/*/extension/` — Extension feed tab components
 
 ## Build & Run Commands
 
 ### Frontend (`myscrollr.com/`)
+
 ```sh
 npm install
 npm run dev          # Dev server on port 3000
@@ -27,6 +28,7 @@ npm run check        # prettier --write . && eslint --fix
 ```
 
 ### Extension (`extension/`)
+
 ```sh
 npm install
 npm run dev          # Dev mode (Chrome)
@@ -38,23 +40,28 @@ npm run zip          # Package for store submission
 ```
 
 ### Core Go API (`api/`)
+
 ```sh
 go build -o scrollr_api && ./scrollr_api    # Port 8080
 ```
 
-### Integration Go APIs (`integrations/{name}/api/`)
+### Channel Go APIs (`channels/{name}/api/`)
+
 ```sh
 go build -o {name}_api && ./{name}_api      # Ports: finance=8081, sports=8082, rss=8083, fantasy=8084
 ```
 
-### Rust Services (`integrations/{name}/service/`)
+### Rust Services (`channels/{name}/service/`)
+
 ```sh
 cargo build --release
 cargo run              # Ports: finance=3001, sports=3002, fantasy=3003, rss=3004
 ```
 
 ### Tests
+
 No test infrastructure exists (no test files, no test configs, no test dependencies). If adding tests:
+
 - Frontend/Extension: use Vitest (`npx vitest run path/to/file.test.ts` for single file)
 - Go: standard `go test ./...` (single: `go test -run TestName ./path/to/pkg`)
 - Rust: `cargo test` (single: `cargo test test_name`)
@@ -62,18 +69,19 @@ No test infrastructure exists (no test files, no test configs, no test dependenc
 ## Code Style — TypeScript (Frontend: `myscrollr.com/`)
 
 **Formatting** (Prettier): No semicolons, single quotes, trailing commas.
+
 ```ts
-import { useState } from 'react'
-import type { StreamConfig } from '@/api/client'
+import { useState } from "react";
+import type { ChannelConfig } from "@/api/client";
 ```
 
 **Linting**: `@tanstack/eslint-config` (flat config). Run `npm run check` to auto-fix.
 
 **TypeScript**: Strict mode enabled. `verbatimModuleSyntax: true` — always use `import type` for type-only imports. `noUnusedLocals` and `noUnusedParameters` enabled.
 
-**Path aliases**: `@/` resolves to `./src/`, `@scrollr/` resolves to `../integrations/`.
+**Path aliases**: `@/` resolves to `./src/`, `@scrollr/` resolves to `../channels/`.
 
-**Imports**: Named exports preferred everywhere. No barrel exports (`index.ts` re-exports). Use `import type { ... }` for types. Integration discovery uses `import.meta.glob` — don't manually register integrations.
+**Imports**: Named exports preferred everywhere. No barrel exports (`index.ts` re-exports). Use `import type { ... }` for types. Channel discovery uses `import.meta.glob` — don't manually register channels.
 
 **Components**: Function components with named exports. Routes use TanStack Router file-based convention (`export const Route = createFileRoute(...)`). Hooks are named exports (`export function useRealtime(...)`).
 
@@ -81,7 +89,7 @@ import type { StreamConfig } from '@/api/client'
 
 **Formatting**: Uses semicolons (no Prettier config — default TS style). Single quotes.
 
-**Path aliases**: `~/` resolves to srcDir (WXT default), `@scrollr/` resolves to `../integrations/`.
+**Path aliases**: `~/` resolves to srcDir (WXT default), `@scrollr/` resolves to `../channels/`.
 
 **WXT conventions**: Entrypoints in `entrypoints/` with `defineBackground()`, `defineContentScript()`, etc. Content script UI uses Shadow Root (`createShadowRootUi`). PostCSS converts `rem` to `px` via `postcss-rem-to-responsive-pixel`.
 
@@ -91,20 +99,21 @@ import type { StreamConfig } from '@/api/client'
 
 **Formatting**: Standard `gofmt`. No custom linter config.
 
-**Module isolation**: Each Go API is a fully independent module. No shared Go packages between integrations or between integrations and core. Code duplication is intentional.
+**Module isolation**: Each Go API is a fully independent module. No shared Go packages between channels or between channels and core. Code duplication is intentional.
 
 **Naming**:
+
 - PascalCase exports: `Server`, `App`, `CDCRecord`, `ErrorResponse`
 - camelCase unexported: `registrationPayload`, `globalDiscovery`
 - Short receiver names: `s *Server`, `a *App`, `d *Discovery`
-- JSON tags use snake_case: `` json:"stream_type" ``
+- JSON tags use snake_case: `json:"channel_type"`
 - Constants grouped with section comment banners (`// ===...===`)
 
 **Error handling**: Standard Go `if err != nil` returns. `log.Printf` for non-fatal, `log.Fatalf` for startup failures. Wrap errors with `fmt.Errorf("context: %w", err)`. HTTP errors return `ErrorResponse` struct via Fiber.
 
 **Logging**: Bracketed category prefixes: `log.Printf("[Auth] message: %v", err)`.
 
-**Patterns**: `App` struct holds shared deps (`db *pgxpool.Pool`, `rdb *redis.Client`). Graceful shutdown via `os.Signal` channels. Integration self-registration in Redis with 30s TTL, 20s heartbeat.
+**Patterns**: `App` struct holds shared deps (`db *pgxpool.Pool`, `rdb *redis.Client`). Graceful shutdown via `os.Signal` channels. Channel self-registration in Redis with 30s TTL, 20s heartbeat.
 
 ## Code Style — Rust
 
@@ -120,11 +129,11 @@ import type { StreamConfig } from '@/api/client'
 
 ## Architecture Rules
 
-1. **Core API has zero integration-specific code.** It discovers integrations via Redis and proxies routes dynamically.
-2. **Integration isolation is absolute.** Each integration owns its Go API, Rust service, frontend/extension components, configs, Docker Compose, and manifest.json.
-3. **HTTP-only contract between core and integrations.** No shared Go interfaces or types. Core calls `POST /internal/cdc`, integration returns `{ "users": [...] }`.
-4. **Route proxying**: Core proxies `/{name}/*` to integration APIs with `X-User-Sub` header. Integrations never validate JWTs.
-5. **Convention-based UI discovery**: Frontend and extension use `import.meta.glob` to discover integration components at build time.
+1. **Core API has zero channel-specific code.** It discovers channels via Redis and proxies routes dynamically.
+2. **Channel isolation is absolute.** Each channel owns its Go API, Rust service, frontend/extension components, configs, Docker Compose, and manifest.json.
+3. **HTTP-only contract between core and channels.** No shared Go interfaces or types. Core calls `POST /internal/cdc`, channel returns `{ "users": [...] }`.
+4. **Route proxying**: Core proxies `/{name}/*` to channel APIs with `X-User-Sub` header. Channels never validate JWTs.
+5. **Convention-based UI discovery**: Frontend and extension use `import.meta.glob` to discover channel components at build time.
 6. **Database tables are created programmatically** via `CREATE TABLE IF NOT EXISTS` on service startup. No migration framework.
 
 ## Environment
@@ -136,4 +145,4 @@ Copy `.env.example` to `.env` for local dev. Frontend env in `myscrollr.com/.env
 - Go APIs: multi-stage `golang:1.21-alpine` builder, `alpine:latest` runtime
 - Rust services: `cargo-chef` pattern for dependency caching, `debian:trixie-slim` runtime
 - Frontend: `node:22-alpine` builder, `nginx:alpine` runtime with SPA fallback
-- Each integration has a `docker-compose.yml` bundling its Go API + Rust service
+- Each channel has a `docker-compose.yml` bundling its Go API + Rust service
