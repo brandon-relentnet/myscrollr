@@ -17,7 +17,7 @@ export default function HeroTextSwap({ activeIndex }: HeroTextSwapProps) {
         className="text-4xl sm:text-5xl lg:text-7xl font-black tracking-tight leading-none"
       >
         <span className="text-base-content">Your </span>
-        <span className="inline-block relative pb-2">
+        <span className="inline-block relative">
           <AnimatePresence mode="popLayout">
             <motion.span
               key={WORDS[activeIndex]}
@@ -29,7 +29,7 @@ export default function HeroTextSwap({ activeIndex }: HeroTextSwapProps) {
                 stiffness: 500,
                 damping: 50,
               }}
-              className="inline-block text-rainbow"
+              className="inline-block text-rainbow pb-[0.15em]"
             >
               {WORDS[activeIndex]}
             </motion.span>
@@ -42,7 +42,7 @@ export default function HeroTextSwap({ activeIndex }: HeroTextSwapProps) {
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6, delay: 0.4, ease: 'easeOut' }}
-        className="text-4xl sm:text-5xl lg:text-7xl font-black tracking-tight leading-none mt-2"
+        className="text-4xl sm:text-5xl lg:text-7xl font-black tracking-tight leading-none -mt-1"
       >
         <span className="italic text-base-content/60">Uninterrupted.</span>
       </motion.div>
