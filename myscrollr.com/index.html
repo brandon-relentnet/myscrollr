@@ -10,6 +10,31 @@
     <link rel="manifest" href="/manifest.json" />
     <title>Scrollr - Customizable Signal Ticker</title>
 
+    <!-- Preload critical fonts (display font first — used for all headings + body) -->
+    <link
+      rel="preload"
+      href="/fonts/plus-jakarta-sans-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
+    <!-- Fallback OG tags for social crawlers (overridden by client-side usePageMeta) -->
+    <meta property="og:title" content="Scrollr - Customizable Signal Ticker" />
+    <meta
+      property="og:description"
+      content="Finance, sports, news & fantasy scores — one live ticker across every tab."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://myscrollr.com" />
+    <meta property="og:image" content="https://myscrollr.com/favicon.svg" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Scrollr - Customizable Signal Ticker" />
+    <meta
+      name="twitter:description"
+      content="Finance, sports, news & fantasy scores — one live ticker across every tab."
+    />
+
     <!-- Blocking theme init — runs before first paint to prevent FOUC -->
     <script>
       ;(function () {
@@ -24,10 +49,73 @@
         if (meta) meta.setAttribute('content', dark ? '#141420' : '#ffffff')
       })()
     </script>
+
+    <!-- Critical CSS for loading skeleton (inlined to avoid FOUC) -->
+    <style>
+      #app-skeleton {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100dvh;
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        gap: 1rem;
+      }
+      .dark #app-skeleton {
+        background: #141420;
+        color: #e2e2ec;
+      }
+      #app-skeleton {
+        background: #ffffff;
+        color: #1a1b2e;
+      }
+      .sk-logo {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        animation: sk-pulse 1.5s ease-in-out infinite;
+      }
+      .dark .sk-logo {
+        background: #282838;
+      }
+      .sk-logo {
+        background: #eef0f6;
+      }
+      .sk-bar {
+        height: 12px;
+        border-radius: 6px;
+        animation: sk-pulse 1.5s ease-in-out infinite;
+      }
+      .dark .sk-bar {
+        background: #282838;
+      }
+      .sk-bar {
+        background: #eef0f6;
+      }
+      @keyframes sk-pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+        }
+      }
+    </style>
   </head>
 
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <!-- Loading skeleton — replaced when React mounts -->
+      <div id="app-skeleton" aria-label="Loading Scrollr">
+        <div class="sk-logo"></div>
+        <div class="sk-bar" style="width: 180px"></div>
+        <div class="sk-bar" style="width: 120px; animation-delay: 0.15s"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
