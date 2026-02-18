@@ -4,10 +4,9 @@ import { HeroSection } from '@/components/landing/HeroSection'
 import { HowItWorks } from '@/components/landing/HowItWorks'
 import { StreamsShowcase } from '@/components/landing/StreamsShowcase'
 import { BenefitsSection } from '@/components/landing/BenefitsSection'
-import { MidPageCTA } from '@/components/landing/MidPageCTA'
-import { BuiltInTheOpen } from '@/components/landing/BuiltInTheOpen'
 import { TrustSection } from '@/components/landing/TrustSection'
 import { FAQSection } from '@/components/landing/FAQSection'
+import { CommunitySection } from '@/components/landing/CommunitySection'
 import { CallToAction } from '@/components/landing/CallToAction'
 
 export const Route = createFileRoute('/')({
@@ -16,28 +15,26 @@ export const Route = createFileRoute('/')({
 
 function HomePage() {
   usePageMeta({
-    title: 'Scrollr — Never Alt-Tab Again',
+    title: 'Scrollr — Live Data, Every Tab',
     description:
-      'Pin live sports scores, crypto prices, and custom feeds over any tab. The ticker that follows you everywhere.',
+      'Pin live sports scores, crypto prices, news, and fantasy updates to every browser tab. Open source, private by design, and free.',
   })
 
   return (
     <>
       <HeroSection />
 
-      <BenefitsSection />
-
       <HowItWorks />
 
       <StreamsShowcase />
 
-      <MidPageCTA />
-
-      <BuiltInTheOpen />
+      <BenefitsSection />
 
       <TrustSection />
 
       <FAQSection />
+
+      <CommunitySection />
 
       <CallToAction />
     </>

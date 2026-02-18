@@ -322,7 +322,7 @@ export function HeroBrowserStack({
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.8, ease: 'easeOut' }}
-      className="relative w-[360px] sm:w-[480px] lg:w-[440px] xl:w-[580px] 2xl:w-[720px] aspect-[4/3]"
+      className="relative w-[360px] sm:w-[480px] lg:w-[500px] xl:w-[640px] 2xl:w-[780px] aspect-[4/3]"
     >
       {/* Ambient glow behind the stack */}
       <div className="absolute -inset-8 bg-primary/[0.04] rounded-3xl blur-3xl pointer-events-none" />

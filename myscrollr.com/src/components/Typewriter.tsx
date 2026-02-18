@@ -14,7 +14,7 @@ export default function HeroTextSwap({ activeIndex }: HeroTextSwapProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4 }}
-        className="text-4xl sm:text-5xl lg:text-7xl font-black tracking-tight leading-none"
+        className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-none"
       >
         <span className="text-base-content">Your </span>
         <span className="inline-block relative">
@@ -42,7 +42,7 @@ export default function HeroTextSwap({ activeIndex }: HeroTextSwapProps) {
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6, delay: 0.4, ease: 'easeOut' }}
-        className="text-4xl sm:text-5xl lg:text-7xl font-black tracking-tight leading-none -mt-1"
+        className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-none -mt-1"
       >
         <span className="text-base-content/50">Always Visible.</span>
       </motion.div>

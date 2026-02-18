@@ -54,9 +54,12 @@
   --shadow-glow-lg: 0 0 50px rgba(52, 211, 153, 0.08);
   --shadow-glow-xl: 0 0 80px rgba(52, 211, 153, 0.1);
 
-  --shadow-soft-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.06);
-  --shadow-soft-md: 0 2px 6px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.08);
-  --shadow-soft-lg: 0 4px 12px rgba(0, 0, 0, 0.04), 0 8px 32px rgba(0, 0, 0, 0.1);
+  --shadow-soft-sm:
+    0 1px 3px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-soft-md:
+    0 2px 6px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-soft-lg:
+    0 4px 12px rgba(0, 0, 0, 0.04), 0 8px 32px rgba(0, 0, 0, 0.1);
 
   --shadow-inner-glow: inset 0 0 20px rgba(52, 211, 153, 0.01);
 
@@ -192,35 +195,39 @@ body::before {
 
 /* ==========================================================================
    TYPOGRAPHY — Clean Scale
+   Wrapped in @layer base so Tailwind utilities (margin, font-size, etc.)
+   can override these defaults.
    ========================================================================== */
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-}
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
 
-h1 {
-  font-size: clamp(2.5rem, 5vw, 4.5rem);
-}
-h2 {
-  font-size: clamp(2rem, 4vw, 3rem);
-}
-h3 {
-  font-size: clamp(1.5rem, 3vw, 2rem);
-}
-h4 {
-  font-size: clamp(1.25rem, 2vw, 1.5rem);
-}
+  h1 {
+    font-size: clamp(2.5rem, 5vw, 4.5rem);
+  }
+  h2 {
+    font-size: clamp(2rem, 4vw, 3rem);
+  }
+  h3 {
+    font-size: clamp(1.5rem, 3vw, 2rem);
+  }
+  h4 {
+    font-size: clamp(1.25rem, 2vw, 1.5rem);
+  }
 
-p {
-  margin: 0;
-  line-height: 1.7;
+  p {
+    margin: 0;
+    line-height: 1.7;
+  }
 }
 
 /* Monospace Numbers */
@@ -251,6 +258,8 @@ pre,
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  padding-bottom: 0.15em;
+  margin-bottom: -0.15em;
 }
 
 .text-gradient-warm {
@@ -409,12 +418,14 @@ pre,
     @apply bg-primary text-primary-content! font-bold px-6 py-3 rounded-xl duration-200;
     transition-property: background-color, box-shadow, transform;
     font-family: var(--font-display);
-    box-shadow: 0 0 20px color-mix(in srgb, var(--color-primary) 20%, transparent);
+    box-shadow: 0 0 20px
+      color-mix(in srgb, var(--color-primary) 20%, transparent);
   }
 
   .btn-pulse:hover:not(:disabled) {
     @apply bg-primary/90 text-primary-content!;
-    box-shadow: 0 0 40px color-mix(in srgb, var(--color-primary) 35%, transparent);
+    box-shadow: 0 0 40px
+      color-mix(in srgb, var(--color-primary) 35%, transparent);
     transform: translateY(-2px);
   }
 
@@ -535,7 +546,8 @@ pre,
 
   .card-interactive {
     @apply bg-base-200/50 backdrop-blur-xl border border-base-300/60 rounded-xl p-6 duration-300;
-    transition-property: color, background-color, border-color, box-shadow, transform;
+    transition-property:
+      color, background-color, border-color, box-shadow, transform;
     transition-timing-function: var(--default-transition-timing-function);
   }
 

@@ -23,34 +23,33 @@ const COMING_SOON_ICONS = [
 export function CommunitySection() {
   return (
     <section className="container py-24 lg:py-32 relative">
-      <div className="relative">
+      <div className="relative flex flex-col gap-14 lg:gap-18">
         {/* Section Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="text-center mb-14 flex flex-col items-center"
+          className="text-center flex flex-col items-center gap-5"
         >
-          <div className="flex items-center justify-center gap-3 mb-8">
+          <div className="flex items-center justify-center gap-3">
             <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-lg border border-primary/15 uppercase tracking-[0.2em]">
               <Users size={12} />
               Open Ecosystem
             </span>
           </div>
 
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-5">
-            Built{' '}
-            <span className="text-gradient-primary">Together</span>
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95]">
+            Built <span className="text-gradient-primary">Together</span>
           </h2>
-          <p className="text-sm text-base-content/40 max-w-xl mx-auto leading-relaxed">
+          <p className="text-base text-base-content/45 max-w-xl mx-auto leading-relaxed">
             Scrollr is open source and community-driven. Build your own
             integration, or tell us what data matters to you.
           </p>
         </motion.div>
 
         {/* Two-Path Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 max-w-5xl mx-auto mb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 max-w-5xl mx-auto">
           {/* ── Card 1: Create (for developers) ── */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -77,9 +76,7 @@ export function CommunitySection() {
                   <h3 className="text-sm font-bold text-base-content">
                     Create an Integration
                   </h3>
-                  <p className="text-[10px] text-primary/50">
-                    For developers
-                  </p>
+                  <p className="text-[10px] text-primary/50">For developers</p>
                 </div>
               </div>
 
@@ -165,9 +162,7 @@ export function CommunitySection() {
                   <h3 className="text-sm font-bold text-base-content whitespace-nowrap">
                     Suggest an Integration
                   </h3>
-                  <p className="text-[10px] text-info/50">
-                    For everyone
-                  </p>
+                  <p className="text-[10px] text-info/50">For everyone</p>
                 </div>
               </div>
 
@@ -209,9 +204,7 @@ export function CommunitySection() {
                   className="mt-2.5 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border border-dashed border-primary/20 bg-primary/[0.03] text-primary/40 hover:text-primary/60 hover:border-primary/30 transition-colors cursor-default"
                 >
                   <span className="text-lg leading-none">+</span>
-                  <span className="text-[10px]">
-                    Yours could be next
-                  </span>
+                  <span className="text-[10px]">Yours could be next</span>
                 </motion.div>
               </div>
 
@@ -278,23 +271,23 @@ export function CommunitySection() {
 
             {/* Secondary links */}
             <div className="flex items-center gap-4">
-                <a
-                  href="https://github.com/brandon-relentnet/myscrollr"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[10px] text-base-content/20 hover:text-primary transition-colors"
-                >
-                  GitHub
-                </a>
-                <span className="h-3 w-px bg-base-300/20" />
-                <a
-                  href="https://chromewebstore.google.com/detail/scrollr/pjeafpgbpfbcaddipkcbacohhbfakclb"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[10px] text-base-content/20 hover:text-primary transition-colors"
-                >
-                  Chrome Web Store
-                </a>
+              <a
+                href="https://github.com/brandon-relentnet/myscrollr"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] text-base-content/20 hover:text-primary transition-colors"
+              >
+                GitHub
+              </a>
+              <span className="h-3 w-px bg-base-300/20" />
+              <a
+                href="https://chromewebstore.google.com/detail/scrollr/pjeafpgbpfbcaddipkcbacohhbfakclb"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] text-base-content/20 hover:text-primary transition-colors"
+              >
+                Chrome Web Store
+              </a>
             </div>
           </div>
         </motion.div>

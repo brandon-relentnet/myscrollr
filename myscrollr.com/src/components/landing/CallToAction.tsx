@@ -304,7 +304,7 @@ export function CallToAction() {
           >
             <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-medium text-primary backdrop-blur-sm">
               <Zap className="size-3" aria-hidden />
-              Free forever. Open source. Zero tracking.
+              Open source. Zero tracking. Always free.
             </span>
           </motion.div>
 
@@ -319,11 +319,11 @@ export function CallToAction() {
               duration: 0.6,
               ease: EASE,
             }}
-            className="mt-8 text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black tracking-tight leading-[0.9]"
+            className="mt-8 text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black tracking-tight leading-none"
           >
-            <span className="block">Never</span>
+            <span className="block">Stop</span>
             <span className="block mt-2 text-gradient-primary">
-              Alt-Tab Again.
+              Tab-Switching.
             </span>
           </motion.h2>
 
@@ -340,8 +340,8 @@ export function CallToAction() {
             }}
             className="block mt-6 text-lg sm:text-xl text-base-content/50 max-w-lg leading-relaxed"
           >
-            Live scores, prices, and headlines pinned to every tab. The ticker
-            that follows you everywhere.
+            Live scores, prices, and headlines pinned to every tab. One install,
+            every browser, instant updates.
           </motion.span>
 
           {/* ── CTA button area with orbiting icons ─────────────────────── */}

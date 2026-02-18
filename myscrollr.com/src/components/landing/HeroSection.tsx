@@ -89,7 +89,7 @@ export function HeroSection() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3, ease: 'easeOut' }}
-            className="w-full lg:w-fit lg:min-w-100 xl:min-w-120 2xl:min-w-140 order-1 lg:order-2"
+            className="w-full lg:w-fit lg:min-w-80 xl:min-w-100 2xl:min-w-120 order-1 lg:order-2"
           >
             <HeroTextSwap activeIndex={activeWordIndex} />
 
@@ -141,7 +141,7 @@ export function HeroSection() {
               Live sports scores, crypto prices, news, and fantasy updates
               pinned to every tab.{' '}
               <span className="text-primary font-medium">
-                The ticker that follows you everywhere.
+                Live data, every tab, zero effort.
               </span>
             </motion.p>
 
