@@ -4,13 +4,15 @@ import { motion } from 'motion/react'
 import type { Stream } from '@/api/client'
 
 /** Toggle switch used in stream headers */
-function ToggleSwitch({ active }: { active: boolean }) {
+function ToggleSwitch({ active, hex }: { active: boolean; hex: string }) {
   return (
     <span
-      className={`block h-4 w-7 rounded-full relative transition-colors ml-1 ${
-        active ? 'bg-primary' : 'bg-base-300'
-      }`}
+      className="block h-4 w-7 rounded-full relative transition-colors ml-1"
+      style={{ background: active ? hex : undefined }}
     >
+      {!active && (
+        <span className="absolute inset-0 rounded-full bg-base-300" />
+      )}
       <motion.span
         className="absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white"
         animate={{ x: active ? 12 : 0 }}
@@ -28,6 +30,7 @@ export function StreamHeader({
   subtitle,
   connected,
   subscriptionTier,
+  hex,
   onToggle,
   onDelete,
 }: {
@@ -37,6 +40,7 @@ export function StreamHeader({
   subtitle: string
   connected?: boolean
   subscriptionTier?: string
+  hex: string
   onToggle: () => void
   onDelete: () => void
 }) {
@@ -45,34 +49,24 @@ export function StreamHeader({
   const isUplink = subscriptionTier === 'uplink'
 
   // Determine badge text and style based on tier
-  const badgeLabel = isUplink
-    ? connected
-      ? 'Live'
-      : 'Offline'
-    : 'Polling'
+  const badgeLabel = isUplink ? (connected ? 'Live' : 'Offline') : 'Polling'
   const badgeActive = isUplink ? !!connected : true
-  const badgeColor = isUplink
-    ? connected
-      ? 'bg-primary/10 border-primary/20'
-      : 'bg-base-300/30 border-base-300'
-    : 'bg-info/10 border-info/20'
-  const dotColor = isUplink
-    ? connected
-      ? 'bg-primary'
-      : 'bg-base-content/30'
-    : 'bg-info'
-  const textColor = isUplink
-    ? connected
-      ? 'text-primary'
-      : 'text-base-content/50'
-    : 'text-info'
 
   return (
     <div className="space-y-5 mb-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold uppercase tracking-tight flex items-center gap-3">
-            {icon}
+            {/* Icon badge container — DESIGN.md pattern */}
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+              style={{
+                background: `${hex}15`,
+                boxShadow: `0 0 15px ${hex}15, 0 0 0 1px ${hex}20`,
+              }}
+            >
+              {icon}
+            </div>
             {title}
           </h2>
           <p className="text-xs text-base-content/40 mt-1 uppercase tracking-wide">
@@ -81,13 +75,25 @@ export function StreamHeader({
         </div>
         {(connected !== undefined || subscriptionTier) && (
           <span
-            className={`flex items-center gap-1.5 px-2 py-1 rounded ${badgeColor} border`}
+            className={`flex items-center gap-1.5 px-2 py-1 rounded border ${
+              !badgeActive ? 'bg-base-300/30 border-base-300/25' : ''
+            }`}
+            style={
+              badgeActive
+                ? {
+                    background: `${hex}10`,
+                    borderColor: `${hex}20`,
+                  }
+                : undefined
+            }
           >
             <span
-              className={`h-1.5 w-1.5 rounded-full ${dotColor} ${badgeActive ? 'animate-pulse' : ''}`}
+              className={`h-1.5 w-1.5 rounded-full ${badgeActive ? 'animate-pulse' : 'bg-base-content/30'}`}
+              style={badgeActive ? { background: hex } : undefined}
             />
             <span
-              className={`text-[9px] font-mono ${textColor} uppercase`}
+              className={`text-[9px] font-mono uppercase ${!badgeActive ? 'text-base-content/50' : ''}`}
+              style={badgeActive ? { color: hex } : undefined}
             >
               {badgeLabel}
             </span>
@@ -100,16 +106,25 @@ export function StreamHeader({
         <button
           onClick={onToggle}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-colors ${
-            active
-              ? 'bg-primary/8 border-primary/20 text-primary'
-              : 'bg-base-200/40 border-base-300/40 text-base-content/40'
+            !active
+              ? 'bg-base-200/40 border-base-300/25 text-base-content/40'
+              : ''
           }`}
+          style={
+            active
+              ? {
+                  background: `${hex}14`,
+                  borderColor: `${hex}33`,
+                  color: hex,
+                }
+              : undefined
+          }
         >
           {active ? <Eye size={12} /> : <EyeOff size={12} />}
           <span className="text-[10px] font-bold uppercase tracking-widest">
             {active ? 'On Ticker' : 'Off'}
           </span>
-          <ToggleSwitch active={active} />
+          <ToggleSwitch active={active} hex={hex} />
         </button>
 
         <div className="ml-auto">
@@ -129,7 +144,7 @@ export function StreamHeader({
               </button>
               <button
                 onClick={() => setConfirmDelete(false)}
-                className="p-2 rounded-lg border border-base-300/40 text-base-content/30 hover:text-base-content/50 transition-colors"
+                className="p-2 rounded-lg border border-base-300/25 text-base-content/30 hover:text-base-content/50 transition-colors"
               >
                 <X size={12} />
               </button>
@@ -137,7 +152,7 @@ export function StreamHeader({
           ) : (
             <button
               onClick={() => setConfirmDelete(true)}
-              className="p-2.5 rounded-lg border border-base-300/40 text-base-content/20 hover:text-error hover:border-error/30 transition-colors"
+              className="p-2.5 rounded-lg border border-base-300/25 text-base-content/20 hover:text-error hover:border-error/30 transition-colors"
               title="Remove stream"
             >
               <Trash2 size={14} />
@@ -150,9 +165,26 @@ export function StreamHeader({
 }
 
 /** Small stat card used in stream configs */
-export function InfoCard({ label, value }: { label: string; value: string }) {
+export function InfoCard({
+  label,
+  value,
+  hex,
+}: {
+  label: string
+  value: string
+  hex?: string
+}) {
   return (
-    <div className="bg-base-200/40 border border-base-300/40 rounded-lg p-4">
+    <div className="bg-base-200/40 border border-base-300/25 rounded-lg p-4 relative overflow-hidden">
+      {/* Accent top line — DESIGN.md card pattern */}
+      {hex && (
+        <div
+          className="absolute top-0 left-0 right-0 h-px"
+          style={{
+            background: `linear-gradient(90deg, transparent, ${hex} 50%, transparent)`,
+          }}
+        />
+      )}
       <p className="text-[10px] text-base-content/30 uppercase tracking-widest mb-1">
         {label}
       </p>

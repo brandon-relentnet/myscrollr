@@ -11,6 +11,8 @@ export interface DashboardTabProps {
   connected: boolean
   /** User's subscription tier: 'free' | 'uplink' */
   subscriptionTier: string
+  /** Integration accent hex color (e.g. '#34d399') */
+  hex: string
 }
 
 /** Manifest describing a single integration */
@@ -23,6 +25,8 @@ export interface IntegrationManifest {
   tabLabel: string
   /** Brief description */
   description: string
+  /** Integration accent hex color for icon badges, active states, and accents */
+  hex: string
   /** Lucide icon component rendered at size 14 for sidebar, 20 for header */
   icon: React.ComponentType<{ size?: number; className?: string }>
   /** Dashboard configuration panel component */

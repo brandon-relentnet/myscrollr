@@ -16,7 +16,7 @@ export const sectionVariants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { type: 'spring', stiffness: 300, damping: 24 } as const,
+    transition: { type: 'spring', stiffness: 300, damping: 30 } as const,
   },
 }
 
@@ -25,6 +25,6 @@ export const itemVariants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { type: 'spring', stiffness: 400, damping: 28 } as const,
+    transition: { type: 'spring', stiffness: 400, damping: 35 } as const,
   },
 }

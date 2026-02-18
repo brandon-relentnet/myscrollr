@@ -151,12 +151,20 @@ export default function SettingsPanel({
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-            className="fixed right-0 top-0 h-full w-full max-w-md bg-base-100 border-l border-base-300/50 z-50 flex flex-col"
+            className="fixed right-0 top-0 h-full w-full max-w-md bg-base-100 border-l border-base-300/25 z-50 flex flex-col"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-base-300/50">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-base-300/25">
               <div className="flex items-center gap-3">
-                <Settings2 size={16} className="text-primary" />
+                <span
+                  className="flex items-center justify-center w-7 h-7 rounded-lg"
+                  style={{
+                    background: '#34d39915',
+                    boxShadow: '0 0 8px #34d3990D, 0 0 0 1px #34d39910',
+                  }}
+                >
+                  <Settings2 size={14} className="text-base-content/80" />
+                </span>
                 <span className="text-xs font-semibold">
                   Extension Settings
                 </span>
@@ -303,7 +311,7 @@ export default function SettingsPanel({
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-4 border-t border-base-300/50">
+            <div className="px-6 py-4 border-t border-base-300/25">
               <p className="text-[9px] text-base-content/25 uppercase tracking-wide text-center">
                 Changes sync to your extension automatically
               </p>
@@ -331,15 +339,23 @@ function Section({
   return (
     <div className="space-y-3">
       <div>
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-primary">{icon}</span>
+        <div className="flex items-center gap-2.5 mb-1">
+          <span
+            className="flex items-center justify-center w-6 h-6 rounded-md"
+            style={{
+              background: '#34d39915',
+              boxShadow: '0 0 8px #34d3990D, 0 0 0 1px #34d39910',
+            }}
+          >
+            <span className="text-base-content/80">{icon}</span>
+          </span>
           <span className="text-xs font-semibold uppercase tracking-wide">
             {title}
           </span>
         </div>
-        <p className="text-[10px] text-base-content/35 pl-[22px]">{desc}</p>
+        <p className="text-[10px] text-base-content/35 pl-[34px]">{desc}</p>
       </div>
-      <div className="pl-[22px]">{children}</div>
+      <div className="pl-[34px]">{children}</div>
     </div>
   )
 }
@@ -363,7 +379,7 @@ function ToggleRow({
       className={`flex items-center gap-3 px-4 py-3 rounded-lg border transition-colors w-full text-left ${
         active
           ? 'bg-primary/8 border-primary/20 text-primary'
-          : 'bg-base-200/40 border-base-300/40 text-base-content/40'
+          : 'bg-base-200/40 border-base-300/25 text-base-content/40'
       }`}
     >
       {active ? activeIcon : inactiveIcon}
@@ -395,7 +411,7 @@ function SegmentedControl({
   onChange: (v: string) => void
 }) {
   return (
-    <div className="flex gap-1 p-1 rounded-lg bg-base-200/60 border border-base-300/40">
+    <div className="flex gap-1 p-1 rounded-lg bg-base-200/60 border border-base-300/25">
       {options.map((opt) => (
         <button
           key={opt.value}
@@ -442,7 +458,7 @@ function SiteList({
           key={site}
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between px-3 py-2 rounded-lg bg-base-200/50 border border-base-300/40"
+          className="flex items-center justify-between px-3 py-2 rounded-lg bg-base-200/50 border border-base-300/25"
         >
           <span className="text-xs font-mono text-base-content/60 truncate">
             {site}
@@ -471,12 +487,12 @@ function SiteList({
             if (e.key === 'Enter') onAdd(inputValue)
           }}
           placeholder={placeholder}
-          className="flex-1 px-3 py-2 rounded-lg bg-base-200/50 border border-base-300/40 text-xs font-mono text-base-content/60 placeholder:text-base-content/20 focus:outline-none focus:border-primary/30 transition-colors"
+          className="flex-1 px-3 py-2 rounded-lg bg-base-200/50 border border-base-300/25 text-xs font-mono text-base-content/60 placeholder:text-base-content/20 focus:outline-none focus:border-primary/30 transition-colors"
         />
         <button
           onClick={() => onAdd(inputValue)}
           aria-label="Add site"
-          className="px-3 py-2 rounded-lg border border-base-300/40 text-base-content/30 hover:text-primary hover:border-primary/30 transition-colors"
+          className="px-3 py-2 rounded-lg border border-base-300/25 text-base-content/30 hover:text-primary hover:border-primary/30 transition-colors"
         >
           <Plus size={14} />
         </button>

@@ -1,37 +1,45 @@
-import { Cpu, Zap } from 'lucide-react'
-import type { IntegrationManifest, DashboardTabProps } from '@/integrations/types'
-import { StreamHeader, InfoCard } from '@/integrations/shared'
+import { Cpu, Zap } from "lucide-react";
+import type {
+  IntegrationManifest,
+  DashboardTabProps,
+} from "@/integrations/types";
+import { StreamHeader, InfoCard } from "@/integrations/shared";
+
+const HEX = "#ff4757";
 
 function SportsDashboardTab({
   stream,
   connected,
   subscriptionTier,
+  hex,
   onToggle,
   onDelete,
 }: DashboardTabProps) {
-  const isUplink = subscriptionTier === 'uplink'
-  const leagues = ['NFL', 'NBA', 'NHL', 'MLB']
+  const isUplink = subscriptionTier === "uplink";
+  const leagues = ["NFL", "NBA", "NHL", "MLB"];
 
   return (
     <div className="space-y-6">
       <StreamHeader
         stream={stream}
-        icon={<Cpu size={20} className="text-primary" />}
+        icon={<Cpu size={16} className="text-base-content/80" />}
         title="Sports Stream"
         subtitle="Live scores via ESPN polling"
         connected={connected}
         subscriptionTier={subscriptionTier}
+        hex={hex}
         onToggle={onToggle}
         onDelete={onDelete}
       />
 
       {/* Info Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <InfoCard label="Data Source" value="ESPN" />
-        <InfoCard label="Leagues" value={String(leagues.length)} />
+        <InfoCard label="Data Source" value="ESPN" hex={hex} />
+        <InfoCard label="Leagues" value={String(leagues.length)} hex={hex} />
         <InfoCard
           label="Delivery"
-          value={isUplink ? 'Real-time' : 'Polling · 30s'}
+          value={isUplink ? "Real-time" : "Polling \u00b7 30s"}
+          hex={hex}
         />
       </div>
 
@@ -39,16 +47,30 @@ function SportsDashboardTab({
       {!isUplink && (
         <a
           href="/uplink"
-          className="flex items-center gap-2 px-4 py-3 rounded-sm bg-primary/5 border border-primary/15 hover:border-primary/30 transition-all group"
+          className="flex items-center gap-2 px-4 py-3 rounded-sm border transition-all group"
+          style={{
+            background: `${hex}0D`,
+            borderColor: `${hex}26`,
+          }}
         >
-          <Zap size={14} className="text-primary/60 group-hover:text-primary transition-colors" />
+          <Zap
+            size={14}
+            className="text-base-content/40 group-hover:text-base-content/60 transition-colors"
+          />
           <span className="text-[10px] font-bold text-base-content/50 uppercase tracking-widest group-hover:text-base-content/70 transition-colors">
             Upgrade to Uplink for real-time score delivery
           </span>
         </a>
       )}
 
-      <div className="bg-base-200/30 border border-base-300/30 rounded-lg p-5 space-y-3">
+      <div className="bg-base-200/30 border border-base-300/25 rounded-lg p-5 space-y-3 relative overflow-hidden">
+        {/* Accent top line */}
+        <div
+          className="absolute top-0 left-0 right-0 h-px"
+          style={{
+            background: `linear-gradient(90deg, transparent, ${hex} 50%, transparent)`,
+          }}
+        />
         <p className="text-[10px] font-bold text-base-content/30 uppercase tracking-widest">
           Tracked Leagues
         </p>
@@ -56,9 +78,12 @@ function SportsDashboardTab({
           {leagues.map((league) => (
             <div
               key={league}
-              className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-base-200/50 border border-base-300/40"
+              className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-base-200/50 border border-base-300/25"
             >
-              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+              <span
+                className="h-1.5 w-1.5 rounded-full animate-pulse"
+                style={{ background: hex }}
+              />
               <span className="text-xs font-bold uppercase tracking-wide">
                 {league}
               </span>
@@ -71,14 +96,15 @@ function SportsDashboardTab({
         </p>
       </div>
     </div>
-  )
+  );
 }
 
 export const sportsIntegration: IntegrationManifest = {
-  id: 'sports',
-  name: 'Sports',
-  tabLabel: 'Sports',
-  description: 'Live scores via ESPN',
+  id: "sports",
+  name: "Sports",
+  tabLabel: "Sports",
+  description: "Live scores via ESPN",
+  hex: HEX,
   icon: Cpu,
   DashboardTab: SportsDashboardTab,
-}
+};

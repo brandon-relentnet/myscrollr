@@ -260,7 +260,10 @@ function DashboardPage() {
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <span
-                className={`h-1.5 w-1.5 rounded-full ${status === 'connected' ? 'bg-primary' : 'bg-secondary'} animate-pulse`}
+                className="h-1.5 w-1.5 rounded-full animate-pulse"
+                style={{
+                  background: status === 'connected' ? '#34d399' : '#ff4757',
+                }}
               />
               <span className="text-[10px] font-semibold text-primary uppercase tracking-wide">
                 Dashboard
@@ -305,7 +308,7 @@ function DashboardPage() {
                       stiffness: 500,
                       damping: 30,
                     }}
-                    className="absolute right-0 top-full mt-2 w-56 bg-base-100 border border-base-300/60 rounded-lg shadow-xl z-50 overflow-hidden"
+                    className="absolute right-0 top-full mt-2 w-56 bg-base-100 border border-base-300/25 rounded-lg shadow-xl z-50 overflow-hidden"
                   >
                     <div className="p-2">
                       <p className="text-[9px] font-semibold text-base-content/30 uppercase tracking-wide px-2 py-1.5">
@@ -319,10 +322,29 @@ function DashboardPage() {
                             onClick={() =>
                               handleAddStream(manifest.id as StreamType)
                             }
-                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-primary/8 text-left transition-colors group"
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors group"
+                            style={
+                              {
+                                '--hover-bg': `${manifest.hex}10`,
+                              } as React.CSSProperties
+                            }
+                            onMouseEnter={(e) =>
+                              (e.currentTarget.style.background = `${manifest.hex}10`)
+                            }
+                            onMouseLeave={(e) =>
+                              (e.currentTarget.style.background = '')
+                            }
                           >
-                            <span className="text-base-content/40 group-hover:text-primary transition-colors">
-                              <Icon size={14} />
+                            <span
+                              className="flex items-center justify-center w-7 h-7 rounded-lg transition-colors"
+                              style={{
+                                background: `${manifest.hex}15`,
+                              }}
+                            >
+                              <Icon
+                                size={14}
+                                className="text-base-content/80"
+                              />
                             </span>
                             <div>
                               <span className="text-xs font-semibold block">
@@ -342,7 +364,7 @@ function DashboardPage() {
             </div>
             <button
               onClick={() => setSettingsOpen(true)}
-              className="p-2.5 rounded-lg border border-base-300 hover:border-primary/30 transition-colors text-base-content/50 hover:text-primary"
+              className="p-2.5 rounded-lg border border-base-300/25 hover:border-primary/30 transition-colors text-base-content/50 hover:text-primary"
               aria-label="Open extension settings"
             >
               <Settings2 size={16} />
@@ -393,6 +415,7 @@ function DashboardPage() {
                         icon={<Icon size={14} />}
                         label={manifest.tabLabel}
                         visible={stream.visible}
+                        hex={manifest.hex}
                       />
                     )
                   })
@@ -401,7 +424,7 @@ function DashboardPage() {
             </div>
 
             {/* Quick Stats */}
-            <div className="bg-base-200/40 border border-base-300/50 rounded-xl p-4 space-y-4">
+            <div className="bg-base-200/40 border border-base-300/25 rounded-xl p-4 space-y-4">
               <p className="text-[10px] font-semibold text-base-content/30 uppercase tracking-wide">
                 Overview
               </p>
@@ -440,7 +463,7 @@ function DashboardPage() {
 
           {/* Main Content Area */}
           <motion.main
-            className="lg:col-span-9 bg-base-200/20 border border-base-300/40 rounded-xl p-8 min-h-[500px]"
+            className="lg:col-span-9 bg-base-200/20 border border-base-300/25 rounded-xl p-8 min-h-[500px]"
             variants={sectionVariants}
           >
             <motion.div
@@ -456,6 +479,7 @@ function DashboardPage() {
                   getToken={getToken}
                   connected={status === 'connected'}
                   subscriptionTier={subscriptionTier}
+                  hex={activeIntegration.hex}
                   onToggle={() => handleToggleStream(activeStream)}
                   onDelete={() =>
                     handleDeleteStream(activeStream.stream_type as StreamType)
@@ -544,28 +568,42 @@ function StreamNavButton({
   icon,
   label,
   visible,
+  hex,
 }: {
   active: boolean
   onClick: () => void
   icon: React.ReactNode
   label: string
   visible: boolean
+  hex: string
 }) {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center justify-between p-3.5 rounded-lg transition-colors text-left group ${
+      className={`flex items-center justify-between p-3.5 rounded-lg transition-colors text-left group border ${
         active
-          ? 'bg-primary/8 border border-primary/20 text-primary'
-          : 'text-base-content/40 hover:bg-base-200/60 hover:text-base-content/70 border border-transparent'
+          ? ''
+          : 'text-base-content/40 hover:bg-base-200/60 hover:text-base-content/70 border-transparent'
       }`}
+      style={
+        active
+          ? {
+              background: `${hex}10`,
+              borderColor: `${hex}20`,
+              color: hex,
+            }
+          : undefined
+      }
     >
       <div className="flex items-center gap-3">
         {icon}
         <span className="text-xs font-semibold">{label}</span>
       </div>
       {visible ? (
-        <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+        <span
+          className="h-1.5 w-1.5 rounded-full animate-pulse"
+          style={{ background: hex }}
+        />
       ) : (
         <span className="h-1.5 w-1.5 rounded-full bg-base-content/20" />
       )}

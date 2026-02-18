@@ -1,32 +1,44 @@
-import { useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, Search, TrendingUp, X, Zap } from 'lucide-react'
-import { motion } from 'motion/react'
-import { streamsApi } from '@/api/client'
-import type { IntegrationManifest, DashboardTabProps } from '@/integrations/types'
-import { StreamHeader, InfoCard } from '@/integrations/shared'
+import { useEffect, useState } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  TrendingUp,
+  X,
+  Zap,
+} from "lucide-react";
+import { motion } from "motion/react";
+import { streamsApi } from "@/api/client";
+import type {
+  IntegrationManifest,
+  DashboardTabProps,
+} from "@/integrations/types";
+import { StreamHeader, InfoCard } from "@/integrations/shared";
 
 // ── Types (self-contained) ──────────────────────────────────────
 
 interface TrackedSymbol {
-  symbol: string
-  name: string
-  category: string
+  symbol: string;
+  name: string;
+  category: string;
 }
 
 interface FinanceStreamConfig {
-  symbols?: string[]
+  symbols?: string[];
 }
 
-const SYMBOLS_PER_PAGE = 24
+const SYMBOLS_PER_PAGE = 24;
+const HEX = "#34d399";
 
 // ── API helper ──────────────────────────────────────────────────
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'
+const API_BASE =
+  import.meta.env.VITE_API_URL || "https://api.myscrollr.relentnet.dev";
 
 async function fetchCatalog(): Promise<TrackedSymbol[]> {
-  const res = await fetch(`${API_BASE}/finance/symbols`)
-  if (!res.ok) throw new Error('Failed to fetch symbol catalog')
-  return res.json()
+  const res = await fetch(`${API_BASE}/finance/symbols`);
+  if (!res.ok) throw new Error("Failed to fetch symbol catalog");
+  return res.json();
 }
 
 // ── Component ───────────────────────────────────────────────────
@@ -36,124 +48,130 @@ function FinanceDashboardTab({
   getToken,
   connected,
   subscriptionTier,
+  hex,
   onToggle,
   onDelete,
   onStreamUpdate,
 }: DashboardTabProps) {
-  const isUplink = subscriptionTier === 'uplink'
-  const [catalog, setCatalog] = useState<TrackedSymbol[]>([])
-  const [catalogLoading, setCatalogLoading] = useState(true)
-  const [catalogError, setCatalogError] = useState(false)
-  const [activeCategory, setActiveCategory] = useState('All')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const isUplink = subscriptionTier === "uplink";
+  const [catalog, setCatalog] = useState<TrackedSymbol[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState(false);
+  const [activeCategory, setActiveCategory] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const config = stream.config as FinanceStreamConfig
-  const symbols = Array.isArray(config?.symbols) ? config.symbols : []
-  const symbolSet = new Set(symbols)
+  const config = stream.config as FinanceStreamConfig;
+  const symbols = Array.isArray(config?.symbols) ? config.symbols : [];
+  const symbolSet = new Set(symbols);
 
   // Auto-dismiss errors
   useEffect(() => {
-    if (!error) return
-    const t = setTimeout(() => setError(null), 4000)
-    return () => clearTimeout(t)
-  }, [error])
+    if (!error) return;
+    const t = setTimeout(() => setError(null), 4000);
+    return () => clearTimeout(t);
+  }, [error]);
 
   // Fetch catalog on mount
   useEffect(() => {
     fetchCatalog()
       .then(setCatalog)
       .catch(() => setCatalogError(true))
-      .finally(() => setCatalogLoading(false))
-  }, [])
+      .finally(() => setCatalogLoading(false));
+  }, []);
 
   // Derive categories from catalog
   const categories = [
-    'All',
+    "All",
     ...Array.from(new Set(catalog.map((s) => s.category))),
-  ]
+  ];
 
   // Filter by category and search
   const filteredCatalog = catalog.filter((s) => {
     const matchesCategory =
-      activeCategory === 'All' || s.category === activeCategory
+      activeCategory === "All" || s.category === activeCategory;
     const matchesSearch =
       !searchQuery ||
       s.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.name.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchesCategory && matchesSearch
-  })
+      s.name.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
 
   const totalPages = Math.max(
     1,
     Math.ceil(filteredCatalog.length / SYMBOLS_PER_PAGE),
-  )
+  );
   const paginatedCatalog = filteredCatalog.slice(
     (currentPage - 1) * SYMBOLS_PER_PAGE,
     currentPage * SYMBOLS_PER_PAGE,
-  )
+  );
 
   // Helpers to look up name from catalog
-  const nameMap = new Map(catalog.map((s) => [s.symbol, s.name]))
+  const nameMap = new Map(catalog.map((s) => [s.symbol, s.name]));
 
   const updateSymbols = async (nextSymbols: string[]) => {
-    setSaving(true)
+    setSaving(true);
     try {
       const updated = await streamsApi.update(
-        'finance',
+        "finance",
         { config: { symbols: nextSymbols } },
         getToken,
-      )
-      onStreamUpdate(updated)
+      );
+      onStreamUpdate(updated);
     } catch {
-      setError('Failed to save symbol changes')
+      setError("Failed to save symbol changes");
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const addSymbol = (symbol: string) => {
-    if (symbolSet.has(symbol)) return
-    updateSymbols([...symbols, symbol])
-  }
+    if (symbolSet.has(symbol)) return;
+    updateSymbols([...symbols, symbol]);
+  };
 
   const removeSymbol = (symbol: string) => {
-    updateSymbols(symbols.filter((s) => s !== symbol))
-  }
+    updateSymbols(symbols.filter((s) => s !== symbol));
+  };
 
   // Bulk actions
   const categorySymbols = (cat: string) =>
-    catalog.filter((s) => cat === 'All' || s.category === cat).map((s) => s.symbol)
+    catalog
+      .filter((s) => cat === "All" || s.category === cat)
+      .map((s) => s.symbol);
 
   const addCategory = (cat: string) => {
-    const toAdd = categorySymbols(cat).filter((s) => !symbolSet.has(s))
-    if (toAdd.length === 0) return
-    updateSymbols([...symbols, ...toAdd])
-  }
+    const toAdd = categorySymbols(cat).filter((s) => !symbolSet.has(s));
+    if (toAdd.length === 0) return;
+    updateSymbols([...symbols, ...toAdd]);
+  };
 
   const removeCategory = (cat: string) => {
-    const toRemove = new Set(categorySymbols(cat))
-    updateSymbols(symbols.filter((s) => !toRemove.has(s)))
-  }
+    const toRemove = new Set(categorySymbols(cat));
+    updateSymbols(symbols.filter((s) => !toRemove.has(s)));
+  };
 
-  const clearAll = () => updateSymbols([])
+  const clearAll = () => updateSymbols([]);
 
   // Derive counts for the active category
-  const activeCatSymbols = categorySymbols(activeCategory)
-  const activeCatAdded = activeCatSymbols.filter((s) => symbolSet.has(s)).length
-  const activeCatAvailable = activeCatSymbols.length - activeCatAdded
+  const activeCatSymbols = categorySymbols(activeCategory);
+  const activeCatAdded = activeCatSymbols.filter((s) =>
+    symbolSet.has(s),
+  ).length;
+  const activeCatAvailable = activeCatSymbols.length - activeCatAdded;
 
   return (
     <div className="space-y-6">
       <StreamHeader
         stream={stream}
-        icon={<TrendingUp size={20} className="text-primary" />}
+        icon={<TrendingUp size={16} className="text-base-content/80" />}
         title="Finance Stream"
         subtitle="Real-time market data via Finnhub WebSocket"
         connected={connected}
         subscriptionTier={subscriptionTier}
+        hex={hex}
         onToggle={onToggle}
         onDelete={onDelete}
       />
@@ -162,7 +180,10 @@ function FinanceDashboardTab({
       {error && (
         <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-error/10 border border-error/20 text-error text-xs">
           <span>{error}</span>
-          <button onClick={() => setError(null)} className="p-0.5 hover:bg-error/10 rounded">
+          <button
+            onClick={() => setError(null)}
+            className="p-0.5 hover:bg-error/10 rounded"
+          >
             <X size={12} />
           </button>
         </div>
@@ -170,11 +191,16 @@ function FinanceDashboardTab({
 
       {/* Info Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <InfoCard label="Your Symbols" value={String(symbols.length)} />
-        <InfoCard label="Available" value={String(catalog.length)} />
+        <InfoCard
+          label="Your Symbols"
+          value={String(symbols.length)}
+          hex={hex}
+        />
+        <InfoCard label="Available" value={String(catalog.length)} hex={hex} />
         <InfoCard
           label="Delivery"
-          value={isUplink ? 'Real-time' : 'Polling · 30s'}
+          value={isUplink ? "Real-time" : "Polling \u00b7 30s"}
+          hex={hex}
         />
       </div>
 
@@ -182,9 +208,16 @@ function FinanceDashboardTab({
       {!isUplink && (
         <a
           href="/uplink"
-          className="flex items-center gap-2 px-4 py-3 rounded-sm bg-primary/5 border border-primary/15 hover:border-primary/30 transition-all group"
+          className="flex items-center gap-2 px-4 py-3 rounded-sm border transition-all group"
+          style={{
+            background: `${hex}0D`,
+            borderColor: `${hex}26`,
+          }}
         >
-          <Zap size={14} className="text-primary/60 group-hover:text-primary transition-colors" />
+          <Zap
+            size={14}
+            className="text-base-content/40 group-hover:text-base-content/60 transition-colors"
+          />
           <span className="text-[10px] font-bold text-base-content/50 uppercase tracking-widest group-hover:text-base-content/70 transition-colors">
             Upgrade to Uplink for real-time data delivery
           </span>
@@ -201,7 +234,7 @@ function FinanceDashboardTab({
             <button
               onClick={clearAll}
               disabled={saving}
-              className="text-[9px] font-bold text-base-content/30 uppercase tracking-widest px-2 py-1 rounded border border-base-300/40 hover:text-error hover:border-error/30 transition-colors disabled:opacity-30"
+              className="text-[9px] font-bold text-base-content/30 uppercase tracking-widest px-2 py-1 rounded border border-base-300/25 hover:text-error hover:border-error/30 transition-colors disabled:opacity-30"
             >
               Clear All
             </button>
@@ -215,7 +248,11 @@ function FinanceDashboardTab({
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.02 }}
-                className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded-lg"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border"
+                style={{
+                  background: `${hex}0D`,
+                  borderColor: `${hex}33`,
+                }}
               >
                 <div className="min-w-0">
                   <span className="text-xs font-bold font-mono">{sym}</span>
@@ -264,37 +301,52 @@ function FinanceDashboardTab({
             type="text"
             value={searchQuery}
             onChange={(e) => {
-              setSearchQuery(e.target.value)
-              setCurrentPage(1)
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
             }}
             placeholder="Search by ticker or company name..."
-            className="w-full pl-9 pr-3 py-2 rounded-lg bg-base-200/50 border border-base-300/40 text-xs font-mono text-base-content/60 placeholder:text-base-content/20 focus:outline-none focus:border-primary/30 transition-colors"
+            className="w-full pl-9 pr-3 py-2 rounded-lg bg-base-200/50 border border-base-300/25 text-xs font-mono text-base-content/60 placeholder:text-base-content/20 focus:outline-none transition-colors"
+            style={{ ["--tw-ring-color" as string]: `${hex}4D` }}
+            onFocus={(e) => (e.currentTarget.style.borderColor = `${hex}4D`)}
+            onBlur={(e) => (e.currentTarget.style.borderColor = "")}
           />
         </div>
 
         {/* Category Tabs */}
-        <div className="flex flex-wrap gap-1 p-1 rounded-lg bg-base-200/60 border border-base-300/40">
+        <div className="flex flex-wrap gap-1 p-1 rounded-lg bg-base-200/60 border border-base-300/25">
           {categories.map((cat) => {
-            const catTotal = catalog.filter((s) => cat === 'All' || s.category === cat).length
-            const catSelected = catalog.filter((s) => (cat === 'All' || s.category === cat) && symbolSet.has(s.symbol)).length
+            const catTotal = catalog.filter(
+              (s) => cat === "All" || s.category === cat,
+            ).length;
+            const catSelected = catalog.filter(
+              (s) =>
+                (cat === "All" || s.category === cat) &&
+                symbolSet.has(s.symbol),
+            ).length;
+            const isActive = activeCategory === cat;
             return (
               <button
                 key={cat}
                 onClick={() => {
-                  setActiveCategory(cat)
-                  setCurrentPage(1)
+                  setActiveCategory(cat);
+                  setCurrentPage(1);
                 }}
                 className={`relative px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-colors ${
-                  activeCategory === cat
-                    ? 'text-primary'
-                    : 'text-base-content/30 hover:text-base-content/50'
+                  isActive
+                    ? ""
+                    : "text-base-content/30 hover:text-base-content/50"
                 }`}
+                style={isActive ? { color: hex } : undefined}
               >
-                {activeCategory === cat && (
+                {isActive && (
                   <motion.div
                     layoutId="finance-category-bg"
-                    className="absolute inset-0 bg-primary/10 border border-primary/20 rounded-md"
-                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                    className="absolute inset-0 rounded-md border"
+                    style={{
+                      background: `${hex}10`,
+                      borderColor: `${hex}33`,
+                    }}
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
                   />
                 )}
                 <span className="relative">
@@ -304,7 +356,7 @@ function FinanceDashboardTab({
                   </span>
                 </span>
               </button>
-            )
+            );
           })}
         </div>
 
@@ -314,18 +366,28 @@ function FinanceDashboardTab({
             <button
               onClick={() => addCategory(activeCategory)}
               disabled={saving}
-              className="text-[9px] font-bold text-base-content/30 uppercase tracking-widest px-2 py-1 rounded border border-base-300/40 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-30"
+              className="text-[9px] font-bold text-base-content/30 uppercase tracking-widest px-2 py-1 rounded border border-base-300/25 transition-colors disabled:opacity-30"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = hex;
+                e.currentTarget.style.borderColor = `${hex}4D`;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "";
+                e.currentTarget.style.borderColor = "";
+              }}
             >
-              + Add All{activeCategory !== 'All' ? ` ${activeCategory}` : ''} ({activeCatAvailable})
+              + Add All{activeCategory !== "All" ? ` ${activeCategory}` : ""} (
+              {activeCatAvailable})
             </button>
           )}
           {activeCatAdded > 0 && (
             <button
               onClick={() => removeCategory(activeCategory)}
               disabled={saving}
-              className="text-[9px] font-bold text-base-content/30 uppercase tracking-widest px-2 py-1 rounded border border-base-300/40 hover:text-error hover:border-error/30 transition-colors disabled:opacity-30"
+              className="text-[9px] font-bold text-base-content/30 uppercase tracking-widest px-2 py-1 rounded border border-base-300/25 hover:text-error hover:border-error/30 transition-colors disabled:opacity-30"
             >
-              Remove All{activeCategory !== 'All' ? ` ${activeCategory}` : ''} ({activeCatAdded})
+              Remove All{activeCategory !== "All" ? ` ${activeCategory}` : ""} (
+              {activeCatAdded})
             </button>
           )}
         </div>
@@ -343,47 +405,69 @@ function FinanceDashboardTab({
           </div>
         ) : (
           <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {paginatedCatalog.map((entry) => {
-              const isAdded = symbolSet.has(entry.symbol)
-              return (
-                <motion.div
-                  key={entry.symbol}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
-                    isAdded
-                      ? 'bg-primary/5 border-primary/20'
-                      : 'bg-base-200/30 border-base-300/40 hover:border-base-300/60'
-                  }`}
-                >
-                  <div className="min-w-0 mr-2">
-                    <div className="text-xs font-bold font-mono">
-                      {entry.symbol}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {paginatedCatalog.map((entry) => {
+                const isAdded = symbolSet.has(entry.symbol);
+                return (
+                  <motion.div
+                    key={entry.symbol}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                      isAdded
+                        ? ""
+                        : "bg-base-200/30 border-base-300/25 hover:border-base-300/40"
+                    }`}
+                    style={
+                      isAdded
+                        ? {
+                            background: `${hex}0D`,
+                            borderColor: `${hex}33`,
+                          }
+                        : undefined
+                    }
+                  >
+                    <div className="min-w-0 mr-2">
+                      <div className="text-xs font-bold font-mono">
+                        {entry.symbol}
+                      </div>
+                      <div className="text-[9px] text-base-content/30 truncate">
+                        {entry.name}
+                      </div>
                     </div>
-                    <div className="text-[9px] text-base-content/30 truncate">
-                      {entry.name}
+                    <div className="shrink-0">
+                      {isAdded ? (
+                        <span
+                          className="text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded"
+                          style={{
+                            color: hex,
+                            background: `${hex}1A`,
+                          }}
+                        >
+                          Added
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => addSymbol(entry.symbol)}
+                          disabled={saving}
+                          className="text-[9px] font-bold text-base-content/40 uppercase tracking-widest px-2 py-1 rounded border border-base-300/25 transition-colors disabled:opacity-30"
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = hex;
+                            e.currentTarget.style.borderColor = `${hex}4D`;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color = "";
+                            e.currentTarget.style.borderColor = "";
+                          }}
+                        >
+                          + Add
+                        </button>
+                      )}
                     </div>
-                  </div>
-                  <div className="shrink-0">
-                    {isAdded ? (
-                      <span className="text-[9px] font-bold text-primary uppercase tracking-widest px-2 py-1 rounded bg-primary/10">
-                        Added
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => addSymbol(entry.symbol)}
-                        disabled={saving}
-                        className="text-[9px] font-bold text-base-content/40 uppercase tracking-widest px-2 py-1 rounded border border-base-300/40 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-30"
-                      >
-                        + Add
-                      </button>
-                    )}
-                  </div>
-                </motion.div>
-              )
-            })}
-          </div>
+                  </motion.div>
+                );
+              })}
+            </div>
 
             {/* Pagination Controls */}
             {totalPages > 1 && (
@@ -391,7 +475,15 @@ function FinanceDashboardTab({
                 <button
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded border border-base-300/40 text-[10px] font-bold uppercase tracking-widest text-base-content/40 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-20 disabled:pointer-events-none"
+                  className="flex items-center gap-1 px-3 py-1.5 rounded border border-base-300/25 text-[10px] font-bold uppercase tracking-widest text-base-content/40 transition-colors disabled:opacity-20 disabled:pointer-events-none"
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = hex;
+                    e.currentTarget.style.borderColor = `${hex}4D`;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "";
+                    e.currentTarget.style.borderColor = "";
+                  }}
                 >
                   <ChevronLeft size={12} />
                   Prev
@@ -404,7 +496,15 @@ function FinanceDashboardTab({
                     setCurrentPage((p) => Math.min(totalPages, p + 1))
                   }
                   disabled={currentPage === totalPages}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded border border-base-300/40 text-[10px] font-bold uppercase tracking-widest text-base-content/40 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-20 disabled:pointer-events-none"
+                  className="flex items-center gap-1 px-3 py-1.5 rounded border border-base-300/25 text-[10px] font-bold uppercase tracking-widest text-base-content/40 transition-colors disabled:opacity-20 disabled:pointer-events-none"
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = hex;
+                    e.currentTarget.style.borderColor = `${hex}4D`;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "";
+                    e.currentTarget.style.borderColor = "";
+                  }}
                 >
                   Next
                   <ChevronRight size={12} />
@@ -423,20 +523,21 @@ function FinanceDashboardTab({
         {!catalogLoading && !catalogError && filteredCatalog.length === 0 && (
           <p className="text-center text-[10px] text-base-content/25 uppercase tracking-wide py-4">
             {searchQuery
-              ? 'No symbols match your search'
-              : 'No symbols in this category'}
+              ? "No symbols match your search"
+              : "No symbols in this category"}
           </p>
         )}
       </div>
     </div>
-  )
+  );
 }
 
 export const financeIntegration: IntegrationManifest = {
-  id: 'finance',
-  name: 'Finance',
-  tabLabel: 'Finance',
-  description: 'Real-time market data via Finnhub',
+  id: "finance",
+  name: "Finance",
+  tabLabel: "Finance",
+  description: "Real-time market data via Finnhub",
+  hex: HEX,
   icon: TrendingUp,
   DashboardTab: FinanceDashboardTab,
-}
+};
