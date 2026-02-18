@@ -47,13 +47,7 @@ export default function HeroTextSwap({ activeIndex }: HeroTextSwapProps) {
         <span className="italic text-base-content/60">Uninterrupted.</span>
       </motion.div>
 
-      {/* Decorative underline */}
-      <motion.div
-        initial={{ scaleX: 0, opacity: 0 }}
-        animate={{ scaleX: 1, opacity: 1 }}
-        transition={{ duration: 0.8, delay: 0.8, ease: 'anticipate' }}
-        className="h-1 w-32 bg-linear-to-r from-primary via-info to-secondary rounded-full my-6 mx-auto lg:mx-0"
-      />
+
     </div>
   )
 }

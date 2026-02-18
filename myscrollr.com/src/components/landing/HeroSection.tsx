@@ -7,14 +7,44 @@ import InstallButton from '@/components/InstallButton'
 
 const CYCLE_MS = 4000
 
+const WORD_ACCENTS = [
+  {
+    fill: 'bg-secondary',
+    track: 'bg-secondary/15',
+    text: 'text-secondary',
+    textMuted: 'text-secondary/40',
+  },
+  {
+    fill: 'bg-primary',
+    track: 'bg-primary/15',
+    text: 'text-primary',
+    textMuted: 'text-primary/40',
+  },
+  {
+    fill: 'bg-info',
+    track: 'bg-info/15',
+    text: 'text-info',
+    textMuted: 'text-info/40',
+  },
+  {
+    fill: 'bg-accent',
+    track: 'bg-accent/15',
+    text: 'text-accent',
+    textMuted: 'text-accent/40',
+  },
+] as const
+
 export function HeroSection() {
   const [activeWordIndex, setActiveWordIndex] = useState(0)
+  const [cycleKey, setCycleKey] = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const startTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current)
+    setCycleKey((k) => k + 1)
     timerRef.current = setInterval(() => {
       setActiveWordIndex((prev) => wrap(0, WORDS.length, prev + 1))
+      setCycleKey((k) => k + 1)
     }, CYCLE_MS)
   }, [])
 
@@ -62,6 +92,45 @@ export function HeroSection() {
             className="w-full lg:w-fit lg:min-w-140 order-1 lg:order-2"
           >
             <HeroTextSwap activeIndex={activeWordIndex} />
+
+            {/* Progress indicators */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.8 }}
+              className="flex gap-2 my-6 max-w-md"
+            >
+              {WORDS.map((word, i) => {
+                const accent = WORD_ACCENTS[i]
+                const isActive = i === activeWordIndex
+
+                return (
+                  <button
+                    key={word}
+                    type="button"
+                    onClick={() => handleSelect(i)}
+                    className="flex-1 cursor-pointer py-2"
+                  >
+                    <div
+                      className={`h-1 rounded-full overflow-hidden ${accent.track}`}
+                    >
+                      {isActive ? (
+                        <motion.div
+                          key={`fill-${cycleKey}`}
+                          initial={{ scaleX: 0 }}
+                          animate={{ scaleX: 1 }}
+                          transition={{
+                            duration: CYCLE_MS / 1000,
+                            ease: 'linear',
+                          }}
+                          className={`h-full w-full rounded-full origin-left ${accent.fill}`}
+                        />
+                      ) : null}
+                    </div>
+                  </button>
+                )
+              })}
+            </motion.div>
 
             <motion.p
               initial={{ opacity: 0, y: 20 }}
