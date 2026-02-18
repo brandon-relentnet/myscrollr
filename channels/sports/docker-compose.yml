@@ -13,7 +13,7 @@ services:
       - REDIS_URL=${REDIS_URL}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
-      - INTEGRATION_URL=${INTEGRATION_URL}
+      - CHANNEL_URL=${CHANNEL_URL}
       - INTERNAL_SPORTS_URL=http://scrollr-sports-service:3002
     restart: unless-stopped
 

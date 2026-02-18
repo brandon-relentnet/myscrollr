@@ -1,5 +1,5 @@
 # Build context: monorepo root (one level above myscrollr.com/)
-# This allows access to both myscrollr.com/ and integrations/
+# This allows access to both myscrollr.com/ and channels/
 
 # ── Stage 1: Build ──────────────────────────────────────────────
 FROM node:22-alpine AS builder
@@ -13,15 +13,15 @@ COPY myscrollr.com/package.json myscrollr.com/package-lock.json* ./myscrollr.com
 WORKDIR /app/myscrollr.com
 RUN npm ci
 
-# Copy integration web components (only what the frontend build needs)
+# Copy channel web components (only what the frontend build needs)
 WORKDIR /app
-COPY integrations/finance/web/ ./integrations/finance/web/
-COPY integrations/sports/web/ ./integrations/sports/web/
-COPY integrations/rss/web/ ./integrations/rss/web/
-COPY integrations/fantasy/web/ ./integrations/fantasy/web/
+COPY channels/finance/web/ ./channels/finance/web/
+COPY channels/sports/web/ ./channels/sports/web/
+COPY channels/rss/web/ ./channels/rss/web/
+COPY channels/fantasy/web/ ./channels/fantasy/web/
 
-# Create node_modules symlink for TypeScript resolution of integration files
-RUN ln -s ../myscrollr.com/node_modules ./integrations/node_modules
+# Create node_modules symlink for TypeScript resolution of channel files
+RUN ln -s ../myscrollr.com/node_modules ./channels/node_modules
 
 # Copy the rest of the frontend source
 COPY myscrollr.com/ ./myscrollr.com/
