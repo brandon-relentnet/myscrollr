@@ -1,12 +1,12 @@
-import { useRef, useEffect, useState, useCallback } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   motion,
   useInView,
   useMotionValue,
-  useTransform,
   useSpring,
+  useTransform,
 } from 'motion/react'
-import { Zap, Github, Globe, Star } from 'lucide-react'
+import { GitFork, Github, Globe, MessageSquare, Star, Zap } from 'lucide-react'
 import InstallButton from '@/components/InstallButton'
 
 /* ────────────────────────────────────────────────────────────────────────── */
@@ -34,11 +34,16 @@ const PARTICLES = Array.from({ length: 28 }, (_, i) => ({
 }))
 
 /* ────────────────────────────────────────────────────────────────────────── */
-/*  GitHub stars hook                                                         */
+/*  GitHub stats hook                                                         */
 /* ────────────────────────────────────────────────────────────────────────── */
 
-function useGitHubStars(repo: string) {
-  const [stars, setStars] = useState<number | null>(null)
+interface GitHubStats {
+  stars: number
+  forks: number
+}
+
+function useGitHubStats(repo: string) {
+  const [stats, setStats] = useState<GitHubStats | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -46,7 +51,10 @@ function useGitHubStars(repo: string) {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (!cancelled && data?.stargazers_count != null) {
-          setStars(data.stargazers_count)
+          setStats({
+            stars: data.stargazers_count as number,
+            forks: data.forks_count as number,
+          })
         }
       })
       .catch(() => {})
@@ -55,7 +63,7 @@ function useGitHubStars(repo: string) {
     }
   }, [repo])
 
-  return stars
+  return stats
 }
 
 /* ────────────────────────────────────────────────────────────────────────── */
@@ -186,18 +194,20 @@ export function CallToAction() {
     [mouseX, mouseY],
   )
 
-  /* GitHub stars */
-  const githubStars = useGitHubStars('brandon-relentnet/myscrollr')
+  /* GitHub stats */
+  const githubStats = useGitHubStats('brandon-relentnet/myscrollr')
 
-  /* Animated stats */
+  /* Animated counters */
   const statsRef = useRef<HTMLDivElement>(null)
   const statsInView = useInView(statsRef, { once: true, amount: 0.5 })
   const starsCount = useAnimatedCounter(
-    githubStars ?? 0,
-    statsInView && githubStars != null,
+    githubStats?.stars ?? 0,
+    statsInView && githubStats != null,
   )
-  const sourcesCount = useAnimatedCounter(100, statsInView, '+')
-  const sizeCount = useAnimatedCounter(500, statsInView, '')
+  const forksCount = useAnimatedCounter(
+    githubStats?.forks ?? 0,
+    statsInView && githubStats != null,
+  )
 
   return (
     <section
@@ -387,38 +397,51 @@ export function CallToAction() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.7, duration: 0.5, ease: EASE }}
-            className="mt-16 grid grid-cols-3 gap-8 sm:gap-16 max-w-lg w-full"
+            className="mt-16 flex items-center justify-center gap-3"
           >
-            {[
-              {
-                value: githubStars != null ? starsCount : '...',
-                label: 'GitHub stars',
-                icon: <Star className="size-3.5 text-warning/60" />,
-              },
-              {
-                value: sourcesCount,
-                label: 'Data sources',
-                icon: null,
-              },
-              {
-                value: sizeCount,
-                label: 'KB total',
-                icon: null,
-              },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className="flex flex-col items-center gap-1"
-              >
-                <span className="text-2xl sm:text-3xl font-black text-base-content tracking-tight flex items-center gap-1.5">
-                  {stat.icon}
-                  {stat.value}
-                </span>
-                <span className="text-xs text-base-content/35 font-medium">
-                  {stat.label}
-                </span>
-              </div>
-            ))}
+            {/* Stars */}
+            <a
+              href="https://github.com/brandon-relentnet/myscrollr"
+              target="_blank"
+              rel="noreferrer"
+              title="Star on GitHub"
+              className="group flex items-center gap-2 px-4 py-2.5 rounded-xl border border-base-300/20 bg-base-200/30 text-warning/50 hover:text-warning hover:border-warning/20 hover:bg-warning/[0.04] transition-[color,border-color,background-color] duration-200"
+            >
+              <Star className="size-4" />
+              <span className="text-sm font-bold tabular-nums">
+                {githubStats != null ? starsCount : '...'}
+              </span>
+              <span className="text-xs text-base-content/30 group-hover:text-warning/40 transition-[color] duration-200">
+                Stars
+              </span>
+            </a>
+
+            {/* Forks */}
+            <a
+              href="https://github.com/brandon-relentnet/myscrollr/forks"
+              target="_blank"
+              rel="noreferrer"
+              className="group flex items-center gap-2 px-4 py-2.5 rounded-xl border border-base-300/20 bg-base-200/30 text-info/50 hover:text-info hover:border-info/20 hover:bg-info/[0.04] transition-[color,border-color,background-color] duration-200"
+            >
+              <GitFork className="size-4" />
+              <span className="text-sm font-bold tabular-nums">
+                {githubStats != null ? forksCount : '...'}
+              </span>
+              <span className="text-xs text-base-content/30 group-hover:text-info/40 transition-[color] duration-200">
+                Forks
+              </span>
+            </a>
+
+            {/* Discussions */}
+            <a
+              href="https://github.com/brandon-relentnet/myscrollr/discussions"
+              target="_blank"
+              rel="noreferrer"
+              className="group flex items-center gap-2 px-4 py-2.5 rounded-xl border border-base-300/20 bg-base-200/30 text-accent/50 hover:text-accent hover:border-accent/20 hover:bg-accent/[0.04] transition-[color,border-color,background-color] duration-200"
+            >
+              <MessageSquare className="size-4" />
+              <span className="text-sm font-bold">Discuss</span>
+            </a>
           </motion.div>
 
           {/* ── Bottom links ────────────────────────────────────────────── */}

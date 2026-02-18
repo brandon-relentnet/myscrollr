@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
+import { Link } from '@tanstack/react-router'
 import {
+  ArrowRight,
   Code,
   Eye,
-  GitPullRequest,
+  GitFork,
   Github,
   Heart,
+  MessageSquare,
   Star,
   Users,
 } from 'lucide-react'
@@ -69,10 +72,16 @@ const PRINCIPLES: Array<Principle> = [
   },
 ]
 
-// ── GitHub stars hook (lightweight) ──────────────────────────────
+// ── GitHub repo stats hook ───────────────────────────────────────
 
-function useGitHubStars(repo: string) {
-  const [stars, setStars] = useState<number | null>(null)
+interface GitHubStats {
+  stars: number
+  forks: number
+  issues: number
+}
+
+function useGitHubStats(repo: string) {
+  const [stats, setStats] = useState<GitHubStats | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -80,7 +89,11 @@ function useGitHubStars(repo: string) {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (!cancelled && data?.stargazers_count != null) {
-          setStars(data.stargazers_count as number)
+          setStats({
+            stars: data.stargazers_count as number,
+            forks: data.forks_count as number,
+            issues: data.open_issues_count as number,
+          })
         }
       })
       .catch(() => {})
@@ -89,7 +102,7 @@ function useGitHubStars(repo: string) {
     }
   }, [repo])
 
-  return stars
+  return stats
 }
 
 // ── Principle Card ───────────────────────────────────────────────
@@ -181,7 +194,7 @@ function PrincipleCard({
 
 // ── GitHub Stats Row ─────────────────────────────────────────────
 
-function GitHubFooter({ stars }: { stars: number | null }) {
+function GitHubFooter({ stats }: { stats: GitHubStats | null }) {
   return (
     <motion.div
       style={{ opacity: 0 }}
@@ -228,23 +241,60 @@ function GitHubFooter({ stars }: { stars: number | null }) {
             </div>
           </div>
 
-          {/* Right: link + stats */}
-          <div className="flex items-center gap-4">
-            {/* Stats chips */}
-            <div className="hidden sm:flex items-center gap-3">
-              {stars != null && (
-                <span className="inline-flex items-center gap-1.5 text-xs text-warning/50">
+          {/* Right: stats + links */}
+          <div className="flex items-center gap-3">
+            {/* Live stats — clickable */}
+            {stats != null && (
+              <div className="hidden sm:flex items-center gap-1">
+                <a
+                  href={`https://github.com/${REPO}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="Star on GitHub"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-warning/50 hover:text-warning hover:bg-warning/[0.06] transition-[color,background-color] duration-200"
+                >
                   <Star className="size-3.5" />
                   <span className="font-semibold tabular-nums">
-                    {stars.toLocaleString()}
+                    {stats.stars.toLocaleString()}
                   </span>
-                </span>
-              )}
-              <span className="inline-flex items-center gap-1.5 text-xs text-accent/50">
-                <GitPullRequest className="size-3.5" />
-                <span className="font-semibold">Open</span>
-              </span>
-            </div>
+                </a>
+                <a
+                  href={`https://github.com/${REPO}/forks`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-info/50 hover:text-info hover:bg-info/[0.06] transition-[color,background-color] duration-200"
+                >
+                  <GitFork className="size-3.5" />
+                  <span className="font-semibold tabular-nums">
+                    {stats.forks.toLocaleString()}
+                  </span>
+                </a>
+                <a
+                  href={`https://github.com/${REPO}/discussions`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-accent/50 hover:text-accent hover:bg-accent/[0.06] transition-[color,background-color] duration-200"
+                >
+                  <MessageSquare className="size-3.5" />
+                  <span className="font-semibold">Discuss</span>
+                </a>
+              </div>
+            )}
+
+            {/* Divider */}
+            <span className="hidden sm:block w-px h-6 bg-base-300/20" />
+
+            {/* Architecture link */}
+            <Link
+              to="/architecture"
+              className="group inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-base-300/25 bg-base-200/40 text-sm font-semibold text-base-content/50 hover:text-primary hover:border-primary/25 transition-[color,border-color] duration-200"
+            >
+              <span>How It Works</span>
+              <ArrowRight
+                size={14}
+                className="group-hover:translate-x-0.5 transition-transform duration-200"
+              />
+            </Link>
 
             {/* GitHub link */}
             <a
@@ -266,7 +316,7 @@ function GitHubFooter({ stars }: { stars: number | null }) {
 // ── Main Component ───────────────────────────────────────────────
 
 export function BuiltInTheOpen() {
-  const stars = useGitHubStars(REPO)
+  const stats = useGitHubStats(REPO)
 
   return (
     <section className="relative py-24 lg:py-32">
@@ -304,7 +354,7 @@ export function BuiltInTheOpen() {
         </div>
 
         {/* ── GitHub footer ── */}
-        <GitHubFooter stars={stars} />
+        <GitHubFooter stats={stats} />
       </div>
     </section>
   )

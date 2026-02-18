@@ -575,20 +575,15 @@ export function StreamsShowcase() {
           className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 mt-12"
         >
           <Link
-            to="/integrations"
+            to="/discover"
             className="group inline-flex items-center gap-2 text-sm font-semibold text-base-content/40 hover:text-primary transition-colors"
           >
-            Explore All Integrations
+            See It in Action
             <ArrowRight
               size={14}
               className="group-hover:translate-x-1 transition-transform"
             />
           </Link>
-          <span className="hidden sm:block h-4 w-px bg-base-300/30" />
-          <span className="text-[11px] text-base-content/25 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-success/40" />4 live
-            &middot; growing fast
-          </span>
         </motion.div>
       </div>
     </section>
