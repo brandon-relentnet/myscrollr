@@ -33,14 +33,14 @@ func NewServer() *Server {
 	}
 }
 
-// Setup configures middleware, registers all routes, and sets up integration
+// Setup configures middleware, registers all routes, and sets up channel
 // proxying based on Redis discovery.
 func (s *Server) Setup() {
 	initStripe()
 	s.setupMiddleware()
 	s.setupRoutes()
 
-	// Setup dynamic catch-all proxy for integration routes.
+	// Setup dynamic catch-all proxy for channel routes.
 	// MUST be last — Fiber matches in registration order, so core routes take priority.
 	SetupDynamicProxy(s.App)
 }
@@ -59,6 +59,10 @@ func (s *Server) setupMiddleware() {
 		c.Set("X-DNS-Prefetch-Control", "off")
 		if strings.HasPrefix(c.Path(), "/swagger") {
 			c.Set("Content-Security-Policy", "default-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com")
+		} else if c.Path() == "/yahoo/callback" {
+			// Yahoo OAuth callback returns HTML with inline <script> (postMessage + window.close)
+			// and inline style attributes. Allow those while keeping everything else locked down.
+			c.Set("Content-Security-Policy", "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'")
 		} else {
 			c.Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
 		}
@@ -89,7 +93,7 @@ func (s *Server) setupMiddleware() {
 		"/events":          true,
 		"/webhooks/sequin": true,
 		"/webhooks/stripe": true,
-		"/integrations":    true,
+		"/channels":        true,
 	}
 
 	s.App.Use(limiter.New(limiter.Config{
@@ -104,8 +108,8 @@ func (s *Server) setupMiddleware() {
 			if coreExemptPaths[path] {
 				return true
 			}
-			// Dynamically check integration routes (handles late-discovered integrations)
-			for _, entry := range GetIntegrationRoutes() {
+			// Dynamically check channel routes (handles late-discovered channels)
+			for _, entry := range GetChannelRoutes() {
 				if !entry.Route.Auth {
 					if _, ok := matchRoute(entry.Route.Path, path); ok {
 						return true
@@ -118,7 +122,7 @@ func (s *Server) setupMiddleware() {
 }
 
 // setupRoutes mounts core public and protected routes.
-// Integration-specific routes are handled by SetupProxyRoutes.
+// Channel-specific routes are handled by SetupDynamicProxy.
 func (s *Server) setupRoutes() {
 	s.App.Get("/swagger/*", swagger.HandlerDefault)
 
@@ -136,7 +140,7 @@ func (s *Server) setupRoutes() {
 	s.App.Options("/extension/token/refresh", HandleExtensionAuthPreflight)
 	s.App.Post("/extension/token/refresh", HandleExtensionTokenRefresh)
 
-	s.App.Get("/integrations", s.listIntegrations)
+	s.App.Get("/channels", s.listChannels)
 	s.App.Get("/", s.landingPage)
 
 	// --- Protected Routes ---
@@ -152,10 +156,10 @@ func (s *Server) setupRoutes() {
 	// User Routes — specific /users/me/* paths BEFORE parameterized /users/:username
 	s.App.Get("/users/me/preferences", LogtoAuth, HandleGetPreferences)
 	s.App.Put("/users/me/preferences", LogtoAuth, HandleUpdatePreferences)
-	s.App.Get("/users/me/streams", LogtoAuth, GetStreams)
-	s.App.Post("/users/me/streams", LogtoAuth, CreateStream)
-	s.App.Put("/users/me/streams/:type", LogtoAuth, UpdateStream)
-	s.App.Delete("/users/me/streams/:type", LogtoAuth, DeleteStream)
+	s.App.Get("/users/me/channels", LogtoAuth, GetChannels)
+	s.App.Post("/users/me/channels", LogtoAuth, CreateChannel)
+	s.App.Put("/users/me/channels/:type", LogtoAuth, UpdateChannel)
+	s.App.Delete("/users/me/channels/:type", LogtoAuth, DeleteChannel)
 	s.App.Get("/users/:username", GetProfileByUsername)
 }
 
@@ -176,9 +180,9 @@ func (s *Server) healthCheck(c *fiber.Ctx) error {
 		res.Redis = "healthy"
 	}
 
-	// Check health of discovered integration services
+	// Check health of discovered channel services
 	httpClient := &http.Client{Timeout: HealthCheckTimeout}
-	for _, intg := range GetAllIntegrations() {
+	for _, intg := range GetAllChannels() {
 		if !intg.HasCapability("health_checker") {
 			continue
 		}
@@ -227,26 +231,26 @@ func (s *Server) getDashboard(c *fiber.Ctx) error {
 		res.Preferences = prefs
 	}
 
-	// 2. User streams + enabled types
-	streams, err := GetUserStreams(userID)
+	// 2. User channels + enabled types
+	channels, err := GetUserChannels(userID)
 	if err == nil {
-		res.Streams = streams
+		res.Channels = channels
 	}
 
-	enabledStreams := make(map[string]bool)
-	for _, st := range streams {
-		if st.Enabled {
-			enabledStreams[st.StreamType] = true
+	enabledChannels := make(map[string]bool)
+	for _, ch := range channels {
+		if ch.Enabled {
+			enabledChannels[ch.ChannelType] = true
 		}
 	}
 
 	// Warm Redis subscription sets from current DB state
-	go SyncStreamSubscriptions(userID)
+	go SyncChannelSubscriptions(userID)
 
-	// 3. Fetch dashboard data from each enabled integration via HTTP
+	// 3. Fetch dashboard data from each enabled channel via HTTP
 	dashboardClient := &http.Client{Timeout: HealthCheckTimeout}
-	for _, intg := range GetAllIntegrations() {
-		if !enabledStreams[intg.Name] {
+	for _, intg := range GetAllChannels() {
+		if !enabledChannels[intg.Name] {
 			continue
 		}
 		if !intg.HasCapability("dashboard_provider") {
@@ -266,7 +270,7 @@ func (s *Server) getDashboard(c *fiber.Ctx) error {
 			continue
 		}
 
-		// Merge integration data into response
+		// Merge channel data into response
 		var data map[string]interface{}
 		if err := json.Unmarshal(body, &data); err != nil {
 			log.Printf("[Dashboard] %s unmarshal error: %v", intg.Name, err)
@@ -286,15 +290,15 @@ func (s *Server) getDashboard(c *fiber.Ctx) error {
 	return c.JSON(res)
 }
 
-// listIntegrations returns all discovered integrations and their capabilities.
-func (s *Server) listIntegrations(c *fiber.Ctx) error {
-	integrations := GetAllIntegrations()
-	infos := make([]fiber.Map, 0, len(integrations))
-	for _, intg := range integrations {
+// listChannels returns all discovered channels and their capabilities.
+func (s *Server) listChannels(c *fiber.Ctx) error {
+	channels := GetAllChannels()
+	infos := make([]fiber.Map, 0, len(channels))
+	for _, ch := range channels {
 		infos = append(infos, fiber.Map{
-			"name":         intg.Name,
-			"display_name": intg.DisplayName,
-			"capabilities": intg.Capabilities,
+			"name":         ch.Name,
+			"display_name": ch.DisplayName,
+			"capabilities": ch.Capabilities,
 		})
 	}
 	return c.JSON(infos)
@@ -312,11 +316,11 @@ func (s *Server) landingPage(c *fiber.Ctx) error {
 		"version": "1.0",
 		"status":  "operational",
 		"links": fiber.Map{
-			"health":       "/health",
-			"integrations": "/integrations",
-			"docs":         "/swagger/index.html",
-			"frontend":     frontendURL,
-			"status":       frontendURL + "/status",
+			"health":   "/health",
+			"channels": "/channels",
+			"docs":     "/swagger/index.html",
+			"frontend": frontendURL,
+			"status":   frontendURL + "/status",
 		},
 	})
 }
