@@ -1,0 +1,6 @@
+# Yahoo Fantasy sync service dependencies
+fastapi>=0.115.0,<1.0
+uvicorn[standard]>=0.34.0,<1.0
+asyncpg>=0.30.0,<1.0
+cryptography>=44.0.0,<45.0
+yahoofantasy>=1.4.0,<2.0

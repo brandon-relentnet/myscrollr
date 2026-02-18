@@ -1,30 +1,19 @@
-FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
+FROM python:3.12-slim
+
 WORKDIR /app
 
-FROM chef AS planner
-COPY . .
-RUN cargo chef prepare --recipe-path recipe.json
+# Install system deps for asyncpg (libpq) and cryptography
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        curl \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-FROM chef AS builder
-COPY --from=planner /app/recipe.json recipe.json
+# Install Python dependencies (cached layer)
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Build dependencies - this is the cached layer
-RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
+# Copy application code
+COPY *.py .
 
-# Copy local dependency metadata so cargo chef can "cook" it
-# We copy the folder because chef needs to see the Cargo.toml of the local dependency
-COPY yahoo_fantasy yahoo_fantasy
-
-RUN cargo chef cook --release --recipe-path recipe.json
-
-# Build application
-COPY . .
-RUN cargo build --release --bin yahoo_service
-
-FROM debian:trixie-slim
-WORKDIR /app
-
-RUN apt-get update && apt-get install -y ca-certificates libssl-dev curl && rm -rf /var/lib/apt/lists/*
-COPY --from=builder /app/target/release/yahoo_service .
-
-CMD ["./yahoo_service"]
+CMD ["python", "main.py"]

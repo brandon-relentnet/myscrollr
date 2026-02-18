@@ -17,3 +17,6 @@ count.txt
 .wrangler
 .opencode/
 .claude/
+__pycache__/
+*.pyc
+.venv/
