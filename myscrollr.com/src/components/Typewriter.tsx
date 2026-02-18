@@ -18,7 +18,7 @@ export default function HeroTextSwap({ activeIndex }: HeroTextSwapProps) {
       >
         <span className="text-base-content">Your </span>
         <span className="inline-block relative">
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="popLayout">
             <motion.span
               key={WORDS[activeIndex]}
               initial={{ opacity: 0, y: 20 }}
