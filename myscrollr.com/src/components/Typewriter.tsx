@@ -17,7 +17,7 @@ export default function HeroTextSwap({ activeIndex }: HeroTextSwapProps) {
         className="text-4xl sm:text-5xl lg:text-7xl font-black tracking-tight leading-none"
       >
         <span className="text-base-content">Your </span>
-        <span className="inline-block relative">
+        <span className="inline-block relative pb-2">
           <AnimatePresence mode="popLayout">
             <motion.span
               key={WORDS[activeIndex]}
