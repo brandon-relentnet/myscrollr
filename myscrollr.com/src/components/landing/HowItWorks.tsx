@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, motion, useInView } from 'motion/react'
 import {
   Download,
   Ghost,
@@ -440,22 +440,35 @@ export function HowItWorks() {
   const [activeStep, setActiveStep] = useState(0)
   const [cycleKey, setCycleKey] = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const sectionRef = useRef<HTMLElement>(null)
+  const isInView = useInView(sectionRef, { amount: 0.2 })
+
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+  }, [])
 
   const startTimer = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current)
+    stopTimer()
     setCycleKey((k) => k + 1)
     timerRef.current = setInterval(() => {
       setActiveStep((prev) => (prev + 1) % STEPS.length)
       setCycleKey((k) => k + 1)
     }, CYCLE_MS)
-  }, [])
+  }, [stopTimer])
 
+  // Reset to step 0 and restart when section scrolls into view; pause when out
   useEffect(() => {
-    startTimer()
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
+    if (isInView) {
+      setActiveStep(0)
+      startTimer()
+    } else {
+      stopTimer()
     }
-  }, [startTimer])
+    return stopTimer
+  }, [isInView, startTimer, stopTimer])
 
   const handleSelect = useCallback(
     (index: number) => {
@@ -468,7 +481,11 @@ export function HowItWorks() {
   const ActiveVisual = VISUALS[activeStep]
 
   return (
-    <section id="how-it-works" className="relative scroll-m-20">
+    <section
+      ref={sectionRef}
+      id="how-it-works"
+      className="relative scroll-m-20"
+    >
       {/* Subtle background band — signals a new "room" */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-base-200/20 to-transparent pointer-events-none" />
 
