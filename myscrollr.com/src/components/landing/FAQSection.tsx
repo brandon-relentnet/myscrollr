@@ -19,59 +19,126 @@ import {
 interface FAQItem {
   icon: typeof ShieldCheck
   question: string
+  highlight: string
   answer: string
+  accent: string // tailwind color token (e.g. "emerald", "cyan")
 }
 
 const FAQ_ITEMS: Array<FAQItem> = [
   {
     icon: Gift,
     question: 'Is Scrollr really free?',
+    highlight: 'Free forever. No trials, no ads, no paywalls.',
     answer:
       'Completely free, no strings attached. There are no trials, no premium gates on core features, and no ads. The entire codebase is open source under the AGPL-3.0 license — you can inspect every line.',
+    accent: 'emerald',
   },
   {
     icon: Zap,
     question: 'Does it slow down my browser?',
+    highlight: 'One connection. 50 items max. Zero disk writes.',
     answer:
       'Not noticeably. All data flows through a single connection in the background — not one per tab. The feed bar runs in an isolated Shadow DOM with at most 50 items in memory, and nothing gets written to disk.',
+    accent: 'amber',
   },
   {
     icon: ShieldCheck,
     question: 'Is my browsing data private?',
+    highlight: 'Zero analytics. Zero tracking. Zero telemetry.',
     answer:
-      "Yes. The extension contains zero analytics, zero tracking pixels, and zero telemetry. Your preferences are stored in your browser's local extension storage and never transmitted anywhere. The only network requests go to the Scrollr API to fetch your feed data.",
+      "The extension contains zero analytics, zero tracking pixels, and zero telemetry. Your preferences are stored in your browser's local extension storage and never transmitted anywhere. The only network requests go to the Scrollr API to fetch your feed data.",
+    accent: 'sky',
   },
   {
     icon: Globe,
     question: 'What browsers are supported?',
+    highlight: 'Chrome, Firefox, Edge, Safari, Brave, and more.',
     answer:
-      'Chrome, Firefox, Edge, Safari, Brave, and any Chromium-based browser. Scrollr is available on the Chrome Web Store and Firefox Add-ons.',
+      'Any Chromium-based browser works out of the box. Scrollr is available on the Chrome Web Store and Firefox Add-ons, covering virtually every modern desktop browser.',
+    accent: 'violet',
   },
   {
     icon: UserX,
     question: 'Do I need an account?',
+    highlight: 'No sign-up needed. Install and go.',
     answer:
-      'No. Install the extension and you\u2019ll immediately receive live stock and sports data with no sign-up. Creating a free account unlocks all four integrations (finance, sports, news, and fantasy), the web dashboard, and cross-device preference sync.',
+      'Install the extension and you\u2019ll immediately receive live stock and sports data with no sign-up. Creating a free account unlocks all four integrations (finance, sports, news, and fantasy), the web dashboard, and cross-device preference sync.',
+    accent: 'rose',
   },
   {
     icon: Layers,
     question: 'What data does Scrollr show?',
+    highlight: 'Stocks, scores, news, and fantasy — all live.',
     answer:
       'Four integrations: real-time stock and crypto prices, live sports scores across major leagues, RSS news headlines from hundreds of sources, and Yahoo Fantasy league updates including standings and matchups.',
+    accent: 'cyan',
   },
   {
     icon: SlidersHorizontal,
     question: 'Can I customize the feed?',
+    highlight: 'Position, size, mode, tabs, per-site rules — all yours.',
     answer:
-      'Extensively. Position the bar at the top or bottom of your screen, drag to resize the height, switch between comfort and compact modes, choose overlay or push behavior, pick which integrations appear as tabs, and choose which websites show or hide the feed.',
+      'Position the bar at the top or bottom of your screen, drag to resize the height, switch between comfort and compact modes, choose overlay or push behavior, pick which integrations appear as tabs, and choose which websites show or hide the feed.',
+    accent: 'orange',
   },
   {
     icon: Code,
     question: 'Is Scrollr open source?',
+    highlight: 'Fully open source. AGPL-3.0. Every line.',
     answer:
-      'Yes, under the GNU Affero General Public License v3.0. Every component — the browser extension, the web app, the API, and all integration services — is publicly available on GitHub. You can inspect, fork, or contribute to any part of it.',
+      'Every component — the browser extension, the web app, the API, and all integration services — is publicly available on GitHub under the GNU Affero General Public License v3.0. You can inspect, fork, or contribute to any part of it.',
+    accent: 'fuchsia',
   },
 ]
+
+// ── Accent color map ─────────────────────────────────────────────
+// Maps accent name → CSS color values for the icon ring, glow, gradient
+
+const ACCENT_COLORS: Record<
+  string,
+  { ring: string; glow: string; gradient: string }
+> = {
+  emerald: {
+    ring: 'rgba(52,211,153,0.25)',
+    glow: 'rgba(52,211,153,0.12)',
+    gradient: 'rgba(52,211,153,0.06)',
+  },
+  amber: {
+    ring: 'rgba(251,191,36,0.25)',
+    glow: 'rgba(251,191,36,0.12)',
+    gradient: 'rgba(251,191,36,0.06)',
+  },
+  sky: {
+    ring: 'rgba(56,189,248,0.25)',
+    glow: 'rgba(56,189,248,0.12)',
+    gradient: 'rgba(56,189,248,0.06)',
+  },
+  violet: {
+    ring: 'rgba(167,139,250,0.25)',
+    glow: 'rgba(167,139,250,0.12)',
+    gradient: 'rgba(167,139,250,0.06)',
+  },
+  rose: {
+    ring: 'rgba(251,113,133,0.25)',
+    glow: 'rgba(251,113,133,0.12)',
+    gradient: 'rgba(251,113,133,0.06)',
+  },
+  cyan: {
+    ring: 'rgba(34,211,238,0.25)',
+    glow: 'rgba(34,211,238,0.12)',
+    gradient: 'rgba(34,211,238,0.06)',
+  },
+  orange: {
+    ring: 'rgba(251,146,60,0.25)',
+    glow: 'rgba(251,146,60,0.12)',
+    gradient: 'rgba(251,146,60,0.06)',
+  },
+  fuchsia: {
+    ring: 'rgba(232,121,249,0.25)',
+    glow: 'rgba(232,121,249,0.12)',
+    gradient: 'rgba(232,121,249,0.06)',
+  },
+}
 
 // ── Constants ────────────────────────────────────────────────────
 
@@ -81,31 +148,81 @@ const CYCLE_MS = 6000
 // ── Desktop Answer Panel ─────────────────────────────────────────
 
 function AnswerPanel({ item }: { item: FAQItem }) {
-  const WatermarkIcon = item.icon
+  const Icon = item.icon
+  const colors = ACCENT_COLORS[item.accent] ?? ACCENT_COLORS.emerald
 
   return (
-    <div className="relative h-full rounded-2xl bg-base-200/40 border border-base-300/25 p-8 sm:p-9 overflow-hidden">
+    <div className="relative h-full rounded-2xl bg-base-200/40 border border-base-300/25 p-8 sm:p-9 overflow-hidden flex flex-col">
+      {/* Ambient gradient orb — top-right, per-card accent color */}
+      <div
+        className="absolute -top-20 -right-20 w-64 h-64 rounded-full pointer-events-none blur-3xl"
+        style={{ background: colors.gradient }}
+      />
+
+      {/* Subtle corner dot grid */}
+      <div
+        className="absolute bottom-4 right-4 w-16 h-16 pointer-events-none opacity-[0.04]"
+        style={{
+          backgroundImage:
+            'radial-gradient(circle, currentColor 1px, transparent 1px)',
+          backgroundSize: '8px 8px',
+        }}
+      />
+
       {/* Top accent line */}
       <div
         className="absolute top-0 left-8 right-8 h-px"
         style={{
-          background:
-            'linear-gradient(90deg, transparent, var(--color-primary) 50%, transparent)',
-          opacity: 0.2,
+          background: `linear-gradient(90deg, transparent, ${colors.ring} 50%, transparent)`,
         }}
       />
 
-      {/* Watermark icon */}
-      <WatermarkIcon
-        size={150}
+      {/* Watermark icon — slightly more visible */}
+      <Icon
+        size={140}
         strokeWidth={0.4}
-        className="absolute -bottom-8 -right-8 text-primary/[0.03] pointer-events-none select-none"
+        className="absolute -bottom-6 -right-6 text-base-content/[0.025] pointer-events-none select-none"
       />
 
-      <h3 className="relative text-lg sm:text-xl font-bold text-base-content mb-4 leading-snug">
-        {item.question}
-      </h3>
-      <p className="relative text-[15px] text-base-content/50 leading-relaxed">
+      {/* ── Icon badge ── */}
+      <div className="relative mb-5">
+        <div
+          className="w-12 h-12 rounded-xl flex items-center justify-center"
+          style={{
+            background: colors.glow,
+            boxShadow: `0 0 24px ${colors.glow}, 0 0 0 1px ${colors.ring}`,
+          }}
+        >
+          <Icon size={22} className="text-base-content/80" />
+        </div>
+      </div>
+
+      {/* ── Highlight TLDR ── */}
+      <p className="relative text-lg sm:text-xl font-bold text-base-content leading-snug mb-4">
+        {item.highlight}
+      </p>
+
+      {/* ── Divider ── */}
+      <div className="relative flex items-center gap-3 mb-4">
+        <div
+          className="h-px flex-1"
+          style={{
+            background: `linear-gradient(90deg, ${colors.ring}, transparent)`,
+          }}
+        />
+        <span className="text-[11px] font-semibold tracking-widest uppercase text-base-content/20">
+          Details
+        </span>
+        <div
+          className="h-px flex-1"
+          style={{
+            background: `linear-gradient(90deg, transparent, ${colors.ring})`,
+          }}
+        />
+      </div>
+
+      {/* ── Full answer ── */}
+      <p className="relative text-[15px] text-base-content/45 leading-relaxed flex-1">
         {item.answer}
       </p>
     </div>
@@ -194,8 +311,11 @@ function AccordionItem({
               className="overflow-hidden"
             >
               <div className="px-5 pb-5 pt-0">
-                <div className="h-px bg-base-300/20 mb-4" />
-                <p className="text-sm text-base-content/50 leading-relaxed">
+                <div className="h-px bg-base-300/20 mb-3" />
+                <p className="text-[13px] font-semibold text-base-content/70 mb-2 leading-snug">
+                  {item.highlight}
+                </p>
+                <p className="text-sm text-base-content/40 leading-relaxed">
                   {item.answer}
                 </p>
               </div>
@@ -310,7 +430,7 @@ export function FAQSection() {
           <div className="w-[360px] shrink-0 flex flex-col">
             <div className="flex-1 space-y-1">
               {FAQ_ITEMS.map((item, i) => {
-                const Icon = item.icon
+                const NavIcon = item.icon
                 const isActive = activeIndex === i
                 return (
                   <button
@@ -334,7 +454,6 @@ export function FAQSection() {
                           duration: 0.4,
                         }}
                       >
-                        {/* Progress fill animates from bottom to top */}
                         <motion.div
                           key={`faq-progress-${cycleKey}`}
                           className="absolute bottom-0 left-0 right-0 bg-primary rounded-full"
@@ -348,7 +467,7 @@ export function FAQSection() {
                       </motion.div>
                     )}
 
-                    <Icon
+                    <NavIcon
                       size={16}
                       className={`shrink-0 transition-colors duration-300 ${
                         isActive ? 'text-primary' : ''
@@ -366,7 +485,7 @@ export function FAQSection() {
           {/* Right — answer panel (fixed height) + nav controls */}
           <div className="flex-1 flex flex-col gap-4">
             {/* Answer card — fixed height container */}
-            <div className="min-h-[280px] flex-1">
+            <div className="min-h-[380px] flex-1">
               <AnimatePresence mode="wait">
                 {activeIndex >= 0 && (
                   <motion.div
