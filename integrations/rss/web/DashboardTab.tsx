@@ -9,24 +9,21 @@ import {
   X,
 } from "lucide-react";
 import { motion } from "motion/react";
-import type { RssStreamConfig, TrackedFeed } from "@/api/client";
-import { rssApi, streamsApi } from "@/api/client";
-import type {
-  IntegrationManifest,
-  DashboardTabProps,
-} from "@/integrations/types";
-import { StreamHeader, InfoCard } from "@/integrations/shared";
+import type { RssChannelConfig, TrackedFeed } from "@/api/client";
+import { rssApi, channelsApi } from "@/api/client";
+import type { ChannelManifest, DashboardTabProps } from "@/channels/types";
+import { ChannelHeader, InfoCard } from "@/channels/shared";
 
 const FEEDS_PER_PAGE = 24;
 const HEX = "#00b8db";
 
 function RssDashboardTab({
-  stream,
+  channel,
   getToken,
   hex,
   onToggle,
   onDelete,
-  onStreamUpdate,
+  onChannelUpdate,
 }: DashboardTabProps) {
   const [newFeedName, setNewFeedName] = useState("");
   const [newFeedUrl, setNewFeedUrl] = useState("");
@@ -40,7 +37,7 @@ function RssDashboardTab({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const rssConfig = stream.config as RssStreamConfig;
+  const rssConfig = channel.config as RssChannelConfig;
   const feeds = Array.isArray(rssConfig?.feeds) ? rssConfig.feeds : [];
   const feedUrlSet = new Set(feeds.map((f) => f.url));
 
@@ -88,12 +85,12 @@ function RssDashboardTab({
   ) => {
     setSaving(true);
     try {
-      const updated = await streamsApi.update(
+      const updated = await channelsApi.update(
         "rss",
         { config: { feeds: nextFeeds } },
         getToken,
       );
-      onStreamUpdate(updated);
+      onChannelUpdate(updated);
     } catch {
       setError("Failed to save feed changes");
     } finally {
@@ -145,10 +142,10 @@ function RssDashboardTab({
 
   return (
     <div className="space-y-6">
-      <StreamHeader
-        stream={stream}
+      <ChannelHeader
+        channel={channel}
         icon={<Rss size={16} className="text-base-content/80" />}
-        title="RSS Stream"
+        title="RSS Channel"
         subtitle="Custom news feeds on your ticker"
         hex={hex}
         onToggle={onToggle}
@@ -509,7 +506,7 @@ function RssDashboardTab({
   );
 }
 
-export const rssIntegration: IntegrationManifest = {
+export const rssChannel: ChannelManifest = {
   id: "rss",
   name: "RSS Feeds",
   tabLabel: "RSS Feeds",

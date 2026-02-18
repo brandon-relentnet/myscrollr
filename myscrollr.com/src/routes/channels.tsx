@@ -23,19 +23,19 @@ import {
 } from 'lucide-react'
 
 import { motion } from 'motion/react'
-import type { Stream, StreamType } from '@/api/client'
+import type { Channel, ChannelType } from '@/api/client'
 import { usePageMeta } from '@/lib/usePageMeta'
 import { useGetToken } from '@/hooks/useGetToken'
-import { streamsApi } from '@/api/client'
+import { channelsApi } from '@/api/client'
 
-export const Route = createFileRoute('/integrations')({
-  component: IntegrationsPage,
+export const Route = createFileRoute('/channels')({
+  component: ChannelsPage,
 })
 
 // ── Signature easing (matches homepage) ────────────────────────
 const EASE = [0.22, 1, 0.36, 1] as const
 
-// ── Integration hex map ────────────────────────────────────────
+// ── Channel hex map ────────────────────────────────────────────
 const HEX = {
   primary: '#34d399',
   secondary: '#ff4757',
@@ -43,11 +43,11 @@ const HEX = {
   accent: '#a855f7',
 } as const
 
-// ── Integration Definitions ────────────────────────────────────
+// ── Channel Definitions ────────────────────────────────────────
 
-interface Integration {
+interface ChannelDef {
   id: string
-  streamType: StreamType
+  channelType: ChannelType
   name: string
   description: string
   detail: string
@@ -61,17 +61,17 @@ interface Integration {
   recommended?: boolean
 }
 
-interface ComingSoonIntegration {
+interface ComingSoonChannel {
   id: string
   name: string
   description: string
   Icon: ComponentType<{ size?: number; className?: string }>
 }
 
-const INTEGRATIONS: Integration[] = [
+const CHANNELS: ChannelDef[] = [
   {
     id: 'finance',
-    streamType: 'finance',
+    channelType: 'finance',
     name: 'Finance',
     description: 'Real-time market data',
     detail:
@@ -83,7 +83,7 @@ const INTEGRATIONS: Integration[] = [
   },
   {
     id: 'sports',
-    streamType: 'sports',
+    channelType: 'sports',
     name: 'Sports',
     description: 'Live scores & schedules',
     detail:
@@ -95,7 +95,7 @@ const INTEGRATIONS: Integration[] = [
   },
   {
     id: 'rss',
-    streamType: 'rss',
+    channelType: 'rss',
     name: 'RSS Feeds',
     description: 'Custom news streams',
     detail:
@@ -107,7 +107,7 @@ const INTEGRATIONS: Integration[] = [
   },
   {
     id: 'fantasy',
-    streamType: 'fantasy',
+    channelType: 'fantasy',
     name: 'Yahoo Fantasy',
     description: 'Fantasy sports leagues',
     detail:
@@ -118,7 +118,7 @@ const INTEGRATIONS: Integration[] = [
   },
 ]
 
-const COMING_SOON: ComingSoonIntegration[] = [
+const COMING_SOON: ComingSoonChannel[] = [
   {
     id: 'discord',
     name: 'Discord',
@@ -159,52 +159,52 @@ const COMING_SOON: ComingSoonIntegration[] = [
 
 // ── Page Component ─────────────────────────────────────────────
 
-function IntegrationsPage() {
+function ChannelsPage() {
   usePageMeta({
-    title: 'Integrations — Scrollr',
+    title: 'Channels — Scrollr',
     description:
-      'Browse and connect integrations to extend your Scrollr feed with real-time data from your favorite platforms.',
-    canonicalUrl: 'https://myscrollr.com/integrations',
+      'Browse and connect channels to extend your Scrollr feed with real-time data from your favorite platforms.',
+    canonicalUrl: 'https://myscrollr.com/channels',
   })
 
   const { isAuthenticated, signIn } = useScrollrAuth()
-  const [streams, setStreams] = useState<Stream[]>([])
+  const [channels, setChannels] = useState<Channel[]>([])
   const [loading, setLoading] = useState(false)
   const [adding, setAdding] = useState<string | null>(null)
   const getToken = useGetToken()
 
-  // Fetch user's streams when authenticated
+  // Fetch user's channels when authenticated
   useEffect(() => {
     if (!isAuthenticated) {
-      setStreams([])
+      setChannels([])
       return
     }
     setLoading(true)
-    streamsApi
+    channelsApi
       .getAll(getToken)
-      .then((res) => setStreams(res.streams || []))
+      .then((res) => setChannels(res.channels || []))
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [isAuthenticated, getToken])
 
-  const hasStream = (type: StreamType) =>
-    streams.some((s) => s.stream_type === type)
+  const hasChannel = (type: ChannelType) =>
+    channels.some((s) => s.channel_type === type)
 
-  const handleAdd = async (integration: Integration) => {
+  const handleAdd = async (channel: ChannelDef) => {
     if (!isAuthenticated) {
       signIn(`${window.location.origin}/callback`)
       return
     }
-    if (hasStream(integration.streamType)) return
+    if (hasChannel(channel.channelType)) return
 
-    setAdding(integration.id)
+    setAdding(channel.id)
     try {
-      const created = await streamsApi.create(
-        integration.streamType,
+      const created = await channelsApi.create(
+        channel.channelType,
         {},
         getToken,
       )
-      setStreams((prev) => [...prev, created])
+      setChannels((prev) => [...prev, created])
     } catch {
       // Silently handle — likely 409 conflict (already exists)
     } finally {
@@ -240,8 +240,8 @@ function IntegrationsPage() {
           >
             <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-lg border border-primary/15 uppercase tracking-wide">
               <Puzzle size={12} />
-              {INTEGRATIONS.length} available &middot; {COMING_SOON.length}{' '}
-              coming soon
+              {CHANNELS.length} available &middot; {COMING_SOON.length} coming
+              soon
             </span>
           </motion.div>
 
@@ -260,15 +260,15 @@ function IntegrationsPage() {
             transition={{ duration: 0.6, delay: 0.3, ease: EASE }}
             className="text-base text-base-content/45 max-w-lg mx-auto leading-relaxed"
           >
-            Browse official integrations or explore what the community is
-            building. Can't find what you want? Build it or suggest it.
+            Browse official channels or explore what the community is building.
+            Can't find what you want? Build it or suggest it.
           </motion.p>
         </div>
 
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-base-300/50 to-transparent" />
       </section>
 
-      {/* ── INTEGRATIONS GRID ────────────────────────────────── */}
+      {/* ── CHANNELS GRID ─────────────────────────────────────── */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-base-200/20 to-transparent pointer-events-none" />
 
@@ -282,7 +282,7 @@ function IntegrationsPage() {
             className="text-center mb-12 sm:mb-16"
           >
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
-              <span className="text-gradient-primary">Integrations</span>
+              <span className="text-gradient-primary">Channels</span>
             </h2>
             <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
               Add data sources to your account to build your feed
@@ -290,9 +290,9 @@ function IntegrationsPage() {
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            {INTEGRATIONS.map((integration, i) => (
+            {CHANNELS.map((channel, i) => (
               <motion.div
-                key={integration.id}
+                key={channel.id}
                 style={{ opacity: 0 }}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -303,14 +303,14 @@ function IntegrationsPage() {
                   ease: EASE,
                 }}
               >
-                <IntegrationCard
-                  integration={integration}
-                  installed={hasStream(integration.streamType)}
+                <ChannelCard
+                  channel={channel}
+                  installed={hasChannel(channel.channelType)}
                   loading={loading}
                   onAdd={handleAdd}
-                  adding={adding === integration.id}
+                  adding={adding === channel.id}
                   isAuthenticated={isAuthenticated}
-                  recommended={integration.recommended}
+                  recommended={channel.recommended}
                 />
               </motion.div>
             ))}
@@ -333,7 +333,7 @@ function IntegrationsPage() {
               On the <span className="text-gradient-primary">Roadmap</span>
             </h2>
             <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
-              Community-requested integrations in development
+              Community-requested channels in development
             </p>
           </motion.div>
 
@@ -436,9 +436,9 @@ function IntegrationsPage() {
                   Missing Something?
                 </h3>
                 <p className="text-sm text-base-content/45 leading-relaxed max-w-md">
-                  Every Scrollr integration is a self-contained package. Fork
-                  the repo, follow the architecture, ship your plugin — or just
-                  tell us what you want.
+                  Every Scrollr channel is a self-contained package. Fork the
+                  repo, follow the architecture, ship your plugin — or just tell
+                  us what you want.
                 </p>
               </div>
 
@@ -472,10 +472,10 @@ function IntegrationsPage() {
   )
 }
 
-// ── Integration Card ───────────────────────────────────────────
+// ── Channel Card ───────────────────────────────────────────────
 
-function IntegrationCard({
-  integration,
+function ChannelCard({
+  channel,
   installed,
   loading,
   onAdd,
@@ -483,15 +483,15 @@ function IntegrationCard({
   isAuthenticated,
   recommended = false,
 }: {
-  integration: Integration
+  channel: ChannelDef
   installed: boolean
   loading: boolean
-  onAdd: (integration: Integration) => void
+  onAdd: (channel: ChannelDef) => void
   adding: boolean
   isAuthenticated: boolean
   recommended?: boolean
 }) {
-  const { hex } = integration
+  const { hex } = channel
 
   return (
     <div className="group relative bg-base-200/40 border border-base-300/25 rounded-xl p-6 overflow-hidden hover:border-base-300/50 transition-colors h-full flex flex-col">
@@ -529,7 +529,7 @@ function IntegrationCard({
               boxShadow: `0 0 20px ${hex}15, 0 0 0 1px ${hex}20`,
             }}
           >
-            <integration.Icon size={20} className="text-base-content/80" />
+            <channel.Icon size={20} className="text-base-content/80" />
           </div>
 
           {/* Status Badge */}
@@ -557,16 +557,16 @@ function IntegrationCard({
 
         {/* Content */}
         <h3 className="text-sm font-bold text-base-content mb-1">
-          {integration.name}
+          {channel.name}
         </h3>
         <p
           className="text-[10px] mb-3 font-medium"
           style={{ color: `${hex}90` }}
         >
-          {integration.description}
+          {channel.description}
         </p>
         <p className="text-xs text-base-content/40 leading-relaxed">
-          {integration.detail}
+          {channel.detail}
         </p>
 
         {/* Action — pinned to bottom */}
@@ -574,7 +574,7 @@ function IntegrationCard({
           {installed ? (
             <Link
               to="/dashboard"
-              search={{ tab: integration.streamType }}
+              search={{ tab: channel.channelType }}
               className="flex items-center gap-2 text-[10px] font-semibold text-base-content/50 hover:text-base-content/70 transition-colors"
             >
               Manage on Dashboard <ArrowRight size={12} />
@@ -583,7 +583,7 @@ function IntegrationCard({
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => onAdd(integration)}
+              onClick={() => onAdd(channel)}
               disabled={adding}
               className="flex items-center gap-2 px-4 py-2 text-[10px] font-semibold border rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               style={{
@@ -612,7 +612,7 @@ function IntegrationCard({
       </div>
 
       {/* Watermark icon */}
-      <integration.Watermark
+      <channel.Watermark
         size={100}
         strokeWidth={0.4}
         className="absolute -bottom-3 -right-3 text-base-content/[0.025] pointer-events-none"

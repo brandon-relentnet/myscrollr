@@ -17,24 +17,24 @@ type UserPreferences struct {
 	UpdatedAt        string   `json:"updated_at"`
 }
 
-// Stream represents a user's subscription to a data integration.
-type Stream struct {
-	ID         int                    `json:"id"`
-	LogtoSub   string                 `json:"-"`
-	StreamType string                 `json:"stream_type"`
-	Enabled    bool                   `json:"enabled"`
-	Visible    bool                   `json:"visible"`
-	Config     map[string]interface{} `json:"config"`
-	CreatedAt  time.Time              `json:"created_at"`
-	UpdatedAt  time.Time              `json:"updated_at"`
+// Channel represents a user's subscription to a data channel.
+type Channel struct {
+	ID          int                    `json:"id"`
+	LogtoSub    string                 `json:"-"`
+	ChannelType string                 `json:"channel_type"`
+	Enabled     bool                   `json:"enabled"`
+	Visible     bool                   `json:"visible"`
+	Config      map[string]interface{} `json:"config"`
+	CreatedAt   time.Time              `json:"created_at"`
+	UpdatedAt   time.Time              `json:"updated_at"`
 }
 
 // DashboardResponse is the aggregated response for the /dashboard endpoint.
-// Data is a generic map keyed by integration name (e.g. "finance", "sports").
+// Data is a generic map keyed by channel name (e.g. "finance", "sports").
 type DashboardResponse struct {
 	Data        map[string]interface{} `json:"data"`
 	Preferences *UserPreferences       `json:"preferences,omitempty"`
-	Streams     []Stream               `json:"streams,omitempty"`
+	Channels    []Channel              `json:"channels,omitempty"`
 }
 
 // HealthResponse represents the aggregated health status.

@@ -26,7 +26,7 @@ const STEPS = [
   },
   {
     id: 'choose',
-    title: 'Pick Your Streams',
+    title: 'Pick Your Channels',
     description:
       'Toggle on sports, markets, news, or fantasy. Whatever matters to you.',
   },
@@ -38,15 +38,15 @@ const STEPS = [
   },
 ]
 
-// ── Stream & chip data for visuals ───────────────────────────────
+// ── Channel & chip data for visuals ──────────────────────────────
 
-type StreamColor = 'primary' | 'secondary' | 'info' | 'accent'
+type ChannelColor = 'primary' | 'secondary' | 'info' | 'accent'
 type ChipColor = 'primary' | 'secondary' | 'info'
 
-const STREAMS: Array<{
+const CHANNELS: Array<{
   name: string
   icon: typeof TrendingUp
-  color: StreamColor
+  color: ChannelColor
   defaultOn: boolean
 }> = [
   { name: 'Finance', icon: TrendingUp, color: 'primary', defaultOn: true },
@@ -64,14 +64,14 @@ const DEMO_CHIPS: { label: string; value: string; color: ChipColor }[] = [
 
 // ── Style maps ───────────────────────────────────────────────────
 
-const toggleBg: Record<StreamColor, string> = {
+const toggleBg: Record<ChannelColor, string> = {
   primary: 'bg-primary',
   secondary: 'bg-secondary',
   info: 'bg-info',
   accent: 'bg-accent',
 }
 
-const iconStyle: Record<StreamColor, string> = {
+const iconStyle: Record<ChannelColor, string> = {
   primary: 'text-primary bg-primary/10 border border-primary/15',
   secondary: 'text-secondary bg-secondary/10 border border-secondary/15',
   info: 'text-info bg-info/10 border border-info/15',
@@ -241,15 +241,15 @@ function InstallVisual() {
   )
 }
 
-// ── Step 2 Visual: Choose Streams ────────────────────────────────
+// ── Step 2 Visual: Choose Channels ───────────────────────────────
 
 function ChooseVisual() {
-  const [toggled, setToggled] = useState<boolean[]>(STREAMS.map(() => false))
+  const [toggled, setToggled] = useState<boolean[]>(CHANNELS.map(() => false))
 
   useEffect(() => {
     const timeouts: ReturnType<typeof setTimeout>[] = []
-    STREAMS.forEach((stream, i) => {
-      if (stream.defaultOn) {
+    CHANNELS.forEach((channel, i) => {
+      if (channel.defaultOn) {
         timeouts.push(
           setTimeout(
             () => {
@@ -276,9 +276,9 @@ function ChooseVisual() {
       className="flex items-center justify-center h-full py-8 sm:py-12 px-5 sm:px-10"
     >
       <div className="w-full max-w-sm space-y-2.5">
-        {STREAMS.map((stream, i) => (
+        {CHANNELS.map((channel, i) => (
           <motion.div
-            key={stream.name}
+            key={channel.name}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{
@@ -290,18 +290,18 @@ function ChooseVisual() {
           >
             <div className="flex items-center gap-3">
               <div
-                className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconStyle[stream.color]}`}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconStyle[channel.color]}`}
               >
-                <stream.icon size={15} />
+                <channel.icon size={15} />
               </div>
               <span className="text-sm font-medium text-base-content/80">
-                {stream.name}
+                {channel.name}
               </span>
             </div>
 
             {/* Toggle pill */}
             <div
-              className={`relative w-11 h-6 rounded-full transition-colors duration-300 ${toggled[i] ? toggleBg[stream.color] : 'bg-base-300/40'}`}
+              className={`relative w-11 h-6 rounded-full transition-colors duration-300 ${toggled[i] ? toggleBg[channel.color] : 'bg-base-300/40'}`}
             >
               <motion.div
                 className="absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-sm"

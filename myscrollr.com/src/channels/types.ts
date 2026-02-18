@@ -1,23 +1,23 @@
-import type { Stream } from '@/api/client'
+import type { Channel } from '@/api/client'
 
 /** Props every DashboardTab component receives */
 export interface DashboardTabProps {
-  stream: Stream
+  channel: Channel
   getToken: () => Promise<string | null>
   onToggle: () => void
   onDelete: () => void
-  onStreamUpdate: (updated: Stream) => void
+  onChannelUpdate: (updated: Channel) => void
   /** SSE connection status */
   connected: boolean
   /** User's subscription tier: 'free' | 'uplink' */
   subscriptionTier: string
-  /** Integration accent hex color (e.g. '#34d399') */
+  /** Channel accent hex color (e.g. '#34d399') */
   hex: string
 }
 
-/** Manifest describing a single integration */
-export interface IntegrationManifest {
-  /** Unique integration identifier (matches stream_type) */
+/** Manifest describing a single channel */
+export interface ChannelManifest {
+  /** Unique channel identifier (matches channel_type) */
   id: string
   /** Human-readable name */
   name: string
@@ -25,7 +25,7 @@ export interface IntegrationManifest {
   tabLabel: string
   /** Brief description */
   description: string
-  /** Integration accent hex color for icon badges, active states, and accents */
+  /** Channel accent hex color for icon badges, active states, and accents */
   hex: string
   /** Lucide icon component rendered at size 14 for sidebar, 20 for header */
   icon: React.ComponentType<{ size?: number; className?: string }>

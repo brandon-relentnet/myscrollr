@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Eye, EyeOff, Trash2, X } from 'lucide-react'
 import { motion } from 'motion/react'
-import type { Stream } from '@/api/client'
+import type { Channel } from '@/api/client'
 
-/** Toggle switch used in stream headers */
+/** Toggle switch used in channel headers */
 function ToggleSwitch({ active, hex }: { active: boolean; hex: string }) {
   return (
     <span
@@ -22,9 +22,9 @@ function ToggleSwitch({ active, hex }: { active: boolean; hex: string }) {
   )
 }
 
-/** Shared header for all stream config panels */
-export function StreamHeader({
-  stream,
+/** Shared header for all channel config panels */
+export function ChannelHeader({
+  channel,
   icon,
   title,
   subtitle,
@@ -34,7 +34,7 @@ export function StreamHeader({
   onToggle,
   onDelete,
 }: {
-  stream: Stream
+  channel: Channel
   icon: React.ReactNode
   title: string
   subtitle: string
@@ -45,7 +45,7 @@ export function StreamHeader({
   onDelete: () => void
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const active = stream.visible
+  const active = channel.visible
   const isUplink = subscriptionTier === 'uplink'
 
   // Determine badge text and style based on tier
@@ -153,7 +153,7 @@ export function StreamHeader({
             <button
               onClick={() => setConfirmDelete(true)}
               className="p-2.5 rounded-lg border border-base-300/25 text-base-content/20 hover:text-error hover:border-error/30 transition-colors"
-              title="Remove stream"
+              title="Remove channel"
             >
               <Trash2 size={14} />
             </button>
@@ -164,7 +164,7 @@ export function StreamHeader({
   )
 }
 
-/** Small stat card used in stream configs */
+/** Small stat card used in channel configs */
 export function InfoCard({
   label,
   value,

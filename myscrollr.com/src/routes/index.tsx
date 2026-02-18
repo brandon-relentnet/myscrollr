@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { usePageMeta } from '@/lib/usePageMeta'
 import { HeroSection } from '@/components/landing/HeroSection'
 import { HowItWorks } from '@/components/landing/HowItWorks'
-import { StreamsShowcase } from '@/components/landing/StreamsShowcase'
+import { ChannelsShowcase } from '@/components/landing/ChannelsShowcase'
 import { BenefitsSection } from '@/components/landing/BenefitsSection'
 import { TrustSection } from '@/components/landing/TrustSection'
 import { FAQSection } from '@/components/landing/FAQSection'
@@ -26,7 +26,7 @@ function HomePage() {
 
       <HowItWorks />
 
-      <StreamsShowcase />
+      <ChannelsShowcase />
 
       <BenefitsSection />
 

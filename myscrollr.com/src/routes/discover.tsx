@@ -23,7 +23,7 @@ export const Route = createFileRoute('/discover')({
 // ── Signature easing (matches homepage) ────────────────────────
 const EASE = [0.22, 1, 0.36, 1] as const
 
-// ── Integration hex map ────────────────────────────────────────
+// ── Channel hex map ────────────────────────────────────────
 const HEX = {
   primary: '#34d399',
   secondary: '#ff4757',
@@ -125,9 +125,9 @@ const STEPS: Step[] = [
   },
 ]
 
-// ── Integration Cards ───────────────────────────────────────────
+// ── Channel Cards ───────────────────────────────────────────
 
-interface IntegrationInfo {
+interface ChannelInfo {
   Icon: typeof TrendingUp
   name: string
   label: string
@@ -136,7 +136,7 @@ interface IntegrationInfo {
   example: string
 }
 
-const INTEGRATIONS: IntegrationInfo[] = [
+const CHANNELS: ChannelInfo[] = [
   {
     Icon: TrendingUp,
     name: 'Finance',
@@ -566,7 +566,7 @@ function DiscoverPage() {
       </section>
 
       {/* ================================================================
-          INTEGRATIONS
+          CHANNELS
           ================================================================ */}
       <section className="relative overflow-hidden">
         <div className="container">
@@ -624,15 +624,15 @@ function DiscoverPage() {
             className="text-center mb-12 sm:mb-16"
           >
             <h3 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-[0.95] mb-4">
-              Four Streams,{' '}
+              Four Channels,{' '}
               <span className="text-gradient-primary">One Ticker</span>
             </h3>
           </motion.div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {INTEGRATIONS.map((integration, i) => (
+            {CHANNELS.map((channel, i) => (
               <motion.div
-                key={integration.name}
+                key={channel.name}
                 style={{ opacity: 0 }}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -652,7 +652,7 @@ function DiscoverPage() {
                 <div
                   className="absolute top-0 left-0 right-0 h-px"
                   style={{
-                    background: `linear-gradient(90deg, transparent, ${integration.hex} 50%, transparent)`,
+                    background: `linear-gradient(90deg, transparent, ${channel.hex} 50%, transparent)`,
                   }}
                 />
 
@@ -667,7 +667,7 @@ function DiscoverPage() {
                 />
 
                 {/* Watermark icon */}
-                <integration.Icon
+                <channel.Icon
                   size={80}
                   strokeWidth={0.4}
                   className="absolute -bottom-3 -right-3 text-base-content/[0.025] pointer-events-none"
@@ -676,7 +676,7 @@ function DiscoverPage() {
                 {/* Ambient glow on hover */}
                 <div
                   className="absolute -top-10 -right-10 w-32 h-32 rounded-full pointer-events-none blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                  style={{ background: `${integration.hex}10` }}
+                  style={{ background: `${channel.hex}10` }}
                 />
 
                 <div className="relative z-10">
@@ -685,32 +685,32 @@ function DiscoverPage() {
                     <div
                       className="w-11 h-11 rounded-xl flex items-center justify-center"
                       style={{
-                        background: `${integration.hex}15`,
-                        boxShadow: `0 0 20px ${integration.hex}15, 0 0 0 1px ${integration.hex}20`,
+                        background: `${channel.hex}15`,
+                        boxShadow: `0 0 20px ${channel.hex}15, 0 0 0 1px ${channel.hex}20`,
                       }}
                     >
-                      <integration.Icon
+                      <channel.Icon
                         size={20}
                         className="text-base-content/80"
                       />
                     </div>
                     <span
                       className="w-2 h-2 rounded-full opacity-60"
-                      style={{ background: integration.hex }}
+                      style={{ background: channel.hex }}
                     />
                   </div>
 
                   <h3 className="text-sm font-bold text-base-content mb-1">
-                    {integration.name}
+                    {channel.name}
                   </h3>
                   <p
                     className="text-[10px] uppercase tracking-wide mb-3 opacity-60"
-                    style={{ color: integration.hex }}
+                    style={{ color: channel.hex }}
                   >
-                    {integration.label}
+                    {channel.label}
                   </p>
                   <p className="text-xs text-base-content/40 leading-relaxed mb-5">
-                    {integration.description}
+                    {channel.description}
                   </p>
 
                   <div className="pt-4 border-t border-base-300/30">
@@ -719,9 +719,9 @@ function DiscoverPage() {
                     </span>
                     <span
                       className="block mt-1.5 text-xs font-bold font-mono opacity-70"
-                      style={{ color: integration.hex }}
+                      style={{ color: channel.hex }}
                     >
-                      {integration.example}
+                      {channel.example}
                     </span>
                   </div>
                 </div>

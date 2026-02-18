@@ -15,17 +15,17 @@ import {
 
 // ── Types ────────────────────────────────────────────────────────
 
-type StreamKey = 'finance' | 'sports' | 'news' | 'fantasy'
+type ChannelKey = 'finance' | 'sports' | 'news' | 'fantasy'
 
 interface TickerChip {
   label: string
   value: string
-  stream: StreamKey
+  channel: ChannelKey
   icon?: string
 }
 
-interface StreamInfo {
-  key: StreamKey
+interface ChannelInfo {
+  key: ChannelKey
   name: string
   icon: typeof TrendingUp
   color: string
@@ -41,9 +41,9 @@ interface StreamInfo {
   statLabel: string
 }
 
-// ── Stream definitions ───────────────────────────────────────────
+// ── Channel definitions ──────────────────────────────────────────
 
-const STREAMS: Array<StreamInfo> = [
+const CHANNELS: Array<ChannelInfo> = [
   {
     key: 'finance',
     name: 'Finance',
@@ -117,32 +117,32 @@ const STREAMS: Array<StreamInfo> = [
 // ── Ticker chip data ─────────────────────────────────────────────
 
 const TICKER_CHIPS: Array<TickerChip> = [
-  { label: 'BTC', value: '$67,241 ↑', stream: 'finance' },
-  { label: 'LAL 118', value: 'BOS 112 · FINAL', stream: 'sports' },
-  { label: 'NVDA', value: '$891.20 ↑', stream: 'finance' },
-  { label: 'Fed holds rates steady', value: 'Reuters', stream: 'news' },
-  { label: 'MIA 94', value: 'GSW 88 · Q4', stream: 'sports' },
-  { label: 'ETH', value: '$3,412 ↓', stream: 'finance' },
-  { label: 'Your Team', value: '2nd Place', stream: 'fantasy' },
-  { label: 'SPY', value: '$512.08 ↑', stream: 'finance' },
+  { label: 'BTC', value: '$67,241 ↑', channel: 'finance' },
+  { label: 'LAL 118', value: 'BOS 112 · FINAL', channel: 'sports' },
+  { label: 'NVDA', value: '$891.20 ↑', channel: 'finance' },
+  { label: 'Fed holds rates steady', value: 'Reuters', channel: 'news' },
+  { label: 'MIA 94', value: 'GSW 88 · Q4', channel: 'sports' },
+  { label: 'ETH', value: '$3,412 ↓', channel: 'finance' },
+  { label: 'Your Team', value: '2nd Place', channel: 'fantasy' },
+  { label: 'SPY', value: '$512.08 ↑', channel: 'finance' },
   {
     label: 'AI hiring surges as layoffs slow',
     value: 'TechCrunch',
-    stream: 'news',
+    channel: 'news',
   },
-  { label: 'NYG 21', value: 'DAL 17 · HALF', stream: 'sports' },
-  { label: 'AAPL', value: '$189.54 ↓', stream: 'finance' },
-  { label: 'Matchup: W 6-4', value: 'vs Team Alpha', stream: 'fantasy' },
-  { label: 'TSLA', value: '$242.68 ↑', stream: 'finance' },
-  { label: 'Climate summit opens in Dubai', value: 'AP', stream: 'news' },
-  { label: 'BUF 28', value: 'KC 24 · Q3', stream: 'sports' },
-  { label: 'Roster Alert', value: 'J. Chase → IR', stream: 'fantasy' },
+  { label: 'NYG 21', value: 'DAL 17 · HALF', channel: 'sports' },
+  { label: 'AAPL', value: '$189.54 ↓', channel: 'finance' },
+  { label: 'Matchup: W 6-4', value: 'vs Team Alpha', channel: 'fantasy' },
+  { label: 'TSLA', value: '$242.68 ↑', channel: 'finance' },
+  { label: 'Climate summit opens in Dubai', value: 'AP', channel: 'news' },
+  { label: 'BUF 28', value: 'KC 24 · Q3', channel: 'sports' },
+  { label: 'Roster Alert', value: 'J. Chase → IR', channel: 'fantasy' },
 ]
 
-// ── Chip color map (per-stream) ──────────────────────────────────
+// ── Chip color map (per-channel) ─────────────────────────────────
 
 const chipColors: Record<
-  StreamKey,
+  ChannelKey,
   { border: string; text: string; bg: string; sub: string }
 > = {
   finance: {
@@ -178,7 +178,7 @@ const EASE = [0.22, 1, 0.36, 1] as const
 // ── Ticker Chip Component ────────────────────────────────────────
 
 function TickerChipItem({ chip }: { chip: TickerChip }) {
-  const c = chipColors[chip.stream]
+  const c = chipColors[chip.channel]
   return (
     <div
       className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${c.border} ${c.bg} shrink-0`}
@@ -351,9 +351,9 @@ function AnimatedTicker({
   )
 }
 
-// ── Stream Scenario Card ─────────────────────────────────────────
+// ── Channel Scenario Card ────────────────────────────────────────
 
-function ScenarioCard({ stream }: { stream: StreamInfo }) {
+function ScenarioCard({ stream }: { stream: ChannelInfo }) {
   const Icon = stream.scenarioIcon
   const colorVar =
     stream.key === 'finance'
@@ -410,14 +410,14 @@ function ScenarioCard({ stream }: { stream: StreamInfo }) {
 
 // ── Main Component ───────────────────────────────────────────────
 
-export function StreamsShowcase() {
-  const [activeStreams, setActiveStreams] = useState<Set<StreamKey>>(
+export function ChannelsShowcase() {
+  const [activeChannels, setActiveChannels] = useState<Set<ChannelKey>>(
     new Set(['finance', 'sports', 'news', 'fantasy']),
   )
   const sectionRef = useRef<HTMLElement>(null)
 
-  const handleFilterClick = (key: StreamKey) => {
-    setActiveStreams((prev) => {
+  const handleFilterClick = (key: ChannelKey) => {
+    setActiveChannels((prev) => {
       const next = new Set(prev)
       // Don't allow deselecting all — keep at least one
       if (next.has(key) && next.size > 1) {
@@ -429,14 +429,14 @@ export function StreamsShowcase() {
     })
   }
 
-  // Filter chips by active streams
+  // Filter chips by active channels
   const visibleChips = useMemo(
-    () => TICKER_CHIPS.filter((chip) => activeStreams.has(chip.stream)),
-    [activeStreams],
+    () => TICKER_CHIPS.filter((chip) => activeChannels.has(chip.channel)),
+    [activeChannels],
   )
 
   return (
-    <section ref={sectionRef} id="streams" className="relative">
+    <section ref={sectionRef} id="channels" className="relative">
       {/* Subtle background shift */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-base-200/30 to-transparent pointer-events-none" />
 
@@ -472,8 +472,8 @@ export function StreamsShowcase() {
           transition={{ delay: 0.15, duration: 0.5, ease: EASE }}
           className="flex flex-wrap justify-center gap-2.5 mb-10 lg:mb-14"
         >
-          {STREAMS.map((stream) => {
-            const isActive = activeStreams.has(stream.key)
+          {CHANNELS.map((stream) => {
+            const isActive = activeChannels.has(stream.key)
             const Icon = stream.icon
             return (
               <button
@@ -547,19 +547,21 @@ export function StreamsShowcase() {
         >
           <div className="flex flex-wrap justify-center gap-4 lg:gap-5">
             <AnimatePresence mode="popLayout" initial={false}>
-              {STREAMS.filter((s) => activeStreams.has(s.key)).map((stream) => (
-                <motion.div
-                  key={stream.key}
-                  layout
-                  initial={{ opacity: 0, scale: 0.95, filter: 'blur(4px)' }}
-                  animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-                  exit={{ opacity: 0, scale: 0.95, filter: 'blur(4px)' }}
-                  transition={SPRING}
-                  className="w-full md:w-[calc(50%-10px)]"
-                >
-                  <ScenarioCard stream={stream} />
-                </motion.div>
-              ))}
+              {CHANNELS.filter((s) => activeChannels.has(s.key)).map(
+                (stream) => (
+                  <motion.div
+                    key={stream.key}
+                    layout
+                    initial={{ opacity: 0, scale: 0.95, filter: 'blur(4px)' }}
+                    animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                    exit={{ opacity: 0, scale: 0.95, filter: 'blur(4px)' }}
+                    transition={SPRING}
+                    className="w-full md:w-[calc(50%-10px)]"
+                  >
+                    <ScenarioCard stream={stream} />
+                  </motion.div>
+                ),
+              )}
             </AnimatePresence>
           </div>
         </motion.div>

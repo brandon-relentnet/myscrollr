@@ -43,7 +43,7 @@ interface HealthData {
   services: Record<string, string>
 }
 
-interface IntegrationEntry {
+interface ChannelEntry {
   name: string
   display_name: string
   capabilities: string[]
@@ -55,8 +55,8 @@ interface ViewerData {
 
 type ServiceState = 'healthy' | 'unhealthy' | 'down' | 'unknown' | 'loading'
 
-/** Known integration metadata — used for descriptions and port display. */
-const INTEGRATION_META: Record<
+/** Known channel metadata — used for descriptions and port display. */
+const CHANNEL_META: Record<
   string,
   {
     description: string
@@ -158,7 +158,7 @@ function StatusPage() {
   })
 
   const [health, setHealth] = useState<HealthData | null>(null)
-  const [integrations, setIntegrations] = useState<IntegrationEntry[]>([])
+  const [channels, setChannels] = useState<ChannelEntry[]>([])
   const [viewers, setViewers] = useState<number | null>(null)
   const [lastChecked, setLastChecked] = useState<Date | null>(null)
   const [fetchError, setFetchError] = useState(false)
@@ -166,10 +166,10 @@ function StatusPage() {
 
   const fetchHealth = useCallback(async () => {
     try {
-      const [healthRes, viewerRes, intgRes] = await Promise.allSettled([
+      const [healthRes, viewerRes, chnlRes] = await Promise.allSettled([
         fetch(`${API_BASE}/health`),
         fetch(`${API_BASE}/events/count`),
-        fetch(`${API_BASE}/integrations`),
+        fetch(`${API_BASE}/channels`),
       ])
 
       if (healthRes.status === 'fulfilled' && healthRes.value.ok) {
@@ -185,9 +185,9 @@ function StatusPage() {
         setViewers(data.count)
       }
 
-      if (intgRes.status === 'fulfilled' && intgRes.value.ok) {
-        const data: IntegrationEntry[] = await intgRes.value.json()
-        setIntegrations(data)
+      if (chnlRes.status === 'fulfilled' && chnlRes.value.ok) {
+        const data: ChannelEntry[] = await chnlRes.value.json()
+        setChannels(data)
       }
 
       setLastChecked(new Date())
@@ -395,29 +395,28 @@ function StatusPage() {
                   <Server size={20} className="text-base-content/80" />
                 </div>
                 <h3 className="text-lg font-black tracking-tight text-base-content">
-                  Integration Services
+                  Channel Services
                 </h3>
-                {integrations.length > 0 && (
+                {channels.length > 0 && (
                   <span className="text-[10px] font-mono text-base-content/30 bg-base-300/50 px-2 py-0.5 rounded-lg ml-auto">
-                    {integrations.length} registered
+                    {channels.length} registered
                   </span>
                 )}
               </div>
 
               <div className="space-y-3">
-                {integrations.length > 0 ? (
-                  integrations.map((intg) => {
-                    const meta = INTEGRATION_META[intg.name]
+                {channels.length > 0 ? (
+                  channels.map((ch) => {
+                    const meta = CHANNEL_META[ch.name]
                     return (
                       <ServiceRow
-                        key={intg.name}
-                        name={`${intg.display_name} Service`}
+                        key={ch.name}
+                        name={`${ch.display_name} Service`}
                         description={
                           meta?.description ??
-                          (intg.capabilities.join(', ') ||
-                            'Integration service')
+                          (ch.capabilities.join(', ') || 'Channel service')
                         }
-                        state={getServiceState(intg.name)}
+                        state={getServiceState(ch.name)}
                         port={meta?.port}
                         hex={meta?.hex ?? HEX.primary}
                       />
@@ -426,14 +425,12 @@ function StatusPage() {
                 ) : !fetchError ? (
                   <>
                     {['finance', 'sports', 'fantasy', 'rss'].map((name) => {
-                      const meta = INTEGRATION_META[name]
+                      const meta = CHANNEL_META[name]
                       return (
                         <ServiceRow
                           key={name}
                           name={`${name.charAt(0).toUpperCase() + name.slice(1)} Service`}
-                          description={
-                            meta?.description ?? 'Integration service'
-                          }
+                          description={meta?.description ?? 'Channel service'}
                           state={getServiceState(name)}
                           port={meta?.port}
                           hex={meta?.hex ?? HEX.primary}
@@ -443,7 +440,7 @@ function StatusPage() {
                   </>
                 ) : (
                   <div className="text-xs text-base-content/30 text-center py-8">
-                    Unable to discover integrations
+                    Unable to discover channels
                   </div>
                 )}
               </div>

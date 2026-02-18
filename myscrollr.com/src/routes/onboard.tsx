@@ -101,9 +101,9 @@ const HOW_IT_WORKS: HowStep[] = [
   },
   {
     Icon: Layers,
-    title: 'Streams',
+    title: 'Channels',
     description:
-      'Each data source is a "stream." Finance and sports are on right now. Toggle them on or off — the feed bar shows whatever you enable.',
+      'Each data source is a "channel." Finance and sports are on right now. Toggle them on or off — the feed bar shows whatever you enable.',
     hex: HEX.info,
     Watermark: Layers,
   },
@@ -111,7 +111,7 @@ const HOW_IT_WORKS: HowStep[] = [
     Icon: Sliders,
     title: 'Your Controls',
     description:
-      'Click the Scrollr icon in your toolbar to toggle the feed bar, switch streams, or reposition it. You are in full control.',
+      'Click the Scrollr icon in your toolbar to toggle the feed bar, switch channels, or reposition it. You are in full control.',
     hex: HEX.secondary,
     Watermark: Sliders,
   },
@@ -172,7 +172,7 @@ const WITH_ACCOUNT: AccountFeature[] = [
   },
   {
     Icon: Sliders,
-    title: 'Personalized Streams',
+    title: 'Personalized Channels',
     description:
       'Choose exactly which symbols, leagues, feeds, and fantasy teams appear in your ticker.',
     hex: HEX.accent,
@@ -190,7 +190,7 @@ const WITH_ACCOUNT: AccountFeature[] = [
     Icon: Settings,
     title: 'Dashboard Access',
     description:
-      'Full web dashboard to manage streams, browse feed catalogs, connect Yahoo Fantasy, and monitor your setup.',
+      'Full web dashboard to manage channels, browse feed catalogs, connect Yahoo Fantasy, and monitor your setup.',
     hex: HEX.secondary,
     Watermark: Settings,
   },
@@ -694,8 +694,8 @@ function OnboardPage() {
                 transition={{ delay: 0.2, duration: 0.6, ease: EASE }}
                 className="text-sm text-base-content/45 leading-relaxed mb-8 max-w-md mx-auto"
               >
-                Unlock RSS feeds, personalize your streams, sync across devices,
-                and access the full dashboard. Takes 30 seconds.
+                Unlock RSS feeds, personalize your channels, sync across
+                devices, and access the full dashboard. Takes 30 seconds.
               </motion.p>
 
               <motion.div

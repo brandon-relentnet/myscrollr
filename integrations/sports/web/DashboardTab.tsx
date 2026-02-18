@@ -1,14 +1,11 @@
 import { Cpu, Zap } from "lucide-react";
-import type {
-  IntegrationManifest,
-  DashboardTabProps,
-} from "@/integrations/types";
-import { StreamHeader, InfoCard } from "@/integrations/shared";
+import type { ChannelManifest, DashboardTabProps } from "@/channels/types";
+import { ChannelHeader, InfoCard } from "@/channels/shared";
 
 const HEX = "#ff4757";
 
 function SportsDashboardTab({
-  stream,
+  channel,
   connected,
   subscriptionTier,
   hex,
@@ -20,10 +17,10 @@ function SportsDashboardTab({
 
   return (
     <div className="space-y-6">
-      <StreamHeader
-        stream={stream}
+      <ChannelHeader
+        channel={channel}
         icon={<Cpu size={16} className="text-base-content/80" />}
-        title="Sports Stream"
+        title="Sports Channel"
         subtitle="Live scores via ESPN polling"
         connected={connected}
         subscriptionTier={subscriptionTier}
@@ -99,7 +96,7 @@ function SportsDashboardTab({
   );
 }
 
-export const sportsIntegration: IntegrationManifest = {
+export const sportsChannel: ChannelManifest = {
   id: "sports",
   name: "Sports",
   tabLabel: "Sports",

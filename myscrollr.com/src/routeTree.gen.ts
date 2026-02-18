@@ -13,9 +13,9 @@ import { Route as UplinkRouteImport } from './routes/uplink'
 import { Route as StatusRouteImport } from './routes/status'
 import { Route as OnboardRouteImport } from './routes/onboard'
 import { Route as LegalRouteImport } from './routes/legal'
-import { Route as IntegrationsRouteImport } from './routes/integrations'
 import { Route as DiscoverRouteImport } from './routes/discover'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ChannelsRouteImport } from './routes/channels'
 import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as ArchitectureRouteImport } from './routes/architecture'
 import { Route as AccountRouteImport } from './routes/account'
@@ -43,11 +43,6 @@ const LegalRoute = LegalRouteImport.update({
   path: '/legal',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IntegrationsRoute = IntegrationsRouteImport.update({
-  id: '/integrations',
-  path: '/integrations',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const DiscoverRoute = DiscoverRouteImport.update({
   id: '/discover',
   path: '/discover',
@@ -56,6 +51,11 @@ const DiscoverRoute = DiscoverRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChannelsRoute = ChannelsRouteImport.update({
+  id: '/channels',
+  path: '/channels',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CallbackRoute = CallbackRouteImport.update({
@@ -94,9 +94,9 @@ export interface FileRoutesByFullPath {
   '/account': typeof AccountRoute
   '/architecture': typeof ArchitectureRoute
   '/callback': typeof CallbackRoute
+  '/channels': typeof ChannelsRoute
   '/dashboard': typeof DashboardRoute
   '/discover': typeof DiscoverRoute
-  '/integrations': typeof IntegrationsRoute
   '/legal': typeof LegalRoute
   '/onboard': typeof OnboardRoute
   '/status': typeof StatusRoute
@@ -109,9 +109,9 @@ export interface FileRoutesByTo {
   '/account': typeof AccountRoute
   '/architecture': typeof ArchitectureRoute
   '/callback': typeof CallbackRoute
+  '/channels': typeof ChannelsRoute
   '/dashboard': typeof DashboardRoute
   '/discover': typeof DiscoverRoute
-  '/integrations': typeof IntegrationsRoute
   '/legal': typeof LegalRoute
   '/onboard': typeof OnboardRoute
   '/status': typeof StatusRoute
@@ -125,9 +125,9 @@ export interface FileRoutesById {
   '/account': typeof AccountRoute
   '/architecture': typeof ArchitectureRoute
   '/callback': typeof CallbackRoute
+  '/channels': typeof ChannelsRoute
   '/dashboard': typeof DashboardRoute
   '/discover': typeof DiscoverRoute
-  '/integrations': typeof IntegrationsRoute
   '/legal': typeof LegalRoute
   '/onboard': typeof OnboardRoute
   '/status': typeof StatusRoute
@@ -142,9 +142,9 @@ export interface FileRouteTypes {
     | '/account'
     | '/architecture'
     | '/callback'
+    | '/channels'
     | '/dashboard'
     | '/discover'
-    | '/integrations'
     | '/legal'
     | '/onboard'
     | '/status'
@@ -157,9 +157,9 @@ export interface FileRouteTypes {
     | '/account'
     | '/architecture'
     | '/callback'
+    | '/channels'
     | '/dashboard'
     | '/discover'
-    | '/integrations'
     | '/legal'
     | '/onboard'
     | '/status'
@@ -172,9 +172,9 @@ export interface FileRouteTypes {
     | '/account'
     | '/architecture'
     | '/callback'
+    | '/channels'
     | '/dashboard'
     | '/discover'
-    | '/integrations'
     | '/legal'
     | '/onboard'
     | '/status'
@@ -188,9 +188,9 @@ export interface RootRouteChildren {
   AccountRoute: typeof AccountRoute
   ArchitectureRoute: typeof ArchitectureRoute
   CallbackRoute: typeof CallbackRoute
+  ChannelsRoute: typeof ChannelsRoute
   DashboardRoute: typeof DashboardRoute
   DiscoverRoute: typeof DiscoverRoute
-  IntegrationsRoute: typeof IntegrationsRoute
   LegalRoute: typeof LegalRoute
   OnboardRoute: typeof OnboardRoute
   StatusRoute: typeof StatusRoute
@@ -229,13 +229,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LegalRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/integrations': {
-      id: '/integrations'
-      path: '/integrations'
-      fullPath: '/integrations'
-      preLoaderRoute: typeof IntegrationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/discover': {
       id: '/discover'
       path: '/discover'
@@ -248,6 +241,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/channels': {
+      id: '/channels'
+      path: '/channels'
+      fullPath: '/channels'
+      preLoaderRoute: typeof ChannelsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/callback': {
@@ -300,9 +300,9 @@ const rootRouteChildren: RootRouteChildren = {
   AccountRoute: AccountRoute,
   ArchitectureRoute: ArchitectureRoute,
   CallbackRoute: CallbackRoute,
+  ChannelsRoute: ChannelsRoute,
   DashboardRoute: DashboardRoute,
   DiscoverRoute: DiscoverRoute,
-  IntegrationsRoute: IntegrationsRoute,
   LegalRoute: LegalRoute,
   OnboardRoute: OnboardRoute,
   StatusRoute: StatusRoute,

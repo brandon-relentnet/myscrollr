@@ -15,7 +15,7 @@ import InstallButton from '@/components/InstallButton'
 
 const EASE = [0.22, 1, 0.36, 1] as const
 
-const STREAMS = [
+const CHANNELS = [
   { color: '#34d399', label: 'Finance' },
   { color: '#ff4757', label: 'Sports' },
   { color: '#00d4ff', label: 'News' },
@@ -30,7 +30,7 @@ const PARTICLES = Array.from({ length: 28 }, (_, i) => ({
   size: Math.random() * 3 + 1.5,
   delay: Math.random() * 5,
   duration: Math.random() * 6 + 8,
-  streamIndex: i % 4,
+  channelIndex: i % 4,
 }))
 
 import { useGitHubStats } from '@/hooks/useGitHubStats'
@@ -209,11 +209,11 @@ export function CallToAction() {
 
       {/* Convergence beams — 4 colored light rays */}
       <div className="absolute inset-0 pointer-events-none">
-        {STREAMS.map((stream, i) => (
+        {CHANNELS.map((channel, i) => (
           <ConvergenceBeam
-            key={stream.label}
+            key={channel.label}
             angle={i * 90 + 45}
-            color={stream.color}
+            color={channel.color}
             delay={0.3 + i * 0.15}
             isInView={isInView}
           />
@@ -231,7 +231,7 @@ export function CallToAction() {
               top: `${p.y}%`,
               width: p.size,
               height: p.size,
-              backgroundColor: STREAMS[p.streamIndex].color,
+              backgroundColor: CHANNELS[p.channelIndex].color,
               opacity: 0,
             }}
             animate={
@@ -432,11 +432,11 @@ export function CallToAction() {
             </a>
             <span className="w-px h-4 bg-base-content/10" />
             <a
-              href="#streams"
+              href="#channels"
               className="inline-flex items-center gap-2 text-sm text-base-content/40 hover:text-primary transition-[color] duration-200"
             >
               <Globe className="size-4" aria-hidden />
-              Explore Streams
+              Explore Channels
             </a>
           </motion.div>
         </div>

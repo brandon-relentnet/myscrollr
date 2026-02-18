@@ -181,7 +181,7 @@ func (a *App) handleInternalDashboard(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"finance": trades})
 	}
 
-	// Get user's selected symbols from their stream config
+	// Get user's selected symbols from their channel config
 	symbols := a.getUserFinanceSymbols(userSub)
 	if len(symbols) == 0 {
 		return c.JSON(fiber.Map{"finance": []Trade{}})
@@ -202,12 +202,12 @@ func (a *App) handleInternalHealth(c *fiber.Ctx) error {
 }
 
 // =============================================================================
-// Stream Lifecycle
+// Channel Lifecycle
 // =============================================================================
 
-// handleStreamLifecycle handles stream lifecycle events dispatched by the core
+// handleChannelLifecycle handles channel lifecycle events dispatched by the core
 // gateway. Events: created, updated, deleted, sync.
-func (a *App) handleStreamLifecycle(c *fiber.Ctx) error {
+func (a *App) handleChannelLifecycle(c *fiber.Ctx) error {
 	var req struct {
 		Event     string                 `json:"event"`
 		User      string                 `json:"user"`
@@ -227,13 +227,13 @@ func (a *App) handleStreamLifecycle(c *fiber.Ctx) error {
 	switch req.Event {
 	case "created":
 		// No special action needed on create — sync event handles subscriber sets
-		log.Printf("[Finance Lifecycle] Stream created for user %s", req.User)
+		log.Printf("[Finance Lifecycle] Channel created for user %s", req.User)
 
 	case "updated":
-		a.onStreamUpdated(ctx, req.User, req.OldConfig, req.Config)
+		a.onChannelUpdated(ctx, req.User, req.OldConfig, req.Config)
 
 	case "deleted":
-		a.onStreamDeleted(ctx, req.User, req.Config)
+		a.onChannelDeleted(ctx, req.User, req.Config)
 
 	case "sync":
 		a.onSyncSubscriptions(ctx, req.User, req.Config, req.Enabled)
@@ -245,16 +245,16 @@ func (a *App) handleStreamLifecycle(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"ok": true})
 }
 
-// onStreamUpdated handles symbol list changes when a stream is updated.
+// onChannelUpdated handles symbol list changes when a channel is updated.
 // 1. Diffs old vs new symbols, removes user from stale subscriber sets
 // 2. Invalidates per-user cache
-func (a *App) onStreamUpdated(ctx context.Context, userSub string, oldConfig, newConfig map[string]interface{}) {
+func (a *App) onChannelUpdated(ctx context.Context, userSub string, oldConfig, newConfig map[string]interface{}) {
 	if newConfig == nil {
 		return
 	}
 
-	oldSymbols := extractSymbolsFromStreamConfig(oldConfig)
-	newSymbols := extractSymbolsFromStreamConfig(newConfig)
+	oldSymbols := extractSymbolsFromChannelConfig(oldConfig)
+	newSymbols := extractSymbolsFromChannelConfig(newConfig)
 	newSet := make(map[string]bool, len(newSymbols))
 	for _, s := range newSymbols {
 		newSet[s] = true
@@ -269,10 +269,10 @@ func (a *App) onStreamUpdated(ctx context.Context, userSub string, oldConfig, ne
 	a.rdb.Del(ctx, CacheKeyFinancePrefix+userSub)
 }
 
-// onStreamDeleted removes the user from all symbol subscriber sets and
-// invalidates per-user cache when a stream is removed.
-func (a *App) onStreamDeleted(ctx context.Context, userSub string, config map[string]interface{}) {
-	symbols := extractSymbolsFromStreamConfig(config)
+// onChannelDeleted removes the user from all symbol subscriber sets and
+// invalidates per-user cache when a channel is removed.
+func (a *App) onChannelDeleted(ctx context.Context, userSub string, config map[string]interface{}) {
+	symbols := extractSymbolsFromChannelConfig(config)
 	for _, s := range symbols {
 		RemoveSubscriber(a.rdb, ctx, RedisFinanceSubscribersPrefix+s, userSub)
 	}
@@ -282,7 +282,7 @@ func (a *App) onStreamDeleted(ctx context.Context, userSub string, config map[st
 // onSyncSubscriptions adds or removes the user from per-symbol subscriber
 // sets based on the enabled flag. Called on dashboard load to warm sets.
 func (a *App) onSyncSubscriptions(ctx context.Context, userSub string, config map[string]interface{}, enabled bool) {
-	symbols := extractSymbolsFromStreamConfig(config)
+	symbols := extractSymbolsFromChannelConfig(config)
 	for _, s := range symbols {
 		if enabled {
 			AddSubscriber(a.rdb, ctx, RedisFinanceSubscribersPrefix+s, userSub)
@@ -347,12 +347,12 @@ func (a *App) queryTradesBySymbols(symbols []string) []Trade {
 	return trades
 }
 
-// getUserFinanceSymbols extracts the symbol list from a user's finance stream config.
+// getUserFinanceSymbols extracts the symbol list from a user's finance channel config.
 func (a *App) getUserFinanceSymbols(logtoSub string) []string {
 	var configJSON []byte
 	err := a.db.QueryRow(context.Background(), `
-		SELECT config FROM user_streams
-		WHERE logto_sub = $1 AND stream_type = 'finance'
+		SELECT config FROM user_channels
+		WHERE logto_sub = $1 AND channel_type = 'finance'
 	`, logtoSub).Scan(&configJSON)
 	if err != nil {
 		return nil
@@ -364,8 +364,8 @@ func (a *App) getUserFinanceSymbols(logtoSub string) []string {
 // Config Parsing Helpers
 // =============================================================================
 
-// extractSymbolsFromStreamConfig extracts symbols from a stream's config map.
-func extractSymbolsFromStreamConfig(config map[string]interface{}) []string {
+// extractSymbolsFromChannelConfig extracts symbols from a channel's config map.
+func extractSymbolsFromChannelConfig(config map[string]interface{}) []string {
 	if config == nil {
 		return nil
 	}

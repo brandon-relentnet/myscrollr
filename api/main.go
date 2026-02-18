@@ -14,7 +14,7 @@ import (
 
 // @title Scrollr API
 // @version 2.0
-// @description Gateway API for Scrollr — routes requests to self-registered integration services.
+// @description Gateway API for Scrollr — routes requests to self-registered channel services.
 // @host api.myscrollr.relentnet.dev
 // @BasePath /
 // @securityDefinitions.apikey LogtoAuth
@@ -38,7 +38,7 @@ func main() {
 	core.InitHub(ctx)
 	core.InitAuth()
 
-	// Start Redis-based integration discovery (ctx-aware)
+	// Start Redis-based channel discovery (ctx-aware)
 	core.StartDiscovery(ctx)
 
 	// Build and start the gateway server

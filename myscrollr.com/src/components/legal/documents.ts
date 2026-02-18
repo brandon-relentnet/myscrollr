@@ -154,9 +154,9 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       {
         heading: 'Information We Collect',
         content: [
-          'Account Information: When you create an account, our authentication provider (Logto) collects your email address, username, and display name. We store a unique identifier (Logto sub) to associate your account with your preferences and data streams.',
+          'Account Information: When you create an account, our authentication provider (Logto) collects your email address, username, and display name. We store a unique identifier (Logto sub) to associate your account with your preferences and data channels.',
           'User Preferences: We store your feed display preferences (position, mode, behavior, enabled/disabled sites) in our PostgreSQL database, associated with your account identifier.',
-          'Stream Configuration: We store which data streams you have enabled (finance, sports, RSS, fantasy) and their configuration settings.',
+          'Channel Configuration: We store which data channels you have enabled (finance, sports, RSS, fantasy) and their configuration settings.',
           'Yahoo Fantasy Data: If you connect your Yahoo Fantasy account, we store an encrypted refresh token (AES-256-GCM encryption) to maintain your connection. We also store your Yahoo user identifier, league data, standings, rosters, and matchup information that Yahoo provides through their API.',
           'Usage Data: We collect basic usage metrics including active SSE connection counts. We do not track individual page visits, browsing history, or behavioral analytics.',
         ],
@@ -181,7 +181,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
         content: [
           'The Platform integrates with several third-party services. Each has its own privacy policy that we encourage you to review:',
           'Logto (authentication) handles your login credentials and identity verification. Finnhub provides financial market data. ESPN provides sports scores and game data. Yahoo provides fantasy sports data when you authorize your account. RSS feed publishers provide news content through their public feeds.',
-          'We send your user identifier to our integration APIs via internal HTTP headers (X-User-Sub) to route data to your account. Third-party data providers do not receive your personal information directly from us.',
+          'We send your user identifier to our channel APIs via internal HTTP headers (X-User-Sub) to route data to your account. Third-party data providers do not receive your personal information directly from us.',
         ],
       },
       {
@@ -255,8 +255,8 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       {
         heading: 'Server-Side Storage',
         content: [
-          'Redis: We use Redis for ephemeral data including per-user pub/sub channels for real-time event routing, cached integration data, session state tokens for OAuth flows (10-minute TTL), and integration self-registration with 30-second TTL heartbeats. Redis data is not persisted to disk and is lost on service restart.',
-          'PostgreSQL: Persistent data including your account preferences, stream configurations, and encrypted third-party tokens is stored in PostgreSQL. See our Privacy Policy for full details on data retention.',
+          'Redis: We use Redis for ephemeral data including per-user pub/sub channels for real-time event routing, cached channel data, session state tokens for OAuth flows (10-minute TTL), and channel self-registration with 30-second TTL heartbeats. Redis data is not persisted to disk and is lost on service restart.',
+          'PostgreSQL: Persistent data including your account preferences, channel configurations, and encrypted third-party tokens is stored in PostgreSQL. See our Privacy Policy for full details on data retention.',
         ],
       },
       {
@@ -436,7 +436,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       {
         heading: 'Local Data Storage',
         content: [
-          'The extension stores the following data locally using browser.storage.local: access and refresh tokens (for API authentication), user preferences (feed position, mode, behavior, visibility), dashboard cache (for faster initial loads), feed subscriptions (which data streams you are subscribed to), and connection state.',
+          'The extension stores the following data locally using browser.storage.local: access and refresh tokens (for API authentication), user preferences (feed position, mode, behavior, visibility), dashboard cache (for faster initial loads), feed subscriptions (which data channels you are subscribed to), and connection state.',
           "This data never leaves your device except when sent to Scrollr's API servers for authentication and data retrieval. It is not shared with any third party.",
         ],
       },
@@ -449,7 +449,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       {
         heading: 'Uninstallation',
         content: [
-          'When you uninstall the extension, all locally stored data (tokens, preferences, cache) is automatically deleted by the browser. No data persists on your device after uninstallation. Your server-side account data (preferences, stream configurations) remains on our servers and can be accessed if you reinstall the extension and sign in again.',
+          'When you uninstall the extension, all locally stored data (tokens, preferences, cache) is automatically deleted by the browser. No data persists on your device after uninstallation. Your server-side account data (preferences, channel configurations) remains on our servers and can be accessed if you reinstall the extension and sign in again.',
         ],
       },
     ],
@@ -657,10 +657,10 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
         ],
       },
       {
-        heading: 'Community Integrations',
+        heading: 'Community Channels',
         content: [
-          'Scrollr\'s architecture supports community-built integrations. Integrations submitted to the project will be reviewed for security, quality, and compatibility before being accepted. Accepted integrations may be classified as "community" tier in the integration registry.',
-          'Submitting an integration does not guarantee its acceptance. The project maintainers reserve the right to reject, modify, or remove any contribution at their discretion.',
+          'Scrollr\'s architecture supports community-built channels. Channels submitted to the project will be reviewed for security, quality, and compatibility before being accepted. Accepted channels may be classified as "community" tier in the channel registry.',
+          'Submitting a channel does not guarantee its acceptance. The project maintainers reserve the right to reject, modify, or remove any contribution at their discretion.',
         ],
       },
       {
@@ -799,7 +799,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
         content: [
           'Scrollr takes the security of its platform and user data seriously. We implement multiple layers of security across our infrastructure:',
           'Encryption: All API communication is encrypted via HTTPS/TLS. Yahoo OAuth refresh tokens are encrypted at rest using AES-256-GCM with a 256-bit key. OAuth state parameters use Redis-backed CSRF tokens with a 10-minute TTL.',
-          'Authentication: User authentication is handled by Logto, a self-hosted OIDC provider. Access tokens are validated using JWKS with automatic key rotation. The browser extension uses PKCE (Proof Key for Code Exchange) for its OAuth flow. Integration APIs never validate JWTs directly — they receive trusted user identity from the core API via internal HTTP headers.',
+          'Authentication: User authentication is handled by Logto, a self-hosted OIDC provider. Access tokens are validated using JWKS with automatic key rotation. The browser extension uses PKCE (Proof Key for Code Exchange) for its OAuth flow. Channel APIs never validate JWTs directly — they receive trusted user identity from the core API via internal HTTP headers.',
           'Infrastructure: The platform is deployed on self-hosted infrastructure (Coolify) with network isolation between services. Database connections use connection pooling with parameterized queries to prevent SQL injection.',
         ],
       },
@@ -813,7 +813,7 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
       {
         heading: 'Scope',
         content: [
-          'The following are in scope for security reports: the Scrollr web application (myscrollr.com), the Scrollr browser extension, the core API and integration APIs, authentication and authorization flows, and data storage and encryption implementations.',
+          'The following are in scope for security reports: the Scrollr web application (myscrollr.com), the Scrollr browser extension, the core API and channel APIs, authentication and authorization flows, and data storage and encryption implementations.',
           'The following are out of scope: third-party services we integrate with (Finnhub, ESPN, Yahoo, Logto itself), denial-of-service attacks, social engineering of Scrollr maintainers, and any testing against production systems without permission.',
         ],
       },

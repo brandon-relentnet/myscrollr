@@ -29,7 +29,7 @@ export const Route = createFileRoute('/architecture')({
 // ── Signature easing (matches homepage) ────────────────────────
 const EASE = [0.22, 1, 0.36, 1] as const
 
-// ── Integration hex map ────────────────────────────────────────
+// ── Channel hex map ────────────────────────────────────────────
 const HEX = {
   primary: '#34d399',
   secondary: '#ff4757',
@@ -88,7 +88,7 @@ const PIPELINE_STEPS: PipelineStep[] = [
     Icon: Radio,
     title: 'Real-time Delivery',
     description:
-      'Core API routes CDC records to integration APIs, which return affected user lists. Core publishes to per-user Redis channels via SSE.',
+      'Core API routes CDC records to channel APIs, which return affected user lists. Core publishes to per-user Redis channels via SSE.',
     hex: HEX.accent,
     label: 'DELIVER',
     items: ['CDC Routing', 'Redis Pub/Sub', 'SSE Stream', 'Per-user'],
@@ -125,7 +125,7 @@ const CDC_FLOW: CdcStep[] = [
     hex: HEX.primary,
   },
   {
-    label: 'Integration API',
+    label: 'Channel API',
     detail: 'POST /internal/cdc → users[]',
     Icon: Cable,
     hex: HEX.info,
@@ -161,9 +161,9 @@ interface Principle {
 const PRINCIPLES: Principle[] = [
   {
     Icon: Box,
-    title: 'Decoupled Integrations',
+    title: 'Decoupled Channels',
     description:
-      'Each integration is a fully self-contained unit with its own Go API, Rust service, frontend components, and config. No shared code between integrations.',
+      'Each channel is a fully self-contained unit with its own Go API, Rust service, frontend components, and config. No shared code between channels.',
     hex: HEX.primary,
     Watermark: Box,
   },
@@ -179,7 +179,7 @@ const PRINCIPLES: Principle[] = [
     Icon: RefreshCw,
     title: 'Self-registration',
     description:
-      'Integration APIs register in Redis on startup with a 30s TTL heartbeat. Core discovers them dynamically — no hardcoded routes.',
+      'Channel APIs register in Redis on startup with a 30s TTL heartbeat. Core discovers them dynamically — no hardcoded routes.',
     hex: HEX.info,
     Watermark: RefreshCw,
   },
@@ -187,7 +187,7 @@ const PRINCIPLES: Principle[] = [
     Icon: Workflow,
     title: 'Convention-based UI',
     description:
-      'Frontend and extension discover integration components at build time via import.meta.glob. Drop a file in the right folder and it appears.',
+      'Frontend and extension discover channel components at build time via import.meta.glob. Drop a file in the right folder and it appears.',
     hex: HEX.accent,
     Watermark: Workflow,
   },

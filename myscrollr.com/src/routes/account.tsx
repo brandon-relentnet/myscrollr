@@ -17,7 +17,7 @@ import { motion } from 'motion/react'
 import type { IdTokenClaims } from '@logto/react'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { pageVariants, sectionVariants } from '@/lib/animations'
-import { streamsApi } from '@/api/client'
+import { channelsApi } from '@/api/client'
 import { useGetToken } from '@/hooks/useGetToken'
 import SubscriptionStatus from '@/components/billing/SubscriptionStatus'
 import { usePageMeta } from '@/lib/usePageMeta'
@@ -112,14 +112,14 @@ function AccountHub() {
   const autoRedirectTriggered = useRef(false)
 
   // ── Quick Stats state ──────────────────────────────────────────
-  const [streamCount, setStreamCount] = useState<number | null>(null)
+  const [channelCount, setChannelCount] = useState<number | null>(null)
   const [enabledCount, setEnabledCount] = useState<number | null>(null)
 
   const fetchStats = useCallback(async () => {
     try {
-      const data = await streamsApi.getAll(getToken)
-      const all = data.streams || []
-      setStreamCount(all.length)
+      const data = await channelsApi.getAll(getToken)
+      const all = data.channels || []
+      setChannelCount(all.length)
       setEnabledCount(all.filter((s) => s.enabled).length)
     } catch {
       // Silently fail — stats are non-critical
@@ -177,7 +177,7 @@ function AccountHub() {
               </span>
             </h1>
             <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
-              Your personal data streams are ready for orchestration. Sync your
+              Your personal data channels are ready for orchestration. Sync your
               leagues, track your assets, and stay in the flow.
             </p>
           </motion.div>
@@ -199,7 +199,7 @@ function AccountHub() {
               Control <span className="text-gradient-primary">Center</span>
             </h2>
             <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
-              Navigate your account, streams, and subscription
+              Navigate your account, channels, and subscription
             </p>
           </motion.div>
 
@@ -227,7 +227,7 @@ function AccountHub() {
               Your <span className="text-gradient-primary">Dashboard</span>
             </h2>
             <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
-              Subscription, streams, and system health at a glance
+              Subscription, channels, and system health at a glance
             </p>
           </motion.div>
 
@@ -348,11 +348,11 @@ function AccountHub() {
                 <div className="grid grid-cols-2 gap-4 text-center">
                   <div className="p-4 bg-base-200/40 border border-base-300/25 rounded-xl">
                     <div className="text-2xl font-black text-base-content font-mono tabular-nums">
-                      {streamCount ?? '—'}
+                      {channelCount ?? '—'}
                     </div>
                     <div className="text-[10px] text-base-content/30 flex items-center justify-center gap-1 mt-1">
                       <Radio size={10} />
-                      Streams
+                      Channels
                     </div>
                   </div>
                   <div className="p-4 bg-base-200/40 border border-base-300/25 rounded-xl">

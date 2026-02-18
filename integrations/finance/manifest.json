@@ -2,7 +2,12 @@
   "name": "finance",
   "display_name": "Finance",
   "internal_url": "http://scrollr-finance-api:8081",
-  "capabilities": ["cdc_handler", "dashboard_provider", "health_checker", "stream_lifecycle"],
+  "capabilities": [
+    "cdc_handler",
+    "dashboard_provider",
+    "health_checker",
+    "channel_lifecycle"
+  ],
   "cdc_tables": ["trades"],
   "routes": [
     { "method": "GET", "path": "/finance", "auth": true },

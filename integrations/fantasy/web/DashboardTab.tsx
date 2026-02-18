@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown, Ghost, Link2, Unlink } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import type {
-  IntegrationManifest,
-  DashboardTabProps,
-} from "@/integrations/types";
-import { StreamHeader } from "@/integrations/shared";
+import type { ChannelManifest, DashboardTabProps } from "@/channels/types";
+import { ChannelHeader } from "@/channels/shared";
 import { API_BASE, authenticatedFetch } from "@/api/client";
 
 // ── Yahoo Data Types ──────────────────────────────────────────────
@@ -40,7 +37,7 @@ const LEAGUES_PER_PAGE = 5;
 const HEX = "#a855f7";
 
 function FantasyDashboardTab({
-  stream,
+  channel,
   getToken,
   hex,
   onToggle,
@@ -227,11 +224,11 @@ function FantasyDashboardTab({
 
   return (
     <div className="space-y-6">
-      <StreamHeader
-        stream={stream}
+      <ChannelHeader
+        channel={channel}
         icon={<Ghost size={16} className="text-base-content/80" />}
-        title="Fantasy Stream"
-        subtitle="Yahoo Fantasy integration"
+        title="Fantasy Channel"
+        subtitle="Yahoo Fantasy channel"
         hex={hex}
         onToggle={onToggle}
         onDelete={onDelete}
@@ -686,11 +683,11 @@ function LeagueCard({
   );
 }
 
-export const fantasyIntegration: IntegrationManifest = {
+export const fantasyChannel: ChannelManifest = {
   id: "fantasy",
   name: "Fantasy",
   tabLabel: "Fantasy",
-  description: "Yahoo Fantasy integration",
+  description: "Yahoo Fantasy channel",
   hex: HEX,
   icon: Ghost,
   DashboardTab: FantasyDashboardTab,

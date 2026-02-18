@@ -20,8 +20,8 @@ import (
 // =============================================================================
 
 const (
-	// RegistrationKey is the Redis key where this integration registers itself.
-	RegistrationKey = "integration:sports"
+	// RegistrationKey is the Redis key where this channel registers itself.
+	RegistrationKey = "channel:sports"
 
 	// RegistrationTTL is how long the registration lives in Redis before expiring.
 	RegistrationTTL = 30 * time.Second
@@ -32,8 +32,8 @@ const (
 	// DefaultPort is the default HTTP listen port.
 	DefaultPort = "8082"
 
-	// DefaultIntegrationURL is the default internal URL for this service.
-	DefaultIntegrationURL = "http://localhost:8082"
+	// DefaultChannelURL is the default internal URL for this service.
+	DefaultChannelURL = "http://localhost:8082"
 )
 
 // registrationPayload is the JSON structure stored in Redis for service discovery.
@@ -163,17 +163,17 @@ func main() {
 
 // startRegistration registers this service in Redis with a TTL and refreshes
 // the registration on a ticker. This allows the core gateway to discover
-// available integration services.
+// available channel services.
 func startRegistration(ctx context.Context, rdb *redis.Client) {
-	integrationURL := os.Getenv("INTEGRATION_URL")
-	if integrationURL == "" {
-		integrationURL = DefaultIntegrationURL
+	channelURL := os.Getenv("CHANNEL_URL")
+	if channelURL == "" {
+		channelURL = DefaultChannelURL
 	}
 
 	payload := registrationPayload{
 		Name:         "sports",
 		DisplayName:  "Sports",
-		InternalURL:  integrationURL,
+		InternalURL:  channelURL,
 		Capabilities: []string{"cdc_handler", "dashboard_provider", "health_checker"},
 		CDCTables:    []string{"games"},
 		Routes: []registrationRoute{

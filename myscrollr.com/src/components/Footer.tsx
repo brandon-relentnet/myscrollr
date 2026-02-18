@@ -15,7 +15,7 @@ export default function Footer() {
 
   const links = {
     product: [
-      { label: 'Integrations', href: '/integrations' },
+      { label: 'Channels', href: '/channels' },
       {
         label: 'Chrome Extension',
         href: 'https://chromewebstore.google.com/detail/scrollr/pjeafpgbpfbcaddipkcbacohhbfakclb',

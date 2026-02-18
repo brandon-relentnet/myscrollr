@@ -23,8 +23,8 @@ const (
 	// SportsCacheTTL is how long game data is cached.
 	SportsCacheTTL = 30 * time.Second
 
-	// SportsSubscribersKey is the Redis set tracking sports stream subscribers.
-	SportsSubscribersKey = "stream:subscribers:sports"
+	// SportsSubscribersKey is the Redis set tracking sports channel subscribers.
+	SportsSubscribersKey = "channel:subscribers:sports"
 
 	// DefaultSportsLimit caps the number of games returned for the public route.
 	DefaultSportsLimit = 50

@@ -8,7 +8,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// Rdb is the global Redis client. Exported so integration packages can access it
+// Rdb is the global Redis client. Exported so channel packages can access it
 // for direct operations (e.g. cache invalidation).
 var Rdb *redis.Client
 
@@ -44,7 +44,7 @@ func PSubscribe(ctx context.Context, pattern string) *redis.PubSub {
 }
 
 // InvalidateDashboardCache removes the cached dashboard response for a user.
-// Called after stream CRUD or preference updates to ensure the next poll gets fresh data.
+// Called after channel CRUD or preference updates to ensure the next poll gets fresh data.
 func InvalidateDashboardCache(userSub string) {
 	if err := Rdb.Del(context.Background(), RedisDashboardCachePrefix+userSub).Err(); err != nil {
 		log.Printf("[Cache] Failed to invalidate dashboard cache for %s: %v", userSub, err)
@@ -54,8 +54,8 @@ func InvalidateDashboardCache(userSub string) {
 // --- Subscription Set Helpers ---
 // Used to track which users subscribe to which data types.
 // Keys follow the convention:
-//   stream:subscribers:{type}  (e.g. stream:subscribers:finance)
-//   rss:subscribers:{feed_url} (e.g. rss:subscribers:https://example.com/feed.xml)
+//   channel:subscribers:{type}  (e.g. channel:subscribers:finance)
+//   rss:subscribers:{feed_url}  (e.g. rss:subscribers:https://example.com/feed.xml)
 
 // AddSubscriber adds a user to a subscription set.
 func AddSubscriber(ctx context.Context, setKey, userSub string) error {

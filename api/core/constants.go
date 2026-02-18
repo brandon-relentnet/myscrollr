@@ -57,7 +57,7 @@ const (
 // =============================================================================
 
 const (
-	RedisStreamSubscribersPrefix = "stream:subscribers:"
+	RedisChannelSubscribersPrefix = "channel:subscribers:"
 	RedisEventsUserPrefix        = "events:user:"
 	RedisDashboardCachePrefix    = "cache:dashboard:"
 )

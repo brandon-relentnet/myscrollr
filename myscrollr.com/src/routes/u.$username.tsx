@@ -39,7 +39,7 @@ function ProfilePage() {
   const { username } = Route.useParams()
   usePageMeta({
     title: `${username} — Scrollr`,
-    description: `View ${username}'s Scrollr profile and connected integrations.`,
+    description: `View ${username}'s Scrollr profile and connected channels.`,
     canonicalUrl: `https://myscrollr.com/u/${username}`,
   })
   const { isAuthenticated, signIn, getIdTokenClaims, getAccessToken } =
@@ -166,7 +166,7 @@ function ProfilePage() {
             Auth Required
           </h1>
           <p className="text-base-content/45 text-sm leading-relaxed mb-8">
-            Sign in to access your profile and connected integrations.
+            Sign in to access your profile and connected channels.
           </p>
           <button
             type="button"
@@ -268,8 +268,7 @@ function ProfilePage() {
             transition={{ duration: 0.7, ease: EASE }}
           >
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
-              Connected{' '}
-              <span className="text-gradient-primary">Integrations</span>
+              Connected <span className="text-gradient-primary">Channels</span>
             </h2>
             <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
               Linked services and data sources for this profile

@@ -222,7 +222,7 @@ func (a *App) handleInternalDashboard(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"rss": items})
 	}
 
-	// Get user's RSS feed URLs from their stream config
+	// Get user's RSS feed URLs from their channel config
 	feedURLs := a.getUserRSSFeedURLs(userSub)
 	if len(feedURLs) == 0 {
 		return c.JSON(fiber.Map{"rss": []RssItem{}})
@@ -243,12 +243,12 @@ func (a *App) handleInternalHealth(c *fiber.Ctx) error {
 }
 
 // =============================================================================
-// Stream Lifecycle (RSS is the ONLY integration that implements this)
+// Channel Lifecycle (RSS is the ONLY channel that implements this)
 // =============================================================================
 
-// handleStreamLifecycle handles stream lifecycle events dispatched by the core
+// handleChannelLifecycle handles channel lifecycle events dispatched by the core
 // gateway. Events: created, updated, deleted, sync.
-func (a *App) handleStreamLifecycle(c *fiber.Ctx) error {
+func (a *App) handleChannelLifecycle(c *fiber.Ctx) error {
 	var req struct {
 		Event     string                 `json:"event"`
 		User      string                 `json:"user"`
@@ -267,13 +267,13 @@ func (a *App) handleStreamLifecycle(c *fiber.Ctx) error {
 
 	switch req.Event {
 	case "created":
-		a.onStreamCreated(req.User, req.Config)
+		a.onChannelCreated(req.User, req.Config)
 
 	case "updated":
-		a.onStreamUpdated(ctx, req.User, req.OldConfig, req.Config)
+		a.onChannelUpdated(ctx, req.User, req.OldConfig, req.Config)
 
 	case "deleted":
-		a.onStreamDeleted(ctx, req.User, req.Config)
+		a.onChannelDeleted(ctx, req.User, req.Config)
 
 	case "sync":
 		a.onSyncSubscriptions(ctx, req.User, req.Config, req.Enabled)
@@ -285,24 +285,24 @@ func (a *App) handleStreamLifecycle(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"ok": true})
 }
 
-// onStreamCreated syncs feeds to tracked_feeds table when a new RSS stream
+// onChannelCreated syncs feeds to tracked_feeds table when a new RSS channel
 // is created. Runs in a goroutine so it doesn't block the response.
-func (a *App) onStreamCreated(userSub string, config map[string]interface{}) {
+func (a *App) onChannelCreated(userSub string, config map[string]interface{}) {
 	go a.syncRSSFeedsToTracked(userSub, config)
 }
 
-// onStreamUpdated handles feed list changes when a stream is updated.
+// onChannelUpdated handles feed list changes when a channel is updated.
 // 1. Diffs old vs new feed URLs, removes user from stale subscriber sets
 // 2. Invalidates per-user cache
 // 3. Syncs new feeds to tracked_feeds
-func (a *App) onStreamUpdated(ctx context.Context, userSub string, oldConfig, newConfig map[string]interface{}) {
+func (a *App) onChannelUpdated(ctx context.Context, userSub string, oldConfig, newConfig map[string]interface{}) {
 	if newConfig == nil {
 		return
 	}
 
 	// Diff old vs new feed URLs and remove user from stale subscriber sets
-	oldFeedURLs := extractFeedURLsFromStreamConfig(oldConfig)
-	newFeedURLs := extractFeedURLsFromStreamConfig(newConfig)
+	oldFeedURLs := extractFeedURLsFromChannelConfig(oldConfig)
+	newFeedURLs := extractFeedURLsFromChannelConfig(newConfig)
 	newURLSet := make(map[string]bool, len(newFeedURLs))
 	for _, u := range newFeedURLs {
 		newURLSet[u] = true
@@ -320,10 +320,10 @@ func (a *App) onStreamUpdated(ctx context.Context, userSub string, oldConfig, ne
 	go a.syncRSSFeedsToTracked(userSub, newConfig)
 }
 
-// onStreamDeleted removes the user from all per-feed-URL subscriber sets and
-// invalidates per-user cache when a stream is removed.
-func (a *App) onStreamDeleted(ctx context.Context, userSub string, config map[string]interface{}) {
-	feedURLs := extractFeedURLsFromStreamConfig(config)
+// onChannelDeleted removes the user from all per-feed-URL subscriber sets and
+// invalidates per-user cache when a channel is removed.
+func (a *App) onChannelDeleted(ctx context.Context, userSub string, config map[string]interface{}) {
+	feedURLs := extractFeedURLsFromChannelConfig(config)
 	for _, url := range feedURLs {
 		RemoveSubscriber(a.rdb, ctx, RedisRSSSubscribersPrefix+url, userSub)
 	}
@@ -333,7 +333,7 @@ func (a *App) onStreamDeleted(ctx context.Context, userSub string, config map[st
 // onSyncSubscriptions adds or removes the user from per-feed-URL subscriber
 // sets based on the enabled flag. Called on dashboard load to warm sets.
 func (a *App) onSyncSubscriptions(ctx context.Context, userSub string, config map[string]interface{}, enabled bool) {
-	feedURLs := extractFeedURLsFromStreamConfig(config)
+	feedURLs := extractFeedURLsFromChannelConfig(config)
 	for _, url := range feedURLs {
 		if enabled {
 			AddSubscriber(a.rdb, ctx, RedisRSSSubscribersPrefix+url, userSub)
@@ -347,12 +347,12 @@ func (a *App) onSyncSubscriptions(ctx context.Context, userSub string, config ma
 // Database Helpers
 // =============================================================================
 
-// getUserRSSFeedURLs extracts the feed URLs from a user's RSS stream config.
+// getUserRSSFeedURLs extracts the feed URLs from a user's RSS channel config.
 func (a *App) getUserRSSFeedURLs(logtoSub string) []string {
 	var configJSON []byte
 	err := a.db.QueryRow(context.Background(), `
-		SELECT config FROM user_streams
-		WHERE logto_sub = $1 AND stream_type = 'rss'
+		SELECT config FROM user_channels
+		WHERE logto_sub = $1 AND channel_type = 'rss'
 	`, logtoSub).Scan(&configJSON)
 	if err != nil {
 		return nil
@@ -395,7 +395,7 @@ func (a *App) queryRSSItems(feedURLs []string) []RssItem {
 	return items
 }
 
-// syncRSSFeedsToTracked upserts feed URLs from a user's RSS stream config
+// syncRSSFeedsToTracked upserts feed URLs from a user's RSS channel config
 // into the tracked_feeds table so the RSS ingestion service discovers and
 // fetches them.
 func (a *App) syncRSSFeedsToTracked(userSub string, config map[string]interface{}) {
@@ -443,8 +443,8 @@ func (a *App) syncRSSFeedsToTracked(userSub string, config map[string]interface{
 // Config Parsing Helpers
 // =============================================================================
 
-// extractFeedURLsFromStreamConfig extracts feed URLs from a stream's config map.
-func extractFeedURLsFromStreamConfig(config map[string]interface{}) []string {
+// extractFeedURLsFromChannelConfig extracts feed URLs from a channel's config map.
+func extractFeedURLsFromChannelConfig(config map[string]interface{}) []string {
 	if config == nil {
 		return nil
 	}

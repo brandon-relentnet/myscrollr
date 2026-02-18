@@ -9,23 +9,23 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Activity, Plus, Puzzle, Settings2, Zap } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import type { IdTokenClaims } from '@logto/react'
-import type { Stream, StreamType } from '@/api/client'
+import type { Channel, ChannelType } from '@/api/client'
 import { useRealtime } from '@/hooks/useRealtime'
 import { useGetToken } from '@/hooks/useGetToken'
 import SettingsPanel from '@/components/SettingsPanel'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { pageVariants, sectionVariants } from '@/lib/animations'
-import { streamsApi, getPreferences } from '@/api/client'
-import { getIntegration, getAllIntegrations } from '@/integrations/registry'
+import { channelsApi, getPreferences } from '@/api/client'
+import { getChannel, getAllChannels } from '@/channels/registry'
 import { usePageMeta } from '@/lib/usePageMeta'
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
   validateSearch: (search: Record<string, unknown>): { tab?: string } => {
     const tab = search.tab as string | undefined
-    // Validate against registered integrations
+    // Validate against registered channels
     return {
-      tab: tab && getIntegration(tab) ? tab : undefined,
+      tab: tab && getChannel(tab) ? tab : undefined,
     }
   },
 })
@@ -34,7 +34,7 @@ function DashboardPage() {
   usePageMeta({
     title: 'Dashboard — Scrollr',
     description:
-      'Your Scrollr dashboard — manage streams, integrations, and live data feeds.',
+      'Your Scrollr dashboard — manage channels and live data feeds.',
     canonicalUrl: 'https://myscrollr.com/dashboard',
   })
   const { isAuthenticated, isLoading, signIn, getIdTokenClaims } =
@@ -57,23 +57,23 @@ function DashboardPage() {
   // ── Tier state ───────────────────────────────────────────────────
   const [subscriptionTier, setSubscriptionTier] = useState<string>('free')
 
-  // ── Streams state ────────────────────────────────────────────────
-  const [streams, setStreams] = useState<Array<Stream>>([])
-  const [streamsLoading, setStreamsLoading] = useState(true)
-  const [addStreamOpen, setAddStreamOpen] = useState(false)
+  // ── Channels state ───────────────────────────────────────────────
+  const [channels, setChannels] = useState<Array<Channel>>([])
+  const [channelsLoading, setChannelsLoading] = useState(true)
+  const [addChannelOpen, setAddChannelOpen] = useState(false)
 
   // Close dropdown on Escape
   useEffect(() => {
-    if (!addStreamOpen) return
+    if (!addChannelOpen) return
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation()
-        setAddStreamOpen(false)
+        setAddChannelOpen(false)
       }
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [addStreamOpen])
+  }, [addChannelOpen])
 
   // ── Prevent remount/re-animation on token refresh ──────────────
   const hasLoaded = useRef(false)
@@ -92,97 +92,97 @@ function DashboardPage() {
     }
   }, [preferences?.subscription_tier])
 
-  // ── Fetch streams ────────────────────────────────────────────────
-  const fetchStreams = useCallback(async () => {
+  // ── Fetch channels ───────────────────────────────────────────────
+  const fetchChannels = useCallback(async () => {
     try {
-      const data = await streamsApi.getAll(getToken)
-      const fetched = data.streams || []
-      setStreams(fetched)
-      // If the currently selected module doesn't exist in fetched streams,
-      // fall back to the first available stream type
+      const data = await channelsApi.getAll(getToken)
+      const fetched = data.channels || []
+      setChannels(fetched)
+      // If the currently selected module doesn't exist in fetched channels,
+      // fall back to the first available channel type
       if (fetched.length > 0) {
         setActiveModule((current) => {
-          const exists = fetched.some((s) => s.stream_type === current)
-          return exists ? current : fetched[0].stream_type
+          const exists = fetched.some((s) => s.channel_type === current)
+          return exists ? current : fetched[0].channel_type
         })
       }
     } catch {
       // Silently fail — keep existing state
     } finally {
-      setStreamsLoading(false)
+      setChannelsLoading(false)
     }
   }, [getToken]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleToggleStream = async (stream: Stream) => {
-    const next = !stream.visible
+  const handleToggleChannel = async (channel: Channel) => {
+    const next = !channel.visible
     // Optimistic update — both enabled and visible stay in sync
-    setStreams((prev) =>
+    setChannels((prev) =>
       prev.map((s) =>
-        s.stream_type === stream.stream_type
+        s.channel_type === channel.channel_type
           ? { ...s, enabled: next, visible: next }
           : s,
       ),
     )
     try {
-      await streamsApi.update(
-        stream.stream_type,
+      await channelsApi.update(
+        channel.channel_type,
         { enabled: next, visible: next },
         getToken,
       )
     } catch {
       // Revert
-      setStreams((prev) =>
+      setChannels((prev) =>
         prev.map((s) =>
-          s.stream_type === stream.stream_type
-            ? { ...s, enabled: stream.enabled, visible: stream.visible }
+          s.channel_type === channel.channel_type
+            ? { ...s, enabled: channel.enabled, visible: channel.visible }
             : s,
         ),
       )
     }
   }
 
-  const handleAddStream = async (streamType: StreamType) => {
+  const handleAddChannel = async (channelType: ChannelType) => {
     try {
-      const newStream = await streamsApi.create(streamType, {}, getToken)
-      setStreams((prev) => [...prev, newStream])
-      setActiveModule(streamType)
-      setAddStreamOpen(false)
+      const newChannel = await channelsApi.create(channelType, {}, getToken)
+      setChannels((prev) => [...prev, newChannel])
+      setActiveModule(channelType)
+      setAddChannelOpen(false)
     } catch {
       // Could show an error toast
     }
   }
 
-  const handleDeleteStream = async (streamType: StreamType) => {
-    const prev = streams
-    setStreams((s) => s.filter((st) => st.stream_type !== streamType))
+  const handleDeleteChannel = async (channelType: ChannelType) => {
+    const prev = channels
+    setChannels((s) => s.filter((st) => st.channel_type !== channelType))
     try {
-      await streamsApi.delete(streamType, getToken)
-      // Switch to first remaining stream
-      const remaining = prev.filter((s) => s.stream_type !== streamType)
+      await channelsApi.delete(channelType, getToken)
+      // Switch to first remaining channel
+      const remaining = prev.filter((s) => s.channel_type !== channelType)
       if (remaining.length > 0) {
-        setActiveModule(remaining[0].stream_type)
+        setActiveModule(remaining[0].channel_type)
       }
     } catch {
-      setStreams(prev)
+      setChannels(prev)
     }
   }
 
   const handleQuickStart = async () => {
-    const recommended: Array<StreamType> = ['finance', 'sports', 'rss']
+    const recommended: Array<ChannelType> = ['finance', 'sports', 'rss']
     const toAdd = recommended.filter(
-      (t) => !streams.some((s) => s.stream_type === t),
+      (t) => !channels.some((s) => s.channel_type === t),
     )
     if (toAdd.length === 0) return
 
     try {
       const created = await Promise.all(
-        toAdd.map((t) => streamsApi.create(t, {}, getToken)),
+        toAdd.map((t) => channelsApi.create(t, {}, getToken)),
       )
-      setStreams((prev) => [...prev, ...created])
-      setActiveModule(created[0].stream_type)
+      setChannels((prev) => [...prev, ...created])
+      setActiveModule(created[0].channel_type)
     } catch {
       // Partial failure — refetch to get accurate state
-      fetchStreams()
+      fetchChannels()
     }
   }
 
@@ -191,7 +191,7 @@ function DashboardPage() {
       getIdTokenClaims().then((claims) => {
         setUserClaims(claims)
       })
-      fetchStreams()
+      fetchChannels()
       // Fetch preferences to get subscription tier (synced from JWT roles on backend)
       getPreferences(getToken)
         .then((prefs) => {
@@ -233,16 +233,16 @@ function DashboardPage() {
   hasAnimated.current = true
 
   // ── Derived data ─────────────────────────────────────────────────
-  const activeStream = streams.find((s) => s.stream_type === activeModule)
-  const activeCount = streams.filter((s) => s.visible).length
-  const existingTypes = new Set(streams.map((s) => s.stream_type))
-  const allIntegrations = getAllIntegrations()
-  const availableTypes = allIntegrations.filter(
-    (m) => !existingTypes.has(m.id as StreamType),
+  const activeChannel = channels.find((s) => s.channel_type === activeModule)
+  const activeCount = channels.filter((s) => s.visible).length
+  const existingTypes = new Set(channels.map((s) => s.channel_type))
+  const allChannels = getAllChannels()
+  const availableTypes = allChannels.filter(
+    (m) => !existingTypes.has(m.id as ChannelType),
   )
 
-  // ── Look up active integration from registry ─────────────────────
-  const activeIntegration = getIntegration(activeModule)
+  // ── Look up active channel from registry ─────────────────────────
+  const activeChannelManifest = getChannel(activeModule)
 
   return (
     <motion.div
@@ -270,7 +270,7 @@ function DashboardPage() {
               </span>
             </div>
             <h1 className="text-4xl font-black tracking-tight">
-              Your <span className="text-primary">Streams</span>
+              Your <span className="text-primary">Channels</span>
             </h1>
             <p className="text-xs text-base-content/40">
               {userClaims?.name || userClaims?.email} · Manage your ticker data
@@ -284,21 +284,21 @@ function DashboardPage() {
                 whileTap={{ scale: 0.98 }}
                 onClick={() =>
                   availableTypes.length > 0
-                    ? setAddStreamOpen(!addStreamOpen)
+                    ? setAddChannelOpen(!addChannelOpen)
                     : undefined
                 }
                 disabled={availableTypes.length === 0}
-                aria-expanded={addStreamOpen}
+                aria-expanded={addChannelOpen}
                 aria-haspopup="true"
                 className="btn btn-primary btn-sm gap-2 disabled:opacity-30"
               >
                 <Plus size={14} />
-                Add Stream
+                Add Channel
               </motion.button>
 
-              {/* Add Stream Dropdown */}
+              {/* Add Channel Dropdown */}
               <AnimatePresence>
-                {addStreamOpen && (
+                {addChannelOpen && (
                   <motion.div
                     initial={{ opacity: 0, y: -4, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -312,7 +312,7 @@ function DashboardPage() {
                   >
                     <div className="p-2">
                       <p className="text-[9px] font-semibold text-base-content/30 uppercase tracking-wide px-2 py-1.5">
-                        Available Integrations
+                        Available Channels
                       </p>
                       {availableTypes.map((manifest) => {
                         const Icon = manifest.icon
@@ -320,7 +320,7 @@ function DashboardPage() {
                           <button
                             key={manifest.id}
                             onClick={() =>
-                              handleAddStream(manifest.id as StreamType)
+                              handleAddChannel(manifest.id as ChannelType)
                             }
                             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors group"
                             style={
@@ -373,10 +373,10 @@ function DashboardPage() {
         </motion.header>
 
         {/* Close dropdown on outside click */}
-        {addStreamOpen && (
+        {addChannelOpen && (
           <div
             className="fixed inset-0 z-40"
-            onClick={() => setAddStreamOpen(false)}
+            onClick={() => setAddChannelOpen(false)}
             aria-hidden="true"
           />
         )}
@@ -389,10 +389,10 @@ function DashboardPage() {
           >
             <div>
               <p className="text-[10px] font-semibold text-base-content/30 uppercase tracking-wide mb-3 px-1">
-                Active Streams
+                Active Channels
               </p>
               <nav className="flex flex-col gap-1">
-                {streamsLoading ? (
+                {channelsLoading ? (
                   <div className="p-4 text-center">
                     <motion.span
                       animate={{ opacity: [0.3, 0.7, 0.3] }}
@@ -403,18 +403,18 @@ function DashboardPage() {
                     </motion.span>
                   </div>
                 ) : (
-                  streams.map((stream) => {
-                    const manifest = getIntegration(stream.stream_type)
+                  channels.map((ch) => {
+                    const manifest = getChannel(ch.channel_type)
                     if (!manifest) return null
                     const Icon = manifest.icon
                     return (
-                      <StreamNavButton
-                        key={stream.stream_type}
-                        active={activeModule === stream.stream_type}
-                        onClick={() => setActiveModule(stream.stream_type)}
+                      <ChannelNavButton
+                        key={ch.channel_type}
+                        active={activeModule === ch.channel_type}
+                        onClick={() => setActiveModule(ch.channel_type)}
                         icon={<Icon size={14} />}
                         label={manifest.tabLabel}
-                        visible={stream.visible}
+                        visible={ch.visible}
                         hex={manifest.hex}
                       />
                     )
@@ -430,8 +430,8 @@ function DashboardPage() {
               </p>
               <div className="space-y-3">
                 <QuickStat
-                  label="Total Streams"
-                  value={String(streams.length)}
+                  label="Total Channels"
+                  value={String(channels.length)}
                 />
                 <QuickStat
                   label="Active"
@@ -472,22 +472,24 @@ function DashboardPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              {/* Registry-driven integration rendering */}
-              {activeStream && activeIntegration && (
-                <activeIntegration.DashboardTab
-                  stream={activeStream}
+              {/* Registry-driven channel rendering */}
+              {activeChannel && activeChannelManifest && (
+                <activeChannelManifest.DashboardTab
+                  channel={activeChannel}
                   getToken={getToken}
                   connected={status === 'connected'}
                   subscriptionTier={subscriptionTier}
-                  hex={activeIntegration.hex}
-                  onToggle={() => handleToggleStream(activeStream)}
+                  hex={activeChannelManifest.hex}
+                  onToggle={() => handleToggleChannel(activeChannel)}
                   onDelete={() =>
-                    handleDeleteStream(activeStream.stream_type as StreamType)
+                    handleDeleteChannel(
+                      activeChannel.channel_type as ChannelType,
+                    )
                   }
-                  onStreamUpdate={(updated) =>
-                    setStreams((prev) =>
+                  onChannelUpdate={(updated) =>
+                    setChannels((prev) =>
                       prev.map((s) =>
-                        s.stream_type === updated.stream_type ? updated : s,
+                        s.channel_type === updated.channel_type ? updated : s,
                       ),
                     )
                   }
@@ -495,7 +497,7 @@ function DashboardPage() {
               )}
 
               {/* Empty State */}
-              {!activeStream && !streamsLoading && streams.length === 0 && (
+              {!activeChannel && !channelsLoading && channels.length === 0 && (
                 <div className="text-center py-20 space-y-6">
                   <Activity
                     size={48}
@@ -503,7 +505,7 @@ function DashboardPage() {
                   />
                   <div className="space-y-2">
                     <p className="text-sm font-semibold text-base-content/40">
-                      No Streams Yet
+                      No Channels Yet
                     </p>
                     <p className="text-xs text-base-content/25">
                       Add data sources to build your real-time feed.
@@ -528,19 +530,19 @@ function DashboardPage() {
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => setAddStreamOpen(true)}
+                      onClick={() => setAddChannelOpen(true)}
                       className="text-[10px] font-semibold uppercase tracking-wide text-base-content/30 hover:text-base-content/50 transition-colors flex items-center gap-1.5"
                     >
                       <Plus size={12} />
-                      Add Stream
+                      Add Channel
                     </motion.button>
                     <span className="text-base-content/10">|</span>
                     <Link
-                      to="/integrations"
+                      to="/channels"
                       className="text-[10px] font-semibold uppercase tracking-wide text-primary/40 hover:text-primary/70 transition-colors flex items-center gap-1.5"
                     >
                       <Puzzle size={12} />
-                      Browse Integrations
+                      Browse Channels
                     </Link>
                   </div>
                 </div>
@@ -562,7 +564,7 @@ function DashboardPage() {
 
 // ── Sidebar Navigation ─────────────────────────────────────────────
 
-function StreamNavButton({
+function ChannelNavButton({
   active,
   onClick,
   icon,

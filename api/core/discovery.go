@@ -8,38 +8,38 @@ import (
 	"time"
 )
 
-// IntegrationRoute describes a route registered by an integration.
-type IntegrationRoute struct {
+// ChannelRoute describes a route registered by a channel.
+type ChannelRoute struct {
 	Method string `json:"method"`
 	Path   string `json:"path"`
 	Auth   bool   `json:"auth"`
 }
 
-// IntegrationInfo describes a discovered integration from Redis.
-type IntegrationInfo struct {
-	Name         string             `json:"name"`
-	DisplayName  string             `json:"display_name"`
-	InternalURL  string             `json:"internal_url"`
-	Capabilities []string           `json:"capabilities"`
-	CDCTables    []string           `json:"cdc_tables"`
-	Routes       []IntegrationRoute `json:"routes"`
+// ChannelInfo describes a discovered channel from Redis.
+type ChannelInfo struct {
+	Name         string         `json:"name"`
+	DisplayName  string         `json:"display_name"`
+	InternalURL  string         `json:"internal_url"`
+	Capabilities []string       `json:"capabilities"`
+	CDCTables    []string       `json:"cdc_tables"`
+	Routes       []ChannelRoute `json:"routes"`
 }
 
-// Discovery manages runtime integration discovery via Redis.
+// Discovery manages runtime channel discovery via Redis.
 type Discovery struct {
-	mu           sync.RWMutex
-	integrations map[string]*IntegrationInfo // keyed by name
-	tableIndex   map[string]string           // table_name -> integration name
+	mu         sync.RWMutex
+	channels   map[string]*ChannelInfo // keyed by name
+	tableIndex map[string]string       // table_name -> channel name
 }
 
 var globalDiscovery = &Discovery{
-	integrations: make(map[string]*IntegrationInfo),
-	tableIndex:   make(map[string]string),
+	channels:   make(map[string]*ChannelInfo),
+	tableIndex: make(map[string]string),
 }
 
-// StartDiscovery performs an initial synchronous scan to discover integrations,
+// StartDiscovery performs an initial synchronous scan to discover channels,
 // then starts a background loop to refresh every 10 seconds.
-// The initial scan blocks so that proxy routes can be set up with known integrations.
+// The initial scan blocks so that proxy routes can be set up with known channels.
 // The background loop respects the provided context for graceful shutdown.
 func StartDiscovery(ctx context.Context) {
 	globalDiscovery.refresh()
@@ -64,13 +64,13 @@ func (d *Discovery) run(ctx context.Context) {
 func (d *Discovery) refresh() {
 	ctx := context.Background()
 
-	// Scan for all integration:* keys
+	// Scan for all channel:* keys
 	var cursor uint64
-	integrations := make(map[string]*IntegrationInfo)
+	channels := make(map[string]*ChannelInfo)
 	tableIndex := make(map[string]string)
 
 	for {
-		keys, nextCursor, err := Rdb.Scan(ctx, cursor, "integration:*", 100).Result()
+		keys, nextCursor, err := Rdb.Scan(ctx, cursor, "channel:*", 100).Result()
 		if err != nil {
 			log.Printf("[Discovery] Redis scan error: %v", err)
 			return
@@ -81,12 +81,12 @@ func (d *Discovery) refresh() {
 			if err != nil {
 				continue
 			}
-			var info IntegrationInfo
+			var info ChannelInfo
 			if err := json.Unmarshal([]byte(val), &info); err != nil {
-				log.Printf("[Discovery] Failed to parse integration %s: %v", key, err)
+				log.Printf("[Discovery] Failed to parse channel %s: %v", key, err)
 				continue
 			}
-			integrations[info.Name] = &info
+			channels[info.Name] = &info
 			for _, table := range info.CDCTables {
 				tableIndex[table] = info.Name
 			}
@@ -99,40 +99,40 @@ func (d *Discovery) refresh() {
 	}
 
 	d.mu.Lock()
-	d.integrations = integrations
+	d.channels = channels
 	d.tableIndex = tableIndex
 	d.mu.Unlock()
 
-	if len(integrations) > 0 {
-		names := make([]string, 0, len(integrations))
-		for name := range integrations {
+	if len(channels) > 0 {
+		names := make([]string, 0, len(channels))
+		for name := range channels {
 			names = append(names, name)
 		}
-		log.Printf("[Discovery] Found %d integration(s): %v", len(integrations), names)
+		log.Printf("[Discovery] Found %d channel(s): %v", len(channels), names)
 	}
 }
 
-// GetAllIntegrations returns a snapshot of all discovered integrations.
-func GetAllIntegrations() []*IntegrationInfo {
+// GetAllChannels returns a snapshot of all discovered channels.
+func GetAllChannels() []*ChannelInfo {
 	globalDiscovery.mu.RLock()
 	defer globalDiscovery.mu.RUnlock()
 
-	result := make([]*IntegrationInfo, 0, len(globalDiscovery.integrations))
-	for _, info := range globalDiscovery.integrations {
+	result := make([]*ChannelInfo, 0, len(globalDiscovery.channels))
+	for _, info := range globalDiscovery.channels {
 		result = append(result, info)
 	}
 	return result
 }
 
-// GetIntegration returns info for a specific integration by name.
-func GetIntegration(name string) *IntegrationInfo {
+// GetChannel returns info for a specific channel by name.
+func GetChannel(name string) *ChannelInfo {
 	globalDiscovery.mu.RLock()
 	defer globalDiscovery.mu.RUnlock()
-	return globalDiscovery.integrations[name]
+	return globalDiscovery.channels[name]
 }
 
-// GetIntegrationForTable returns the integration that handles a specific CDC table.
-func GetIntegrationForTable(tableName string) *IntegrationInfo {
+// GetChannelForTable returns the channel that handles a specific CDC table.
+func GetChannelForTable(tableName string) *ChannelInfo {
 	globalDiscovery.mu.RLock()
 	name, ok := globalDiscovery.tableIndex[tableName]
 	globalDiscovery.mu.RUnlock()
@@ -140,47 +140,47 @@ func GetIntegrationForTable(tableName string) *IntegrationInfo {
 	if !ok {
 		return nil
 	}
-	return GetIntegration(name)
+	return GetChannel(name)
 }
 
-// GetValidStreamTypes returns a set of all registered integration names.
-// These are the valid stream types for user_streams.
-func GetValidStreamTypes() map[string]bool {
+// GetValidChannelTypes returns a set of all registered channel names.
+// These are the valid channel types for user_channels.
+func GetValidChannelTypes() map[string]bool {
 	globalDiscovery.mu.RLock()
 	defer globalDiscovery.mu.RUnlock()
 
-	types := make(map[string]bool, len(globalDiscovery.integrations))
-	for name := range globalDiscovery.integrations {
+	types := make(map[string]bool, len(globalDiscovery.channels))
+	for name := range globalDiscovery.channels {
 		types[name] = true
 	}
 	return types
 }
 
-// GetIntegrationRoutes returns all routes from all discovered integrations.
-func GetIntegrationRoutes() []struct {
-	Integration *IntegrationInfo
-	Route       IntegrationRoute
+// GetChannelRoutes returns all routes from all discovered channels.
+func GetChannelRoutes() []struct {
+	Channel *ChannelInfo
+	Route   ChannelRoute
 } {
 	globalDiscovery.mu.RLock()
 	defer globalDiscovery.mu.RUnlock()
 
 	var routes []struct {
-		Integration *IntegrationInfo
-		Route       IntegrationRoute
+		Channel *ChannelInfo
+		Route   ChannelRoute
 	}
-	for _, info := range globalDiscovery.integrations {
+	for _, info := range globalDiscovery.channels {
 		for _, route := range info.Routes {
 			routes = append(routes, struct {
-				Integration *IntegrationInfo
-				Route       IntegrationRoute
+				Channel *ChannelInfo
+				Route   ChannelRoute
 			}{info, route})
 		}
 	}
 	return routes
 }
 
-// HasCapability checks if an integration has a specific capability.
-func (info *IntegrationInfo) HasCapability(cap string) bool {
+// HasCapability checks if a channel has a specific capability.
+func (info *ChannelInfo) HasCapability(cap string) bool {
 	for _, c := range info.Capabilities {
 		if c == cap {
 			return true

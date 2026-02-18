@@ -117,7 +117,7 @@ interface Feature {
 const FEATURES: Feature[] = [
   {
     Icon: Gauge,
-    title: 'Every Stream, Maxed',
+    title: 'Every Channel, Maxed',
     description:
       'Track every symbol, subscribe to every feed, follow every league. Your feed, fully loaded.',
     hex: '#34d399',
@@ -133,7 +133,7 @@ const FEATURES: Feature[] = [
     Icon: Shield,
     title: 'Early Access',
     description:
-      'First to test new integrations and features before they go live. Help shape the roadmap.',
+      'First to test new channels and features before they go live. Help shape the roadmap.',
     hex: '#a855f7',
   },
   {
@@ -366,7 +366,7 @@ function UplinkPage() {
   usePageMeta({
     title: 'Uplink \u2014 Scrollr',
     description:
-      'Total coverage for power users. Scrollr Uplink gives you unlimited tracking, real-time data delivery, and early access to new integrations.',
+      'Total coverage for power users. Scrollr Uplink gives you unlimited tracking, real-time data delivery, and early access to new channels.',
     canonicalUrl: 'https://myscrollr.com/uplink',
   })
 
@@ -920,7 +920,7 @@ function UplinkPage() {
                 <div className="space-y-2.5">
                   <PricingFeature>Full Uplink access</PricingFeature>
                   <PricingFeature>Real-time data delivery</PricingFeature>
-                  <PricingFeature>All integrations maxed</PricingFeature>
+                  <PricingFeature>All channels maxed</PricingFeature>
                 </div>
 
                 <div className="mt-5 w-full py-2.5 text-center text-[10px] font-semibold border border-base-content/15 text-base-content/50 rounded-lg group-hover:border-base-content/30 group-hover:text-base-content/70 transition-colors">
@@ -1019,7 +1019,7 @@ function UplinkPage() {
                 <div className="space-y-2.5">
                   <PricingFeature>Full Uplink access</PricingFeature>
                   <PricingFeature>Real-time data delivery</PricingFeature>
-                  <PricingFeature>All integrations maxed</PricingFeature>
+                  <PricingFeature>All channels maxed</PricingFeature>
                 </div>
 
                 <div className="mt-5 w-full py-2.5 text-center text-[10px] font-semibold border border-info/20 text-info/60 rounded-lg group-hover:border-info/40 group-hover:text-info/80 transition-colors">
@@ -1139,7 +1139,7 @@ function UplinkPage() {
                       Real-time data delivery
                     </PricingFeature>
                     <PricingFeature highlight>
-                      All integrations maxed
+                      All channels maxed
                     </PricingFeature>
                     <PricingFeature highlight>
                       Early access to features
@@ -1415,7 +1415,7 @@ function UplinkPage() {
               >
                 The core platform stays open source and always free. Uplink
                 unlocks real-time delivery and total coverage across every
-                integration.
+                channel.
               </motion.p>
 
               <motion.div

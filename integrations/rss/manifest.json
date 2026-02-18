@@ -2,7 +2,12 @@
   "name": "rss",
   "display_name": "RSS Feeds",
   "internal_url": "http://scrollr-rss-api:8083",
-  "capabilities": ["cdc_handler", "dashboard_provider", "stream_lifecycle", "health_checker"],
+  "capabilities": [
+    "cdc_handler",
+    "dashboard_provider",
+    "channel_lifecycle",
+    "health_checker"
+  ],
   "cdc_tables": ["rss_items"],
   "routes": [
     { "method": "GET", "path": "/rss/feeds", "auth": false },

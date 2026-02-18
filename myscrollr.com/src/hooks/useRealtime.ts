@@ -65,7 +65,7 @@ export function useRealtime({ getToken }: UseRealtimeOptions) {
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data)
-          handleStreamData(data)
+          handleChannelData(data)
         } catch {
           // Ignore unparseable messages (e.g. ping comments)
         }
@@ -90,8 +90,8 @@ export function useRealtime({ getToken }: UseRealtimeOptions) {
     }
   }, [])
 
-  const handleStreamData = (data: SSEPayload) => {
-    // Server-side filtering: all records in the SSE stream are already
+  const handleChannelData = (data: SSEPayload) => {
+    // Server-side filtering: all records in the SSE event stream are already
     // scoped to the authenticated user. No client-side logto_sub/guid
     // checks are needed.
 

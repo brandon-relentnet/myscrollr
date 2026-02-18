@@ -98,9 +98,9 @@ export default function Header() {
               Home
             </NavLink>
 
-            <NavLink to="/integrations" activeOn="/integrations">
+            <NavLink to="/channels" activeOn="/channels">
               <Puzzle size={14} />
-              Integrations
+              Channels
             </NavLink>
 
             {isAuthenticated && (
@@ -235,11 +235,11 @@ export default function Header() {
                 </MobileNavLink>
 
                 <MobileNavLink
-                  to="/integrations"
+                  to="/channels"
                   icon={<ChevronRight size={18} />}
                   onClick={() => setIsOpen(false)}
                 >
-                  Integrations
+                  Channels
                 </MobileNavLink>
 
                 {isAuthenticated && (

@@ -21,7 +21,7 @@ var proxyClient = &http.Client{
 }
 
 // SetupDynamicProxy registers a single catch-all route that dynamically resolves
-// integration routes at request time using live discovery data.
+// channel routes at request time using live discovery data.
 // This MUST be called AFTER all core routes so core routes take priority
 // (Fiber matches routes in registration order).
 func SetupDynamicProxy(app *fiber.App) {
@@ -29,17 +29,17 @@ func SetupDynamicProxy(app *fiber.App) {
 	log.Println("[Proxy] Dynamic catch-all proxy registered")
 }
 
-// dynamicProxyHandler resolves the incoming request against discovered integration
-// routes and proxies matching requests to the appropriate integration service.
+// dynamicProxyHandler resolves the incoming request against discovered channel
+// routes and proxies matching requests to the appropriate channel service.
 func dynamicProxyHandler(c *fiber.Ctx) error {
 	requestPath := c.Path()
 	requestMethod := c.Method()
 
-	// Find a matching integration route
-	routes := GetIntegrationRoutes()
+	// Find a matching channel route
+	routes := GetChannelRoutes()
 	for _, entry := range routes {
 		route := entry.Route
-		intg := entry.Integration
+		intg := entry.Channel
 
 		if route.Method != requestMethod {
 			continue
@@ -102,8 +102,8 @@ func matchRoute(pattern, path string) (map[string]string, bool) {
 	return params, true
 }
 
-// proxyRequest forwards the request to the integration service.
-func proxyRequest(c *fiber.Ctx, intg *IntegrationInfo, route IntegrationRoute, targetPath string) error {
+// proxyRequest forwards the request to the channel service.
+func proxyRequest(c *fiber.Ctx, intg *ChannelInfo, route ChannelRoute, targetPath string) error {
 	targetURL := intg.InternalURL + targetPath
 
 	// Forward query string
@@ -159,7 +159,7 @@ func proxyRequest(c *fiber.Ctx, intg *IntegrationInfo, route IntegrationRoute, t
 		log.Printf("[Proxy] Request to %s failed: %v", targetURL, err)
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
 			"status": "error",
-			"error":  fmt.Sprintf("Integration %s is unavailable", intg.Name),
+			"error":  fmt.Sprintf("Channel %s is unavailable", intg.Name),
 		})
 	}
 	defer resp.Body.Close()
@@ -170,7 +170,7 @@ func proxyRequest(c *fiber.Ctx, intg *IntegrationInfo, route IntegrationRoute, t
 		log.Printf("[Proxy] Failed to read response from %s: %v", targetURL, err)
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
 			"status": "error",
-			"error":  "Failed to read integration response",
+			"error":  "Failed to read channel response",
 		})
 	}
 

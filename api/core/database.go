@@ -62,22 +62,22 @@ func ConnectDB() {
 	DBPool = pool
 	log.Println("Successfully connected to PostgreSQL database")
 
-	// Create core tables (user_streams, user_preferences)
+	// Create core tables (user_channels, user_preferences)
 	_, err = DBPool.Exec(context.Background(), `
-		CREATE TABLE IF NOT EXISTS user_streams (
+		CREATE TABLE IF NOT EXISTS user_channels (
 			id              SERIAL PRIMARY KEY,
 			logto_sub       TEXT NOT NULL,
-			stream_type     TEXT NOT NULL,
+			channel_type    TEXT NOT NULL,
 			enabled         BOOLEAN NOT NULL DEFAULT true,
 			visible         BOOLEAN NOT NULL DEFAULT true,
 			config          JSONB NOT NULL DEFAULT '{}',
 			created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
 			updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-			UNIQUE(logto_sub, stream_type)
+			UNIQUE(logto_sub, channel_type)
 		);
 	`)
 	if err != nil {
-		log.Printf("Warning: Failed to create user_streams table: %v", err)
+		log.Printf("Warning: Failed to create user_channels table: %v", err)
 	}
 
 	_, err = DBPool.Exec(context.Background(), `

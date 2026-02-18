@@ -8,12 +8,9 @@ import {
   Zap,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { streamsApi } from "@/api/client";
-import type {
-  IntegrationManifest,
-  DashboardTabProps,
-} from "@/integrations/types";
-import { StreamHeader, InfoCard } from "@/integrations/shared";
+import { channelsApi } from "@/api/client";
+import type { ChannelManifest, DashboardTabProps } from "@/channels/types";
+import { ChannelHeader, InfoCard } from "@/channels/shared";
 
 // ── Types (self-contained) ──────────────────────────────────────
 
@@ -23,7 +20,7 @@ interface TrackedSymbol {
   category: string;
 }
 
-interface FinanceStreamConfig {
+interface FinanceChannelConfig {
   symbols?: string[];
 }
 
@@ -44,14 +41,14 @@ async function fetchCatalog(): Promise<TrackedSymbol[]> {
 // ── Component ───────────────────────────────────────────────────
 
 function FinanceDashboardTab({
-  stream,
+  channel,
   getToken,
   connected,
   subscriptionTier,
   hex,
   onToggle,
   onDelete,
-  onStreamUpdate,
+  onChannelUpdate,
 }: DashboardTabProps) {
   const isUplink = subscriptionTier === "uplink";
   const [catalog, setCatalog] = useState<TrackedSymbol[]>([]);
@@ -63,7 +60,7 @@ function FinanceDashboardTab({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const config = stream.config as FinanceStreamConfig;
+  const config = channel.config as FinanceChannelConfig;
   const symbols = Array.isArray(config?.symbols) ? config.symbols : [];
   const symbolSet = new Set(symbols);
 
@@ -114,12 +111,12 @@ function FinanceDashboardTab({
   const updateSymbols = async (nextSymbols: string[]) => {
     setSaving(true);
     try {
-      const updated = await streamsApi.update(
+      const updated = await channelsApi.update(
         "finance",
         { config: { symbols: nextSymbols } },
         getToken,
       );
-      onStreamUpdate(updated);
+      onChannelUpdate(updated);
     } catch {
       setError("Failed to save symbol changes");
     } finally {
@@ -164,10 +161,10 @@ function FinanceDashboardTab({
 
   return (
     <div className="space-y-6">
-      <StreamHeader
-        stream={stream}
+      <ChannelHeader
+        channel={channel}
         icon={<TrendingUp size={16} className="text-base-content/80" />}
-        title="Finance Stream"
+        title="Finance Channel"
         subtitle="Real-time market data via Finnhub WebSocket"
         connected={connected}
         subscriptionTier={subscriptionTier}
@@ -532,7 +529,7 @@ function FinanceDashboardTab({
   );
 }
 
-export const financeIntegration: IntegrationManifest = {
+export const financeChannel: ChannelManifest = {
   id: "finance",
   name: "Finance",
   tabLabel: "Finance",

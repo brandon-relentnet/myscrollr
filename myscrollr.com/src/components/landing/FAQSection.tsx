@@ -69,7 +69,7 @@ const FAQ_ITEMS: Array<FAQItem> = [
     question: 'Do I need an account?',
     highlight: 'Just install and go. No sign-up required to start.',
     answer:
-      "Install the extension and you'll immediately receive live stock and sports data with no sign-up. Creating a free account unlocks all four integrations (finance, sports, news, and fantasy), the web dashboard, and cross-device preference sync.",
+      "Install the extension and you'll immediately receive live stock and sports data with no sign-up. Creating a free account unlocks all four channels (finance, sports, news, and fantasy), the web dashboard, and cross-device preference sync.",
     accent: 'rose',
   },
   {
@@ -78,7 +78,7 @@ const FAQ_ITEMS: Array<FAQItem> = [
     highlight:
       'Live stocks, scores, news headlines, and fantasy updates in one feed.',
     answer:
-      'Four integrations: real-time stock and crypto prices, live sports scores across major leagues, RSS news headlines from hundreds of sources, and Yahoo Fantasy league updates including standings and matchups.',
+      'Four channels: real-time stock and crypto prices, live sports scores across major leagues, RSS news headlines from hundreds of sources, and Yahoo Fantasy league updates including standings and matchups.',
     accent: 'cyan',
   },
   {
@@ -87,7 +87,7 @@ const FAQ_ITEMS: Array<FAQItem> = [
     highlight:
       'Adjust everything from position and size to per-site visibility.',
     answer:
-      'Position the bar at the top or bottom of your screen, drag to resize the height, switch between comfort and compact modes, choose overlay or push behavior, pick which integrations appear as tabs, and choose which websites show or hide the feed.',
+      'Position the bar at the top or bottom of your screen, drag to resize the height, switch between comfort and compact modes, choose overlay or push behavior, pick which channels appear as tabs, and choose which websites show or hide the feed.',
     accent: 'orange',
   },
   {

@@ -110,22 +110,22 @@ func routeCDCRecord(ctx context.Context, rec CDCRecord) {
 	case "user_preferences":
 		RouteToRecordOwner(rec.Record, "logto_sub", payload)
 		return
-	case "user_streams":
+	case "user_channels":
 		RouteToRecordOwner(rec.Record, "logto_sub", payload)
 		return
 	}
 
-	// Look up which integration handles this table
-	intg := GetIntegrationForTable(table)
+	// Look up which channel handles this table
+	intg := GetChannelForTable(table)
 	if intg == nil {
 		// Unknown table — silently ignore
 		return
 	}
 
-	// Forward CDC records to integration service
-	users, err := forwardCDCToIntegration(ctx, intg, []CDCRecord{rec})
+	// Forward CDC records to channel service
+	users, err := forwardCDCToChannel(ctx, intg, []CDCRecord{rec})
 	if err != nil {
-		log.Printf("[Sequin] Failed to forward CDC for table %s to %s: %v", table, intg.Name, err)
+		log.Printf("[Sequin] Failed to forward CDC for table %s to channel %s: %v", table, intg.Name, err)
 		return
 	}
 
@@ -135,9 +135,9 @@ func routeCDCRecord(ctx context.Context, rec CDCRecord) {
 	}
 }
 
-// forwardCDCToIntegration sends CDC records to an integration's /internal/cdc endpoint
+// forwardCDCToChannel sends CDC records to a channel's /internal/cdc endpoint
 // and returns the list of user subs to route the event to.
-func forwardCDCToIntegration(ctx context.Context, intg *IntegrationInfo, records []CDCRecord) ([]string, error) {
+func forwardCDCToChannel(ctx context.Context, intg *ChannelInfo, records []CDCRecord) ([]string, error) {
 	reqBody, err := json.Marshal(map[string]interface{}{
 		"records": records,
 	})

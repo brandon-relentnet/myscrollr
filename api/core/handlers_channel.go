@@ -21,7 +21,7 @@ func GetActiveViewers(c *fiber.Ctx) error {
 //
 // @Summary Real-time event stream (authenticated)
 // @Description Server-Sent Events endpoint for per-user CDC updates
-// @Tags Stream
+// @Tags Events
 // @Produce text/event-stream
 // @Param token query string true "JWT access token"
 // @Router /events [get]

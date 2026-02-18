@@ -20,7 +20,7 @@ const (
 )
 
 // PublicFeedResponse is the response shape for GET /public/feed.
-// It mirrors the DashboardResponse data map but without preferences/streams.
+// It mirrors the DashboardResponse data map but without preferences/channels.
 type PublicFeedResponse struct {
 	Data map[string]interface{} `json:"data"`
 }
@@ -53,16 +53,16 @@ func HandlePublicFeed(c *fiber.Ctx) error {
 	client := &http.Client{Timeout: HealthCheckTimeout}
 
 	// Fetch from finance
-	if intg := GetIntegration("finance"); intg != nil {
-		data := fetchIntegrationPublic(client, intg, "/finance/public")
+	if intg := GetChannel("finance"); intg != nil {
+		data := fetchChannelPublic(client, intg, "/finance/public")
 		for k, v := range data {
 			res.Data[k] = v
 		}
 	}
 
 	// Fetch from sports
-	if intg := GetIntegration("sports"); intg != nil {
-		data := fetchIntegrationPublic(client, intg, "/sports/public")
+	if intg := GetChannel("sports"); intg != nil {
+		data := fetchChannelPublic(client, intg, "/sports/public")
 		for k, v := range data {
 			res.Data[k] = v
 		}
@@ -77,10 +77,10 @@ func HandlePublicFeed(c *fiber.Ctx) error {
 	return c.JSON(res)
 }
 
-// fetchIntegrationPublic calls an integration's public endpoint and returns
+// fetchChannelPublic calls a channel's public endpoint and returns
 // the parsed response data. The response is expected to be an array (e.g.
-// trades or games) which gets wrapped under the integration name key.
-func fetchIntegrationPublic(client *http.Client, intg *IntegrationInfo, path string) map[string]interface{} {
+// trades or games) which gets wrapped under the channel name key.
+func fetchChannelPublic(client *http.Client, intg *ChannelInfo, path string) map[string]interface{} {
 	url := intg.InternalURL + path
 	resp, err := client.Get(url)
 	if err != nil {
@@ -95,8 +95,8 @@ func fetchIntegrationPublic(client *http.Client, intg *IntegrationInfo, path str
 		return nil
 	}
 
-	// The integration public endpoints return raw arrays (e.g. []Trade or []Game).
-	// Wrap them under the integration name to match the DashboardResponse.Data shape.
+	// Channel public endpoints return raw arrays (e.g. []Trade or []Game).
+	// Wrap them under the channel name to match the DashboardResponse.Data shape.
 	var items interface{}
 	if err := json.Unmarshal(body, &items); err != nil {
 		log.Printf("[PublicFeed] %s unmarshal error: %v", intg.Name, err)

@@ -123,13 +123,13 @@ export async function authenticatedFetch<T>(
   return response.json()
 }
 
-// ── Stream Types ─────────────────────────────────────────────────
+// ── Channel Types ────────────────────────────────────────────────
 
-export type StreamType = 'finance' | 'sports' | 'fantasy' | 'rss'
+export type ChannelType = 'finance' | 'sports' | 'fantasy' | 'rss'
 
-export interface Stream {
+export interface Channel {
   id: number
-  stream_type: StreamType
+  channel_type: ChannelType
   enabled: boolean
   visible: boolean
   config: Record<string, unknown>
@@ -137,31 +137,31 @@ export interface Stream {
   updated_at: string
 }
 
-export interface RssStreamConfig {
+export interface RssChannelConfig {
   feeds?: Array<{ name: string; url: string }>
 }
 
-// ── Streams API ──────────────────────────────────────────────────
+// ── Channels API ─────────────────────────────────────────────────
 
-export const streamsApi = {
+export const channelsApi = {
   getAll: (getToken: () => Promise<string | null>) =>
-    authenticatedFetch<{ streams: Array<Stream> }>(
-      '/users/me/streams',
+    authenticatedFetch<{ channels: Array<Channel> }>(
+      '/users/me/channels',
       {},
       getToken,
     ),
 
   create: async (
-    streamType: StreamType,
+    channelType: ChannelType,
     config: Record<string, unknown>,
     getToken: () => Promise<string | null>,
   ) => {
-    const result = await authenticatedFetch<Stream>(
-      '/users/me/streams',
+    const result = await authenticatedFetch<Channel>(
+      '/users/me/channels',
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stream_type: streamType, config }),
+        body: JSON.stringify({ channel_type: channelType, config }),
       },
       getToken,
     )
@@ -170,7 +170,7 @@ export const streamsApi = {
   },
 
   update: async (
-    streamType: StreamType,
+    channelType: ChannelType,
     data: {
       enabled?: boolean
       visible?: boolean
@@ -178,8 +178,8 @@ export const streamsApi = {
     },
     getToken: () => Promise<string | null>,
   ) => {
-    const result = await authenticatedFetch<Stream>(
-      `/users/me/streams/${streamType}`,
+    const result = await authenticatedFetch<Channel>(
+      `/users/me/channels/${channelType}`,
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -191,12 +191,14 @@ export const streamsApi = {
     return result
   },
 
-  delete: async (streamType: StreamType, getToken: () => Promise<string | null>) => {
-    const result = await authenticatedFetch<{ status: string; message: string }>(
-      `/users/me/streams/${streamType}`,
-      { method: 'DELETE' },
-      getToken,
-    )
+  delete: async (
+    channelType: ChannelType,
+    getToken: () => Promise<string | null>,
+  ) => {
+    const result = await authenticatedFetch<{
+      status: string
+      message: string
+    }>(`/users/me/channels/${channelType}`, { method: 'DELETE' }, getToken)
     notifyExtensionConfigChanged()
     return result
   },
@@ -322,9 +324,9 @@ export const billingApi = {
 
   /** Cancel subscription at period end */
   cancelSubscription: (getToken: () => Promise<string | null>) =>
-    authenticatedFetch<{ status: string; current_period_end: string; message: string }>(
-      '/users/me/subscription/cancel',
-      { method: 'POST' },
-      getToken,
-    ),
+    authenticatedFetch<{
+      status: string
+      current_period_end: string
+      message: string
+    }>('/users/me/subscription/cancel', { method: 'POST' }, getToken),
 }

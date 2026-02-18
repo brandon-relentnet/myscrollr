@@ -83,7 +83,7 @@ const PRINCIPLES: Array<Principle> = [
   },
 ]
 
-// ── Coming-soon integration icons ───────────────────────────────
+// ── Coming-soon channel icons ────────────────────────────────────
 
 const COMING_SOON_ICONS = [
   { name: 'Discord', emoji: '💬' },
@@ -408,22 +408,21 @@ export function TrustSection() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-base-content">
-                    Create an Integration
+                    Create a Channel
                   </h3>
                   <p className="text-[10px] text-primary/50">For developers</p>
                 </div>
               </div>
 
               <p className="text-sm text-base-content/40 leading-relaxed mb-6">
-                Every integration is a self-contained package — your own API,
-                your own service, your own UI components. Follow the
-                architecture, ship your plugin. The ecosystem grows with every
-                contributor.
+                Every channel is a self-contained package — your own API, your
+                own service, your own UI components. Follow the architecture,
+                ship your plugin. The ecosystem grows with every contributor.
               </p>
 
               <div className="relative rounded-xl border border-base-300/40 bg-base-100/50 overflow-hidden mb-6 p-5">
                 <p className="text-[9px] text-base-content/20 mb-4">
-                  Each integration includes:
+                  Each channel includes:
                 </p>
                 <div className="grid grid-cols-2 gap-2.5">
                   {[
@@ -486,14 +485,14 @@ export function TrustSection() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-base-content whitespace-nowrap">
-                    Suggest an Integration
+                    Suggest a Channel
                   </h3>
                   <p className="text-[10px] text-info/50">For everyone</p>
                 </div>
               </div>
 
               <p className="text-sm text-base-content/40 leading-relaxed mb-6">
-                Don't code? No problem. The best integrations start as community
+                Don't code? No problem. The best channels start as community
                 ideas. Tell us what platforms and data you want in your feed —
                 we'll make it happen.
               </p>
