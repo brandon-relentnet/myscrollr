@@ -75,7 +75,7 @@ export function HeroSection() {
   return (
     <section className="relative min-h-dvh flex items-center overflow-hidden">
       <div className="container relative">
-        <div className="flex lg:flex-row flex-col justify-center items-center gap-12 lg:gap-20">
+        <div className="flex lg:flex-row flex-col justify-center items-center gap-12 lg:gap-12 xl:gap-16">
           {/* Stacked Browser Mockups */}
           <div className="relative order-2 lg:order-1">
             <HeroBrowserStack
@@ -89,7 +89,7 @@ export function HeroSection() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3, ease: 'easeOut' }}
-            className="w-full lg:w-fit lg:min-w-140 order-1 lg:order-2"
+            className="w-full lg:w-fit lg:min-w-100 xl:min-w-120 2xl:min-w-140 order-1 lg:order-2"
           >
             <HeroTextSwap activeIndex={activeWordIndex} />
 
