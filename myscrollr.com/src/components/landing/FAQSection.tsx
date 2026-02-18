@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import {
+  AnimatePresence,
+  motion,
+  useMotionTemplate,
+  useSpring,
+  useTransform,
+  useVelocity,
+} from 'motion/react'
 import {
   ChevronDown,
   ChevronLeft,
@@ -95,7 +102,6 @@ const FAQ_ITEMS: Array<FAQItem> = [
 ]
 
 // ── Accent color map ─────────────────────────────────────────────
-// Maps accent name → CSS color values for the icon ring, glow, gradient
 
 const ACCENT_COLORS: Record<
   string,
@@ -143,10 +149,21 @@ const ACCENT_COLORS: Record<
   },
 }
 
-// ── Constants ────────────────────────────────────────────────────
+// ── Constants & Utils ────────────────────────────────────────────
 
 const EASE = [0.22, 1, 0.36, 1] as const
-const CYCLE_MS = 6000
+
+function calculateViewX(difference: number, containerWidth: number) {
+  return difference * containerWidth * 0.75 * -1
+}
+
+function useMounted() {
+  const [isMounted, setIsMounted] = useState(false)
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+  return isMounted
+}
 
 // ── Desktop Answer Panel ─────────────────────────────────────────
 
@@ -229,6 +246,60 @@ function AnswerPanel({ item }: { item: FAQItem }) {
         {item.answer}
       </span>
     </div>
+  )
+}
+
+// ── Desktop Answer View (spring-animated sliding container) ──────
+
+function AnswerView({
+  children,
+  containerWidth,
+  viewIndex,
+  activeIndex,
+}: {
+  children: React.ReactNode
+  containerWidth: number
+  viewIndex: number
+  activeIndex: number
+}) {
+  const x = useSpring(calculateViewX(activeIndex - viewIndex, containerWidth), {
+    stiffness: 400,
+    damping: 60,
+  })
+
+  const xVelocity = useVelocity(x)
+
+  const opacity = useTransform(
+    x,
+    [-containerWidth * 0.6, 0, containerWidth * 0.6],
+    [0, 1, 0],
+  )
+
+  const blur = useTransform(xVelocity, [-1000, 0, 1000], [4, 0, 4], {
+    clamp: false,
+  })
+
+  const filter = useMotionTemplate`blur(${blur}px)`
+
+  useEffect(() => {
+    x.set(calculateViewX(activeIndex - viewIndex, containerWidth))
+  }, [activeIndex, containerWidth, viewIndex, x])
+
+  return (
+    <motion.div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        x,
+        opacity,
+        filter,
+        transformOrigin: 'center',
+        willChange: 'transform, filter',
+        isolation: 'isolate',
+      }}
+    >
+      {children}
+    </motion.div>
   )
 }
 
@@ -334,35 +405,30 @@ function AccordionItem({
 
 export function FAQSection() {
   const [activeIndex, setActiveIndex] = useState(0)
-  const [cycleKey, setCycleKey] = useState(0)
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const sectionRef = useRef<HTMLElement>(null)
+  const isMounted = useMounted()
 
-  // ── Auto-cycle timer ───────────────────────────────────────────
-  const startTimer = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current)
-    setCycleKey((k) => k + 1)
-    timerRef.current = setInterval(() => {
-      setActiveIndex((prev) => (prev + 1) % FAQ_ITEMS.length)
-      setCycleKey((k) => k + 1)
-    }, CYCLE_MS)
-  }, [])
+  // Container width measurement for spring animation
+  const viewsContainerRef = useRef<HTMLDivElement>(null)
+  const [viewsContainerWidth, setViewsContainerWidth] = useState(0)
 
   useEffect(() => {
-    startTimer()
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
+    const updateWidth = () => {
+      if (viewsContainerRef.current) {
+        setViewsContainerWidth(
+          viewsContainerRef.current.getBoundingClientRect().width,
+        )
+      }
     }
-  }, [startTimer])
+    updateWidth()
+    window.addEventListener('resize', updateWidth)
+    return () => window.removeEventListener('resize', updateWidth)
+  }, [viewsContainerWidth])
 
-  // ── Manual selection (resets timer) ────────────────────────────
-  const handleSelect = useCallback(
-    (index: number) => {
-      setActiveIndex(index)
-      startTimer()
-    },
-    [startTimer],
-  )
+  // ── Manual selection ───────────────────────────────────────────
+  const handleSelect = useCallback((index: number) => {
+    setActiveIndex(index)
+  }, [])
 
   const goNext = useCallback(() => {
     handleSelect((activeIndex + 1) % FAQ_ITEMS.length)
@@ -448,28 +514,17 @@ export function FAQSection() {
                         : 'text-base-content/40 hover:text-base-content/60 hover:bg-base-200/25'
                     }`}
                   >
-                    {/* Sliding accent indicator with progress fill */}
+                    {/* Sliding accent indicator */}
                     {isActive && (
                       <motion.div
                         layoutId="faq-indicator"
-                        className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full overflow-hidden bg-primary/20"
+                        className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full bg-primary"
                         transition={{
                           type: 'spring',
                           bounce: 0.15,
                           duration: 0.4,
                         }}
-                      >
-                        <motion.div
-                          key={`faq-progress-${cycleKey}`}
-                          className="absolute inset-0 bg-primary rounded-full origin-bottom"
-                          initial={{ scaleY: 0 }}
-                          animate={{ scaleY: 1 }}
-                          transition={{
-                            duration: CYCLE_MS / 1000,
-                            ease: 'linear',
-                          }}
-                        />
-                      </motion.div>
+                      />
                     )}
 
                     <NavIcon
@@ -487,7 +542,7 @@ export function FAQSection() {
             </div>
           </div>
 
-          {/* Right — answer panel (fixed height) + nav controls */}
+          {/* Right — spring-animated answer views + nav controls */}
           <motion.div
             style={{ opacity: 0 }}
             initial={{ opacity: 0, y: 20 }}
@@ -496,22 +551,22 @@ export function FAQSection() {
             transition={{ delay: 0.2, duration: 0.6, ease: EASE }}
             className="flex-1 flex flex-col gap-4"
           >
-            {/* Answer card — fixed height container */}
-            <div className="min-h-[380px] flex-1">
-              <AnimatePresence mode="wait">
-                {activeIndex >= 0 && (
-                  <motion.div
-                    key={activeIndex}
-                    initial={{ opacity: 0, y: 8, filter: 'blur(4px)' }}
-                    animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                    exit={{ opacity: 0, y: -8, filter: 'blur(4px)' }}
-                    transition={{ duration: 0.2, ease: EASE }}
-                    className="h-full"
+            {/* Answer views — fixed height, overflow hidden for sliding */}
+            <div
+              ref={viewsContainerRef}
+              className="relative min-h-[380px] flex-1 overflow-hidden rounded-2xl"
+            >
+              {isMounted &&
+                FAQ_ITEMS.map((item, idx) => (
+                  <AnswerView
+                    key={item.question}
+                    containerWidth={viewsContainerWidth}
+                    viewIndex={idx}
+                    activeIndex={activeIndex}
                   >
-                    <AnswerPanel item={FAQ_ITEMS[activeIndex]} />
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                    <AnswerPanel item={item} />
+                  </AnswerView>
+                ))}
             </div>
 
             {/* Navigation controls */}

@@ -6,7 +6,6 @@ import { StreamsShowcase } from '@/components/landing/StreamsShowcase'
 import { BenefitsSection } from '@/components/landing/BenefitsSection'
 import { TrustSection } from '@/components/landing/TrustSection'
 import { FAQSection } from '@/components/landing/FAQSection'
-import { CommunitySection } from '@/components/landing/CommunitySection'
 import { CallToAction } from '@/components/landing/CallToAction'
 
 export const Route = createFileRoute('/')({
@@ -33,8 +32,6 @@ function HomePage() {
       <TrustSection />
 
       <FAQSection />
-
-      <CommunitySection />
 
       <CallToAction />
     </>

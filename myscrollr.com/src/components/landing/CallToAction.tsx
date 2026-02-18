@@ -340,8 +340,7 @@ export function CallToAction() {
             }}
             className="block mt-6 text-lg sm:text-xl text-base-content/50 max-w-lg leading-relaxed"
           >
-            Live scores, prices, and headlines pinned to every tab. One install,
-            every browser, instant updates.
+            Install once. Open a tab. That's it — updates are already rolling.
           </motion.span>
 
           {/* ── CTA button area with orbiting icons ─────────────────────── */}

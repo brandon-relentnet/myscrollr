@@ -138,11 +138,9 @@ export function HeroSection() {
               transition={{ duration: 0.5, delay: 1 }}
               className="text-base text-base-content/50 max-w-md leading-relaxed"
             >
-              Live sports scores, crypto prices, news, and fantasy updates
-              pinned to every tab.{' '}
-              <span className="text-primary font-medium">
-                Live data, every tab, zero effort.
-              </span>
+              A quiet ticker at the bottom of your browser. Scores update,
+              prices move, headlines arrive &mdash; all while you stay on the
+              page you&rsquo;re already on.
             </motion.p>
 
             <motion.div

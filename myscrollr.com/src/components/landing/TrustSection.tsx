@@ -3,13 +3,15 @@ import { motion } from 'motion/react'
 import { Link } from '@tanstack/react-router'
 import {
   ArrowRight,
+  ArrowUpRight,
   Code,
+  Code2,
   Eye,
   GitFork,
   Github,
   Heart,
+  Lightbulb,
   MessageSquare,
-  ShieldCheck,
   Star,
   Users,
 } from 'lucide-react'
@@ -70,9 +72,9 @@ const PRINCIPLES: Array<Principle> = [
   },
   {
     icon: Heart,
-    title: 'Getting Better Every Week',
-    highlight: 'Actively maintained',
-    body: "New features, fixes, and improvements ship constantly. If something bugs you, it probably won't for long.",
+    title: 'Actively Maintained',
+    highlight: 'Shipping fixes and features constantly',
+    body: "New features, fixes, and improvements ship regularly. If something bugs you, it probably won't for long.",
     accent: {
       text: 'text-secondary',
       ring: 'rgba(255,71,87,0.25)',
@@ -82,30 +84,15 @@ const PRINCIPLES: Array<Principle> = [
   },
 ]
 
-// ── Privacy pledges ─────────────────────────────────────────────
+// ── Coming-soon integration icons ───────────────────────────────
 
-interface Pledge {
-  title: string
-  body: string
-}
-
-const PLEDGES: Array<Pledge> = [
-  {
-    title: 'Local Only',
-    body: 'Your data never leaves your browser. Period.',
-  },
-  {
-    title: 'No Account Required',
-    body: 'Install the extension and go. No email, no password.',
-  },
-  {
-    title: 'Featherweight',
-    body: 'Under 500 KB total. Zero battery drain.',
-  },
-  {
-    title: 'Open Source',
-    body: 'Every line of code is public and auditable.',
-  },
+const COMING_SOON_ICONS = [
+  { name: 'Discord', emoji: '💬' },
+  { name: 'Twitch', emoji: '📺' },
+  { name: 'Reddit', emoji: '📖' },
+  { name: 'GitHub', emoji: '🐙' },
+  { name: 'YouTube', emoji: '▶' },
+  { name: 'Spotify', emoji: '🎵' },
 ]
 
 // ── GitHub repo stats hook ───────────────────────────────────────
@@ -139,46 +126,6 @@ function useGitHubStats(repo: string) {
   }, [repo])
 
   return stats
-}
-
-// ── Animated SVG Checkmark ───────────────────────────────────────
-
-function AnimatedCheck({ delay }: { delay: number }) {
-  return (
-    <motion.svg
-      width="36"
-      height="36"
-      viewBox="0 0 36 36"
-      fill="none"
-      className="shrink-0"
-      aria-hidden="true"
-    >
-      <motion.circle
-        cx="18"
-        cy="18"
-        r="15.5"
-        stroke="var(--color-primary)"
-        strokeWidth="1.5"
-        fill="none"
-        initial={{ pathLength: 0, opacity: 0 }}
-        whileInView={{ pathLength: 1, opacity: 0.35 }}
-        viewport={{ once: true }}
-        transition={{ delay, duration: 0.6, ease: 'easeOut' }}
-      />
-      <motion.path
-        d="M12 18.5l4.5 4.5 7.5-8"
-        stroke="var(--color-primary)"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-        initial={{ pathLength: 0, opacity: 0 }}
-        whileInView={{ pathLength: 1, opacity: 1 }}
-        viewport={{ once: true }}
-        transition={{ delay: delay + 0.45, duration: 0.35, ease: 'easeOut' }}
-      />
-    </motion.svg>
-  )
 }
 
 // ── Principle Card ───────────────────────────────────────────────
@@ -278,7 +225,7 @@ function GitHubFooter({ stats }: { stats: GitHubStats | null }) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ delay: 0.35, duration: 0.5, ease: EASE }}
-      className="relative max-w-4xl mx-auto"
+      className="relative max-w-5xl mx-auto"
     >
       {/* Outer glow */}
       <div
@@ -471,64 +418,180 @@ export function TrustSection() {
           ))}
         </div>
 
-        {/* ── Promise card ── */}
-        <motion.div
-          style={{ opacity: 0 }}
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-40px' }}
-          transition={{ duration: 0.6, ease: EASE }}
-          className="max-w-3xl mx-auto relative mb-14 lg:mb-18"
-        >
-          {/* Outer glow behind card */}
-          <div
-            className="absolute -inset-3 rounded-3xl pointer-events-none blur-2xl"
-            style={{
-              background:
-                'radial-gradient(ellipse at center, var(--color-primary) 0%, transparent 70%)',
-              opacity: 0.06,
-            }}
-          />
+        {/* ── Community: Create / Suggest cards ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 max-w-5xl mx-auto mb-14 lg:mb-18">
+          {/* Card 1: Create (for developers) */}
+          <motion.div
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1, duration: 0.6, ease: EASE }}
+            className="group relative bg-base-200/40 border border-base-300/25 rounded-xl overflow-hidden"
+          >
+            <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-primary/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+            <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-primary/0 group-hover:via-primary/20 to-transparent transition-[background] duration-500" />
 
-          {/* Card body */}
-          <div className="relative rounded-2xl border border-primary/[0.08] bg-base-200/40 p-7 sm:p-10 overflow-hidden">
-            {/* Shield watermark */}
-            <ShieldCheck
-              size={220}
-              strokeWidth={0.4}
-              className="absolute -bottom-12 -right-12 text-primary/[0.03] pointer-events-none select-none"
-            />
+            <div className="relative z-10 p-8 lg:p-10">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="h-10 w-10 rounded-xl bg-primary/8 border border-primary/15 flex items-center justify-center text-primary">
+                  <Code2 size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-base-content">
+                    Create an Integration
+                  </h3>
+                  <p className="text-[10px] text-primary/50">For developers</p>
+                </div>
+              </div>
 
-            {/* 2x2 pledge grid */}
-            <div className="relative grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-x-10 sm:gap-y-10">
-              {PLEDGES.map((pledge, i) => (
-                <motion.div
-                  key={pledge.title}
-                  style={{ opacity: 0 }}
-                  initial={{ opacity: 0, y: 15 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: '-30px' }}
-                  transition={{
-                    delay: 0.08 + i * 0.08,
-                    duration: 0.5,
-                    ease: EASE,
-                  }}
-                  className="flex items-start gap-4"
-                >
-                  <AnimatedCheck delay={0.15 + i * 0.18} />
-                  <div className="pt-0.5">
-                    <h3 className="text-[15px] font-bold text-base-content mb-1">
-                      {pledge.title}
-                    </h3>
-                    <p className="text-sm text-base-content/45 leading-relaxed">
-                      {pledge.body}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
+              <p className="text-sm text-base-content/40 leading-relaxed mb-6">
+                Every integration is a self-contained package — your own API,
+                your own service, your own UI components. Follow the
+                architecture, ship your plugin. The ecosystem grows with every
+                contributor.
+              </p>
+
+              <div className="relative rounded-xl border border-base-300/40 bg-base-100/50 overflow-hidden mb-6 p-5">
+                <p className="text-[9px] text-base-content/20 mb-4">
+                  Each integration includes:
+                </p>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {[
+                    { label: 'Go API', desc: 'HTTP endpoints' },
+                    { label: 'Rust Service', desc: 'Data ingestion' },
+                    { label: 'Dashboard Tab', desc: 'Web UI component' },
+                    { label: 'Feed Tab', desc: 'Extension component' },
+                  ].map((item, i) => (
+                    <motion.div
+                      key={item.label}
+                      initial={{ opacity: 0, y: 8 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: 0.3 + i * 0.06 }}
+                      className="flex flex-col gap-0.5 px-3 py-2.5 rounded-lg bg-base-200/60 border border-base-300/30"
+                    >
+                      <span className="text-[11px] font-semibold text-base-content/60">
+                        {item.label}
+                      </span>
+                      <span className="text-[9px] text-base-content/25">
+                        {item.desc}
+                      </span>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+
+              <a
+                href="https://github.com/brandon-relentnet/myscrollr"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group/link inline-flex items-center gap-2.5 px-5 py-2.5 text-[11px] font-semibold border border-base-300/25 text-base-content/60 rounded-lg hover:border-primary/30 hover:text-primary transition-colors"
+              >
+                <Github size={14} />
+                View on GitHub
+                <ArrowUpRight
+                  size={12}
+                  className="opacity-0 group-hover/link:opacity-100 transition-opacity"
+                />
+              </a>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+
+          {/* Card 2: Suggest (for everyone) */}
+          <motion.div
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2, duration: 0.6, ease: EASE }}
+            className="group relative bg-base-200/40 border border-base-300/25 rounded-xl overflow-hidden"
+          >
+            <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-info/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+            <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-info/0 group-hover:via-info/20 to-transparent transition-[background] duration-500" />
+
+            <div className="relative z-10 p-8 lg:p-10">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="h-10 w-10 rounded-xl bg-info/8 border border-info/15 flex items-center justify-center text-info">
+                  <Lightbulb size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-base-content whitespace-nowrap">
+                    Suggest an Integration
+                  </h3>
+                  <p className="text-[10px] text-info/50">For everyone</p>
+                </div>
+              </div>
+
+              <p className="text-sm text-base-content/40 leading-relaxed mb-6">
+                Don't code? No problem. The best integrations start as community
+                ideas. Tell us what platforms and data you want in your feed —
+                we'll make it happen.
+              </p>
+
+              <div className="rounded-xl border border-base-300/40 bg-base-100/50 p-5 mb-6">
+                <p className="text-[9px] text-base-content/20 mb-4">
+                  Community requested · On the roadmap
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {COMING_SOON_ICONS.map((item, i) => (
+                    <motion.div
+                      key={item.name}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      whileInView={{ opacity: 1, scale: 1 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: 0.35 + i * 0.05 }}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg bg-base-200/60 border border-base-300/30"
+                    >
+                      <span className="text-sm leading-none">{item.emoji}</span>
+                      <span className="text-[10px] text-base-content/30 truncate">
+                        {item.name}
+                      </span>
+                    </motion.div>
+                  ))}
+                </div>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  whileInView={{ opacity: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.7 }}
+                  className="mt-2.5 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border border-dashed border-primary/20 bg-primary/[0.03] text-primary/40 hover:text-primary/60 hover:border-primary/30 transition-colors cursor-default"
+                >
+                  <span className="text-lg leading-none">+</span>
+                  <span className="text-[10px]">Yours could be next</span>
+                </motion.div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-4">
+                <a
+                  href="https://discord.gg/85b49TcGJa"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group/link inline-flex items-center gap-2.5 px-5 py-2.5 text-[11px] font-semibold border border-base-300/25 text-base-content/60 rounded-lg hover:border-info/30 hover:text-info transition-colors"
+                >
+                  <MessageSquare size={14} />
+                  Join Discord
+                  <ArrowUpRight
+                    size={12}
+                    className="opacity-0 group-hover/link:opacity-100 transition-opacity"
+                  />
+                </a>
+                <a
+                  href="https://github.com/brandon-relentnet/myscrollr/discussions/categories/integration-requests"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group/link inline-flex items-center gap-2 text-[11px] font-semibold text-base-content/30 hover:text-info transition-colors"
+                >
+                  Propose an Idea
+                  <ArrowUpRight
+                    size={12}
+                    className="opacity-0 group-hover/link:opacity-100 transition-opacity"
+                  />
+                </a>
+              </div>
+            </div>
+          </motion.div>
+        </div>
 
         {/* ── GitHub footer ── */}
         <GitHubFooter stats={stats} />

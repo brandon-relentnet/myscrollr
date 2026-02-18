@@ -529,7 +529,7 @@ export function StreamsShowcase() {
           <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
         </span>
         <span className="text-[11px] text-base-content/30 font-medium">
-          This is what your browser looks like. Live data, every tab.
+          Your browser, right now — hover to slow, click to explore.
         </span>
       </motion.div>
 
