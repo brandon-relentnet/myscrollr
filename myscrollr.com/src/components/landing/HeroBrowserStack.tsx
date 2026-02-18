@@ -311,9 +311,10 @@ const CONTENT_RENDERERS: Record<string, React.FC> = {
 
 interface HeroBrowserStackProps {
   activeIndex: number
+  onSelect?: (index: number) => void
 }
 
-export function HeroBrowserStack({ activeIndex }: HeroBrowserStackProps) {
+export function HeroBrowserStack({ activeIndex, onSelect }: HeroBrowserStackProps) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
@@ -352,7 +353,8 @@ export function HeroBrowserStack({ activeIndex }: HeroBrowserStackProps) {
               stiffness: 500,
               damping: 35,
             }}
-            className={`absolute inset-0 rounded-xl overflow-hidden flex flex-col border ${
+            onClick={() => onSelect?.(i)}
+            className={`absolute inset-0 rounded-xl overflow-hidden flex flex-col border cursor-pointer ${
               isFront ? colors.borderActive : 'border-base-300/40'
             } bg-base-200/80 backdrop-blur-sm`}
           >

@@ -1,17 +1,12 @@
-import { Typewriter } from 'motion-plus/react'
-import { motion } from 'motion/react'
-import { delay, wrap } from 'motion'
-import { useState } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
 
 export const WORDS = ['Scores', 'Markets', 'Headlines', 'Leagues'] as const
 
-interface HeroTypewriterProps {
-  onWordChange?: (index: number) => void
+interface HeroTextSwapProps {
+  activeIndex: number
 }
 
-export default function HeroTypewriter({ onWordChange }: HeroTypewriterProps) {
-  const [index, setIndex] = useState(0)
-
+export default function HeroTextSwap({ activeIndex }: HeroTextSwapProps) {
   return (
     <div className="text-center lg:text-left">
       {/* Your [word], */}
@@ -19,28 +14,27 @@ export default function HeroTypewriter({ onWordChange }: HeroTypewriterProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4 }}
-        className="text-4xl sm:text-5xl lg:text-7xl font-black tracking-tight leading-none overflow-hidden"
+        className="text-4xl sm:text-5xl lg:text-7xl font-black tracking-tight leading-none"
       >
         <span className="text-base-content">Your </span>
-        <Typewriter
-          as="span"
-          cursorStyle={{
-            background: 'var(--color-primary)',
-            width: 3,
-            height: '1.1em',
-            marginLeft: 2,
-          }}
-          onComplete={() => {
-            delay(() => {
-              const next = wrap(0, WORDS.length, index + 1)
-              setIndex(next)
-              onWordChange?.(next)
-            }, 3.5)
-          }}
-          className="text-rainbow"
-        >
-          {WORDS[index]}
-        </Typewriter>
+        <span className="inline-block relative">
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={WORDS[activeIndex]}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{
+                type: 'spring',
+                stiffness: 500,
+                damping: 35,
+              }}
+              className="inline-block text-rainbow"
+            >
+              {WORDS[activeIndex]}
+            </motion.span>
+          </AnimatePresence>
+        </span>
       </motion.div>
 
       {/* Uninterrupted. */}

@@ -1,11 +1,39 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
-import HeroTypewriter from '@/components/Typewriter'
+import { wrap } from 'motion'
+import HeroTextSwap, { WORDS } from '@/components/Typewriter'
 import { HeroBrowserStack } from '@/components/landing/HeroBrowserStack'
 import InstallButton from '@/components/InstallButton'
 
+const CYCLE_MS = 4000
+
 export function HeroSection() {
   const [activeWordIndex, setActiveWordIndex] = useState(0)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const startTimer = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current)
+    timerRef.current = setInterval(() => {
+      setActiveWordIndex((prev) => wrap(0, WORDS.length, prev + 1))
+    }, CYCLE_MS)
+  }, [])
+
+  // Auto-cycle on mount
+  useEffect(() => {
+    startTimer()
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [startTimer])
+
+  // Manual selection resets the timer
+  const handleSelect = useCallback(
+    (index: number) => {
+      setActiveWordIndex(index)
+      startTimer()
+    },
+    [startTimer],
+  )
 
   const scrollToSection = (sectionId: string) => {
     const section = document.getElementById(sectionId)
@@ -20,7 +48,10 @@ export function HeroSection() {
         <div className="flex lg:flex-row flex-col justify-center items-center gap-12 lg:gap-20">
           {/* Stacked Browser Mockups */}
           <div className="relative order-2 lg:order-1">
-            <HeroBrowserStack activeIndex={activeWordIndex} />
+            <HeroBrowserStack
+              activeIndex={activeWordIndex}
+              onSelect={handleSelect}
+            />
           </div>
 
           {/* Hero Text */}
@@ -30,7 +61,7 @@ export function HeroSection() {
             transition={{ duration: 0.6, delay: 0.3, ease: 'easeOut' }}
             className="w-full lg:w-fit lg:min-w-140 order-1 lg:order-2"
           >
-            <HeroTypewriter onWordChange={setActiveWordIndex} />
+            <HeroTextSwap activeIndex={activeWordIndex} />
 
             <motion.p
               initial={{ opacity: 0, y: 20 }}
@@ -76,9 +107,7 @@ export function HeroSection() {
         transition={{ duration: 0.5, delay: 1.5 }}
         className="absolute bottom-8 left-1/2 -translate-x-1/2 hidden sm:flex flex-col items-center gap-3 text-base-content/40"
       >
-        <span className="text-xs text-base-content/40">
-          Scroll
-        </span>
+        <span className="text-xs text-base-content/40">Scroll</span>
         <motion.div
           animate={{ y: [0, 6, 0] }}
           transition={{ duration: 1.5, repeat: Infinity }}
