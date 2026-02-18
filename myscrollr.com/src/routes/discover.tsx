@@ -339,7 +339,8 @@ function DiscoverPage() {
               background:
                 'radial-gradient(circle, var(--glow-primary-subtle) 0%, transparent 70%)',
             }}
-            animate={{ scale: [1, 1.08, 1], opacity: [0.4, 0.7, 0.4] }}
+            whileInView={{ scale: [1, 1.08, 1], opacity: [0.4, 0.7, 0.4] }}
+            viewport={{ once: false, margin: '200px' }}
             transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
           />
           <motion.div
@@ -348,7 +349,8 @@ function DiscoverPage() {
               background:
                 'radial-gradient(circle, var(--glow-primary-subtle) 0%, transparent 70%)',
             }}
-            animate={{ scale: [1, 1.05, 1], opacity: [0.3, 0.5, 0.3] }}
+            whileInView={{ scale: [1, 1.05, 1], opacity: [0.3, 0.5, 0.3] }}
+            viewport={{ once: false, margin: '200px' }}
             transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
           />
         </div>
@@ -479,7 +481,7 @@ function DiscoverPage() {
                 }}
                 className="group bg-base-200/50 border border-base-300/50 rounded-xl p-6 hover:border-base-300 transition-colors relative overflow-hidden"
               >
-                <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-transparent group-hover:via-primary/20 to-transparent transition-all duration-500" />
+                <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-transparent group-hover:via-primary/20 to-transparent transition-[background] duration-500" />
 
                 <div className="relative z-10">
                   <div className="flex items-center gap-4 mb-5">
@@ -590,7 +592,7 @@ function DiscoverPage() {
                     className={`absolute top-0 left-0 right-0 h-24 bg-gradient-to-b ${colors.hoverGradient} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none`}
                   />
                   <div
-                    className={`absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-transparent ${colors.accentLine} to-transparent transition-all duration-500`}
+                    className={`absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-transparent ${colors.accentLine} to-transparent transition-[background] duration-500`}
                   />
 
                   <div className="relative z-10">

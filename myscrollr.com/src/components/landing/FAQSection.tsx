@@ -102,7 +102,7 @@ export function FAQSection() {
               >
                 {/* Top accent line */}
                 <div
-                  className={`absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent to-transparent transition-all duration-500 ${
+                  className={`absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent to-transparent transition-[background] duration-500 ${
                     openIndex === i
                       ? 'via-primary/20'
                       : 'via-primary/0 group-hover:via-primary/10'

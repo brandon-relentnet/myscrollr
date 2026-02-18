@@ -228,7 +228,8 @@ function OnboardPage() {
               background:
                 'radial-gradient(circle, var(--glow-primary-subtle) 0%, transparent 70%)',
             }}
-            animate={{ scale: [1, 1.08, 1], opacity: [0.5, 0.9, 0.5] }}
+            whileInView={{ scale: [1, 1.08, 1], opacity: [0.5, 0.9, 0.5] }}
+            viewport={{ once: false, margin: '200px' }}
             transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
           />
           <motion.div
@@ -237,7 +238,8 @@ function OnboardPage() {
               background:
                 'radial-gradient(circle, var(--glow-primary-subtle) 0%, transparent 70%)',
             }}
-            animate={{ scale: [1, 1.06, 1], opacity: [0.3, 0.6, 0.3] }}
+            whileInView={{ scale: [1, 1.06, 1], opacity: [0.3, 0.6, 0.3] }}
+            viewport={{ once: false, margin: '200px' }}
             transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
           />
         </div>
@@ -353,7 +355,7 @@ function OnboardPage() {
                 }}
                 className="group bg-base-200/50 border border-base-300/50 rounded-xl p-6 hover:border-base-300 transition-colors relative overflow-hidden"
               >
-                <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-transparent group-hover:via-primary/20 to-transparent transition-all duration-500" />
+                <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-transparent group-hover:via-primary/20 to-transparent transition-[background] duration-500" />
 
                 <div className="relative z-10">
                   <div className="flex items-center gap-4 mb-5">

@@ -245,7 +245,8 @@ function ArchitecturePage() {
               background:
                 'radial-gradient(circle, var(--glow-primary-subtle) 0%, transparent 70%)',
             }}
-            animate={{ scale: [1, 1.06, 1], opacity: [0.3, 0.6, 0.3] }}
+            whileInView={{ scale: [1, 1.06, 1], opacity: [0.3, 0.6, 0.3] }}
+            viewport={{ once: false, margin: '200px' }}
             transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
           />
         </div>
@@ -335,7 +336,7 @@ function ArchitecturePage() {
                   }}
                   className="group relative bg-base-200/50 border border-base-300/50 rounded-xl p-6 hover:border-base-300 transition-colors overflow-hidden"
                 >
-                  <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-transparent group-hover:via-primary/20 to-transparent transition-all duration-500" />
+                  <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-transparent group-hover:via-primary/20 to-transparent transition-[background] duration-500" />
 
                   <div className="relative z-10">
                     {/* Header */}
@@ -537,7 +538,7 @@ function ArchitecturePage() {
                   cx="160" cy="176"
                   r="3"
                   fill="currentColor"
-                  animate={{ opacity: [0.2, 0.6, 0.2], r: [3, 5, 3] }}
+                  animate={{ opacity: [0.2, 0.6, 0.2], scale: [1, 1.67, 1] }}
                   transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
                 />
               </svg>

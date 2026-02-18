@@ -444,7 +444,7 @@ export function StreamsShowcase() {
 
               {/* Top accent */}
               <div
-                className={`absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-transparent ${cardAccentMap[integration.accent].accentLine} to-transparent transition-all duration-500`}
+                className={`absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-transparent ${cardAccentMap[integration.accent].accentLine} to-transparent transition-[background] duration-500`}
               />
 
               <div className="relative z-10">

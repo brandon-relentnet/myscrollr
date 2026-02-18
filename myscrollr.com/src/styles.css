@@ -406,7 +406,8 @@ pre,
 
   /* Signature CTA Button */
   .btn-pulse {
-    @apply bg-primary text-primary-content! font-bold px-6 py-3 rounded-xl transition-all duration-200;
+    @apply bg-primary text-primary-content! font-bold px-6 py-3 rounded-xl duration-200;
+    transition-property: background-color, box-shadow, transform;
     font-family: var(--font-display);
     box-shadow: 0 0 20px color-mix(in srgb, var(--color-primary) 20%, transparent);
   }
@@ -534,7 +535,7 @@ pre,
 
   .card-interactive {
     @apply bg-base-200/50 backdrop-blur-xl border border-base-300/60 rounded-xl p-6 duration-300;
-    transition-property: color, background-color, border-color, box-shadow;
+    transition-property: color, background-color, border-color, box-shadow, transform;
     transition-timing-function: var(--default-transition-timing-function);
   }
 
@@ -711,9 +712,23 @@ a:hover {
    ========================================================================== */
 
 html.theme-transition,
-html.theme-transition *,
-html.theme-transition *::before,
-html.theme-transition *::after {
+html.theme-transition body,
+html.theme-transition header,
+html.theme-transition footer,
+html.theme-transition main,
+html.theme-transition nav,
+html.theme-transition aside,
+html.theme-transition .card-frame,
+html.theme-transition .card-elevated,
+html.theme-transition .card-interactive,
+html.theme-transition .btn,
+html.theme-transition .btn-primary,
+html.theme-transition .btn-ghost,
+html.theme-transition .btn-outline,
+html.theme-transition .btn-pulse,
+html.theme-transition .badge,
+html.theme-transition .modal-content,
+html.theme-transition .modal-overlay {
   transition:
     background-color 300ms ease,
     border-color 300ms ease,

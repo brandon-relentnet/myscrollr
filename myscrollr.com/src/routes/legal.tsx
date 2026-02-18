@@ -80,7 +80,8 @@ function LegalPage() {
               background:
                 'radial-gradient(circle, var(--glow-primary-subtle) 0%, transparent 70%)',
             }}
-            animate={{ scale: [1, 1.06, 1], opacity: [0.4, 0.7, 0.4] }}
+            whileInView={{ scale: [1, 1.06, 1], opacity: [0.4, 0.7, 0.4] }}
+            viewport={{ once: false, margin: '200px' }}
             transition={{
               duration: 10,
               repeat: Infinity,
@@ -217,7 +218,7 @@ function Sidebar({
                   <button
                     type="button"
                     onClick={() => onSelect(doc.slug)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-all cursor-pointer ${
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors cursor-pointer ${
                       isActive
                         ? 'bg-primary/8 border border-primary/15 text-primary'
                         : 'text-base-content/40 hover:text-base-content/60 hover:bg-base-200/50 border border-transparent'

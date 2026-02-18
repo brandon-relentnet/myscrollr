@@ -320,7 +320,7 @@ function DashboardPage() {
             </div>
             <button
               onClick={() => setSettingsOpen(true)}
-              className="p-2.5 rounded-lg border border-base-300 hover:border-primary/30 transition-all text-base-content/50 hover:text-primary"
+              className="p-2.5 rounded-lg border border-base-300 hover:border-primary/30 transition-colors text-base-content/50 hover:text-primary"
               title="Settings"
             >
               <Settings2 size={16} />
@@ -531,7 +531,7 @@ function StreamNavButton({
   return (
     <button
       onClick={onClick}
-      className={`flex items-center justify-between p-3.5 rounded-lg transition-all text-left group ${
+      className={`flex items-center justify-between p-3.5 rounded-lg transition-colors text-left group ${
         active
           ? 'bg-primary/8 border border-primary/20 text-primary'
           : 'text-base-content/40 hover:bg-base-200/60 hover:text-base-content/70 border border-transparent'

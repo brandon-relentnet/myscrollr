@@ -65,7 +65,7 @@ export function CommunitySection() {
           >
             {/* Hover glow */}
             <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-primary/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-            <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-primary/0 group-hover:via-primary/20 to-transparent transition-all duration-500" />
+            <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-primary/0 group-hover:via-primary/20 to-transparent transition-[background] duration-500" />
 
             <div className="relative z-10 p-8 lg:p-10">
               {/* Header */}
@@ -153,7 +153,7 @@ export function CommunitySection() {
           >
             {/* Hover glow */}
             <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-info/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-            <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-info/0 group-hover:via-info/20 to-transparent transition-all duration-500" />
+            <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-info/0 group-hover:via-info/20 to-transparent transition-[background] duration-500" />
 
             <div className="relative z-10 p-8 lg:p-10">
               {/* Header */}

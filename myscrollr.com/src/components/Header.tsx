@@ -45,7 +45,7 @@ export default function Header() {
         {/* Brand */}
         <div className="flex-1 flex items-center gap-4">
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="relative flex items-center justify-center rounded-xl border border-base-300/50 bg-base-200/50 p-2.5 transition-all hover:scale-105 transition-spring group-hover:border-primary/30 group-hover:shadow-glow-sm">
+            <div className="relative flex items-center justify-center rounded-xl border border-base-300/50 bg-base-200/50 p-2.5 hover:scale-105 transition-spring group-hover:border-primary/30 group-hover:shadow-glow-sm transition-[transform,border-color,box-shadow]">
               <ScrollrSVG className="size-8" />
               {/* Online indicator */}
               <span className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5">
@@ -109,7 +109,7 @@ export default function Header() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleSignOut}
-              className="flex items-center gap-2 px-4 py-2 text-xs font-semibold border border-error/30 text-error/80 hover:bg-error/10 hover:border-error/50 transition-all rounded-lg cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2 text-xs font-semibold border border-error/30 text-error/80 hover:bg-error/10 hover:border-error/50 transition-colors rounded-lg cursor-pointer"
             >
               <LogOut size={14} />
               Sign Out
@@ -135,7 +135,7 @@ export default function Header() {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setIsOpen(true)}
-          className="lg:hidden flex items-center justify-center p-3 rounded-lg border border-base-300/50 bg-base-200/50 hover:bg-base-200 hover:border-primary/30 transition-all cursor-pointer"
+          className="lg:hidden flex items-center justify-center p-3 rounded-lg border border-base-300/50 bg-base-200/50 hover:bg-base-200 hover:border-primary/30 transition-colors cursor-pointer"
           aria-label="Open menu"
         >
           <Menu size={20} />
@@ -246,7 +246,7 @@ export default function Header() {
                       handleSignOut()
                       setIsOpen(false)
                     }}
-                    className="w-full flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold border border-error/30 text-error/80 hover:bg-error/10 hover:border-error/50 transition-all rounded-lg cursor-pointer"
+                    className="w-full flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold border border-error/30 text-error/80 hover:bg-error/10 hover:border-error/50 transition-colors rounded-lg cursor-pointer"
                   >
                     <LogOut size={16} />
                     Sign Out
@@ -294,7 +294,7 @@ function NavLink({
   return (
     <Link
       to={to}
-      className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold transition-all rounded-lg relative ${
+      className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold transition-colors rounded-lg relative ${
         isActive
           ? 'text-primary bg-primary/10'
           : 'text-base-content/50 hover:text-base-content hover:bg-base-200/50'
@@ -328,7 +328,7 @@ function MobileNavLink({
     <Link
       to={to}
       onClick={onClick}
-      className="flex items-center justify-between px-4 py-4 text-sm font-semibold text-base-content/60 hover:text-primary hover:bg-base-300/50 transition-all rounded-lg group cursor-pointer"
+      className="flex items-center justify-between px-4 py-4 text-sm font-semibold text-base-content/60 hover:text-primary hover:bg-base-300/50 transition-colors rounded-lg group cursor-pointer"
     >
       <span className="flex items-center gap-3">
         <span className="text-primary/0 group-hover:text-primary/60 transition-colors">
@@ -338,7 +338,7 @@ function MobileNavLink({
       </span>
       <ChevronRight
         size={14}
-        className="opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1"
+        className="opacity-0 group-hover:opacity-100 transition-[opacity,transform] group-hover:translate-x-1"
       />
     </Link>
   )

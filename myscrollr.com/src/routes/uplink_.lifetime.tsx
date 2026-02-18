@@ -151,7 +151,8 @@ function LifetimePage() {
               background:
                 'radial-gradient(circle, rgba(245, 158, 11, 0.04) 0%, transparent 70%)',
             }}
-            animate={{ scale: [1, 1.08, 1], opacity: [0.5, 0.8, 0.5] }}
+            whileInView={{ scale: [1, 1.08, 1], opacity: [0.5, 0.8, 0.5] }}
+            viewport={{ once: false, margin: '200px' }}
             transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
           />
         </div>

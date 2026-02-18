@@ -165,7 +165,7 @@ function AccountHub() {
         >
           <Link
             to="/status"
-            className="bg-base-200/50 border border-base-300/50 rounded-xl p-8 hover:border-primary/30 transition-all block group"
+            className="bg-base-200/50 border border-base-300/50 rounded-xl p-8 hover:border-primary/30 transition-colors block group"
           >
             <h3 className="text-sm font-semibold text-primary mb-4 flex items-center gap-2">
               <Settings size={16} /> System Status

@@ -398,7 +398,7 @@ function IntegrationCard({
   recommended?: boolean
 }) {
   return (
-    <div className="group bg-base-200 border border-base-300 rounded-xl p-6 hover:border-primary/20 transition-all relative overflow-hidden h-full flex flex-col">
+    <div className="group bg-base-200 border border-base-300 rounded-xl p-6 hover:border-primary/20 transition-colors relative overflow-hidden h-full flex flex-col">
       {/* Subtle hover glow */}
       <div className="absolute inset-0 bg-primary/[0.02] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
@@ -452,7 +452,7 @@ function IntegrationCard({
               whileTap={{ scale: 0.98 }}
               onClick={() => onAdd(integration)}
               disabled={adding}
-              className="flex items-center gap-2 px-4 py-2 text-[10px] font-semibold border border-primary/30 text-primary/80 hover:bg-primary/10 hover:border-primary/50 transition-all rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 text-[10px] font-semibold border border-primary/30 text-primary/80 hover:bg-primary/10 hover:border-primary/50 transition-colors rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {!isAuthenticated ? (
                 <>

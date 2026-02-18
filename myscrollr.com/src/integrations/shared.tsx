@@ -99,7 +99,7 @@ export function StreamHeader({
       <div className="flex flex-wrap gap-3">
         <button
           onClick={onToggle}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-colors ${
             active
               ? 'bg-primary/8 border-primary/20 text-primary'
               : 'bg-base-200/40 border-base-300/40 text-base-content/40'

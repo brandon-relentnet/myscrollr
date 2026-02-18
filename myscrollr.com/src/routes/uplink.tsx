@@ -452,10 +452,11 @@ function UplinkPage() {
               background:
                 'radial-gradient(circle, var(--glow-primary-subtle) 0%, transparent 70%)',
             }}
-            animate={{
+            whileInView={{
               scale: [1, 1.08, 1],
               opacity: [0.6, 1, 0.6],
             }}
+            viewport={{ once: false, margin: '200px' }}
             transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
           />
 
@@ -466,10 +467,11 @@ function UplinkPage() {
               background:
                 'radial-gradient(circle, var(--glow-info-subtle) 0%, transparent 70%)',
             }}
-            animate={{
+            whileInView={{
               scale: [1.08, 1, 1.08],
               opacity: [0.4, 0.7, 0.4],
             }}
+            viewport={{ once: false, margin: '200px' }}
             transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
           />
 
@@ -733,7 +735,7 @@ function UplinkPage() {
                 />
 
                 {/* Top accent line */}
-                <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-primary/0 group-hover:via-primary/20 to-transparent transition-all duration-500" />
+                <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-primary/0 group-hover:via-primary/20 to-transparent transition-[background] duration-500" />
 
                 <div className="relative z-10">
                   <div className="h-10 w-10 rounded-lg bg-primary/8 border border-primary/15 flex items-center justify-center text-primary mb-5 group-hover:border-primary/30 transition-colors">

@@ -146,7 +146,7 @@ function ProfilePage() {
           </p>
           <a
             href={`${window.location.origin}/callback`}
-            className="inline-flex items-center justify-center px-8 py-2.5 rounded-lg bg-primary text-primary-content text-[11px] font-semibold hover:brightness-110 transition-all"
+            className="inline-flex items-center justify-center px-8 py-2.5 rounded-lg bg-primary text-primary-content text-[11px] font-semibold hover:brightness-110 transition-[filter]"
           >
             Sign In
           </a>
@@ -221,7 +221,7 @@ function ProfilePage() {
             Integration Nodes
           </h2>
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-base-300/50 border border-base-300/50 rounded-xl gap-6 group hover:border-primary/20 transition-all">
+            <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-base-300/50 border border-base-300/50 rounded-xl gap-6 group hover:border-primary/20 transition-colors">
               <div className="flex items-center gap-5">
                 <div className="h-10 w-10 rounded-lg bg-secondary/8 flex items-center justify-center text-secondary border border-secondary/15">
                   <span className="text-lg font-black">Y!</span>
@@ -247,14 +247,14 @@ function ProfilePage() {
                   {profile.connected_yahoo ? (
                     <a
                       href="/dashboard"
-                      className="inline-flex items-center justify-center px-6 py-2.5 rounded-lg border border-primary/30 text-primary text-[11px] font-semibold hover:bg-primary hover:text-primary-content transition-all w-full sm:w-auto"
+                      className="inline-flex items-center justify-center px-6 py-2.5 rounded-lg border border-primary/30 text-primary text-[11px] font-semibold hover:bg-primary hover:text-primary-content transition-colors w-full sm:w-auto"
                     >
                       Enter Dashboard
                     </a>
                   ) : (
                     <a
                       href="/dashboard"
-                      className="inline-flex items-center justify-center px-6 py-2.5 rounded-lg bg-primary text-primary-content text-[11px] font-semibold hover:brightness-110 transition-all w-full sm:w-auto"
+                      className="inline-flex items-center justify-center px-6 py-2.5 rounded-lg bg-primary text-primary-content text-[11px] font-semibold hover:brightness-110 transition-[filter] w-full sm:w-auto"
                     >
                       Link Account
                     </a>

@@ -335,7 +335,7 @@ function ToggleRow({
   return (
     <button
       onClick={onToggle}
-      className={`flex items-center gap-3 px-4 py-3 rounded-lg border transition-all w-full text-left ${
+      className={`flex items-center gap-3 px-4 py-3 rounded-lg border transition-colors w-full text-left ${
         active
           ? 'bg-primary/8 border-primary/20 text-primary'
           : 'bg-base-200/40 border-base-300/40 text-base-content/40'

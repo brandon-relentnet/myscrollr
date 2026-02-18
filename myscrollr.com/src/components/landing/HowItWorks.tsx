@@ -115,7 +115,7 @@ export function HowItWorks() {
 
                 {/* Top accent line */}
                 <div
-                  className={`absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-transparent ${accentMap[step.accent].accentLine} to-transparent transition-all duration-500`}
+                  className={`absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-transparent ${accentMap[step.accent].accentLine} to-transparent transition-[background] duration-500`}
                 />
 
                 <div className="relative z-10">
