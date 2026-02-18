@@ -6,13 +6,11 @@ import {
   Download,
   Eye,
   Ghost,
-  Layers,
   MonitorSmartphone,
   Rss,
   Settings,
   TrendingUp,
   Trophy,
-  Zap,
 } from 'lucide-react'
 
 import { usePageMeta } from '@/lib/usePageMeta'
@@ -21,6 +19,17 @@ import InstallButton from '@/components/InstallButton'
 export const Route = createFileRoute('/discover')({
   component: DiscoverPage,
 })
+
+// ── Signature easing (matches homepage) ────────────────────────
+const EASE = [0.22, 1, 0.36, 1] as const
+
+// ── Integration hex map ────────────────────────────────────────
+const HEX = {
+  primary: '#34d399',
+  secondary: '#ff4757',
+  info: '#00b8db',
+  accent: '#a855f7',
+} as const
 
 // ── Ticker Data (lite version for mockup) ───────────────────────
 
@@ -50,7 +59,7 @@ const TICKER_CHIPS: TickerChip[] = [
   { label: 'Matchup: W 6-4', value: 'vs Team Alpha', color: 'accent' },
 ]
 
-// ── Color Maps ──────────────────────────────────────────────────
+// ── Color Maps (ticker only) ────────────────────────────────────
 
 const chipColorMap = {
   primary: {
@@ -79,112 +88,89 @@ const chipColorMap = {
   },
 }
 
-const accentMap = {
-  primary: {
-    icon: 'bg-primary/8 border-primary/15 text-primary',
-    hoverBorder: 'hover:border-primary/20',
-    hoverGradient: 'from-primary/[0.03]',
-    accentLine: 'group-hover:via-primary/20',
-    dot: 'bg-primary',
-  },
-  secondary: {
-    icon: 'bg-secondary/8 border-secondary/15 text-secondary',
-    hoverBorder: 'hover:border-secondary/20',
-    hoverGradient: 'from-secondary/[0.03]',
-    accentLine: 'group-hover:via-secondary/20',
-    dot: 'bg-secondary',
-  },
-  info: {
-    icon: 'bg-info/8 border-info/15 text-info',
-    hoverBorder: 'hover:border-info/20',
-    hoverGradient: 'from-info/[0.03]',
-    accentLine: 'group-hover:via-info/20',
-    dot: 'bg-info',
-  },
-  accent: {
-    icon: 'bg-accent/8 border-accent/15 text-accent',
-    hoverBorder: 'hover:border-accent/20',
-    hoverGradient: 'from-accent/[0.03]',
-    accentLine: 'group-hover:via-accent/20',
-    dot: 'bg-accent',
-  },
-} as const
-
 // ── How It Works Steps ──────────────────────────────────────────
 
-const STEPS = [
+interface Step {
+  num: string
+  Icon: typeof Download
+  title: string
+  description: string
+  hex: string
+}
+
+const STEPS: Step[] = [
   {
     num: '01',
-    icon: <Download size={20} />,
+    Icon: Download,
     title: 'Install It',
     description:
       'One click. No account, no setup wizard, no permissions popup. It installs and it works.',
-    accent: 'primary' as const,
+    hex: HEX.primary,
   },
   {
     num: '02',
-    icon: <Eye size={20} />,
+    Icon: Eye,
     title: 'Browse Like Normal',
     description:
       "A thin ticker appears at the bottom of whatever you're doing. Stocks, scores, headlines — scrolling by quietly.",
-    accent: 'info' as const,
+    hex: HEX.info,
   },
   {
     num: '03',
-    icon: <Settings size={20} />,
+    Icon: Settings,
     title: 'Tweak It Later',
     description:
       "Turn off what you don't care about. Add symbols you do. Create an account when you're ready for the full thing.",
-    accent: 'secondary' as const,
+    hex: HEX.secondary,
   },
 ]
 
 // ── Integration Cards ───────────────────────────────────────────
 
 interface IntegrationInfo {
-  icon: React.ReactNode
+  Icon: typeof TrendingUp
   name: string
   label: string
   description: string
-  accent: 'primary' | 'secondary' | 'info' | 'accent'
+  hex: string
   example: string
 }
 
 const INTEGRATIONS: IntegrationInfo[] = [
   {
-    icon: <TrendingUp size={18} />,
+    Icon: TrendingUp,
     name: 'Finance',
     label: 'Market data',
     description:
       "You're reading an article and Bitcoin just moved 4%. You see it immediately — no app switching, no new tab.",
-    accent: 'primary',
+    hex: HEX.primary,
     example: 'BTC $67.2K ↑2.4%',
   },
   {
-    icon: <Trophy size={18} />,
+    Icon: Trophy,
     name: 'Sports',
     label: 'Live scores',
     description:
       "The Lakers are playing while you're on Reddit. The score just updates in the corner. You never left the page.",
-    accent: 'secondary',
+    hex: HEX.secondary,
     example: 'LAL 118 - BOS 112',
   },
   {
-    icon: <Rss size={18} />,
+    Icon: Rss,
     name: 'RSS Feeds',
     label: 'News streams',
     description:
       'Headlines from 100+ sources scroll by while you work. You catch the big stories without doomscrolling Twitter.',
-    accent: 'info',
+    hex: HEX.info,
     example: 'Fed holds rates steady...',
   },
   {
-    icon: <Ghost size={18} />,
+    Icon: Ghost,
     name: 'Yahoo Fantasy',
     label: 'Fantasy leagues',
     description:
       "Your matchup score updates while you're doing literally anything else. No more refreshing the Yahoo app.",
-    accent: 'accent',
+    hex: HEX.accent,
     example: 'Your Team: 2nd Place',
   },
 ]
@@ -235,10 +221,11 @@ function TickerBar() {
 function BrowserMockup() {
   return (
     <motion.div
+      style={{ opacity: 0 }}
       initial={{ opacity: 0, y: 30 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
-      transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.7, ease: EASE }}
       className="relative"
     >
       <div className="absolute inset-0 bg-primary/[0.03] rounded-2xl blur-3xl pointer-events-none" />
@@ -295,6 +282,7 @@ function BrowserMockup() {
 
       {/* Label */}
       <motion.div
+        style={{ opacity: 0 }}
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true }}
@@ -323,122 +311,149 @@ function DiscoverPage() {
 
   return (
     <div className="min-h-screen pt-20">
-      {/* ── HERO ─────────────────────────────────────────────── */}
-      <section className="relative pt-28 pb-20 overflow-hidden">
-        {/* Background */}
+      {/* ================================================================
+          HERO
+          ================================================================ */}
+      <section className="relative pt-32 pb-28 overflow-hidden">
+        {/* Layered background system */}
         <div className="absolute inset-0 pointer-events-none">
+          {/* Fine dot matrix */}
           <div
-            className="absolute inset-0 opacity-[0.02]"
+            className="absolute inset-0 opacity-[0.03]"
             style={{
               backgroundImage: `radial-gradient(circle at 1px 1px, var(--grid-dot-primary) 1px, transparent 0)`,
-              backgroundSize: '32px 32px',
+              backgroundSize: '24px 24px',
             }}
           />
+
+          {/* Primary orbital glow */}
           <motion.div
             className="absolute top-[-15%] right-[10%] w-[700px] h-[700px] rounded-full"
             style={{
               background:
                 'radial-gradient(circle, var(--glow-primary-subtle) 0%, transparent 70%)',
             }}
-            whileInView={{ scale: [1, 1.08, 1], opacity: [0.4, 0.7, 0.4] }}
-            viewport={{ once: false, margin: '200px' }}
+            animate={{
+              scale: [1, 1.08, 1],
+              opacity: [0.4, 0.7, 0.4],
+            }}
             transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
           />
+
+          {/* Secondary glow */}
           <motion.div
             className="absolute bottom-[-20%] left-[5%] w-[500px] h-[500px] rounded-full"
             style={{
               background:
-                'radial-gradient(circle, var(--glow-primary-subtle) 0%, transparent 70%)',
+                'radial-gradient(circle, var(--glow-info-subtle) 0%, transparent 70%)',
             }}
-            whileInView={{ scale: [1, 1.05, 1], opacity: [0.3, 0.5, 0.3] }}
-            viewport={{ once: false, margin: '200px' }}
+            animate={{
+              scale: [1.08, 1, 1.08],
+              opacity: [0.3, 0.5, 0.3],
+            }}
             transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+          />
+
+          {/* Scan line */}
+          <motion.div
+            className="absolute w-full h-px bg-gradient-to-r from-transparent via-primary/15 to-transparent"
+            initial={{ y: -100 }}
+            animate={{ y: ['-10%', '110%'] }}
+            transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
           />
         </div>
 
+        {/* Top border accent */}
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
 
         <div className="container relative z-10 !py-0">
-          {/* Badge */}
+          {/* Badge row */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="flex items-center gap-4 mb-8"
+            transition={{ duration: 0.6, ease: EASE }}
+            className="flex items-center gap-4 mb-10"
           >
             <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-lg border border-primary/15 uppercase tracking-wide">
               <MonitorSmartphone size={12} />
               Browser Extension
             </span>
-            <span className="h-px w-12 bg-gradient-to-r from-base-300 to-transparent" />
+            <span className="h-px w-16 bg-gradient-to-r from-base-300 to-transparent" />
             <span className="text-[10px] text-base-content/25">
               Chrome &middot; Firefox
             </span>
           </motion.div>
 
           {/* Headline */}
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{
-              duration: 0.7,
-              delay: 0.15,
-              ease: [0.22, 1, 0.36, 1],
-            }}
-            className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[0.85] mb-8 max-w-5xl"
-          >
-            Stop <span className="text-primary">Tab-Hopping</span>
-          </motion.h1>
+          <div className="max-w-5xl">
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.15, ease: EASE }}
+              className="text-6xl md:text-8xl lg:text-9xl font-black tracking-tight leading-[0.85] mb-8"
+            >
+              Stop
+              <br />
+              <span className="text-gradient-primary">Tab-Hopping</span>
+            </motion.h1>
 
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{
-              duration: 0.6,
-              delay: 0.3,
-              ease: [0.22, 1, 0.36, 1],
-            }}
-            className="text-base text-base-content/40 max-w-xl leading-relaxed mb-10"
-          >
-            Stocks, scores, news, and fantasy stats — scrolling at the bottom of
-            every tab. You see everything without leaving what you're doing.
-          </motion.p>
+            {/* Subtitle */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.35, ease: EASE }}
+              className="flex items-start gap-3 mb-12 max-w-xl"
+            >
+              <span className="text-primary/30 font-mono text-sm mt-0.5 select-none shrink-0">
+                $
+              </span>
+              <p className="text-base text-base-content/40 leading-relaxed">
+                Stocks, scores, news, and fantasy stats — scrolling at the
+                bottom of every tab. You see everything without leaving what
+                you're doing.
+              </p>
+            </motion.div>
 
-          {/* CTA */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{
-              duration: 0.6,
-              delay: 0.45,
-              ease: [0.22, 1, 0.36, 1],
-            }}
-            className="flex flex-wrap items-center gap-4"
-          >
-            <InstallButton className="!rounded-lg !bg-primary !text-base-100 !border-primary hover:!bg-primary/90 !font-semibold" />
-            <span className="text-[10px] text-base-content/20">
-              Free &middot; No account required
-            </span>
-          </motion.div>
+            {/* CTA row */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.5, ease: EASE }}
+              className="flex flex-wrap items-center gap-5"
+            >
+              <InstallButton className="btn-lg" />
+              <div className="flex items-center gap-3">
+                <span className="h-px w-6 bg-base-300/50" />
+                <span className="text-[10px] font-mono text-base-content/20">
+                  Free &middot; No account required
+                </span>
+              </div>
+            </motion.div>
+          </div>
         </div>
 
+        {/* Bottom border */}
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-base-300/50 to-transparent" />
       </section>
 
-      {/* ── VISUAL EXPLAINER (Browser Mockup) ────────────────── */}
-      <section className="relative">
+      {/* ================================================================
+          VISUAL EXPLAINER (Browser Mockup)
+          ================================================================ */}
+      <section className="relative overflow-hidden">
         <div className="container">
+          {/* Section header — homepage pattern */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="text-center mb-12"
+            transition={{ duration: 0.7, ease: EASE }}
+            className="text-center mb-12 sm:mb-16"
           >
-            <h2 className="text-sm font-semibold text-primary mb-2 flex items-center justify-center gap-2">
-              <Eye size={16} /> What It Looks Like
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
+              What It <span className="text-gradient-primary">Looks Like</span>
             </h2>
-            <p className="text-[10px] text-base-content/30">
+            <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
               This is what it looks like on every page you visit
             </p>
           </motion.div>
@@ -449,56 +464,98 @@ function DiscoverPage() {
         </div>
       </section>
 
-      {/* ── HOW IT WORKS ─────────────────────────────────────── */}
-      <section className="relative">
-        <div className="container">
+      {/* ================================================================
+          HOW IT WORKS
+          ================================================================ */}
+      <section className="relative overflow-hidden">
+        {/* Tinted background for visual separation */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-base-200/20 to-transparent pointer-events-none" />
+
+        <div className="container relative z-10">
+          {/* Section header — homepage pattern */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="mb-10"
+            transition={{ duration: 0.7, ease: EASE }}
+            className="text-center mb-12 sm:mb-16"
           >
-            <h2 className="text-sm font-semibold text-primary mb-2 flex items-center gap-2">
-              <Zap size={16} /> How It Works
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
+              How It <span className="text-gradient-primary">Works</span>
             </h2>
-            <p className="text-[10px] text-base-content/30">
+            <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
               Seriously, this takes 30 seconds
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {STEPS.map((step, i) => (
               <motion.div
                 key={step.title}
+                style={{ opacity: 0 }}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{
-                  delay: i * 0.08,
-                  duration: 0.5,
-                  ease: [0.22, 1, 0.36, 1],
+                transition={{ delay: i * 0.1, duration: 0.5, ease: EASE }}
+                whileHover={{
+                  y: -3,
+                  transition: { type: 'tween', duration: 0.2 },
                 }}
-                className="group bg-base-200/50 border border-base-300/50 rounded-xl p-6 hover:border-base-300 transition-colors relative overflow-hidden"
+                className="group relative bg-base-200/40 border border-base-300/25 rounded-xl p-6 hover:border-base-300/50 transition-colors overflow-hidden"
               >
-                <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-transparent group-hover:via-primary/20 to-transparent transition-[background] duration-500" />
+                {/* Top accent line */}
+                <div
+                  className="absolute top-0 left-0 right-0 h-px"
+                  style={{
+                    background: `linear-gradient(90deg, transparent, ${step.hex} 50%, transparent)`,
+                  }}
+                />
+
+                {/* Corner dot grid */}
+                <div
+                  className="absolute top-0 right-0 w-20 h-20 opacity-[0.04] text-base-content"
+                  style={{
+                    backgroundImage:
+                      'radial-gradient(circle, currentColor 1px, transparent 1px)',
+                    backgroundSize: '8px 8px',
+                  }}
+                />
+
+                {/* Watermark icon */}
+                <step.Icon
+                  size={80}
+                  strokeWidth={0.4}
+                  className="absolute -bottom-3 -right-3 text-base-content/[0.025] pointer-events-none"
+                />
+
+                {/* Ambient glow on hover */}
+                <div
+                  className="absolute -top-10 -right-10 w-32 h-32 rounded-full pointer-events-none blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{ background: `${step.hex}10` }}
+                />
 
                 <div className="relative z-10">
                   <div className="flex items-center gap-4 mb-5">
                     <span className="text-[10px] text-base-content/15 font-black">
                       {step.num}
                     </span>
+                    {/* Icon badge — DESIGN.md pattern */}
                     <div
-                      className={`h-10 w-10 rounded-lg border flex items-center justify-center ${accentMap[step.accent].icon}`}
+                      className="w-11 h-11 rounded-xl flex items-center justify-center"
+                      style={{
+                        background: `${step.hex}15`,
+                        boxShadow: `0 0 20px ${step.hex}15, 0 0 0 1px ${step.hex}20`,
+                      }}
                     >
-                      {step.icon}
+                      <step.Icon size={20} className="text-base-content/80" />
                     </div>
                   </div>
 
-                  <h3 className="text-sm font-semibold text-base-content mb-2">
+                  <h3 className="text-sm font-bold text-base-content mb-2">
                     {step.title}
                   </h3>
-                  <p className="text-xs text-base-content/30 leading-relaxed">
+                  <p className="text-xs text-base-content/40 leading-relaxed">
                     {step.description}
                   </p>
                 </div>
@@ -508,20 +565,25 @@ function DiscoverPage() {
         </div>
       </section>
 
-      {/* ── PEOPLE USE SCROLLR TO ────────────────────────────── */}
-      <section className="relative">
+      {/* ================================================================
+          INTEGRATIONS
+          ================================================================ */}
+      <section className="relative overflow-hidden">
         <div className="container">
+          {/* Section header — homepage pattern */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="mb-10"
+            transition={{ duration: 0.7, ease: EASE }}
+            className="text-center mb-12 sm:mb-16"
           >
-            <h2 className="text-sm font-semibold text-primary mb-2 flex items-center gap-2">
-              <Layers size={16} /> People Use Scrollr To
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
+              People Use <span className="text-gradient-primary">Scrollr</span>{' '}
+              To
             </h2>
-            <p className="text-[10px] text-base-content/30">
+            <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
               Real scenarios, not feature lists
             </p>
           </motion.div>
@@ -537,15 +599,12 @@ function DiscoverPage() {
             ].map((scenario, i) => (
               <motion.div
                 key={scenario}
+                style={{ opacity: 0 }}
                 initial={{ opacity: 0, y: 12 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{
-                  delay: i * 0.05,
-                  duration: 0.4,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
-                className="flex items-center gap-3 px-4 py-3 bg-base-200/30 border border-base-300/30 rounded-xl"
+                transition={{ delay: i * 0.05, duration: 0.4, ease: EASE }}
+                className="flex items-center gap-3 px-4 py-3 bg-base-200/30 border border-base-300/25 rounded-xl"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-primary/50 shrink-0" />
                 <span className="text-xs text-base-content/40 leading-snug">
@@ -555,98 +614,148 @@ function DiscoverPage() {
             ))}
           </div>
 
+          {/* Sub-header */}
           <motion.div
+            style={{ opacity: 0 }}
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="mb-8"
+            transition={{ duration: 0.6, ease: EASE }}
+            className="text-center mb-12 sm:mb-16"
           >
-            <h3 className="text-xs font-semibold text-base-content/30 flex items-center gap-2">
-              Four streams, one ticker
+            <h3 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-[0.95] mb-4">
+              Four Streams,{' '}
+              <span className="text-gradient-primary">One Ticker</span>
             </h3>
           </motion.div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {INTEGRATIONS.map((integration, i) => {
-              const colors = accentMap[integration.accent]
-              return (
-                <motion.div
-                  key={integration.name}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{
-                    delay: 0.1 + i * 0.08,
-                    duration: 0.5,
-                    ease: [0.22, 1, 0.36, 1],
+            {INTEGRATIONS.map((integration, i) => (
+              <motion.div
+                key={integration.name}
+                style={{ opacity: 0 }}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{
+                  delay: i * 0.1,
+                  duration: 0.5,
+                  ease: EASE,
+                }}
+                whileHover={{
+                  y: -3,
+                  transition: { type: 'tween', duration: 0.2 },
+                }}
+                className="group relative bg-base-200/40 border border-base-300/25 rounded-xl p-6 hover:border-base-300/50 transition-colors overflow-hidden"
+              >
+                {/* Top accent line */}
+                <div
+                  className="absolute top-0 left-0 right-0 h-px"
+                  style={{
+                    background: `linear-gradient(90deg, transparent, ${integration.hex} 50%, transparent)`,
                   }}
-                  whileHover={{
-                    y: -3,
-                    transition: { type: 'tween', duration: 0.2 },
-                  }}
-                  className={`group relative bg-base-200/50 border border-base-300/50 rounded-xl p-6 ${colors.hoverBorder} transition-colors overflow-hidden`}
-                >
-                  {/* Hover gradient */}
-                  <div
-                    className={`absolute top-0 left-0 right-0 h-24 bg-gradient-to-b ${colors.hoverGradient} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none`}
-                  />
-                  <div
-                    className={`absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-transparent ${colors.accentLine} to-transparent transition-[background] duration-500`}
-                  />
+                />
 
-                  <div className="relative z-10">
-                    <div className="flex items-center justify-between mb-5">
-                      <div
-                        className={`h-10 w-10 rounded-lg border flex items-center justify-center ${colors.icon}`}
-                      >
-                        {integration.icon}
-                      </div>
-                      <span
-                        className={`w-2 h-2 rounded-full ${colors.dot} opacity-60`}
+                {/* Corner dot grid */}
+                <div
+                  className="absolute top-0 right-0 w-20 h-20 opacity-[0.04] text-base-content"
+                  style={{
+                    backgroundImage:
+                      'radial-gradient(circle, currentColor 1px, transparent 1px)',
+                    backgroundSize: '8px 8px',
+                  }}
+                />
+
+                {/* Watermark icon */}
+                <integration.Icon
+                  size={80}
+                  strokeWidth={0.4}
+                  className="absolute -bottom-3 -right-3 text-base-content/[0.025] pointer-events-none"
+                />
+
+                {/* Ambient glow on hover */}
+                <div
+                  className="absolute -top-10 -right-10 w-32 h-32 rounded-full pointer-events-none blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{ background: `${integration.hex}10` }}
+                />
+
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-5">
+                    {/* Icon badge — DESIGN.md pattern */}
+                    <div
+                      className="w-11 h-11 rounded-xl flex items-center justify-center"
+                      style={{
+                        background: `${integration.hex}15`,
+                        boxShadow: `0 0 20px ${integration.hex}15, 0 0 0 1px ${integration.hex}20`,
+                      }}
+                    >
+                      <integration.Icon
+                        size={20}
+                        className="text-base-content/80"
                       />
                     </div>
-
-                    <h3 className="text-sm font-semibold text-base-content mb-1">
-                      {integration.name}
-                    </h3>
-                    <p
-                      className={`text-[10px] uppercase tracking-wide ${colors.icon.split(' ').pop()} opacity-60 mb-3`}
-                    >
-                      {integration.label}
-                    </p>
-                    <p className="text-sm text-base-content/30 leading-relaxed mb-5">
-                      {integration.description}
-                    </p>
-
-                    <div className="pt-4 border-t border-base-300/30">
-                      <span className="text-[10px] text-base-content/20">
-                        In your feed:
-                      </span>
-                      <span
-                        className={`block mt-1.5 text-xs font-bold font-mono ${colors.icon.split(' ').pop()} opacity-70`}
-                      >
-                        {integration.example}
-                      </span>
-                    </div>
+                    <span
+                      className="w-2 h-2 rounded-full opacity-60"
+                      style={{ background: integration.hex }}
+                    />
                   </div>
-                </motion.div>
-              )
-            })}
+
+                  <h3 className="text-sm font-bold text-base-content mb-1">
+                    {integration.name}
+                  </h3>
+                  <p
+                    className="text-[10px] uppercase tracking-wide mb-3 opacity-60"
+                    style={{ color: integration.hex }}
+                  >
+                    {integration.label}
+                  </p>
+                  <p className="text-xs text-base-content/40 leading-relaxed mb-5">
+                    {integration.description}
+                  </p>
+
+                  <div className="pt-4 border-t border-base-300/30">
+                    <span className="text-[10px] text-base-content/20">
+                      In your feed:
+                    </span>
+                    <span
+                      className="block mt-1.5 text-xs font-bold font-mono opacity-70"
+                      style={{ color: integration.hex }}
+                    >
+                      {integration.example}
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ── INSTALL CTA ──────────────────────────────────────── */}
-      <section className="relative">
-        <div className="container pb-8">
+      {/* ================================================================
+          INSTALL CTA
+          ================================================================ */}
+      <section className="relative overflow-hidden">
+        {/* Tinted background */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-base-200/20 to-transparent pointer-events-none" />
+
+        <div className="container relative z-10 pb-8">
           <motion.div
+            style={{ opacity: 0 }}
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="relative overflow-hidden rounded-xl bg-base-200/40 border border-base-300/50 backdrop-blur-sm"
+            transition={{ duration: 0.7, ease: EASE }}
+            className="relative overflow-hidden rounded-2xl bg-base-200/40 border border-base-300/25 backdrop-blur-sm"
           >
+            {/* Top accent line */}
+            <div
+              className="absolute top-0 left-0 right-0 h-px"
+              style={{
+                background: `linear-gradient(90deg, transparent, ${HEX.primary} 50%, transparent)`,
+              }}
+            />
+
+            {/* Background layers */}
             <div className="absolute inset-0 pointer-events-none">
               <motion.div
                 className="absolute top-0 left-[30%] w-[500px] h-[500px] rounded-full"
@@ -676,8 +785,16 @@ function DiscoverPage() {
               />
             </div>
 
-            <div className="relative z-10 p-10 md:p-16 text-center max-w-2xl mx-auto">
+            {/* Watermark icon */}
+            <MonitorSmartphone
+              size={160}
+              strokeWidth={0.4}
+              className="absolute -bottom-8 -right-8 text-base-content/[0.025] pointer-events-none"
+            />
+
+            <div className="relative z-10 p-10 md:p-16 lg:p-20 text-center max-w-3xl mx-auto">
               <motion.div
+                style={{ opacity: 0 }}
                 initial={{ opacity: 0, scale: 0.9 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
@@ -690,38 +807,38 @@ function DiscoverPage() {
               </motion.div>
 
               <motion.h2
+                style={{ opacity: 0 }}
                 initial={{ opacity: 0, y: 15 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: 0.1 }}
-                className="text-3xl sm:text-4xl font-black tracking-tight mb-5 leading-[0.95]"
+                transition={{ delay: 0.1, duration: 0.6, ease: EASE }}
+                className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mb-6 leading-[0.95]"
               >
-                Start <span className="text-primary">Scrolling</span>
+                Start <span className="text-gradient-primary">Scrolling</span>
               </motion.h2>
 
               <motion.p
+                style={{ opacity: 0 }}
                 initial={{ opacity: 0, y: 15 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: 0.2 }}
-                className="text-sm text-base-content/35 leading-relaxed mb-8 max-w-md mx-auto"
+                transition={{ delay: 0.2, duration: 0.6, ease: EASE }}
+                className="text-sm text-base-content/35 leading-relaxed mb-10 max-w-lg mx-auto"
               >
                 Free, no account, no setup. Install it and your feed bar is live
                 on every tab in about 10 seconds.
               </motion.p>
 
               <motion.div
+                style={{ opacity: 0 }}
                 initial={{ opacity: 0, y: 15 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: 0.3 }}
-                className="flex flex-col sm:flex-row items-center justify-center gap-4"
+                transition={{ delay: 0.3, duration: 0.6, ease: EASE }}
+                className="flex flex-wrap items-center justify-center gap-4"
               >
-                <InstallButton className="!rounded-lg !bg-primary !text-base-100 !border-primary hover:!bg-primary/90 !font-semibold" />
-                <Link
-                  to="/onboard"
-                  className="inline-flex items-center gap-2 text-[10px] font-semibold text-base-content/30 hover:text-base-content/50 transition-colors"
-                >
+                <InstallButton />
+                <Link to="/onboard" className="btn btn-outline btn-sm gap-2">
                   Already installed?
                   <ArrowRight size={10} />
                 </Link>
