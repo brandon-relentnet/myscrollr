@@ -449,9 +449,9 @@ export function HowItWorks() {
     }
   }, [])
 
-  const startCycle = useCallback(() => {
+  // Restart the interval without resetting the active step
+  const restartTimer = useCallback(() => {
     stopTimer()
-    setActiveStep(0)
     setCycleKey((k) => k + 1)
     timerRef.current = setInterval(() => {
       setActiveStep((prev) => (prev + 1) % STEPS.length)
@@ -496,9 +496,9 @@ export function HowItWorks() {
   const handleSelect = useCallback(
     (index: number) => {
       setActiveStep(index)
-      startCycle()
+      restartTimer()
     },
-    [startCycle],
+    [restartTimer],
   )
 
   const ActiveVisual = VISUALS[activeStep]
