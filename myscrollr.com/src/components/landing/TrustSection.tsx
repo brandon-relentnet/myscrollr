@@ -200,7 +200,14 @@ export function TrustSection() {
         </motion.div>
 
         {/* ── Promise card ── */}
-        <div className="max-w-3xl mx-auto relative">
+        <motion.div
+          style={{ opacity: 0 }}
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-40px' }}
+          transition={{ duration: 0.6, ease: EASE }}
+          className="max-w-3xl mx-auto relative"
+        >
           {/* Outer glow behind card */}
           <div
             className="absolute -inset-3 rounded-3xl pointer-events-none blur-2xl"
@@ -249,7 +256,7 @@ export function TrustSection() {
               ))}
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* ── Stats row ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12 mt-14 lg:mt-18 max-w-3xl mx-auto text-center">

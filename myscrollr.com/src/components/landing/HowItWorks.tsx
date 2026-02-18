@@ -494,7 +494,14 @@ export function HowItWorks() {
         {/* ── Mobile layout ── */}
         <div className="lg:hidden">
           {/* Tab pills */}
-          <div className="flex gap-2 mb-5">
+          <motion.div
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-40px' }}
+            transition={{ delay: 0.1, duration: 0.5, ease: VISUAL_EASE }}
+            className="flex gap-2 mb-5"
+          >
             {STEPS.map((step, i) => {
               const isActive = activeStep === i
               return (
@@ -527,7 +534,7 @@ export function HowItWorks() {
                 </button>
               )
             })}
-          </div>
+          </motion.div>
 
           {/* Visual stage */}
           <div className="rounded-2xl bg-base-200/40 border border-base-300/40 overflow-hidden min-h-[320px] sm:min-h-[360px] flex flex-col [&>*]:flex-1 [&>*]:flex [&>*]:flex-col">

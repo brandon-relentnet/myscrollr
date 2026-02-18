@@ -271,7 +271,14 @@ export function BenefitsSection() {
         {/* Two-column layout: cards scroll left, visual sticks right */}
         <div className="flex gap-8 lg:gap-16 max-w-5xl mx-auto">
           {/* Left — scrolling benefit cards */}
-          <div className="flex-1 min-w-0 space-y-6 lg:space-y-10">
+          <motion.div
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ delay: 0.15, duration: 0.6, ease: EASE }}
+            className="flex-1 min-w-0 space-y-6 lg:space-y-10"
+          >
             {BENEFITS.map((benefit, i) => (
               <BenefitBlock
                 key={benefit.title}
@@ -281,14 +288,21 @@ export function BenefitsSection() {
                 onHighlight={setActiveIndex}
               />
             ))}
-          </div>
+          </motion.div>
 
           {/* Right — sticky visual (desktop only) */}
-          <div className="hidden lg:flex items-start justify-center w-[280px] shrink-0">
+          <motion.div
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ delay: 0.3, duration: 0.6, ease: EASE }}
+            className="hidden lg:flex items-start justify-center w-[280px] shrink-0"
+          >
             <div className="sticky top-[28vh]">
               <StickyVisual activeIndex={activeIndex} />
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>

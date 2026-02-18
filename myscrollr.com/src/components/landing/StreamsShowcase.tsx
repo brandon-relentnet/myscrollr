@@ -515,7 +515,14 @@ export function StreamsShowcase() {
       </motion.div>
 
       {/* Ticker caption */}
-      <div className="flex items-center justify-center gap-3 mt-4 mb-2 px-5">
+      <motion.div
+        style={{ opacity: 0 }}
+        initial={{ opacity: 0, y: 15 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-40px' }}
+        transition={{ delay: 0.1, duration: 0.5, ease: EASE }}
+        className="flex items-center justify-center gap-3 mt-4 mb-2 px-5"
+      >
         <span className="relative flex h-1.5 w-1.5">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
           <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
@@ -523,30 +530,38 @@ export function StreamsShowcase() {
         <span className="text-[11px] text-base-content/30 font-medium">
           This is what your browser looks like — live data, every tab
         </span>
-      </div>
+      </motion.div>
 
       {/* Scenario cards — container-width but custom vertical padding */}
       <div
         className="mx-auto px-5 sm:px-6 lg:px-8 pt-6 pb-16 lg:pb-24 relative"
         style={{ maxWidth: 1400 }}
       >
-        <div className="flex flex-wrap justify-center gap-4 lg:gap-5">
-          <AnimatePresence mode="popLayout" initial={false}>
-            {STREAMS.filter((s) => activeStreams.has(s.key)).map((stream) => (
-              <motion.div
-                key={stream.key}
-                layout
-                initial={{ opacity: 0, scale: 0.95, filter: 'blur(4px)' }}
-                animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-                exit={{ opacity: 0, scale: 0.95, filter: 'blur(4px)' }}
-                transition={SPRING}
-                className="w-full md:w-[calc(50%-10px)]"
-              >
-                <ScenarioCard stream={stream} />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
+        <motion.div
+          style={{ opacity: 0 }}
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-40px' }}
+          transition={{ delay: 0.15, duration: 0.6, ease: EASE }}
+        >
+          <div className="flex flex-wrap justify-center gap-4 lg:gap-5">
+            <AnimatePresence mode="popLayout" initial={false}>
+              {STREAMS.filter((s) => activeStreams.has(s.key)).map((stream) => (
+                <motion.div
+                  key={stream.key}
+                  layout
+                  initial={{ opacity: 0, scale: 0.95, filter: 'blur(4px)' }}
+                  animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                  exit={{ opacity: 0, scale: 0.95, filter: 'blur(4px)' }}
+                  transition={SPRING}
+                  className="w-full md:w-[calc(50%-10px)]"
+                >
+                  <ScenarioCard stream={stream} />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        </motion.div>
 
         {/* Footer link */}
         <motion.div

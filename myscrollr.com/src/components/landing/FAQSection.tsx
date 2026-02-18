@@ -421,14 +421,7 @@ export function FAQSection() {
         </motion.div>
 
         {/* ── Desktop: Split panel ── */}
-        <motion.div
-          style={{ opacity: 0 }}
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-40px' }}
-          transition={{ duration: 0.6, ease: EASE }}
-          className="hidden lg:flex gap-6 max-w-5xl mx-auto items-stretch"
-        >
+        <div className="hidden lg:flex gap-6 max-w-5xl mx-auto items-stretch">
           {/* Left — question nav */}
           <div className="w-[360px] shrink-0 flex flex-col">
             <div className="flex-1 space-y-1">
@@ -436,10 +429,19 @@ export function FAQSection() {
                 const NavIcon = item.icon
                 const isActive = activeIndex === i
                 return (
-                  <button
+                  <motion.button
                     key={item.question}
                     type="button"
                     onClick={() => handleSelect(i)}
+                    style={{ opacity: 0 }}
+                    initial={{ opacity: 0, y: 15 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{
+                      delay: 0.06 + i * 0.08,
+                      duration: 0.5,
+                      ease: EASE,
+                    }}
                     className={`relative w-full text-left pl-5 pr-4 py-3 rounded-xl flex items-center gap-3 cursor-pointer transition-[color,background-color,border-color,box-shadow] duration-300 ${
                       isActive
                         ? 'bg-base-200/60 text-base-content'
@@ -479,14 +481,21 @@ export function FAQSection() {
                     <span className="text-[15px] font-semibold leading-snug">
                       {item.question}
                     </span>
-                  </button>
+                  </motion.button>
                 )
               })}
             </div>
           </div>
 
           {/* Right — answer panel (fixed height) + nav controls */}
-          <div className="flex-1 flex flex-col gap-4">
+          <motion.div
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-40px' }}
+            transition={{ delay: 0.2, duration: 0.6, ease: EASE }}
+            className="flex-1 flex flex-col gap-4"
+          >
             {/* Answer card — fixed height container */}
             <div className="min-h-[380px] flex-1">
               <AnimatePresence mode="wait">
@@ -535,8 +544,8 @@ export function FAQSection() {
                 </button>
               </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        </div>
 
         {/* ── Mobile / Tablet: Accordion ── */}
         <div className="lg:hidden max-w-3xl mx-auto space-y-3">
