@@ -483,7 +483,7 @@ export function HowItWorks() {
           }
         }
       },
-      { threshold: 0.2 },
+      { threshold: 0.35 },
     )
 
     observer.observe(el)
@@ -518,7 +518,7 @@ export function HowItWorks() {
           style={{ opacity: 0 }}
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-80px' }}
+          viewport={{ once: true, margin: '-200px' }}
           transition={{ duration: 0.6, ease: VISUAL_EASE }}
           className="flex flex-col items-center text-center mb-12 lg:mb-16"
         >
@@ -538,7 +538,7 @@ export function HowItWorks() {
             style={{ opacity: 0 }}
             initial={{ opacity: 0, y: 15 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-40px' }}
+            viewport={{ once: true, margin: '-200px' }}
             transition={{ delay: 0.1, duration: 0.5, ease: VISUAL_EASE }}
             className="flex gap-2 mb-5"
           >
@@ -612,7 +612,7 @@ export function HowItWorks() {
                   style={{ opacity: 0 }}
                   initial={{ opacity: 0, y: 15 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
+                  viewport={{ once: true, margin: '-200px' }}
                   transition={{
                     delay: 0.1 + i * 0.08,
                     duration: 0.5,
@@ -697,7 +697,7 @@ export function HowItWorks() {
             style={{ opacity: 0 }}
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, margin: '-200px' }}
             transition={{ delay: 0.2, duration: 0.6, ease: VISUAL_EASE }}
             className="lg:col-span-7"
           >
