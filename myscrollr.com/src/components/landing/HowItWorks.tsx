@@ -465,20 +465,20 @@ export function HowItWorks() {
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-base-200/20 to-transparent pointer-events-none" />
 
       <div className="container relative py-24 lg:py-32">
-        {/* Section Header — LEFT aligned, no badge pill */}
+        {/* Section Header — centered */}
         <motion.div
           style={{ opacity: 0 }}
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.6, ease: VISUAL_EASE }}
-          className="mb-12 lg:mb-16 max-w-xl"
+          className="flex flex-col items-center text-center mb-12 lg:mb-16"
         >
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4 text-center">
             Ready in{' '}
             <span className="text-gradient-primary">Under a Minute</span>
           </h2>
-          <p className="text-base text-base-content/50 leading-relaxed">
+          <p className="text-base text-base-content/50 leading-relaxed text-center max-w-lg">
             Three steps between you and live data in your browser.
           </p>
         </motion.div>

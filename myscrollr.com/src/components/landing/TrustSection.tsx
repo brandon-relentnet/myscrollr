@@ -57,19 +57,19 @@ export function TrustSection() {
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-base-200/25 to-transparent pointer-events-none" />
 
       <div className="container relative py-24 lg:py-32">
-        {/* Section heading — left-aligned */}
+        {/* Section heading — centered */}
         <motion.div
           style={{ opacity: 0 }}
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.6, ease: EASE }}
-          className="mb-14 lg:mb-18 max-w-lg"
+          className="flex flex-col items-center text-center mb-14 lg:mb-18"
         >
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4 text-center">
             Built on <span className="text-gradient-primary">Trust</span>
           </h2>
-          <p className="text-base text-base-content/45 leading-relaxed">
+          <p className="text-base text-base-content/45 leading-relaxed text-center max-w-lg">
             We believe useful software should also be respectful software.
           </p>
         </motion.div>

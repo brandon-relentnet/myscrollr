@@ -48,25 +48,25 @@ export function FAQSection() {
   return (
     <section className="relative">
       <div className="container relative py-24 lg:py-32">
-        {/* Section Header — left-aligned, no badge pill */}
+        {/* Section Header — centered */}
         <motion.div
           style={{ opacity: 0 }}
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.6, ease: EASE }}
-          className="mb-12 lg:mb-14 max-w-lg"
+          className="flex flex-col items-center text-center mb-12 lg:mb-14"
         >
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4 text-center">
             Common <span className="text-gradient-primary">Questions</span>
           </h2>
-          <p className="text-base text-base-content/50 leading-relaxed">
+          <p className="text-base text-base-content/50 leading-relaxed text-center max-w-lg">
             Everything you need to know before installing.
           </p>
         </motion.div>
 
         {/* Accordion */}
-        <div className="max-w-3xl space-y-3">
+        <div className="max-w-3xl mx-auto space-y-3">
           {FAQ_ITEMS.map((item, i) => (
             <motion.div
               key={i}
