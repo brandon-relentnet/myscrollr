@@ -104,7 +104,7 @@ export function TrustSection() {
             <span className="text-gradient-primary">Guaranteed</span>
           </h2>
           <p className="text-base text-base-content/45 leading-relaxed text-center max-w-lg">
-            We built Scrollr the way we&rsquo;d want software built for us.
+            No analytics. No accounts. No data leaves your browser.
           </p>
         </motion.div>
 

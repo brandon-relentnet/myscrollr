@@ -6,7 +6,7 @@ import {
   useTransform,
   useSpring,
 } from 'motion/react'
-import { Zap, Github, Globe } from 'lucide-react'
+import { Zap, Github, Globe, Star } from 'lucide-react'
 import InstallButton from '@/components/InstallButton'
 
 /* ────────────────────────────────────────────────────────────────────────── */
@@ -32,6 +32,31 @@ const PARTICLES = Array.from({ length: 28 }, (_, i) => ({
   duration: Math.random() * 6 + 8,
   streamIndex: i % 4,
 }))
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/*  GitHub stars hook                                                         */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+function useGitHubStars(repo: string) {
+  const [stars, setStars] = useState<number | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch(`https://api.github.com/repos/${repo}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.stargazers_count != null) {
+          setStars(data.stargazers_count)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [repo])
+
+  return stars
+}
 
 /* ────────────────────────────────────────────────────────────────────────── */
 /*  Animated counter hook                                                    */
@@ -161,10 +186,16 @@ export function CallToAction() {
     [mouseX, mouseY],
   )
 
+  /* GitHub stars */
+  const githubStars = useGitHubStars('brandon-relentnet/myscrollr')
+
   /* Animated stats */
   const statsRef = useRef<HTMLDivElement>(null)
   const statsInView = useInView(statsRef, { once: true, amount: 0.5 })
-  const usersCount = useAnimatedCounter(2500, statsInView, '+')
+  const starsCount = useAnimatedCounter(
+    githubStars ?? 0,
+    statsInView && githubStars != null,
+  )
   const streamsCount = useAnimatedCounter(4, statsInView, '')
   const privacyCount = useAnimatedCounter(100, statsInView, '%')
 
@@ -280,9 +311,9 @@ export function CallToAction() {
             }}
             className="mt-8 text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black tracking-tight leading-[0.9]"
           >
-            <span className="block">Your Browser,</span>
+            <span className="block">Never</span>
             <span className="block mt-2 text-gradient-primary">
-              Supercharged
+              Alt-Tab Again.
             </span>
           </motion.h2>
 
@@ -299,8 +330,7 @@ export function CallToAction() {
             }}
             className="block mt-6 text-lg sm:text-xl text-base-content/50 max-w-lg leading-relaxed"
           >
-            Live scores, real-time markets, breaking news, and fantasy updates.
-            All in a single bar, pinned to every tab.
+            One click. Four live streams. Every tab.
           </motion.span>
 
           {/* ── CTA button area with orbiting icons ─────────────────────── */}
@@ -359,15 +389,28 @@ export function CallToAction() {
             className="mt-16 grid grid-cols-3 gap-8 sm:gap-16 max-w-lg w-full"
           >
             {[
-              { value: usersCount, label: 'Happy users' },
-              { value: streamsCount, label: 'Live streams' },
-              { value: privacyCount, label: 'Private' },
+              {
+                value: githubStars != null ? starsCount : '...',
+                label: 'GitHub stars',
+                icon: <Star className="size-3.5 text-warning/60" />,
+              },
+              {
+                value: streamsCount,
+                label: 'Live streams',
+                icon: null,
+              },
+              {
+                value: privacyCount,
+                label: 'Private',
+                icon: null,
+              },
             ].map((stat) => (
               <div
                 key={stat.label}
                 className="flex flex-col items-center gap-1"
               >
-                <span className="text-2xl sm:text-3xl font-black text-base-content tracking-tight">
+                <span className="text-2xl sm:text-3xl font-black text-base-content tracking-tight flex items-center gap-1.5">
+                  {stat.icon}
                   {stat.value}
                 </span>
                 <span className="text-xs text-base-content/35 font-medium">
@@ -387,7 +430,7 @@ export function CallToAction() {
             className="mt-12 flex items-center gap-6"
           >
             <a
-              href="https://github.com/brandon-relentnet/scrollr"
+              href="https://github.com/brandon-relentnet/myscrollr"
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-2 text-sm text-base-content/40 hover:text-primary transition-[color] duration-200"

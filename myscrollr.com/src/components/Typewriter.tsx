@@ -37,17 +37,15 @@ export default function HeroTextSwap({ activeIndex }: HeroTextSwapProps) {
         </span>
       </motion.div>
 
-      {/* Uninterrupted. */}
+      {/* Always Visible. */}
       <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6, delay: 0.4, ease: 'easeOut' }}
         className="text-4xl sm:text-5xl lg:text-7xl font-black tracking-tight leading-none -mt-1"
       >
-        <span className="italic text-base-content/60">Uninterrupted.</span>
+        <span className="text-base-content/50">Always Visible.</span>
       </motion.div>
-
-
     </div>
   )
 }

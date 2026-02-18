@@ -25,9 +25,9 @@ function HomePage() {
 
       <HowItWorks />
 
-      <StreamsShowcase />
-
       <BenefitsSection />
+
+      <StreamsShowcase />
 
       <TrustSection />
 

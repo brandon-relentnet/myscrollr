@@ -138,10 +138,10 @@ export function HeroSection() {
               transition={{ duration: 0.5, delay: 1 }}
               className="text-base text-base-content/50 max-w-md leading-relaxed"
             >
-              Pin live sports scores, crypto prices, and custom feeds over any
-              tab.{' '}
+              Live sports scores, crypto prices, news, and fantasy updates
+              pinned to every tab.{' '}
               <span className="text-primary font-medium">
-                Never alt-tab again.
+                The ticker that follows you everywhere.
               </span>
             </motion.p>
 

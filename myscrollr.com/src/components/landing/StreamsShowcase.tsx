@@ -454,11 +454,12 @@ export function StreamsShowcase() {
           className="flex flex-col items-center text-center mb-10 lg:mb-14"
         >
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-5 text-center">
-            Choose What{' '}
-            <span className="text-gradient-primary">Matters to You</span>
+            Four Streams.{' '}
+            <span className="text-gradient-primary">One Ticker.</span>
           </h2>
           <p className="text-base text-base-content/45 max-w-lg leading-relaxed text-center">
-            Toggle what you care about. Everything else stays out of the way.
+            Finance, sports, news, and fantasy &mdash; toggle what you want,
+            ignore the rest.
           </p>
         </motion.div>
 

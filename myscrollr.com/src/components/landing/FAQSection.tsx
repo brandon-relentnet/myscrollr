@@ -413,10 +413,10 @@ export function FAQSection() {
           className="flex flex-col items-center text-center mb-14 lg:mb-16"
         >
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4 text-center">
-            Common <span className="text-gradient-primary">Questions</span>
+            Before You <span className="text-gradient-primary">Install</span>
           </h2>
           <p className="text-base text-base-content/50 leading-relaxed text-center max-w-lg">
-            Everything you need to know before installing.
+            Quick answers, no fluff.
           </p>
         </motion.div>
 
