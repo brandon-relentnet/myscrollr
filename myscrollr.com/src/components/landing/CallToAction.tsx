@@ -142,7 +142,7 @@ function PulseRing({ delay, isInView }: { delay: number; isInView: boolean }) {
 
 export function CallToAction() {
   const sectionRef = useRef<HTMLElement>(null)
-  const isInView = useInView(sectionRef, { once: true, amount: 0.3 })
+  const isInView = useInView(sectionRef, { amount: 0.15 })
 
   /* Mouse parallax for the ambient orb */
   const mouseX = useMotionValue(0.5)

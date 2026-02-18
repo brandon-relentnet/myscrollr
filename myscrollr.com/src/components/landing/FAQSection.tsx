@@ -461,9 +461,9 @@ export function FAQSection() {
                       >
                         <motion.div
                           key={`faq-progress-${cycleKey}`}
-                          className="absolute bottom-0 left-0 right-0 bg-primary rounded-full"
-                          initial={{ height: '0%' }}
-                          animate={{ height: '100%' }}
+                          className="absolute inset-0 bg-primary rounded-full origin-bottom"
+                          initial={{ scaleY: 0 }}
+                          animate={{ scaleY: 1 }}
                           transition={{
                             duration: CYCLE_MS / 1000,
                             ease: 'linear',

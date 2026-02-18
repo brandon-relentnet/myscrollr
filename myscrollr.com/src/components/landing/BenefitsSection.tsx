@@ -1,5 +1,5 @@
-import { AnimatePresence, motion } from 'motion/react'
-import { useState } from 'react'
+import { AnimatePresence, motion, useInView } from 'motion/react'
+import { useRef, useState } from 'react'
 import { EyeOff, Globe, Lock, Zap } from 'lucide-react'
 
 // ── Types & Data ─────────────────────────────────────────────────
@@ -68,9 +68,14 @@ const RING_INSETS = [0, 36, 72] as const
 function StickyVisual({ activeIndex }: { activeIndex: number }) {
   const benefit = BENEFITS[activeIndex]
   const Icon = benefit.icon
+  const visualRef = useRef<HTMLDivElement>(null)
+  const isInView = useInView(visualRef, { amount: 0.2 })
 
   return (
-    <div className="relative w-[280px] h-[280px] flex items-center justify-center">
+    <div
+      ref={visualRef}
+      className="relative w-[280px] h-[280px] flex items-center justify-center"
+    >
       {/* Diffused backdrop glow */}
       <div
         className="absolute inset-0 rounded-full blur-3xl transition-colors duration-700"
@@ -80,20 +85,28 @@ function StickyVisual({ activeIndex }: { activeIndex: number }) {
         }}
       />
 
-      {/* Pulsing concentric rings */}
+      {/* Pulsing concentric rings — gated by viewport visibility */}
       {RING_INSETS.map((inset, i) => (
         <motion.div
           key={i}
-          animate={{
-            scale: [1, 1.04, 1],
-            opacity: [0.08, 0.18, 0.08],
-          }}
-          transition={{
-            duration: 4,
-            repeat: Infinity,
-            ease: 'easeInOut',
-            delay: i * 0.5,
-          }}
+          animate={
+            isInView
+              ? {
+                  scale: [1, 1.04, 1],
+                  opacity: [0.08, 0.18, 0.08],
+                }
+              : { scale: 1, opacity: 0.08 }
+          }
+          transition={
+            isInView
+              ? {
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                  delay: i * 0.5,
+                }
+              : { duration: 0.3 }
+          }
           className="absolute rounded-full border transition-colors duration-700"
           style={{
             inset: `${inset}px`,
