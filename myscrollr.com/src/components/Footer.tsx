@@ -32,7 +32,11 @@ export default function Footer() {
       { label: 'License', href: '/legal?doc=license' },
     ],
     social: [
-      { icon: Github, href: 'https://github.com/brandon-relentnet/myscrollr', label: 'GitHub' },
+      {
+        icon: Github,
+        href: 'https://github.com/brandon-relentnet/myscrollr',
+        label: 'GitHub',
+      },
     ],
   }
 
@@ -73,15 +77,13 @@ export default function Footer() {
                 <span className="font-bold text-2xl tracking-tight font-display">
                   Scrollr
                 </span>
-                <span className="text-[10px] text-primary/40">
-                  v2.1.0
-                </span>
+                <span className="text-[10px] text-primary/40">v2.1.0</span>
               </div>
             </div>
 
             <p className="text-sm text-base-content/60 leading-relaxed max-w-sm pb-2">
-              Pin live sports scores, crypto prices, and custom feeds over any
-              tab. Stop alt-tabping. Stay in your flow.
+              Live scores, prices, and headlines pinned to every tab. The ticker
+              that follows you everywhere.
             </p>
 
             {/* Status Indicators */}

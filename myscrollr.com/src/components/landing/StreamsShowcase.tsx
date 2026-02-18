@@ -454,12 +454,12 @@ export function StreamsShowcase() {
           className="flex flex-col items-center text-center mb-10 lg:mb-14"
         >
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-5 text-center">
-            Four Streams.{' '}
+            Everything You Follow.{' '}
             <span className="text-gradient-primary">One Ticker.</span>
           </h2>
           <p className="text-base text-base-content/45 max-w-lg leading-relaxed text-center">
-            Finance, sports, news, and fantasy &mdash; toggle what you want,
-            ignore the rest.
+            Finance, sports, news, and fantasy today &mdash; with more on the
+            way. Toggle what you want, ignore the rest.
           </p>
         </motion.div>
 
@@ -587,7 +587,7 @@ export function StreamsShowcase() {
           <span className="hidden sm:block h-4 w-px bg-base-300/30" />
           <span className="text-[11px] text-base-content/25 flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-success/40" />4 live
-            &middot; more coming soon
+            &middot; growing fast
           </span>
         </motion.div>
       </div>

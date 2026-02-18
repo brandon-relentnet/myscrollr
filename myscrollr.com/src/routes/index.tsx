@@ -4,6 +4,8 @@ import { HeroSection } from '@/components/landing/HeroSection'
 import { HowItWorks } from '@/components/landing/HowItWorks'
 import { StreamsShowcase } from '@/components/landing/StreamsShowcase'
 import { BenefitsSection } from '@/components/landing/BenefitsSection'
+import { MidPageCTA } from '@/components/landing/MidPageCTA'
+import { BuiltInTheOpen } from '@/components/landing/BuiltInTheOpen'
 import { TrustSection } from '@/components/landing/TrustSection'
 import { FAQSection } from '@/components/landing/FAQSection'
 import { CallToAction } from '@/components/landing/CallToAction'
@@ -23,11 +25,15 @@ function HomePage() {
     <>
       <HeroSection />
 
-      <HowItWorks />
-
       <BenefitsSection />
 
+      <HowItWorks />
+
       <StreamsShowcase />
+
+      <MidPageCTA />
+
+      <BuiltInTheOpen />
 
       <TrustSection />
 

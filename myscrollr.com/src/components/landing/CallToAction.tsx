@@ -196,8 +196,8 @@ export function CallToAction() {
     githubStars ?? 0,
     statsInView && githubStars != null,
   )
-  const streamsCount = useAnimatedCounter(4, statsInView, '')
-  const privacyCount = useAnimatedCounter(100, statsInView, '%')
+  const sourcesCount = useAnimatedCounter(100, statsInView, '+')
+  const sizeCount = useAnimatedCounter(500, statsInView, '')
 
   return (
     <section
@@ -330,7 +330,8 @@ export function CallToAction() {
             }}
             className="block mt-6 text-lg sm:text-xl text-base-content/50 max-w-lg leading-relaxed"
           >
-            One click. Four live streams. Every tab.
+            Live scores, prices, and headlines pinned to every tab. The ticker
+            that follows you everywhere.
           </motion.span>
 
           {/* ── CTA button area with orbiting icons ─────────────────────── */}
@@ -395,13 +396,13 @@ export function CallToAction() {
                 icon: <Star className="size-3.5 text-warning/60" />,
               },
               {
-                value: streamsCount,
-                label: 'Live streams',
+                value: sourcesCount,
+                label: 'Data sources',
                 icon: null,
               },
               {
-                value: privacyCount,
-                label: 'Private',
+                value: sizeCount,
+                label: 'KB total',
                 icon: null,
               },
             ].map((stat) => (
