@@ -1,7 +1,9 @@
 import { Link } from '@tanstack/react-router'
 import { motion } from 'motion/react'
-import { ArrowUpRight, Github } from 'lucide-react'
+import { ArrowUpRight, Github, Mail } from 'lucide-react'
 import ScrollrSVG from '@/components/ScrollrSVG'
+
+declare const __APP_VERSION__: string
 
 export default function Footer() {
   const year = new Date().getFullYear()
@@ -30,12 +32,18 @@ export default function Footer() {
       { label: 'Privacy', href: '/legal?doc=privacy' },
       { label: 'Legal', href: '/legal' },
       { label: 'License', href: '/legal?doc=license' },
+      { label: 'Contact', href: 'mailto:support@myscrollr.com' },
     ],
     social: [
       {
         icon: Github,
         href: 'https://github.com/brandon-relentnet/myscrollr',
         label: 'GitHub',
+      },
+      {
+        icon: Mail,
+        href: 'mailto:support@myscrollr.com',
+        label: 'Email',
       },
     ],
   }
@@ -77,7 +85,9 @@ export default function Footer() {
                 <span className="font-bold text-2xl tracking-tight font-display">
                   Scrollr
                 </span>
-                <span className="text-[10px] text-primary/40">v2.1.0</span>
+                <span className="text-[10px] text-primary/40">
+                  v{__APP_VERSION__}
+                </span>
               </div>
             </div>
 

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { URL, fileURLToPath } from 'node:url'
 
@@ -5,6 +6,13 @@ import tailwindcss from '@tailwindcss/vite'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import { defineConfig, type Plugin } from 'vite'
 import viteReact from '@vitejs/plugin-react'
+
+const pkg = JSON.parse(
+  readFileSync(
+    fileURLToPath(new URL('./package.json', import.meta.url)),
+    'utf8',
+  ),
+)
 
 const monorepoRoot = fileURLToPath(new URL('..', import.meta.url))
 const projectRoot = fileURLToPath(new URL('.', import.meta.url))
@@ -73,6 +81,9 @@ export default defineConfig({
       // Allow serving files from the monorepo root (for integrations/*/web/)
       allow: [monorepoRoot],
     },
+  },
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
   },
   resolve: {
     alias: {

@@ -68,7 +68,11 @@ function LifetimePage() {
       .catch(() => {})
       .finally(() => {
         setCheckingSession(false)
-        navigate({ to: '/uplink/lifetime', search: { session_id: undefined }, replace: true })
+        navigate({
+          to: '/uplink/lifetime',
+          search: { session_id: undefined },
+          replace: true,
+        })
       })
   }, [session_id, getToken, navigate])
 
@@ -212,18 +216,26 @@ function LifetimePage() {
               <motion.p
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                transition={{
+                  duration: 0.6,
+                  delay: 0.2,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
                 className="text-sm text-base-content/40 leading-relaxed max-w-md mb-10"
               >
-                Lifetime Uplink is a one-time payment for permanent access.
-                No renewals, no expiry. Only 128 founding member slots
-                will ever be created — 0x00 through 0x7F.
+                Lifetime Uplink is a one-time payment for permanent access. No
+                renewals, no expiry. Only 128 founding member slots will ever be
+                created — 0x00 through 0x7F.
               </motion.p>
 
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                transition={{
+                  duration: 0.6,
+                  delay: 0.3,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
                 className="space-y-3 mb-10"
               >
                 <Feature>Everything in Annual, permanently</Feature>
@@ -250,7 +262,11 @@ function LifetimePage() {
               <motion.div
                 className="absolute -inset-2 rounded-xl bg-gradient-to-b from-warning/20 via-warning/5 to-transparent blur-xl"
                 animate={{ opacity: [0.4, 0.7, 0.4] }}
-                transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+                transition={{
+                  duration: 5,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
               />
 
               <div className="relative bg-base-200/80 backdrop-blur-sm border border-warning/20 rounded-xl p-8 lg:p-10">
@@ -280,7 +296,7 @@ function LifetimePage() {
                     </div>
                   </div>
                   <p className="text-[10px] text-warning/40 mb-8">
-                    Equivalent to ~5.1 years of Annual at $8.99/mo
+                    Equivalent to ~5.1 years of Monthly at $8.99/mo
                   </p>
 
                   {/* Slot progress (marketing) */}
