@@ -10,7 +10,7 @@ export function CallToAction() {
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
-        className="relative overflow-hidden rounded-sm bg-base-200/60 border border-base-300 p-8 md:p-12 lg:p-16"
+        className="relative overflow-hidden rounded-xl bg-base-200/60 border border-base-300 p-8 md:p-12 lg:p-16"
       >
         {/* Foreground Glow Effects */}
         <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-primary/5 rounded-full blur-[80px] pointer-events-none" />
@@ -35,12 +35,8 @@ export function CallToAction() {
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
-              className="inline-flex items-center gap-2 mb-6 px-3 py-1.5 rounded-sm bg-primary/8 border border-primary/15"
+              className="inline-flex items-center gap-2 mb-6 px-3 py-1.5 rounded-lg bg-primary/8 border border-primary/15"
             >
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
-              </span>
               <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
                 Get Started
               </span>
@@ -51,7 +47,7 @@ export function CallToAction() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight uppercase leading-[0.95] mb-2"
+              className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-[0.95] mb-2"
             >
               Start{' '}
               <span className="text-rainbow">
@@ -98,7 +94,7 @@ export function CallToAction() {
           >
             {/* Primary CTA */}
             <div className="relative w-full">
-              <div className="absolute -inset-3 bg-primary/10 rounded-sm blur-xl opacity-50" />
+              <div className="absolute -inset-3 bg-primary/10 rounded-xl blur-xl opacity-50" />
               <InstallButton className="relative w-full text-lg py-4 shadow-xl" />
             </div>
 
@@ -107,7 +103,7 @@ export function CallToAction() {
               <Link
                 to="/uplink"
                 search={{ session_id: undefined }}
-                className="group flex items-center justify-center lg:justify-end gap-2 text-[10px] font-mono text-base-content/25 uppercase tracking-wider hover:text-primary/60 transition-colors"
+                className="group flex items-center justify-center lg:justify-end gap-2 text-[10px] text-base-content/25 hover:text-primary/60 transition-colors"
               >
                 <Satellite size={11} className="opacity-50" />
                 <span>
@@ -125,7 +121,7 @@ export function CallToAction() {
             </div>
 
             {/* Browser compat */}
-            <p className="text-[10px] font-mono text-base-content/40 text-center lg:text-right uppercase tracking-[0.2em] font-bold flex items-center gap-3">
+            <p className="text-[10px] text-base-content/40 text-center lg:text-right font-medium flex items-center gap-3">
               <span className="flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary/50" />
                 Chrome

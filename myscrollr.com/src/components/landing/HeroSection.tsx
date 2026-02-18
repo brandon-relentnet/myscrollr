@@ -59,7 +59,7 @@ export function HeroSection() {
                   transition: { type: 'tween', duration: 0.2 },
                 }}
                 whileTap={{ y: 0 }}
-                className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-sm border border-base-300 bg-base-200/50 px-6 py-3 text-sm font-bold tracking-wide text-base-content hover:bg-base-300 transition-colors backdrop-blur-sm"
+                className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-base-300 bg-base-200/50 px-6 py-3 text-sm font-semibold text-base-content hover:bg-base-300 transition-colors backdrop-blur-sm"
                 onClick={() => scrollToSection('how-it-works')}
               >
                 How It Works
@@ -76,7 +76,7 @@ export function HeroSection() {
         transition={{ duration: 0.5, delay: 1.5 }}
         className="absolute bottom-8 left-1/2 -translate-x-1/2 hidden sm:flex flex-col items-center gap-3 text-base-content/40"
       >
-        <span className="text-xs font-mono uppercase tracking-widest">
+        <span className="text-xs text-base-content/40">
           Scroll
         </span>
         <motion.div

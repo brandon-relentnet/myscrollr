@@ -1,27 +1,27 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 @import 'tailwindcss';
 @source "../../integrations/*/web/**/*.tsx";
 
 @theme {
-  /* Core Colors - Refined Palette */
-  --color-primary: #bfff00;
-  --color-primary-content: #0d0d12;
-  --color-primary/10: rgba(191, 255, 0, 0.1);
-  --color-primary/20: rgba(191, 255, 0, 0.2);
-  --color-primary/30: rgba(191, 255, 0, 0.3);
-  --color-primary/40: rgba(191, 255, 0, 0.4);
+  /* Core Colors - Emerald-led Palette */
+  --color-primary: #34d399;
+  --color-primary-content: #111118;
+  --color-primary/10: rgba(52, 211, 153, 0.1);
+  --color-primary/20: rgba(52, 211, 153, 0.2);
+  --color-primary/30: rgba(52, 211, 153, 0.3);
+  --color-primary/40: rgba(52, 211, 153, 0.4);
 
   --color-secondary: #ff4757;
-  --color-secondary-content: #0d0d12;
+  --color-secondary-content: #111118;
   --color-secondary/10: rgba(255, 71, 87, 0.1);
   --color-secondary/20: rgba(255, 71, 87, 0.2);
 
   --color-accent: #a855f7;
-  --color-accent-content: #0d0d12;
+  --color-accent-content: #111118;
   --color-accent/10: rgba(168, 85, 247, 0.1);
 
   --color-info: #00d4ff;
-  --color-info-content: #0d0d12;
+  --color-info-content: #111118;
   --color-info/10: rgba(0, 212, 255, 0.1);
   --color-info/20: rgba(0, 212, 255, 0.2);
 
@@ -34,37 +34,41 @@
   --color-error: #ef4444;
   --color-error/10: rgba(239, 68, 68, 0.1);
 
-  /* Base Theme - Deep Space */
+  /* Base Theme - Warmer Dark */
   --color-base-50: #f8f8fc;
-  --color-base-100: #0d0d12;
-  --color-base-150: #0e0e14;
-  --color-base-200: #14141c;
-  --color-base-250: #17171f;
-  --color-base-300: #1e1e28;
-  --color-base-350: #252530;
-  --color-base-400: #2a2a38;
-  --color-base-content: #e8e8ed;
-  --color-base-content/60: rgba(232, 232, 237, 0.6);
-  --color-base-content/40: rgba(232, 232, 237, 0.4);
-  --color-base-content/30: rgba(232, 232, 237, 0.3);
-  --color-base-content/20: rgba(232, 232, 237, 0.2);
+  --color-base-100: #111118;
+  --color-base-150: #131320;
+  --color-base-200: #171720;
+  --color-base-250: #1a1a24;
+  --color-base-300: #1f1f2a;
+  --color-base-350: #262632;
+  --color-base-400: #2e2e3c;
+  --color-base-content: #d8d8e2;
+  --color-base-content/60: rgba(216, 216, 226, 0.6);
+  --color-base-content/40: rgba(216, 216, 226, 0.4);
+  --color-base-content/30: rgba(216, 216, 226, 0.3);
+  --color-base-content/20: rgba(216, 216, 226, 0.2);
 
   /* Typography */
-  --font-display: 'Space Grotesk', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
 
-  /* Border Radius */
-  --radius-sm: 0.125rem;
-  --radius-md: 0.25rem;
-  --radius-lg: 0.5rem;
+  /* Border Radius - Softened */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
 
-  /* Shadows - Refined Glow System */
-  --shadow-glow-sm: 0 0 20px rgba(191, 255, 0, 0.08);
-  --shadow-glow-md: 0 0 30px rgba(191, 255, 0, 0.12);
-  --shadow-glow-lg: 0 0 50px rgba(191, 255, 0, 0.15);
-  --shadow-glow-xl: 0 0 80px rgba(191, 255, 0, 0.2);
+  /* Shadows - Subtle Elevation */
+  --shadow-glow-sm: 0 0 20px rgba(52, 211, 153, 0.06);
+  --shadow-glow-md: 0 0 30px rgba(52, 211, 153, 0.1);
+  --shadow-glow-lg: 0 0 50px rgba(52, 211, 153, 0.12);
+  --shadow-glow-xl: 0 0 80px rgba(52, 211, 153, 0.15);
 
-  --shadow-inner-glow: inset 0 0 20px rgba(191, 255, 0, 0.03);
+  --shadow-soft-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-soft-md: 0 4px 16px rgba(0, 0, 0, 0.25);
+  --shadow-soft-lg: 0 8px 32px rgba(0, 0, 0, 0.3);
+
+  --shadow-inner-glow: inset 0 0 20px rgba(52, 211, 153, 0.02);
 
   /* Transitions */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -73,7 +77,7 @@
 }
 
 /* ==========================================================================
-   BASE - Refined Foundation
+   BASE - Clean Foundation
    ========================================================================== */
 
 *,
@@ -97,116 +101,31 @@ body {
   background-color: var(--color-base-100);
   overflow-x: hidden;
   min-height: 100dvh;
-
-  /* Primary Background - Deep Space */
-  background-image:
-    /* Subtle radial vignette */
-    radial-gradient(
-      ellipse 80% 50% at 50% 0%,
-      rgba(191, 255, 0, 0.03) 0%,
-      transparent 50%
-    ),
-    /* Subtle Grid Nodes */
-      radial-gradient(
-        circle at 1px 1px,
-        rgba(191, 255, 0, 0.15) 1px,
-        transparent 0
-      ),
-    /* Minimal grid - 60px for cleaner look */
-      linear-gradient(rgba(191, 255, 0, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(191, 255, 0, 0.03) 1px, transparent 1px);
-  background-size:
-    100% 100%,
-    60px 60px,
-    60px 60px,
-    60px 60px;
   position: relative;
 }
 
-/* Enhanced Nebula Layers */
+/* Subtle Ambient Gradient */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   background:
-    /* Primary glow - top center */
     radial-gradient(
-      ellipse 60% 40% at 50% 0%,
-      rgba(191, 255, 0, 0.05) 0%,
+      ellipse 70% 50% at 50% 0%,
+      rgba(52, 211, 153, 0.04) 0%,
       transparent 60%
     ),
-    /* Info accent - top right */
-      radial-gradient(
-        ellipse 50% 50% at 85% 10%,
-        rgba(0, 212, 255, 0.04) 0%,
-        transparent 50%
-      ),
-    /* Secondary accent - bottom left */
-      radial-gradient(
-        ellipse 50% 50% at 15% 85%,
-        rgba(255, 71, 87, 0.03) 0%,
-        transparent 50%
-      ),
-    /* Purple depth - right edge */
-      radial-gradient(
-        ellipse 50% 80% at 90% 50%,
-        rgba(168, 85, 247, 0.03) 0%,
-        transparent 50%
-      ),
-    /* Cyan wash - left edge */
-      radial-gradient(
-        ellipse 50% 80% at 10% 50%,
-        rgba(0, 212, 255, 0.02) 0%,
-        transparent 50%
-      );
-  pointer-events: none;
-  z-index: -1;
-  animation: nebula-breathe 15s ease-in-out infinite alternate;
-}
-
-@keyframes nebula-breathe {
-  0% {
-    opacity: 0.85;
-  }
-  100% {
-    opacity: 1;
-  }
-}
-
-/* Deep Vignette */
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background:
     radial-gradient(
-      ellipse 60% 50% at 50% 0%,
-      transparent 40%,
-      rgba(8, 8, 12, 0.3) 100%
-    ),
-    radial-gradient(circle at center, transparent 0%, rgba(8, 8, 12, 0.5) 100%);
+      ellipse 50% 50% at 80% 80%,
+      rgba(0, 212, 255, 0.02) 0%,
+      transparent 50%
+    );
   pointer-events: none;
   z-index: -1;
-}
-
-/* Scanline Effect - Subtle Terminal Feel */
-.scanlines {
-  position: fixed;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 3px,
-    rgba(0, 0, 0, 0.02) 3px,
-    rgba(0, 0, 0, 0.02) 6px
-  );
-  pointer-events: none;
-  z-index: 9999;
-  opacity: 0.15;
 }
 
 /* ==========================================================================
-   TYPOGRAPHY - Refined Scale
+   TYPOGRAPHY - Clean Scale
    ========================================================================== */
 
 h1,
@@ -306,7 +225,7 @@ pre,
   }
 }
 
-/* Glow Effects */
+/* Glow Effects - Reserved for key moments */
 .glow-primary-sm {
   box-shadow: var(--shadow-glow-sm);
 }
@@ -337,12 +256,12 @@ pre,
 }
 
 /* ==========================================================================
-   BUTTONS - Refined System
+   BUTTONS - Clean System
    ========================================================================== */
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-sm px-5 py-2.5 text-sm font-bold duration-200 cursor-pointer active:scale-97 disabled:opacity-50 disabled:pointer-events-none uppercase tracking-wider;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold duration-200 cursor-pointer active:scale-97 disabled:opacity-50 disabled:pointer-events-none;
     transition-property:
       color, background-color, border-color, opacity, transform, box-shadow;
     transition-timing-function: var(--default-transition-timing-function);
@@ -361,15 +280,15 @@ pre,
     @apply px-7 py-3.5 text-base;
   }
 
-  /* Primary - The Signature Button */
+  /* Primary */
   .btn-primary {
-    @apply bg-primary text-primary-content border border-primary;
-    box-shadow: var(--shadow-glow-sm);
+    @apply bg-primary text-primary-content border border-primary/80;
+    box-shadow: var(--shadow-soft-sm);
   }
 
   .btn-primary:hover:not(:disabled) {
     @apply opacity-90;
-    box-shadow: var(--shadow-glow-md);
+    box-shadow: var(--shadow-glow-sm);
     transform: translateY(-1px);
   }
 
@@ -377,7 +296,7 @@ pre,
     transform: translateY(0);
   }
 
-  /* Ghost - Subtle Alternative */
+  /* Ghost */
   .btn-ghost {
     @apply bg-transparent text-base-content border border-transparent;
   }
@@ -386,7 +305,7 @@ pre,
     @apply bg-base-200;
   }
 
-  /* Outline - Defined Border */
+  /* Outline */
   .btn-outline {
     @apply bg-base-200/50 text-base-content border border-base-300 backdrop-blur-sm;
   }
@@ -419,17 +338,16 @@ pre,
     @apply bg-success/10 text-success border border-success/30;
   }
 
-  /* The Signature "Pulse" Button */
+  /* Signature CTA Button */
   .btn-pulse {
-    @apply bg-primary text-primary-content! font-semibold px-6 py-3 transition-all duration-200 shadow-[0_0_20px_rgba(191,255,0,0.25)];
+    @apply bg-primary text-primary-content! font-bold px-6 py-3 rounded-xl transition-all duration-200;
     font-family: var(--font-display);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+    box-shadow: 0 0 20px rgba(52, 211, 153, 0.2);
   }
 
   .btn-pulse:hover:not(:disabled) {
     @apply bg-primary/90 text-primary-content!;
-    box-shadow: 0 0 40px rgba(191, 255, 0, 0.5);
+    box-shadow: 0 0 40px rgba(52, 211, 153, 0.35);
     transform: translateY(-2px);
   }
 
@@ -469,9 +387,9 @@ pre,
     @apply bg-error/20 text-error border border-error/30 backdrop-blur-md;
   }
 
-  /* Pill Tags - Terminal Style */
+  /* Tags */
   .tag {
-    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-sm bg-base-300/50 border border-base-300/50 text-xs font-mono uppercase tracking-wider;
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-base-300/50 border border-base-300/50 text-xs font-medium;
   }
 
   .tag-primary {
@@ -487,8 +405,8 @@ pre,
      ========================================================================== */
 
   .input {
-    @apply h-10 w-full rounded-sm border border-base-300 bg-base-200/50 backdrop-blur-md px-4 py-2 text-sm transition-colors duration-200;
-    font-family: var(--font-mono);
+    @apply h-10 w-full rounded-lg border border-base-300 bg-base-200/50 backdrop-blur-md px-4 py-2 text-sm transition-colors duration-200;
+    font-family: var(--font-display);
   }
 
   .input:focus {
@@ -510,9 +428,9 @@ pre,
 
   /* Select */
   .select {
-    @apply h-10 w-full rounded-sm border border-base-300 bg-base-200/50 backdrop-blur-md px-4 py-2 text-sm transition-colors duration-200 appearance-none cursor-pointer;
-    font-family: var(--font-mono);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23e8e8ed' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    @apply h-10 w-full rounded-lg border border-base-300 bg-base-200/50 backdrop-blur-md px-4 py-2 text-sm transition-colors duration-200 appearance-none cursor-pointer;
+    font-family: var(--font-display);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23d8d8e2' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 0.75rem center;
     padding-right: 2.5rem;
@@ -523,38 +441,40 @@ pre,
   }
 
   /* ==========================================================================
-     CARDS - Terminal Frame System
+     CARDS - Clean Elevation System
      ========================================================================== */
 
   .card-frame {
-    @apply bg-base-200/60 backdrop-blur-xl border border-base-300 duration-300;
+    @apply bg-base-200/60 backdrop-blur-xl border border-base-300/60 rounded-xl duration-300;
     transition-property: color, background-color, border-color, box-shadow;
     transition-timing-function: var(--default-transition-timing-function);
   }
 
   .card-frame:hover {
-    @apply border-base-300/80;
+    @apply border-base-300;
   }
 
   .card-elevated {
-    @apply bg-base-200/70 backdrop-blur-xl border border-base-300 shadow-xl duration-300;
+    @apply bg-base-200/70 backdrop-blur-xl border border-base-300/60 rounded-xl duration-300;
     transition-property: color, background-color, border-color, box-shadow;
     transition-timing-function: var(--default-transition-timing-function);
+    box-shadow: var(--shadow-soft-sm);
   }
 
   .card-elevated:hover {
-    @apply border-primary/30 shadow-[0_0_50px_rgba(191,255,0,0.1)];
+    @apply border-base-300;
+    box-shadow: var(--shadow-soft-md);
   }
 
   .card-interactive {
-    @apply bg-base-200/50 backdrop-blur-xl border border-base-300 p-6 duration-300;
+    @apply bg-base-200/50 backdrop-blur-xl border border-base-300/60 rounded-xl p-6 duration-300;
     transition-property: color, background-color, border-color, box-shadow;
     transition-timing-function: var(--default-transition-timing-function);
   }
 
   .card-interactive:hover {
-    @apply border-primary/40 bg-base-200/70;
-    box-shadow: var(--shadow-glow-sm);
+    @apply border-base-300 bg-base-200/70;
+    box-shadow: var(--shadow-soft-sm);
     transform: translateY(-2px);
   }
 
@@ -567,7 +487,7 @@ pre,
   }
 
   .modal-content {
-    @apply bg-base-100/95 backdrop-blur-2xl border border-base-300 shadow-2xl w-full max-w-2xl relative;
+    @apply bg-base-100/95 backdrop-blur-2xl border border-base-300 shadow-2xl w-full max-w-2xl relative rounded-2xl;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   }
 
@@ -604,7 +524,7 @@ pre,
 }
 
 /* ==========================================================================
-   SCROLLBAR - Refined
+   SCROLLBAR - Clean
    ========================================================================== */
 
 ::-webkit-scrollbar {
@@ -631,7 +551,7 @@ pre,
 }
 
 /* ==========================================================================
-   SELECTION & CURSOR
+   SELECTION
    ========================================================================== */
 
 ::selection {
@@ -658,7 +578,7 @@ pre,
 }
 
 /* ==========================================================================
-   FOCUS STATES - Refined Accessibility
+   FOCUS STATES - Accessibility
    ========================================================================== */
 
 *:focus-visible {
@@ -698,7 +618,7 @@ a:hover {
 }
 
 .table th {
-  @apply px-4 py-3 text-left text-xs font-mono uppercase tracking-wider text-base-content/50 bg-base-300/30 border-b border-base-300;
+  @apply px-4 py-3 text-left text-xs font-medium text-base-content/50 bg-base-300/30 border-b border-base-300;
 }
 
 .table td {

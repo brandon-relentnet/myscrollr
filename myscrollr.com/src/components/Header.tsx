@@ -1,7 +1,6 @@
 import { Link, useLocation } from '@tanstack/react-router'
 import {
   ChevronRight,
-  Eye,
   House,
   LayoutDashboard,
   LogOut,
@@ -10,21 +9,17 @@ import {
   UserCircle,
   X,
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
 import type { IdTokenClaims } from '@logto/react'
 import { useScrollrAuth } from '@/hooks/useScrollrAuth'
 import ScrollrSVG from '@/components/ScrollrSVG'
-import { API_BASE } from '@/api/client'
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
   const { signIn, signOut, isAuthenticated, isLoading, getIdTokenClaims } =
     useScrollrAuth()
   const [userClaims, setUserClaims] = useState<IdTokenClaims>()
-
-  const [viewerCount, setViewerCount] = useState<number | null>(null)
-  const viewerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -33,21 +28,6 @@ export default function Header() {
       setUserClaims(undefined)
     }
   }, [isAuthenticated, getIdTokenClaims])
-
-  // Poll active viewer count every 15s
-  useEffect(() => {
-    const fetchCount = () => {
-      fetch(`${API_BASE}/events/count`)
-        .then((r) => r.json())
-        .then((d) => setViewerCount(d.count))
-        .catch(() => {})
-    }
-    fetchCount()
-    viewerIntervalRef.current = setInterval(fetchCount, 15000)
-    return () => {
-      if (viewerIntervalRef.current) clearInterval(viewerIntervalRef.current)
-    }
-  }, [])
 
   const handleSignIn = () => {
     signIn(`${window.location.origin}/callback`)
@@ -64,7 +44,7 @@ export default function Header() {
         {/* Brand */}
         <div className="flex items-center gap-4">
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="relative flex items-center justify-center rounded-sm border border-base-300/50 bg-base-200/50 p-2.5 transition-all hover:scale-105 transition-spring group-hover:border-primary/30 group-hover:shadow-[0_0_20px_rgba(191,255,0,0.1)]">
+            <div className="relative flex items-center justify-center rounded-xl border border-base-300/50 bg-base-200/50 p-2.5 transition-all hover:scale-105 transition-spring group-hover:border-primary/30 group-hover:shadow-[0_0_20px_rgba(52,211,153,0.1)]">
               <ScrollrSVG className="size-8" />
               {/* Online indicator */}
               <span className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5">
@@ -73,10 +53,10 @@ export default function Header() {
               </span>
             </div>
             <div className="flex flex-col">
-              <span className="font-bold text-xl tracking-tight uppercase font-display">
+              <span className="font-bold text-xl tracking-tight font-display">
                 Scrollr
               </span>
-              <span className="text-[9px] font-mono text-primary/50 uppercase tracking-[0.15em]">
+              <span className="text-[9px] text-primary/50">
                 Always Visible
               </span>
             </div>
@@ -115,25 +95,10 @@ export default function Header() {
         {/* Auth Section */}
         <div className="hidden lg:flex items-center gap-4 min-w-[280px] justify-end">
           {/* Viewer count — always visible */}
-          <div
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm bg-primary/8 border border-primary/15"
-            title="Users online"
-          >
-            <Eye size={12} className="text-primary/60" />
-            <span className="text-[11px] font-bold font-mono text-primary/80 tabular-nums">
-              {viewerCount ?? '—'}
-            </span>
-            <span className="text-[9px] font-mono text-primary/40 uppercase">
-              online
-            </span>
-          </div>
-
-          <div className="h-8 w-px bg-base-300/50" />
-
           {isLoading ? (
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-primary/40 animate-pulse" />
-              <span className="text-xs font-mono uppercase tracking-wider text-base-content/30">
+              <span className="text-xs text-base-content/30">
                 Initializing
               </span>
             </div>
@@ -142,7 +107,7 @@ export default function Header() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleSignOut}
-              className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border border-error/30 text-error/80 hover:bg-error/10 hover:border-error/50 transition-all rounded-sm cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2 text-xs font-semibold border border-error/30 text-error/80 hover:bg-error/10 hover:border-error/50 transition-all rounded-lg cursor-pointer"
             >
               <LogOut size={14} />
               Sign Out
@@ -168,7 +133,7 @@ export default function Header() {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setIsOpen(true)}
-          className="lg:hidden flex items-center justify-center p-3 rounded-sm border border-base-300/50 bg-base-200/50 hover:bg-base-200 hover:border-primary/30 transition-all cursor-pointer"
+          className="lg:hidden flex items-center justify-center p-3 rounded-lg border border-base-300/50 bg-base-200/50 hover:bg-base-200 hover:border-primary/30 transition-all cursor-pointer"
           aria-label="Open menu"
         >
           <Menu size={20} />
@@ -201,10 +166,10 @@ export default function Header() {
                 <div className="flex items-center gap-3">
                   <ScrollrSVG className="size-8" />
                   <div className="flex flex-col">
-                    <span className="font-bold text-lg uppercase tracking-tight">
+                    <span className="font-bold text-lg tracking-tight">
                       Scrollr
                     </span>
-                    <span className="text-[8px] font-mono text-primary/50 uppercase tracking-[0.15em]">
+                    <span className="text-[8px] text-primary/50">
                       Always Visible
                     </span>
                   </div>
@@ -213,7 +178,7 @@ export default function Header() {
                   whileHover={{ scale: 1.1, rotate: 90 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={() => setIsOpen(false)}
-                  className="p-2 rounded-sm hover:bg-base-300 transition-colors cursor-pointer"
+                  className="p-2 rounded-lg hover:bg-base-300 transition-colors cursor-pointer"
                   aria-label="Close menu"
                 >
                   <X size={20} />
@@ -261,24 +226,10 @@ export default function Header() {
 
               {/* Drawer Footer */}
               <div className="px-5 py-5 border-t border-base-300/50 space-y-3">
-                {/* Viewer count — always visible */}
-                <div
-                  className="flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-sm bg-primary/8 border border-primary/15"
-                  title="Users online"
-                >
-                  <Eye size={12} className="text-primary/60" />
-                  <span className="text-[11px] font-bold font-mono text-primary/80 tabular-nums">
-                    {viewerCount ?? '—'}
-                  </span>
-                  <span className="text-[9px] font-mono text-primary/40 uppercase">
-                    online
-                  </span>
-                </div>
-
                 {isLoading ? (
                   <div className="flex items-center justify-center gap-2 py-3">
                     <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-                    <span className="text-xs font-mono uppercase tracking-wider text-base-content/40">
+                    <span className="text-xs text-base-content/40">
                       Loading...
                     </span>
                   </div>
@@ -290,7 +241,7 @@ export default function Header() {
                       handleSignOut()
                       setIsOpen(false)
                     }}
-                    className="w-full flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold uppercase tracking-wider border border-error/30 text-error/80 hover:bg-error/10 hover:border-error/50 transition-all rounded-sm cursor-pointer"
+                    className="w-full flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold border border-error/30 text-error/80 hover:bg-error/10 hover:border-error/50 transition-all rounded-lg cursor-pointer"
                   >
                     <LogOut size={16} />
                     Sign Out
@@ -338,7 +289,7 @@ function NavLink({
   return (
     <Link
       to={to}
-      className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all rounded-sm relative ${
+      className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold transition-all rounded-lg relative ${
         isActive
           ? 'text-primary bg-primary/10'
           : 'text-base-content/50 hover:text-base-content hover:bg-base-200/50'
@@ -372,7 +323,7 @@ function MobileNavLink({
     <Link
       to={to}
       onClick={onClick}
-      className="flex items-center justify-between px-4 py-4 text-sm font-bold uppercase tracking-wider text-base-content/60 hover:text-primary hover:bg-base-300/50 transition-all rounded-sm group cursor-pointer"
+      className="flex items-center justify-between px-4 py-4 text-sm font-semibold text-base-content/60 hover:text-primary hover:bg-base-300/50 transition-all rounded-lg group cursor-pointer"
     >
       <span className="flex items-center gap-3">
         <span className="text-primary/0 group-hover:text-primary/60 transition-colors">

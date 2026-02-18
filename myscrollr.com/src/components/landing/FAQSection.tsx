@@ -54,13 +54,13 @@ export function FAQSection() {
           className="text-center mb-14 flex flex-col items-center"
         >
           <div className="flex items-center justify-center gap-3 mb-8">
-            <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-sm border border-primary/15 uppercase tracking-[0.2em]">
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-lg border border-primary/15 uppercase tracking-[0.2em]">
               <HelpCircle size={12} />
               FAQ
             </span>
           </div>
 
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight uppercase leading-[0.95] mb-5">
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-5">
             Common{' '}
             <span className="text-gradient-primary">Questions</span>
           </h2>
@@ -94,7 +94,7 @@ export function FAQSection() {
               }}
             >
               <div
-                className={`group relative bg-base-200/50 border rounded-sm overflow-hidden transition-colors ${
+                className={`group relative bg-base-200/50 border rounded-xl overflow-hidden transition-colors ${
                   openIndex === i
                     ? 'border-primary/20'
                     : 'border-base-300/50 hover:border-primary/10'
@@ -116,7 +116,7 @@ export function FAQSection() {
                   className="w-full flex items-center justify-between gap-4 px-6 py-5 text-left cursor-pointer"
                 >
                   <span
-                    className={`text-sm font-bold uppercase tracking-wider transition-colors ${
+                    className={`text-sm font-semibold transition-colors ${
                       openIndex === i
                         ? 'text-primary'
                         : 'text-base-content/70'
@@ -127,7 +127,7 @@ export function FAQSection() {
                   <motion.div
                     animate={{ rotate: openIndex === i ? 180 : 0 }}
                     transition={{ duration: 0.25, ease: 'easeInOut' }}
-                    className={`shrink-0 h-8 w-8 rounded-sm flex items-center justify-center transition-colors ${
+                    className={`shrink-0 h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${
                       openIndex === i
                         ? 'bg-primary/10 text-primary'
                         : 'bg-base-300/30 text-base-content/30'
@@ -173,7 +173,7 @@ export function FAQSection() {
           className="flex items-center justify-center gap-4 mt-8"
         >
           <span className="h-px w-8 bg-base-300/30" />
-          <span className="text-[10px] font-mono text-base-content/20 uppercase tracking-wider">
+          <span className="text-[10px] text-base-content/20">
             More questions? We're in Discord
           </span>
           <span className="h-px w-8 bg-base-300/30" />

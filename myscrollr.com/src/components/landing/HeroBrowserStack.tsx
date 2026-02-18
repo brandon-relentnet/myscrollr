@@ -13,7 +13,7 @@ const accentMap = {
   },
   primary: {
     borderActive: 'border-primary/25',
-    shadow: '0 0 30px rgba(191,255,0,0.08), 0 0 60px rgba(191,255,0,0.04)',
+    shadow: '0 0 30px rgba(52,211,153,0.08), 0 0 60px rgba(52,211,153,0.04)',
     chipBg: 'bg-primary/8',
     chipBorder: 'border-primary/20',
     chipText: 'text-primary',
@@ -352,7 +352,7 @@ export function HeroBrowserStack({ activeIndex }: HeroBrowserStackProps) {
               stiffness: 500,
               damping: 35,
             }}
-            className={`absolute inset-0 rounded-sm overflow-hidden flex flex-col border ${
+            className={`absolute inset-0 rounded-xl overflow-hidden flex flex-col border ${
               isFront ? colors.borderActive : 'border-base-300/40'
             } bg-base-200/80 backdrop-blur-sm`}
           >

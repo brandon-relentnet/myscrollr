@@ -242,14 +242,14 @@ function BrowserMockup() {
             rotate: 2,
             transition: { duration: 0.2 },
           }}
-          className="absolute top-6 right-6 sm:right-12 px-3 py-2 rounded-sm border border-primary/30 bg-base-200/80 backdrop-blur-sm shadow-lg cursor-default pointer-events-auto z-10"
+          className="absolute top-6 right-6 sm:right-12 px-3 py-2 rounded-lg border border-primary/30 bg-base-200/80 backdrop-blur-sm shadow-lg cursor-default pointer-events-auto z-10"
         >
-          <span className="flex items-center gap-2 text-primary">
+            <span className="flex items-center gap-2 text-primary">
             <span className="relative flex h-1.5 w-1.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
             </span>
-            <span className="text-[10px] font-bold font-mono uppercase tracking-wider">
+            <span className="text-[10px] font-bold font-mono">
               LIVE
             </span>
           </span>
@@ -265,13 +265,13 @@ function BrowserMockup() {
             rotate: -2,
             transition: { duration: 0.2 },
           }}
-          className="absolute bottom-20 left-4 sm:left-8 px-3 py-2 rounded-sm border border-info/30 bg-base-200/80 backdrop-blur-sm shadow-lg cursor-default pointer-events-auto z-10"
+          className="absolute bottom-20 left-4 sm:left-8 px-3 py-2 rounded-lg border border-info/30 bg-base-200/80 backdrop-blur-sm shadow-lg cursor-default pointer-events-auto z-10"
         >
           <span className="flex items-center gap-2">
             <span className="text-xs font-bold font-mono text-info">
               +2.47%
             </span>
-            <span className="text-[10px] font-mono text-base-content/40 uppercase tracking-wider">
+            <span className="text-[10px] font-mono text-base-content/40">
               BTC
             </span>
           </span>
@@ -287,20 +287,20 @@ function BrowserMockup() {
             rotate: 2,
             transition: { duration: 0.2 },
           }}
-          className="absolute bottom-10 right-8 sm:right-16 px-3 py-2 rounded-sm border border-secondary/30 bg-base-200/80 backdrop-blur-sm shadow-lg cursor-default pointer-events-auto z-10"
+          className="absolute bottom-10 right-8 sm:right-16 px-3 py-2 rounded-lg border border-secondary/30 bg-base-200/80 backdrop-blur-sm shadow-lg cursor-default pointer-events-auto z-10"
         >
           <span className="flex items-center gap-2">
             <span className="text-xs font-bold font-mono text-secondary">
               Q4 2:34
             </span>
-            <span className="text-[10px] font-mono text-base-content/40 uppercase tracking-wider">
+            <span className="text-[10px] font-mono text-base-content/40">
               LAL
             </span>
           </span>
         </motion.div>
       </div>
 
-      <div className="relative rounded-sm border border-base-300/60 overflow-hidden shadow-lg shadow-black/20 bg-base-200/60 backdrop-blur-sm">
+      <div className="relative rounded-xl border border-base-300/60 overflow-hidden shadow-lg shadow-black/20 bg-base-200/60 backdrop-blur-sm">
         {/* Browser chrome */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-base-300/40 bg-base-200/80">
           {/* Traffic lights */}
@@ -372,7 +372,7 @@ function BrowserMockup() {
         className="flex items-center justify-center gap-4 mt-5"
       >
         <span className="h-px w-8 bg-base-300/30" />
-        <span className="text-[10px] font-mono text-base-content/20 uppercase tracking-wider">
+        <span className="text-[10px] text-base-content/20">
           Your scrollbar feed, always visible
         </span>
         <span className="h-px w-8 bg-base-300/30" />
@@ -399,16 +399,12 @@ export function StreamsShowcase() {
           className="mb-14 text-center flex flex-col items-center"
         >
           <div className="flex items-center justify-center gap-3 mb-8">
-            <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-sm border border-primary/15 uppercase tracking-[0.2em]">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
-              </span>
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-lg border border-primary/15 uppercase tracking-[0.2em]">
               Live Streams
             </span>
           </div>
 
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight uppercase leading-[0.95] mb-5">
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-5">
             See It <span className="text-gradient-primary">In Action</span>
           </h2>
           <p className="text-sm text-base-content/40 max-w-xl mx-auto leading-relaxed">
@@ -439,7 +435,7 @@ export function StreamsShowcase() {
                 y: -3,
                 transition: { type: 'tween', duration: 0.2 },
               }}
-              className={`group relative bg-base-200/50 border border-base-300/50 rounded-sm p-6 ${cardAccentMap[integration.accent].hoverBorder} transition-colors overflow-hidden`}
+              className={`group relative bg-base-200/50 border border-base-300/50 rounded-xl p-6 ${cardAccentMap[integration.accent].hoverBorder} transition-colors overflow-hidden`}
             >
               {/* Hover gradient */}
               <div
@@ -455,7 +451,7 @@ export function StreamsShowcase() {
                 {/* Icon + color dot */}
                 <div className="flex items-center justify-between mb-5">
                   <div
-                    className={`h-10 w-10 rounded-sm bg-base-300/30 border border-base-300/40 flex items-center justify-center ${integration.color}`}
+                    className={`h-10 w-10 rounded-xl bg-base-300/30 border border-base-300/40 flex items-center justify-center ${integration.color}`}
                   >
                     {integration.icon}
                   </div>
@@ -465,11 +461,11 @@ export function StreamsShowcase() {
                 </div>
 
                 {/* Content */}
-                <h3 className="text-sm font-bold uppercase tracking-wider text-base-content mb-1">
+                <h3 className="text-sm font-bold text-base-content mb-1">
                   {integration.name}
                 </h3>
                 <p
-                  className={`text-[10px] font-mono uppercase tracking-wider ${integration.color} opacity-60 mb-3`}
+                  className={`text-[10px] ${integration.color} opacity-60 mb-3`}
                 >
                   {integration.label}
                 </p>
@@ -479,7 +475,7 @@ export function StreamsShowcase() {
 
                 {/* Example chip */}
                 <div className="pt-4 border-t border-base-300/30">
-                  <span className="text-[10px] font-mono text-base-content/20 uppercase tracking-wider">
+                  <span className="text-[10px] text-base-content/20">
                     In your feed:
                   </span>
                   <span
@@ -503,7 +499,7 @@ export function StreamsShowcase() {
         >
           <Link
             to="/integrations"
-            className="group inline-flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-base-content/40 hover:text-primary transition-colors"
+            className="group inline-flex items-center gap-2 text-sm font-semibold text-base-content/40 hover:text-primary transition-colors"
           >
             Browse All Integrations
             <ArrowRight
@@ -512,7 +508,7 @@ export function StreamsShowcase() {
             />
           </Link>
           <span className="h-4 w-px bg-base-300/30" />
-          <span className="text-[10px] font-mono text-base-content/20 uppercase tracking-wider flex items-center gap-2">
+          <span className="text-[10px] text-base-content/20 flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-success/40" />4 live
             &middot; 6 coming soon
           </span>

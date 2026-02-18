@@ -67,7 +67,7 @@ export default function InstallButton({ className = '' }: InstallButtonProps) {
   }, [chromeStoreUrl, firefoxAddonUrl])
 
   const baseClasses =
-    'btn-pulse inline-flex items-center justify-center gap-2 px-6 py-3 font-semibold text-sm uppercase tracking-wider'
+    'btn-pulse inline-flex items-center justify-center gap-2 px-6 py-3 font-semibold text-sm'
   const composedClassName = [baseClasses, className].filter(Boolean).join(' ')
 
   return (

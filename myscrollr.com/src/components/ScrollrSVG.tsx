@@ -16,7 +16,7 @@ function ScrollrSVG({ width = 48, height = 48, className = '' }) {
       <defs>
         {/* Gradient for the pulse line */}
         <linearGradient id="pulseGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="var(--color-primary, #bfff00)" />
+          <stop offset="0%" stopColor="var(--color-primary, #34d399)" />
           <stop offset="50%" stopColor="var(--color-info, #00d4ff)" />
           <stop offset="100%" stopColor="var(--color-secondary, #ff4757)" />
         </linearGradient>
@@ -64,7 +64,7 @@ function ScrollrSVG({ width = 48, height = 48, className = '' }) {
         cx="95"
         cy="50"
         r="4"
-        fill="var(--color-primary, #bfff00)"
+        fill="var(--color-primary, #34d399)"
         filter="url(#pulseGlow)"
         animate={{
           scale: [1, 1.5, 1],

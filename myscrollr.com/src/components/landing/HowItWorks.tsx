@@ -64,16 +64,12 @@ export function HowItWorks() {
         className="mb-16 text-center"
       >
         <div className="flex items-center justify-center gap-3 mb-8">
-          <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-sm border border-primary/15 uppercase tracking-[0.2em]">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
-            </span>
+          <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-lg border border-primary/15 uppercase tracking-[0.2em]">
             How It Works
           </span>
         </div>
 
-        <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight uppercase leading-[0.95] mb-5">
+        <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-5">
           Three Steps to{' '}
           <span className="text-gradient-primary">Your Feed</span>
         </h2>
@@ -110,7 +106,7 @@ export function HowItWorks() {
               className="group relative"
             >
               <div
-                className={`relative bg-base-200/50 border border-base-300/50 rounded-sm p-8 ${accentMap[step.accent].hoverBorder} transition-colors overflow-hidden`}
+                className={`relative bg-base-200/50 border border-base-300/50 rounded-xl p-8 ${accentMap[step.accent].hoverBorder} transition-colors overflow-hidden`}
               >
                 {/* Hover gradient */}
                 <div
@@ -125,18 +121,18 @@ export function HowItWorks() {
                 <div className="relative z-10">
                   {/* Number + Icon row */}
                   <div className="flex items-center justify-between mb-6">
-                    <span className="text-5xl font-black text-base-content/[0.06] tracking-tighter font-mono leading-none select-none">
+                    <span className="text-5xl font-black text-base-content/[0.06] tracking-tighter leading-none select-none">
                       {step.number}
                     </span>
                     <div
-                      className={`h-11 w-11 rounded-sm flex items-center justify-center ${accentMap[step.accent].icon}`}
+                      className={`h-11 w-11 rounded-xl flex items-center justify-center ${accentMap[step.accent].icon}`}
                     >
                       {step.icon}
                     </div>
                   </div>
 
                   {/* Content */}
-                  <h3 className="text-lg font-bold uppercase tracking-wider text-base-content mb-3">
+                  <h3 className="text-lg font-bold text-base-content mb-3">
                     {step.title}
                   </h3>
                   <p className="text-sm text-base-content/40 leading-relaxed">

@@ -1,17 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { motion } from 'motion/react'
-import {
-  ArrowUpRight,
-  Braces,
-  Code2,
-  Cpu,
-  Database,
-  Github,
-  Paintbrush,
-  Server,
-  Terminal,
-  Zap,
-} from 'lucide-react'
+import { ArrowUpRight, Github } from 'lucide-react'
 import ScrollrSVG from '@/components/ScrollrSVG'
 
 export default function Footer() {
@@ -47,17 +36,6 @@ export default function Footer() {
     ],
   }
 
-  const techStack = [
-    { icon: Terminal, label: 'Rust', desc: 'Ingestion Services' },
-    { icon: Cpu, label: 'Go', desc: 'API Layer' },
-    { icon: Database, label: 'PostgreSQL', desc: 'Data Storage' },
-    { icon: Server, label: 'Redis', desc: 'Cache & Pub/Sub' },
-    { icon: Braces, label: 'React', desc: 'Frontend UI' },
-    { icon: Code2, label: 'TypeScript', desc: 'Type Safety' },
-    { icon: Paintbrush, label: 'Tailwind', desc: 'Styling' },
-    { icon: Zap, label: 'Vite', desc: 'Build Tool' },
-  ]
-
   return (
     <footer className="relative bg-base-200/30 border-t border-base-300/50 overflow-hidden">
       {/* Background Grid */}
@@ -65,8 +43,8 @@ export default function Footer() {
         className="absolute inset-0 opacity-[0.02] pointer-events-none"
         style={{
           backgroundImage: `
-            linear-gradient(rgba(191, 255, 0, 0.3) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(191, 255, 0, 0.3) 1px, transparent 1px)
+            linear-gradient(rgba(52, 211, 153, 0.3) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(52, 211, 153, 0.3) 1px, transparent 1px)
           `,
           backgroundSize: '60px 60px',
         }}
@@ -92,10 +70,10 @@ export default function Footer() {
                 </span>
               </motion.div>
               <div className="flex flex-col">
-                <span className="font-bold text-2xl tracking-tight uppercase font-display">
+                <span className="font-bold text-2xl tracking-tight font-display">
                   Scrollr
                 </span>
-                <span className="text-[10px] font-mono text-primary/40 uppercase tracking-[0.2em]">
+                <span className="text-[10px] text-primary/40">
                   v2.1.0
                 </span>
               </div>
@@ -117,7 +95,7 @@ export default function Footer() {
           <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-8 lg:gap-12">
             {/* Product */}
             <div className="space-y-5">
-              <h4 className="text-xs font-bold font-mono uppercase tracking-[0.2em] text-primary/80">
+              <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-primary/80">
                 Product
               </h4>
               <ul className="space-y-3">
@@ -156,7 +134,7 @@ export default function Footer() {
 
             {/* Resources */}
             <div className="space-y-5">
-              <h4 className="text-xs font-bold font-mono uppercase tracking-[0.2em] text-primary/80">
+              <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-primary/80">
                 Resources
               </h4>
               <ul className="space-y-3">
@@ -195,7 +173,7 @@ export default function Footer() {
 
             {/* Company */}
             <div className="space-y-5">
-              <h4 className="text-xs font-bold font-mono uppercase tracking-[0.2em] text-primary/80">
+              <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-primary/80">
                 Company
               </h4>
               <ul className="space-y-3">
@@ -234,39 +212,17 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Tech Stack Bar */}
-        <div className="relative mb-12">
-          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-gradient-to-r from-transparent via-base-300/50 to-transparent" />
-          <div className="relative flex flex-wrap items-center justify-center gap-6 lg:gap-12">
-            {techStack.map((tech, index) => (
-              <motion.div
-                key={tech.label}
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="flex items-center gap-2 px-4 py-2 rounded-sm bg-base-200/50 border border-base-300/30"
-              >
-                <tech.icon size={14} className="text-primary/60" />
-                <span className="text-xs font-bold font-mono uppercase tracking-wider text-base-content/60">
-                  {tech.label}
-                </span>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-
         {/* Bottom Bar */}
         <div className="flex flex-col lg:flex-row items-center justify-between gap-6 pt-8 border-t border-base-300/30">
           {/* Copyright */}
           <div className="flex items-center gap-3">
-            <span className="text-xs font-mono text-base-content/40 uppercase tracking-wider">
+            <span className="text-xs text-base-content/40">
               © {year} Scrollr
             </span>
-            <span className="hidden sm:inline text-xs font-mono text-base-content/20">
+            <span className="hidden sm:inline text-xs text-base-content/20">
               ·
             </span>
-            <span className="flex items-center gap-2 text-xs font-mono text-base-content/40 uppercase tracking-wider">
+            <span className="flex items-center gap-2 text-xs text-base-content/40">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-50" />
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
@@ -289,7 +245,7 @@ export default function Footer() {
                   transition: { type: 'tween', duration: 0.2 },
                 }}
                 whileTap={{ scale: 0.95 }}
-                className="flex items-center justify-center w-10 h-10 rounded-sm bg-base-200/50 border border-base-300/30 text-base-content/40 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors cursor-pointer"
+                className="flex items-center justify-center w-10 h-10 rounded-lg bg-base-200/50 border border-base-300/30 text-base-content/40 hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors cursor-pointer"
                 aria-label={social.label}
               >
                 <social.icon size={16} />
@@ -304,7 +260,7 @@ export default function Footer() {
 
 function StatusBadge({ status }: { status: 'online' | 'live' }) {
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-sm bg-primary/5 border border-primary/10">
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/5 border border-primary/10">
       <span className="relative flex h-1.5 w-1.5">
         {status === 'live' && (
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
@@ -315,7 +271,7 @@ function StatusBadge({ status }: { status: 'online' | 'live' }) {
           }`}
         />
       </span>
-      <span className="text-[10px] font-mono uppercase tracking-wider text-base-content/50">
+      <span className="text-[10px] text-base-content/50">
         {status === 'online' ? 'Online' : 'Live Data'}
       </span>
     </div>
