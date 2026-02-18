@@ -28,7 +28,7 @@ const FAQ_ITEMS: Array<FAQItem> = [
   {
     icon: Gift,
     question: 'Is Scrollr really free?',
-    highlight: 'Free forever. No trials, no ads, no paywalls.',
+    highlight: 'Completely free with no trials, ads, or paywalls — ever.',
     answer:
       'Completely free, no strings attached. There are no trials, no premium gates on core features, and no ads. The entire codebase is open source under the AGPL-3.0 license — you can inspect every line.',
     accent: 'emerald',
@@ -36,7 +36,8 @@ const FAQ_ITEMS: Array<FAQItem> = [
   {
     icon: Zap,
     question: 'Does it slow down my browser?',
-    highlight: 'One connection. 50 items max. Zero disk writes.',
+    highlight:
+      'A single background connection handles everything — lightweight by design.',
     answer:
       'Not noticeably. All data flows through a single connection in the background — not one per tab. The feed bar runs in an isolated Shadow DOM with at most 50 items in memory, and nothing gets written to disk.',
     accent: 'amber',
@@ -44,7 +45,7 @@ const FAQ_ITEMS: Array<FAQItem> = [
   {
     icon: ShieldCheck,
     question: 'Is my browsing data private?',
-    highlight: 'Zero analytics. Zero tracking. Zero telemetry.',
+    highlight: 'No analytics, no tracking pixels, and no telemetry — period.',
     answer:
       "The extension contains zero analytics, zero tracking pixels, and zero telemetry. Your preferences are stored in your browser's local extension storage and never transmitted anywhere. The only network requests go to the Scrollr API to fetch your feed data.",
     accent: 'sky',
@@ -52,7 +53,7 @@ const FAQ_ITEMS: Array<FAQItem> = [
   {
     icon: Globe,
     question: 'What browsers are supported?',
-    highlight: 'Chrome, Firefox, Edge, Safari, Brave, and more.',
+    highlight: 'Works on every major browser right out of the box.',
     answer:
       'Any Chromium-based browser works out of the box. Scrollr is available on the Chrome Web Store and Firefox Add-ons, covering virtually every modern desktop browser.',
     accent: 'violet',
@@ -60,7 +61,7 @@ const FAQ_ITEMS: Array<FAQItem> = [
   {
     icon: UserX,
     question: 'Do I need an account?',
-    highlight: 'No sign-up needed. Install and go.',
+    highlight: 'Just install and go — no sign-up required to start.',
     answer:
       'Install the extension and you\u2019ll immediately receive live stock and sports data with no sign-up. Creating a free account unlocks all four integrations (finance, sports, news, and fantasy), the web dashboard, and cross-device preference sync.',
     accent: 'rose',
@@ -68,7 +69,8 @@ const FAQ_ITEMS: Array<FAQItem> = [
   {
     icon: Layers,
     question: 'What data does Scrollr show?',
-    highlight: 'Stocks, scores, news, and fantasy — all live.',
+    highlight:
+      'Live stocks, scores, news headlines, and fantasy updates in one feed.',
     answer:
       'Four integrations: real-time stock and crypto prices, live sports scores across major leagues, RSS news headlines from hundreds of sources, and Yahoo Fantasy league updates including standings and matchups.',
     accent: 'cyan',
@@ -76,7 +78,8 @@ const FAQ_ITEMS: Array<FAQItem> = [
   {
     icon: SlidersHorizontal,
     question: 'Can I customize the feed?',
-    highlight: 'Position, size, mode, tabs, per-site rules — all yours.',
+    highlight:
+      'Adjust everything from position and size to per-site visibility.',
     answer:
       'Position the bar at the top or bottom of your screen, drag to resize the height, switch between comfort and compact modes, choose overlay or push behavior, pick which integrations appear as tabs, and choose which websites show or hide the feed.',
     accent: 'orange',
@@ -84,7 +87,7 @@ const FAQ_ITEMS: Array<FAQItem> = [
   {
     icon: Code,
     question: 'Is Scrollr open source?',
-    highlight: 'Fully open source. AGPL-3.0. Every line.',
+    highlight: 'Every line of code is public — inspect, fork, or contribute.',
     answer:
       'Every component — the browser extension, the web app, the API, and all integration services — is publicly available on GitHub under the GNU Affero General Public License v3.0. You can inspect, fork, or contribute to any part of it.',
     accent: 'fuchsia',
@@ -203,7 +206,7 @@ function AnswerPanel({ item }: { item: FAQItem }) {
       </p>
 
       {/* ── Divider ── */}
-      <div className="relative flex items-center gap-3 mb-4">
+      <div className="relative flex items-center gap-3 mb-6">
         <div
           className="h-px flex-1"
           style={{
@@ -407,7 +410,7 @@ export function FAQSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.6, ease: EASE }}
-          className="flex flex-col items-center text-center mb-12 lg:mb-14"
+          className="flex flex-col items-center text-center mb-14 lg:mb-16"
         >
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4 text-center">
             Common <span className="text-gradient-primary">Questions</span>
