@@ -242,14 +242,14 @@ function DashboardPage() {
               <span
                 className={`h-1.5 w-1.5 rounded-full ${status === 'connected' ? 'bg-primary' : 'bg-secondary'} animate-pulse`}
               />
-              <span className="text-[10px] font-mono font-bold text-primary uppercase tracking-[0.25em]">
+              <span className="text-[10px] font-semibold text-primary uppercase tracking-wide">
                 Dashboard
               </span>
             </div>
-            <h1 className="text-4xl font-black uppercase tracking-tight">
+            <h1 className="text-4xl font-black tracking-tight">
               Your <span className="text-primary">Streams</span>
             </h1>
-            <p className="text-xs text-base-content/40 uppercase tracking-wide">
+            <p className="text-xs text-base-content/40">
               {userClaims?.name || userClaims?.email} · Manage your ticker data
             </p>
           </div>
@@ -283,10 +283,10 @@ function DashboardPage() {
                       stiffness: 500,
                       damping: 30,
                     }}
-                    className="absolute right-0 top-full mt-2 w-56 bg-base-100 border border-base-300/60 rounded-sm shadow-xl z-50 overflow-hidden"
+                    className="absolute right-0 top-full mt-2 w-56 bg-base-100 border border-base-300/60 rounded-lg shadow-xl z-50 overflow-hidden"
                   >
                     <div className="p-2">
-                      <p className="text-[9px] font-bold text-base-content/30 uppercase tracking-widest px-2 py-1.5">
+                      <p className="text-[9px] font-semibold text-base-content/30 uppercase tracking-wide px-2 py-1.5">
                         Available Integrations
                       </p>
                       {availableTypes.map((manifest) => {
@@ -297,13 +297,13 @@ function DashboardPage() {
                             onClick={() =>
                               handleAddStream(manifest.id as StreamType)
                             }
-                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-sm hover:bg-primary/8 text-left transition-colors group"
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-primary/8 text-left transition-colors group"
                           >
                             <span className="text-base-content/40 group-hover:text-primary transition-colors">
                               <Icon size={14} />
                             </span>
                             <div>
-                              <span className="text-xs font-bold uppercase tracking-wide block">
+                              <span className="text-xs font-semibold block">
                                 {manifest.tabLabel}
                               </span>
                               <span className="text-[9px] text-base-content/30">
@@ -320,7 +320,7 @@ function DashboardPage() {
             </div>
             <button
               onClick={() => setSettingsOpen(true)}
-              className="p-2.5 rounded-sm border border-base-300 hover:border-primary/30 transition-all text-base-content/50 hover:text-primary"
+              className="p-2.5 rounded-lg border border-base-300 hover:border-primary/30 transition-all text-base-content/50 hover:text-primary"
               title="Settings"
             >
               <Settings2 size={16} />
@@ -343,7 +343,7 @@ function DashboardPage() {
             variants={sectionVariants}
           >
             <div>
-              <p className="text-[10px] font-bold text-base-content/30 uppercase tracking-widest mb-3 px-1">
+              <p className="text-[10px] font-semibold text-base-content/30 uppercase tracking-wide mb-3 px-1">
                 Active Streams
               </p>
               <nav className="flex flex-col gap-1">
@@ -352,7 +352,7 @@ function DashboardPage() {
                     <motion.span
                       animate={{ opacity: [0.3, 0.7, 0.3] }}
                       transition={{ duration: 1.5, repeat: Infinity }}
-                      className="text-[10px] font-mono text-base-content/30 uppercase"
+                      className="text-[10px] text-base-content/30"
                     >
                       Loading...
                     </motion.span>
@@ -378,8 +378,8 @@ function DashboardPage() {
             </div>
 
             {/* Quick Stats */}
-            <div className="bg-base-200/40 border border-base-300/50 rounded-sm p-4 space-y-4">
-              <p className="text-[10px] font-bold text-base-content/30 uppercase tracking-widest">
+            <div className="bg-base-200/40 border border-base-300/50 rounded-xl p-4 space-y-4">
+              <p className="text-[10px] font-semibold text-base-content/30 uppercase tracking-wide">
                 Overview
               </p>
               <div className="space-y-3">
@@ -417,7 +417,7 @@ function DashboardPage() {
 
           {/* Main Content Area */}
           <motion.main
-            className="lg:col-span-9 bg-base-200/20 border border-base-300/40 rounded-sm p-8 min-h-[500px]"
+            className="lg:col-span-9 bg-base-200/20 border border-base-300/40 rounded-xl p-8 min-h-[500px]"
             variants={sectionVariants}
           >
             <motion.div
@@ -455,7 +455,7 @@ function DashboardPage() {
                     className="mx-auto text-base-content/15"
                   />
                   <div className="space-y-2">
-                    <p className="text-sm font-bold uppercase text-base-content/40">
+                    <p className="text-sm font-semibold text-base-content/40">
                       No Streams Yet
                     </p>
                     <p className="text-xs text-base-content/25">
@@ -482,7 +482,7 @@ function DashboardPage() {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => setAddStreamOpen(true)}
-                      className="text-[10px] font-bold uppercase tracking-widest text-base-content/30 hover:text-base-content/50 transition-colors flex items-center gap-1.5"
+                      className="text-[10px] font-semibold uppercase tracking-wide text-base-content/30 hover:text-base-content/50 transition-colors flex items-center gap-1.5"
                     >
                       <Plus size={12} />
                       Add Stream
@@ -490,7 +490,7 @@ function DashboardPage() {
                     <span className="text-base-content/10">|</span>
                     <Link
                       to="/integrations"
-                      className="text-[10px] font-bold uppercase tracking-widest text-primary/40 hover:text-primary/70 transition-colors flex items-center gap-1.5"
+                      className="text-[10px] font-semibold uppercase tracking-wide text-primary/40 hover:text-primary/70 transition-colors flex items-center gap-1.5"
                     >
                       <Puzzle size={12} />
                       Browse Integrations
@@ -531,7 +531,7 @@ function StreamNavButton({
   return (
     <button
       onClick={onClick}
-      className={`flex items-center justify-between p-3.5 rounded-sm transition-all text-left group ${
+      className={`flex items-center justify-between p-3.5 rounded-lg transition-all text-left group ${
         active
           ? 'bg-primary/8 border border-primary/20 text-primary'
           : 'text-base-content/40 hover:bg-base-200/60 hover:text-base-content/70 border border-transparent'
@@ -539,7 +539,7 @@ function StreamNavButton({
     >
       <div className="flex items-center gap-3">
         {icon}
-        <span className="text-xs font-semibold uppercase tracking-wide">
+        <span className="text-xs font-semibold">
           {label}
         </span>
       </div>
@@ -563,10 +563,10 @@ function QuickStat({
 }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-xs text-base-content/40 uppercase tracking-wide">
+      <span className="text-xs text-base-content/40">
         {label}
       </span>
-      <span className={`text-sm font-bold font-mono ${color}`}>{value}</span>
+      <span className={`text-sm font-semibold font-mono ${color}`}>{value}</span>
     </div>
   )
 }

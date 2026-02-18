@@ -92,16 +92,12 @@ function AccountHub() {
         <div className="container relative z-10">
           <motion.div className="max-w-4xl" variants={sectionVariants}>
             <div className="flex items-center gap-3 mb-6">
-              <span className="px-3 py-1 bg-primary/8 text-primary text-[10px] font-bold rounded-sm border border-primary/15 uppercase tracking-[0.2em] flex items-center gap-2">
-                <ShieldCheck size={14} /> session_active
-              </span>
-              <span className="h-px w-12 bg-base-300" />
-              <span className="text-[10px] font-mono text-base-content/30 uppercase">
-                Protocol: OAuth2.0
+              <span className="px-3 py-1 bg-primary/8 text-primary text-[10px] font-semibold rounded-lg border border-primary/15 uppercase tracking-wide flex items-center gap-2">
+                <ShieldCheck size={14} /> Session Active
               </span>
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-black tracking-tight uppercase mb-8 leading-none">
+            <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-8 leading-none">
               Welcome back,
               <br />
               <span className="text-primary">
@@ -169,41 +165,41 @@ function AccountHub() {
         >
           <Link
             to="/status"
-            className="bg-base-200/50 border border-base-300/50 rounded-sm p-8 hover:border-primary/30 transition-all block group"
+            className="bg-base-200/50 border border-base-300/50 rounded-xl p-8 hover:border-primary/30 transition-all block group"
           >
-            <h3 className="text-sm font-bold uppercase tracking-widest text-primary mb-4 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-primary mb-4 flex items-center gap-2">
               <Settings size={16} /> System Status
             </h3>
             <p className="text-sm text-base-content/50 mb-6">
               Monitor infrastructure health, ingestion workers, and live
               connection status.
             </p>
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary/60 group-hover:text-primary transition-colors">
+            <div className="flex items-center gap-2 text-xs font-semibold text-primary/60 group-hover:text-primary transition-colors">
               View Status Dashboard
               <ArrowRight size={14} />
             </div>
           </Link>
 
-          <div className="bg-base-200/50 border border-base-300/50 rounded-sm p-8 relative overflow-hidden group">
+          <div className="bg-base-200/50 border border-base-300/50 rounded-xl p-8 relative overflow-hidden group">
             <div className="relative z-10">
-              <h3 className="text-sm font-bold uppercase tracking-widest text-secondary mb-6 flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-secondary mb-6 flex items-center gap-2">
                 <TrendingUp size={16} /> Quick Stats
               </h3>
               <div className="grid grid-cols-2 gap-4 text-center">
-                <div className="p-4 bg-base-300/50 rounded-sm">
+                <div className="p-4 bg-base-300/50 rounded-lg">
                   <div className="text-2xl font-black text-base-content tabular-nums">
                     {streamCount ?? '—'}
                   </div>
-                  <div className="text-[10px] uppercase font-mono opacity-40 flex items-center justify-center gap-1">
+                  <div className="text-[10px] opacity-40 flex items-center justify-center gap-1">
                     <Radio size={10} />
                     Streams
                   </div>
                 </div>
-                <div className="p-4 bg-base-300/50 rounded-sm">
+                <div className="p-4 bg-base-300/50 rounded-lg">
                   <div className="text-2xl font-black text-base-content tabular-nums">
                     {enabledCount ?? '—'}
                   </div>
-                  <div className="text-[10px] uppercase font-mono opacity-40 flex items-center justify-center gap-1">
+                  <div className="text-[10px] opacity-40 flex items-center justify-center gap-1">
                     <Wifi size={10} />
                     Active
                   </div>
@@ -216,15 +212,15 @@ function AccountHub() {
           </div>
 
           {/* Subscription Status */}
-          <div className="bg-base-200/50 border border-base-300/50 rounded-sm p-8 relative overflow-hidden">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-primary mb-6 flex items-center gap-2">
+          <div className="bg-base-200/50 border border-base-300/50 rounded-xl p-8 relative overflow-hidden">
+            <h3 className="text-sm font-semibold text-primary mb-6 flex items-center gap-2">
               <Crown size={16} /> Subscription
             </h3>
             <SubscriptionStatus getToken={getToken} />
             <Link
               to="/uplink"
               search={{ session_id: undefined }}
-              className="mt-4 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary/60 hover:text-primary transition-colors"
+              className="mt-4 flex items-center gap-2 text-xs font-semibold text-primary/60 hover:text-primary transition-colors"
             >
               View Plans <ArrowRight size={14} />
             </Link>
@@ -265,7 +261,7 @@ function HubCard({
   const content = (
     <motion.div
       whileHover={disabled ? undefined : { y: -3, transition: { type: 'tween', duration: 0.2 } }}
-      className={`p-8 rounded-sm border transition-colors h-full flex flex-col justify-between group relative overflow-hidden ${disabled ? 'bg-base-200/50 border-base-300/50 opacity-50 cursor-not-allowed' : 'bg-base-200/50 border border-base-300/50 hover:border-primary/30 cursor-pointer'}`}
+      className={`p-8 rounded-xl border transition-colors h-full flex flex-col justify-between group relative overflow-hidden ${disabled ? 'bg-base-200/50 border-base-300/50 opacity-50 cursor-not-allowed' : 'bg-base-200/50 border border-base-300/50 hover:border-primary/30 cursor-pointer'}`}
     >
       {!disabled && (
         <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -275,24 +271,24 @@ function HubCard({
 
       <div className="space-y-6">
         <div
-          className={`h-10 w-10 rounded-sm flex items-center justify-center border ${accentClasses}`}
+          className={`h-10 w-10 rounded-xl flex items-center justify-center border ${accentClasses}`}
         >
           {icon}
         </div>
         <div>
           <h3
-            className={`text-lg font-black uppercase tracking-tight ${disabled ? 'text-base-content/40' : 'text-base-content group-hover:text-primary transition-colors'}`}
+            className={`text-lg font-bold tracking-tight ${disabled ? 'text-base-content/40' : 'text-base-content group-hover:text-primary transition-colors'}`}
           >
             {title}
           </h3>
-          <p className="text-xs uppercase font-mono text-base-content/40 mt-2 leading-relaxed">
+          <p className="text-xs text-base-content/40 mt-2 leading-relaxed">
             {desc}
           </p>
         </div>
       </div>
 
       {disabled && (
-        <div className="mt-6 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-base-content/20">
+        <div className="mt-6 flex items-center gap-2 text-[10px] font-medium text-base-content/20">
           <Lock size={10} /> Encrypted
         </div>
       )}

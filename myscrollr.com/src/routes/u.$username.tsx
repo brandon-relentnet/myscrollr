@@ -116,10 +116,10 @@ function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen text-primary flex items-center justify-center font-mono">
+      <div className="min-h-screen text-primary flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="animate-spin h-12 w-12 text-primary mx-auto" />
-          <p className="uppercase tracking-[0.2em] text-xs">
+          <p className="text-xs text-primary/60">
             Accessing Identity_Logs...
           </p>
         </div>
@@ -130,23 +130,23 @@ function ProfilePage() {
   // Sign-in prompt for unauthenticated users
   if (username === 'me' && !isAuthenticated) {
     return (
-      <div className="min-h-screen text-base-content flex items-center justify-center p-6 font-mono">
+      <div className="min-h-screen text-base-content flex items-center justify-center p-6">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.4 }}
-          className="text-center space-y-6 max-w-md border border-base-300/50 p-12 rounded-sm bg-base-200/50"
+          className="text-center space-y-6 max-w-md border border-base-300/50 p-12 rounded-xl bg-base-200/50"
         >
           <AlertCircle className="h-16 w-16 text-warning mx-auto mb-4" />
-          <h1 className="text-2xl font-bold tracking-[0.2em] uppercase">
+          <h1 className="text-2xl font-bold">
             Auth Required
           </h1>
-          <p className="text-base-content/60 uppercase text-xs leading-loose">
+          <p className="text-base-content/60 text-xs leading-loose">
             Identity verification required to access private profile node.
           </p>
           <a
             href={`${window.location.origin}/callback`}
-            className="inline-flex items-center justify-center px-8 py-2.5 rounded-sm bg-primary text-primary-content text-[11px] font-bold uppercase tracking-[0.15em] hover:brightness-110 transition-all"
+            className="inline-flex items-center justify-center px-8 py-2.5 rounded-lg bg-primary text-primary-content text-[11px] font-semibold hover:brightness-110 transition-all"
           >
             Sign In
           </a>
@@ -168,7 +168,7 @@ function ProfilePage() {
         {/* Profile Header */}
         <motion.div
           variants={sectionVariants}
-          className="bg-base-200/50 border border-base-300/50 rounded-sm p-10 relative overflow-hidden"
+          className="bg-base-200/50 border border-base-300/50 rounded-xl p-10 relative overflow-hidden"
         >
           {/* Accent decoration */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full border-l border-b border-primary/10" />
@@ -178,17 +178,17 @@ function ProfilePage() {
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.2, type: 'spring' }}
-              className="h-28 w-28 rounded-sm bg-primary/8 border border-primary/15 flex items-center justify-center text-4xl font-black text-primary uppercase"
+              className="h-28 w-28 rounded-lg bg-primary/8 border border-primary/15 flex items-center justify-center text-4xl font-black text-primary uppercase"
             >
               {profile.username ? profile.username[0] : '?'}
             </motion.div>
             <div className="flex-1 space-y-4">
               <div className="space-y-1">
                 <div className="flex items-center justify-center md:justify-start gap-3">
-                  <h1 className="text-4xl font-black tracking-tight uppercase">
+                  <h1 className="text-4xl font-black tracking-tight">
                     @{profile.username}
                   </h1>
-                  <span className="px-3 py-1 bg-success/10 text-success text-[10px] font-bold rounded-sm border border-success/20 flex items-center gap-1.5 uppercase tracking-widest">
+                  <span className="px-3 py-1 bg-success/10 text-success text-[10px] font-bold rounded-lg border border-success/20 flex items-center gap-1.5 uppercase tracking-wide">
                     <Shield size={12} /> Active
                   </span>
                 </div>
@@ -200,10 +200,10 @@ function ProfilePage() {
                   )}
               </div>
               <div className="flex flex-wrap justify-center md:justify-start gap-2 pt-2">
-                <div className="px-3 py-1 bg-base-300/50 border border-base-300/50 rounded-sm text-[10px] font-mono uppercase text-base-content/40">
+                <div className="px-3 py-1 bg-base-300/50 border border-base-300/50 rounded-lg text-[10px] font-mono uppercase tracking-wide text-base-content/40">
                   Status: Verified
                 </div>
-                <div className="px-3 py-1 bg-base-300/50 border border-base-300/50 rounded-sm text-[10px] font-mono uppercase text-base-content/40">
+                <div className="px-3 py-1 bg-base-300/50 border border-base-300/50 rounded-lg text-[10px] font-mono uppercase tracking-wide text-base-content/40">
                   Tier: Power_User
                 </div>
               </div>
@@ -214,28 +214,28 @@ function ProfilePage() {
         {/* Connected Accounts */}
         <motion.div
           variants={sectionVariants}
-          className="bg-base-200/50 border border-base-300/50 rounded-sm p-10"
+          className="bg-base-200/50 border border-base-300/50 rounded-xl p-10"
         >
-          <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-8 flex items-center gap-2">
+          <h2 className="text-sm font-bold text-primary mb-8 flex items-center gap-2">
             <LinkIcon size={16} />
             Integration Nodes
           </h2>
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-base-300/50 border border-base-300/50 rounded-sm gap-6 group hover:border-primary/20 transition-all">
+            <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-base-300/50 border border-base-300/50 rounded-xl gap-6 group hover:border-primary/20 transition-all">
               <div className="flex items-center gap-5">
-                <div className="h-10 w-10 rounded-sm bg-secondary/8 flex items-center justify-center text-secondary border border-secondary/15">
+                <div className="h-10 w-10 rounded-lg bg-secondary/8 flex items-center justify-center text-secondary border border-secondary/15">
                   <span className="text-lg font-black">Y!</span>
                 </div>
                 <div className="text-left">
-                  <p className="text-sm font-bold uppercase tracking-tight">
+                  <p className="text-sm font-bold tracking-tight">
                     Yahoo Fantasy
                   </p>
                   {profile.connected_yahoo ? (
-                    <p className="text-xs text-success flex items-center gap-1.5 font-bold uppercase tracking-widest mt-1">
+                    <p className="text-xs text-success flex items-center gap-1.5 font-bold uppercase tracking-wide mt-1">
                       <Check size={14} strokeWidth={3} /> Connection Established
                     </p>
                   ) : (
-                    <p className="text-xs text-base-content/30 font-bold uppercase tracking-widest mt-1">
+                    <p className="text-xs text-base-content/30 font-bold uppercase tracking-wide mt-1">
                       Status: Disconnected
                     </p>
                   )}
@@ -247,14 +247,14 @@ function ProfilePage() {
                   {profile.connected_yahoo ? (
                     <a
                       href="/dashboard"
-                      className="inline-flex items-center justify-center px-6 py-2.5 rounded-sm border border-primary/30 text-primary text-[11px] font-bold uppercase tracking-[0.15em] hover:bg-primary hover:text-primary-content transition-all w-full sm:w-auto"
+                      className="inline-flex items-center justify-center px-6 py-2.5 rounded-lg border border-primary/30 text-primary text-[11px] font-semibold hover:bg-primary hover:text-primary-content transition-all w-full sm:w-auto"
                     >
                       Enter Dashboard
                     </a>
                   ) : (
                     <a
                       href="/dashboard"
-                      className="inline-flex items-center justify-center px-6 py-2.5 rounded-sm bg-primary text-primary-content text-[11px] font-bold uppercase tracking-[0.15em] hover:brightness-110 transition-all w-full sm:w-auto"
+                      className="inline-flex items-center justify-center px-6 py-2.5 rounded-lg bg-primary text-primary-content text-[11px] font-semibold hover:brightness-110 transition-all w-full sm:w-auto"
                     >
                       Link Account
                     </a>
@@ -268,7 +268,7 @@ function ProfilePage() {
         {/* Footer info */}
         <motion.div
           variants={sectionVariants}
-          className="flex items-center justify-center gap-4 text-base-content/20 font-mono text-[10px] uppercase tracking-[0.3em] pt-4"
+          className="flex items-center justify-center gap-4 text-base-content/20 text-[10px] uppercase tracking-wide pt-4"
         >
           <span className="h-px w-12 bg-current opacity-20" />
           <span>Security Provided by Logto OSS</span>

@@ -164,7 +164,7 @@ const accentMap = {
 function HeroTicker() {
   const allChips = [...HERO_TICKER, ...HERO_TICKER]
   return (
-    <div className="group/ticker relative overflow-hidden rounded-sm border border-base-300/40 bg-base-100/80">
+    <div className="group/ticker relative overflow-hidden rounded-xl border border-base-300/40 bg-base-100/80">
       <div className="absolute left-0 top-0 bottom-0 w-10 bg-gradient-to-r from-base-100/80 to-transparent z-10 pointer-events-none" />
       <div className="absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-base-100/80 to-transparent z-10 pointer-events-none" />
       <div className="flex items-center gap-3 py-2.5 px-4 animate-ticker-scroll group-hover/ticker:[animation-play-state:paused]">
@@ -173,7 +173,7 @@ function HeroTicker() {
           return (
             <div
               key={`${chip.label}-${i}`}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-sm border ${colors.border} ${colors.bg} shrink-0`}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${colors.border} ${colors.bg} shrink-0`}
             >
               <span
                 className={`text-[11px] font-bold font-mono ${colors.text} whitespace-nowrap`}
@@ -218,7 +218,7 @@ function OnboardPage() {
           <div
             className="absolute inset-0 opacity-[0.025]"
             style={{
-              backgroundImage: `radial-gradient(circle at 1px 1px, rgba(191, 255, 0, 0.4) 1px, transparent 0)`,
+              backgroundImage: `radial-gradient(circle at 1px 1px, rgba(52, 211, 153, 0.4) 1px, transparent 0)`,
               backgroundSize: '28px 28px',
             }}
           />
@@ -226,7 +226,7 @@ function OnboardPage() {
             className="absolute top-[-10%] left-[20%] w-[600px] h-[600px] rounded-full"
             style={{
               background:
-                'radial-gradient(circle, rgba(191, 255, 0, 0.06) 0%, transparent 70%)',
+                'radial-gradient(circle, rgba(52, 211, 153, 0.06) 0%, transparent 70%)',
             }}
             animate={{ scale: [1, 1.08, 1], opacity: [0.5, 0.9, 0.5] }}
             transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
@@ -235,7 +235,7 @@ function OnboardPage() {
             className="absolute bottom-[10%] right-[10%] w-[400px] h-[400px] rounded-full"
             style={{
               background:
-                'radial-gradient(circle, rgba(191, 255, 0, 0.04) 0%, transparent 70%)',
+                'radial-gradient(circle, rgba(52, 211, 153, 0.04) 0%, transparent 70%)',
             }}
             animate={{ scale: [1, 1.06, 1], opacity: [0.3, 0.6, 0.3] }}
             transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
@@ -252,7 +252,7 @@ function OnboardPage() {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="flex items-center gap-4 mb-8"
           >
-            <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-success/8 text-success text-[10px] font-bold rounded-sm border border-success/15 uppercase tracking-[0.2em]">
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-success/8 text-success text-[10px] font-bold rounded-lg border border-success/15 uppercase tracking-wide">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-success" />
@@ -260,7 +260,7 @@ function OnboardPage() {
               Extension Active
             </span>
             <span className="h-px w-12 bg-gradient-to-r from-base-300 to-transparent" />
-            <span className="text-[10px] font-mono text-base-content/25 uppercase tracking-wider">
+            <span className="text-[10px] text-base-content/25">
               welcome aboard
             </span>
           </motion.div>
@@ -274,7 +274,7 @@ function OnboardPage() {
               delay: 0.15,
               ease: [0.22, 1, 0.36, 1],
             }}
-            className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight uppercase leading-[0.85] mb-6 max-w-4xl"
+            className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[0.85] mb-6 max-w-4xl"
           >
             You're{' '}
             <span className="text-primary">Live</span>
@@ -310,7 +310,7 @@ function OnboardPage() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
               </span>
-              <span className="text-[10px] font-mono text-base-content/30 uppercase tracking-wider">
+              <span className="text-[10px] text-base-content/30">
                 This is what your feed bar looks like
               </span>
             </div>
@@ -331,10 +331,10 @@ function OnboardPage() {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="mb-10"
           >
-            <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-primary mb-2 flex items-center gap-2">
               <Zap size={16} /> How It Works
             </h2>
-            <p className="text-[10px] font-mono text-base-content/30">
+            <p className="text-[10px] text-base-content/30">
               Three concepts — that's all you need
             </p>
           </motion.div>
@@ -351,23 +351,23 @@ function OnboardPage() {
                   duration: 0.5,
                   ease: [0.22, 1, 0.36, 1],
                 }}
-                className="group bg-base-200/50 border border-base-300/50 rounded-sm p-6 hover:border-base-300 transition-colors relative overflow-hidden"
+                className="group bg-base-200/50 border border-base-300/50 rounded-xl p-6 hover:border-base-300 transition-colors relative overflow-hidden"
               >
                 <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-transparent group-hover:via-primary/20 to-transparent transition-all duration-500" />
 
                 <div className="relative z-10">
                   <div className="flex items-center gap-4 mb-5">
-                    <span className="text-[10px] font-mono text-base-content/15 font-black">
+                    <span className="text-[10px] text-base-content/15 font-black">
                       0{i + 1}
                     </span>
                     <div
-                      className={`h-10 w-10 rounded-sm border flex items-center justify-center ${accentMap[step.accent].icon}`}
+                      className={`h-10 w-10 rounded-lg border flex items-center justify-center ${accentMap[step.accent].icon}`}
                     >
                       {step.icon}
                     </div>
                   </div>
 
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-base-content mb-2">
+                  <h3 className="text-sm font-bold text-base-content mb-2">
                     {step.title}
                   </h3>
                   <p className="text-xs text-base-content/30 leading-relaxed">
@@ -390,10 +390,10 @@ function OnboardPage() {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="mb-10"
           >
-            <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-primary mb-2 flex items-center gap-2">
               <Sparkles size={16} /> Ready Right Now
             </h2>
-            <p className="text-[10px] font-mono text-base-content/30">
+            <p className="text-[10px] text-base-content/30">
               No account needed — these are already running
             </p>
           </motion.div>
@@ -410,13 +410,13 @@ function OnboardPage() {
                   duration: 0.4,
                   ease: [0.22, 1, 0.36, 1],
                 }}
-                className="group flex items-start gap-3 p-5 bg-base-200/40 border border-base-300/40 rounded-sm hover:border-success/20 transition-colors"
+                className="group flex items-start gap-3 p-5 bg-base-200/40 border border-base-300/40 rounded-xl hover:border-success/20 transition-colors"
               >
-                <div className="h-9 w-9 rounded-sm bg-success/8 border border-success/15 flex items-center justify-center text-success shrink-0 mt-0.5 group-hover:border-success/30 transition-colors">
+                <div className="h-9 w-9 rounded-lg bg-success/8 border border-success/15 flex items-center justify-center text-success shrink-0 mt-0.5 group-hover:border-success/30 transition-colors">
                   {item.icon}
                 </div>
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-base-content mb-1">
+                  <p className="text-xs font-bold text-base-content mb-1">
                     {item.label}
                   </p>
                   <p className="text-[10px] text-base-content/30 leading-relaxed">
@@ -439,10 +439,10 @@ function OnboardPage() {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="mb-10"
           >
-            <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-primary mb-2 flex items-center gap-2">
               <UserPlus size={16} /> Unlock More
             </h2>
-            <p className="text-[10px] font-mono text-base-content/30">
+            <p className="text-[10px] text-base-content/30">
               Create a free account and the whole platform opens up
             </p>
           </motion.div>
@@ -459,13 +459,13 @@ function OnboardPage() {
                   duration: 0.4,
                   ease: [0.22, 1, 0.36, 1],
                 }}
-                className="group flex items-start gap-4 p-5 bg-base-200/40 border border-base-300/40 rounded-sm hover:border-primary/15 transition-colors"
+                className="group flex items-start gap-4 p-5 bg-base-200/40 border border-base-300/40 rounded-xl hover:border-primary/15 transition-colors"
               >
-                <div className="h-9 w-9 rounded-sm bg-primary/8 border border-primary/15 flex items-center justify-center text-primary shrink-0 mt-0.5 group-hover:border-primary/30 transition-colors">
+                <div className="h-9 w-9 rounded-lg bg-primary/8 border border-primary/15 flex items-center justify-center text-primary shrink-0 mt-0.5 group-hover:border-primary/30 transition-colors">
                   {item.icon}
                 </div>
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-base-content mb-1">
+                  <p className="text-xs font-bold text-base-content mb-1">
                     {item.title}
                   </p>
                   <p className="text-xs text-base-content/30 leading-relaxed">
@@ -486,14 +486,14 @@ function OnboardPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="relative overflow-hidden rounded-sm bg-base-200/40 border border-base-300/50 backdrop-blur-sm"
+            className="relative overflow-hidden rounded-xl bg-base-200/40 border border-base-300/50 backdrop-blur-sm"
           >
             <div className="absolute inset-0 pointer-events-none">
               <motion.div
                 className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full"
                 style={{
                   background:
-                    'radial-gradient(circle, rgba(191, 255, 0, 0.05) 0%, transparent 70%)',
+                    'radial-gradient(circle, rgba(52, 211, 153, 0.05) 0%, transparent 70%)',
                 }}
                 animate={{
                   scale: [1, 1.1, 1],
@@ -522,10 +522,10 @@ function OnboardPage() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
-                className="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-sm bg-primary/8 border border-primary/15"
+                className="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-lg bg-primary/8 border border-primary/15"
               >
                 <LogIn size={12} className="text-primary" />
-                <span className="text-[10px] font-mono uppercase tracking-widest text-primary">
+                <span className="text-[10px] uppercase tracking-wide text-primary">
                   Free Forever
                 </span>
               </motion.div>
@@ -535,7 +535,7 @@ function OnboardPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.1 }}
-                className="text-3xl sm:text-4xl font-black tracking-tight uppercase mb-5 leading-[0.95]"
+                className="text-3xl sm:text-4xl font-black tracking-tight mb-5 leading-[0.95]"
               >
                 Create Your{' '}
                 <span className="text-primary">Free Account</span>
@@ -546,7 +546,7 @@ function OnboardPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.2 }}
-                className="text-sm text-base-content/35 leading-relaxed mb-8 font-mono max-w-md mx-auto"
+                className="text-sm text-base-content/35 leading-relaxed mb-8 max-w-md mx-auto"
               >
                 Unlock RSS feeds, personalize your streams, sync across devices,
                 and access the full dashboard. Takes 30 seconds.
@@ -561,7 +561,7 @@ function OnboardPage() {
               >
                 <Link
                   to="/dashboard"
-                  className="group inline-flex items-center gap-2.5 px-7 py-3.5 text-[11px] font-bold uppercase tracking-[0.2em] border border-primary/30 text-primary bg-primary/5 rounded-sm hover:bg-primary/10 transition-colors"
+                  className="group inline-flex items-center gap-2.5 px-7 py-3.5 text-[11px] font-semibold border border-primary/30 text-primary bg-primary/5 rounded-lg hover:bg-primary/10 transition-colors"
                 >
                   <UserPlus size={14} />
                   Sign Up Free
@@ -572,7 +572,7 @@ function OnboardPage() {
                 </Link>
                 <Link
                   to="/discover"
-                  className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.15em] text-base-content/30 hover:text-base-content/50 transition-colors"
+                  className="inline-flex items-center gap-2 text-[10px] font-semibold text-base-content/30 hover:text-base-content/50 transition-colors"
                 >
                   Learn more about Scrollr
                   <ArrowRight size={10} />

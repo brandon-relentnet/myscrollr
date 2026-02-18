@@ -233,8 +233,8 @@ function ArchitecturePage() {
             className="absolute inset-0 opacity-[0.02]"
             style={{
               backgroundImage: `
-                linear-gradient(rgba(191, 255, 0, 0.15) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(191, 255, 0, 0.15) 1px, transparent 1px)
+                linear-gradient(rgba(52, 211, 153, 0.15) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(52, 211, 153, 0.15) 1px, transparent 1px)
               `,
               backgroundSize: '60px 60px',
             }}
@@ -243,7 +243,7 @@ function ArchitecturePage() {
             className="absolute top-[-10%] left-[40%] w-[600px] h-[600px] rounded-full"
             style={{
               background:
-                'radial-gradient(circle, rgba(191, 255, 0, 0.04) 0%, transparent 70%)',
+                'radial-gradient(circle, rgba(52, 211, 153, 0.04) 0%, transparent 70%)',
             }}
             animate={{ scale: [1, 1.06, 1], opacity: [0.3, 0.6, 0.3] }}
             transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
@@ -259,12 +259,12 @@ function ArchitecturePage() {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="flex items-center gap-4 mb-8"
           >
-            <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-sm border border-primary/15 uppercase tracking-[0.2em]">
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-lg border border-primary/15 uppercase tracking-wide">
               <CircuitBoard size={12} />
               System Design
             </span>
             <span className="h-px w-12 bg-gradient-to-r from-base-300 to-transparent" />
-            <span className="text-[10px] font-mono text-base-content/25 uppercase tracking-wider">
+            <span className="text-[10px] text-base-content/25">
               open architecture
             </span>
           </motion.div>
@@ -277,7 +277,7 @@ function ArchitecturePage() {
               delay: 0.15,
               ease: [0.22, 1, 0.36, 1],
             }}
-            className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight uppercase leading-[0.85] mb-8 max-w-5xl"
+            className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[0.85] mb-8 max-w-5xl"
           >
             How Scrollr{' '}
             <span className="text-primary">Works</span>
@@ -291,7 +291,7 @@ function ArchitecturePage() {
               delay: 0.3,
               ease: [0.22, 1, 0.36, 1],
             }}
-            className="text-base text-base-content/40 max-w-xl leading-relaxed font-mono"
+            className="text-base text-base-content/40 max-w-xl leading-relaxed"
           >
             From source API to your browser in milliseconds. A decoupled,
             CDC-driven pipeline built on Go, Rust, React, and Redis.
@@ -311,10 +311,10 @@ function ArchitecturePage() {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="mb-12"
           >
-            <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-primary mb-2 flex items-center gap-2">
               <Zap size={16} /> The Pipeline
             </h2>
-            <p className="text-[10px] font-mono text-base-content/30">
+            <p className="text-[10px] text-base-content/30">
               Four stages from data source to your screen
             </p>
           </motion.div>
@@ -333,7 +333,7 @@ function ArchitecturePage() {
                     duration: 0.5,
                     ease: [0.22, 1, 0.36, 1],
                   }}
-                  className="group relative bg-base-200/50 border border-base-300/50 rounded-sm p-6 hover:border-base-300 transition-colors overflow-hidden"
+                  className="group relative bg-base-200/50 border border-base-300/50 rounded-xl p-6 hover:border-base-300 transition-colors overflow-hidden"
                 >
                   <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-transparent group-hover:via-primary/20 to-transparent transition-all duration-500" />
 
@@ -341,18 +341,18 @@ function ArchitecturePage() {
                     {/* Header */}
                     <div className="flex items-center justify-between mb-5">
                       <div
-                        className={`h-10 w-10 rounded-sm border flex items-center justify-center ${colors.icon}`}
+                        className={`h-10 w-10 rounded-lg border flex items-center justify-center ${colors.icon}`}
                       >
                         {step.icon}
                       </div>
                       <span
-                        className={`text-[9px] font-bold font-mono uppercase tracking-[0.2em] px-2 py-1 rounded-sm border ${colors.tag}`}
+                        className={`text-[9px] font-bold uppercase tracking-wide px-2 py-1 rounded-lg border ${colors.tag}`}
                       >
                         {step.label}
                       </span>
                     </div>
 
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-base-content mb-2">
+                    <h3 className="text-sm font-semibold text-base-content mb-2">
                       {step.title}
                     </h3>
                     <p className="text-xs text-base-content/30 leading-relaxed mb-4">
@@ -385,7 +385,7 @@ function ArchitecturePage() {
           <div className="hidden lg:flex items-center justify-center gap-2 mt-6">
             {['INGEST', 'PROCESS', 'DETECT', 'DELIVER'].map((label, i) => (
               <div key={label} className="flex items-center gap-2">
-                <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-base-content/15">
+                <span className="text-[9px] font-semibold uppercase tracking-wide text-base-content/15">
                   {label}
                 </span>
                 {i < 3 && (
@@ -407,10 +407,10 @@ function ArchitecturePage() {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="mb-10"
           >
-            <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-primary mb-2 flex items-center gap-2">
               <Activity size={16} /> CDC Record Flow
             </h2>
-            <p className="text-[10px] font-mono text-base-content/30">
+            <p className="text-[10px] text-base-content/30">
               How a single data change reaches the right user
             </p>
           </motion.div>
@@ -431,14 +431,14 @@ function ArchitecturePage() {
                     ease: [0.22, 1, 0.36, 1],
                   }}
                 >
-                  <div className="flex items-center gap-4 p-4 bg-base-200/40 border border-base-300/40 rounded-sm">
+                  <div className="flex items-center gap-4 p-4 bg-base-200/40 border border-base-300/40 rounded-xl">
                     <div
-                      className={`h-8 w-8 rounded-sm bg-base-300/20 border border-base-300/30 flex items-center justify-center ${step.accent} shrink-0`}
+                      className={`h-8 w-8 rounded-lg bg-base-300/20 border border-base-300/30 flex items-center justify-center ${step.accent} shrink-0`}
                     >
                       {step.icon}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold uppercase tracking-wider text-base-content">
+                      <p className="text-xs font-semibold text-base-content">
                         {step.label}
                       </p>
                       <p className="text-[10px] font-mono text-base-content/25 truncate">
@@ -556,10 +556,10 @@ function ArchitecturePage() {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="mb-10"
           >
-            <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-primary mb-2 flex items-center gap-2">
               <Layers size={16} /> Design Principles
             </h2>
-            <p className="text-[10px] font-mono text-base-content/30">
+            <p className="text-[10px] text-base-content/30">
               The rules that shape every architectural decision
             </p>
           </motion.div>
@@ -576,13 +576,13 @@ function ArchitecturePage() {
                   duration: 0.4,
                   ease: [0.22, 1, 0.36, 1],
                 }}
-                className="group flex items-start gap-4 p-5 bg-base-200/40 border border-base-300/40 rounded-sm hover:border-primary/15 transition-colors"
+                className="group flex items-start gap-4 p-5 bg-base-200/40 border border-base-300/40 rounded-xl hover:border-primary/15 transition-colors"
               >
-                <div className="h-9 w-9 rounded-sm bg-primary/8 border border-primary/15 flex items-center justify-center text-primary shrink-0 mt-0.5 group-hover:border-primary/30 transition-colors">
+                <div className="h-9 w-9 rounded-lg bg-primary/8 border border-primary/15 flex items-center justify-center text-primary shrink-0 mt-0.5 group-hover:border-primary/30 transition-colors">
                   {principle.icon}
                 </div>
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-base-content mb-1">
+                  <p className="text-xs font-semibold text-base-content mb-1">
                     {principle.title}
                   </p>
                   <p className="text-xs text-base-content/30 leading-relaxed">
@@ -605,10 +605,10 @@ function ArchitecturePage() {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="mb-10"
           >
-            <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-primary mb-2 flex items-center gap-2">
               <Code2 size={16} /> Tech Stack
             </h2>
-            <p className="text-[10px] font-mono text-base-content/30">
+            <p className="text-[10px] text-base-content/30">
               What powers each layer
             </p>
           </motion.div>
@@ -625,11 +625,11 @@ function ArchitecturePage() {
                   duration: 0.4,
                   ease: [0.22, 1, 0.36, 1],
                 }}
-                className="bg-base-200/40 border border-base-300/40 rounded-sm p-5"
+                className="bg-base-200/40 border border-base-300/40 rounded-xl p-5"
               >
                 <div className="flex items-center gap-2 mb-4">
                   <Cloud size={14} className="text-primary" />
-                  <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
+                  <h3 className="text-[10px] font-bold uppercase tracking-wide text-primary">
                     {group.category}
                   </h3>
                 </div>
@@ -658,7 +658,7 @@ function ArchitecturePage() {
             className="flex items-center justify-center gap-4 mt-10"
           >
             <span className="h-px w-8 bg-base-300/30" />
-            <span className="text-[10px] font-mono text-base-content/20 uppercase tracking-wider">
+            <span className="text-[10px] text-base-content/20">
               Built and deployed on self-hosted infrastructure
             </span>
             <span className="h-px w-8 bg-base-300/30" />

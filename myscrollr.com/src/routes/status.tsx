@@ -183,16 +183,16 @@ function StatusPage() {
         <div className="container relative z-10">
           <motion.div className="max-w-4xl" variants={itemVariants}>
             <div className="flex items-center gap-3 mb-6">
-              <span className="px-3 py-1 bg-primary/8 text-primary text-[10px] font-bold rounded-sm border border-primary/15 uppercase tracking-[0.2em] flex items-center gap-2">
+              <span className="px-3 py-1 bg-primary/8 text-primary text-[10px] font-semibold rounded-lg border border-primary/15 uppercase tracking-wide flex items-center gap-2">
                 <Radio size={14} /> live_monitor
               </span>
               <span className="h-px w-12 bg-base-300" />
-              <span className="text-[10px] font-mono text-base-content/30 uppercase">
+              <span className="text-[10px] font-mono text-base-content/30">
                 Auto-refresh: {POLL_INTERVAL / 1000}s
               </span>
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-black tracking-tight uppercase mb-6 leading-none">
+            <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-6 leading-none">
               System
               <br />
               <span className={overallAccent(health)}>Status</span>
@@ -221,10 +221,10 @@ function StatusPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Infrastructure */}
           <motion.div
-            className="bg-base-200/50 border border-base-300/50 rounded-sm p-8"
+            className="bg-base-200/50 border border-base-300/50 rounded-xl p-8"
             variants={itemVariants}
           >
-            <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-8 flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-primary mb-8 flex items-center gap-2">
               <Database size={16} /> Infrastructure
             </h2>
             <div className="space-y-4">
@@ -243,13 +243,13 @@ function StatusPage() {
 
           {/* Integration Services — dynamically discovered */}
           <motion.div
-            className="bg-base-200/50 border border-base-300/50 rounded-sm p-8"
+            className="bg-base-200/50 border border-base-300/50 rounded-xl p-8"
             variants={itemVariants}
           >
-            <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-8 flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-primary mb-8 flex items-center gap-2">
               <Server size={16} /> Integration Services
               {integrations.length > 0 && (
-                <span className="text-[9px] font-mono text-base-content/20 bg-base-200 px-1.5 py-0.5 rounded-sm ml-auto">
+                <span className="text-[9px] font-mono text-base-content/20 bg-base-200 px-1.5 py-0.5 rounded-lg ml-auto">
                   {integrations.length} registered
                 </span>
               )}
@@ -287,7 +287,7 @@ function StatusPage() {
                   })}
                 </>
               ) : (
-                <div className="text-xs font-mono text-base-content/30 text-center py-4">
+                <div className="text-xs text-base-content/30 text-center py-4">
                   Unable to discover integrations
                 </div>
               )}
@@ -356,9 +356,9 @@ function OverallBadge({
 }) {
   if (fetchError) {
     return (
-      <div className="flex items-center gap-2.5 px-4 py-2 rounded-sm bg-error/10 border border-error/20">
+      <div className="flex items-center gap-2.5 px-4 py-2 rounded-lg bg-error/10 border border-error/20">
         <XCircle size={16} className="text-error" />
-        <span className="text-xs font-bold uppercase tracking-wider text-error">
+        <span className="text-xs font-semibold text-error">
           API Unreachable
         </span>
       </div>
@@ -367,9 +367,9 @@ function OverallBadge({
 
   if (!health) {
     return (
-      <div className="flex items-center gap-2.5 px-4 py-2 rounded-sm bg-base-300 border border-base-300">
+      <div className="flex items-center gap-2.5 px-4 py-2 rounded-lg bg-base-300 border border-base-300">
         <div className="h-3 w-3 rounded-full bg-base-content/20 animate-pulse" />
-        <span className="text-xs font-bold uppercase tracking-wider text-base-content/40">
+        <span className="text-xs font-semibold text-base-content/40">
           Checking systems...
         </span>
       </div>
@@ -380,7 +380,7 @@ function OverallBadge({
 
   return (
     <div
-      className={`flex items-center gap-2.5 px-4 py-2 rounded-sm border ${
+      className={`flex items-center gap-2.5 px-4 py-2 rounded-lg border ${
         isHealthy
           ? 'bg-success/10 border-success/20'
           : 'bg-warning/10 border-warning/20'
@@ -392,7 +392,7 @@ function OverallBadge({
         <ShieldAlert size={16} className="text-warning" />
       )}
       <span
-        className={`text-xs font-bold uppercase tracking-wider ${isHealthy ? 'text-success' : 'text-warning'}`}
+        className={`text-xs font-semibold ${isHealthy ? 'text-success' : 'text-warning'}`}
       >
         {overallLabel(health)}
       </span>
@@ -412,17 +412,17 @@ function ServiceRow({
   port?: number
 }) {
   return (
-    <div className="flex items-center justify-between p-4 bg-base-300/50 rounded-sm group hover:bg-base-300/80 transition-colors">
+    <div className="flex items-center justify-between p-4 bg-base-300/50 rounded-xl group hover:bg-base-300/80 transition-colors">
       <div className="flex-1 min-w-0 mr-4">
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold text-base-content">{name}</span>
           {port && (
-            <span className="text-[9px] font-mono text-base-content/20 bg-base-200 px-1.5 py-0.5 rounded-sm">
+            <span className="text-[9px] font-mono text-base-content/20 bg-base-200 px-1.5 py-0.5 rounded-lg">
               :{port}
             </span>
           )}
         </div>
-        <p className="text-[10px] font-mono text-base-content/30 mt-0.5 truncate">
+        <p className="text-[10px] text-base-content/30 mt-0.5 truncate">
           {description}
         </p>
       </div>
@@ -458,7 +458,7 @@ function StatusIndicator({ state }: { state: ServiceState }) {
         />
       </span>
       <span
-        className={`text-[10px] font-bold uppercase tracking-wider ${text}`}
+        className={`text-[10px] font-semibold uppercase tracking-wide ${text}`}
       >
         {stateToLabel(state)}
       </span>
@@ -480,9 +480,9 @@ function MetricCard({
   error?: boolean
 }) {
   return (
-    <div className="bg-base-200/50 border border-base-300/50 rounded-sm p-6 flex items-start gap-4">
+    <div className="bg-base-200/50 border border-base-300/50 rounded-xl p-6 flex items-start gap-4">
       <div
-        className={`h-10 w-10 rounded-sm flex items-center justify-center shrink-0 border ${
+        className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 border ${
           error
             ? 'bg-warning/8 border-warning/15 text-warning'
             : 'bg-primary/8 border-primary/15 text-primary'
@@ -491,15 +491,15 @@ function MetricCard({
         {icon}
       </div>
       <div className="min-w-0">
-        <p className="text-[10px] font-mono uppercase tracking-widest text-base-content/30 mb-1">
+        <p className="text-[10px] uppercase tracking-wide text-base-content/30 mb-1">
           {label}
         </p>
         <p
-          className={`text-lg font-black uppercase tracking-tight ${error ? 'text-warning' : 'text-base-content'}`}
+          className={`text-lg font-black tracking-tight ${error ? 'text-warning' : 'text-base-content'}`}
         >
           {value}
         </p>
-        <p className="text-[10px] font-mono text-base-content/20 mt-0.5">
+        <p className="text-[10px] text-base-content/20 mt-0.5">
           {sublabel}
         </p>
       </div>
@@ -515,7 +515,7 @@ function ExternalLink({ href, label }: { href: string; label: string }) {
       rel="noopener noreferrer"
       whileHover={{ y: -2, transition: { type: 'tween', duration: 0.2 } }}
       whileTap={{ scale: 0.98 }}
-      className="flex items-center gap-2 px-4 py-2.5 rounded-sm bg-base-200/50 border border-base-300/50 text-sm text-base-content/50 hover:text-primary hover:border-primary/30 transition-colors cursor-pointer"
+      className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-base-200/50 border border-base-300/50 text-sm text-base-content/50 hover:text-primary hover:border-primary/30 transition-colors cursor-pointer"
     >
       <Globe size={14} />
       {label}

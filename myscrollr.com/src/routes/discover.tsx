@@ -243,7 +243,7 @@ function BrowserMockup() {
     >
       <div className="absolute inset-0 bg-primary/[0.03] rounded-2xl blur-3xl pointer-events-none" />
 
-      <div className="relative rounded-sm border border-base-300/60 overflow-hidden shadow-lg shadow-black/20 bg-base-200/60 backdrop-blur-sm">
+      <div className="relative rounded-xl border border-base-300/60 overflow-hidden shadow-lg shadow-black/20 bg-base-200/60 backdrop-blur-sm">
         {/* Browser chrome */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-base-300/40 bg-base-200/80">
           <div className="flex gap-1.5">
@@ -252,19 +252,19 @@ function BrowserMockup() {
             <div className="w-2.5 h-2.5 rounded-full bg-success/30" />
           </div>
           <div className="flex-1 flex items-center justify-center">
-            <div className="flex items-center gap-2 px-4 py-1.5 rounded-sm bg-base-100/60 border border-base-300/30 max-w-xs w-full">
+            <div className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-base-100/60 border border-base-300/30 max-w-xs w-full">
               <div className="w-3 h-3 rounded-full bg-success/30 shrink-0" />
               <span className="text-[10px] font-mono text-base-content/25 truncate">
                 any-website.com
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-sm bg-primary/8 border border-primary/15">
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-primary/8 border border-primary/15">
             <span className="relative flex h-1.5 w-1.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
             </span>
-            <span className="text-[9px] font-bold font-mono text-primary uppercase tracking-wider">
+            <span className="text-[9px] font-bold text-primary uppercase tracking-wide">
               Scrollr
             </span>
           </div>
@@ -302,7 +302,7 @@ function BrowserMockup() {
         className="flex items-center justify-center gap-4 mt-5"
       >
         <span className="h-px w-8 bg-base-300/30" />
-        <span className="text-[10px] font-mono text-base-content/20 uppercase tracking-wider">
+        <span className="text-[10px] text-base-content/20">
           The feed bar — always there, never in the way
         </span>
         <span className="h-px w-8 bg-base-300/30" />
@@ -329,7 +329,7 @@ function DiscoverPage() {
           <div
             className="absolute inset-0 opacity-[0.02]"
             style={{
-              backgroundImage: `radial-gradient(circle at 1px 1px, rgba(191, 255, 0, 0.5) 1px, transparent 0)`,
+              backgroundImage: `radial-gradient(circle at 1px 1px, rgba(52, 211, 153, 0.5) 1px, transparent 0)`,
               backgroundSize: '32px 32px',
             }}
           />
@@ -337,7 +337,7 @@ function DiscoverPage() {
             className="absolute top-[-15%] right-[10%] w-[700px] h-[700px] rounded-full"
             style={{
               background:
-                'radial-gradient(circle, rgba(191, 255, 0, 0.04) 0%, transparent 70%)',
+                'radial-gradient(circle, rgba(52, 211, 153, 0.04) 0%, transparent 70%)',
             }}
             animate={{ scale: [1, 1.08, 1], opacity: [0.4, 0.7, 0.4] }}
             transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
@@ -346,7 +346,7 @@ function DiscoverPage() {
             className="absolute bottom-[-20%] left-[5%] w-[500px] h-[500px] rounded-full"
             style={{
               background:
-                'radial-gradient(circle, rgba(191, 255, 0, 0.03) 0%, transparent 70%)',
+                'radial-gradient(circle, rgba(52, 211, 153, 0.03) 0%, transparent 70%)',
             }}
             animate={{ scale: [1, 1.05, 1], opacity: [0.3, 0.5, 0.3] }}
             transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
@@ -363,12 +363,12 @@ function DiscoverPage() {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="flex items-center gap-4 mb-8"
           >
-            <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-sm border border-primary/15 uppercase tracking-[0.2em]">
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-lg border border-primary/15 uppercase tracking-wide">
               <MonitorSmartphone size={12} />
               Browser Extension
             </span>
             <span className="h-px w-12 bg-gradient-to-r from-base-300 to-transparent" />
-            <span className="text-[10px] font-mono text-base-content/25 uppercase tracking-wider">
+            <span className="text-[10px] text-base-content/25">
               Chrome &middot; Firefox
             </span>
           </motion.div>
@@ -382,7 +382,7 @@ function DiscoverPage() {
               delay: 0.15,
               ease: [0.22, 1, 0.36, 1],
             }}
-            className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight uppercase leading-[0.85] mb-8 max-w-5xl"
+            className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[0.85] mb-8 max-w-5xl"
           >
             Stop{' '}
             <span className="text-primary">Tab-Hopping</span>
@@ -396,7 +396,7 @@ function DiscoverPage() {
               delay: 0.3,
               ease: [0.22, 1, 0.36, 1],
             }}
-            className="text-base text-base-content/40 max-w-xl leading-relaxed font-mono mb-10"
+            className="text-base text-base-content/40 max-w-xl leading-relaxed mb-10"
           >
             Stocks, scores, news, and fantasy stats — scrolling at the bottom
             of every tab. You see everything without leaving what you're doing.
@@ -413,8 +413,8 @@ function DiscoverPage() {
             }}
             className="flex flex-wrap items-center gap-4"
           >
-            <InstallButton className="!rounded-sm !bg-primary !text-base-100 !border-primary hover:!bg-primary/90 !font-bold" />
-            <span className="text-[10px] font-mono text-base-content/20 uppercase tracking-wider">
+            <InstallButton className="!rounded-lg !bg-primary !text-base-100 !border-primary hover:!bg-primary/90 !font-semibold" />
+            <span className="text-[10px] text-base-content/20">
               Free &middot; No account required
             </span>
           </motion.div>
@@ -433,10 +433,10 @@ function DiscoverPage() {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="text-center mb-12"
           >
-            <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-2 flex items-center justify-center gap-2">
+            <h2 className="text-sm font-semibold text-primary mb-2 flex items-center justify-center gap-2">
               <Eye size={16} /> What It Looks Like
             </h2>
-            <p className="text-[10px] font-mono text-base-content/30">
+            <p className="text-[10px] text-base-content/30">
               This is what it looks like on every page you visit
             </p>
           </motion.div>
@@ -457,10 +457,10 @@ function DiscoverPage() {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="mb-10"
           >
-            <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-primary mb-2 flex items-center gap-2">
               <Zap size={16} /> How It Works
             </h2>
-            <p className="text-[10px] font-mono text-base-content/30">
+            <p className="text-[10px] text-base-content/30">
               Seriously, this takes 30 seconds
             </p>
           </motion.div>
@@ -477,23 +477,23 @@ function DiscoverPage() {
                   duration: 0.5,
                   ease: [0.22, 1, 0.36, 1],
                 }}
-                className="group bg-base-200/50 border border-base-300/50 rounded-sm p-6 hover:border-base-300 transition-colors relative overflow-hidden"
+                className="group bg-base-200/50 border border-base-300/50 rounded-xl p-6 hover:border-base-300 transition-colors relative overflow-hidden"
               >
                 <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-transparent group-hover:via-primary/20 to-transparent transition-all duration-500" />
 
                 <div className="relative z-10">
                   <div className="flex items-center gap-4 mb-5">
-                    <span className="text-[10px] font-mono text-base-content/15 font-black">
+                    <span className="text-[10px] text-base-content/15 font-black">
                       {step.num}
                     </span>
                     <div
-                      className={`h-10 w-10 rounded-sm border flex items-center justify-center ${accentMap[step.accent].icon}`}
+                      className={`h-10 w-10 rounded-lg border flex items-center justify-center ${accentMap[step.accent].icon}`}
                     >
                       {step.icon}
                     </div>
                   </div>
 
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-base-content mb-2">
+                  <h3 className="text-sm font-semibold text-base-content mb-2">
                     {step.title}
                   </h3>
                   <p className="text-xs text-base-content/30 leading-relaxed">
@@ -516,10 +516,10 @@ function DiscoverPage() {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="mb-10"
           >
-            <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-primary mb-2 flex items-center gap-2">
               <Layers size={16} /> People Use Scrollr To
             </h2>
-            <p className="text-[10px] font-mono text-base-content/30">
+            <p className="text-[10px] text-base-content/30">
               Real scenarios, not feature lists
             </p>
           </motion.div>
@@ -543,7 +543,7 @@ function DiscoverPage() {
                   duration: 0.4,
                   ease: [0.22, 1, 0.36, 1],
                 }}
-                className="flex items-center gap-3 px-4 py-3 bg-base-200/30 border border-base-300/30 rounded-sm"
+                className="flex items-center gap-3 px-4 py-3 bg-base-200/30 border border-base-300/30 rounded-xl"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-primary/50 shrink-0" />
                 <span className="text-xs text-base-content/40 leading-snug">
@@ -560,7 +560,7 @@ function DiscoverPage() {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="mb-8"
           >
-            <h3 className="text-xs font-bold uppercase tracking-widest text-base-content/30 flex items-center gap-2">
+            <h3 className="text-xs font-semibold text-base-content/30 flex items-center gap-2">
               Four streams, one ticker
             </h3>
           </motion.div>
@@ -583,7 +583,7 @@ function DiscoverPage() {
                     y: -3,
                     transition: { type: 'tween', duration: 0.2 },
                   }}
-                  className={`group relative bg-base-200/50 border border-base-300/50 rounded-sm p-6 ${colors.hoverBorder} transition-colors overflow-hidden`}
+                  className={`group relative bg-base-200/50 border border-base-300/50 rounded-xl p-6 ${colors.hoverBorder} transition-colors overflow-hidden`}
                 >
                   {/* Hover gradient */}
                   <div
@@ -596,7 +596,7 @@ function DiscoverPage() {
                   <div className="relative z-10">
                     <div className="flex items-center justify-between mb-5">
                       <div
-                        className={`h-10 w-10 rounded-sm border flex items-center justify-center ${colors.icon}`}
+                        className={`h-10 w-10 rounded-lg border flex items-center justify-center ${colors.icon}`}
                       >
                         {integration.icon}
                       </div>
@@ -605,11 +605,11 @@ function DiscoverPage() {
                       />
                     </div>
 
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-base-content mb-1">
+                    <h3 className="text-sm font-semibold text-base-content mb-1">
                       {integration.name}
                     </h3>
                     <p
-                      className={`text-[10px] font-mono uppercase tracking-wider ${colors.icon.split(' ').pop()} opacity-60 mb-3`}
+                      className={`text-[10px] uppercase tracking-wide ${colors.icon.split(' ').pop()} opacity-60 mb-3`}
                     >
                       {integration.label}
                     </p>
@@ -618,7 +618,7 @@ function DiscoverPage() {
                     </p>
 
                     <div className="pt-4 border-t border-base-300/30">
-                      <span className="text-[10px] font-mono text-base-content/20 uppercase tracking-wider">
+                      <span className="text-[10px] text-base-content/20">
                         In your feed:
                       </span>
                       <span
@@ -643,14 +643,14 @@ function DiscoverPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="relative overflow-hidden rounded-sm bg-base-200/40 border border-base-300/50 backdrop-blur-sm"
+            className="relative overflow-hidden rounded-xl bg-base-200/40 border border-base-300/50 backdrop-blur-sm"
           >
             <div className="absolute inset-0 pointer-events-none">
               <motion.div
                 className="absolute top-0 left-[30%] w-[500px] h-[500px] rounded-full"
                 style={{
                   background:
-                    'radial-gradient(circle, rgba(191, 255, 0, 0.05) 0%, transparent 70%)',
+                    'radial-gradient(circle, rgba(52, 211, 153, 0.05) 0%, transparent 70%)',
                 }}
                 animate={{
                   scale: [1, 1.1, 1],
@@ -679,10 +679,10 @@ function DiscoverPage() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
-                className="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-sm bg-primary/8 border border-primary/15"
+                className="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-lg bg-primary/8 border border-primary/15"
               >
                 <Chrome size={12} className="text-primary" />
-                <span className="text-[10px] font-mono uppercase tracking-widest text-primary">
+                <span className="text-[10px] uppercase tracking-wide text-primary">
                   Available Now
                 </span>
               </motion.div>
@@ -692,7 +692,7 @@ function DiscoverPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.1 }}
-                className="text-3xl sm:text-4xl font-black tracking-tight uppercase mb-5 leading-[0.95]"
+                className="text-3xl sm:text-4xl font-black tracking-tight mb-5 leading-[0.95]"
               >
                 Start{' '}
                 <span className="text-primary">Scrolling</span>
@@ -703,7 +703,7 @@ function DiscoverPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.2 }}
-                className="text-sm text-base-content/35 leading-relaxed mb-8 font-mono max-w-md mx-auto"
+                className="text-sm text-base-content/35 leading-relaxed mb-8 max-w-md mx-auto"
               >
                 Free, no account, no setup. Install it and your feed bar is
                 live on every tab in about 10 seconds.
@@ -716,10 +716,10 @@ function DiscoverPage() {
                 transition={{ delay: 0.3 }}
                 className="flex flex-col sm:flex-row items-center justify-center gap-4"
               >
-                <InstallButton className="!rounded-sm !bg-primary !text-base-100 !border-primary hover:!bg-primary/90 !font-bold" />
+                <InstallButton className="!rounded-lg !bg-primary !text-base-100 !border-primary hover:!bg-primary/90 !font-semibold" />
                 <Link
                   to="/onboard"
-                  className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.15em] text-base-content/30 hover:text-base-content/50 transition-colors"
+                  className="inline-flex items-center gap-2 text-[10px] font-semibold text-base-content/30 hover:text-base-content/50 transition-colors"
                 >
                   Already installed?
                   <ArrowRight size={10} />

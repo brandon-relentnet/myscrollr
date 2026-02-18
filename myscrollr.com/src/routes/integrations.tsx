@@ -199,23 +199,23 @@ function IntegrationsPage() {
         <div className="container relative z-10">
           <motion.div className="max-w-4xl" variants={itemVariants}>
             <div className="flex items-center gap-3 mb-6">
-              <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded-sm border border-primary/20 uppercase tracking-[0.2em] flex items-center gap-2">
+              <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded-lg border border-primary/20 uppercase tracking-wide flex items-center gap-2">
                 <Puzzle size={14} /> integrations
               </span>
               <span className="h-px w-12 bg-base-300" />
-              <span className="text-[10px] font-mono text-base-content/30 uppercase">
+              <span className="text-[10px] text-base-content/30">
                 {INTEGRATIONS.length} available &middot; {COMING_SOON.length}{' '}
                 coming soon
               </span>
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-black tracking-tight uppercase mb-6 leading-none">
+            <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-6 leading-none">
               Extend Your
               <br />
               <span className="text-primary">Feed</span>
             </h1>
 
-            <p className="text-sm text-base-content/40 max-w-lg leading-relaxed font-mono">
+            <p className="text-sm text-base-content/40 max-w-lg leading-relaxed">
               Browse official integrations or explore what the community is
               building. Can't find what you want? Build it or suggest it.
             </p>
@@ -226,10 +226,10 @@ function IntegrationsPage() {
       {/* Integrations */}
       <section className="container py-16">
         <motion.div variants={itemVariants}>
-          <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-primary mb-2 flex items-center gap-2">
             <Puzzle size={16} /> Integrations
           </h2>
-          <p className="text-[10px] font-mono text-base-content/30 mb-8">
+          <p className="text-[10px] text-base-content/30 mb-8">
             Add data sources to your account to build your feed
           </p>
         </motion.div>
@@ -254,10 +254,10 @@ function IntegrationsPage() {
       {/* Coming Soon */}
       <section className="container pb-16">
         <motion.div variants={itemVariants}>
-          <h2 className="text-sm font-bold uppercase tracking-widest text-base-content/30 mb-2 flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-base-content/30 mb-2 flex items-center gap-2">
             <Clock size={16} /> On the Roadmap
           </h2>
-          <p className="text-[10px] font-mono text-base-content/20 mb-8">
+          <p className="text-[10px] text-base-content/20 mb-8">
             Community-requested integrations in development
           </p>
         </motion.div>
@@ -267,18 +267,18 @@ function IntegrationsPage() {
             <motion.div
               key={item.id}
               variants={itemVariants}
-              className="bg-base-200/50 border border-base-300/50 rounded-sm p-5 text-center opacity-50"
+              className="bg-base-200/50 border border-base-300/50 rounded-xl p-5 text-center opacity-50"
             >
-              <div className="h-10 w-10 rounded-sm bg-base-300/50 flex items-center justify-center mx-auto mb-3 text-base-content/30">
+              <div className="h-10 w-10 rounded-lg bg-base-300/50 flex items-center justify-center mx-auto mb-3 text-base-content/30">
                 {item.icon}
               </div>
-              <p className="text-xs font-bold text-base-content/40 uppercase tracking-wider">
+              <p className="text-xs font-semibold text-base-content/40">
                 {item.name}
               </p>
-              <p className="text-[9px] font-mono text-base-content/20 mt-1">
+              <p className="text-[9px] text-base-content/20 mt-1">
                 {item.description}
               </p>
-              <span className="inline-block mt-3 px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest text-base-content/20 border border-base-300/50 rounded-sm">
+              <span className="inline-block mt-3 px-2 py-0.5 text-[8px] font-bold uppercase tracking-wide text-base-content/20 border border-base-300/50 rounded-lg">
                 Roadmap
               </span>
             </motion.div>
@@ -294,18 +294,18 @@ function IntegrationsPage() {
               scale: 1.02,
               transition: { type: 'tween', duration: 0.2 },
             }}
-            className="group bg-primary/[0.03] border border-dashed border-primary/20 rounded-sm p-5 text-center hover:border-primary/40 hover:bg-primary/[0.06] transition-colors cursor-pointer"
+            className="group bg-primary/[0.03] border border-dashed border-primary/20 rounded-xl p-5 text-center hover:border-primary/40 hover:bg-primary/[0.06] transition-colors cursor-pointer"
           >
-            <div className="h-10 w-10 rounded-sm bg-primary/8 border border-primary/15 flex items-center justify-center mx-auto mb-3 text-primary/50 group-hover:text-primary transition-colors">
+            <div className="h-10 w-10 rounded-lg bg-primary/8 border border-primary/15 flex items-center justify-center mx-auto mb-3 text-primary/50 group-hover:text-primary transition-colors">
               <Plus size={18} />
             </div>
-            <p className="text-xs font-bold text-primary/50 uppercase tracking-wider group-hover:text-primary/70 transition-colors">
+            <p className="text-xs font-semibold text-primary/50 group-hover:text-primary/70 transition-colors">
               Suggest
             </p>
-            <p className="text-[9px] font-mono text-primary/30 mt-1">
+            <p className="text-[9px] text-primary/30 mt-1">
               Your idea here
             </p>
-            <span className="inline-flex items-center gap-1 mt-3 px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest text-primary/30 border border-primary/15 rounded-sm group-hover:text-primary/50 group-hover:border-primary/25 transition-colors">
+            <span className="inline-flex items-center gap-1 mt-3 px-2 py-0.5 text-[8px] font-bold uppercase tracking-wide text-primary/30 border border-primary/15 rounded-lg group-hover:text-primary/50 group-hover:border-primary/25 transition-colors">
               <Lightbulb size={8} />
               Propose
             </span>
@@ -317,7 +317,7 @@ function IntegrationsPage() {
       <section className="container pb-24">
         <motion.div
           variants={itemVariants}
-          className="relative overflow-hidden rounded-sm bg-base-200/40 border border-base-300/40 p-8 md:p-10"
+          className="relative overflow-hidden rounded-xl bg-base-200/40 border border-base-300/40 p-8 md:p-10"
         >
           {/* Background texture */}
           <div
@@ -333,7 +333,7 @@ function IntegrationsPage() {
 
           <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="text-center md:text-left">
-              <h3 className="text-lg font-bold uppercase tracking-wider text-base-content mb-2">
+              <h3 className="text-lg font-bold text-base-content mb-2">
                 Missing Something?
               </h3>
               <p className="text-sm text-base-content/35 leading-relaxed max-w-md">
@@ -348,7 +348,7 @@ function IntegrationsPage() {
                 href="https://discord.gg/85b49TcGJa"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group inline-flex items-center gap-2.5 px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.15em] border border-base-300/50 text-base-content/60 rounded-sm hover:border-info/30 hover:text-info transition-colors"
+                className="group inline-flex items-center gap-2.5 px-5 py-2.5 text-[11px] font-semibold border border-base-300/50 text-base-content/60 rounded-lg hover:border-info/30 hover:text-info transition-colors"
               >
                 <MessageSquare size={14} />
                 Suggest an Idea
@@ -361,7 +361,7 @@ function IntegrationsPage() {
                 href="https://github.com/brandon-relentnet/myscrollr"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group inline-flex items-center gap-2.5 px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.15em] border border-base-300/50 text-base-content/60 rounded-sm hover:border-primary/30 hover:text-primary transition-colors"
+                className="group inline-flex items-center gap-2.5 px-5 py-2.5 text-[11px] font-semibold border border-base-300/50 text-base-content/60 rounded-lg hover:border-primary/30 hover:text-primary transition-colors"
               >
                 <Code2 size={14} />
                 Build Your Own
@@ -398,38 +398,38 @@ function IntegrationCard({
   recommended?: boolean
 }) {
   return (
-    <div className="group bg-base-200 border border-base-300 rounded-sm p-6 hover:border-primary/20 transition-all relative overflow-hidden h-full flex flex-col">
+    <div className="group bg-base-200 border border-base-300 rounded-xl p-6 hover:border-primary/20 transition-all relative overflow-hidden h-full flex flex-col">
       {/* Subtle hover glow */}
       <div className="absolute inset-0 bg-primary/[0.02] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
       <div className="relative z-10 flex flex-col flex-1">
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
-          <div className="h-10 w-10 rounded-sm bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+          <div className="h-10 w-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
             {integration.icon}
           </div>
 
           {/* Status Badge */}
           {loading ? (
-            <span className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-base-content/30 bg-base-300/50 rounded-sm border border-base-300/50">
+            <span className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-base-content/30 bg-base-300/50 rounded-lg border border-base-300/50">
               Loading
             </span>
           ) : installed ? (
-            <span className="flex items-center gap-1 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-success/80 bg-success/10 rounded-sm border border-success/20">
+            <span className="flex items-center gap-1 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-success/80 bg-success/10 rounded-lg border border-success/20">
               <Check size={10} /> Added
             </span>
           ) : recommended ? (
-            <span className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-primary/60 bg-primary/8 rounded-sm border border-primary/15">
+            <span className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-primary/60 bg-primary/8 rounded-lg border border-primary/15">
               Recommended
             </span>
           ) : null}
         </div>
 
         {/* Content */}
-        <h3 className="text-sm font-bold uppercase tracking-wider text-base-content mb-1">
+        <h3 className="text-sm font-bold text-base-content mb-1">
           {integration.name}
         </h3>
-        <p className="text-[10px] font-mono text-primary/50 uppercase tracking-wider mb-3">
+        <p className="text-[10px] text-primary/50 mb-3">
           {integration.description}
         </p>
         <p className="text-xs text-base-content/30 leading-relaxed">
@@ -442,7 +442,7 @@ function IntegrationCard({
             <Link
               to="/dashboard"
               search={{ tab: integration.streamType }}
-              className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary/50 hover:text-primary transition-colors"
+              className="flex items-center gap-2 text-[10px] font-semibold text-primary/50 hover:text-primary transition-colors"
             >
               Manage on Dashboard <ArrowRight size={12} />
             </Link>
@@ -452,7 +452,7 @@ function IntegrationCard({
               whileTap={{ scale: 0.98 }}
               onClick={() => onAdd(integration)}
               disabled={adding}
-              className="flex items-center gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-widest border border-primary/30 text-primary/80 hover:bg-primary/10 hover:border-primary/50 transition-all rounded-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 text-[10px] font-semibold border border-primary/30 text-primary/80 hover:bg-primary/10 hover:border-primary/50 transition-all rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {!isAuthenticated ? (
                 <>

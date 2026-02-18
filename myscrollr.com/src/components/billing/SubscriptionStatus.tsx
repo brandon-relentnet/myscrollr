@@ -63,7 +63,7 @@ export default function SubscriptionStatus({ getToken }: SubscriptionStatusProps
     return (
       <div className="flex items-center gap-2 py-4">
         <Loader2 size={14} className="animate-spin text-base-content/30" />
-        <span className="text-xs text-base-content/30 uppercase tracking-wider">
+        <span className="text-xs text-base-content/30">
           Loading subscription...
         </span>
       </div>
@@ -84,7 +84,7 @@ export default function SubscriptionStatus({ getToken }: SubscriptionStatusProps
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <Crown size={14} className="text-base-content/30" />
-          <span className="text-xs font-bold uppercase tracking-wider text-base-content/40">
+          <span className="text-xs font-semibold text-base-content/40">
             Free Tier
           </span>
         </div>
@@ -106,11 +106,11 @@ export default function SubscriptionStatus({ getToken }: SubscriptionStatusProps
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Crown size={14} className="text-primary" />
-          <span className="text-xs font-bold uppercase tracking-wider text-primary">
+          <span className="text-xs font-semibold text-primary">
             Uplink {PLAN_LABELS[subscription.plan] || subscription.plan}
           </span>
         </div>
-        <span className={`text-[10px] font-bold uppercase tracking-wider ${statusInfo.color}`}>
+        <span className={`text-[10px] font-semibold uppercase tracking-wide ${statusInfo.color}`}>
           {statusInfo.label}
         </span>
       </div>
@@ -137,7 +137,7 @@ export default function SubscriptionStatus({ getToken }: SubscriptionStatusProps
         <button
           onClick={handleCancel}
           disabled={canceling}
-          className="w-full py-2 text-[10px] font-bold uppercase tracking-wider border border-base-content/10 rounded
+          className="w-full py-2 text-[10px] font-semibold border border-base-content/10 rounded-lg
                      text-base-content/30 hover:text-error hover:border-error/30 transition-colors disabled:opacity-50"
         >
           {canceling ? 'Canceling...' : 'Cancel Subscription'}

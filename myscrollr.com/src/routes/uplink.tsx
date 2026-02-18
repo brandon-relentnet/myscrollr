@@ -250,7 +250,7 @@ function TerminalBlock() {
   return (
     <div
       ref={containerRef}
-      className="relative overflow-hidden rounded-sm border border-base-300/60 bg-base-100/80 backdrop-blur-sm"
+      className="relative overflow-hidden rounded-xl border border-base-300/60 bg-base-100/80 backdrop-blur-sm"
     >
       {/* Grid overlay */}
       <div
@@ -269,7 +269,7 @@ function TerminalBlock() {
         <span className="w-2.5 h-2.5 rounded-full bg-error/40" />
         <span className="w-2.5 h-2.5 rounded-full bg-warning/40" />
         <span className="w-2.5 h-2.5 rounded-full bg-success/40" />
-        <span className="ml-3 text-[9px] font-mono text-base-content/20 uppercase tracking-widest">
+        <span className="ml-3 text-[9px] font-mono text-base-content/20">
           uplink_status.sh
         </span>
       </div>
@@ -402,14 +402,14 @@ function UplinkPage() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="fixed top-24 left-1/2 -translate-x-1/2 z-40 px-6 py-4 bg-success/10 border border-success/30 rounded-sm backdrop-blur-sm flex items-center gap-3"
+          className="fixed top-24 left-1/2 -translate-x-1/2 z-40 px-6 py-4 bg-success/10 border border-success/30 rounded-lg backdrop-blur-sm flex items-center gap-3"
         >
           <CheckCircle2 size={18} className="text-success" />
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-success">
+            <p className="text-xs font-bold text-success">
               Uplink Activated
             </p>
-            <p className="text-[10px] text-base-content/40 font-mono">
+            <p className="text-[10px] text-base-content/40">
               Your subscription is active. Welcome to total coverage.
             </p>
           </div>
@@ -424,9 +424,9 @@ function UplinkPage() {
 
       {/* ── Session Checking Indicator ──────────────────────── */}
       {checkingSession && (
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-40 px-6 py-3 bg-base-200/90 border border-base-content/10 rounded-sm backdrop-blur-sm flex items-center gap-3">
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-40 px-6 py-3 bg-base-200/90 border border-base-content/10 rounded-lg backdrop-blur-sm flex items-center gap-3">
           <Loader2 size={14} className="animate-spin text-primary" />
-          <span className="text-[10px] font-mono text-base-content/40 uppercase tracking-wider">
+          <span className="text-[10px] text-base-content/40">
             Confirming payment...
           </span>
         </div>
@@ -440,7 +440,7 @@ function UplinkPage() {
           <div
             className="absolute inset-0 opacity-[0.03]"
             style={{
-              backgroundImage: `radial-gradient(circle at 1px 1px, rgba(191, 255, 0, 0.5) 1px, transparent 0)`,
+              backgroundImage: `radial-gradient(circle at 1px 1px, rgba(52, 211, 153, 0.5) 1px, transparent 0)`,
               backgroundSize: '24px 24px',
             }}
           />
@@ -450,7 +450,7 @@ function UplinkPage() {
             className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] rounded-full"
             style={{
               background:
-                'radial-gradient(circle, rgba(191, 255, 0, 0.06) 0%, transparent 70%)',
+                'radial-gradient(circle, rgba(52, 211, 153, 0.06) 0%, transparent 70%)',
             }}
             animate={{
               scale: [1, 1.08, 1],
@@ -493,12 +493,12 @@ function UplinkPage() {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="flex items-center gap-4 mb-10"
           >
-            <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-sm border border-primary/15 uppercase tracking-[0.2em]">
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-lg border border-primary/15 uppercase tracking-wide">
               <Satellite size={12} />
               uplink
             </span>
             <span className="h-px w-16 bg-gradient-to-r from-base-300 to-transparent" />
-            <span className="text-[10px] font-mono text-base-content/25 uppercase tracking-wider flex items-center gap-3">
+            <span className="text-[10px] text-base-content/25 flex items-center gap-3">
               power tier
               <SignalBars />
             </span>
@@ -514,7 +514,7 @@ function UplinkPage() {
                 delay: 0.15,
                 ease: [0.22, 1, 0.36, 1],
               }}
-              className="text-6xl md:text-8xl lg:text-9xl font-black tracking-tight uppercase leading-[0.85] mb-8"
+              className="text-6xl md:text-8xl lg:text-9xl font-black tracking-tight leading-[0.85] mb-8"
             >
               Total
               <br />
@@ -548,7 +548,7 @@ function UplinkPage() {
               <span className="text-primary/30 font-mono text-sm mt-0.5 select-none shrink-0">
                 $
               </span>
-              <p className="text-base text-base-content/40 font-mono leading-relaxed">
+              <p className="text-base text-base-content/40 leading-relaxed">
                 Scrollr is free and open source. Uplink is for power users who
                 want more — every symbol, every feed, every league, and
                 real-time data delivery.
@@ -568,7 +568,7 @@ function UplinkPage() {
             >
               <div className="relative group">
                 <motion.div
-                  className="absolute -inset-1 bg-primary/15 rounded-sm blur-lg"
+                  className="absolute -inset-1 bg-primary/15 rounded-lg blur-lg"
                   animate={{ opacity: [0.3, 0.6, 0.3] }}
                   transition={{
                     duration: 3,
@@ -579,7 +579,7 @@ function UplinkPage() {
                 <button
                   type="button"
                   onClick={() => handleSelectPlan('annual')}
-                  className="relative inline-flex items-center gap-2.5 px-7 py-3.5 text-[11px] font-bold uppercase tracking-[0.2em] border border-primary/30 text-primary bg-primary/5 rounded-sm hover:bg-primary/10 hover:border-primary/50 transition-colors backdrop-blur-sm cursor-pointer"
+                  className="relative inline-flex items-center gap-2.5 px-7 py-3.5 text-[11px] font-semibold border border-primary/30 text-primary bg-primary/5 rounded-lg hover:bg-primary/10 hover:border-primary/50 transition-colors backdrop-blur-sm cursor-pointer"
                 >
                   <Rocket size={14} />
                   Get Uplink
@@ -588,7 +588,7 @@ function UplinkPage() {
 
               <div className="flex items-center gap-3">
                 <span className="h-px w-6 bg-base-300/50" />
-                <span className="text-[10px] font-mono text-base-content/20 uppercase tracking-wider">
+                <span className="text-[10px] font-mono text-base-content/20">
                   Starting at $5.83/mo
                 </span>
               </div>
@@ -610,10 +610,10 @@ function UplinkPage() {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="mb-10"
           >
-            <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
+            <h2 className="text-sm font-bold text-primary mb-2 flex items-center gap-2">
               <TrendingUp size={16} /> Free vs Uplink
             </h2>
-            <p className="text-[10px] font-mono text-base-content/30">
+            <p className="text-[10px] text-base-content/30">
               Everything in Free, plus full bandwidth
             </p>
           </motion.div>
@@ -623,22 +623,22 @@ function UplinkPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
             transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-            className="relative overflow-hidden rounded-sm border border-base-300/60 bg-base-200/40 backdrop-blur-sm"
+            className="relative overflow-hidden rounded-xl border border-base-300/60 bg-base-200/40 backdrop-blur-sm"
           >
             {/* Table Header */}
             <div className="grid grid-cols-3 border-b border-base-300/60 bg-base-200/60">
               <div className="p-4 pl-6">
-                <span className="text-[9px] font-mono text-base-content/30 uppercase tracking-widest">
+                <span className="text-[9px] text-base-content/30 uppercase tracking-wide">
                   Feature
                 </span>
               </div>
               <div className="p-4 text-center border-l border-base-300/30">
-                <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-base-content/40">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-base-content/40">
                   Free
                 </span>
               </div>
               <div className="p-4 text-center border-l border-primary/10 bg-primary/[0.03]">
-                <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-primary flex items-center justify-center gap-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-primary flex items-center justify-center gap-1.5">
                   <Crown size={12} /> Uplink
                 </span>
               </div>
@@ -682,7 +682,7 @@ function UplinkPage() {
 
             {/* Table Footer */}
             <div className="border-t border-base-300/40 bg-base-200/40 p-4 text-center">
-              <span className="text-[9px] font-mono text-base-content/20 uppercase tracking-wider">
+              <span className="text-[9px] text-base-content/20">
                 Per-account &middot; Free tier always included &middot; Upgrade
                 anytime
               </span>
@@ -701,10 +701,10 @@ function UplinkPage() {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="mb-10"
           >
-            <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
+            <h2 className="text-sm font-bold text-primary mb-2 flex items-center gap-2">
               <Zap size={16} /> What You Get
             </h2>
-            <p className="text-[10px] font-mono text-base-content/30">
+            <p className="text-[10px] text-base-content/30">
               The full power-user experience
             </p>
           </motion.div>
@@ -725,7 +725,7 @@ function UplinkPage() {
                   y: -3,
                   transition: { type: 'tween', duration: 0.2 },
                 }}
-                className="group bg-base-200/50 border border-base-300/50 rounded-sm p-6 hover:border-primary/20 transition-colors relative overflow-hidden"
+                className="group bg-base-200/50 border border-base-300/50 rounded-xl p-6 hover:border-primary/20 transition-colors relative overflow-hidden"
               >
                 {/* Gradient accent on hover */}
                 <div
@@ -736,11 +736,11 @@ function UplinkPage() {
                 <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-primary/0 group-hover:via-primary/20 to-transparent transition-all duration-500" />
 
                 <div className="relative z-10">
-                  <div className="h-10 w-10 rounded-sm bg-primary/8 border border-primary/15 flex items-center justify-center text-primary mb-5 group-hover:border-primary/30 transition-colors">
+                  <div className="h-10 w-10 rounded-lg bg-primary/8 border border-primary/15 flex items-center justify-center text-primary mb-5 group-hover:border-primary/30 transition-colors">
                     {feature.icon}
                   </div>
 
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-base-content mb-2">
+                  <h3 className="text-sm font-bold text-base-content mb-2">
                     {feature.title}
                   </h3>
                   <p className="text-xs text-base-content/30 leading-relaxed">
@@ -763,10 +763,10 @@ function UplinkPage() {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="mb-10"
           >
-            <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
+            <h2 className="text-sm font-bold text-primary mb-2 flex items-center gap-2">
               <Crown size={16} /> Pricing
             </h2>
-            <p className="text-[10px] font-mono text-base-content/30">
+            <p className="text-[10px] text-base-content/30">
               Flexible billing — pick what works for you
             </p>
           </motion.div>
@@ -783,23 +783,23 @@ function UplinkPage() {
                 transition: { type: 'tween', duration: 0.2 },
               }}
               onClick={() => handleSelectPlan('monthly')}
-              className="group bg-base-200/40 border border-base-300/50 rounded-sm p-6 hover:border-base-300 transition-colors relative overflow-hidden cursor-pointer"
+              className="group bg-base-200/40 border border-base-300/50 rounded-xl p-6 hover:border-base-300 transition-colors relative overflow-hidden cursor-pointer"
             >
               <div className="absolute inset-0 bg-gradient-to-b from-base-content/[0.01] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-5">
-                  <div className="h-9 w-9 rounded-sm bg-base-300/50 border border-base-300/50 flex items-center justify-center text-base-content/40">
+                  <div className="h-9 w-9 rounded-lg bg-base-300/50 border border-base-300/50 flex items-center justify-center text-base-content/40">
                     <Clock size={18} />
                   </div>
-                  <span className="text-[9px] font-mono text-base-content/25 uppercase tracking-widest">
+                  <span className="text-[9px] text-base-content/25 uppercase tracking-wide">
                     Flexible
                   </span>
                 </div>
 
-                <h3 className="text-sm font-bold uppercase tracking-wider text-base-content mb-1">
+                <h3 className="text-sm font-bold text-base-content mb-1">
                   Monthly
                 </h3>
-                <p className="text-[10px] font-mono text-base-content/25 uppercase tracking-wider mb-4">
+                <p className="text-[10px] text-base-content/25 mb-4">
                   Cancel anytime
                 </p>
 
@@ -811,7 +811,7 @@ function UplinkPage() {
                     / month
                   </span>
                 </div>
-                <p className="text-[10px] font-mono text-base-content/20 mb-5">
+                <p className="text-[10px] text-base-content/20 mb-5">
                   No commitment
                 </p>
 
@@ -823,7 +823,7 @@ function UplinkPage() {
 
                 <button
                   type="button"
-                  className="mt-5 w-full py-2.5 text-[10px] font-bold uppercase tracking-[0.2em] border border-base-content/15 text-base-content/50 rounded-sm hover:border-base-content/30 hover:text-base-content/70 transition-colors"
+                  className="mt-5 w-full py-2.5 text-[10px] font-semibold border border-base-content/15 text-base-content/50 rounded-lg hover:border-base-content/30 hover:text-base-content/70 transition-colors"
                 >
                   Select Monthly
                 </button>
@@ -845,23 +845,23 @@ function UplinkPage() {
                 transition: { type: 'tween', duration: 0.2 },
               }}
               onClick={() => handleSelectPlan('quarterly')}
-              className="group bg-base-200/40 border border-base-300/50 rounded-sm p-6 hover:border-info/20 transition-colors relative overflow-hidden cursor-pointer"
+              className="group bg-base-200/40 border border-base-300/50 rounded-xl p-6 hover:border-info/20 transition-colors relative overflow-hidden cursor-pointer"
             >
               <div className="absolute inset-0 bg-gradient-to-b from-info/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-5">
-                  <div className="h-9 w-9 rounded-sm bg-info/8 border border-info/15 flex items-center justify-center text-info/70">
+                  <div className="h-9 w-9 rounded-lg bg-info/8 border border-info/15 flex items-center justify-center text-info/70">
                     <Rocket size={18} />
                   </div>
-                  <span className="text-[9px] font-mono text-info/50 uppercase tracking-widest">
+                  <span className="text-[9px] text-info/50 uppercase tracking-wide">
                     Save 18%
                   </span>
                 </div>
 
-                <h3 className="text-sm font-bold uppercase tracking-wider text-base-content mb-1">
+                <h3 className="text-sm font-bold text-base-content mb-1">
                   Quarterly
                 </h3>
-                <p className="text-[10px] font-mono text-base-content/25 uppercase tracking-wider mb-4">
+                <p className="text-[10px] text-base-content/25 mb-4">
                   3-month access
                 </p>
 
@@ -885,7 +885,7 @@ function UplinkPage() {
 
                 <button
                   type="button"
-                  className="mt-5 w-full py-2.5 text-[10px] font-bold uppercase tracking-[0.2em] border border-info/20 text-info/60 rounded-sm hover:border-info/40 hover:text-info/80 transition-colors"
+                  className="mt-5 w-full py-2.5 text-[10px] font-semibold border border-info/20 text-info/60 rounded-lg hover:border-info/40 hover:text-info/80 transition-colors"
                 >
                   Select Quarterly
                 </button>
@@ -907,11 +907,11 @@ function UplinkPage() {
                 transition: { type: 'tween', duration: 0.2 },
               }}
               onClick={() => handleSelectPlan('annual')}
-              className="group relative rounded-sm overflow-hidden cursor-pointer"
+              className="group relative rounded-xl overflow-hidden cursor-pointer"
             >
               {/* Outer glow */}
               <motion.div
-                className="absolute -inset-px rounded-sm bg-gradient-to-b from-primary/30 via-primary/10 to-primary/5"
+                className="absolute -inset-px rounded-xl bg-gradient-to-b from-primary/30 via-primary/10 to-primary/5"
                 animate={{ opacity: [0.7, 1, 0.7] }}
                 transition={{
                   duration: 4,
@@ -920,31 +920,31 @@ function UplinkPage() {
                 }}
               />
 
-              <div className="relative bg-base-200/80 backdrop-blur-sm p-6 border border-primary/20 rounded-sm">
+              <div className="relative bg-base-200/80 backdrop-blur-sm p-6 border border-primary/20 rounded-xl">
                 {/* Ambient gradient */}
                 <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.04] to-transparent pointer-events-none" />
 
                 {/* Best value badge */}
                 <div className="absolute top-0 right-0">
-                  <div className="bg-primary text-primary-content text-[8px] font-bold uppercase tracking-[0.2em] px-3 py-1.5 rounded-bl-sm">
+                  <div className="bg-primary text-primary-content text-[8px] font-bold uppercase tracking-wide px-3 py-1.5 rounded-bl-lg">
                     Best Value
                   </div>
                 </div>
 
                 <div className="relative z-10">
                   <div className="flex items-center justify-between mb-5">
-                    <div className="h-9 w-9 rounded-sm bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+                    <div className="h-9 w-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
                       <Star size={18} />
                     </div>
-                    <span className="text-[9px] font-mono text-primary/60 uppercase tracking-widest">
+                    <span className="text-[9px] text-primary/60 uppercase tracking-wide">
                       Save 35%
                     </span>
                   </div>
 
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-base-content mb-1">
+                  <h3 className="text-sm font-bold text-base-content mb-1">
                     Annual
                   </h3>
-                  <p className="text-[10px] font-mono text-primary/40 uppercase tracking-wider mb-4">
+                  <p className="text-[10px] text-primary/40 mb-4">
                     12-month access
                   </p>
 
@@ -975,7 +975,7 @@ function UplinkPage() {
 
                   <button
                     type="button"
-                    className="mt-5 w-full py-2.5 text-[10px] font-bold uppercase tracking-[0.2em] bg-primary/10 border border-primary/30 text-primary rounded-sm hover:bg-primary/20 hover:border-primary/50 transition-colors"
+                    className="mt-5 w-full py-2.5 text-[10px] font-semibold bg-primary/10 border border-primary/30 text-primary rounded-lg hover:bg-primary/20 hover:border-primary/50 transition-colors"
                   >
                     Get Annual — Best Value
                   </button>
@@ -998,24 +998,24 @@ function UplinkPage() {
                   y: -3,
                   transition: { type: 'tween', duration: 0.2 },
                 }}
-                className="group bg-base-200/40 border border-base-300/50 rounded-sm p-6 hover:border-warning/20 transition-colors relative overflow-hidden cursor-pointer"
+                className="group bg-base-200/40 border border-base-300/50 rounded-xl p-6 hover:border-warning/20 transition-colors relative overflow-hidden cursor-pointer"
               >
                 <div className="absolute inset-0 bg-gradient-to-b from-warning/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
                 <div className="relative z-10">
                   <div className="flex items-center justify-between mb-5">
-                    <div className="h-9 w-9 rounded-sm bg-warning/8 border border-warning/15 flex items-center justify-center text-warning/70">
+                    <div className="h-9 w-9 rounded-lg bg-warning/8 border border-warning/15 flex items-center justify-center text-warning/70">
                       <Sparkles size={18} />
                     </div>
-                    <span className="text-[9px] font-mono text-warning/50 uppercase tracking-widest">
+                    <span className="text-[9px] text-warning/50 uppercase tracking-wide">
                       Limited
                     </span>
                   </div>
 
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-base-content mb-1">
+                  <h3 className="text-sm font-bold text-base-content mb-1">
                     Lifetime
                   </h3>
-                  <p className="text-[10px] font-mono text-warning/40 uppercase tracking-wider mb-4">
+                  <p className="text-[10px] text-warning/40 mb-4">
                     The First Byte
                   </p>
 
@@ -1032,9 +1032,9 @@ function UplinkPage() {
                   </p>
 
                   {/* Slot counter */}
-                  <div className="mb-5 p-3 rounded-sm bg-base-100/60 border border-base-300/30">
+                  <div className="mb-5 p-3 rounded-xl bg-base-100/60 border border-base-300/30">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-[9px] font-mono text-base-content/25 uppercase tracking-widest">
+                      <span className="text-[9px] text-base-content/25 uppercase tracking-wide">
                         Slots
                       </span>
                       <span className="text-[9px] font-mono text-warning/50">
@@ -1064,7 +1064,7 @@ function UplinkPage() {
 
                   <button
                     type="button"
-                    className="mt-5 w-full py-2.5 text-[10px] font-bold uppercase tracking-[0.2em] border border-warning/20 text-warning/60 rounded-sm hover:border-warning/40 hover:text-warning/80 transition-colors"
+                    className="mt-5 w-full py-2.5 text-[10px] font-semibold border border-warning/20 text-warning/60 rounded-lg hover:border-warning/40 hover:text-warning/80 transition-colors"
                   >
                     View Lifetime →
                   </button>
@@ -1081,7 +1081,7 @@ function UplinkPage() {
             transition={{ delay: 0.3 }}
             className="mt-8 text-center"
           >
-            <p className="text-[9px] font-mono text-base-content/20 uppercase tracking-wider">
+            <p className="text-[9px] text-base-content/20">
               All plans include the full free tier &middot; Cancel anytime
               &middot; Payments via Stripe
             </p>
@@ -1111,7 +1111,7 @@ function UplinkPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="relative overflow-hidden rounded-sm bg-base-200/40 border border-base-300/50 backdrop-blur-sm"
+            className="relative overflow-hidden rounded-xl bg-base-200/40 border border-base-300/50 backdrop-blur-sm"
           >
             {/* Background layers */}
             <div className="absolute inset-0 pointer-events-none">
@@ -1119,7 +1119,7 @@ function UplinkPage() {
                 className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full"
                 style={{
                   background:
-                    'radial-gradient(circle, rgba(191, 255, 0, 0.05) 0%, transparent 70%)',
+                    'radial-gradient(circle, rgba(52, 211, 153, 0.05) 0%, transparent 70%)',
                 }}
                 animate={{
                   scale: [1, 1.1, 1],
@@ -1148,13 +1148,13 @@ function UplinkPage() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
-                className="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-sm bg-primary/8 border border-primary/15"
+                className="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-lg bg-primary/8 border border-primary/15"
               >
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
                 </span>
-                <span className="text-[10px] font-mono uppercase tracking-widest text-primary">
+                <span className="text-[10px] uppercase tracking-wide text-primary">
                   Available Now
                 </span>
               </motion.div>
@@ -1168,7 +1168,7 @@ function UplinkPage() {
                   duration: 0.6,
                   ease: [0.22, 1, 0.36, 1],
                 }}
-                className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight uppercase mb-6 leading-[0.95]"
+                className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mb-6 leading-[0.95]"
               >
                 Scrollr is <span className="text-primary">free forever</span>
                 <br />
@@ -1186,7 +1186,7 @@ function UplinkPage() {
                   duration: 0.6,
                   ease: [0.22, 1, 0.36, 1],
                 }}
-                className="text-sm text-base-content/35 leading-relaxed mb-10 font-mono max-w-lg mx-auto"
+                className="text-sm text-base-content/35 leading-relaxed mb-10 max-w-lg mx-auto"
               >
                 The core platform stays open source and always free. Uplink
                 unlocks real-time delivery and total coverage across every
@@ -1207,11 +1207,11 @@ function UplinkPage() {
                 <button
                   type="button"
                   onClick={() => handleSelectPlan('annual')}
-                  className="inline-flex items-center gap-2 px-6 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-primary border border-primary/30 rounded-sm bg-primary/5 hover:bg-primary/10 hover:border-primary/50 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-2 px-6 py-3 text-[10px] font-semibold text-primary border border-primary/30 rounded-lg bg-primary/5 hover:bg-primary/10 hover:border-primary/50 transition-colors cursor-pointer"
                 >
                   <Rocket size={12} /> Get Uplink — $5.83/mo
                 </button>
-                <span className="inline-flex items-center gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-base-content/25 border border-base-300/30 rounded-sm">
+                <span className="inline-flex items-center gap-2 px-4 py-2 text-[10px] font-bold text-base-content/25 border border-base-300/30 rounded-lg">
                   <ChevronRight size={12} /> Free tier always included
                 </span>
               </motion.div>

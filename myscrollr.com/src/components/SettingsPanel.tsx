@@ -131,7 +131,7 @@ export default function SettingsPanel({
             <div className="flex items-center justify-between px-6 py-5 border-b border-base-300/50">
               <div className="flex items-center gap-3">
                 <Settings2 size={16} className="text-primary" />
-                <span className="text-xs font-bold uppercase tracking-[0.15em]">
+                <span className="text-xs font-semibold">
                   Extension Settings
                 </span>
               </div>
@@ -141,14 +141,14 @@ export default function SettingsPanel({
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="text-[9px] font-mono text-primary/60 uppercase tracking-widest"
+                    className="text-[9px] text-primary/60 uppercase tracking-wide"
                   >
                     Saving...
                   </motion.span>
                 )}
                 <button
                   onClick={onClose}
-                  className="p-1.5 rounded-sm hover:bg-base-200 transition-colors text-base-content/40 hover:text-base-content/70"
+                  className="p-1.5 rounded-lg hover:bg-base-200 transition-colors text-base-content/40 hover:text-base-content/70"
                 >
                   <X size={16} />
                 </button>
@@ -162,7 +162,7 @@ export default function SettingsPanel({
                   <motion.div
                     animate={{ opacity: [0.4, 1, 0.4] }}
                     transition={{ duration: 1.5, repeat: Infinity }}
-                    className="text-[10px] font-mono text-base-content/30 uppercase tracking-widest"
+                    className="text-[10px] text-base-content/30 uppercase tracking-wide"
                   >
                     Loading preferences...
                   </motion.div>
@@ -277,7 +277,7 @@ export default function SettingsPanel({
 
             {/* Footer */}
             <div className="px-6 py-4 border-t border-base-300/50">
-              <p className="text-[9px] font-mono text-base-content/25 uppercase tracking-widest text-center">
+              <p className="text-[9px] text-base-content/25 uppercase tracking-wide text-center">
                 Changes sync to your extension automatically
               </p>
             </div>
@@ -306,11 +306,11 @@ function Section({
       <div>
         <div className="flex items-center gap-2 mb-1">
           <span className="text-primary">{icon}</span>
-          <span className="text-xs font-bold uppercase tracking-wide">
+          <span className="text-xs font-semibold uppercase tracking-wide">
             {title}
           </span>
         </div>
-        <p className="text-[10px] text-base-content/35 uppercase tracking-wide pl-[22px]">
+        <p className="text-[10px] text-base-content/35 pl-[22px]">
           {desc}
         </p>
       </div>
@@ -335,14 +335,14 @@ function ToggleRow({
   return (
     <button
       onClick={onToggle}
-      className={`flex items-center gap-3 px-4 py-3 rounded-sm border transition-all w-full text-left ${
+      className={`flex items-center gap-3 px-4 py-3 rounded-lg border transition-all w-full text-left ${
         active
           ? 'bg-primary/8 border-primary/20 text-primary'
           : 'bg-base-200/40 border-base-300/40 text-base-content/40'
       }`}
     >
       {active ? activeIcon : inactiveIcon}
-      <span className="text-xs font-bold uppercase tracking-wide">{label}</span>
+      <span className="text-xs font-semibold">{label}</span>
       <span className="ml-auto">
         <span
           className={`block h-5 w-9 rounded-full relative transition-colors ${
@@ -370,12 +370,12 @@ function SegmentedControl({
   onChange: (v: string) => void
 }) {
   return (
-    <div className="flex gap-1 p-1 rounded-sm bg-base-200/60 border border-base-300/40">
+    <div className="flex gap-1 p-1 rounded-lg bg-base-200/60 border border-base-300/40">
       {options.map((opt) => (
         <button
           key={opt.value}
           onClick={() => onChange(opt.value)}
-          className={`relative flex-1 px-4 py-2 rounded-sm text-[10px] font-bold uppercase tracking-widest transition-colors ${
+          className={`relative flex-1 px-4 py-2 rounded-lg text-[10px] font-semibold transition-colors ${
             value === opt.value
               ? 'text-primary'
               : 'text-base-content/30 hover:text-base-content/50'
@@ -384,7 +384,7 @@ function SegmentedControl({
           {value === opt.value && (
             <motion.div
               layoutId={`seg-${options.map((o) => o.value).join('-')}`}
-              className="absolute inset-0 bg-primary/10 border border-primary/20 rounded-sm"
+              className="absolute inset-0 bg-primary/10 border border-primary/20 rounded-lg"
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
             />
           )}
@@ -417,14 +417,14 @@ function SiteList({
           key={site}
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between px-3 py-2 rounded-sm bg-base-200/50 border border-base-300/40"
+          className="flex items-center justify-between px-3 py-2 rounded-lg bg-base-200/50 border border-base-300/40"
         >
           <span className="text-xs font-mono text-base-content/60 truncate">
             {site}
           </span>
           <button
             onClick={() => onRemove(i)}
-            className="p-1 rounded-sm hover:bg-error/10 text-base-content/20 hover:text-error transition-colors shrink-0"
+            className="p-1 rounded-lg hover:bg-error/10 text-base-content/20 hover:text-error transition-colors shrink-0"
           >
             <Trash2 size={12} />
           </button>
@@ -441,18 +441,18 @@ function SiteList({
             if (e.key === 'Enter') onAdd(inputValue)
           }}
           placeholder={placeholder}
-          className="flex-1 px-3 py-2 rounded-sm bg-base-200/50 border border-base-300/40 text-xs font-mono text-base-content/60 placeholder:text-base-content/20 focus:outline-none focus:border-primary/30 transition-colors"
+          className="flex-1 px-3 py-2 rounded-lg bg-base-200/50 border border-base-300/40 text-xs font-mono text-base-content/60 placeholder:text-base-content/20 focus:outline-none focus:border-primary/30 transition-colors"
         />
         <button
           onClick={() => onAdd(inputValue)}
-          className="px-3 py-2 rounded-sm border border-base-300/40 text-base-content/30 hover:text-primary hover:border-primary/30 transition-colors"
+          className="px-3 py-2 rounded-lg border border-base-300/40 text-base-content/30 hover:text-primary hover:border-primary/30 transition-colors"
         >
           <Plus size={14} />
         </button>
       </div>
 
       {sites.length === 0 && (
-        <p className="text-[9px] font-mono text-base-content/20 uppercase tracking-wide">
+        <p className="text-[9px] text-base-content/20 uppercase tracking-wide">
           No sites configured
         </p>
       )}

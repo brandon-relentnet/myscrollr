@@ -70,7 +70,7 @@ function LegalPage() {
           <div
             className="absolute inset-0 opacity-[0.02]"
             style={{
-              backgroundImage: `radial-gradient(circle at 1px 1px, rgba(191, 255, 0, 0.4) 1px, transparent 0)`,
+              backgroundImage: `radial-gradient(circle at 1px 1px, rgba(52, 211, 153, 0.4) 1px, transparent 0)`,
               backgroundSize: '32px 32px',
             }}
           />
@@ -78,7 +78,7 @@ function LegalPage() {
             className="absolute top-[-20%] left-[20%] w-[600px] h-[600px] rounded-full"
             style={{
               background:
-                'radial-gradient(circle, rgba(191, 255, 0, 0.04) 0%, transparent 70%)',
+                'radial-gradient(circle, rgba(52, 211, 153, 0.04) 0%, transparent 70%)',
             }}
             animate={{ scale: [1, 1.06, 1], opacity: [0.4, 0.7, 0.4] }}
             transition={{
@@ -95,34 +95,34 @@ function LegalPage() {
           <motion.div variants={sectionVariants}>
             {/* Badge */}
             <div className="flex items-center gap-4 mb-8">
-              <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-sm border border-primary/15 uppercase tracking-[0.2em]">
+              <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-semibold rounded-lg border border-primary/15 uppercase tracking-wide">
                 <BookOpen size={12} />
                 legal_docs
               </span>
               <span className="h-px w-16 bg-gradient-to-r from-base-300 to-transparent" />
-              <span className="text-[10px] font-mono text-base-content/25 uppercase tracking-wider">
+              <span className="text-[10px] font-mono text-base-content/25">
                 {LEGAL_DOCUMENTS.length} documents
               </span>
             </div>
 
             {/* Title */}
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight uppercase leading-[0.9] mb-4">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight leading-[0.9] mb-4">
               {activeDoc.title}
             </h1>
 
             {/* Meta row */}
             <div className="flex flex-wrap items-center gap-4">
-              <span className="text-[10px] font-mono text-base-content/30 uppercase tracking-wider">
+              <span className="text-[10px] font-mono text-base-content/30">
                 Last updated: {activeDoc.lastUpdated}
               </span>
               <span className="text-base-content/15">|</span>
-              <span className="text-[10px] font-mono text-base-content/30 uppercase tracking-wider">
+              <span className="text-[10px] font-mono text-base-content/30">
                 Effective: {activeDoc.effectiveDate}
               </span>
               {activeDoc.badge && (
                 <>
                   <span className="text-base-content/15">|</span>
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-info/8 text-info text-[9px] font-bold rounded-sm border border-info/15 uppercase tracking-[0.15em]">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-info/8 text-info text-[9px] font-semibold rounded-lg border border-info/15 uppercase tracking-wide">
                     <Info size={10} />
                     {activeDoc.badge}
                   </span>
@@ -205,7 +205,7 @@ function Sidebar({
     <nav className="space-y-5">
       {categories.map((group) => (
         <div key={group.category}>
-          <h4 className="text-[9px] font-bold font-mono uppercase tracking-[0.2em] text-base-content/25 mb-2.5 px-1">
+          <h4 className="text-[9px] font-semibold uppercase tracking-wide text-base-content/25 mb-2.5 px-1">
             {group.label}
           </h4>
           <ul className="space-y-0.5">
@@ -217,7 +217,7 @@ function Sidebar({
                   <button
                     type="button"
                     onClick={() => onSelect(doc.slug)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-sm text-left transition-all cursor-pointer ${
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-all cursor-pointer ${
                       isActive
                         ? 'bg-primary/8 border border-primary/15 text-primary'
                         : 'text-base-content/40 hover:text-base-content/60 hover:bg-base-200/50 border border-transparent'
@@ -233,7 +233,7 @@ function Sidebar({
                       {doc.shortTitle}
                     </span>
                     {doc.badge && (
-                      <span className="ml-auto text-[8px] font-mono text-info/60 uppercase tracking-wider shrink-0">
+                      <span className="ml-auto text-[8px] text-info/60 uppercase tracking-wide shrink-0">
                         Soon
                       </span>
                     )}
@@ -258,8 +258,8 @@ function TableOfContents({
   docSlug: string
 }) {
   return (
-    <div className="bg-base-200/30 border border-base-300/30 rounded-sm p-4">
-      <h4 className="text-[9px] font-bold font-mono uppercase tracking-[0.2em] text-base-content/25 mb-3 flex items-center gap-2">
+    <div className="bg-base-200/30 border border-base-300/30 rounded-xl p-4">
+      <h4 className="text-[9px] font-semibold uppercase tracking-wide text-base-content/25 mb-3 flex items-center gap-2">
         <List size={10} />
         On this page
       </h4>
@@ -303,7 +303,7 @@ function MobileSelector({
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-base-200/50 border border-base-300/50 rounded-sm text-left cursor-pointer"
+        className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-base-200/50 border border-base-300/50 rounded-xl text-left cursor-pointer"
       >
         <div className="flex items-center gap-3">
           <Icon size={16} className="text-primary" />
@@ -322,12 +322,12 @@ function MobileSelector({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.2 }}
-            className="absolute z-50 top-full mt-1 left-0 right-0 bg-base-200 border border-base-300/50 rounded-sm shadow-lg max-h-80 overflow-y-auto"
+            className="absolute z-50 top-full mt-1 left-0 right-0 bg-base-200 border border-base-300/50 rounded-xl shadow-lg max-h-80 overflow-y-auto"
           >
             {categories.map((group) => (
               <div key={group.category}>
                 <div className="px-4 py-2 bg-base-300/30">
-                  <span className="text-[9px] font-bold font-mono uppercase tracking-[0.2em] text-base-content/25">
+                  <span className="text-[9px] font-semibold uppercase tracking-wide text-base-content/25">
                     {group.label}
                   </span>
                 </div>
@@ -353,7 +353,7 @@ function MobileSelector({
                         {doc.shortTitle}
                       </span>
                       {doc.badge && (
-                        <span className="ml-auto text-[8px] font-mono text-info/60 uppercase tracking-wider">
+                        <span className="ml-auto text-[8px] text-info/60 uppercase tracking-wide">
                           Soon
                         </span>
                       )}
@@ -391,7 +391,7 @@ function DocumentContent({ doc }: { doc: LegalDocument }) {
             <span className="text-[10px] font-mono text-base-content/15 tabular-nums w-6 text-right">
               {String(i + 1).padStart(2, '0')}
             </span>
-            <h2 className="text-sm font-bold uppercase tracking-widest text-primary">
+            <h2 className="text-sm font-bold text-primary">
               {section.heading}
             </h2>
           </div>
@@ -424,15 +424,15 @@ function DocumentContent({ doc }: { doc: LegalDocument }) {
         className="mt-16 pt-8 border-t border-base-300/30"
       >
         <div className="flex flex-wrap items-center gap-4">
-          <span className="text-[10px] font-mono text-base-content/20 uppercase tracking-wider">
+          <span className="text-[10px] text-base-content/20">
             {doc.title}
           </span>
           <span className="text-base-content/10">|</span>
-          <span className="text-[10px] font-mono text-base-content/20 uppercase tracking-wider">
+          <span className="text-[10px] font-mono text-base-content/20">
             Last updated {doc.lastUpdated}
           </span>
           <span className="text-base-content/10">|</span>
-          <span className="text-[10px] font-mono text-base-content/20 uppercase tracking-wider">
+          <span className="text-[10px] font-mono text-base-content/20">
             Effective {doc.effectiveDate}
           </span>
         </div>
@@ -473,7 +473,7 @@ function Callout({
 
   return (
     <div
-      className={`mb-6 ml-9 p-4 rounded-sm border ${
+      className={`mb-6 ml-9 p-4 rounded-xl border ${
         isWarning
           ? 'bg-warning/5 border-warning/20'
           : 'bg-info/5 border-info/20'
