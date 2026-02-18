@@ -25,10 +25,11 @@ interface ProfileData {
 
 function ProfilePage() {
   const { username } = Route.useParams()
-  const { isAuthenticated, getIdTokenClaims, getAccessToken } = useScrollrAuth()
+  const { isAuthenticated, signIn, getIdTokenClaims, getAccessToken } =
+    useScrollrAuth()
   const [profile, setProfile] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [isOwnProfile, setIsOwnProfile] = useState(false)
 
   useEffect(() => {
@@ -119,9 +120,7 @@ function ProfilePage() {
       <div className="min-h-screen text-primary flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="animate-spin h-12 w-12 text-primary mx-auto" />
-          <p className="text-xs text-primary/60">
-            Accessing Identity_Logs...
-          </p>
+          <p className="text-xs text-primary/60">Accessing Identity_Logs...</p>
         </div>
       </div>
     )
@@ -138,24 +137,40 @@ function ProfilePage() {
           className="text-center space-y-6 max-w-md border border-base-300/50 p-12 rounded-xl bg-base-200/50"
         >
           <AlertCircle className="h-16 w-16 text-warning mx-auto mb-4" />
-          <h1 className="text-2xl font-bold">
-            Auth Required
-          </h1>
+          <h1 className="text-2xl font-bold">Auth Required</h1>
           <p className="text-base-content/60 text-xs leading-loose">
             Identity verification required to access private profile node.
           </p>
-          <a
-            href={`${window.location.origin}/callback`}
-            className="inline-flex items-center justify-center px-8 py-2.5 rounded-lg bg-primary text-primary-content text-[11px] font-semibold hover:brightness-110 transition-[filter]"
+          <button
+            type="button"
+            onClick={() => signIn(`${window.location.origin}/callback`)}
+            className="inline-flex items-center justify-center px-8 py-2.5 rounded-lg bg-primary text-primary-content text-[11px] font-semibold hover:brightness-110 transition-[filter] cursor-pointer"
           >
             Sign In
-          </a>
+          </button>
         </motion.div>
       </div>
     )
   }
 
-  if (!profile) return null
+  if (!profile) {
+    return (
+      <div className="min-h-screen text-base-content flex items-center justify-center p-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4 }}
+          className="text-center space-y-6 max-w-md border border-base-300/50 p-12 rounded-xl bg-base-200/50"
+        >
+          <AlertCircle className="h-16 w-16 text-error mx-auto mb-4" />
+          <h1 className="text-2xl font-bold">Profile Not Found</h1>
+          <p className="text-base-content/60 text-xs leading-loose">
+            {error || `Unable to load profile for @${username}.`}
+          </p>
+        </motion.div>
+      </div>
+    )
+  }
 
   return (
     <motion.div
@@ -278,4 +293,3 @@ function ProfilePage() {
     </motion.div>
   )
 }
-
