@@ -579,7 +579,7 @@ export function HowItWorks() {
           {/* Visual stage */}
           <div className="rounded-2xl bg-base-200/40 border border-base-300/40 overflow-hidden min-h-[320px] sm:min-h-[360px] flex flex-col [&>*]:flex-1 [&>*]:flex [&>*]:flex-col">
             <AnimatePresence mode="wait">
-              <ActiveVisual key={`mobile-${activeStep}`} />
+              <ActiveVisual key={`mobile-${activeStep}-${cycleKey}`} />
             </AnimatePresence>
           </div>
 
@@ -703,7 +703,7 @@ export function HowItWorks() {
           >
             <div className="rounded-2xl bg-base-200/40 border border-base-300/40 overflow-hidden min-h-[420px] flex flex-col [&>*]:flex-1 [&>*]:flex [&>*]:flex-col">
               <AnimatePresence mode="wait">
-                <ActiveVisual key={`desktop-${activeStep}`} />
+                <ActiveVisual key={`desktop-${activeStep}-${cycleKey}`} />
               </AnimatePresence>
             </div>
           </motion.div>
