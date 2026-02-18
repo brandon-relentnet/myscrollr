@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { clsx } from 'clsx';
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { clsx } from "clsx";
 import type {
   ConnectionStatus,
   FeedPosition,
@@ -7,10 +7,10 @@ import type {
   FeedBehavior,
   DashboardResponse,
   DeliveryMode,
-} from '~/utils/types';
-import { getIntegration } from '~/integrations/registry';
-import FeedTabs from './FeedTabs';
-import ConnectionIndicator from './ConnectionIndicator';
+} from "~/utils/types";
+import { getChannel } from "~/channels/registry";
+import FeedTabs from "./FeedTabs";
+import ConnectionIndicator from "./ConnectionIndicator";
 
 interface FeedBarProps {
   /** Raw dashboard response — each FeedTab extracts its initial data from here. */
@@ -22,7 +22,7 @@ interface FeedBarProps {
   mode: FeedMode;
   collapsed: boolean;
   behavior: FeedBehavior;
-  /** Integration IDs that are visible (derived from user_streams). */
+  /** Channel IDs that are visible (derived from user_channels). */
   activeTabs: string[];
   authenticated: boolean;
   onLogin: () => void;
@@ -36,14 +36,14 @@ const MIN_HEIGHT = 100;
 const MAX_HEIGHT = 600;
 
 /**
- * Map from integration ID → dashboard data key → initial items.
+ * Map from channel ID → dashboard data key → initial items.
  * This is how we bridge the old dashboard response format to the
- * new per-integration FeedTab props.
+ * new per-channel FeedTab props.
  */
 const DASHBOARD_KEY_MAP: Record<string, string> = {
-  finance: 'finance',
-  sports: 'sports',
-  rss: 'rss',
+  finance: "finance",
+  sports: "sports",
+  rss: "rss",
 };
 
 export default function FeedBar({
@@ -62,7 +62,9 @@ export default function FeedBar({
   onHeightChange,
   onHeightCommit,
 }: FeedBarProps) {
-  const [activeTab, setActiveTab] = useState<string>(activeTabs[0] ?? 'finance');
+  const [activeTab, setActiveTab] = useState<string>(
+    activeTabs[0] ?? "finance",
+  );
   const [isDragging, setIsDragging] = useState(false);
   const barRef = useRef<HTMLDivElement>(null);
 
@@ -73,18 +75,21 @@ export default function FeedBar({
     }
   }, [activeTabs, activeTab]);
 
-  // Build streamConfig for the active integration, injecting __initialItems
-  const streamConfig = useMemo(() => {
+  // Build channelConfig for the active channel, injecting __initialItems
+  const channelConfig = useMemo(() => {
     const dashboardKey = DASHBOARD_KEY_MAP[activeTab];
     const initialItems = dashboardKey
-      ? (dashboard?.data?.[dashboardKey] as unknown[] | undefined) ?? []
+      ? ((dashboard?.data?.[dashboardKey] as unknown[] | undefined) ?? [])
       : [];
-    return { __initialItems: initialItems, __dashboardLoaded: dashboard !== null };
+    return {
+      __initialItems: initialItems,
+      __dashboardLoaded: dashboard !== null,
+    };
   }, [activeTab, dashboard]);
 
-  // Look up the active integration's FeedTab component
-  const integration = getIntegration(activeTab);
-  const FeedTabComponent = integration?.FeedTab ?? null;
+  // Look up the active channel's FeedTab component
+  const channel = getChannel(activeTab);
+  const FeedTabComponent = channel?.FeedTab ?? null;
 
   // ── Drag resize ────────────────────────────────────────────────
   const handleDragStart = useCallback(
@@ -97,22 +102,24 @@ export default function FeedBar({
       let currentHeight = height;
 
       const onMouseMove = (ev: MouseEvent) => {
-        const delta = position === 'bottom'
-          ? startY - ev.clientY
-          : ev.clientY - startY;
-        currentHeight = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, startHeight + delta));
+        const delta =
+          position === "bottom" ? startY - ev.clientY : ev.clientY - startY;
+        currentHeight = Math.min(
+          MAX_HEIGHT,
+          Math.max(MIN_HEIGHT, startHeight + delta),
+        );
         onHeightChange(currentHeight); // Visual update only
       };
 
       const onMouseUp = () => {
         setIsDragging(false);
         onHeightCommit(currentHeight); // Persist to storage on drag end
-        document.removeEventListener('mousemove', onMouseMove);
-        document.removeEventListener('mouseup', onMouseUp);
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
       };
 
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
     },
     [height, position, onHeightChange, onHeightCommit],
   );
@@ -124,10 +131,10 @@ export default function FeedBar({
     <div
       ref={barRef}
       className={clsx(
-        'fixed left-0 right-0 bg-surface text-fg font-sans',
-        'transition-[height] duration-200 ease-out',
-        position === 'bottom' ? 'bottom-0' : 'top-0',
-        isDragging && 'select-none',
+        "fixed left-0 right-0 bg-surface text-fg font-sans",
+        "transition-[height] duration-200 ease-out",
+        position === "bottom" ? "bottom-0" : "top-0",
+        isDragging && "select-none",
       )}
       style={{
         height: `${effectiveHeight}px`,
@@ -135,17 +142,19 @@ export default function FeedBar({
       }}
     >
       {/* Accent line at visible edge */}
-      <div className={clsx(
-        'absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent',
-        position === 'bottom' ? 'top-0' : 'bottom-0',
-      )} />
+      <div
+        className={clsx(
+          "absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent",
+          position === "bottom" ? "top-0" : "bottom-0",
+        )}
+      />
 
       {/* Drag handle */}
       <div
         onMouseDown={handleDragStart}
         className={clsx(
-          'absolute left-0 right-0 h-2 cursor-row-resize group z-10',
-          position === 'bottom' ? '-top-1' : '-bottom-1',
+          "absolute left-0 right-0 h-2 cursor-row-resize group z-10",
+          position === "bottom" ? "-top-1" : "-bottom-1",
         )}
       >
         <div className="mx-auto mt-1 h-0.5 w-10 rounded-full bg-fg-4 group-hover:bg-accent/60 transition-colors" />
@@ -158,30 +167,46 @@ export default function FeedBar({
             scrollr
           </span>
           <span className="h-3 w-px bg-edge" />
-          <FeedTabs activeTab={activeTab} onTabChange={setActiveTab} availableTabs={activeTabs} />
+          <FeedTabs
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            availableTabs={activeTabs}
+          />
         </div>
 
         <div className="flex items-center gap-3">
-          <ConnectionIndicator status={connectionStatus} deliveryMode={deliveryMode} />
+          <ConnectionIndicator
+            status={connectionStatus}
+            deliveryMode={deliveryMode}
+          />
           <span className="h-3 w-px bg-edge" />
           <button
             onClick={onToggleCollapse}
             className="text-fg-3 hover:text-accent transition-colors text-[10px] font-mono px-0.5"
-            title={collapsed ? 'Expand' : 'Collapse'}
+            title={collapsed ? "Expand" : "Collapse"}
           >
-            {collapsed ? (position === 'bottom' ? '\u25B2' : '\u25BC') : (position === 'bottom' ? '\u25BC' : '\u25B2')}
+            {collapsed
+              ? position === "bottom"
+                ? "\u25B2"
+                : "\u25BC"
+              : position === "bottom"
+                ? "\u25BC"
+                : "\u25B2"}
           </button>
         </div>
       </div>
 
       {/* Content — render the active integration's FeedTab */}
       {!collapsed && (
-        <div className="overflow-y-auto overflow-x-hidden scrollbar-thin" style={{ height: `${height - COLLAPSED_HEIGHT}px` }}>
+        <div
+          className="overflow-y-auto overflow-x-hidden scrollbar-thin"
+          style={{ height: `${height - COLLAPSED_HEIGHT}px` }}
+        >
           {/* Sign-in banner for anonymous users */}
           {!authenticated && (
             <div className="flex items-center justify-between px-3 py-1.5 bg-accent/5 border-b border-accent/10">
               <span className="text-[10px] text-fg-3 font-mono">
-                Sign in to customize your feed &amp; unlock all integrations
+                Sign in to customize your feed &amp; unlock all channels
               </span>
               <button
                 onClick={onLogin}
@@ -192,10 +217,10 @@ export default function FeedBar({
             </div>
           )}
           {FeedTabComponent ? (
-            <FeedTabComponent mode={mode} streamConfig={streamConfig} />
+            <FeedTabComponent mode={mode} channelConfig={channelConfig} />
           ) : (
             <div className="text-center py-8 text-fg-3 text-xs font-mono">
-              No integration selected
+              No channel selected
             </div>
           )}
         </div>

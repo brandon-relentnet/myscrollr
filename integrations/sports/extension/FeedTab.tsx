@@ -1,28 +1,29 @@
-import { useMemo, useCallback } from 'react';
-import { clsx } from 'clsx';
-import type { Game } from '~/utils/types';
-import type { FeedTabProps } from '~/integrations/types';
-import { useScrollrCDC } from '~/integrations/hooks/useScrollrCDC';
-import GameItem from './GameItem';
+import { useMemo, useCallback } from "react";
+import { clsx } from "clsx";
+import type { Game } from "~/utils/types";
+import type { FeedTabProps, ChannelManifest } from "~/channels/types";
+import { useScrollrCDC } from "~/channels/hooks/useScrollrCDC";
+import GameItem from "./GameItem";
 
-/** Extract initial games from the dashboard response stored in streamConfig. */
+/** Extract initial games from the dashboard response stored in channelConfig. */
 function getInitialGames(config: Record<string, unknown>): Game[] {
   const items = config.__initialItems as Game[] | undefined;
   return items ?? [];
 }
 
-import type { IntegrationManifest } from '~/integrations/types';
-
-export const sportsIntegration: IntegrationManifest = {
-  id: 'sports',
-  name: 'Sports',
-  tabLabel: 'Sports',
-  tier: 'official',
+export const sportsChannel: ChannelManifest = {
+  id: "sports",
+  name: "Sports",
+  tabLabel: "Sports",
+  tier: "official",
   FeedTab: SportsFeedTab,
 };
 
-export default function SportsFeedTab({ mode, streamConfig }: FeedTabProps) {
-  const initialItems = useMemo(() => getInitialGames(streamConfig), [streamConfig]);
+export default function SportsFeedTab({ mode, channelConfig }: FeedTabProps) {
+  const initialItems = useMemo(
+    () => getInitialGames(channelConfig),
+    [channelConfig],
+  );
 
   const keyOf = useCallback((g: Game) => String(g.id), []);
   const validate = useCallback(
@@ -31,7 +32,7 @@ export default function SportsFeedTab({ mode, streamConfig }: FeedTabProps) {
   );
 
   const { items: games } = useScrollrCDC<Game>({
-    table: 'games',
+    table: "games",
     initialItems,
     keyOf,
     validate,
@@ -40,10 +41,10 @@ export default function SportsFeedTab({ mode, streamConfig }: FeedTabProps) {
   return (
     <div
       className={clsx(
-        'grid gap-px bg-edge',
-        mode === 'compact'
-          ? 'grid-cols-1'
-          : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
+        "grid gap-px bg-edge",
+        mode === "compact"
+          ? "grid-cols-1"
+          : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
       )}
     >
       {games.length === 0 && (

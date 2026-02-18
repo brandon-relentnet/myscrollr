@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
-import type { CDCRecord } from '~/utils/types';
-import type { DeliveryMode } from '~/utils/types';
-import type { BackgroundMessage, ClientMessage } from '~/utils/messaging';
-import { MAX_ITEMS } from '~/utils/constants';
-import { deliveryMode as deliveryModeStorage } from '~/utils/storage';
+import { useState, useEffect, useRef } from "react";
+import type { CDCRecord } from "~/utils/types";
+import type { DeliveryMode } from "~/utils/types";
+import type { BackgroundMessage, ClientMessage } from "~/utils/messaging";
+import { MAX_ITEMS } from "~/utils/constants";
+import { deliveryMode as deliveryModeStorage } from "~/utils/storage";
 
 /**
  * Uniqueness key extractor — given a record, returns a string key
@@ -40,14 +40,14 @@ interface UseScrollrCDCResult<T> {
 }
 
 /**
- * Hook for official integrations to subscribe to CDC records from the
+ * Hook for official channels to subscribe to CDC records from the
  * background SSE connection. Manages an in-memory array with upsert/remove
  * logic and returns the current items.
  *
  * In polling mode, CDC subscriptions are skipped — items are driven
  * entirely by the dashboard snapshot arriving via INITIAL_DATA broadcasts.
  *
- * Only used by official Scrollr integrations — community integrations
+ * Only used by official Scrollr channels — community channels
  * fetch their own data and don't use this hook.
  */
 export function useScrollrCDC<T>({
@@ -59,14 +59,17 @@ export function useScrollrCDC<T>({
   validate,
 }: UseScrollrCDCOptions<T>): UseScrollrCDCResult<T> {
   const [items, setItems] = useState<T[]>(initialItems);
-  const [mode, setMode] = useState<DeliveryMode>('polling');
+  const [mode, setMode] = useState<DeliveryMode>("polling");
 
   // Track whether we've received initialItems (they may arrive after mount)
   const initializedRef = useRef(false);
 
   // Load delivery mode from storage on mount + watch for changes
   useEffect(() => {
-    deliveryModeStorage.getValue().then(setMode).catch(() => {});
+    deliveryModeStorage
+      .getValue()
+      .then(setMode)
+      .catch(() => {});
     const unwatch = deliveryModeStorage.watch((v) => setMode(v));
     return () => unwatch();
   }, []);
@@ -82,16 +85,19 @@ export function useScrollrCDC<T>({
   // Subscribe to CDC table and handle incoming records — only in SSE mode
   useEffect(() => {
     // In polling mode, items are driven by INITIAL_DATA; skip CDC subscriptions
-    if (mode !== 'sse') return;
+    if (mode !== "sse") return;
 
     // Tell background we want records for this table
     browser.runtime
-      .sendMessage({ type: 'SUBSCRIBE_CDC', tables: [table] } satisfies ClientMessage)
+      .sendMessage({
+        type: "SUBSCRIBE_CDC",
+        tables: [table],
+      } satisfies ClientMessage)
       .catch(() => {});
 
     const handleMessage = (message: unknown) => {
       const msg = message as BackgroundMessage;
-      if (msg.type !== 'CDC_BATCH' || msg.table !== table) return;
+      if (msg.type !== "CDC_BATCH" || msg.table !== table) return;
 
       setItems((prev) => {
         let next = [...prev];
@@ -99,7 +105,7 @@ export function useScrollrCDC<T>({
         for (const cdc of msg.records) {
           const record = cdc.record as unknown as T;
 
-          if (cdc.action === 'delete') {
+          if (cdc.action === "delete") {
             const key = keyOf(record);
             next = next.filter((item) => keyOf(item) !== key);
           } else {
@@ -132,7 +138,10 @@ export function useScrollrCDC<T>({
       browser.runtime.onMessage.removeListener(handleMessage);
       // Unsubscribe from CDC table
       browser.runtime
-        .sendMessage({ type: 'UNSUBSCRIBE_CDC', tables: [table] } satisfies ClientMessage)
+        .sendMessage({
+          type: "UNSUBSCRIBE_CDC",
+          tables: [table],
+        } satisfies ClientMessage)
         .catch(() => {});
     };
   }, [table, keyOf, sort, maxItems, validate, mode]);

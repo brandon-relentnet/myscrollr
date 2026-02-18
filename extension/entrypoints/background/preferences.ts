@@ -1,5 +1,5 @@
-import type { UserPreferences, UserStream } from '~/utils/types';
-import { TAB_ORDER } from '~/integrations/registry';
+import type { UserPreferences, UserChannel } from "~/utils/types";
+import { TAB_ORDER } from "~/channels/registry";
 import {
   feedMode,
   feedPosition,
@@ -8,30 +8,30 @@ import {
   activeFeedTabs,
   enabledSites,
   disabledSites,
-} from '~/utils/storage';
+} from "~/utils/storage";
 
-// ── Callback for stream changes (set by index.ts to avoid circular imports) ──
+// ── Callback for channel changes (set by index.ts to avoid circular imports) ──
 
-let onStreamChanged: (() => void) | null = null;
+let onChannelChanged: (() => void) | null = null;
 
-export function setOnStreamChanged(cb: () => void) {
-  onStreamChanged = cb;
+export function setOnChannelChanged(cb: () => void) {
+  onChannelChanged = cb;
 }
 
-// ── Stream visibility tracking ────────────────────────────────────
-// Module-scoped map of stream type → visible. CDC sends one row at a
+// ── Channel visibility tracking ───────────────────────────────────
+// Module-scoped map of channel type → visible. CDC sends one row at a
 // time, so we maintain the full picture here and recompute activeFeedTabs
 // from the complete map on every change.
 
-const streamVisibility = new Map<string, boolean>();
+const channelVisibility = new Map<string, boolean>();
 
 /**
- * Derives activeFeedTabs from the current stream visibility map and
+ * Derives activeFeedTabs from the current channel visibility map and
  * writes it to WXT storage. Content scripts react via storage watchers.
  */
 async function syncActiveTabs(): Promise<void> {
   const visible: string[] = [];
-  for (const [type, isVisible] of streamVisibility) {
+  for (const [type, isVisible] of channelVisibility) {
     if (isVisible) visible.push(type);
   }
   // Preserve a stable order from the registry, unknown IDs appended alphabetically
@@ -42,48 +42,54 @@ async function syncActiveTabs(): Promise<void> {
 }
 
 /**
- * Initialises the stream visibility map from the full list of streams
+ * Initialises the channel visibility map from the full list of channels
  * returned by GET /dashboard. Called once on login or background startup.
  */
-export async function initStreamsVisibility(streams: UserStream[]): Promise<void> {
-  streamVisibility.clear();
-  for (const s of streams) {
-    streamVisibility.set(s.stream_type, s.visible);
+export async function initChannelsVisibility(
+  channels: UserChannel[],
+): Promise<void> {
+  channelVisibility.clear();
+  for (const c of channels) {
+    channelVisibility.set(c.channel_type, c.visible);
   }
   await syncActiveTabs();
 }
 
 /**
- * Handles a single user_streams CDC insert/update record.
+ * Handles a single user_channels CDC insert/update record.
  * Updates the visibility map and recomputes activeFeedTabs.
  */
-export async function handleStreamUpdate(record: Record<string, unknown>): Promise<void> {
+export async function handleChannelUpdate(
+  record: Record<string, unknown>,
+): Promise<void> {
   // Server already filters records to the authenticated user — no client-side guard needed.
-  const streamType = record.stream_type as string | undefined;
-  if (!streamType) return;
+  const channelType = record.channel_type as string | undefined;
+  if (!channelType) return;
 
-  streamVisibility.set(streamType, Boolean(record.visible));
+  channelVisibility.set(channelType, Boolean(record.visible));
   await syncActiveTabs();
 
   // Refetch dashboard so that existing items for newly-subscribed feeds
   // (e.g. RSS) are loaded immediately — CDC only delivers future changes.
-  onStreamChanged?.();
+  onChannelChanged?.();
 }
 
 /**
- * Handles a user_streams CDC delete record.
- * Removes the stream from the visibility map and recomputes activeFeedTabs.
+ * Handles a user_channels CDC delete record.
+ * Removes the channel from the visibility map and recomputes activeFeedTabs.
  */
-export async function handleStreamDelete(record: Record<string, unknown>): Promise<void> {
+export async function handleChannelDelete(
+  record: Record<string, unknown>,
+): Promise<void> {
   // Server already filters records to the authenticated user — no client-side guard needed.
-  const streamType = record.stream_type as string | undefined;
-  if (!streamType) return;
+  const channelType = record.channel_type as string | undefined;
+  if (!channelType) return;
 
-  streamVisibility.delete(streamType);
+  channelVisibility.delete(channelType);
   await syncActiveTabs();
 
-  // Refetch dashboard to clear items from the removed stream.
-  onStreamChanged?.();
+  // Refetch dashboard to clear items from the removed channel.
+  onChannelChanged?.();
 }
 
 // ── Preferences ───────────────────────────────────────────────────
@@ -92,7 +98,9 @@ export async function handleStreamDelete(record: Record<string, unknown>): Promi
  * Writes server-sourced preferences into WXT storage.
  * Content scripts react automatically via existing storage watchers.
  */
-export async function applyServerPreferences(prefs: UserPreferences): Promise<void> {
+export async function applyServerPreferences(
+  prefs: UserPreferences,
+): Promise<void> {
   await Promise.all([
     feedMode.setValue(prefs.feed_mode),
     feedPosition.setValue(prefs.feed_position),
@@ -107,7 +115,9 @@ export async function applyServerPreferences(prefs: UserPreferences): Promise<vo
  * Handles a user_preferences CDC record from SSE.
  * Only applies if the record belongs to the current user.
  */
-export async function handlePreferenceUpdate(record: Record<string, unknown>): Promise<void> {
+export async function handlePreferenceUpdate(
+  record: Record<string, unknown>,
+): Promise<void> {
   // Server already filters records to the authenticated user — no client-side guard needed.
   await applyServerPreferences(record as unknown as UserPreferences);
 }

@@ -7,7 +7,7 @@ export interface Trade {
   previous_close?: number;
   price_change?: number | string;
   percentage_change?: number | string;
-  direction?: 'up' | 'down';
+  direction?: "up" | "down";
   last_updated?: string;
 }
 
@@ -59,12 +59,12 @@ export interface UserPreferences {
   updated_at: string;
 }
 
-// ── User Streams ─────────────────────────────────────────────────
+// ── User Channels ────────────────────────────────────────────────
 
-export interface UserStream {
+export interface UserChannel {
   id: number;
   logto_sub: string;
-  stream_type: 'finance' | 'sports' | 'fantasy' | 'rss';
+  channel_type: "finance" | "sports" | "fantasy" | "rss";
   enabled: boolean;
   visible: boolean;
   config: Record<string, unknown>;
@@ -82,12 +82,12 @@ export interface DashboardResponse {
     [key: string]: unknown;
   };
   preferences?: UserPreferences;
-  streams?: UserStream[];
+  channels?: UserChannel[];
 }
 
 /**
  * Response from GET /public/feed for anonymous users.
- * Contains only finance + sports data, no preferences or streams.
+ * Contains only finance + sports data, no preferences or channels.
  */
 export interface PublicFeedResponse {
   data: {
@@ -100,7 +100,7 @@ export interface PublicFeedResponse {
 // ── SSE / CDC Payloads ───────────────────────────────────────────
 
 export interface CDCRecord {
-  action: 'insert' | 'update' | 'delete';
+  action: "insert" | "update" | "delete";
   changes: Record<string, unknown>;
   metadata: { table_name: string };
   record: Record<string, unknown>;
@@ -112,15 +112,15 @@ export interface SSEPayload {
 
 // ── Connection ───────────────────────────────────────────────────
 
-export type ConnectionStatus = 'connected' | 'disconnected' | 'reconnecting';
+export type ConnectionStatus = "connected" | "disconnected" | "reconnecting";
 
 // ── Preferences ──────────────────────────────────────────────────
 
-export type FeedPosition = 'top' | 'bottom';
-export type FeedMode = 'comfort' | 'compact';
-export type FeedBehavior = 'overlay' | 'push';
+export type FeedPosition = "top" | "bottom";
+export type FeedMode = "comfort" | "compact";
+export type FeedBehavior = "overlay" | "push";
 
 // ── Tiered delivery ──────────────────────────────────────────────
 
-export type DeliveryMode = 'polling' | 'sse';
-export type SubscriptionTier = 'anonymous' | 'free' | 'uplink';
+export type DeliveryMode = "polling" | "sse";
+export type SubscriptionTier = "anonymous" | "free" | "uplink";

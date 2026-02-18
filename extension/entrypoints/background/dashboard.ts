@@ -1,10 +1,10 @@
-import type { BackgroundMessage } from '~/utils/messaging';
-import type { DashboardResponse, PublicFeedResponse } from '~/utils/types';
-import { API_URL } from '~/utils/constants';
-import { getValidToken } from './auth';
-import { setLastDashboard } from './sse';
-import { applyServerPreferences, initStreamsVisibility } from './preferences';
-import { subscriptionTier } from '~/utils/storage';
+import type { BackgroundMessage } from "~/utils/messaging";
+import type { DashboardResponse, PublicFeedResponse } from "~/utils/types";
+import { API_URL } from "~/utils/constants";
+import { getValidToken } from "./auth";
+import { setLastDashboard } from "./sse";
+import { applyServerPreferences, initChannelsVisibility } from "./preferences";
+import { subscriptionTier } from "~/utils/storage";
 
 // ── Broadcast callback (set by index.ts to avoid circular imports) ──
 
@@ -19,7 +19,7 @@ export function setBroadcast(fn: (message: BackgroundMessage) => void) {
 async function fetchDashboardData(): Promise<DashboardResponse> {
   const token = await getValidToken();
   if (!token) {
-    throw new Error('Not authenticated');
+    throw new Error("Not authenticated");
   }
 
   const response = await fetch(`${API_URL}/dashboard`, {
@@ -28,7 +28,7 @@ async function fetchDashboardData(): Promise<DashboardResponse> {
 
   if (!response.ok) {
     const body = await response.text();
-    console.error('[Scrollr] Dashboard fetch failed:', response.status, body);
+    console.error("[Scrollr] Dashboard fetch failed:", response.status, body);
     throw new Error(`Dashboard fetch failed: ${response.status}`);
   }
 
@@ -42,7 +42,7 @@ async function fetchPublicFeed(): Promise<DashboardResponse> {
 
   if (!response.ok) {
     const body = await response.text();
-    console.error('[Scrollr] Public feed fetch failed:', response.status, body);
+    console.error("[Scrollr] Public feed fetch failed:", response.status, body);
     throw new Error(`Public feed fetch failed: ${response.status}`);
   }
 
@@ -51,13 +51,13 @@ async function fetchPublicFeed(): Promise<DashboardResponse> {
   // Normalize into DashboardResponse shape so downstream code is unified
   return {
     data: publicData.data,
-    // No preferences or streams for anonymous users
+    // No preferences or channels for anonymous users
   };
 }
 
 /**
  * Fetches the full dashboard state and stores it as the latest snapshot.
- * Used on login, startup, and when stream config changes (so that
+ * Used on login, startup, and when channel config changes (so that
  * existing items for newly-subscribed feeds are loaded immediately).
  */
 export async function refreshDashboard(): Promise<void> {
@@ -68,7 +68,7 @@ export async function refreshDashboard(): Promise<void> {
     setLastDashboard(data);
 
     // Broadcast to all content scripts / popup
-    broadcastFn?.({ type: 'INITIAL_DATA', payload: data });
+    broadcastFn?.({ type: "INITIAL_DATA", payload: data });
 
     if (data.preferences) {
       applyServerPreferences(data.preferences);
@@ -78,11 +78,11 @@ export async function refreshDashboard(): Promise<void> {
         await subscriptionTier.setValue(data.preferences.subscription_tier);
       }
     }
-    if (data.streams) {
-      initStreamsVisibility(data.streams);
+    if (data.channels) {
+      initChannelsVisibility(data.channels);
     }
   } catch (err) {
-    console.error('[Scrollr] Dashboard refresh failed:', err);
+    console.error("[Scrollr] Dashboard refresh failed:", err);
   }
 }
 
@@ -98,8 +98,8 @@ export async function refreshPublicFeed(): Promise<void> {
     setLastDashboard(data);
 
     // Broadcast to all content scripts / popup
-    broadcastFn?.({ type: 'INITIAL_DATA', payload: data });
+    broadcastFn?.({ type: "INITIAL_DATA", payload: data });
   } catch (err) {
-    console.error('[Scrollr] Public feed refresh failed:', err);
+    console.error("[Scrollr] Public feed refresh failed:", err);
   }
 }

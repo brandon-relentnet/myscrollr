@@ -1,12 +1,25 @@
-import { SSE_URL, SSE_RECONNECT_BASE, SSE_RECONNECT_MAX } from '~/utils/constants';
-import type { ConnectionStatus, SSEPayload, CDCRecord, DashboardResponse } from '~/utils/types';
-import { handlePreferenceUpdate, handleStreamUpdate, handleStreamDelete } from './preferences';
-import { getValidToken, isAuthenticated } from './auth';
-import { deliveryMode as deliveryModeStorage } from '~/utils/storage';
+import {
+  SSE_URL,
+  SSE_RECONNECT_BASE,
+  SSE_RECONNECT_MAX,
+} from "~/utils/constants";
+import type {
+  ConnectionStatus,
+  SSEPayload,
+  CDCRecord,
+  DashboardResponse,
+} from "~/utils/types";
+import {
+  handlePreferenceUpdate,
+  handleChannelUpdate,
+  handleChannelDelete,
+} from "./preferences";
+import { getValidToken, isAuthenticated } from "./auth";
+import { deliveryMode as deliveryModeStorage } from "~/utils/storage";
 
 // ── Connection state ──────────────────────────────────────────────
 
-let connectionStatus: ConnectionStatus = 'disconnected';
+let connectionStatus: ConnectionStatus = "disconnected";
 let eventSource: EventSource | null = null;
 let reconnectDelay = SSE_RECONNECT_BASE;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -58,23 +71,23 @@ function processPayload(payload: SSEPayload) {
     const table = cdc.metadata.table_name;
 
     // Framework tables are handled internally, not forwarded
-    if (table === 'user_preferences') {
-      if (cdc.action === 'insert' || cdc.action === 'update') {
+    if (table === "user_preferences") {
+      if (cdc.action === "insert" || cdc.action === "update") {
         handlePreferenceUpdate(cdc.record);
       }
       continue;
     }
 
-    if (table === 'user_streams') {
-      if (cdc.action === 'insert' || cdc.action === 'update') {
-        handleStreamUpdate(cdc.record);
-      } else if (cdc.action === 'delete') {
-        handleStreamDelete(cdc.record);
+    if (table === "user_channels") {
+      if (cdc.action === "insert" || cdc.action === "update") {
+        handleChannelUpdate(cdc.record);
+      } else if (cdc.action === "delete") {
+        handleChannelDelete(cdc.record);
       }
       continue;
     }
 
-    // Integration CDC records — batch by table for forwarding
+    // Channel CDC records — batch by table for forwarding
     if (!byTable.has(table)) {
       byTable.set(table, []);
     }
@@ -105,22 +118,24 @@ export async function startSSE() {
   // Require authentication — don't connect without a valid token
   const authed = await isAuthenticated();
   if (!authed) {
-    setStatus('disconnected');
+    setStatus("disconnected");
     return;
   }
 
   const token = await getValidToken();
   if (!token) {
-    setStatus('disconnected');
+    setStatus("disconnected");
     return;
   }
 
   try {
-    eventSource = new EventSource(`${SSE_URL}?token=${encodeURIComponent(token)}`);
+    eventSource = new EventSource(
+      `${SSE_URL}?token=${encodeURIComponent(token)}`,
+    );
 
     eventSource.onopen = () => {
       reconnectDelay = SSE_RECONNECT_BASE; // Reset backoff
-      setStatus('connected');
+      setStatus("connected");
     };
 
     eventSource.onmessage = (event) => {
@@ -128,18 +143,18 @@ export async function startSSE() {
         const payload: SSEPayload = JSON.parse(event.data);
         processPayload(payload);
       } catch (err) {
-        console.warn('[Scrollr] Malformed SSE message:', err);
+        console.warn("[Scrollr] Malformed SSE message:", err);
       }
     };
 
     eventSource.onerror = () => {
       cleanup();
-      setStatus('reconnecting');
+      setStatus("reconnecting");
       scheduleReconnect();
     };
   } catch (err) {
-    console.warn('[Scrollr] SSE connection failed:', err);
-    setStatus('disconnected');
+    console.warn("[Scrollr] SSE connection failed:", err);
+    setStatus("disconnected");
     scheduleReconnect();
   }
 }
@@ -151,7 +166,7 @@ export function stopSSE() {
     reconnectTimer = null;
   }
   reconnectDelay = SSE_RECONNECT_BASE; // Reset backoff on explicit stop
-  setStatus('disconnected');
+  setStatus("disconnected");
 }
 
 function cleanup() {
@@ -178,13 +193,13 @@ function scheduleReconnect() {
 
 export function setupKeepAlive() {
   // Create a periodic alarm to keep the service worker alive
-  browser.alarms?.create('scrollr-keepalive', { periodInMinutes: 0.5 });
+  browser.alarms?.create("scrollr-keepalive", { periodInMinutes: 0.5 });
 
   browser.alarms?.onAlarm.addListener(async (alarm) => {
-    if (alarm.name === 'scrollr-keepalive') {
+    if (alarm.name === "scrollr-keepalive") {
       // Only try to reconnect SSE for uplink users
       const mode = await deliveryModeStorage.getValue();
-      if (mode === 'sse' && connectionStatus === 'disconnected') {
+      if (mode === "sse" && connectionStatus === "disconnected") {
         startSSE();
       }
     }

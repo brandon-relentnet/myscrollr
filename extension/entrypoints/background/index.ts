@@ -1,25 +1,33 @@
-import { startSSE, stopSSE, setupKeepAlive } from './sse';
+import { startSSE, stopSSE, setupKeepAlive } from "./sse";
 import {
   setupBroadcasting,
   setupMessageListeners,
   startAuthenticatedDelivery,
   broadcast,
-} from './messaging';
-import { setOnAuthExpired, isAuthenticated } from './auth';
-import { setOnStreamChanged } from './preferences';
-import { setBroadcast, refreshDashboard, refreshPublicFeed } from './dashboard';
-import { startPolling, stopPolling, setOnPoll, setupPollingAlarm } from './polling';
-import { deliveryMode as deliveryModeStorage, subscriptionTier as subscriptionTierStorage } from '~/utils/storage';
+} from "./messaging";
+import { setOnAuthExpired, isAuthenticated } from "./auth";
+import { setOnChannelChanged } from "./preferences";
+import { setBroadcast, refreshDashboard, refreshPublicFeed } from "./dashboard";
+import {
+  startPolling,
+  stopPolling,
+  setOnPoll,
+  setupPollingAlarm,
+} from "./polling";
+import {
+  deliveryMode as deliveryModeStorage,
+  subscriptionTier as subscriptionTierStorage,
+} from "~/utils/storage";
 
 export default defineBackground({
-  type: 'module',
+  type: "module",
 
   main() {
     // Wire up dashboard → broadcast (avoids circular import)
     setBroadcast(broadcast);
 
-    // Wire up stream changes → dashboard refresh (avoids circular import)
-    setOnStreamChanged(() => refreshDashboard());
+    // Wire up channel changes → dashboard refresh (avoids circular import)
+    setOnChannelChanged(() => refreshDashboard());
 
     // Wire up SSE → broadcast pipeline
     setupBroadcasting();
@@ -42,11 +50,11 @@ export default defineBackground({
     setOnAuthExpired(async () => {
       stopSSE();
       stopPolling();
-      broadcast({ type: 'AUTH_STATUS', authenticated: false });
+      broadcast({ type: "AUTH_STATUS", authenticated: false });
 
       // Fall back to anonymous polling
-      await deliveryModeStorage.setValue('polling');
-      await subscriptionTierStorage.setValue('anonymous');
+      await deliveryModeStorage.setValue("polling");
+      await subscriptionTierStorage.setValue("anonymous");
       startPolling();
     });
 
@@ -64,12 +72,12 @@ export default defineBackground({
         await startAuthenticatedDelivery();
       } else {
         // Anonymous user: start polling the public feed
-        await deliveryModeStorage.setValue('polling');
-        await subscriptionTierStorage.setValue('anonymous');
+        await deliveryModeStorage.setValue("polling");
+        await subscriptionTierStorage.setValue("anonymous");
         startPolling();
       }
     });
 
-    console.log('[Scrollr] Background started');
+    console.log("[Scrollr] Background started");
   },
 });
