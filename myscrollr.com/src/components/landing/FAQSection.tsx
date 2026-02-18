@@ -9,8 +9,7 @@ import {
 } from 'motion/react'
 import {
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
+  ChevronUp,
   Code,
   Gift,
   Globe,
@@ -153,8 +152,8 @@ const ACCENT_COLORS: Record<
 
 const EASE = [0.22, 1, 0.36, 1] as const
 
-function calculateViewX(difference: number, containerWidth: number) {
-  return difference * containerWidth * 0.75 * -1
+function calculateViewY(difference: number, containerHeight: number) {
+  return difference * containerHeight * 0.75 * -1
 }
 
 function useMounted() {
@@ -253,44 +252,47 @@ function AnswerPanel({ item }: { item: FAQItem }) {
 
 function AnswerView({
   children,
-  containerWidth,
+  containerHeight,
   viewIndex,
   activeIndex,
 }: {
   children: React.ReactNode
-  containerWidth: number
+  containerHeight: number
   viewIndex: number
   activeIndex: number
 }) {
-  const x = useSpring(calculateViewX(activeIndex - viewIndex, containerWidth), {
-    stiffness: 400,
-    damping: 60,
-  })
+  const y = useSpring(
+    calculateViewY(activeIndex - viewIndex, containerHeight),
+    {
+      stiffness: 400,
+      damping: 60,
+    },
+  )
 
-  const xVelocity = useVelocity(x)
+  const yVelocity = useVelocity(y)
 
   const opacity = useTransform(
-    x,
-    [-containerWidth * 0.6, 0, containerWidth * 0.6],
+    y,
+    [-containerHeight * 0.6, 0, containerHeight * 0.6],
     [0, 1, 0],
   )
 
-  const blur = useTransform(xVelocity, [-1000, 0, 1000], [4, 0, 4], {
+  const blur = useTransform(yVelocity, [-1000, 0, 1000], [4, 0, 4], {
     clamp: false,
   })
 
   const filter = useMotionTemplate`blur(${blur}px)`
 
   useEffect(() => {
-    x.set(calculateViewX(activeIndex - viewIndex, containerWidth))
-  }, [activeIndex, containerWidth, viewIndex, x])
+    y.set(calculateViewY(activeIndex - viewIndex, containerHeight))
+  }, [activeIndex, containerHeight, viewIndex, y])
 
   return (
     <motion.div
       style={{
         position: 'absolute',
         inset: 0,
-        x,
+        y,
         opacity,
         filter,
         transformOrigin: 'center',
@@ -408,22 +410,22 @@ export function FAQSection() {
   const sectionRef = useRef<HTMLElement>(null)
   const isMounted = useMounted()
 
-  // Container width measurement for spring animation
+  // Container height measurement for spring animation
   const viewsContainerRef = useRef<HTMLDivElement>(null)
-  const [viewsContainerWidth, setViewsContainerWidth] = useState(0)
+  const [viewsContainerHeight, setViewsContainerHeight] = useState(0)
 
   useEffect(() => {
-    const updateWidth = () => {
+    const updateHeight = () => {
       if (viewsContainerRef.current) {
-        setViewsContainerWidth(
-          viewsContainerRef.current.getBoundingClientRect().width,
+        setViewsContainerHeight(
+          viewsContainerRef.current.getBoundingClientRect().height,
         )
       }
     }
-    updateWidth()
-    window.addEventListener('resize', updateWidth)
-    return () => window.removeEventListener('resize', updateWidth)
-  }, [viewsContainerWidth])
+    updateHeight()
+    window.addEventListener('resize', updateHeight)
+    return () => window.removeEventListener('resize', updateHeight)
+  }, [viewsContainerHeight])
 
   // ── Manual selection ───────────────────────────────────────────
   const handleSelect = useCallback((index: number) => {
@@ -560,7 +562,7 @@ export function FAQSection() {
                 FAQ_ITEMS.map((item, idx) => (
                   <AnswerView
                     key={item.question}
-                    containerWidth={viewsContainerWidth}
+                    containerHeight={viewsContainerHeight}
                     viewIndex={idx}
                     activeIndex={activeIndex}
                   >
@@ -587,7 +589,7 @@ export function FAQSection() {
                   className="h-9 w-9 rounded-lg bg-base-200/40 border border-base-300/20 flex items-center justify-center text-base-content/40 hover:text-base-content/70 hover:border-base-300/40 transition-[color,background-color,border-color,box-shadow] duration-200 cursor-pointer"
                   aria-label="Previous question"
                 >
-                  <ChevronLeft size={16} />
+                  <ChevronUp size={16} />
                 </button>
                 <button
                   type="button"
@@ -595,7 +597,7 @@ export function FAQSection() {
                   className="h-9 w-9 rounded-lg bg-base-200/40 border border-base-300/20 flex items-center justify-center text-base-content/40 hover:text-base-content/70 hover:border-base-300/40 transition-[color,background-color,border-color,box-shadow] duration-200 cursor-pointer"
                   aria-label="Next question"
                 >
-                  <ChevronRight size={16} />
+                  <ChevronDown size={16} />
                 </button>
               </div>
             </div>
