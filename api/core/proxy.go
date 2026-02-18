@@ -25,7 +25,7 @@ var proxyClient = &http.Client{
 // This MUST be called AFTER all core routes so core routes take priority
 // (Fiber matches routes in registration order).
 func SetupDynamicProxy(app *fiber.App) {
-	app.All("/*", dynamicProxyHandler)
+	app.Use(dynamicProxyHandler)
 	log.Println("[Proxy] Dynamic catch-all proxy registered")
 }
 
