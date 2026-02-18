@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import {
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Code,
   Gift,
   Globe,
@@ -74,6 +76,7 @@ const FAQ_ITEMS: Array<FAQItem> = [
 // ── Constants ────────────────────────────────────────────────────
 
 const EASE = [0.22, 1, 0.36, 1] as const
+const CYCLE_MS = 6000
 
 // ── Desktop Answer Panel ─────────────────────────────────────────
 
@@ -208,13 +211,74 @@ function AccordionItem({
 
 export function FAQSection() {
   const [activeIndex, setActiveIndex] = useState(0)
+  const [cycleKey, setCycleKey] = useState(0)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const sectionRef = useRef<HTMLElement>(null)
+
+  // ── Auto-cycle timer ───────────────────────────────────────────
+  const startTimer = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current)
+    setCycleKey((k) => k + 1)
+    timerRef.current = setInterval(() => {
+      setActiveIndex((prev) => (prev + 1) % FAQ_ITEMS.length)
+      setCycleKey((k) => k + 1)
+    }, CYCLE_MS)
+  }, [])
+
+  useEffect(() => {
+    startTimer()
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [startTimer])
+
+  // ── Manual selection (resets timer) ────────────────────────────
+  const handleSelect = useCallback(
+    (index: number) => {
+      setActiveIndex(index)
+      startTimer()
+    },
+    [startTimer],
+  )
+
+  const goNext = useCallback(() => {
+    handleSelect((activeIndex + 1) % FAQ_ITEMS.length)
+  }, [activeIndex, handleSelect])
+
+  const goPrev = useCallback(() => {
+    handleSelect((activeIndex - 1 + FAQ_ITEMS.length) % FAQ_ITEMS.length)
+  }, [activeIndex, handleSelect])
+
+  // ── Keyboard nav ───────────────────────────────────────────────
+  useEffect(() => {
+    const section = sectionRef.current
+    if (!section) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+        e.preventDefault()
+        goNext()
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+        e.preventDefault()
+        goPrev()
+      }
+    }
+
+    section.addEventListener('keydown', handleKeyDown)
+    return () => section.removeEventListener('keydown', handleKeyDown)
+  }, [goNext, goPrev])
 
   // Mobile accordion can close all items; desktop always has one selected
-  const handleMobileToggle = (i: number) =>
-    setActiveIndex(activeIndex === i ? -1 : i)
+  const handleMobileToggle = (i: number) => {
+    if (activeIndex === i) {
+      setActiveIndex(-1)
+    } else {
+      handleSelect(i)
+    }
+  }
 
   return (
-    <section className="relative">
+    <section ref={sectionRef} className="relative" tabIndex={-1}>
       <div className="container relative py-24 lg:py-32">
         {/* ── Section header ── */}
         <motion.div
@@ -240,66 +304,115 @@ export function FAQSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-40px' }}
           transition={{ duration: 0.6, ease: EASE }}
-          className="hidden lg:flex gap-6 max-w-5xl mx-auto items-start"
+          className="hidden lg:flex gap-6 max-w-5xl mx-auto items-stretch"
         >
           {/* Left — question nav */}
-          <div className="w-[360px] shrink-0 space-y-1">
-            {FAQ_ITEMS.map((item, i) => {
-              const Icon = item.icon
-              const isActive = activeIndex === i
-              return (
-                <button
-                  key={item.question}
-                  type="button"
-                  onClick={() => setActiveIndex(i)}
-                  className={`relative w-full text-left pl-5 pr-4 py-3.5 rounded-xl flex items-center gap-3 cursor-pointer transition-[color,background-color,border-color,box-shadow] duration-300 ${
-                    isActive
-                      ? 'bg-base-200/60 text-base-content'
-                      : 'text-base-content/40 hover:text-base-content/60 hover:bg-base-200/25'
-                  }`}
-                >
-                  {/* Sliding accent indicator */}
-                  {isActive && (
-                    <motion.div
-                      layoutId="faq-indicator"
-                      className="absolute left-0 top-2.5 bottom-2.5 w-[3px] bg-primary rounded-full"
-                      transition={{
-                        type: 'spring',
-                        bounce: 0.15,
-                        duration: 0.4,
-                      }}
-                    />
-                  )}
-
-                  <Icon
-                    size={16}
-                    className={`shrink-0 transition-colors duration-300 ${
-                      isActive ? 'text-primary' : ''
+          <div className="w-[360px] shrink-0 flex flex-col">
+            <div className="flex-1 space-y-1">
+              {FAQ_ITEMS.map((item, i) => {
+                const Icon = item.icon
+                const isActive = activeIndex === i
+                return (
+                  <button
+                    key={item.question}
+                    type="button"
+                    onClick={() => handleSelect(i)}
+                    className={`relative w-full text-left pl-5 pr-4 py-3 rounded-xl flex items-center gap-3 cursor-pointer transition-[color,background-color,border-color,box-shadow] duration-300 ${
+                      isActive
+                        ? 'bg-base-200/60 text-base-content'
+                        : 'text-base-content/40 hover:text-base-content/60 hover:bg-base-200/25'
                     }`}
-                  />
-                  <span className="text-[15px] font-semibold leading-snug">
-                    {item.question}
-                  </span>
-                </button>
-              )
-            })}
+                  >
+                    {/* Sliding accent indicator with progress fill */}
+                    {isActive && (
+                      <motion.div
+                        layoutId="faq-indicator"
+                        className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full overflow-hidden bg-primary/20"
+                        transition={{
+                          type: 'spring',
+                          bounce: 0.15,
+                          duration: 0.4,
+                        }}
+                      >
+                        {/* Progress fill animates from bottom to top */}
+                        <motion.div
+                          key={`faq-progress-${cycleKey}`}
+                          className="absolute bottom-0 left-0 right-0 bg-primary rounded-full"
+                          initial={{ height: '0%' }}
+                          animate={{ height: '100%' }}
+                          transition={{
+                            duration: CYCLE_MS / 1000,
+                            ease: 'linear',
+                          }}
+                        />
+                      </motion.div>
+                    )}
+
+                    <Icon
+                      size={16}
+                      className={`shrink-0 transition-colors duration-300 ${
+                        isActive ? 'text-primary' : ''
+                      }`}
+                    />
+                    <span className="text-[15px] font-semibold leading-snug">
+                      {item.question}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
-          {/* Right — answer panel */}
-          <div className="flex-1 min-h-[260px]">
-            <AnimatePresence mode="wait">
-              {activeIndex >= 0 && (
-                <motion.div
-                  key={activeIndex}
-                  initial={{ opacity: 0, y: 8, filter: 'blur(4px)' }}
-                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                  exit={{ opacity: 0, y: -8, filter: 'blur(4px)' }}
-                  transition={{ duration: 0.2, ease: EASE }}
+          {/* Right — answer panel (fixed height) + nav controls */}
+          <div className="flex-1 flex flex-col gap-4">
+            {/* Answer card — fixed height container */}
+            <div className="min-h-[280px] flex-1">
+              <AnimatePresence mode="wait">
+                {activeIndex >= 0 && (
+                  <motion.div
+                    key={activeIndex}
+                    initial={{ opacity: 0, y: 8, filter: 'blur(4px)' }}
+                    animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                    exit={{ opacity: 0, y: -8, filter: 'blur(4px)' }}
+                    transition={{ duration: 0.2, ease: EASE }}
+                    className="h-full"
+                  >
+                    <AnswerPanel item={FAQ_ITEMS[activeIndex]} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Navigation controls */}
+            <div className="flex items-center justify-between">
+              {/* Counter */}
+              <span className="text-sm text-base-content/30 font-medium tabular-nums">
+                {activeIndex + 1}{' '}
+                <span className="text-base-content/15">
+                  / {FAQ_ITEMS.length}
+                </span>
+              </span>
+
+              {/* Prev / Next */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={goPrev}
+                  className="h-9 w-9 rounded-lg bg-base-200/40 border border-base-300/20 flex items-center justify-center text-base-content/40 hover:text-base-content/70 hover:border-base-300/40 transition-[color,background-color,border-color,box-shadow] duration-200 cursor-pointer"
+                  aria-label="Previous question"
                 >
-                  <AnswerPanel item={FAQ_ITEMS[activeIndex]} />
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  <ChevronLeft size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={goNext}
+                  className="h-9 w-9 rounded-lg bg-base-200/40 border border-base-300/20 flex items-center justify-center text-base-content/40 hover:text-base-content/70 hover:border-base-300/40 transition-[color,background-color,border-color,box-shadow] duration-200 cursor-pointer"
+                  aria-label="Next question"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
           </div>
         </motion.div>
 
