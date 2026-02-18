@@ -1,143 +1,87 @@
 import { motion } from 'motion/react'
-import { Link } from '@tanstack/react-router'
-import { ChevronRight, Satellite } from 'lucide-react'
 import InstallButton from '@/components/InstallButton'
 
 export function CallToAction() {
   return (
-    <section className="container py-24">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        className="relative overflow-hidden rounded-xl bg-base-200/60 border border-base-300 p-8 md:p-12 lg:p-16"
-      >
-        {/* Foreground Glow Effects */}
-        <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-primary/5 rounded-full blur-[80px] pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-[250px] h-[250px] bg-info/5 rounded-full blur-[60px] pointer-events-none" />
+    <section className="relative">
+      {/* Full-bleed background band */}
+      <div className="absolute inset-0 bg-gradient-to-b from-base-200/40 via-base-200/60 to-base-200/40 pointer-events-none" />
 
-        {/* Grid Pattern */}
-        <div
-          className="absolute inset-0 opacity-[0.02] pointer-events-none"
-          style={{
-            backgroundImage: `
-                 linear-gradient(var(--grid-line-color) 1px, transparent 1px),
-                 linear-gradient(90deg, var(--grid-line-color) 1px, transparent 1px)
-               `,
-            backgroundSize: '40px 40px',
-          }}
-        />
-
-        <div className="relative flex flex-col gap-10 lg:flex-row lg:items-center lg:justify-between">
-          {/* Content */}
-          <div className="max-w-xl mx-auto lg:mx-0 text-center lg:text-left">
-            <motion.span
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              className="inline-flex items-center gap-2 mb-6 px-3 py-1.5 rounded-lg bg-primary/8 border border-primary/15"
-            >
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
-                Get Started
-              </span>
-            </motion.span>
-
-            <motion.h2
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
-              className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-[0.95] mb-2"
-            >
-              Start{' '}
-              <span className="text-rainbow">
-                Scrolling
-              </span>
-            </motion.h2>
-
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2 }}
-              className="text-sm text-base-content/40 leading-relaxed pb-6"
-            >
-              Add to Chrome and pin live sports, market data, news, and fantasy
-              scores over any tab. Free forever.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.3 }}
-              className="flex flex-wrap items-center justify-center lg:justify-start gap-4"
-            >
-              <span className="tag tag-primary">
-                <span className="w-1 h-1 rounded-full bg-primary" />
-                Open Source
-              </span>
-              <span className="tag">
-                <span className="w-1 h-1 rounded-full bg-base-content/30" />
-                Free Forever
-              </span>
-            </motion.div>
-          </div>
-
-          {/* CTA Column */}
-          <motion.div
+      <div className="container relative py-24 lg:py-32">
+        <div className="flex flex-col items-center text-center max-w-2xl mx-auto">
+          {/* Headline */}
+          <motion.h2
+            style={{ opacity: 0 }}
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.3 }}
-            className="w-full max-w-md mx-auto lg:mx-0 flex flex-col items-center lg:items-end gap-6"
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-5"
           >
-            {/* Primary CTA */}
-            <div className="relative w-full">
-              <div className="absolute -inset-3 bg-primary/10 rounded-xl blur-xl opacity-50" />
-              <InstallButton className="relative w-full text-lg py-4 shadow-xl" />
-            </div>
+            Start <span className="text-rainbow">Scrolling</span>
+          </motion.h2>
 
-            {/* Uplink teaser */}
-            <div className="w-full border-t border-base-300/30">
-              <Link
-                to="/uplink"
-                search={{ session_id: undefined }}
-                className="group flex items-center justify-center lg:justify-end gap-2 text-[10px] text-base-content/25 hover:text-primary/60 transition-colors"
-              >
-                <Satellite size={11} className="opacity-50" />
-                <span>
-                  Power users{' '}
-                  <span className="text-primary/40 group-hover:text-primary/70 transition-colors">
-                    Uplink
-                  </span>{' '}
-                  arriving Q3 2026
-                </span>
-                <ChevronRight
-                  size={10}
-                  className="opacity-0 group-hover:opacity-60 transition-opacity"
-                />
-              </Link>
-            </div>
+          {/* Subtext */}
+          <motion.p
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{
+              delay: 0.1,
+              duration: 0.5,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+            className="text-base text-base-content/45 leading-relaxed mb-10 max-w-md"
+          >
+            Live sports, markets, news, and fantasy — pinned to every tab. Free,
+            private, and open source.
+          </motion.p>
 
-            {/* Browser compat */}
-            <p className="text-[10px] text-base-content/40 text-center lg:text-right font-medium flex items-center gap-3">
-              <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary/50" />
-                Chrome
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-base-content/30" />
-                Brave
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-base-content/30" />
-                Edge
-              </span>
-            </p>
+          {/* Single CTA button */}
+          <motion.div
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{
+              delay: 0.2,
+              duration: 0.5,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+            className="mb-8"
+          >
+            <InstallButton className="text-base px-8 py-4 shadow-xl" />
           </motion.div>
+
+          {/* Browser compat line */}
+          <motion.p
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.35 }}
+            className="text-[11px] text-base-content/30 flex items-center gap-3"
+          >
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary/50" />
+              Chrome
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-base-content/20" />
+              Brave
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-base-content/20" />
+              Edge
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-base-content/20" />
+              Firefox
+            </span>
+          </motion.p>
         </div>
-      </motion.div>
+      </div>
     </section>
   )
 }

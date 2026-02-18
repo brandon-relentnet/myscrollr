@@ -1,143 +1,169 @@
-import { motion } from 'motion/react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
 import { Link } from '@tanstack/react-router'
-import { TrendingUp, Trophy, Rss, Ghost, ArrowRight } from 'lucide-react'
-import ScrollrSVG from '@/components/ScrollrSVG'
+import {
+  ArrowRight,
+  Coffee,
+  Ghost,
+  Newspaper,
+  Rss,
+  Swords,
+  Timer,
+  TrendingUp,
+  Trophy,
+} from 'lucide-react'
 
-// ── Ticker Data ──────────────────────────────────────────────────
+// ── Types ────────────────────────────────────────────────────────
+
+type StreamKey = 'finance' | 'sports' | 'news' | 'fantasy'
 
 interface TickerChip {
   label: string
   value: string
-  color: 'primary' | 'secondary' | 'info' | 'accent'
+  stream: StreamKey
   icon?: string
 }
 
-const TICKER_CHIPS: TickerChip[] = [
-  { label: 'BTC', value: '$67,241', color: 'primary', icon: '↑' },
-  { label: 'LAL 118', value: 'BOS 112', color: 'secondary', icon: 'FINAL' },
-  { label: 'NVDA', value: '$891.20', color: 'primary', icon: '↑' },
-  { label: 'Fed holds rates steady', value: 'Reuters', color: 'info' },
-  { label: 'MIA 94', value: 'GSW 88', color: 'secondary', icon: 'Q4 8:23' },
-  { label: 'ETH', value: '$3,412', color: 'primary', icon: '↓' },
-  { label: 'Your Team', value: '2nd Place', color: 'accent' },
-  { label: 'SPY', value: '$512.08', color: 'primary', icon: '↑' },
-  {
-    label: 'Tech layoffs slow as AI hiring surges',
-    value: 'TechCrunch',
-    color: 'info',
-  },
-  { label: 'NYG 21', value: 'DAL 17', color: 'secondary', icon: 'HALF' },
-  { label: 'AAPL', value: '$189.54', color: 'primary', icon: '↓' },
-  { label: 'Matchup: W 6-4', value: 'vs Team Alpha', color: 'accent' },
-]
-
-// ── Integration Cards ────────────────────────────────────────────
-
-interface IntegrationCard {
-  icon: React.ReactNode
+interface StreamInfo {
+  key: StreamKey
   name: string
-  label: string
-  description: string
+  icon: typeof TrendingUp
   color: string
-  dotColor: string
-  accent: 'primary' | 'secondary' | 'info' | 'accent'
-  example: string
+  bg: string
+  border: string
+  activeBg: string
+  activeText: string
+  tagline: string
+  scenarioIcon: typeof Coffee
+  scenarioTitle: string
+  scenarioBody: string
+  stat: string
+  statLabel: string
 }
 
-const INTEGRATIONS: IntegrationCard[] = [
+// ── Stream definitions ───────────────────────────────────────────
+
+const STREAMS: Array<StreamInfo> = [
   {
-    icon: <TrendingUp size={18} />,
+    key: 'finance',
     name: 'Finance',
-    label: 'Real-time market data',
-    description:
-      '50 tracked symbols across stocks and crypto. Live prices, percentage changes, and directional indicators pushed the instant they update.',
+    icon: TrendingUp,
     color: 'text-primary',
-    dotColor: 'bg-primary',
-    accent: 'primary',
-    example: 'BTC $67.2K ↑2.4%',
+    bg: 'bg-primary/8',
+    border: 'border-primary/20',
+    activeBg: 'bg-primary',
+    activeText: 'text-primary-content',
+    tagline: 'Live prices, always in sight',
+    scenarioIcon: Coffee,
+    scenarioTitle: 'Morning coffee, portfolio check',
+    scenarioBody:
+      "Glance at BTC, ETH, and your watchlist while reading the morning news. No apps to open, no tabs to switch — it's just there.",
+    stat: '50+',
+    statLabel: 'tracked symbols',
   },
   {
-    icon: <Trophy size={18} />,
+    key: 'sports',
     name: 'Sports',
-    label: 'Live scores & schedules',
-    description:
-      'NFL, NBA, NHL, MLB, and college sports from ESPN. Game states, matchups, and scores updating every minute.',
+    icon: Trophy,
     color: 'text-secondary',
-    dotColor: 'bg-secondary',
-    accent: 'secondary',
-    example: 'LAL 118 - BOS 112',
+    bg: 'bg-secondary/8',
+    border: 'border-secondary/20',
+    activeBg: 'bg-secondary',
+    activeText: 'text-white',
+    tagline: 'Scores update, you keep scrolling',
+    scenarioIcon: Timer,
+    scenarioTitle: 'Never miss the final score',
+    scenarioBody:
+      "NFL, NBA, NHL, MLB — live scores tick along the bottom of every tab. You'll know the second the game ends.",
+    stat: '5',
+    statLabel: 'major leagues',
   },
   {
-    icon: <Rss size={18} />,
-    name: 'RSS Feeds',
-    label: 'Custom news streams',
-    description:
-      '100+ curated feeds across 8 categories. Subscribe to the sources you care about and get articles as they publish.',
+    key: 'news',
+    name: 'News',
+    icon: Rss,
     color: 'text-info',
-    dotColor: 'bg-info',
-    accent: 'info',
-    example: 'Fed holds rates steady...',
+    bg: 'bg-info/8',
+    border: 'border-info/20',
+    activeBg: 'bg-info',
+    activeText: 'text-white',
+    tagline: 'Your sources, your pace',
+    scenarioIcon: Newspaper,
+    scenarioTitle: 'Headlines without the noise',
+    scenarioBody:
+      'Curated RSS from 100+ sources across tech, world, finance, and more. No algorithms, no clickbait — just the feeds you choose.',
+    stat: '100+',
+    statLabel: 'curated feeds',
   },
   {
-    icon: <Ghost size={18} />,
-    name: 'Yahoo Fantasy',
-    label: 'Fantasy sports leagues',
-    description:
-      'Connect your Yahoo account for league standings, rosters, weekly matchups, and live scoring across all your leagues.',
+    key: 'fantasy',
+    name: 'Fantasy',
+    icon: Ghost,
     color: 'text-accent',
-    dotColor: 'bg-accent',
-    accent: 'accent',
-    example: 'Your Team: 2nd Place',
+    bg: 'bg-accent/8',
+    border: 'border-accent/20',
+    activeBg: 'bg-accent',
+    activeText: 'text-white',
+    tagline: 'League intel on every tab',
+    scenarioIcon: Swords,
+    scenarioTitle: 'Matchup updates, zero effort',
+    scenarioBody:
+      'Connect your Yahoo account and see standings, matchups, and live scoring across all your leagues without leaving your current tab.',
+    stat: '∞',
+    statLabel: 'leagues supported',
   },
 ]
 
-// ── Color map for integration card hover effects ────────────────
+// ── Ticker chip data ─────────────────────────────────────────────
 
-const cardAccentMap = {
-  primary: {
-    hoverBorder: 'hover:border-primary/20',
-    hoverGradient: 'from-primary/[0.03]',
-    accentLine: 'group-hover:via-primary/20',
+const TICKER_CHIPS: Array<TickerChip> = [
+  { label: 'BTC', value: '$67,241 ↑', stream: 'finance' },
+  { label: 'LAL 118', value: 'BOS 112 · FINAL', stream: 'sports' },
+  { label: 'NVDA', value: '$891.20 ↑', stream: 'finance' },
+  { label: 'Fed holds rates steady', value: 'Reuters', stream: 'news' },
+  { label: 'MIA 94', value: 'GSW 88 · Q4', stream: 'sports' },
+  { label: 'ETH', value: '$3,412 ↓', stream: 'finance' },
+  { label: 'Your Team', value: '2nd Place', stream: 'fantasy' },
+  { label: 'SPY', value: '$512.08 ↑', stream: 'finance' },
+  {
+    label: 'AI hiring surges as layoffs slow',
+    value: 'TechCrunch',
+    stream: 'news',
   },
-  secondary: {
-    hoverBorder: 'hover:border-secondary/20',
-    hoverGradient: 'from-secondary/[0.03]',
-    accentLine: 'group-hover:via-secondary/20',
-  },
-  info: {
-    hoverBorder: 'hover:border-info/20',
-    hoverGradient: 'from-info/[0.03]',
-    accentLine: 'group-hover:via-info/20',
-  },
-  accent: {
-    hoverBorder: 'hover:border-accent/20',
-    hoverGradient: 'from-accent/[0.03]',
-    accentLine: 'group-hover:via-accent/20',
-  },
-} as const
+  { label: 'NYG 21', value: 'DAL 17 · HALF', stream: 'sports' },
+  { label: 'AAPL', value: '$189.54 ↓', stream: 'finance' },
+  { label: 'Matchup: W 6-4', value: 'vs Team Alpha', stream: 'fantasy' },
+  { label: 'TSLA', value: '$242.68 ↑', stream: 'finance' },
+  { label: 'Climate summit opens in Dubai', value: 'AP', stream: 'news' },
+  { label: 'BUF 28', value: 'KC 24 · Q3', stream: 'sports' },
+  { label: 'Roster Alert', value: 'J. Chase → IR', stream: 'fantasy' },
+]
 
-// ── Color map for ticker chips ───────────────────────────────────
+// ── Chip color map (per-stream) ──────────────────────────────────
 
-const chipColorMap = {
-  primary: {
+const chipColors: Record<
+  StreamKey,
+  { border: string; text: string; bg: string; sub: string }
+> = {
+  finance: {
     border: 'border-primary/25',
     text: 'text-primary',
     bg: 'bg-primary/[0.06]',
     sub: 'text-primary/60',
   },
-  secondary: {
+  sports: {
     border: 'border-secondary/25',
     text: 'text-secondary',
     bg: 'bg-secondary/[0.06]',
     sub: 'text-secondary/60',
   },
-  info: {
+  news: {
     border: 'border-info/25',
     text: 'text-info',
     bg: 'bg-info/[0.06]',
     sub: 'text-info/60',
   },
-  accent: {
+  fantasy: {
     border: 'border-accent/25',
     text: 'text-accent',
     bg: 'bg-accent/[0.06]',
@@ -145,372 +171,407 @@ const chipColorMap = {
   },
 }
 
-// ── Animated Ticker Bar ──────────────────────────────────────────
+// ── Ease constant ────────────────────────────────────────────────
 
-function TickerBar() {
-  // Duplicate chips for seamless loop
-  const allChips = [...TICKER_CHIPS, ...TICKER_CHIPS]
+const EASE = [0.22, 1, 0.36, 1] as const
+
+// ── Ticker Chip Component ────────────────────────────────────────
+
+function TickerChipItem({ chip }: { chip: TickerChip }) {
+  const c = chipColors[chip.stream]
+  return (
+    <div
+      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${c.border} ${c.bg} shrink-0`}
+    >
+      <span
+        className={`text-[11px] font-bold font-mono ${c.text} whitespace-nowrap`}
+      >
+        {chip.label}
+      </span>
+      <span className={`text-[10px] font-mono ${c.sub} whitespace-nowrap`}>
+        {chip.value}
+      </span>
+    </div>
+  )
+}
+
+// ── Animated Ticker with per-item enter/exit ─────────────────────
+
+const SPRING = { type: 'spring' as const, damping: 25, stiffness: 300 }
+
+function AnimatedTicker({
+  chips,
+  velocity = 50,
+  gap = 12,
+  hoverFactor = 0.5,
+}: {
+  chips: Array<TickerChip>
+  velocity?: number
+  gap?: number
+  hoverFactor?: number
+}) {
+  const trackRef = useRef<HTMLDivElement>(null)
+  const setRef = useRef<HTMLDivElement>(null)
+  const offsetRef = useRef(0)
+  const setWidthRef = useRef(0)
+  const isHoveredRef = useRef(false)
+  const isPausedRef = useRef(false)
+  const lastTimeRef = useRef(0)
+  const prevKeyRef = useRef('')
+  const pauseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const chipsKey = useMemo(() => chips.map((c) => c.label).join('|'), [chips])
+
+  // Measure width of one full set of chips
+  const measure = useCallback(() => {
+    if (setRef.current) {
+      setWidthRef.current = setRef.current.offsetWidth + gap
+    }
+  }, [gap])
+
+  // Initial measurement after DOM paint
+  useEffect(() => {
+    const raf = requestAnimationFrame(measure)
+    return () => cancelAnimationFrame(raf)
+  }, [measure])
+
+  // Pause scroll during chip transitions so layout animations can play
+  useEffect(() => {
+    if (prevKeyRef.current && prevKeyRef.current !== chipsKey) {
+      isPausedRef.current = true
+      lastTimeRef.current = 0
+
+      if (pauseTimerRef.current) clearTimeout(pauseTimerRef.current)
+      pauseTimerRef.current = setTimeout(() => {
+        measure()
+        // Keep offset within new bounds to avoid a visible jump
+        if (setWidthRef.current > 0) {
+          offsetRef.current = -(
+            Math.abs(offsetRef.current) % setWidthRef.current
+          )
+        }
+        isPausedRef.current = false
+      }, 450)
+    }
+    prevKeyRef.current = chipsKey
+
+    return () => {
+      if (pauseTimerRef.current) clearTimeout(pauseTimerRef.current)
+    }
+  }, [chipsKey, measure])
+
+  // Continuous scroll via requestAnimationFrame
+  useEffect(() => {
+    let rafId: number
+
+    function tick(time: number) {
+      rafId = requestAnimationFrame(tick)
+
+      if (
+        !trackRef.current ||
+        isPausedRef.current ||
+        setWidthRef.current === 0
+      ) {
+        lastTimeRef.current = time
+        return
+      }
+
+      const delta = lastTimeRef.current
+        ? (time - lastTimeRef.current) / 1000
+        : 0
+      lastTimeRef.current = time
+
+      const speed = isHoveredRef.current ? velocity * hoverFactor : velocity
+      offsetRef.current -= speed * Math.min(delta, 0.1)
+
+      // Wrap when scrolled past one full set
+      if (Math.abs(offsetRef.current) >= setWidthRef.current) {
+        offsetRef.current += setWidthRef.current
+      }
+
+      trackRef.current.style.transform = `translateX(${offsetRef.current}px)`
+    }
+
+    rafId = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafId)
+  }, [velocity, hoverFactor])
+
+  if (chips.length === 0) return null
 
   return (
-    <div className="group/ticker relative overflow-hidden bg-base-100/95 border-t border-base-300/40">
-      {/* Left/Right fade masks */}
-      <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-base-100/95 to-transparent z-10 pointer-events-none" />
-      <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-base-100/95 to-transparent z-10 pointer-events-none" />
+    <div
+      className="overflow-hidden"
+      onMouseEnter={() => {
+        isHoveredRef.current = true
+      }}
+      onMouseLeave={() => {
+        isHoveredRef.current = false
+      }}
+    >
+      <div ref={trackRef} className="flex" style={{ gap }}>
+        {/* Primary set — measured for loop width */}
+        <div ref={setRef} className="flex shrink-0" style={{ gap }}>
+          <AnimatePresence mode="popLayout" initial={false}>
+            {chips.map((chip) => (
+              <motion.div
+                key={chip.label}
+                layout="position"
+                initial={{ opacity: 0, scale: 0.8, filter: 'blur(4px)' }}
+                animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, scale: 0.8, filter: 'blur(4px)' }}
+                transition={SPRING}
+                className="shrink-0"
+              >
+                <TickerChipItem chip={chip} />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
 
-      {/* Scrolling track — pauses on hover */}
-      <div className="flex items-center gap-3 py-2.5 px-4 animate-ticker-scroll group-hover/ticker:[animation-play-state:paused]">
-        {allChips.map((chip, i) => {
-          const colors = chipColorMap[chip.color]
-          return (
-            <div
-              key={`${chip.label}-${i}`}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-sm border ${colors.border} ${colors.bg} shrink-0`}
-            >
-              <span
-                className={`text-[11px] font-bold font-mono ${colors.text} whitespace-nowrap`}
+        {/* Duplicate set — seamless infinite loop */}
+        <div className="flex shrink-0" style={{ gap }}>
+          <AnimatePresence mode="popLayout" initial={false}>
+            {chips.map((chip) => (
+              <motion.div
+                key={chip.label}
+                layout="position"
+                initial={{ opacity: 0, scale: 0.8, filter: 'blur(4px)' }}
+                animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, scale: 0.8, filter: 'blur(4px)' }}
+                transition={SPRING}
+                className="shrink-0"
               >
-                {chip.label}
-              </span>
-              <span
-                className={`text-[10px] font-mono ${colors.sub} whitespace-nowrap`}
-              >
-                {chip.value}
-              </span>
-              {chip.icon && (
-                <span
-                  className={`text-[9px] font-bold font-mono ${colors.text} opacity-70 whitespace-nowrap`}
-                >
-                  {chip.icon}
-                </span>
-              )}
-            </div>
-          )
-        })}
+                <TickerChipItem chip={chip} />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   )
 }
 
-// ── Browser Mockup ───────────────────────────────────────────────
+// ── Stream Scenario Card ─────────────────────────────────────────
 
-function BrowserMockup() {
+function ScenarioCard({ stream }: { stream: StreamInfo }) {
+  const Icon = stream.scenarioIcon
+  const colorVar =
+    stream.key === 'finance'
+      ? 'primary'
+      : stream.key === 'sports'
+        ? 'secondary'
+        : stream.key === 'news'
+          ? 'info'
+          : 'accent'
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-60px' }}
-      transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-      className="relative"
+    <div
+      className={`group relative rounded-2xl p-6 sm:p-7 bg-base-200/70 border ${stream.border} shadow-sm`}
     >
-      {/* Animated pulse backdrop */}
-      <div className="absolute inset-0 pointer-events-none">
-        {/* Ambient glow */}
-        <div className="absolute inset-0 bg-primary/[0.03] rounded-2xl blur-3xl" />
+      {/* Top accent line */}
+      <div
+        className="absolute top-0 left-8 right-8 h-px"
+        style={{
+          background: `linear-gradient(90deg, transparent, var(--color-${colorVar}) 50%, transparent)`,
+          opacity: 0.3,
+        }}
+      />
 
-        {/* Pulse SVG */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 1, delay: 0.3 }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+      <div className="flex items-start gap-4 sm:gap-5">
+        {/* Scenario icon */}
+        <div
+          className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${stream.bg} ${stream.color}`}
         >
-          <motion.div
-            whileInView={{
-              scale: [1, 1.02, 1],
-              rotate: [0, 0.3, 0, -0.3, 0],
-            }}
-            viewport={{ once: false }}
-            transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-          >
-            <ScrollrSVG
-              width={240}
-              height={240}
-              className="w-48 h-48 lg:w-60 lg:h-60 opacity-30"
-            />
-          </motion.div>
-        </motion.div>
+          <Icon size={20} />
+        </div>
 
-        {/* Floating data indicators */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.6 }}
-          whileHover={{
-            scale: 1.05,
-            rotate: 2,
-            transition: { duration: 0.2 },
-          }}
-          className="absolute top-6 right-6 sm:right-12 px-3 py-2 rounded-lg border border-primary/30 bg-base-200/80 backdrop-blur-sm shadow-lg cursor-default pointer-events-auto z-10"
-        >
-            <span className="flex items-center gap-2 text-primary">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
-            </span>
-            <span className="text-[10px] font-bold font-mono">
-              LIVE
-            </span>
-          </span>
-        </motion.div>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-[15px] font-bold mb-1.5 text-base-content">
+            {stream.scenarioTitle}
+          </h3>
+          <p className="text-sm leading-relaxed text-base-content/55">
+            {stream.scenarioBody}
+          </p>
 
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.7 }}
-          whileHover={{
-            scale: 1.05,
-            rotate: -2,
-            transition: { duration: 0.2 },
-          }}
-          className="absolute bottom-20 left-4 sm:left-8 px-3 py-2 rounded-lg border border-info/30 bg-base-200/80 backdrop-blur-sm shadow-lg cursor-default pointer-events-auto z-10"
-        >
-          <span className="flex items-center gap-2">
-            <span className="text-xs font-bold font-mono text-info">
-              +2.47%
+          {/* Stat */}
+          <div className="inline-flex items-center gap-2 mt-4">
+            <span className={`text-lg font-black font-mono ${stream.color}`}>
+              {stream.stat}
             </span>
-            <span className="text-[10px] font-mono text-base-content/40">
-              BTC
-            </span>
-          </span>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.8 }}
-          whileHover={{
-            scale: 1.05,
-            rotate: 2,
-            transition: { duration: 0.2 },
-          }}
-          className="absolute bottom-10 right-8 sm:right-16 px-3 py-2 rounded-lg border border-secondary/30 bg-base-200/80 backdrop-blur-sm shadow-lg cursor-default pointer-events-auto z-10"
-        >
-          <span className="flex items-center gap-2">
-            <span className="text-xs font-bold font-mono text-secondary">
-              Q4 2:34
-            </span>
-            <span className="text-[10px] font-mono text-base-content/40">
-              LAL
-            </span>
-          </span>
-        </motion.div>
-      </div>
-
-      <div className="relative rounded-xl border border-base-300/60 overflow-hidden shadow-lg shadow-black/20 bg-base-200/60 backdrop-blur-sm">
-        {/* Browser chrome */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-base-300/40 bg-base-200/80">
-          {/* Traffic lights */}
-          <div className="flex gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-error/30" />
-            <div className="w-2.5 h-2.5 rounded-full bg-warning/30" />
-            <div className="w-2.5 h-2.5 rounded-full bg-success/30" />
-          </div>
-
-          {/* URL bar */}
-          <div className="flex-1 flex items-center justify-center">
-            <div className="flex items-center gap-2 px-4 py-1.5 rounded-sm bg-base-100/60 border border-base-300/30 max-w-xs w-full">
-              <div className="w-3 h-3 rounded-full bg-success/30 shrink-0" />
-              <span className="text-[10px] font-mono text-base-content/25 truncate">
-                reddit.com/r/nba
-              </span>
-            </div>
-          </div>
-
-          {/* Scrollr badge */}
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-sm bg-primary/8 border border-primary/15">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
-            </span>
-            <span className="text-[9px] font-bold font-mono text-primary uppercase tracking-wider">
-              Scrollr
+            <span className="text-xs text-base-content/35">
+              {stream.statLabel}
             </span>
           </div>
         </div>
-
-        {/* Page content (placeholder) */}
-        <div className="px-8 py-10 space-y-4 min-h-[200px] bg-base-100/40">
-          {/* Fake content lines */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-base-300/20 shrink-0" />
-              <div className="space-y-1.5 flex-1">
-                <div className="h-2.5 bg-base-300/15 rounded w-3/4" />
-                <div className="h-2 bg-base-300/10 rounded w-1/2" />
-              </div>
-            </div>
-            <div className="h-32 bg-base-300/8 rounded border border-base-300/10" />
-            <div className="space-y-2">
-              <div className="h-2 bg-base-300/12 rounded w-full" />
-              <div className="h-2 bg-base-300/10 rounded w-5/6" />
-              <div className="h-2 bg-base-300/8 rounded w-2/3" />
-            </div>
-            <div className="flex items-center gap-3 pt-2">
-              <div className="w-6 h-6 rounded-full bg-base-300/15 shrink-0" />
-              <div className="space-y-1.5 flex-1">
-                <div className="h-2 bg-base-300/12 rounded w-2/3" />
-                <div className="h-1.5 bg-base-300/8 rounded w-1/3" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* THE TICKER — the star of the show */}
-        <TickerBar />
       </div>
-
-      {/* Label below mockup */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
-        transition={{ delay: 0.5 }}
-        className="flex items-center justify-center gap-4 mt-5"
-      >
-        <span className="h-px w-8 bg-base-300/30" />
-        <span className="text-[10px] text-base-content/20">
-          Your scrollbar feed, always visible
-        </span>
-        <span className="h-px w-8 bg-base-300/30" />
-      </motion.div>
-    </motion.div>
+    </div>
   )
 }
 
 // ── Main Component ───────────────────────────────────────────────
 
 export function StreamsShowcase() {
-  return (
-    <section id="streams" className="relative py-24 lg:py-32">
-      {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/[0.02] to-transparent opacity-50 pointer-events-none" />
+  const [activeStreams, setActiveStreams] = useState<Set<StreamKey>>(
+    new Set(['finance', 'sports', 'news', 'fantasy']),
+  )
+  const sectionRef = useRef<HTMLElement>(null)
 
-      <div className="container relative">
-        {/* Section Header */}
+  const handleFilterClick = (key: StreamKey) => {
+    setActiveStreams((prev) => {
+      const next = new Set(prev)
+      // Don't allow deselecting all — keep at least one
+      if (next.has(key) && next.size > 1) {
+        next.delete(key)
+      } else {
+        next.add(key)
+      }
+      return next
+    })
+  }
+
+  // Filter chips by active streams
+  const visibleChips = useMemo(
+    () => TICKER_CHIPS.filter((chip) => activeStreams.has(chip.stream)),
+    [activeStreams],
+  )
+
+  return (
+    <section ref={sectionRef} id="streams" className="relative">
+      {/* Subtle background shift */}
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-base-200/30 to-transparent pointer-events-none" />
+
+      {/* Header area — container-width but custom vertical padding */}
+      <div
+        className="mx-auto px-5 sm:px-6 lg:px-8 pt-16 lg:pt-24 relative"
+        style={{ maxWidth: 1400 }}
+      >
         <motion.div
+          style={{ opacity: 0 }}
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="mb-14 text-center flex flex-col items-center"
+          transition={{ duration: 0.6, ease: EASE }}
+          className="flex flex-col items-center text-center mb-10 lg:mb-14"
         >
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-lg border border-primary/15 uppercase tracking-[0.2em]">
-              Live Streams
-            </span>
-          </div>
-
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-5">
-            See It <span className="text-gradient-primary">In Action</span>
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-5 text-center">
+            Choose What{' '}
+            <span className="text-gradient-primary">Matters to You</span>
           </h2>
-          <p className="text-sm text-base-content/40 max-w-xl mx-auto leading-relaxed">
-            Four live integrations power your feed. Real-time data from finance,
-            sports, news, and fantasy — all in one scrolling ticker.
+          <p className="text-base text-base-content/45 max-w-lg leading-relaxed text-center">
+            Toggle what you care about. Everything else stays out of the way.
           </p>
         </motion.div>
 
-        {/* Browser Mockup */}
-        <div className="max-w-4xl mx-auto mb-20">
-          <BrowserMockup />
-        </div>
-
-        {/* Integration Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {INTEGRATIONS.map((integration, i) => (
-            <motion.div
-              key={integration.name}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{
-                delay: 0.1 + i * 0.08,
-                duration: 0.5,
-                ease: [0.22, 1, 0.36, 1],
-              }}
-              whileHover={{
-                y: -3,
-                transition: { type: 'tween', duration: 0.2 },
-              }}
-              className={`group relative bg-base-200/50 border border-base-300/50 rounded-xl p-6 ${cardAccentMap[integration.accent].hoverBorder} transition-colors overflow-hidden`}
-            >
-              {/* Hover gradient */}
-              <div
-                className={`absolute top-0 left-0 right-0 h-24 bg-gradient-to-b ${cardAccentMap[integration.accent].hoverGradient} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none`}
-              />
-
-              {/* Top accent */}
-              <div
-                className={`absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-transparent ${cardAccentMap[integration.accent].accentLine} to-transparent transition-[background] duration-500`}
-              />
-
-              <div className="relative z-10">
-                {/* Icon + color dot */}
-                <div className="flex items-center justify-between mb-5">
-                  <div
-                    className={`h-10 w-10 rounded-xl bg-base-300/30 border border-base-300/40 flex items-center justify-center ${integration.color}`}
-                  >
-                    {integration.icon}
-                  </div>
-                  <span
-                    className={`w-2 h-2 rounded-full ${integration.dotColor} opacity-60`}
-                  />
-                </div>
-
-                {/* Content */}
-                <h3 className="text-sm font-bold text-base-content mb-1">
-                  {integration.name}
-                </h3>
-                <p
-                  className={`text-[10px] ${integration.color} opacity-60 mb-3`}
-                >
-                  {integration.label}
-                </p>
-                <p className="text-sm text-base-content/30 leading-relaxed mb-5">
-                  {integration.description}
-                </p>
-
-                {/* Example chip */}
-                <div className="pt-4 border-t border-base-300/30">
-                  <span className="text-[10px] text-base-content/20">
-                    In your feed:
-                  </span>
-                  <span
-                    className={`block mt-1.5 text-xs font-bold font-mono ${integration.color} opacity-70`}
-                  >
-                    {integration.example}
-                  </span>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Link to integrations page */}
+        {/* Filter pills — fixed height via border-transparent on active */}
         <motion.div
+          style={{ opacity: 0 }}
+          initial={{ opacity: 0, y: 15 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.15, duration: 0.5, ease: EASE }}
+          className="flex flex-wrap justify-center gap-2.5 mb-10 lg:mb-14"
+        >
+          {STREAMS.map((stream) => {
+            const isActive = activeStreams.has(stream.key)
+            const Icon = stream.icon
+            return (
+              <button
+                key={stream.key}
+                type="button"
+                onClick={() => handleFilterClick(stream.key)}
+                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-[color,background-color,border-color,box-shadow] duration-300 cursor-pointer ${
+                  isActive
+                    ? `${stream.activeBg} ${stream.activeText} border-transparent shadow-md`
+                    : 'bg-base-200/50 text-base-content/35 border-base-300/30 hover:text-base-content/55 hover:bg-base-200/70'
+                }`}
+              >
+                <Icon size={15} />
+                {stream.name}
+              </button>
+            )
+          })}
+        </motion.div>
+      </div>
+
+      {/* Full-bleed Motion+ Ticker */}
+      <motion.div
+        style={{ opacity: 0 }}
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ delay: 0.3, duration: 0.6 }}
+        className="relative bg-base-200/60 border-y border-base-300/30 py-3"
+      >
+        {/* Left/Right fade masks */}
+        <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-r from-base-100 to-transparent z-10 pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-l from-base-100 to-transparent z-10 pointer-events-none" />
+
+        <AnimatedTicker
+          chips={visibleChips}
+          velocity={50}
+          gap={12}
+          hoverFactor={0.5}
+        />
+      </motion.div>
+
+      {/* Ticker caption */}
+      <div className="flex items-center justify-center gap-3 mt-4 mb-2 px-5">
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
+        </span>
+        <span className="text-[11px] text-base-content/30 font-medium">
+          This is what your browser looks like — live data, every tab
+        </span>
+      </div>
+
+      {/* Scenario cards — container-width but custom vertical padding */}
+      <div
+        className="mx-auto px-5 sm:px-6 lg:px-8 pt-6 pb-16 lg:pb-24 relative"
+        style={{ maxWidth: 1400 }}
+      >
+        <div className="flex flex-wrap justify-center gap-4 lg:gap-5">
+          <AnimatePresence mode="popLayout" initial={false}>
+            {STREAMS.filter((s) => activeStreams.has(s.key)).map((stream) => (
+              <motion.div
+                key={stream.key}
+                layout
+                initial={{ opacity: 0, scale: 0.95, filter: 'blur(4px)' }}
+                animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, scale: 0.95, filter: 'blur(4px)' }}
+                transition={SPRING}
+                className="w-full md:w-[calc(50%-10px)]"
+              >
+                <ScenarioCard stream={stream} />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+
+        {/* Footer link */}
+        <motion.div
+          layout
+          transition={SPRING}
+          style={{ opacity: 0 }}
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          transition={{ delay: 0.4 }}
-          className="flex items-center justify-center gap-6 mt-10"
+          className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 mt-12"
         >
           <Link
             to="/integrations"
             className="group inline-flex items-center gap-2 text-sm font-semibold text-base-content/40 hover:text-primary transition-colors"
           >
-            Browse All Integrations
+            Explore All Integrations
             <ArrowRight
               size={14}
               className="group-hover:translate-x-1 transition-transform"
             />
           </Link>
-          <span className="h-4 w-px bg-base-300/30" />
-          <span className="text-[10px] text-base-content/20 flex items-center gap-2">
+          <span className="hidden sm:block h-4 w-px bg-base-300/30" />
+          <span className="text-[11px] text-base-content/25 flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-success/40" />4 live
-            &middot; 6 coming soon
+            &middot; more coming soon
           </span>
         </motion.div>
       </div>

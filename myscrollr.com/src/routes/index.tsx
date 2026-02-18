@@ -3,7 +3,8 @@ import { usePageMeta } from '@/lib/usePageMeta'
 import { HeroSection } from '@/components/landing/HeroSection'
 import { HowItWorks } from '@/components/landing/HowItWorks'
 import { StreamsShowcase } from '@/components/landing/StreamsShowcase'
-import { CommunitySection } from '@/components/landing/CommunitySection'
+import { BenefitsSection } from '@/components/landing/BenefitsSection'
+import { TrustSection } from '@/components/landing/TrustSection'
 import { FAQSection } from '@/components/landing/FAQSection'
 import { CallToAction } from '@/components/landing/CallToAction'
 
@@ -26,7 +27,9 @@ function HomePage() {
 
       <StreamsShowcase />
 
-      <CommunitySection />
+      <BenefitsSection />
+
+      <TrustSection />
 
       <FAQSection />
 

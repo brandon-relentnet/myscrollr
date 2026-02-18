@@ -1,22 +1,22 @@
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'motion/react'
-import { ChevronDown, HelpCircle } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
+import { ChevronDown } from 'lucide-react'
 
 interface FAQItem {
   question: string
   answer: string
 }
 
-const FAQ_ITEMS: FAQItem[] = [
+const FAQ_ITEMS: Array<FAQItem> = [
   {
     question: 'Is Scrollr really free?',
     answer:
-      'Yes — completely free and open source under the AGPL-3.0 license. No trials, no hidden fees, no premium gates on core features. The entire codebase is public on GitHub.',
+      'Yes — completely free and open source. No trials, no hidden fees, no premium gates on core features. The entire codebase is public on GitHub.',
   },
   {
     question: 'Does it slow down my browser?',
     answer:
-      'No. Scrollr is lightweight by design. Data arrives via a single SSE connection — no polling, no background tabs, no CPU-heavy rendering. The ticker overlay runs in a minimal Shadow DOM that stays out of your way.',
+      'No. Scrollr is lightweight by design. Data arrives via a single SSE connection — no polling, no background tabs, no CPU-heavy rendering. The ticker runs in a minimal Shadow DOM that stays out of your way.',
   },
   {
     question: 'Is my data private?',
@@ -31,84 +31,62 @@ const FAQ_ITEMS: FAQItem[] = [
   {
     question: 'Do I need an account?',
     answer:
-      'No account required. Install the extension and start browsing with live data immediately. An optional account unlocks the dashboard for syncing preferences across devices and managing your streams.',
+      'No account required. Install the extension and start browsing with live data immediately. An optional account unlocks the dashboard for syncing preferences across devices.',
   },
 ]
 
+const EASE = [0.22, 1, 0.36, 1] as const
+
 export function FAQSection() {
-  const [openIndex, setOpenIndex] = useState<number | null>(null)
+  // Open the first item by default
+  const [openIndex, setOpenIndex] = useState<number | null>(0)
 
   const toggle = (index: number) => {
     setOpenIndex(openIndex === index ? null : index)
   }
 
   return (
-    <section className="container py-24 lg:py-32 relative">
-      <div className="relative">
-        {/* Section Header */}
+    <section className="relative">
+      <div className="container relative py-24 lg:py-32">
+        {/* Section Header — left-aligned, no badge pill */}
         <motion.div
+          style={{ opacity: 0 }}
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="text-center mb-14 flex flex-col items-center"
+          transition={{ duration: 0.6, ease: EASE }}
+          className="mb-12 lg:mb-14 max-w-lg"
         >
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-lg border border-primary/15 uppercase tracking-[0.2em]">
-              <HelpCircle size={12} />
-              FAQ
-            </span>
-          </div>
-
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-5">
-            Common{' '}
-            <span className="text-gradient-primary">Questions</span>
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
+            Common <span className="text-gradient-primary">Questions</span>
           </h2>
-          <p className="text-sm text-base-content/40 max-w-xl mx-auto leading-relaxed">
-            Everything you need to know before installing. Still have questions?
-            Ask in{' '}
-            <a
-              href="https://discord.gg/85b49TcGJa"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:text-primary/80 transition-colors"
-            >
-              Discord
-            </a>
-            .
+          <p className="text-base text-base-content/50 leading-relaxed">
+            Everything you need to know before installing.
           </p>
         </motion.div>
 
         {/* Accordion */}
-        <div className="max-w-3xl mx-auto space-y-3">
+        <div className="max-w-3xl space-y-3">
           {FAQ_ITEMS.map((item, i) => (
             <motion.div
               key={i}
+              style={{ opacity: 0 }}
               initial={{ opacity: 0, y: 15 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{
-                delay: 0.1 + i * 0.06,
+                delay: 0.08 + i * 0.06,
                 duration: 0.5,
-                ease: [0.22, 1, 0.36, 1],
+                ease: EASE,
               }}
             >
               <div
-                className={`group relative bg-base-200/50 border rounded-xl overflow-hidden transition-colors ${
+                className={`group relative bg-base-200/40 border rounded-xl overflow-hidden transition-colors duration-300 ${
                   openIndex === i
                     ? 'border-primary/20'
-                    : 'border-base-300/50 hover:border-primary/10'
+                    : 'border-base-300/30 hover:border-base-300/50'
                 }`}
               >
-                {/* Top accent line */}
-                <div
-                  className={`absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent to-transparent transition-[background] duration-500 ${
-                    openIndex === i
-                      ? 'via-primary/20'
-                      : 'via-primary/0 group-hover:via-primary/10'
-                  }`}
-                />
-
                 {/* Question (button) */}
                 <button
                   type="button"
@@ -116,10 +94,10 @@ export function FAQSection() {
                   className="w-full flex items-center justify-between gap-4 px-6 py-5 text-left cursor-pointer"
                 >
                   <span
-                    className={`text-sm font-semibold transition-colors ${
+                    className={`text-[15px] font-semibold transition-colors duration-200 ${
                       openIndex === i
-                        ? 'text-primary'
-                        : 'text-base-content/70'
+                        ? 'text-base-content'
+                        : 'text-base-content/60'
                     }`}
                   >
                     {item.question}
@@ -127,13 +105,13 @@ export function FAQSection() {
                   <motion.div
                     animate={{ rotate: openIndex === i ? 180 : 0 }}
                     transition={{ duration: 0.25, ease: 'easeInOut' }}
-                    className={`shrink-0 h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${
+                    className={`shrink-0 h-7 w-7 rounded-lg flex items-center justify-center transition-colors duration-200 ${
                       openIndex === i
                         ? 'bg-primary/10 text-primary'
-                        : 'bg-base-300/30 text-base-content/30'
+                        : 'bg-base-300/20 text-base-content/25'
                     }`}
                   >
-                    <ChevronDown size={16} />
+                    <ChevronDown size={15} />
                   </motion.div>
                 </button>
 
@@ -145,14 +123,14 @@ export function FAQSection() {
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
                       transition={{
-                        height: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
+                        height: { duration: 0.3, ease: EASE },
                         opacity: { duration: 0.2, delay: 0.05 },
                       }}
                       className="overflow-hidden"
                     >
                       <div className="px-6 pb-5 pt-0">
-                        <div className="h-px bg-base-300/30 mb-4" />
-                        <p className="text-sm text-base-content/40 leading-relaxed">
+                        <div className="h-px bg-base-300/20 mb-4" />
+                        <p className="text-sm text-base-content/50 leading-relaxed">
                           {item.answer}
                         </p>
                       </div>
@@ -163,21 +141,6 @@ export function FAQSection() {
             </motion.div>
           ))}
         </div>
-
-        {/* Subtle bottom text */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.5 }}
-          className="flex items-center justify-center gap-4 mt-8"
-        >
-          <span className="h-px w-8 bg-base-300/30" />
-          <span className="text-[10px] text-base-content/20">
-            More questions? We're in Discord
-          </span>
-          <span className="h-px w-8 bg-base-300/30" />
-        </motion.div>
       </div>
     </section>
   )
