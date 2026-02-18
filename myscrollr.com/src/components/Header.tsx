@@ -9,7 +9,7 @@ import {
   UserCircle,
   X,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
 import type { IdTokenClaims } from '@logto/react'
 import { useScrollrAuth } from '@/hooks/useScrollrAuth'
@@ -18,6 +18,8 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
+  const drawerRef = useRef<HTMLElement>(null)
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
   const { signIn, signOut, isAuthenticated, isLoading, getIdTokenClaims } =
     useScrollrAuth()
   const [userClaims, setUserClaims] = useState<IdTokenClaims>()
@@ -39,6 +41,32 @@ export default function Header() {
     signOut(`${window.location.origin}`)
   }
 
+  // Close drawer on Escape and trap focus
+  const closeDrawer = useCallback(() => {
+    setIsOpen(false)
+    // Return focus to the menu button
+    requestAnimationFrame(() => menuButtonRef.current?.focus())
+  }, [])
+
+  useEffect(() => {
+    if (!isOpen) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        closeDrawer()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, closeDrawer])
+
+  // Focus the drawer when it opens
+  useEffect(() => {
+    if (isOpen) {
+      requestAnimationFrame(() => drawerRef.current?.focus())
+    }
+  }, [isOpen])
+
   return (
     <>
       <header className="fixed top-0 left-0 right-0 z-50 px-6 flex items-center bg-base-100/80 backdrop-blur-2xl border-b border-base-300/50 h-20 will-change-transform">
@@ -57,9 +85,7 @@ export default function Header() {
               <span className="font-bold text-xl tracking-tight font-display">
                 Scrollr
               </span>
-              <span className="text-[9px] text-primary/50">
-                Always Visible
-              </span>
+              <span className="text-[9px] text-primary/50">Always Visible</span>
             </div>
           </Link>
         </div>
@@ -100,9 +126,7 @@ export default function Header() {
           {isLoading ? (
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-primary/40 animate-pulse" />
-              <span className="text-xs text-base-content/30">
-                Initializing
-              </span>
+              <span className="text-xs text-base-content/30">Initializing</span>
             </div>
           ) : isAuthenticated ? (
             <motion.button
@@ -132,11 +156,14 @@ export default function Header() {
 
         {/* Mobile Menu Button */}
         <motion.button
+          ref={menuButtonRef}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setIsOpen(true)}
           className="lg:hidden flex items-center justify-center p-3 rounded-lg border border-base-300/50 bg-base-200/50 hover:bg-base-200 hover:border-primary/30 transition-colors cursor-pointer"
           aria-label="Open menu"
+          aria-expanded={isOpen}
+          aria-controls="mobile-nav-drawer"
         >
           <Menu size={20} />
         </motion.button>
@@ -151,12 +178,19 @@ export default function Header() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              onClick={() => setIsOpen(false)}
+              onClick={closeDrawer}
               className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden pointer-events-auto"
+              aria-hidden="true"
             />
 
             {/* Mobile Drawer */}
             <motion.aside
+              ref={drawerRef}
+              id="mobile-nav-drawer"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Mobile navigation"
+              tabIndex={-1}
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
@@ -181,7 +215,7 @@ export default function Header() {
                   <motion.button
                     whileHover={{ scale: 1.1, rotate: 90 }}
                     whileTap={{ scale: 0.9 }}
-                    onClick={() => setIsOpen(false)}
+                    onClick={closeDrawer}
                     className="p-2 rounded-lg hover:bg-base-300 transition-colors cursor-pointer"
                     aria-label="Close menu"
                   >

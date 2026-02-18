@@ -355,7 +355,16 @@ export function HeroBrowserStack({
               stiffness: 500,
               damping: 35,
             }}
+            role="button"
+            tabIndex={0}
+            aria-label={`View ${mockup.word} demo`}
             onClick={() => onSelect?.(i)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onSelect?.(i)
+              }
+            }}
             className={`absolute inset-0 rounded-xl overflow-hidden flex flex-col border cursor-pointer ${
               isFront ? colors.borderActive : 'border-base-300/40'
             } bg-base-200/80 backdrop-blur-sm`}

@@ -343,6 +343,8 @@ function AccordionItem({
         <button
           type="button"
           onClick={onToggle}
+          aria-expanded={isOpen}
+          aria-controls={`faq-answer-${index}`}
           className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left cursor-pointer"
         >
           <span className="flex items-center gap-3 min-w-0">
@@ -377,6 +379,9 @@ function AccordionItem({
         <AnimatePresence initial={false}>
           {isOpen && (
             <motion.div
+              id={`faq-answer-${index}`}
+              role="region"
+              aria-labelledby={`faq-question-${index}`}
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}

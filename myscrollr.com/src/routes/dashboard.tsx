@@ -62,6 +62,19 @@ function DashboardPage() {
   const [streamsLoading, setStreamsLoading] = useState(true)
   const [addStreamOpen, setAddStreamOpen] = useState(false)
 
+  // Close dropdown on Escape
+  useEffect(() => {
+    if (!addStreamOpen) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        setAddStreamOpen(false)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [addStreamOpen])
+
   // ── Prevent remount/re-animation on token refresh ──────────────
   const hasLoaded = useRef(false)
   const hasAnimated = useRef(false)
@@ -272,6 +285,8 @@ function DashboardPage() {
                     : undefined
                 }
                 disabled={availableTypes.length === 0}
+                aria-expanded={addStreamOpen}
+                aria-haspopup="true"
                 className="btn btn-primary btn-sm gap-2 disabled:opacity-30"
               >
                 <Plus size={14} />
@@ -328,7 +343,7 @@ function DashboardPage() {
             <button
               onClick={() => setSettingsOpen(true)}
               className="p-2.5 rounded-lg border border-base-300 hover:border-primary/30 transition-colors text-base-content/50 hover:text-primary"
-              title="Settings"
+              aria-label="Open extension settings"
             >
               <Settings2 size={16} />
             </button>
@@ -340,6 +355,7 @@ function DashboardPage() {
           <div
             className="fixed inset-0 z-40"
             onClick={() => setAddStreamOpen(false)}
+            aria-hidden="true"
           />
         )}
 

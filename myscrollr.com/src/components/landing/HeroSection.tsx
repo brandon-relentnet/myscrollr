@@ -109,6 +109,8 @@ export function HeroSection() {
                     key={word}
                     type="button"
                     onClick={() => handleSelect(i)}
+                    aria-label={`Show ${word} demo`}
+                    aria-pressed={isActive}
                     className="flex-1 cursor-pointer py-2"
                   >
                     <div

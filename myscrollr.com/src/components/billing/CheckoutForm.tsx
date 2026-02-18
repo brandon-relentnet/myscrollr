@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import {
   EmbeddedCheckoutProvider,
   EmbeddedCheckout,
@@ -32,6 +32,21 @@ export default function CheckoutForm({
   onClose,
 }: CheckoutFormProps) {
   const [error, setError] = useState<string | null>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
+
+  // Close on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        onClose()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    // Focus the dialog on mount
+    requestAnimationFrame(() => dialogRef.current?.focus())
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
 
   const fetchClientSecret = useCallback(async () => {
     try {
@@ -41,7 +56,8 @@ export default function CheckoutForm({
 
       return response.client_secret
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create checkout session'
+      const message =
+        err instanceof Error ? err.message : 'Failed to create checkout session'
       setError(message)
       throw err
     }
@@ -50,9 +66,17 @@ export default function CheckoutForm({
   if (error) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-        <div className="relative w-full max-w-md mx-4 bg-base-200 border border-error/30 rounded-xl p-8">
+        <div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Checkout error"
+          tabIndex={-1}
+          className="relative w-full max-w-md mx-4 bg-base-200 border border-error/30 rounded-xl p-8"
+        >
           <button
             onClick={onClose}
+            aria-label="Close checkout"
             className="absolute top-4 right-4 text-base-content/40 hover:text-base-content transition-colors"
           >
             <X size={18} />
@@ -77,13 +101,23 @@ export default function CheckoutForm({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-      <div className="relative w-full max-w-lg mx-4 bg-base-200 border border-base-content/10 rounded-xl overflow-hidden">
+      <div
+        ref={error ? undefined : dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={
+          isLifetime ? 'Lifetime purchase checkout' : 'Subscribe to Uplink'
+        }
+        tabIndex={-1}
+        className="relative w-full max-w-lg mx-4 bg-base-200 border border-base-content/10 rounded-xl overflow-hidden"
+      >
         <div className="flex items-center justify-between px-6 py-4 border-b border-base-content/10">
           <h3 className="text-xs font-semibold text-base-content/60">
             {isLifetime ? 'Lifetime Purchase' : 'Subscribe to Uplink'}
           </h3>
           <button
             onClick={onClose}
+            aria-label="Close checkout"
             className="text-base-content/40 hover:text-base-content transition-colors"
           >
             <X size={18} />

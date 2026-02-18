@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import {
   Eye,
@@ -43,10 +43,31 @@ export default function SettingsPanel({
   const [prefs, setPrefs] = useState<UserPreferences>(DEFAULT_PREFS)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const panelRef = useRef<HTMLElement>(null)
 
   // Track site input fields
   const [newAllowedSite, setNewAllowedSite] = useState('')
   const [newBlockedSite, setNewBlockedSite] = useState('')
+
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        onClose()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [open, onClose])
+
+  // Focus the panel when it opens
+  useEffect(() => {
+    if (open) {
+      requestAnimationFrame(() => panelRef.current?.focus())
+    }
+  }, [open])
 
   // Load preferences on panel open
   useEffect(() => {
@@ -121,6 +142,11 @@ export default function SettingsPanel({
 
           {/* Panel */}
           <motion.aside
+            ref={panelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Extension settings"
+            tabIndex={-1}
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
@@ -148,6 +174,7 @@ export default function SettingsPanel({
                 )}
                 <button
                   onClick={onClose}
+                  aria-label="Close settings"
                   className="p-1.5 rounded-lg hover:bg-base-200 transition-colors text-base-content/40 hover:text-base-content/70"
                 >
                   <X size={16} />
@@ -310,9 +337,7 @@ function Section({
             {title}
           </span>
         </div>
-        <p className="text-[10px] text-base-content/35 pl-[22px]">
-          {desc}
-        </p>
+        <p className="text-[10px] text-base-content/35 pl-[22px]">{desc}</p>
       </div>
       <div className="pl-[22px]">{children}</div>
     </div>
@@ -424,6 +449,7 @@ function SiteList({
           </span>
           <button
             onClick={() => onRemove(i)}
+            aria-label={`Remove ${site}`}
             className="p-1 rounded-lg hover:bg-error/10 text-base-content/20 hover:text-error transition-colors shrink-0"
           >
             <Trash2 size={12} />
@@ -433,7 +459,11 @@ function SiteList({
 
       {/* Add new site input */}
       <div className="flex gap-2">
+        <label className="sr-only" htmlFor={`site-input-${placeholder}`}>
+          Add site pattern
+        </label>
         <input
+          id={`site-input-${placeholder}`}
           type="text"
           value={inputValue}
           onChange={(e) => onInputChange(e.target.value)}
@@ -445,6 +475,7 @@ function SiteList({
         />
         <button
           onClick={() => onAdd(inputValue)}
+          aria-label="Add site"
           className="px-3 py-2 rounded-lg border border-base-300/40 text-base-content/30 hover:text-primary hover:border-primary/30 transition-colors"
         >
           <Plus size={14} />

@@ -787,7 +787,16 @@ function UplinkPage() {
                 y: -3,
                 transition: { type: 'tween', duration: 0.2 },
               }}
+              role="button"
+              tabIndex={0}
+              aria-label="Select Monthly plan — $8.99 per month"
               onClick={() => handleSelectPlan('monthly')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  handleSelectPlan('monthly')
+                }
+              }}
               className="group bg-base-200/40 border border-base-300/50 rounded-xl p-6 hover:border-base-300 transition-colors relative overflow-hidden cursor-pointer"
             >
               <div className="absolute inset-0 bg-gradient-to-b from-base-content/[0.01] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
@@ -849,7 +858,16 @@ function UplinkPage() {
                 y: -3,
                 transition: { type: 'tween', duration: 0.2 },
               }}
+              role="button"
+              tabIndex={0}
+              aria-label="Select Quarterly plan — $21.99 per 3 months"
               onClick={() => handleSelectPlan('quarterly')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  handleSelectPlan('quarterly')
+                }
+              }}
               className="group bg-base-200/40 border border-base-300/50 rounded-xl p-6 hover:border-info/20 transition-colors relative overflow-hidden cursor-pointer"
             >
               <div className="absolute inset-0 bg-gradient-to-b from-info/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
@@ -911,7 +929,16 @@ function UplinkPage() {
                 y: -4,
                 transition: { type: 'tween', duration: 0.2 },
               }}
+              role="button"
+              tabIndex={0}
+              aria-label="Select Annual plan — $69.99 per year, best value"
               onClick={() => handleSelectPlan('annual')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  handleSelectPlan('annual')
+                }
+              }}
               className="group relative rounded-xl overflow-hidden cursor-pointer"
             >
               {/* Outer glow */}

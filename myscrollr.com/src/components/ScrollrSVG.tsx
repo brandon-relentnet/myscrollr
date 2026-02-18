@@ -12,6 +12,8 @@ function ScrollrSVG({ width = 48, height = 48, className = '' }) {
       viewBox="0 0 100 100"
       className={className}
       style={{ overflow: 'visible' }}
+      aria-hidden="true"
+      focusable="false"
     >
       <defs>
         {/* Gradient for the pulse line */}

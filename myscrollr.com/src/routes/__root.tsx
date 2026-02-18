@@ -1,4 +1,10 @@
-import { Outlet, Link, createRootRoute } from '@tanstack/react-router'
+import {
+  Outlet,
+  Link,
+  createRootRoute,
+  useLocation,
+} from '@tanstack/react-router'
+import { useEffect, useRef } from 'react'
 import { MotionConfig } from 'motion/react'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
@@ -66,15 +72,44 @@ function NotFound() {
   )
 }
 
-export const Route = createRootRoute({
-  component: () => (
+function RootLayout() {
+  const { pathname } = useLocation()
+  const mainRef = useRef<HTMLElement>(null)
+  const isFirstRender = useRef(true)
+
+  // Move focus to <main> on route change (skip the initial load)
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+    // Slight delay so the new route content is rendered
+    requestAnimationFrame(() => {
+      mainRef.current?.focus({ preventScroll: false })
+    })
+  }, [pathname])
+
+  return (
     <MotionConfig reducedMotion="user">
       <div className="min-h-screen relative overflow-x-clip">
+        {/* Skip to main content — first focusable element */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:rounded-lg focus:bg-primary focus:text-primary-content focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:shadow-lg"
+        >
+          Skip to main content
+        </a>
+
         {/* Navigation */}
         <Header />
 
         {/* Main Content */}
-        <main className="relative">
+        <main
+          ref={mainRef}
+          id="main-content"
+          className="relative"
+          tabIndex={-1}
+        >
           <Outlet />
         </main>
 
@@ -82,7 +117,11 @@ export const Route = createRootRoute({
         <Footer />
       </div>
     </MotionConfig>
-  ),
+  )
+}
+
+export const Route = createRootRoute({
+  component: RootLayout,
   notFoundComponent: NotFound,
   errorComponent: RootErrorComponent,
 })
