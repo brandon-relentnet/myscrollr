@@ -155,7 +155,7 @@ function AnswerPanel({ item }: { item: FAQItem }) {
   const colors = ACCENT_COLORS[item.accent] ?? ACCENT_COLORS.emerald
 
   return (
-    <div className="relative h-full rounded-2xl bg-base-200/40 border border-base-300/25 p-8 sm:p-9 overflow-hidden flex flex-col">
+    <div className="relative h-full rounded-2xl bg-base-200/40 border border-base-300/25 p-8 sm:p-9 overflow-hidden flex flex-col gap-4">
       {/* Ambient gradient orb — top-right, per-card accent color */}
       <div
         className="absolute -top-20 -right-20 w-64 h-64 rounded-full pointer-events-none blur-3xl"
@@ -188,7 +188,7 @@ function AnswerPanel({ item }: { item: FAQItem }) {
       />
 
       {/* ── Icon badge ── */}
-      <div className="relative mb-5">
+      <div className="relative">
         <div
           className="w-12 h-12 rounded-xl flex items-center justify-center"
           style={{
@@ -201,12 +201,12 @@ function AnswerPanel({ item }: { item: FAQItem }) {
       </div>
 
       {/* ── Highlight TLDR ── */}
-      <p className="relative text-lg sm:text-xl font-bold text-base-content leading-snug mb-6">
+      <span className="relative text-lg sm:text-xl font-bold text-base-content leading-snug block pb-2">
         {item.highlight}
-      </p>
+      </span>
 
       {/* ── Divider ── */}
-      <div className="relative flex items-center gap-3 mb-4">
+      <div className="relative flex items-center gap-3">
         <div
           className="h-px flex-1"
           style={{
@@ -225,9 +225,9 @@ function AnswerPanel({ item }: { item: FAQItem }) {
       </div>
 
       {/* ── Full answer ── */}
-      <p className="relative text-[15px] text-base-content/45 leading-relaxed flex-1">
+      <span className="relative text-[15px] text-base-content/45 leading-relaxed flex-1 block">
         {item.answer}
-      </p>
+      </span>
     </div>
   )
 }
