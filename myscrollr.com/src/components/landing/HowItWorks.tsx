@@ -28,7 +28,7 @@ const STEPS = [
     id: 'choose',
     title: 'Pick Your Streams',
     description:
-      'Toggle on sports, markets, news, or fantasy — whatever matters to you.',
+      'Toggle on sports, markets, news, or fantasy. Whatever matters to you.',
   },
   {
     id: 'browse',

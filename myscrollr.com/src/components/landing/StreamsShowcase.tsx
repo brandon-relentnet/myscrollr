@@ -57,7 +57,7 @@ const STREAMS: Array<StreamInfo> = [
     scenarioIcon: Coffee,
     scenarioTitle: 'Morning coffee, portfolio check',
     scenarioBody:
-      "Glance at BTC, ETH, and your watchlist while reading the morning news. No apps to open, no tabs to switch — it's just there.",
+      "Glance at BTC, ETH, and your watchlist while reading the morning news. No apps to open, no tabs to switch. It's just there.",
     stat: '50+',
     statLabel: 'tracked symbols',
   },
@@ -74,7 +74,7 @@ const STREAMS: Array<StreamInfo> = [
     scenarioIcon: Timer,
     scenarioTitle: 'Never miss the final score',
     scenarioBody:
-      "NFL, NBA, NHL, MLB — live scores tick along the bottom of every tab. You'll know the second the game ends.",
+      "NFL, NBA, NHL, MLB. Live scores tick along the bottom of every tab. You'll know the second the game ends.",
     stat: '5',
     statLabel: 'major leagues',
   },
@@ -91,7 +91,7 @@ const STREAMS: Array<StreamInfo> = [
     scenarioIcon: Newspaper,
     scenarioTitle: 'Headlines without the noise',
     scenarioBody:
-      'Curated RSS from 100+ sources across tech, world, finance, and more. No algorithms, no clickbait — just the feeds you choose.',
+      'Curated RSS from 100+ sources across tech, world, finance, and more. No algorithms, no clickbait. Just the feeds you choose.',
     stat: '100+',
     statLabel: 'curated feeds',
   },
@@ -528,7 +528,7 @@ export function StreamsShowcase() {
           <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
         </span>
         <span className="text-[11px] text-base-content/30 font-medium">
-          This is what your browser looks like — live data, every tab
+          This is what your browser looks like. Live data, every tab.
         </span>
       </motion.div>
 

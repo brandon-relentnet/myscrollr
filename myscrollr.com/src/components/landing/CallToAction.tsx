@@ -397,11 +397,11 @@ export function CallToAction() {
             </a>
             <span className="w-px h-4 bg-base-content/10" />
             <a
-              href="https://myscrollr.com"
+              href="#streams"
               className="inline-flex items-center gap-2 text-sm text-base-content/40 hover:text-primary transition-[color] duration-200"
             >
               <Globe className="size-4" aria-hidden />
-              Learn More
+              Explore Streams
             </a>
           </motion.div>
         </div>

@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
-import { animate, motion, useInView } from 'motion/react'
+import { motion } from 'motion/react'
 import { ShieldCheck } from 'lucide-react'
 
 // ── Types & Data ─────────────────────────────────────────────────
@@ -33,20 +32,6 @@ const PLEDGES: Array<Pledge> = [
     title: 'Featherweight',
     body: 'Under 500 KB total. Zero battery drain.',
   },
-]
-
-interface StatItem {
-  value: number
-  prefix?: string
-  suffix?: string
-  label: string
-}
-
-const STATS: Array<StatItem> = [
-  { value: 4, label: 'Live integrations' },
-  { value: 50, suffix: '+', label: 'Tracked symbols' },
-  { value: 100, suffix: '+', label: 'News sources' },
-  { value: 500, prefix: '<', suffix: 'KB', label: 'Extension size' },
 ]
 
 // ── Constants ────────────────────────────────────────────────────
@@ -93,40 +78,6 @@ function AnimatedCheck({ delay }: { delay: number }) {
         transition={{ delay: delay + 0.45, duration: 0.35, ease: 'easeOut' }}
       />
     </motion.svg>
-  )
-}
-
-// ── Animated Counter ─────────────────────────────────────────────
-
-function AnimatedCounter({
-  target,
-  prefix = '',
-  suffix = '',
-}: {
-  target: number
-  prefix?: string
-  suffix?: string
-}) {
-  const ref = useRef<HTMLSpanElement>(null)
-  const inView = useInView(ref, { once: true })
-  const [display, setDisplay] = useState(0)
-
-  useEffect(() => {
-    if (!inView) return
-    const controls = animate(0, target, {
-      duration: target <= 10 ? 0.6 : 1.4,
-      ease: 'easeOut',
-      onUpdate: (v) => setDisplay(Math.round(v)),
-    })
-    return () => controls.stop()
-  }, [inView, target])
-
-  return (
-    <span ref={ref}>
-      {prefix}
-      {display}
-      {suffix}
-    </span>
   )
 }
 
@@ -257,33 +208,6 @@ export function TrustSection() {
             </div>
           </div>
         </motion.div>
-
-        {/* ── Stats row ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12 mt-14 lg:mt-18 max-w-3xl mx-auto text-center">
-          {STATS.map((stat, i) => (
-            <motion.div
-              key={stat.label}
-              style={{ opacity: 0 }}
-              initial={{ opacity: 0, y: 15 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{
-                delay: 0.08 + i * 0.08,
-                duration: 0.5,
-                ease: EASE,
-              }}
-            >
-              <span className="block text-3xl sm:text-4xl font-black text-base-content tracking-tight mb-1">
-                <AnimatedCounter
-                  target={stat.value}
-                  prefix={stat.prefix}
-                  suffix={stat.suffix}
-                />
-              </span>
-              <span className="text-sm text-base-content/35">{stat.label}</span>
-            </motion.div>
-          ))}
-        </div>
       </div>
     </section>
   )

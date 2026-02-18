@@ -1,6 +1,6 @@
 import { AnimatePresence, motion, useInView } from 'motion/react'
 import { useRef, useState } from 'react'
-import { EyeOff, Globe, Lock, Zap } from 'lucide-react'
+import { Layers, SlidersHorizontal, Smartphone, Zap } from 'lucide-react'
 
 // ── Types & Data ─────────────────────────────────────────────────
 
@@ -17,40 +17,40 @@ interface Benefit {
 
 const BENEFITS: Array<Benefit> = [
   {
-    icon: Zap,
-    title: 'Never Miss a Moment',
-    headline: 'Real-time, every time',
-    body: "Market moves, game-winning plays, breaking headlines — they happen while you're reading, working, browsing. Scrollr makes sure you see them the instant they matter, without interrupting what you're doing.",
+    icon: Smartphone,
+    title: 'Your Phone Stays Down',
+    headline: 'Stop reaching, start glancing',
+    body: 'That impulse to check scores or prices mid-task fades. The info is already in your peripheral vision, so the urge to context-switch just stops.',
     accent: 'text-primary',
     accentBg: 'bg-primary/8',
     accentBorder: 'border-primary/15',
     accentRaw: 'primary',
   },
   {
-    icon: EyeOff,
-    title: 'Zero Distractions',
-    headline: 'A quiet presence, not a loud app',
-    body: "No pop-ups. No notifications. No new tabs. Scrollr lives in a thin bar at the bottom of your screen — visible when you want it, invisible when you don't. It respects your focus.",
+    icon: Zap,
+    title: 'You Catch Things First',
+    headline: 'The moment it happens, not minutes later',
+    body: 'Market flash crash, buzzer-beater, breaking headline. You see it when it happens, not 10 minutes later when someone mentions it in Slack.',
     accent: 'text-secondary',
     accentBg: 'bg-secondary/8',
     accentBorder: 'border-secondary/15',
     accentRaw: 'secondary',
   },
   {
-    icon: Globe,
-    title: 'Works Everywhere',
-    headline: 'Every tab, every site',
-    body: "Reddit, YouTube, Google Docs, your company intranet — it doesn't matter. Scrollr runs on every tab so you never have to go somewhere specific to check your feed.",
+    icon: Layers,
+    title: 'Your Focus Gets Deeper',
+    headline: 'No more tab juggling',
+    body: 'No switching to ESPN. No opening a crypto app. No refreshing Reuters. Everything flows to you, so you stay locked into whatever you were doing.',
     accent: 'text-info',
     accentBg: 'bg-info/8',
     accentBorder: 'border-info/15',
     accentRaw: 'info',
   },
   {
-    icon: Lock,
-    title: 'Completely Yours',
-    headline: 'Your data stays with you',
-    body: 'No accounts to create. No tracking. No ads. Your browsing data never leaves your machine. Scrollr is open source and always will be — inspect every line if you want.',
+    icon: SlidersHorizontal,
+    title: 'It Gets Out of the Way',
+    headline: 'Quiet when you need quiet',
+    body: "Resize it, reposition it, hide it on specific sites, or collapse it entirely. When you need deep focus, one click and it's gone.",
     accent: 'text-accent',
     accentBg: 'bg-accent/8',
     accentBorder: 'border-accent/15',
@@ -272,12 +272,10 @@ export function BenefitsSection() {
           className="flex flex-col items-center text-center mb-14 lg:mb-20"
         >
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4 text-center">
-            Information that finds{' '}
-            <span className="text-gradient-primary">you</span>
+            What Actually <span className="text-gradient-primary">Changes</span>
           </h2>
           <p className="text-base sm:text-lg text-base-content/55 leading-relaxed text-center max-w-lg">
-            Stop refreshing tabs and checking apps. What you care about flows to
-            wherever you already are.
+            It's not another app to check. It's the reason you stop checking.
           </p>
         </motion.div>
 
