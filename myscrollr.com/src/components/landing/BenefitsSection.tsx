@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'motion/react'
+import { motion } from 'motion/react'
 import { useState } from 'react'
 import { Layers, SlidersHorizontal, Smartphone, Zap } from 'lucide-react'
 
@@ -550,42 +550,6 @@ const ILLUSTRATIONS = [
   IllustrationOutOfWay,
 ]
 
-// ── Sticky Visual (desktop) ──────────────────────────────────────
-
-function StickyVisual({ activeIndex }: { activeIndex: number }) {
-  const benefit = BENEFITS[activeIndex]
-
-  return (
-    <div className="relative w-[280px] h-[280px] flex items-center justify-center">
-      {/* Diffused backdrop glow */}
-      <div
-        className="absolute inset-0 rounded-full blur-3xl transition-colors duration-700"
-        style={{
-          backgroundColor: `var(--color-${benefit.accentRaw})`,
-          opacity: 0.1,
-        }}
-      />
-
-      {/* Illustration — crossfade between benefits */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeIndex}
-          initial={{ opacity: 0, scale: 0.9, filter: 'blur(6px)' }}
-          animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-          exit={{ opacity: 0, scale: 1.05, filter: 'blur(6px)' }}
-          transition={{ duration: 0.35, ease: EASE }}
-          className="w-full h-full"
-        >
-          {(() => {
-            const Illustration = ILLUSTRATIONS[activeIndex]
-            return <Illustration />
-          })()}
-        </motion.div>
-      </AnimatePresence>
-    </div>
-  )
-}
-
 // ── Single benefit block ─────────────────────────────────────────
 
 function BenefitBlock({
@@ -600,9 +564,10 @@ function BenefitBlock({
   index: number
 }) {
   const Icon = benefit.icon
+  const Illustration = ILLUSTRATIONS[index]
 
   return (
-    <div className="relative">
+    <div className="relative flex items-center gap-6 lg:gap-10">
       {/* Accent glow — extends beyond card bounds */}
       <motion.div
         initial={false}
@@ -622,7 +587,7 @@ function BenefitBlock({
         transition={{ duration: 0.4, ease: EASE }}
         onViewportEnter={() => onHighlight(index)}
         viewport={{ margin: '-40% 0px -50% 0px', amount: 'some' }}
-        className="relative rounded-2xl py-6 px-5 lg:px-8 overflow-hidden"
+        className="relative flex-1 min-w-0 rounded-2xl py-6 px-5 lg:px-8 overflow-hidden"
       >
         {/* Background card — visible when highlighted */}
         <motion.div
@@ -681,6 +646,19 @@ function BenefitBlock({
           </div>
         </div>
       </motion.div>
+
+      {/* Illustration — right side, desktop only */}
+      <motion.div
+        initial={false}
+        animate={{
+          opacity: isHighlighted ? 1 : 0.15,
+          scale: isHighlighted ? 1 : 0.9,
+        }}
+        transition={{ duration: 0.4, ease: EASE }}
+        className="hidden lg:block w-[200px] h-[200px] shrink-0"
+      >
+        <Illustration />
+      </motion.div>
     </div>
   )
 }
@@ -723,42 +701,25 @@ export function BenefitsSection() {
           </p>
         </motion.div>
 
-        {/* Two-column layout: cards scroll left, visual sticks right */}
-        <div className="flex gap-8 lg:gap-16 max-w-5xl mx-auto">
-          {/* Left — scrolling benefit cards */}
-          <motion.div
-            style={{ opacity: 0 }}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-80px' }}
-            transition={{ delay: 0.15, duration: 0.6, ease: EASE }}
-            className="flex-1 min-w-0 space-y-6 lg:space-y-10"
-          >
-            {BENEFITS.map((benefit, i) => (
-              <BenefitBlock
-                key={benefit.title}
-                benefit={benefit}
-                index={i}
-                isHighlighted={activeIndex === i}
-                onHighlight={setActiveIndex}
-              />
-            ))}
-          </motion.div>
-
-          {/* Right — sticky visual (desktop only) */}
-          <motion.div
-            style={{ opacity: 0 }}
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true, margin: '-80px' }}
-            transition={{ delay: 0.3, duration: 0.6, ease: EASE }}
-            className="hidden lg:flex items-start justify-center w-[280px] shrink-0"
-          >
-            <div className="sticky top-[28vh]">
-              <StickyVisual activeIndex={activeIndex} />
-            </div>
-          </motion.div>
-        </div>
+        {/* Benefit cards — single column, illustration inline per card */}
+        <motion.div
+          style={{ opacity: 0 }}
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-80px' }}
+          transition={{ delay: 0.15, duration: 0.6, ease: EASE }}
+          className="max-w-5xl mx-auto space-y-6 lg:space-y-10"
+        >
+          {BENEFITS.map((benefit, i) => (
+            <BenefitBlock
+              key={benefit.title}
+              benefit={benefit}
+              index={i}
+              isHighlighted={activeIndex === i}
+              onHighlight={setActiveIndex}
+            />
+          ))}
+        </motion.div>
       </div>
     </section>
   )
