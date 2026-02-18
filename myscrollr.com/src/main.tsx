@@ -10,11 +10,16 @@ import { routeTree } from '@/routeTree.gen'
 
 import '@/styles.css'
 
-// Logto configuration
+// Logto configuration — values come from VITE_ env vars (see .env.example)
 const logtoConfig: LogtoConfig = {
-  endpoint: 'https://auth.myscrollr.relentnet.dev/',
-  appId: 'ogbulfshvf934eeli4t9u',
-  resources: ['https://api.myscrollr.relentnet.dev'],
+  endpoint:
+    import.meta.env.VITE_LOGTO_ENDPOINT ||
+    'https://auth.myscrollr.relentnet.dev/',
+  appId: import.meta.env.VITE_LOGTO_APP_ID || 'ogbulfshvf934eeli4t9u',
+  resources: [
+    import.meta.env.VITE_LOGTO_RESOURCE ||
+      'https://api.myscrollr.relentnet.dev',
+  ],
 }
 
 // Create a new router instance

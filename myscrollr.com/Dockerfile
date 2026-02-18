@@ -28,7 +28,15 @@ COPY myscrollr.com/ ./myscrollr.com/
 
 # Accept build-time env vars
 ARG VITE_API_URL
+ARG VITE_LOGTO_ENDPOINT
+ARG VITE_LOGTO_APP_ID
+ARG VITE_LOGTO_RESOURCE
+ARG VITE_STRIPE_PUBLISHABLE_KEY
 ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_LOGTO_ENDPOINT=${VITE_LOGTO_ENDPOINT}
+ENV VITE_LOGTO_APP_ID=${VITE_LOGTO_APP_ID}
+ENV VITE_LOGTO_RESOURCE=${VITE_LOGTO_RESOURCE}
+ENV VITE_STRIPE_PUBLISHABLE_KEY=${VITE_STRIPE_PUBLISHABLE_KEY}
 
 # Build (vite build + tsc)
 WORKDIR /app/myscrollr.com
@@ -47,11 +55,10 @@ RUN printf 'server {\n\
     root /usr/share/nginx/html;\n\
     index index.html;\n\
 \n\
-    # ── Security headers ────────────────────────────────────────\n\
-    add_header X-Frame-Options "SAMEORIGIN" always;\n\
-    add_header X-Content-Type-Options "nosniff" always;\n\
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;\n\
-    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;\n\
+    # ── Security headers (server-level) ─────────────────────────\n\
+    # NOTE: nginx add_header in a child location block overrides\n\
+    # ALL parent add_header directives. To work around this, we\n\
+    # use an include file for shared security headers.\n\
 \n\
     # ── Gzip compression ────────────────────────────────────────\n\
     gzip on;\n\
@@ -71,25 +78,32 @@ RUN printf 'server {\n\
 \n\
     # ── HTML: no-cache so users always get latest deploy ────────\n\
     location / {\n\
+        include /etc/nginx/security-headers.conf;\n\
         add_header Cache-Control "no-cache";\n\
-        add_header X-Frame-Options "SAMEORIGIN" always;\n\
-        add_header X-Content-Type-Options "nosniff" always;\n\
         try_files $uri $uri/ /index.html;\n\
     }\n\
 \n\
     # ── Hashed static assets: cache forever ─────────────────────\n\
     location /assets/ {\n\
+        include /etc/nginx/security-headers.conf;\n\
         expires 1y;\n\
         add_header Cache-Control "public, max-age=31536000, immutable";\n\
     }\n\
 \n\
     # ── Fonts: long cache ───────────────────────────────────────\n\
     location ~* \\.woff2?$ {\n\
+        include /etc/nginx/security-headers.conf;\n\
         expires 1y;\n\
         add_header Cache-Control "public, max-age=31536000, immutable";\n\
         add_header Access-Control-Allow-Origin "*";\n\
     }\n\
-}\n' > /etc/nginx/conf.d/default.conf
+}\n' > /etc/nginx/conf.d/default.conf && \
+printf 'add_header X-Frame-Options "SAMEORIGIN" always;\n\
+add_header X-Content-Type-Options "nosniff" always;\n\
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;\n\
+add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;\n\
+add_header Content-Security-Policy "default-src '"'"'self'"'"'; script-src '"'"'self'"'"' https://js.stripe.com; style-src '"'"'self'"'"' '"'"'unsafe-inline'"'"'; img-src '"'"'self'"'"' data: https:; font-src '"'"'self'"'"'; connect-src '"'"'self'"'"' https://api.myscrollr.relentnet.dev https://auth.myscrollr.relentnet.dev https://api.stripe.com; frame-src https://js.stripe.com https://hooks.stripe.com; base-uri '"'"'self'"'"'; form-action '"'"'self'"'"';" always;\n\
+' > /etc/nginx/security-headers.conf
 
 EXPOSE 3000
 
