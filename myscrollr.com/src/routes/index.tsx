@@ -17,6 +17,7 @@ function HomePage() {
     title: 'Scrollr — Live Data, Every Tab',
     description:
       'Pin live sports scores, crypto prices, news, and fantasy updates to every browser tab. Open source, private by design, and free.',
+    canonicalUrl: 'https://myscrollr.com/',
   })
 
   return (

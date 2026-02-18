@@ -17,6 +17,7 @@ import LoadingSpinner from '@/components/LoadingSpinner'
 import { pageVariants, sectionVariants } from '@/lib/animations'
 import { streamsApi, getPreferences } from '@/api/client'
 import { getIntegration, getAllIntegrations } from '@/integrations/registry'
+import { usePageMeta } from '@/lib/usePageMeta'
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
@@ -30,6 +31,12 @@ export const Route = createFileRoute('/dashboard')({
 })
 
 function DashboardPage() {
+  usePageMeta({
+    title: 'Dashboard — Scrollr',
+    description:
+      'Your Scrollr dashboard — manage streams, integrations, and live data feeds.',
+    canonicalUrl: 'https://myscrollr.com/dashboard',
+  })
   const { isAuthenticated, isLoading, signIn, getIdTokenClaims } =
     useScrollrAuth()
   const { tab } = useSearch({ from: '/dashboard' })
@@ -539,9 +546,7 @@ function StreamNavButton({
     >
       <div className="flex items-center gap-3">
         {icon}
-        <span className="text-xs font-semibold">
-          {label}
-        </span>
+        <span className="text-xs font-semibold">{label}</span>
       </div>
       {visible ? (
         <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
@@ -563,10 +568,10 @@ function QuickStat({
 }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-xs text-base-content/40">
-        {label}
+      <span className="text-xs text-base-content/40">{label}</span>
+      <span className={`text-sm font-semibold font-mono ${color}`}>
+        {value}
       </span>
-      <span className={`text-sm font-semibold font-mono ${color}`}>{value}</span>
     </div>
   )
 }

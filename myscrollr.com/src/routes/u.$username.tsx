@@ -11,6 +11,7 @@ import {
 import { motion } from 'motion/react'
 import { pageVariants, sectionVariants } from '@/lib/animations'
 import { API_BASE, authenticatedFetch } from '@/api/client'
+import { usePageMeta } from '@/lib/usePageMeta'
 
 export const Route = createFileRoute('/u/$username')({
   component: ProfilePage,
@@ -25,6 +26,11 @@ interface ProfileData {
 
 function ProfilePage() {
   const { username } = Route.useParams()
+  usePageMeta({
+    title: `${username} — Scrollr`,
+    description: `View ${username}'s Scrollr profile and connected integrations.`,
+    canonicalUrl: `https://myscrollr.com/u/${username}`,
+  })
   const { isAuthenticated, signIn, getIdTokenClaims, getAccessToken } =
     useScrollrAuth()
   const [profile, setProfile] = useState<ProfileData | null>(null)

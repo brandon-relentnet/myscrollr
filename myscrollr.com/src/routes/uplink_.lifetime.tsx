@@ -43,6 +43,7 @@ function LifetimePage() {
     title: 'Lifetime Uplink — Scrollr',
     description:
       'Permanent Uplink access. One payment, forever. Only 128 founding member slots available.',
+    canonicalUrl: 'https://myscrollr.com/uplink/lifetime',
   })
 
   const { isAuthenticated, signIn } = useScrollrAuth()

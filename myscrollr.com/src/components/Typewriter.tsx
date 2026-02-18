@@ -8,13 +8,13 @@ interface HeroTextSwapProps {
 
 export default function HeroTextSwap({ activeIndex }: HeroTextSwapProps) {
   return (
-    <div className="text-center lg:text-left">
+    <h1 className="text-center lg:text-left">
       {/* Your [word], */}
-      <motion.div
+      <motion.span
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4 }}
-        className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-none"
+        className="block text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-none"
       >
         <span className="text-base-content">Your </span>
         <span className="inline-block relative">
@@ -35,17 +35,17 @@ export default function HeroTextSwap({ activeIndex }: HeroTextSwapProps) {
             </motion.span>
           </AnimatePresence>
         </span>
-      </motion.div>
+      </motion.span>
 
       {/* Always Visible. */}
-      <motion.div
+      <motion.span
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6, delay: 0.4, ease: 'easeOut' }}
-        className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-none -mt-1"
+        className="block text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-none -mt-1"
       >
         <span className="text-base-content/50">Always Visible.</span>
-      </motion.div>
-    </div>
+      </motion.span>
+    </h1>
   )
 }

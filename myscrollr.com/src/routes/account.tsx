@@ -20,12 +20,19 @@ import { pageVariants, sectionVariants } from '@/lib/animations'
 import { streamsApi } from '@/api/client'
 import { useGetToken } from '@/hooks/useGetToken'
 import SubscriptionStatus from '@/components/billing/SubscriptionStatus'
+import { usePageMeta } from '@/lib/usePageMeta'
 
 export const Route = createFileRoute('/account')({
   component: AccountHub,
 })
 
 function AccountHub() {
+  usePageMeta({
+    title: 'Account — Scrollr',
+    description:
+      'Manage your Scrollr account, subscription, and connected services.',
+    canonicalUrl: 'https://myscrollr.com/account',
+  })
   const { isAuthenticated, isLoading, getIdTokenClaims } = useScrollrAuth()
   const [userClaims, setUserClaims] = useState<IdTokenClaims>()
   const navigate = useNavigate()
@@ -66,7 +73,9 @@ function AccountHub() {
   // ── Fetch data when authenticated ─────────────────────────────
   useEffect(() => {
     if (isAuthenticated) {
-      getIdTokenClaims().then(setUserClaims).catch(() => {})
+      getIdTokenClaims()
+        .then(setUserClaims)
+        .catch(() => {})
       fetchStats()
     }
   }, [isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -260,7 +269,11 @@ function HubCard({
 
   const content = (
     <motion.div
-      whileHover={disabled ? undefined : { y: -3, transition: { type: 'tween', duration: 0.2 } }}
+      whileHover={
+        disabled
+          ? undefined
+          : { y: -3, transition: { type: 'tween', duration: 0.2 } }
+      }
       className={`p-8 rounded-xl border transition-colors h-full flex flex-col justify-between group relative overflow-hidden ${disabled ? 'bg-base-200/50 border-base-300/50 opacity-50 cursor-not-allowed' : 'bg-base-200/50 border border-base-300/50 hover:border-primary/30 cursor-pointer'}`}
     >
       {!disabled && (
@@ -312,7 +325,12 @@ function HubCard({
   }
 
   return (
-    <Link to={to} params={params as any} search={search as any} className="block h-full">
+    <Link
+      to={to}
+      params={params as any}
+      search={search as any}
+      className="block h-full"
+    >
       {content}
     </Link>
   )

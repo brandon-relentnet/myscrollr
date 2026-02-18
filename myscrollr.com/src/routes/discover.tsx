@@ -126,7 +126,7 @@ const STEPS = [
     icon: <Eye size={20} />,
     title: 'Browse Like Normal',
     description:
-      'A thin ticker appears at the bottom of whatever you\'re doing. Stocks, scores, headlines — scrolling by quietly.',
+      "A thin ticker appears at the bottom of whatever you're doing. Stocks, scores, headlines — scrolling by quietly.",
     accent: 'info' as const,
   },
   {
@@ -134,7 +134,7 @@ const STEPS = [
     icon: <Settings size={20} />,
     title: 'Tweak It Later',
     description:
-      'Turn off what you don\'t care about. Add symbols you do. Create an account when you\'re ready for the full thing.',
+      "Turn off what you don't care about. Add symbols you do. Create an account when you're ready for the full thing.",
     accent: 'secondary' as const,
   },
 ]
@@ -156,7 +156,7 @@ const INTEGRATIONS: IntegrationInfo[] = [
     name: 'Finance',
     label: 'Market data',
     description:
-      'You\'re reading an article and Bitcoin just moved 4%. You see it immediately — no app switching, no new tab.',
+      "You're reading an article and Bitcoin just moved 4%. You see it immediately — no app switching, no new tab.",
     accent: 'primary',
     example: 'BTC $67.2K ↑2.4%',
   },
@@ -165,7 +165,7 @@ const INTEGRATIONS: IntegrationInfo[] = [
     name: 'Sports',
     label: 'Live scores',
     description:
-      'The Lakers are playing while you\'re on Reddit. The score just updates in the corner. You never left the page.',
+      "The Lakers are playing while you're on Reddit. The score just updates in the corner. You never left the page.",
     accent: 'secondary',
     example: 'LAL 118 - BOS 112',
   },
@@ -183,7 +183,7 @@ const INTEGRATIONS: IntegrationInfo[] = [
     name: 'Yahoo Fantasy',
     label: 'Fantasy leagues',
     description:
-      'Your matchup score updates while you\'re doing literally anything else. No more refreshing the Yahoo app.',
+      "Your matchup score updates while you're doing literally anything else. No more refreshing the Yahoo app.",
     accent: 'accent',
     example: 'Your Team: 2nd Place',
   },
@@ -318,6 +318,7 @@ function DiscoverPage() {
     title: 'Discover Scrollr',
     description:
       'A browser extension that pins live market data, sports scores, news, and fantasy stats to the bottom of every tab.',
+    canonicalUrl: 'https://myscrollr.com/discover',
   })
 
   return (
@@ -386,8 +387,7 @@ function DiscoverPage() {
             }}
             className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[0.85] mb-8 max-w-5xl"
           >
-            Stop{' '}
-            <span className="text-primary">Tab-Hopping</span>
+            Stop <span className="text-primary">Tab-Hopping</span>
           </motion.h1>
 
           <motion.p
@@ -400,8 +400,8 @@ function DiscoverPage() {
             }}
             className="text-base text-base-content/40 max-w-xl leading-relaxed mb-10"
           >
-            Stocks, scores, news, and fantasy stats — scrolling at the bottom
-            of every tab. You see everything without leaving what you're doing.
+            Stocks, scores, news, and fantasy stats — scrolling at the bottom of
+            every tab. You see everything without leaving what you're doing.
           </motion.p>
 
           {/* CTA */}
@@ -696,8 +696,7 @@ function DiscoverPage() {
                 transition={{ delay: 0.1 }}
                 className="text-3xl sm:text-4xl font-black tracking-tight mb-5 leading-[0.95]"
               >
-                Start{' '}
-                <span className="text-primary">Scrolling</span>
+                Start <span className="text-primary">Scrolling</span>
               </motion.h2>
 
               <motion.p
@@ -707,8 +706,8 @@ function DiscoverPage() {
                 transition={{ delay: 0.2 }}
                 className="text-sm text-base-content/35 leading-relaxed mb-8 max-w-md mx-auto"
               >
-                Free, no account, no setup. Install it and your feed bar is
-                live on every tab in about 10 seconds.
+                Free, no account, no setup. Install it and your feed bar is live
+                on every tab in about 10 seconds.
               </motion.p>
 
               <motion.div

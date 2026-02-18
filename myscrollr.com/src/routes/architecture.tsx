@@ -222,6 +222,7 @@ function ArchitecturePage() {
     title: 'Architecture — Scrollr',
     description:
       'How Scrollr works: real-time data pipeline from source APIs through CDC to your browser, powered by Go, Rust, React, and Redis.',
+    canonicalUrl: 'https://myscrollr.com/architecture',
   })
 
   return (
@@ -280,8 +281,7 @@ function ArchitecturePage() {
             }}
             className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[0.85] mb-8 max-w-5xl"
           >
-            How Scrollr{' '}
-            <span className="text-primary">Works</span>
+            How Scrollr <span className="text-primary">Works</span>
           </motion.h1>
 
           <motion.p
@@ -363,10 +363,7 @@ function ArchitecturePage() {
                     {/* Items */}
                     <div className="space-y-1.5 pt-4 border-t border-base-300/30">
                       {step.items.map((item) => (
-                        <div
-                          key={item}
-                          className="flex items-center gap-2"
-                        >
+                        <div key={item} className="flex items-center gap-2">
                           <span
                             className={`w-1 h-1 rounded-full ${colors.line}`}
                           />
@@ -389,9 +386,7 @@ function ArchitecturePage() {
                 <span className="text-[9px] font-semibold uppercase tracking-wide text-base-content/15">
                   {label}
                 </span>
-                {i < 3 && (
-                  <ArrowRight size={12} className="text-primary/30" />
-                )}
+                {i < 3 && <ArrowRight size={12} className="text-primary/30" />}
               </div>
             ))}
           </div>
@@ -488,58 +483,244 @@ function ArchitecturePage() {
                 )}
 
                 {/* Connection lines */}
-                <line x1="82" y1="75" x2="238" y2="75" stroke="currentColor" strokeWidth="1" opacity="0.08" />
-                <line x1="160" y1="75" x2="160" y2="175" stroke="currentColor" strokeWidth="1" opacity="0.1" />
-                <line x1="82" y1="175" x2="238" y2="175" stroke="currentColor" strokeWidth="1" opacity="0.08" />
-                <line x1="82" y1="175" x2="82" y2="275" stroke="currentColor" strokeWidth="1" opacity="0.1" />
-                <line x1="238" y1="175" x2="238" y2="275" stroke="currentColor" strokeWidth="1" opacity="0.1" />
-                <line x1="82" y1="275" x2="238" y2="275" stroke="currentColor" strokeWidth="1" opacity="0.08" />
-                <line x1="160" y1="275" x2="160" y2="350" stroke="currentColor" strokeWidth="1" opacity="0.1" />
+                <line
+                  x1="82"
+                  y1="75"
+                  x2="238"
+                  y2="75"
+                  stroke="currentColor"
+                  strokeWidth="1"
+                  opacity="0.08"
+                />
+                <line
+                  x1="160"
+                  y1="75"
+                  x2="160"
+                  y2="175"
+                  stroke="currentColor"
+                  strokeWidth="1"
+                  opacity="0.1"
+                />
+                <line
+                  x1="82"
+                  y1="175"
+                  x2="238"
+                  y2="175"
+                  stroke="currentColor"
+                  strokeWidth="1"
+                  opacity="0.08"
+                />
+                <line
+                  x1="82"
+                  y1="175"
+                  x2="82"
+                  y2="275"
+                  stroke="currentColor"
+                  strokeWidth="1"
+                  opacity="0.1"
+                />
+                <line
+                  x1="238"
+                  y1="175"
+                  x2="238"
+                  y2="275"
+                  stroke="currentColor"
+                  strokeWidth="1"
+                  opacity="0.1"
+                />
+                <line
+                  x1="82"
+                  y1="275"
+                  x2="238"
+                  y2="275"
+                  stroke="currentColor"
+                  strokeWidth="1"
+                  opacity="0.08"
+                />
+                <line
+                  x1="160"
+                  y1="275"
+                  x2="160"
+                  y2="350"
+                  stroke="currentColor"
+                  strokeWidth="1"
+                  opacity="0.1"
+                />
 
                 {/* Animated pulse lines */}
                 <motion.line
-                  x1="160" y1="75" x2="160" y2="175"
-                  stroke="currentColor" strokeWidth="1.5" opacity="0.25"
+                  x1="160"
+                  y1="75"
+                  x2="160"
+                  y2="175"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  opacity="0.25"
                   strokeDasharray="6 6"
                   animate={{ strokeDashoffset: [0, -24] }}
                   transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
                 />
                 <motion.line
-                  x1="160" y1="275" x2="160" y2="350"
-                  stroke="currentColor" strokeWidth="1.5" opacity="0.25"
+                  x1="160"
+                  y1="275"
+                  x2="160"
+                  y2="350"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  opacity="0.25"
                   strokeDasharray="6 6"
                   animate={{ strokeDashoffset: [0, -24] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: 'linear', delay: 0.5 }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: 'linear',
+                    delay: 0.5,
+                  }}
                 />
 
                 {/* Nodes */}
                 {/* Source node */}
-                <rect x="134" y="50" width="52" height="52" rx="4" fill="currentColor" opacity="0.05" stroke="currentColor" strokeWidth="1" strokeOpacity="0.15" />
-                <text x="160" y="80" textAnchor="middle" fill="currentColor" opacity="0.3" fontSize="9" fontFamily="monospace" fontWeight="bold">SRC</text>
+                <rect
+                  x="134"
+                  y="50"
+                  width="52"
+                  height="52"
+                  rx="4"
+                  fill="currentColor"
+                  opacity="0.05"
+                  stroke="currentColor"
+                  strokeWidth="1"
+                  strokeOpacity="0.15"
+                />
+                <text
+                  x="160"
+                  y="80"
+                  textAnchor="middle"
+                  fill="currentColor"
+                  opacity="0.3"
+                  fontSize="9"
+                  fontFamily="monospace"
+                  fontWeight="bold"
+                >
+                  SRC
+                </text>
 
                 {/* CDC node */}
-                <rect x="134" y="150" width="52" height="52" rx="4" fill="currentColor" opacity="0.08" stroke="currentColor" strokeWidth="1" strokeOpacity="0.2" />
-                <text x="160" y="180" textAnchor="middle" fill="currentColor" opacity="0.4" fontSize="9" fontFamily="monospace" fontWeight="bold">CDC</text>
+                <rect
+                  x="134"
+                  y="150"
+                  width="52"
+                  height="52"
+                  rx="4"
+                  fill="currentColor"
+                  opacity="0.08"
+                  stroke="currentColor"
+                  strokeWidth="1"
+                  strokeOpacity="0.2"
+                />
+                <text
+                  x="160"
+                  y="180"
+                  textAnchor="middle"
+                  fill="currentColor"
+                  opacity="0.4"
+                  fontSize="9"
+                  fontFamily="monospace"
+                  fontWeight="bold"
+                >
+                  CDC
+                </text>
 
                 {/* Left route node */}
-                <rect x="56" y="250" width="52" height="52" rx="4" fill="currentColor" opacity="0.05" stroke="currentColor" strokeWidth="1" strokeOpacity="0.15" />
-                <text x="82" y="280" textAnchor="middle" fill="currentColor" opacity="0.3" fontSize="8" fontFamily="monospace" fontWeight="bold">USR:A</text>
+                <rect
+                  x="56"
+                  y="250"
+                  width="52"
+                  height="52"
+                  rx="4"
+                  fill="currentColor"
+                  opacity="0.05"
+                  stroke="currentColor"
+                  strokeWidth="1"
+                  strokeOpacity="0.15"
+                />
+                <text
+                  x="82"
+                  y="280"
+                  textAnchor="middle"
+                  fill="currentColor"
+                  opacity="0.3"
+                  fontSize="8"
+                  fontFamily="monospace"
+                  fontWeight="bold"
+                >
+                  USR:A
+                </text>
 
                 {/* Right route node */}
-                <rect x="212" y="250" width="52" height="52" rx="4" fill="currentColor" opacity="0.05" stroke="currentColor" strokeWidth="1" strokeOpacity="0.15" />
-                <text x="238" y="280" textAnchor="middle" fill="currentColor" opacity="0.3" fontSize="8" fontFamily="monospace" fontWeight="bold">USR:B</text>
+                <rect
+                  x="212"
+                  y="250"
+                  width="52"
+                  height="52"
+                  rx="4"
+                  fill="currentColor"
+                  opacity="0.05"
+                  stroke="currentColor"
+                  strokeWidth="1"
+                  strokeOpacity="0.15"
+                />
+                <text
+                  x="238"
+                  y="280"
+                  textAnchor="middle"
+                  fill="currentColor"
+                  opacity="0.3"
+                  fontSize="8"
+                  fontFamily="monospace"
+                  fontWeight="bold"
+                >
+                  USR:B
+                </text>
 
                 {/* Delivery node */}
-                <rect x="134" y="330" width="52" height="52" rx="4" fill="currentColor" opacity="0.06" stroke="currentColor" strokeWidth="1" strokeOpacity="0.2" />
-                <text x="160" y="360" textAnchor="middle" fill="currentColor" opacity="0.35" fontSize="9" fontFamily="monospace" fontWeight="bold">SSE</text>
+                <rect
+                  x="134"
+                  y="330"
+                  width="52"
+                  height="52"
+                  rx="4"
+                  fill="currentColor"
+                  opacity="0.06"
+                  stroke="currentColor"
+                  strokeWidth="1"
+                  strokeOpacity="0.2"
+                />
+                <text
+                  x="160"
+                  y="360"
+                  textAnchor="middle"
+                  fill="currentColor"
+                  opacity="0.35"
+                  fontSize="9"
+                  fontFamily="monospace"
+                  fontWeight="bold"
+                >
+                  SSE
+                </text>
 
                 {/* Pulsing center dot */}
                 <motion.circle
-                  cx="160" cy="176"
+                  cx="160"
+                  cy="176"
                   r="3"
                   fill="currentColor"
                   animate={{ opacity: [0.2, 0.6, 0.2], scale: [1, 1.67, 1] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                  }}
                 />
               </svg>
             </motion.div>

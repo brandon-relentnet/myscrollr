@@ -331,6 +331,7 @@ function UplinkPage() {
     title: 'Uplink — Scrollr',
     description:
       'Total coverage for power users. Scrollr Uplink gives you unlimited tracking, real-time data delivery, and early access to new integrations.',
+    canonicalUrl: 'https://myscrollr.com/uplink',
   })
 
   const { isAuthenticated, signIn } = useScrollrAuth()
@@ -360,7 +361,11 @@ function UplinkPage() {
       .finally(() => {
         setCheckingSession(false)
         // Clean the URL
-        navigate({ to: '/uplink', search: { session_id: undefined }, replace: true })
+        navigate({
+          to: '/uplink',
+          search: { session_id: undefined },
+          replace: true,
+        })
       })
   }, [session_id, getToken, navigate])
 
@@ -406,9 +411,7 @@ function UplinkPage() {
         >
           <CheckCircle2 size={18} className="text-success" />
           <div>
-            <p className="text-xs font-bold text-success">
-              Uplink Activated
-            </p>
+            <p className="text-xs font-bold text-success">Uplink Activated</p>
             <p className="text-[10px] text-base-content/40">
               Your subscription is active. Welcome to total coverage.
             </p>
@@ -986,7 +989,11 @@ function UplinkPage() {
             </motion.div>
 
             {/* ─── Lifetime — The First Byte ─── */}
-            <Link to="/uplink/lifetime" search={{ session_id: undefined }} className="block">
+            <Link
+              to="/uplink/lifetime"
+              search={{ session_id: undefined }}
+              className="block"
+            >
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}

@@ -1,13 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { motion, AnimatePresence } from 'motion/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import {
-  BookOpen,
-  ChevronDown,
-  AlertTriangle,
-  Info,
-  List,
-} from 'lucide-react'
+import { BookOpen, ChevronDown, AlertTriangle, Info, List } from 'lucide-react'
 
 import { usePageMeta } from '@/lib/usePageMeta'
 import { pageVariants, sectionVariants, itemVariants } from '@/lib/animations'
@@ -44,6 +38,7 @@ function LegalPage() {
   usePageMeta({
     title: `${activeDoc.title} — Scrollr`,
     description: `${activeDoc.title} for the Scrollr platform. Last updated ${activeDoc.lastUpdated}.`,
+    canonicalUrl: 'https://myscrollr.com/legal',
   })
 
   // Scroll content to top when doc changes
@@ -425,9 +420,7 @@ function DocumentContent({ doc }: { doc: LegalDocument }) {
         className="mt-16 pt-8 border-t border-base-300/30"
       >
         <div className="flex flex-wrap items-center gap-4">
-          <span className="text-[10px] text-base-content/20">
-            {doc.title}
-          </span>
+          <span className="text-[10px] text-base-content/20">{doc.title}</span>
           <span className="text-base-content/10">|</span>
           <span className="text-[10px] font-mono text-base-content/20">
             Last updated {doc.lastUpdated}
@@ -501,5 +494,8 @@ function Callout({
 // ── Helpers ─────────────────────────────────────────────────────
 
 function sectionId(docSlug: string, heading: string): string {
-  return `${docSlug}-${heading.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`
+  return `${docSlug}-${heading
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')}`
 }

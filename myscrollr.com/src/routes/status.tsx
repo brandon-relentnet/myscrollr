@@ -45,27 +45,25 @@ interface ViewerData {
 type ServiceState = 'healthy' | 'unhealthy' | 'down' | 'unknown' | 'loading'
 
 /** Known integration metadata — used for descriptions and port display. */
-const INTEGRATION_META: Record<
-  string,
-  { description: string; port?: number }
-> = {
-  finance: {
-    description: 'Finnhub WebSocket — real-time market data',
-    port: 3001,
-  },
-  sports: {
-    description: 'ESPN API — scores polling every 60s',
-    port: 3002,
-  },
-  fantasy: {
-    description: 'Yahoo Fantasy — active user sync',
-    port: 3003,
-  },
-  rss: {
-    description: 'RSS/Atom/JSON — feed aggregation every 5 min',
-    port: 3004,
-  },
-}
+const INTEGRATION_META: Record<string, { description: string; port?: number }> =
+  {
+    finance: {
+      description: 'Finnhub WebSocket — real-time market data',
+      port: 3001,
+    },
+    sports: {
+      description: 'ESPN API — scores polling every 60s',
+      port: 3002,
+    },
+    fantasy: {
+      description: 'Yahoo Fantasy — active user sync',
+      port: 3003,
+    },
+    rss: {
+      description: 'RSS/Atom/JSON — feed aggregation every 5 min',
+      port: 3004,
+    },
+  }
 
 // --- Helpers ---
 
@@ -103,6 +101,7 @@ function StatusPage() {
     title: 'System Status — Scrollr',
     description:
       'Live system status for the Scrollr platform. Monitor infrastructure, ingestion workers, and API health.',
+    canonicalUrl: 'https://myscrollr.com/status',
   })
 
   const [health, setHealth] = useState<HealthData | null>(null)
@@ -263,7 +262,8 @@ function StatusPage() {
                       key={intg.name}
                       name={`${intg.display_name} Service`}
                       description={
-                        meta?.description ?? (intg.capabilities.join(', ') || 'Integration service')
+                        meta?.description ??
+                        (intg.capabilities.join(', ') || 'Integration service')
                       }
                       state={getServiceState(intg.name)}
                       port={meta?.port}
@@ -499,9 +499,7 @@ function MetricCard({
         >
           {value}
         </p>
-        <p className="text-[10px] text-base-content/20 mt-0.5">
-          {sublabel}
-        </p>
+        <p className="text-[10px] text-base-content/20 mt-0.5">{sublabel}</p>
       </div>
     </div>
   )

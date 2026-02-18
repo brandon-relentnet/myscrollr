@@ -207,6 +207,7 @@ function OnboardPage() {
     title: 'Welcome to Scrollr',
     description:
       'You just installed Scrollr. Here is what you have right now and how to get the most out of it.',
+    canonicalUrl: 'https://myscrollr.com/onboard',
   })
 
   return (
@@ -240,7 +241,12 @@ function OnboardPage() {
             }}
             whileInView={{ scale: [1, 1.06, 1], opacity: [0.3, 0.6, 0.3] }}
             viewport={{ once: false, margin: '200px' }}
-            transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+            transition={{
+              duration: 8,
+              repeat: Infinity,
+              ease: 'easeInOut',
+              delay: 1,
+            }}
           />
         </div>
 
@@ -278,8 +284,7 @@ function OnboardPage() {
             }}
             className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[0.85] mb-6 max-w-4xl"
           >
-            You're{' '}
-            <span className="text-primary">Live</span>
+            You're <span className="text-primary">Live</span>
           </motion.h1>
 
           <motion.p
@@ -539,8 +544,7 @@ function OnboardPage() {
                 transition={{ delay: 0.1 }}
                 className="text-3xl sm:text-4xl font-black tracking-tight mb-5 leading-[0.95]"
               >
-                Create Your{' '}
-                <span className="text-primary">Free Account</span>
+                Create Your <span className="text-primary">Free Account</span>
               </motion.h2>
 
               <motion.p

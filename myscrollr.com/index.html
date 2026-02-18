@@ -19,6 +19,13 @@
       crossorigin
     />
 
+    <!-- Fallback meta description (overridden per-page by usePageMeta) -->
+    <meta
+      name="description"
+      content="Finance, sports, news & fantasy scores — one live ticker across every tab. Install the Scrollr browser extension and never miss a signal."
+    />
+    <link rel="canonical" href="https://myscrollr.com/" />
+
     <!-- Fallback OG tags for social crawlers (overridden by client-side usePageMeta) -->
     <meta property="og:title" content="Scrollr - Customizable Signal Ticker" />
     <meta
@@ -27,13 +34,17 @@
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://myscrollr.com" />
-    <meta property="og:image" content="https://myscrollr.com/favicon.svg" />
+    <meta property="og:site_name" content="Scrollr" />
+    <meta property="og:image" content="https://myscrollr.com/icon-128.png" />
+    <meta property="og:image:width" content="128" />
+    <meta property="og:image:height" content="128" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="Scrollr - Customizable Signal Ticker" />
     <meta
       name="twitter:description"
       content="Finance, sports, news & fantasy scores — one live ticker across every tab."
     />
+    <meta name="twitter:image" content="https://myscrollr.com/icon-128.png" />
 
     <!-- Blocking theme init — runs before first paint to prevent FOUC -->
     <script>

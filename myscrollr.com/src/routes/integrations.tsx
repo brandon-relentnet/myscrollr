@@ -140,6 +140,7 @@ function IntegrationsPage() {
     title: 'Integrations — Scrollr',
     description:
       'Browse and connect integrations to extend your Scrollr feed with real-time data from your favorite platforms.',
+    canonicalUrl: 'https://myscrollr.com/integrations',
   })
 
   const { isAuthenticated, signIn } = useScrollrAuth()
@@ -302,9 +303,7 @@ function IntegrationsPage() {
             <p className="text-xs font-semibold text-primary/50 group-hover:text-primary/70 transition-colors">
               Suggest
             </p>
-            <p className="text-[9px] text-primary/30 mt-1">
-              Your idea here
-            </p>
+            <p className="text-[9px] text-primary/30 mt-1">Your idea here</p>
             <span className="inline-flex items-center gap-1 mt-3 px-2 py-0.5 text-[8px] font-bold uppercase tracking-wide text-primary/30 border border-primary/15 rounded-lg group-hover:text-primary/50 group-hover:border-primary/25 transition-colors">
               <Lightbulb size={8} />
               Propose
