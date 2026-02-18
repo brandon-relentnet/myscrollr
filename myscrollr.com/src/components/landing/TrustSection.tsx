@@ -1,155 +1,282 @@
-import { motion } from 'motion/react'
-import { Eye, Feather, ShieldCheck, UserX } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { animate, motion, useInView } from 'motion/react'
+import { ShieldCheck } from 'lucide-react'
 
 // ── Types & Data ─────────────────────────────────────────────────
 
-interface TrustPillar {
-  icon: typeof ShieldCheck
+const REFUSALS = [
+  'Track your browsing',
+  'Collect personal data',
+  'Show you ads',
+  'Sell to data brokers',
+] as const
+
+interface Pledge {
   title: string
   body: string
 }
 
-const PILLARS: Array<TrustPillar> = [
+const PLEDGES: Array<Pledge> = [
   {
-    icon: ShieldCheck,
     title: 'Open Source',
-    body: 'Every line of code is public. Inspect it, fork it, contribute to it. No black boxes, no hidden agendas.',
+    body: 'Every line of code is public and auditable.',
   },
   {
-    icon: Eye,
-    title: 'Privacy First',
-    body: 'Your browsing data never leaves your machine. No analytics, no tracking pixels, no data brokers. Period.',
+    title: 'Local Only',
+    body: 'Your data never leaves your browser. Period.',
   },
   {
-    icon: UserX,
     title: 'No Account Required',
-    body: 'Install and go. No email, no sign-up, no onboarding flows. Your identity is none of our business.',
+    body: 'Install the extension and go. No email, no password.',
   },
   {
-    icon: Feather,
-    title: 'Lightweight',
-    body: "Under 500KB total. No background resource drain, no battery hog. You won't even know it's running.",
+    title: 'Featherweight',
+    body: 'Under 500 KB total. Zero battery drain.',
   },
 ]
 
-interface Stat {
-  value: string
+interface StatItem {
+  value: number
+  prefix?: string
+  suffix?: string
   label: string
 }
 
-const STATS: Stat[] = [
-  { value: '4', label: 'Live integrations' },
-  { value: '50+', label: 'Tracked symbols' },
-  { value: '100+', label: 'News sources' },
-  { value: '<500KB', label: 'Extension size' },
+const STATS: Array<StatItem> = [
+  { value: 4, label: 'Live integrations' },
+  { value: 50, suffix: '+', label: 'Tracked symbols' },
+  { value: 100, suffix: '+', label: 'News sources' },
+  { value: 500, prefix: '<', suffix: 'KB', label: 'Extension size' },
 ]
 
-// ── Ease constant ────────────────────────────────────────────────
+// ── Constants ────────────────────────────────────────────────────
 
 const EASE = [0.22, 1, 0.36, 1] as const
+
+// ── Animated SVG Checkmark ───────────────────────────────────────
+// Circle draws itself, then the check sweeps in — "verified" feel.
+
+function AnimatedCheck({ delay }: { delay: number }) {
+  return (
+    <motion.svg
+      width="36"
+      height="36"
+      viewBox="0 0 36 36"
+      fill="none"
+      className="shrink-0"
+      aria-hidden="true"
+    >
+      {/* Circle ring */}
+      <motion.circle
+        cx="18"
+        cy="18"
+        r="15.5"
+        stroke="var(--color-primary)"
+        strokeWidth="1.5"
+        fill="none"
+        initial={{ pathLength: 0, opacity: 0 }}
+        whileInView={{ pathLength: 1, opacity: 0.35 }}
+        viewport={{ once: true }}
+        transition={{ delay, duration: 0.6, ease: 'easeOut' }}
+      />
+      {/* Checkmark */}
+      <motion.path
+        d="M12 18.5l4.5 4.5 7.5-8"
+        stroke="var(--color-primary)"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+        initial={{ pathLength: 0, opacity: 0 }}
+        whileInView={{ pathLength: 1, opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ delay: delay + 0.45, duration: 0.35, ease: 'easeOut' }}
+      />
+    </motion.svg>
+  )
+}
+
+// ── Animated Counter ─────────────────────────────────────────────
+
+function AnimatedCounter({
+  target,
+  prefix = '',
+  suffix = '',
+}: {
+  target: number
+  prefix?: string
+  suffix?: string
+}) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const inView = useInView(ref, { once: true })
+  const [display, setDisplay] = useState(0)
+
+  useEffect(() => {
+    if (!inView) return
+    const controls = animate(0, target, {
+      duration: target <= 10 ? 0.6 : 1.4,
+      ease: 'easeOut',
+      onUpdate: (v) => setDisplay(Math.round(v)),
+    })
+    return () => controls.stop()
+  }, [inView, target])
+
+  return (
+    <span ref={ref}>
+      {prefix}
+      {display}
+      {suffix}
+    </span>
+  )
+}
 
 // ── Main Component ───────────────────────────────────────────────
 
 export function TrustSection() {
   return (
     <section className="relative">
-      {/* Subtle background — cooler/calmer than other sections */}
+      {/* Cool, calmer background band */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-base-200/25 to-transparent pointer-events-none" />
 
       <div className="container relative py-24 lg:py-32">
-        {/* Section heading — centered */}
+        {/* ── Section header ── */}
         <motion.div
           style={{ opacity: 0 }}
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.6, ease: EASE }}
-          className="flex flex-col items-center text-center mb-14 lg:mb-18"
+          className="flex flex-col items-center text-center mb-10 lg:mb-14"
         >
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4 text-center">
-            Built on <span className="text-gradient-primary">Trust</span>
+            Your Privacy,{' '}
+            <span className="text-gradient-primary">Guaranteed</span>
           </h2>
           <p className="text-base text-base-content/45 leading-relaxed text-center max-w-lg">
-            We believe useful software should also be respectful software.
+            We built Scrollr the way we&rsquo;d want software built for us.
           </p>
         </motion.div>
 
-        {/* Trust pillars — 2x2 grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 lg:gap-6 mb-20 lg:mb-24">
-          {PILLARS.map((pillar, i) => {
-            const Icon = pillar.icon
-            return (
-              <motion.div
-                key={pillar.title}
-                style={{ opacity: 0 }}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-40px' }}
-                transition={{
-                  delay: 0.08 + i * 0.08,
-                  duration: 0.5,
-                  ease: EASE,
-                }}
-                className="group p-6 sm:p-7 rounded-2xl bg-base-200/30 border border-base-300/25 hover:border-base-300/50 transition-[color,background-color,border-color,box-shadow] duration-400"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-base-300/15 border border-base-300/20 flex items-center justify-center shrink-0 group-hover:bg-primary/8 group-hover:border-primary/15 transition-colors duration-400">
-                    <Icon
-                      size={18}
-                      className="text-base-content/30 group-hover:text-primary transition-colors duration-400"
-                    />
-                  </div>
-                  <div>
-                    <h3 className="text-[15px] font-bold text-base-content mb-1.5">
-                      {pillar.title}
-                    </h3>
-                    <p className="text-sm text-base-content/40 leading-relaxed">
-                      {pillar.body}
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-            )
-          })}
-        </div>
-
-        {/* By the numbers — stats row */}
+        {/* ── "What we refuse" badges ── */}
         <motion.div
           style={{ opacity: 0 }}
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 12 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-40px' }}
-          transition={{ duration: 0.6, ease: EASE }}
+          transition={{ duration: 0.5, ease: EASE }}
+          className="flex flex-wrap justify-center gap-2.5 sm:gap-3 mb-14 lg:mb-18"
         >
-          <div className="border-t border-base-300/30 pt-10 lg:pt-12">
-            <p className="text-xs font-bold uppercase tracking-wider text-base-content/25 mb-8">
-              By the numbers
-            </p>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
-              {STATS.map((stat, i) => (
+          {REFUSALS.map((item, i) => (
+            <motion.span
+              key={item}
+              style={{ opacity: 0 }}
+              initial={{ opacity: 0, scale: 0.92 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{
+                delay: 0.06 + i * 0.07,
+                duration: 0.4,
+                ease: EASE,
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[13px] bg-error/[0.06] border border-error/[0.1] text-base-content/35 line-through decoration-error/25"
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 12 12"
+                className="shrink-0 text-error/40"
+                aria-hidden="true"
+              >
+                <path
+                  d="M3 3l6 6M9 3l-6 6"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+              </svg>
+              {item}
+            </motion.span>
+          ))}
+        </motion.div>
+
+        {/* ── Promise card ── */}
+        <div className="max-w-3xl mx-auto relative">
+          {/* Outer glow behind card */}
+          <div
+            className="absolute -inset-3 rounded-3xl pointer-events-none blur-2xl"
+            style={{
+              background:
+                'radial-gradient(ellipse at center, var(--color-primary) 0%, transparent 70%)',
+              opacity: 0.06,
+            }}
+          />
+
+          {/* Card body */}
+          <div className="relative rounded-2xl border border-primary/[0.08] bg-base-200/40 p-7 sm:p-10 overflow-hidden">
+            {/* Shield watermark */}
+            <ShieldCheck
+              size={220}
+              strokeWidth={0.4}
+              className="absolute -bottom-12 -right-12 text-primary/[0.03] pointer-events-none select-none"
+            />
+
+            {/* 2×2 pledge grid */}
+            <div className="relative grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-x-10 sm:gap-y-10">
+              {PLEDGES.map((pledge, i) => (
                 <motion.div
-                  key={stat.label}
+                  key={pledge.title}
                   style={{ opacity: 0 }}
-                  initial={{ opacity: 0, y: 15 }}
+                  initial={{ opacity: 0, y: 16 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
+                  viewport={{ once: true, margin: '-30px' }}
                   transition={{
-                    delay: 0.1 + i * 0.08,
+                    delay: 0.08 + i * 0.1,
                     duration: 0.5,
                     ease: EASE,
                   }}
+                  className="flex items-start gap-4"
                 >
-                  <span className="block text-3xl sm:text-4xl font-black text-base-content tracking-tight mb-1">
-                    {stat.value}
-                  </span>
-                  <span className="text-sm text-base-content/35">
-                    {stat.label}
-                  </span>
+                  <AnimatedCheck delay={0.15 + i * 0.18} />
+                  <div className="pt-0.5">
+                    <h3 className="text-[15px] font-bold text-base-content mb-1">
+                      {pledge.title}
+                    </h3>
+                    <p className="text-sm text-base-content/45 leading-relaxed">
+                      {pledge.body}
+                    </p>
+                  </div>
                 </motion.div>
               ))}
             </div>
           </div>
-        </motion.div>
+        </div>
+
+        {/* ── Stats row ── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12 mt-14 lg:mt-18 max-w-3xl mx-auto text-center">
+          {STATS.map((stat, i) => (
+            <motion.div
+              key={stat.label}
+              style={{ opacity: 0 }}
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{
+                delay: 0.08 + i * 0.08,
+                duration: 0.5,
+                ease: EASE,
+              }}
+            >
+              <span className="block text-3xl sm:text-4xl font-black text-base-content tracking-tight mb-1">
+                <AnimatedCounter
+                  target={stat.value}
+                  prefix={stat.prefix}
+                  suffix={stat.suffix}
+                />
+              </span>
+              <span className="text-sm text-base-content/35">{stat.label}</span>
+            </motion.div>
+          ))}
+        </div>
       </div>
     </section>
   )

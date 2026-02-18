@@ -366,7 +366,7 @@ function ScenarioCard({ stream }: { stream: StreamInfo }) {
 
   return (
     <div
-      className={`group relative rounded-2xl p-6 sm:p-7 bg-base-200/70 border ${stream.border} shadow-sm`}
+      className={`group relative rounded-2xl p-6 sm:p-7 bg-base-200/70 border ${stream.border} shadow-sm h-full`}
     >
       {/* Top accent line */}
       <div
