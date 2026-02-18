@@ -25,6 +25,9 @@ import (
 
 // YahooStart initiates the Yahoo OAuth flow.
 func (a *App) YahooStart(c *fiber.Ctx) error {
+	log.Printf("[YahooStart] Hit — query logto_sub=%q, X-User-Sub=%q, cookie logto_sub=%q",
+		c.Query("logto_sub"), GetUserSub(c), c.Cookies("logto_sub"))
+
 	// Extract logto_sub from query parameter (passed by frontend) or X-User-Sub header
 	logtoSub := c.Query("logto_sub")
 	if logtoSub == "" {
@@ -32,6 +35,12 @@ func (a *App) YahooStart(c *fiber.Ctx) error {
 	}
 	if logtoSub == "" {
 		logtoSub = c.Cookies("logto_sub")
+	}
+
+	if logtoSub == "" {
+		log.Println("[YahooStart] Warning: no logto_sub resolved from any source")
+	} else {
+		log.Printf("[YahooStart] Resolved logto_sub=%s", logtoSub)
 	}
 
 	b := make([]byte, OAuthStateBytes)
@@ -46,30 +55,48 @@ func (a *App) YahooStart(c *fiber.Ctx) error {
 	}
 	_, err := pipe.Exec(context.Background())
 	if err != nil {
+		log.Printf("[YahooStart] Redis pipeline failed: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to store state"})
 	}
-	return c.Redirect(a.yahooConfig.AuthCodeURL(state), fiber.StatusTemporaryRedirect)
+
+	authURL := a.yahooConfig.AuthCodeURL(state)
+	log.Printf("[YahooStart] Redirecting to Yahoo OAuth (state=%s…) redirect_uri=%s", state[:8], a.yahooConfig.RedirectURL)
+	return c.Redirect(authURL, fiber.StatusTemporaryRedirect)
 }
 
 // YahooCallback handles the Yahoo OAuth callback.
 func (a *App) YahooCallback(c *fiber.Ctx) error {
 	state, code := c.Query("state"), c.Query("code")
+	log.Printf("[YahooCallback] Hit — state=%q code_present=%v", state, code != "")
+
+	if state == "" || code == "" {
+		log.Printf("[YahooCallback] Missing state or code — state=%q code=%q", state, code)
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Status: "error", Error: "Missing state or code"})
+	}
+
 	val, err := a.rdb.GetDel(context.Background(), RedisCSRFPrefix+state).Result()
 	if err != nil || val == "" {
+		log.Printf("[YahooCallback] CSRF validation failed — state=%s err=%v val=%q", state, err, val)
 		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Status: "error", Error: "Invalid or expired state"})
 	}
+	log.Printf("[YahooCallback] CSRF validated for state=%s…", state[:8])
 
 	// Retrieve logto_sub associated with this state
 	logtoSub, err := a.rdb.Get(context.Background(), RedisYahooStateLogtoPrefix+state).Result()
 	if err != nil {
-		log.Printf("[Yahoo Callback] Warning: Failed to retrieve logto_sub from Redis for state %s: %v", state, err)
+		log.Printf("[YahooCallback] Warning: Failed to retrieve logto_sub from Redis for state %s: %v", state, err)
+	} else {
+		log.Printf("[YahooCallback] Retrieved logto_sub=%s for state=%s…", logtoSub, state[:8])
 	}
 
+	log.Printf("[YahooCallback] Exchanging code for token (redirect_uri=%s)…", a.yahooConfig.RedirectURL)
 	token, err := a.yahooConfig.Exchange(context.Background(), code)
 	if err != nil {
-		log.Printf("[Yahoo Callback] Token exchange failed: %v", err)
+		log.Printf("[YahooCallback] Token exchange failed: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to exchange code"})
 	}
+	log.Printf("[YahooCallback] Token exchange succeeded — access_token_len=%d refresh_token_present=%v expires=%v",
+		len(token.AccessToken), token.RefreshToken != "", token.Expiry)
 
 	c.Cookie(&fiber.Cookie{
 		Name: "yahoo-auth", Value: token.AccessToken,
@@ -86,11 +113,12 @@ func (a *App) YahooCallback(c *fiber.Ctx) error {
 
 		// Fetch GUID and persist for Active Sync — synchronous so we can
 		// return an error page if linking fails (instead of silently swallowing).
+		log.Printf("[YahooCallback] Linking Yahoo account (logto_sub=%s)…", logtoSub)
 		linkErr := a.fetchAndLinkYahooUser(token.AccessToken, token.RefreshToken, logtoSub)
 		if linkErr != nil {
-		log.Printf("[Yahoo Callback] Failed to link Yahoo account: %v", linkErr)
-		// Still show the user a meaningful error instead of a false success
-		html := fmt.Sprintf(`<!doctype html><html><head><meta charset="utf-8"><title>Auth Error</title></head>
+			log.Printf("[YahooCallback] Failed to link Yahoo account: %v", linkErr)
+			// Still show the user a meaningful error instead of a false success
+			html := fmt.Sprintf(`<!doctype html><html><head><meta charset="utf-8"><title>Auth Error</title></head>
 				<body style="font-family: ui-sans-serif, system-ui;">
 				<p>Yahoo authentication succeeded, but we failed to link your account. Please try again.</p>
 				<script>setTimeout(function(){ window.close(); }, %d);</script>
@@ -98,6 +126,9 @@ func (a *App) YahooCallback(c *fiber.Ctx) error {
 			c.Set("Content-Type", "text/html")
 			return c.Status(fiber.StatusInternalServerError).SendString(html)
 		}
+		log.Printf("[YahooCallback] Yahoo account linked successfully")
+	} else {
+		log.Println("[YahooCallback] Warning: No refresh token received from Yahoo")
 	}
 
 	frontendURL := ValidateURL(os.Getenv("FRONTEND_URL"), DefaultFrontendURL)
@@ -105,6 +136,7 @@ func (a *App) YahooCallback(c *fiber.Ctx) error {
 		log.Printf("[Security Warning] FRONTEND_URL not set, defaulting to %s for postMessage", DefaultFrontendURL)
 	}
 
+	log.Printf("[YahooCallback] Auth complete — sending postMessage to %s and closing popup", frontendURL)
 	html := fmt.Sprintf(`<!doctype html><html><head><meta charset="utf-8"><title>Auth Complete</title></head>
             <body style="font-family: ui-sans-serif, system-ui;"><script>(function() { try { if (window.opener) { window.opener.postMessage({ type: 'yahoo-auth-complete' }, '%s'); } } catch(e) { } setTimeout(function(){ window.close(); }, %d); })();</script>
             <p>Authentication successful. You can close this window.</p></body></html>`, frontendURL, AuthPopupCloseDelayMs)
@@ -120,6 +152,8 @@ func (a *App) YahooCallback(c *fiber.Ctx) error {
 // upserts the yahoo_users row, and caches the token→GUID mapping in Redis.
 // Returns an error if any step fails (instead of silently swallowing).
 func (a *App) fetchAndLinkYahooUser(accessToken, refreshToken, logtoSub string) error {
+	log.Printf("[fetchAndLinkYahooUser] Starting — logto_sub=%s access_token_len=%d", logtoSub, len(accessToken))
+
 	client := &http.Client{Timeout: YahooAPITimeout}
 	req, err := http.NewRequest("GET", "https://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1", nil)
 	if err != nil {
@@ -133,17 +167,26 @@ func (a *App) fetchAndLinkYahooUser(accessToken, refreshToken, logtoSub string) 
 	}
 	defer resp.Body.Close()
 
+	log.Printf("[fetchAndLinkYahooUser] Yahoo API responded with status=%d", resp.StatusCode)
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("read response body: %w", err)
 	}
 
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("[fetchAndLinkYahooUser] Yahoo API error — status=%d body=%s", resp.StatusCode, string(body))
+		return fmt.Errorf("Yahoo API returned status %d", resp.StatusCode)
+	}
+
 	var content FantasyContent
 	if err := xml.Unmarshal(body, &content); err != nil {
+		log.Printf("[fetchAndLinkYahooUser] XML unmarshal failed — body_len=%d body_preview=%.200s", len(body), string(body))
 		return fmt.Errorf("unmarshal Yahoo response: %w", err)
 	}
 
 	if content.Users == nil || len(content.Users.User) == 0 {
+		log.Printf("[fetchAndLinkYahooUser] No users in response — body_preview=%.300s", string(body))
 		return fmt.Errorf("no Yahoo user found in response")
 	}
 
@@ -155,9 +198,11 @@ func (a *App) fetchAndLinkYahooUser(accessToken, refreshToken, logtoSub string) 
 	// Use the logto_sub if available, otherwise fall back to Yahoo GUID
 	logtoIdentifier := logtoSub
 	if logtoIdentifier == "" {
+		log.Printf("[fetchAndLinkYahooUser] No logto_sub, falling back to GUID=%s as identifier", guid)
 		logtoIdentifier = guid
 	}
 
+	log.Printf("[fetchAndLinkYahooUser] Upserting user — guid=%s logto_sub=%s", guid, logtoIdentifier)
 	if err := a.UpsertYahooUser(guid, logtoIdentifier, refreshToken); err != nil {
 		return fmt.Errorf("upsert Yahoo user: %w", err)
 	}
@@ -179,7 +224,9 @@ func (a *App) fetchAndLinkYahooUser(accessToken, refreshToken, logtoSub string) 
 // GetYahooStatus returns whether the current user has Yahoo connected.
 func (a *App) GetYahooStatus(c *fiber.Ctx) error {
 	userID := GetUserSub(c)
+	log.Printf("[GetYahooStatus] Hit — X-User-Sub=%q", userID)
 	if userID == "" {
+		log.Println("[GetYahooStatus] No X-User-Sub header — returning 401")
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "unauthorized",
 			Error:  "Authentication required",
@@ -194,15 +241,17 @@ func (a *App) GetYahooStatus(c *fiber.Ctx) error {
 	if err != nil {
 		errStr := err.Error()
 		if err == sql.ErrNoRows || strings.Contains(errStr, "no rows") {
+			log.Printf("[GetYahooStatus] No yahoo_users row for logto_sub=%s — not connected", userID)
 			return c.JSON(YahooStatusResponse{Connected: false, Synced: false})
 		}
-		log.Printf("[GetYahooStatus] Error: %v", err)
+		log.Printf("[GetYahooStatus] DB error for logto_sub=%s: %v", userID, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Failed to check Yahoo status",
 		})
 	}
 
+	log.Printf("[GetYahooStatus] logto_sub=%s connected=true synced=%v", userID, lastSync.Valid)
 	return c.JSON(YahooStatusResponse{
 		Connected: true,
 		Synced:    lastSync.Valid,
@@ -212,7 +261,9 @@ func (a *App) GetYahooStatus(c *fiber.Ctx) error {
 // GetMyYahooLeagues returns all yahoo leagues + standings for the authenticated user.
 func (a *App) GetMyYahooLeagues(c *fiber.Ctx) error {
 	userID := GetUserSub(c)
+	log.Printf("[GetMyYahooLeagues] Hit — X-User-Sub=%q", userID)
 	if userID == "" {
+		log.Println("[GetMyYahooLeagues] No X-User-Sub header — returning 401")
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "unauthorized",
 			Error:  "Authentication required",
@@ -225,8 +276,10 @@ func (a *App) GetMyYahooLeagues(c *fiber.Ctx) error {
 		SELECT guid FROM yahoo_users WHERE logto_sub = $1
 	`, userID).Scan(&guid)
 	if err != nil {
+		log.Printf("[GetMyYahooLeagues] No GUID found for logto_sub=%s: %v — returning empty", userID, err)
 		return c.JSON(fiber.Map{"leagues": []any{}, "standings": map[string]any{}})
 	}
+	log.Printf("[GetMyYahooLeagues] Resolved logto_sub=%s -> guid=%s", userID, guid)
 
 	// Fetch all leagues for this user
 	leagueRows, err := a.db.Query(context.Background(), `

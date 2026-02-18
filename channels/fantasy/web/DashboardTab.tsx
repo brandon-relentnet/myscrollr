@@ -63,17 +63,26 @@ function FantasyDashboardTab({
 
   const fetchYahooData = useCallback(async (): Promise<boolean> => {
     try {
+      console.log('[Fantasy] fetchYahooData — fetching status + leagues')
       const [statusData, leaguesData] = await Promise.all([
         authenticatedFetch<{ connected: boolean; synced: boolean }>(
           "/users/me/yahoo-status",
           {},
           getToken,
-        ).catch(() => null),
+        ).catch((err) => {
+          console.error('[Fantasy] yahoo-status fetch failed:', err)
+          return null
+        }),
         authenticatedFetch<{
           leagues?: Array<any>;
           standings?: Record<string, any>;
-        }>("/users/me/yahoo-leagues", {}, getToken).catch(() => null),
+        }>("/users/me/yahoo-leagues", {}, getToken).catch((err) => {
+          console.error('[Fantasy] yahoo-leagues fetch failed:', err)
+          return null
+        }),
       ]);
+
+      console.log('[Fantasy] fetchYahooData responses — status:', statusData, 'leagues:', leaguesData)
 
       if (statusData) {
         setYahooStatus(statusData);
@@ -91,12 +100,13 @@ function FantasyDashboardTab({
         setYahoo({ leagues, standings });
 
         if (Object.keys(leagues).length > 0) {
+          console.log('[Fantasy] fetchYahooData — found', Object.keys(leagues).length, 'leagues')
           setYahooPending(false);
           return true;
         }
       }
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.error('[Fantasy] fetchYahooData unexpected error:', err)
     }
     return false;
   }, [getToken]);
@@ -104,12 +114,14 @@ function FantasyDashboardTab({
   // ── Sync Polling ────────────────────────────────────────────────
 
   const startSyncPolling = useCallback(async () => {
+    console.log('[Fantasy] startSyncPolling — beginning poll cycle')
     setYahooPending(true);
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = null;
 
     const found = await fetchYahooData();
     if (found) {
+      console.log('[Fantasy] startSyncPolling — data found on first fetch, done')
       setYahooPending(false);
       return;
     }
@@ -117,8 +129,10 @@ function FantasyDashboardTab({
     let elapsed = 0;
     pollRef.current = setInterval(async () => {
       elapsed += 5000;
+      console.log(`[Fantasy] Polling tick — elapsed=${elapsed}ms`)
       const found = await fetchYahooData();
       if (found || elapsed >= 180000) {
+        console.log(`[Fantasy] Polling stopped — found=${found} elapsed=${elapsed}ms`)
         if (pollRef.current) clearInterval(pollRef.current);
         pollRef.current = null;
         setYahooPending(false);
@@ -139,7 +153,9 @@ function FantasyDashboardTab({
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      console.log('[Fantasy] postMessage received:', event.data, 'origin:', event.origin)
       if (event.data?.type === "yahoo-auth-complete") {
+        console.log('[Fantasy] Yahoo auth complete — starting sync polling')
         startSyncPolling();
       }
     };
@@ -150,46 +166,62 @@ function FantasyDashboardTab({
   // ── Yahoo Connect / Disconnect ──────────────────────────────────
 
   const handleYahooConnect = useCallback(async () => {
+    console.log('[Fantasy] handleYahooConnect — getting token')
     const token = await getToken();
-    if (!token) return;
+    if (!token) {
+      console.error('[Fantasy] handleYahooConnect — getToken() returned null/undefined')
+      return;
+    }
 
     // Decode JWT to get the sub claim for the OAuth start URL
     let sub: string | undefined;
     try {
       const payload = JSON.parse(atob(token.split(".")[1]));
       sub = payload.sub;
-    } catch {
-      // Fallback: try without sub (server may reject)
+      console.log('[Fantasy] handleYahooConnect — decoded JWT sub:', sub)
+    } catch (err) {
+      console.error('[Fantasy] handleYahooConnect — JWT decode failed:', err)
     }
-    if (!sub) return;
+    if (!sub) {
+      console.error('[Fantasy] handleYahooConnect — no sub claim in JWT, aborting')
+      return;
+    }
 
+    const popupUrl = `${API_BASE}/yahoo/start?logto_sub=${sub}`;
+    console.log('[Fantasy] Opening Yahoo OAuth popup:', popupUrl)
     const popup = window.open(
-      `${API_BASE}/yahoo/start?logto_sub=${sub}`,
+      popupUrl,
       "yahoo-auth",
       "width=600,height=700",
     );
 
     if (popup) {
+      console.log('[Fantasy] Popup opened, watching for close')
       const checkClosed = setInterval(() => {
         if (popup.closed) {
+          console.log('[Fantasy] Popup closed — starting sync polling')
           clearInterval(checkClosed);
           startSyncPolling();
         }
       }, 500);
+    } else {
+      console.error('[Fantasy] Popup blocked by browser')
     }
   }, [getToken, startSyncPolling]);
 
   const handleYahooDisconnect = useCallback(async () => {
+    console.log('[Fantasy] handleYahooDisconnect — disconnecting')
     try {
       await authenticatedFetch(
         "/users/me/yahoo",
         { method: "DELETE" },
         getToken,
       );
+      console.log('[Fantasy] handleYahooDisconnect — success')
       setYahooStatus({ connected: false, synced: false });
       setYahoo({ leagues: {}, standings: {} });
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.error('[Fantasy] handleYahooDisconnect failed:', err)
     }
   }, [getToken]);
 
