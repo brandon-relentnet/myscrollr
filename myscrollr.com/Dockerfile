@@ -41,19 +41,53 @@ FROM nginx:alpine
 COPY --from=builder /app/myscrollr.com/dist /usr/share/nginx/html
 
 # SPA fallback: route all paths to index.html for client-side routing
+# Includes security headers, gzip compression, and proper caching
 RUN printf 'server {\n\
     listen 3000;\n\
     root /usr/share/nginx/html;\n\
     index index.html;\n\
 \n\
+    # ── Security headers ────────────────────────────────────────\n\
+    add_header X-Frame-Options "SAMEORIGIN" always;\n\
+    add_header X-Content-Type-Options "nosniff" always;\n\
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;\n\
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;\n\
+\n\
+    # ── Gzip compression ────────────────────────────────────────\n\
+    gzip on;\n\
+    gzip_vary on;\n\
+    gzip_proxied any;\n\
+    gzip_comp_level 6;\n\
+    gzip_min_length 256;\n\
+    gzip_types\n\
+        text/plain\n\
+        text/css\n\
+        text/javascript\n\
+        application/javascript\n\
+        application/json\n\
+        application/xml\n\
+        image/svg+xml\n\
+        font/woff2;\n\
+\n\
+    # ── HTML: no-cache so users always get latest deploy ────────\n\
     location / {\n\
+        add_header Cache-Control "no-cache";\n\
+        add_header X-Frame-Options "SAMEORIGIN" always;\n\
+        add_header X-Content-Type-Options "nosniff" always;\n\
         try_files $uri $uri/ /index.html;\n\
     }\n\
 \n\
-    # Cache static assets aggressively\n\
+    # ── Hashed static assets: cache forever ─────────────────────\n\
     location /assets/ {\n\
         expires 1y;\n\
-        add_header Cache-Control "public, immutable";\n\
+        add_header Cache-Control "public, max-age=31536000, immutable";\n\
+    }\n\
+\n\
+    # ── Fonts: long cache ───────────────────────────────────────\n\
+    location ~* \\.woff2?$ {\n\
+        expires 1y;\n\
+        add_header Cache-Control "public, max-age=31536000, immutable";\n\
+        add_header Access-Control-Allow-Origin "*";\n\
     }\n\
 }\n' > /etc/nginx/conf.d/default.conf
 
