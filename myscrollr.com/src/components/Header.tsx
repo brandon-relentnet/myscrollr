@@ -41,9 +41,9 @@ export default function Header() {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 px-6 flex items-center justify-between bg-base-100/80 backdrop-blur-2xl border-b border-base-300/50 h-20 will-change-transform">
+      <header className="fixed top-0 left-0 right-0 z-50 px-6 flex items-center bg-base-100/80 backdrop-blur-2xl border-b border-base-300/50 h-20 will-change-transform">
         {/* Brand */}
-        <div className="flex items-center gap-4">
+        <div className="flex-1 flex items-center gap-4">
           <Link to="/" className="flex items-center gap-3 group">
             <div className="relative flex items-center justify-center rounded-xl border border-base-300/50 bg-base-200/50 p-2.5 transition-all hover:scale-105 transition-spring group-hover:border-primary/30 group-hover:shadow-glow-sm">
               <ScrollrSVG className="size-8" />
@@ -94,7 +94,7 @@ export default function Header() {
         </LayoutGroup>
 
         {/* Auth Section */}
-        <div className="hidden lg:flex items-center gap-3 min-w-[280px] justify-end">
+        <div className="flex-1 hidden lg:flex items-center gap-3 justify-end">
           <ThemeToggle />
 
           {isLoading ? (
