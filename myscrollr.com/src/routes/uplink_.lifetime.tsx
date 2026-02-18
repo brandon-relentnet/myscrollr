@@ -141,7 +141,7 @@ function LifetimePage() {
           <div
             className="absolute inset-0 opacity-[0.03]"
             style={{
-              backgroundImage: `radial-gradient(circle at 1px 1px, rgba(250, 204, 21, 0.4) 1px, transparent 0)`,
+              backgroundImage: `radial-gradient(circle at 1px 1px, var(--grid-dot-warning) 1px, transparent 0)`,
               backgroundSize: '24px 24px',
             }}
           />
@@ -149,7 +149,7 @@ function LifetimePage() {
             className="absolute top-[-10%] right-[-5%] w-[600px] h-[600px] rounded-full"
             style={{
               background:
-                'radial-gradient(circle, rgba(250, 204, 21, 0.06) 0%, transparent 70%)',
+                'radial-gradient(circle, rgba(245, 158, 11, 0.04) 0%, transparent 70%)',
             }}
             animate={{ scale: [1, 1.08, 1], opacity: [0.5, 0.8, 0.5] }}
             transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}

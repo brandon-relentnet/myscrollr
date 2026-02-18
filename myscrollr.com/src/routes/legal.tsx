@@ -70,7 +70,7 @@ function LegalPage() {
           <div
             className="absolute inset-0 opacity-[0.02]"
             style={{
-              backgroundImage: `radial-gradient(circle at 1px 1px, rgba(52, 211, 153, 0.4) 1px, transparent 0)`,
+              backgroundImage: `radial-gradient(circle at 1px 1px, var(--grid-dot-primary) 1px, transparent 0)`,
               backgroundSize: '32px 32px',
             }}
           />
@@ -78,7 +78,7 @@ function LegalPage() {
             className="absolute top-[-20%] left-[20%] w-[600px] h-[600px] rounded-full"
             style={{
               background:
-                'radial-gradient(circle, rgba(52, 211, 153, 0.04) 0%, transparent 70%)',
+                'radial-gradient(circle, var(--glow-primary-subtle) 0%, transparent 70%)',
             }}
             animate={{ scale: [1, 1.06, 1], opacity: [0.4, 0.7, 0.4] }}
             transition={{

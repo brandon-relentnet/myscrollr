@@ -2,41 +2,82 @@
 @import 'tailwindcss';
 @source "../../integrations/*/web/**/*.tsx";
 
+/* Class-based dark mode for toggle support */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ==========================================================================
+   THEME TOKENS
+   Light mode is the @theme default (output as :root custom properties).
+   .dark {} overrides them for dark mode.
+   Opacity modifiers (bg-primary/20 etc.) are computed automatically by
+   Tailwind v4 via color-mix() — no explicit tiers needed.
+   ========================================================================== */
+
 @theme {
-  /* Core Colors - Emerald-led Palette */
+  /* Core Colors — same across themes */
   --color-primary: #34d399;
-  --color-primary-content: #141420;
-  --color-primary/10: rgba(52, 211, 153, 0.1);
-  --color-primary/20: rgba(52, 211, 153, 0.2);
-  --color-primary/30: rgba(52, 211, 153, 0.3);
-  --color-primary/40: rgba(52, 211, 153, 0.4);
-
   --color-secondary: #ff4757;
-  --color-secondary-content: #141420;
-  --color-secondary/10: rgba(255, 71, 87, 0.1);
-  --color-secondary/20: rgba(255, 71, 87, 0.2);
-
   --color-accent: #a855f7;
-  --color-accent-content: #141420;
-  --color-accent/10: rgba(168, 85, 247, 0.1);
-
-  --color-info: #00d4ff;
-  --color-info-content: #141420;
-  --color-info/10: rgba(0, 212, 255, 0.1);
-  --color-info/20: rgba(0, 212, 255, 0.2);
-
+  --color-info: #00b8db;
   --color-success: #22c55e;
-  --color-success/10: rgba(34, 197, 94, 0.1);
-
-  --color-warning: #fbbf24;
-  --color-warning/10: rgba(251, 191, 36, 0.1);
-
+  --color-warning: #f59e0b;
   --color-error: #ef4444;
-  --color-error/10: rgba(239, 68, 68, 0.1);
 
-  /* Base Theme - OLED-friendly Dark
-     Lifted ~12% luminance from pure-black for readable card separation
-     and text contrast on true-black OLED panels */
+  /* Light-mode base palette */
+  --color-primary-content: #ffffff;
+  --color-secondary-content: #ffffff;
+  --color-accent-content: #ffffff;
+  --color-info-content: #ffffff;
+
+  --color-base-50: #f8f8fc;
+  --color-base-100: #ffffff;
+  --color-base-150: #f6f7fb;
+  --color-base-200: #eef0f6;
+  --color-base-250: #e4e6ee;
+  --color-base-300: #d5d7e2;
+  --color-base-350: #c4c6d4;
+  --color-base-400: #b0b3c4;
+  --color-base-content: #1a1b2e;
+
+  /* Typography */
+  --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+
+  /* Border Radius — Softened */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+
+  /* Shadows — Light mode: softer, lower opacity */
+  --shadow-glow-sm: 0 0 20px rgba(52, 211, 153, 0.04);
+  --shadow-glow-md: 0 0 30px rgba(52, 211, 153, 0.06);
+  --shadow-glow-lg: 0 0 50px rgba(52, 211, 153, 0.08);
+  --shadow-glow-xl: 0 0 80px rgba(52, 211, 153, 0.1);
+
+  --shadow-soft-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-soft-md: 0 2px 6px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-soft-lg: 0 4px 12px rgba(0, 0, 0, 0.04), 0 8px 32px rgba(0, 0, 0, 0.1);
+
+  --shadow-inner-glow: inset 0 0 20px rgba(52, 211, 153, 0.01);
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ==========================================================================
+   DARK THEME OVERRIDES
+   ========================================================================== */
+
+.dark {
+  --color-primary-content: #141420;
+  --color-secondary-content: #141420;
+  --color-accent-content: #141420;
+  --color-info-content: #141420;
+  --color-info: #00d4ff;
+  --color-warning: #fbbf24;
+
   --color-base-50: #f8f8fc;
   --color-base-100: #141420;
   --color-base-150: #171726;
@@ -46,22 +87,7 @@
   --color-base-350: #303040;
   --color-base-400: #383848;
   --color-base-content: #e2e2ec;
-  --color-base-content/60: rgba(226, 226, 236, 0.6);
-  --color-base-content/50: rgba(226, 226, 236, 0.5);
-  --color-base-content/40: rgba(226, 226, 236, 0.4);
-  --color-base-content/30: rgba(226, 226, 236, 0.3);
-  --color-base-content/20: rgba(226, 226, 236, 0.2);
 
-  /* Typography */
-  --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
-
-  /* Border Radius - Softened */
-  --radius-sm: 0.5rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1rem;
-
-  /* Shadows - Subtle Elevation */
   --shadow-glow-sm: 0 0 20px rgba(52, 211, 153, 0.06);
   --shadow-glow-md: 0 0 30px rgba(52, 211, 153, 0.1);
   --shadow-glow-lg: 0 0 50px rgba(52, 211, 153, 0.12);
@@ -72,15 +98,31 @@
   --shadow-soft-lg: 0 8px 32px rgba(0, 0, 0, 0.35);
 
   --shadow-inner-glow: inset 0 0 20px rgba(52, 211, 153, 0.02);
-
-  /* Transitions */
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ==========================================================================
-   BASE - Clean Foundation
+   DECORATIVE PATTERN TOKENS
+   Used by inline backgroundImage styles — these are not Tailwind utilities.
+   ========================================================================== */
+
+:root {
+  --grid-line-color: rgba(0, 0, 0, 0.06);
+  --grid-dot-primary: rgba(52, 211, 153, 0.25);
+  --grid-dot-warning: rgba(245, 158, 11, 0.25);
+  --glow-primary-subtle: rgba(52, 211, 153, 0.03);
+  --glow-info-subtle: rgba(0, 184, 219, 0.02);
+}
+
+.dark {
+  --grid-line-color: rgba(255, 255, 255, 0.3);
+  --grid-dot-primary: rgba(52, 211, 153, 0.5);
+  --grid-dot-warning: rgba(250, 204, 21, 0.4);
+  --glow-primary-subtle: rgba(52, 211, 153, 0.05);
+  --glow-info-subtle: rgba(0, 212, 255, 0.04);
+}
+
+/* ==========================================================================
+   BASE — Clean Foundation
    ========================================================================== */
 
 *,
@@ -92,6 +134,12 @@
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Smooth theme transitions */
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
 }
 
 body {
@@ -107,11 +155,28 @@ body {
   position: relative;
 }
 
-/* Subtle Ambient Gradient */
+/* Subtle Ambient Gradient — Light mode */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
+  background:
+    radial-gradient(
+      ellipse 70% 50% at 50% 0%,
+      rgba(52, 211, 153, 0.04) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 50% 50% at 80% 80%,
+      rgba(0, 180, 219, 0.03) 0%,
+      transparent 50%
+    );
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Subtle Ambient Gradient — Dark mode (slightly stronger) */
+.dark body::before {
   background:
     radial-gradient(
       ellipse 70% 50% at 50% 0%,
@@ -123,12 +188,10 @@ body::before {
       rgba(0, 212, 255, 0.03) 0%,
       transparent 50%
     );
-  pointer-events: none;
-  z-index: -1;
 }
 
 /* ==========================================================================
-   TYPOGRAPHY - Clean Scale
+   TYPOGRAPHY — Clean Scale
    ========================================================================== */
 
 h1,
@@ -228,7 +291,7 @@ pre,
   }
 }
 
-/* Glow Effects - Reserved for key moments */
+/* Glow Effects — Reserved for key moments */
 .glow-primary-sm {
   box-shadow: var(--shadow-glow-sm);
 }
@@ -249,8 +312,8 @@ pre,
 .border-glow-primary {
   border-color: var(--color-primary);
   box-shadow:
-    0 0 15px var(--color-primary/20),
-    inset 0 0 20px var(--color-primary/5);
+    0 0 15px color-mix(in srgb, var(--color-primary) 20%, transparent),
+    inset 0 0 20px color-mix(in srgb, var(--color-primary) 5%, transparent);
 }
 
 /* Inner Glow */
@@ -259,7 +322,7 @@ pre,
 }
 
 /* ==========================================================================
-   BUTTONS - Clean System
+   BUTTONS — Clean System
    ========================================================================== */
 
 @layer components {
@@ -345,12 +408,12 @@ pre,
   .btn-pulse {
     @apply bg-primary text-primary-content! font-bold px-6 py-3 rounded-xl transition-all duration-200;
     font-family: var(--font-display);
-    box-shadow: 0 0 20px rgba(52, 211, 153, 0.2);
+    box-shadow: 0 0 20px color-mix(in srgb, var(--color-primary) 20%, transparent);
   }
 
   .btn-pulse:hover:not(:disabled) {
     @apply bg-primary/90 text-primary-content!;
-    box-shadow: 0 0 40px rgba(52, 211, 153, 0.35);
+    box-shadow: 0 0 40px color-mix(in srgb, var(--color-primary) 35%, transparent);
     transform: translateY(-2px);
   }
 
@@ -433,7 +496,7 @@ pre,
   .select {
     @apply h-10 w-full rounded-lg border border-base-300 bg-base-200/50 backdrop-blur-md px-4 py-2 text-sm transition-colors duration-200 appearance-none cursor-pointer;
     font-family: var(--font-display);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23d8d8e2' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239598a8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 0.75rem center;
     padding-right: 2.5rem;
@@ -444,7 +507,7 @@ pre,
   }
 
   /* ==========================================================================
-     CARDS - Clean Elevation System
+     CARDS — Clean Elevation System
      ========================================================================== */
 
   .card-frame {
@@ -491,7 +554,7 @@ pre,
 
   .modal-content {
     @apply bg-base-100/95 backdrop-blur-2xl border border-base-300 shadow-2xl w-full max-w-2xl relative rounded-2xl;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
   }
 
   .modal-header {
@@ -505,6 +568,11 @@ pre,
   .modal-footer {
     @apply flex items-center justify-end gap-4 p-6 border-t border-base-300;
   }
+}
+
+/* Dark mode modal shadow boost */
+.dark .modal-content {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
 /* ==========================================================================
@@ -527,7 +595,7 @@ pre,
 }
 
 /* ==========================================================================
-   SCROLLBAR - Clean
+   SCROLLBAR — Clean
    ========================================================================== */
 
 ::-webkit-scrollbar {
@@ -540,17 +608,17 @@ pre,
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-base-400 rounded-full;
+  @apply bg-base-300 rounded-full;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-base-300;
+  @apply bg-base-350;
 }
 
 /* Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-base-400) transparent;
+  scrollbar-color: var(--color-base-300) transparent;
 }
 
 /* ==========================================================================
@@ -558,7 +626,7 @@ pre,
    ========================================================================== */
 
 ::selection {
-  @apply bg-primary/30 text-primary-content;
+  @apply bg-primary/30 text-base-content;
 }
 
 /* ==========================================================================
@@ -581,7 +649,7 @@ pre,
 }
 
 /* ==========================================================================
-   FOCUS STATES - Accessibility
+   FOCUS STATES — Accessibility
    ========================================================================== */
 
 *:focus-visible {
@@ -634,6 +702,23 @@ a:hover {
 
 .table tbody tr:hover {
   @apply bg-base-200/50;
+}
+
+/* ==========================================================================
+   THEME TRANSITION
+   Smooth color transitions when toggling themes.
+   Applied to background, text, border, and shadow properties.
+   ========================================================================== */
+
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition:
+    background-color 300ms ease,
+    border-color 300ms ease,
+    color 200ms ease,
+    box-shadow 300ms ease !important;
 }
 
 /* ==========================================================================

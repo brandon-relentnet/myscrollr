@@ -329,7 +329,7 @@ function DiscoverPage() {
           <div
             className="absolute inset-0 opacity-[0.02]"
             style={{
-              backgroundImage: `radial-gradient(circle at 1px 1px, rgba(52, 211, 153, 0.5) 1px, transparent 0)`,
+              backgroundImage: `radial-gradient(circle at 1px 1px, var(--grid-dot-primary) 1px, transparent 0)`,
               backgroundSize: '32px 32px',
             }}
           />
@@ -337,7 +337,7 @@ function DiscoverPage() {
             className="absolute top-[-15%] right-[10%] w-[700px] h-[700px] rounded-full"
             style={{
               background:
-                'radial-gradient(circle, rgba(52, 211, 153, 0.04) 0%, transparent 70%)',
+                'radial-gradient(circle, var(--glow-primary-subtle) 0%, transparent 70%)',
             }}
             animate={{ scale: [1, 1.08, 1], opacity: [0.4, 0.7, 0.4] }}
             transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
@@ -346,7 +346,7 @@ function DiscoverPage() {
             className="absolute bottom-[-20%] left-[5%] w-[500px] h-[500px] rounded-full"
             style={{
               background:
-                'radial-gradient(circle, rgba(52, 211, 153, 0.03) 0%, transparent 70%)',
+                'radial-gradient(circle, var(--glow-primary-subtle) 0%, transparent 70%)',
             }}
             animate={{ scale: [1, 1.05, 1], opacity: [0.3, 0.5, 0.3] }}
             transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
@@ -650,7 +650,7 @@ function DiscoverPage() {
                 className="absolute top-0 left-[30%] w-[500px] h-[500px] rounded-full"
                 style={{
                   background:
-                    'radial-gradient(circle, rgba(52, 211, 153, 0.05) 0%, transparent 70%)',
+                    'radial-gradient(circle, var(--glow-primary-subtle) 0%, transparent 70%)',
                 }}
                 animate={{
                   scale: [1, 1.1, 1],
@@ -666,8 +666,8 @@ function DiscoverPage() {
                 className="absolute inset-0 opacity-[0.015]"
                 style={{
                   backgroundImage: `
-                    linear-gradient(rgba(255, 255, 255, 0.3) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(255, 255, 255, 0.3) 1px, transparent 1px)
+                    linear-gradient(var(--grid-line-color) 1px, transparent 1px),
+                    linear-gradient(90deg, var(--grid-line-color) 1px, transparent 1px)
                   `,
                   backgroundSize: '40px 40px',
                 }}

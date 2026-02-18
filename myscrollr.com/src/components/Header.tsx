@@ -14,6 +14,7 @@ import { AnimatePresence, LayoutGroup, motion } from 'motion/react'
 import type { IdTokenClaims } from '@logto/react'
 import { useScrollrAuth } from '@/hooks/useScrollrAuth'
 import ScrollrSVG from '@/components/ScrollrSVG'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
@@ -44,7 +45,7 @@ export default function Header() {
         {/* Brand */}
         <div className="flex items-center gap-4">
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="relative flex items-center justify-center rounded-xl border border-base-300/50 bg-base-200/50 p-2.5 transition-all hover:scale-105 transition-spring group-hover:border-primary/30 group-hover:shadow-[0_0_20px_rgba(52,211,153,0.1)]">
+            <div className="relative flex items-center justify-center rounded-xl border border-base-300/50 bg-base-200/50 p-2.5 transition-all hover:scale-105 transition-spring group-hover:border-primary/30 group-hover:shadow-glow-sm">
               <ScrollrSVG className="size-8" />
               {/* Online indicator */}
               <span className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5">
@@ -93,8 +94,9 @@ export default function Header() {
         </LayoutGroup>
 
         {/* Auth Section */}
-        <div className="hidden lg:flex items-center gap-4 min-w-[280px] justify-end">
-          {/* Viewer count — always visible */}
+        <div className="hidden lg:flex items-center gap-3 min-w-[280px] justify-end">
+          <ThemeToggle />
+
           {isLoading ? (
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-primary/40 animate-pulse" />
@@ -174,15 +176,18 @@ export default function Header() {
                     </span>
                   </div>
                 </div>
-                <motion.button
-                  whileHover={{ scale: 1.1, rotate: 90 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => setIsOpen(false)}
-                  className="p-2 rounded-lg hover:bg-base-300 transition-colors cursor-pointer"
-                  aria-label="Close menu"
-                >
-                  <X size={20} />
-                </motion.button>
+                <div className="flex items-center gap-2">
+                  <ThemeToggle />
+                  <motion.button
+                    whileHover={{ scale: 1.1, rotate: 90 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setIsOpen(false)}
+                    className="p-2 rounded-lg hover:bg-base-300 transition-colors cursor-pointer"
+                    aria-label="Close menu"
+                  >
+                    <X size={20} />
+                  </motion.button>
+                </div>
               </div>
 
               {/* Navigation Links */}

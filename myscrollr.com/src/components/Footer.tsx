@@ -43,8 +43,8 @@ export default function Footer() {
         className="absolute inset-0 opacity-[0.02] pointer-events-none"
         style={{
           backgroundImage: `
-            linear-gradient(rgba(52, 211, 153, 0.3) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(52, 211, 153, 0.3) 1px, transparent 1px)
+            linear-gradient(var(--grid-dot-primary) 1px, transparent 1px),
+            linear-gradient(90deg, var(--grid-dot-primary) 1px, transparent 1px)
           `,
           backgroundSize: '60px 60px',
         }}

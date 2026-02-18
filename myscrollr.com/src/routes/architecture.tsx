@@ -243,7 +243,7 @@ function ArchitecturePage() {
             className="absolute top-[-10%] left-[40%] w-[600px] h-[600px] rounded-full"
             style={{
               background:
-                'radial-gradient(circle, rgba(52, 211, 153, 0.04) 0%, transparent 70%)',
+                'radial-gradient(circle, var(--glow-primary-subtle) 0%, transparent 70%)',
             }}
             animate={{ scale: [1, 1.06, 1], opacity: [0.3, 0.6, 0.3] }}
             transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}

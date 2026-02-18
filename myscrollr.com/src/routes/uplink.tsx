@@ -257,8 +257,8 @@ function TerminalBlock() {
         className="absolute inset-0 opacity-[0.015] pointer-events-none"
         style={{
           backgroundImage: `
-            linear-gradient(rgba(255, 255, 255, 0.3) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255, 255, 255, 0.3) 1px, transparent 1px)
+            linear-gradient(var(--grid-line-color) 1px, transparent 1px),
+            linear-gradient(90deg, var(--grid-line-color) 1px, transparent 1px)
           `,
           backgroundSize: '32px 32px',
         }}
@@ -440,7 +440,7 @@ function UplinkPage() {
           <div
             className="absolute inset-0 opacity-[0.03]"
             style={{
-              backgroundImage: `radial-gradient(circle at 1px 1px, rgba(52, 211, 153, 0.5) 1px, transparent 0)`,
+              backgroundImage: `radial-gradient(circle at 1px 1px, var(--grid-dot-primary) 1px, transparent 0)`,
               backgroundSize: '24px 24px',
             }}
           />
@@ -450,7 +450,7 @@ function UplinkPage() {
             className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] rounded-full"
             style={{
               background:
-                'radial-gradient(circle, rgba(52, 211, 153, 0.06) 0%, transparent 70%)',
+                'radial-gradient(circle, var(--glow-primary-subtle) 0%, transparent 70%)',
             }}
             animate={{
               scale: [1, 1.08, 1],
@@ -464,7 +464,7 @@ function UplinkPage() {
             className="absolute bottom-[-30%] left-[-10%] w-[600px] h-[600px] rounded-full"
             style={{
               background:
-                'radial-gradient(circle, rgba(0, 212, 255, 0.04) 0%, transparent 70%)',
+                'radial-gradient(circle, var(--glow-info-subtle) 0%, transparent 70%)',
             }}
             animate={{
               scale: [1.08, 1, 1.08],
@@ -1119,7 +1119,7 @@ function UplinkPage() {
                 className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full"
                 style={{
                   background:
-                    'radial-gradient(circle, rgba(52, 211, 153, 0.05) 0%, transparent 70%)',
+                    'radial-gradient(circle, var(--glow-primary-subtle) 0%, transparent 70%)',
                 }}
                 animate={{
                   scale: [1, 1.1, 1],
@@ -1135,8 +1135,8 @@ function UplinkPage() {
                 className="absolute inset-0 opacity-[0.015]"
                 style={{
                   backgroundImage: `
-                    linear-gradient(rgba(255, 255, 255, 0.3) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(255, 255, 255, 0.3) 1px, transparent 1px)
+                    linear-gradient(var(--grid-line-color) 1px, transparent 1px),
+                    linear-gradient(90deg, var(--grid-line-color) 1px, transparent 1px)
                   `,
                   backgroundSize: '40px 40px',
                 }}

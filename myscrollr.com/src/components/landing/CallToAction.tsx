@@ -21,8 +21,8 @@ export function CallToAction() {
           className="absolute inset-0 opacity-[0.02] pointer-events-none"
           style={{
             backgroundImage: `
-                 linear-gradient(rgba(255, 255, 255, 0.3) 1px, transparent 1px),
-                 linear-gradient(90deg, rgba(255, 255, 255, 0.3) 1px, transparent 1px)
+                 linear-gradient(var(--grid-line-color) 1px, transparent 1px),
+                 linear-gradient(90deg, var(--grid-line-color) 1px, transparent 1px)
                `,
             backgroundSize: '40px 40px',
           }}

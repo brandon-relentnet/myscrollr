@@ -5,10 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#ffffff" />
     <meta name="Scrollr" content="Scrollr - Customizable Signal Ticker" />
     <link rel="manifest" href="/manifest.json" />
     <title>Scrollr - Customizable Signal Ticker</title>
+
+    <!-- Blocking theme init — runs before first paint to prevent FOUC -->
+    <script>
+      ;(function () {
+        var stored = localStorage.getItem('theme')
+        var prefersDark =
+          window.matchMedia &&
+          window.matchMedia('(prefers-color-scheme: dark)').matches
+        var dark = stored === 'dark' || (!stored && prefersDark)
+        if (dark) document.documentElement.classList.add('dark')
+        // Update theme-color meta to match
+        var meta = document.querySelector('meta[name="theme-color"]')
+        if (meta) meta.setAttribute('content', dark ? '#141420' : '#ffffff')
+      })()
+    </script>
   </head>
 
   <body>
