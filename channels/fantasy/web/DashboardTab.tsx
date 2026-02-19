@@ -1,40 +1,114 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  AlertTriangle,
   Check,
   ChevronDown,
   Ghost,
   Loader2,
   Link2,
   Plus,
+  Shield,
   Unlink,
+  Zap,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import type { ChannelManifest, DashboardTabProps } from '@/channels/types'
-import { ChannelHeader } from '@/channels/shared'
+import { ChannelHeader, InfoCard } from '@/channels/shared'
 import { API_BASE, authenticatedFetch } from '@/api/client'
 
-// ── Yahoo Data Types ──────────────────────────────────────────────
+// ── Data Types (match Go MyLeaguesResponse) ─────────────────────────
 
-interface YahooLeagueRecord {
+interface StandingsEntry {
+  team_key: string
+  team_id: number
+  name: string
+  url: string
+  team_logo: string
+  manager_name: string
+  rank: number | null
+  wins: number
+  losses: number
+  ties: number
+  percentage: string
+  games_back: string
+  points_for: string
+  points_against: string
+  streak_type: string
+  streak_value: number
+  playoff_seed: number | null
+  clinched_playoffs: boolean
+  waiver_priority: number | null
+}
+
+interface MatchupTeam {
+  team_key: string
+  team_id: number
+  name: string
+  team_logo: string
+  manager_name: string
+  points: number | null
+  projected_points: number | null
+}
+
+interface Matchup {
+  week: number
+  week_start: string
+  week_end: string
+  status: string
+  is_playoffs: boolean
+  is_consolation: boolean
+  is_tied: boolean
+  winner_team_key: string | null
+  teams: MatchupTeam[]
+}
+
+interface RosterPlayer {
+  player_key: string
+  player_id: number
+  name: { full: string; first: string; last: string }
+  editorial_team_abbr: string
+  display_position: string
+  selected_position: string
+  image_url: string
+  status: string | null
+  status_full: string | null
+  injury_note: string | null
+  player_points: number | null
+}
+
+interface RosterEntry {
+  team_key: string
+  data: {
+    team_key: string
+    team_name: string
+    players: RosterPlayer[]
+  }
+}
+
+interface LeagueData {
   league_key: string
-  guid: string
   name: string
   game_code: string
   season: string
-  data: any
+  team_key: string | null
+  team_name: string | null
+  data: {
+    num_teams: number
+    is_finished: boolean
+    current_week: number | null
+    scoring_type: string
+    [k: string]: unknown
+  }
+  standings: StandingsEntry[] | null
+  matchups: Matchup[] | null
+  rosters: RosterEntry[] | null
 }
 
-interface YahooStandingsRecord {
-  league_key: string
-  data: any
+interface MyLeaguesResponse {
+  leagues: LeagueData[]
 }
 
-interface YahooState {
-  leagues: Record<string, YahooLeagueRecord>
-  standings: Record<string, YahooStandingsRecord>
-}
-
-/** Metadata returned by POST /discover — not yet in the DB. */
+/** Metadata returned by POST /discover */
 interface DiscoveredLeague {
   league_key: string
   name: string
@@ -62,25 +136,44 @@ const GAME_CODE_LABELS: Record<string, string> = {
   mlb: 'Baseball',
 }
 
+const GAME_CODE_EMOJI: Record<string, string> = {
+  nfl: '\uD83C\uDFC8',
+  nba: '\uD83C\uDFC0',
+  nhl: '\uD83C\uDFD2',
+  mlb: '\u26BE',
+}
+
+const INJURY_COLORS: Record<string, string> = {
+  O: '#ef4444',
+  IR: '#ef4444',
+  SUSP: '#ef4444',
+  D: '#f97316',
+  Q: '#eab308',
+  P: '#eab308',
+  DTD: '#f97316',
+  DL: '#ef4444',
+  NA: '#a3a3a3',
+}
+
 const LEAGUES_PER_PAGE = 5
 const HEX = '#a855f7'
+
+// ── Main Component ──────────────────────────────────────────────────
 
 function FantasyDashboardTab({
   channel,
   getToken,
   hex,
+  connected,
+  subscriptionTier,
   onToggle,
   onDelete,
 }: DashboardTabProps) {
+  const isUplink = subscriptionTier === 'uplink'
+
   // ── Core state ──────────────────────────────────────────────────
-  const [yahoo, setYahoo] = useState<YahooState>({
-    leagues: {},
-    standings: {},
-  })
-  const [yahooStatus, setYahooStatus] = useState<{
-    connected: boolean
-    synced: boolean
-  }>({ connected: false, synced: false })
+  const [leagues, setLeagues] = useState<LeagueData[]>([])
+  const [yahooConnected, setYahooConnected] = useState(false)
 
   const [phase, setPhase] = useState<Phase>('disconnected')
   const [discoveredLeagues, setDiscoveredLeagues] = useState<
@@ -91,12 +184,10 @@ function FantasyDashboardTab({
     Record<string, ImportStatus>
   >({})
   const [discoverError, setDiscoverError] = useState<string | null>(null)
-
   const [filter, setFilter] = useState<'active' | 'finished'>('active')
   const [leagueVisibleCount, setLeagueVisibleCount] =
     useState(LEAGUES_PER_PAGE)
 
-  // Track if initial load is done
   const initialLoadDone = useRef(false)
 
   // ── Fetch existing Yahoo Data ───────────────────────────────────
@@ -109,37 +200,22 @@ function FantasyDashboardTab({
           {},
           getToken,
         ).catch(() => null),
-        authenticatedFetch<{
-          leagues?: Array<any>
-          standings?: Record<string, any>
-        }>('/users/me/yahoo-leagues', {}, getToken).catch(() => null),
+        authenticatedFetch<MyLeaguesResponse>(
+          '/users/me/yahoo-leagues',
+          {},
+          getToken,
+        ).catch(() => null),
       ])
 
-      if (statusData) {
-        setYahooStatus(statusData)
-      }
+      const isConnected = statusData?.connected ?? false
+      setYahooConnected(isConnected)
+      setLeagues(leaguesData?.leagues ?? [])
 
-      const leagues: Record<string, YahooLeagueRecord> = {}
-      const standings: Record<string, YahooStandingsRecord> = {}
-      if (leaguesData) {
-        for (const league of leaguesData.leagues || []) {
-          leagues[league.league_key] = league
-        }
-        for (const [key, val] of Object.entries(
-          leaguesData.standings || {},
-        )) {
-          standings[key] = { league_key: key, data: val }
-        }
-      }
-      setYahoo({ leagues, standings })
-
-      // Determine initial phase
       if (!initialLoadDone.current) {
         initialLoadDone.current = true
-        if (statusData?.connected && Object.keys(leagues).length > 0) {
+        if (isConnected && (leaguesData?.leagues?.length ?? 0) > 0) {
           setPhase('connected')
-        } else if (statusData?.connected) {
-          // Connected but no leagues imported yet — go to discover
+        } else if (isConnected) {
           setPhase('connected')
         } else {
           setPhase('disconnected')
@@ -153,8 +229,6 @@ function FantasyDashboardTab({
       }
     }
   }, [getToken])
-
-  // ── Initial Fetch ───────────────────────────────────────────────
 
   useEffect(() => {
     fetchYahooData()
@@ -179,28 +253,23 @@ function FantasyDashboardTab({
 
       if (result.error) {
         setDiscoverError(result.error)
-        setPhase(
-          Object.keys(yahoo.leagues).length > 0 ? 'connected' : 'disconnected',
-        )
+        setPhase(leagues.length > 0 ? 'connected' : 'disconnected')
         return
       }
 
-      const leagues = result.leagues || []
-      setDiscoveredLeagues(leagues)
+      const discovered = result.leagues || []
+      setDiscoveredLeagues(discovered)
 
-      // Filter out already-imported leagues
-      const alreadyImported = new Set(Object.keys(yahoo.leagues))
-      const newLeagues = leagues.filter(
+      const alreadyImported = new Set(leagues.map((l) => l.league_key))
+      const newLeagues = discovered.filter(
         (l) => !alreadyImported.has(l.league_key),
       )
 
       if (newLeagues.length === 0) {
-        // All leagues already imported
         setPhase('connected')
         return
       }
 
-      // Pre-select active leagues
       const preSelected = new Set(
         newLeagues.filter((l) => !l.is_finished).map((l) => l.league_key),
       )
@@ -209,13 +278,11 @@ function FantasyDashboardTab({
     } catch (err: any) {
       console.error('[Fantasy] discover failed:', err)
       setDiscoverError(err?.message || 'Discovery failed')
-      setPhase(
-        Object.keys(yahoo.leagues).length > 0 ? 'connected' : 'disconnected',
-      )
+      setPhase(leagues.length > 0 ? 'connected' : 'disconnected')
     }
-  }, [getToken, yahoo.leagues])
+  }, [getToken, leagues])
 
-  // ── Import selected leagues one at a time ───────────────────────
+  // ── Import selected leagues ─────────────────────────────────────
 
   const importSelected = useCallback(async () => {
     const keys = Array.from(selectedKeys)
@@ -223,26 +290,20 @@ function FantasyDashboardTab({
 
     setPhase('importing')
 
-    // Build initial status map
     const statuses: Record<string, ImportStatus> = {}
-    for (const key of keys) {
-      statuses[key] = 'pending'
-    }
+    for (const key of keys) statuses[key] = 'pending'
     setImportStatuses({ ...statuses })
 
     for (const key of keys) {
       const league = discoveredLeagues.find((l) => l.league_key === key)
       if (!league) continue
 
-      // Mark as importing
       statuses[key] = 'importing'
       setImportStatuses({ ...statuses })
 
       try {
         const result = await authenticatedFetch<{
           status: string
-          league: any
-          standings: any
           error?: string
         }>(
           '/users/me/yahoo-leagues/import',
@@ -258,60 +319,25 @@ function FantasyDashboardTab({
           getToken,
         )
 
-        if (result.error) {
-          console.error(`[Fantasy] import failed for ${key}:`, result.error)
-          statuses[key] = 'error'
-        } else {
-          statuses[key] = 'done'
-
-          // Add to local state immediately so the card appears
-          if (result.league) {
-            setYahoo((prev) => {
-              const newLeagues = { ...prev.leagues }
-              const newStandings = { ...prev.standings }
-
-              newLeagues[key] = {
-                league_key: key,
-                guid: '',
-                name: result.league.name,
-                game_code: result.league.game_code,
-                season: String(result.league.season),
-                data: result.league,
-              }
-
-              if (result.standings) {
-                newStandings[key] = {
-                  league_key: key,
-                  data: result.standings,
-                }
-              }
-
-              return { leagues: newLeagues, standings: newStandings }
-            })
-          }
-        }
-      } catch (err) {
-        console.error(`[Fantasy] import error for ${key}:`, err)
+        statuses[key] = result.error ? 'error' : 'done'
+      } catch {
         statuses[key] = 'error'
       }
 
       setImportStatuses({ ...statuses })
     }
 
-    // All done — switch to connected.
-    // Don't call fetchYahooData() here: the local state is already up-to-date
-    // from the per-league updates above, and a refetch could overwrite it with
-    // empty data if the API call fails or returns before the DB commits flush.
+    // Refetch to get full data (standings, matchups, rosters)
+    await fetchYahooData()
     setPhase('connected')
-  }, [selectedKeys, discoveredLeagues, getToken])
+  }, [selectedKeys, discoveredLeagues, getToken, fetchYahooData])
 
   // ── Listen for Yahoo auth popup completion ──────────────────────
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'yahoo-auth-complete') {
-        console.log('[Fantasy] Yahoo auth complete — starting discovery')
-        setYahooStatus({ connected: true, synced: false })
+        setYahooConnected(true)
         startDiscovery()
       }
     }
@@ -330,7 +356,7 @@ function FantasyDashboardTab({
       const payload = JSON.parse(atob(token.split('.')[1]))
       sub = payload.sub
     } catch {
-      // ignore
+      /* ignore */
     }
     if (!sub) return
 
@@ -339,10 +365,7 @@ function FantasyDashboardTab({
 
     if (popup) {
       const checkClosed = setInterval(() => {
-        if (popup.closed) {
-          clearInterval(checkClosed)
-          // postMessage handler will trigger discovery
-        }
+        if (popup.closed) clearInterval(checkClosed)
       }, 500)
     }
   }, [getToken])
@@ -354,8 +377,8 @@ function FantasyDashboardTab({
         { method: 'DELETE' },
         getToken,
       )
-      setYahooStatus({ connected: false, synced: false })
-      setYahoo({ leagues: {}, standings: {} })
+      setYahooConnected(false)
+      setLeagues([])
       setPhase('disconnected')
       initialLoadDone.current = false
     } catch (err) {
@@ -365,24 +388,17 @@ function FantasyDashboardTab({
 
   // ── Derived Data ────────────────────────────────────────────────
 
-  const allLeagues = Object.values(yahoo.leagues)
-    .map((league) => {
-      const standings = yahoo.standings[league.league_key]
-      return {
-        league_key: league.league_key,
-        name: league.name,
-        game_code: league.game_code,
-        season: league.season,
-        num_teams: league.data?.num_teams || 0,
-        is_finished: league.data?.is_finished ?? true,
-        standings: standings?.data,
-      }
-    })
-    .sort((a, b) => Number(b.season) - Number(a.season))
-
-  const activeLeagues = allLeagues.filter((l) => !l.is_finished)
-  const finishedLeagues = allLeagues.filter((l) => l.is_finished)
-  const filteredLeagues = filter === 'active' ? activeLeagues : finishedLeagues
+  const sortedLeagues = [...leagues].sort(
+    (a, b) => Number(b.season) - Number(a.season),
+  )
+  const activeLeagues = sortedLeagues.filter(
+    (l) => !l.data?.is_finished,
+  )
+  const finishedLeagues = sortedLeagues.filter(
+    (l) => l.data?.is_finished,
+  )
+  const filteredLeagues =
+    filter === 'active' ? activeLeagues : finishedLeagues
   const visibleLeagues = filteredLeagues.slice(0, leagueVisibleCount)
   const hasMore = leagueVisibleCount < filteredLeagues.length
   const remaining = filteredLeagues.length - leagueVisibleCount
@@ -394,7 +410,7 @@ function FantasyDashboardTab({
 
   // ── Picking helpers ─────────────────────────────────────────────
 
-  const alreadyImported = new Set(Object.keys(yahoo.leagues))
+  const alreadyImported = new Set(leagues.map((l) => l.league_key))
   const pickableLeagues = discoveredLeagues.filter(
     (l) => !alreadyImported.has(l.league_key),
   )
@@ -409,10 +425,17 @@ function FantasyDashboardTab({
       return next
     })
   }
-
   const selectAll = () =>
     setSelectedKeys(new Set(pickableLeagues.map((l) => l.league_key)))
   const deselectAll = () => setSelectedKeys(new Set())
+
+  // ── Stats for InfoCards ─────────────────────────────────────────
+
+  const totalLeagues = leagues.length
+  const totalActiveMatchups = activeLeagues.reduce(
+    (n, l) => n + (l.matchups?.length ?? 0),
+    0,
+  )
 
   // ── Render ──────────────────────────────────────────────────────
 
@@ -421,42 +444,51 @@ function FantasyDashboardTab({
       <ChannelHeader
         channel={channel}
         icon={<Ghost size={16} className="text-base-content/80" />}
-        title="Fantasy Channel"
-        subtitle="Yahoo Fantasy channel"
+        title="Fantasy"
+        subtitle="Yahoo Fantasy Sports"
+        connected={connected}
+        subscriptionTier={subscriptionTier}
         hex={hex}
         onToggle={onToggle}
         onDelete={onDelete}
       />
 
-      {/* Yahoo Connection Status (connected + has leagues) */}
-      {phase === 'connected' && allLeagues.length > 0 && (
-        <div className="flex items-center gap-3">
-          <span
-            className="flex items-center gap-1.5 px-2 py-1 rounded border"
-            style={{
-              background: `${hex}10`,
-              borderColor: `${hex}20`,
-            }}
-          >
-            <span
-              className="h-1.5 w-1.5 rounded-full animate-pulse"
-              style={{ background: hex }}
-            />
-            <span
-              className="text-[9px] font-mono uppercase"
-              style={{ color: hex }}
-            >
-              {activeLeagues.length > 0
-                ? `${activeLeagues.length} Active`
-                : 'Connected'}
-            </span>
-            {finishedLeagues.length > 0 && (
-              <span className="text-[9px] font-mono text-base-content/30 uppercase ml-1">
-                / {finishedLeagues.length} Past
-              </span>
-            )}
-          </span>
+      {/* ── InfoCards ───────────────────────────────────────────── */}
+      {phase === 'connected' && leagues.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <InfoCard
+            label="Leagues"
+            value={String(totalLeagues)}
+            hex={hex}
+          />
+          <InfoCard
+            label="Active Matchups"
+            value={String(totalActiveMatchups)}
+            hex={hex}
+          />
+          <InfoCard
+            label="Delivery"
+            value={isUplink ? 'Real-time' : 'Polling'}
+            hex={hex}
+          />
         </div>
+      )}
+
+      {/* ── Upgrade CTA ────────────────────────────────────────── */}
+      {phase === 'connected' && leagues.length > 0 && !isUplink && (
+        <a
+          href="/uplink"
+          className="flex items-center gap-2 px-4 py-3 rounded-sm border transition-all group"
+          style={{ background: `${hex}0D`, borderColor: `${hex}26` }}
+        >
+          <Zap
+            size={14}
+            className="text-base-content/40 group-hover:text-base-content/60 transition-colors"
+          />
+          <span className="text-[10px] font-bold text-base-content/50 uppercase tracking-widest group-hover:text-base-content/70 transition-colors">
+            Upgrade to Uplink for real-time fantasy delivery
+          </span>
+        </a>
       )}
 
       {/* ── DISCONNECTED ─────────────────────────────────────────── */}
@@ -472,8 +504,8 @@ function FantasyDashboardTab({
               No Fantasy Data
             </p>
             <p className="text-xs text-base-content/30 max-w-xs mx-auto">
-              Connect your Yahoo account to see your fantasy leagues, standings,
-              and rosters in real time.
+              Connect your Yahoo account to see your fantasy leagues, matchup
+              scores, standings, and rosters.
             </p>
           </div>
           {discoverError && (
@@ -532,8 +564,8 @@ function FantasyDashboardTab({
               Discovering Leagues
             </p>
             <p className="text-xs text-base-content/30 max-w-xs mx-auto text-center">
-              Scanning your Yahoo Fantasy account for leagues across all sports.
-              This usually takes a few seconds.
+              Scanning your Yahoo Fantasy account for leagues across all
+              sports. This usually takes a few seconds.
             </p>
           </div>
         </motion.div>
@@ -567,7 +599,6 @@ function FantasyDashboardTab({
             </div>
           </div>
 
-          {/* Active leagues */}
           {pickableActive.length > 0 && (
             <div className="space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-widest text-success/80 flex items-center gap-1.5">
@@ -586,7 +617,6 @@ function FantasyDashboardTab({
             </div>
           )}
 
-          {/* Finished leagues */}
           {pickableFinished.length > 0 && (
             <div className="space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-widest text-base-content/30">
@@ -621,7 +651,9 @@ function FantasyDashboardTab({
             </motion.button>
             <button
               onClick={() =>
-                setPhase(allLeagues.length > 0 ? 'connected' : 'disconnected')
+                setPhase(
+                  leagues.length > 0 ? 'connected' : 'disconnected',
+                )
               }
               className="btn btn-sm btn-ghost text-base-content/40"
             >
@@ -658,7 +690,6 @@ function FantasyDashboardTab({
                 animate={{ opacity: 1, x: 0 }}
                 className="flex items-center gap-3 p-3 rounded-lg border border-base-300/25 bg-base-200/30"
               >
-                {/* Status icon */}
                 <div className="w-5 h-5 flex items-center justify-center shrink-0">
                   {status === 'done' && (
                     <Check size={14} className="text-success" />
@@ -677,7 +708,6 @@ function FantasyDashboardTab({
                     <span className="text-error text-xs font-bold">!</span>
                   )}
                 </div>
-
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-bold truncate">
                     {league?.name || key}
@@ -686,7 +716,6 @@ function FantasyDashboardTab({
                     {sportLabel} &middot; {league?.season}
                   </p>
                 </div>
-
                 <span
                   className="text-[9px] font-mono uppercase"
                   style={{
@@ -709,7 +738,7 @@ function FantasyDashboardTab({
       )}
 
       {/* ── CONNECTED — Filter Toggle ────────────────────────────── */}
-      {phase === 'connected' && allLeagues.length > 0 && (
+      {phase === 'connected' && leagues.length > 0 && (
         <div className="flex items-center gap-1 p-1 rounded-lg bg-base-200/60 border border-base-300/25 w-fit">
           <button
             onClick={() => handleFilterChange('active')}
@@ -728,7 +757,11 @@ function FantasyDashboardTab({
                   background: `${hex}10`,
                   borderColor: `${hex}33`,
                 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                transition={{
+                  type: 'spring',
+                  stiffness: 400,
+                  damping: 30,
+                }}
               />
             )}
             <span className="relative flex items-center gap-2">
@@ -754,7 +787,11 @@ function FantasyDashboardTab({
               <motion.div
                 layoutId="fantasy-filter-bg"
                 className="absolute inset-0 bg-base-300/30 border border-base-300/25 rounded-md"
-                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                transition={{
+                  type: 'spring',
+                  stiffness: 400,
+                  damping: 30,
+                }}
               />
             )}
             <span className="relative flex items-center gap-2">
@@ -794,7 +831,7 @@ function FantasyDashboardTab({
 
       {/* Empty filter state */}
       {phase === 'connected' &&
-        allLeagues.length > 0 &&
+        leagues.length > 0 &&
         filteredLeagues.length === 0 && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -811,8 +848,8 @@ function FantasyDashboardTab({
 
       {/* Connected but no leagues at all */}
       {phase === 'connected' &&
-        yahooStatus.connected &&
-        allLeagues.length === 0 && (
+        yahooConnected &&
+        leagues.length === 0 && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -864,7 +901,7 @@ function FantasyDashboardTab({
       )}
 
       {/* ── Account Actions ──────────────────────────────────────── */}
-      {phase === 'connected' && yahooStatus.connected && (
+      {phase === 'connected' && yahooConnected && (
         <div className="flex gap-3">
           <motion.button
             onClick={startDiscovery}
@@ -880,7 +917,9 @@ function FantasyDashboardTab({
             }}
           >
             <Plus size={16} />
-            <span className="text-xs uppercase tracking-wide">Add Leagues</span>
+            <span className="text-xs uppercase tracking-wide">
+              Add Leagues
+            </span>
           </motion.button>
           <motion.button
             onClick={handleYahooDisconnect}
@@ -888,7 +927,9 @@ function FantasyDashboardTab({
             className="p-4 rounded-lg border border-dashed border-base-300/25 text-base-content/40 hover:text-error hover:border-error/30 transition-all flex items-center justify-center gap-2"
           >
             <Unlink size={16} />
-            <span className="text-xs uppercase tracking-wide">Disconnect</span>
+            <span className="text-xs uppercase tracking-wide">
+              Disconnect
+            </span>
           </motion.button>
         </div>
       )}
@@ -923,10 +964,11 @@ function LeaguePickerRow({
           : 'bg-base-200/20 border-base-300/15 opacity-60'
       }`}
       style={
-        selected ? { borderColor: `${hex}30`, background: `${hex}08` } : {}
+        selected
+          ? { borderColor: `${hex}30`, background: `${hex}08` }
+          : {}
       }
     >
-      {/* Checkbox */}
       <div
         className="h-4 w-4 rounded border flex items-center justify-center shrink-0 transition-all"
         style={
@@ -938,7 +980,6 @@ function LeaguePickerRow({
         {selected && <Check size={10} className="text-white" />}
       </div>
 
-      {/* Info */}
       <div className="min-w-0 flex-1">
         <p className="text-xs font-bold truncate">{league.name}</p>
         <p className="text-[10px] text-base-content/40">
@@ -947,7 +988,6 @@ function LeaguePickerRow({
         </p>
       </div>
 
-      {/* Active/Finished badge */}
       {!league.is_finished ? (
         <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-success/10 border border-success/20">
           <span className="h-1 w-1 rounded-full bg-success animate-pulse" />
@@ -970,172 +1010,734 @@ function LeagueCard({
   league,
   hex,
 }: {
-  league: {
-    league_key: string
-    name: string
-    game_code?: string
-    num_teams: number
-    season?: string
-    is_finished?: boolean
-    standings?: any
-  }
+  league: LeagueData
   hex: string
 }) {
-  const [standingsOpen, setStandingsOpen] = useState(false)
+  const [openSection, setOpenSection] = useState<
+    'matchups' | 'standings' | 'roster' | null
+  >(null)
+
+  const isActive = !league.data?.is_finished
   const sportLabel =
-    GAME_CODE_LABELS[league.game_code || ''] || league.game_code || 'Fantasy'
-  const teams = Array.isArray(league.standings)
-    ? league.standings
-    : league.standings?.teams?.team || []
-  const isActive = !league.is_finished
+    GAME_CODE_LABELS[league.game_code] || league.game_code || 'Fantasy'
+  const sportEmoji = GAME_CODE_EMOJI[league.game_code] || ''
+  const numTeams = league.data?.num_teams || 0
+  const currentWeek = league.data?.current_week
+
+  // Find user's matchup
+  const userMatchup = league.matchups?.find((m) =>
+    m.teams.some((t) => t.team_key === league.team_key),
+  )
+
+  // Find user's standing
+  const standings = league.standings ?? []
+  const userStanding = standings.find(
+    (s) => s.team_key === league.team_key,
+  )
+
+  // Find user's roster
+  const userRoster = league.rosters?.find(
+    (r) => r.team_key === league.team_key,
+  )
+  const injuredPlayers =
+    userRoster?.data?.players?.filter((p) => p.status) ?? []
+
+  const toggleSection = (section: 'matchups' | 'standings' | 'roster') =>
+    setOpenSection((prev) => (prev === section ? null : section))
 
   return (
     <div
-      className={`border rounded-lg overflow-hidden transition-colors ${isActive ? 'bg-base-200/50 border-base-300/25' : 'bg-base-200/20 border-base-300/20'}`}
+      className={`border rounded-lg overflow-hidden transition-colors relative ${
+        isActive
+          ? 'bg-base-200/50 border-base-300/25'
+          : 'bg-base-200/20 border-base-300/20'
+      }`}
     >
-      <button
-        onClick={() => teams.length > 0 && setStandingsOpen((prev) => !prev)}
-        className={`w-full p-5 flex items-center justify-between text-left ${teams.length > 0 ? 'cursor-pointer hover:bg-base-200/30' : 'cursor-default'} transition-colors`}
-      >
-        <div className="flex items-center gap-4">
-          {/* Icon badge */}
-          <div
-            className="h-11 w-11 rounded-lg flex items-center justify-center shrink-0"
-            style={
-              isActive
-                ? {
-                    background: `${hex}15`,
-                    boxShadow: `0 0 0 1px ${hex}20`,
-                  }
-                : {
-                    background: 'oklch(var(--b3) / 0.2)',
-                    boxShadow: '0 0 0 1px oklch(var(--b3) / 0.3)',
-                  }
-            }
-          >
-            <span
-              className={`text-base font-bold ${isActive ? '' : 'text-base-content/30'}`}
-              style={isActive ? { color: hex } : undefined}
-            >
-              Y!
-            </span>
-          </div>
-          <div className="min-w-0">
-            <h3
-              className={`text-sm font-bold uppercase truncate ${isActive ? '' : 'text-base-content/50'}`}
-            >
-              {league.name}
-            </h3>
-            <p className="text-[10px] text-base-content/40 uppercase tracking-wide">
-              {sportLabel} &middot; {league.num_teams} Teams
-              {league.season ? ` \u00b7 ${league.season}` : ''}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 shrink-0">
-          {isActive ? (
-            <span className="flex items-center gap-1.5 px-2 py-1 rounded bg-success/10 border border-success/20">
-              <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-              <span className="text-[9px] font-bold uppercase text-success">
-                Active
-              </span>
-            </span>
-          ) : (
-            <span className="text-[9px] font-mono text-base-content/25 uppercase">
-              {league.season}
-            </span>
-          )}
-          {teams.length > 0 && (
-            <motion.div
-              animate={{ rotate: standingsOpen ? 180 : 0 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-            >
-              <ChevronDown size={14} className="text-base-content/30" />
-            </motion.div>
-          )}
-        </div>
-      </button>
+      {/* Accent top line */}
+      {isActive && (
+        <div
+          className="absolute top-0 left-0 right-0 h-px"
+          style={{
+            background: `linear-gradient(90deg, transparent, ${hex} 50%, transparent)`,
+          }}
+        />
+      )}
 
-      {/* Collapsible Standings */}
-      <AnimatePresence initial={false}>
-        {standingsOpen && teams.length > 0 && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            className="overflow-hidden"
-          >
-            <div className="px-5 pb-5 space-y-1.5">
-              <div className="h-px bg-base-300/25 mb-3" />
-              <p className="text-[10px] font-bold text-base-content/30 uppercase tracking-widest mb-2">
-                Standings
-              </p>
-              {teams.map((team: any, i: number) => {
-                const record = team.team_standings?.outcome_totals
-                const logo = team.team_logos?.team_logo?.[0]?.url
-                return (
-                  <motion.div
-                    key={team.team_key || i}
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{
-                      delay: i * 0.03,
-                      type: 'spring',
-                      stiffness: 400,
-                      damping: 30,
-                    }}
-                    className="flex items-center justify-between p-2.5 rounded bg-base-100/50 border border-base-300/25"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-[10px] font-mono text-base-content/30 w-4 text-right">
-                        {i + 1}
-                      </span>
-                      {logo && (
-                        <img
-                          src={logo}
-                          alt=""
-                          className="h-5 w-5 rounded object-cover"
-                        />
-                      )}
-                      <span className="text-xs font-bold truncate max-w-[160px]">
-                        {team.name}
-                      </span>
-                    </div>
-                    {record && (
-                      <span className="text-[10px] font-mono text-base-content/40">
-                        {record.wins}-{record.losses}
-                        {record.ties > 0 ? `-${record.ties}` : ''}
-                        {team.team_standings?.points_for
-                          ? ` \u00b7 ${team.team_standings.points_for} PF`
-                          : ''}
-                      </span>
-                    )}
-                  </motion.div>
-                )
-              })}
+      {/* ── Header ─────────────────────────────────────────────── */}
+      <div className="p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <div
+              className="h-11 w-11 rounded-lg flex items-center justify-center shrink-0 text-lg"
+              style={
+                isActive
+                  ? {
+                      background: `${hex}15`,
+                      boxShadow: `0 0 0 1px ${hex}20`,
+                    }
+                  : {
+                      background: 'oklch(var(--b3) / 0.2)',
+                      boxShadow: '0 0 0 1px oklch(var(--b3) / 0.3)',
+                    }
+              }
+            >
+              {sportEmoji || (
+                <span
+                  className={`text-base font-bold ${isActive ? '' : 'text-base-content/30'}`}
+                  style={isActive ? { color: hex } : undefined}
+                >
+                  Y!
+                </span>
+              )}
             </div>
-          </motion.div>
+            <div className="min-w-0">
+              <h3
+                className={`text-sm font-bold uppercase truncate ${isActive ? '' : 'text-base-content/50'}`}
+              >
+                {league.name}
+              </h3>
+              <p className="text-[10px] text-base-content/40 uppercase tracking-wide">
+                {sportLabel} &middot; {numTeams} Teams
+                {league.season ? ` \u00b7 ${league.season}` : ''}
+                {currentWeek && isActive
+                  ? ` \u00b7 Week ${currentWeek}`
+                  : ''}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            {isActive ? (
+              <span className="flex items-center gap-1.5 px-2 py-1 rounded bg-success/10 border border-success/20">
+                <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
+                <span className="text-[9px] font-bold uppercase text-success">
+                  Active
+                </span>
+              </span>
+            ) : (
+              <span className="text-[9px] font-mono text-base-content/25 uppercase">
+                {league.season}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* ── User's Matchup Score ──────────────────────────────── */}
+        {userMatchup && (
+          <MatchupScoreCard
+            matchup={userMatchup}
+            userTeamKey={league.team_key}
+            hex={hex}
+          />
+        )}
+
+        {/* ── Quick Stats Row ──────────────────────────────────── */}
+        {league.team_key && (
+          <div className="flex items-center gap-4 mt-3">
+            {userStanding && (
+              <span className="text-[10px] text-base-content/40">
+                <span className="font-bold" style={{ color: hex }}>
+                  #{userStanding.rank ?? '?'}
+                </span>{' '}
+                in standings &middot;{' '}
+                <span className="font-mono">
+                  {userStanding.wins}-{userStanding.losses}
+                  {userStanding.ties > 0 ? `-${userStanding.ties}` : ''}
+                </span>
+                {userStanding.streak_value > 0 && (
+                  <span className="ml-1">
+                    ({userStanding.streak_type?.[0]?.toUpperCase()}
+                    {userStanding.streak_value})
+                  </span>
+                )}
+              </span>
+            )}
+            {injuredPlayers.length > 0 && (
+              <span className="flex items-center gap-1 text-[10px] text-warning">
+                <AlertTriangle size={10} />
+                {injuredPlayers.length} injured
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Section Toggles ────────────────────────────────────── */}
+      <div className="px-5 pb-2">
+        <div className="h-px bg-base-300/20 mb-2" />
+        <div className="flex gap-1">
+          {(league.matchups?.length ?? 0) > 0 && (
+            <SectionToggle
+              label="Matchups"
+              isOpen={openSection === 'matchups'}
+              onClick={() => toggleSection('matchups')}
+              hex={hex}
+            />
+          )}
+          {standings.length > 0 && (
+            <SectionToggle
+              label="Standings"
+              isOpen={openSection === 'standings'}
+              onClick={() => toggleSection('standings')}
+              hex={hex}
+            />
+          )}
+          {(league.rosters?.length ?? 0) > 0 && (
+            <SectionToggle
+              label="Rosters"
+              isOpen={openSection === 'roster'}
+              onClick={() => toggleSection('roster')}
+              hex={hex}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* ── Expandable Sections ────────────────────────────────── */}
+      <AnimatePresence initial={false}>
+        {openSection === 'matchups' && league.matchups && (
+          <ExpandableSection key="matchups">
+            <MatchupsSection
+              matchups={league.matchups}
+              userTeamKey={league.team_key}
+              hex={hex}
+            />
+          </ExpandableSection>
+        )}
+
+        {openSection === 'standings' && standings.length > 0 && (
+          <ExpandableSection key="standings">
+            <StandingsSection
+              standings={standings}
+              userTeamKey={league.team_key}
+              hex={hex}
+            />
+          </ExpandableSection>
+        )}
+
+        {openSection === 'roster' && league.rosters && (
+          <ExpandableSection key="roster">
+            <RosterSection
+              rosters={league.rosters}
+              userTeamKey={league.team_key}
+              hex={hex}
+            />
+          </ExpandableSection>
         )}
       </AnimatePresence>
 
-      {teams.length === 0 && (
-        <div className="px-5 pb-4">
-          <div className="h-px bg-base-300/20 mb-3" />
-          <p className="text-[10px] text-base-content/25 uppercase text-center">
-            Standings not yet available
-          </p>
-        </div>
-      )}
+      {/* No data fallback */}
+      {!userMatchup &&
+        standings.length === 0 &&
+        (league.rosters?.length ?? 0) === 0 && (
+          <div className="px-5 pb-4">
+            <div className="h-px bg-base-300/20 mb-3" />
+            <p className="text-[10px] text-base-content/25 uppercase text-center">
+              Data not yet available &mdash; syncing soon
+            </p>
+          </div>
+        )}
     </div>
   )
 }
+
+// ── Section Toggle Button ───────────────────────────────────────────
+
+function SectionToggle({
+  label,
+  isOpen,
+  onClick,
+  hex,
+}: {
+  label: string
+  isOpen: boolean
+  onClick: () => void
+  hex: string
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[9px] font-bold uppercase tracking-widest transition-all ${
+        isOpen
+          ? ''
+          : 'text-base-content/30 hover:text-base-content/50'
+      }`}
+      style={
+        isOpen
+          ? {
+              color: hex,
+              background: `${hex}10`,
+              borderColor: `${hex}20`,
+            }
+          : undefined
+      }
+    >
+      {label}
+      <motion.div
+        animate={{ rotate: isOpen ? 180 : 0 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      >
+        <ChevronDown size={10} />
+      </motion.div>
+    </button>
+  )
+}
+
+// ── Expandable Wrapper ──────────────────────────────────────────────
+
+function ExpandableSection({ children }: { children: React.ReactNode }) {
+  return (
+    <motion.div
+      initial={{ height: 0, opacity: 0 }}
+      animate={{ height: 'auto', opacity: 1 }}
+      exit={{ height: 0, opacity: 0 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+      className="overflow-hidden"
+    >
+      <div className="px-5 pb-5">{children}</div>
+    </motion.div>
+  )
+}
+
+// ── Matchup Score Card (hero display for user's matchup) ────────────
+
+function MatchupScoreCard({
+  matchup,
+  userTeamKey,
+  hex,
+}: {
+  matchup: Matchup
+  userTeamKey: string | null
+  hex: string
+}) {
+  const userTeam = matchup.teams.find((t) => t.team_key === userTeamKey)
+  const opponentTeam = matchup.teams.find(
+    (t) => t.team_key !== userTeamKey,
+  )
+
+  if (!userTeam || !opponentTeam) return null
+
+  const userPoints = userTeam.points ?? 0
+  const opponentPoints = opponentTeam.points ?? 0
+  const isWinning = userPoints > opponentPoints
+  const isLosing = userPoints < opponentPoints
+  const isLive = matchup.status === 'midevent'
+  const isDone = matchup.status === 'postevent'
+
+  return (
+    <div
+      className="rounded-lg border p-4"
+      style={{
+        background: `${hex}08`,
+        borderColor: `${hex}15`,
+      }}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[9px] font-bold uppercase tracking-widest text-base-content/30">
+          {isLive
+            ? 'Live Matchup'
+            : isDone
+              ? `Week ${matchup.week} Final`
+              : `Week ${matchup.week}`}
+        </span>
+        {isLive && (
+          <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-error/10 border border-error/20">
+            <span className="h-1 w-1 rounded-full bg-error animate-pulse" />
+            <span className="text-[8px] font-bold uppercase text-error">
+              Live
+            </span>
+          </span>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between gap-4">
+        {/* User team */}
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          {userTeam.team_logo && (
+            <img
+              src={userTeam.team_logo}
+              alt=""
+              className="h-8 w-8 rounded object-cover shrink-0"
+            />
+          )}
+          <div className="min-w-0">
+            <p className="text-xs font-bold truncate">{userTeam.name}</p>
+            <p className="text-[9px] text-base-content/30 truncate">
+              {userTeam.manager_name}
+            </p>
+          </div>
+        </div>
+
+        {/* Scores */}
+        <div className="flex items-center gap-3 shrink-0">
+          <span
+            className={`text-lg font-bold font-mono tabular-nums ${
+              isWinning ? '' : isLosing ? 'text-base-content/40' : ''
+            }`}
+            style={isWinning ? { color: hex } : undefined}
+          >
+            {userPoints.toFixed(1)}
+          </span>
+          <span className="text-[10px] text-base-content/20 font-bold">
+            -
+          </span>
+          <span
+            className={`text-lg font-bold font-mono tabular-nums ${
+              isLosing ? '' : isWinning ? 'text-base-content/40' : ''
+            }`}
+            style={isLosing ? { color: '#ef4444' } : undefined}
+          >
+            {opponentPoints.toFixed(1)}
+          </span>
+        </div>
+
+        {/* Opponent team */}
+        <div className="flex items-center gap-3 min-w-0 flex-1 justify-end text-right">
+          <div className="min-w-0">
+            <p className="text-xs font-bold truncate">{opponentTeam.name}</p>
+            <p className="text-[9px] text-base-content/30 truncate">
+              {opponentTeam.manager_name}
+            </p>
+          </div>
+          {opponentTeam.team_logo && (
+            <img
+              src={opponentTeam.team_logo}
+              alt=""
+              className="h-8 w-8 rounded object-cover shrink-0"
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Projected points */}
+      {(userTeam.projected_points || opponentTeam.projected_points) &&
+        !isDone && (
+          <div className="flex justify-between mt-2 text-[9px] text-base-content/25 font-mono">
+            <span>
+              Proj: {userTeam.projected_points?.toFixed(1) ?? '---'}
+            </span>
+            <span>
+              Proj: {opponentTeam.projected_points?.toFixed(1) ?? '---'}
+            </span>
+          </div>
+        )}
+    </div>
+  )
+}
+
+// ── Matchups Section ────────────────────────────────────────────────
+
+function MatchupsSection({
+  matchups,
+  userTeamKey,
+  hex,
+}: {
+  matchups: Matchup[]
+  userTeamKey: string | null
+  hex: string
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-[10px] font-bold text-base-content/30 uppercase tracking-widest mb-2">
+        All Matchups &middot; Week {matchups[0]?.week}
+      </p>
+      {matchups.map((matchup, i) => {
+        const isUserMatchup = matchup.teams.some(
+          (t) => t.team_key === userTeamKey,
+        )
+        const teamA = matchup.teams[0]
+        const teamB = matchup.teams[1]
+
+        if (!teamA || !teamB) return null
+
+        return (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{
+              delay: i * 0.03,
+              type: 'spring',
+              stiffness: 400,
+              damping: 30,
+            }}
+            className={`flex items-center justify-between p-2.5 rounded border ${
+              isUserMatchup
+                ? 'bg-base-100/80'
+                : 'bg-base-100/40 border-base-300/20'
+            }`}
+            style={
+              isUserMatchup
+                ? {
+                    borderColor: `${hex}25`,
+                    background: `${hex}06`,
+                  }
+                : undefined
+            }
+          >
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              {teamA.team_logo && (
+                <img
+                  src={teamA.team_logo}
+                  alt=""
+                  className="h-4 w-4 rounded object-cover shrink-0"
+                />
+              )}
+              <span
+                className={`text-[10px] font-bold truncate ${
+                  isUserMatchup && teamA.team_key === userTeamKey
+                    ? ''
+                    : 'text-base-content/70'
+                }`}
+                style={
+                  isUserMatchup && teamA.team_key === userTeamKey
+                    ? { color: hex }
+                    : undefined
+                }
+              >
+                {teamA.name}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 mx-2">
+              <span className="text-[10px] font-mono font-bold tabular-nums">
+                {teamA.points?.toFixed(1) ?? '--'}
+              </span>
+              <span className="text-[9px] text-base-content/20">vs</span>
+              <span className="text-[10px] font-mono font-bold tabular-nums">
+                {teamB.points?.toFixed(1) ?? '--'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
+              <span
+                className={`text-[10px] font-bold truncate ${
+                  isUserMatchup && teamB.team_key === userTeamKey
+                    ? ''
+                    : 'text-base-content/70'
+                }`}
+                style={
+                  isUserMatchup && teamB.team_key === userTeamKey
+                    ? { color: hex }
+                    : undefined
+                }
+              >
+                {teamB.name}
+              </span>
+              {teamB.team_logo && (
+                <img
+                  src={teamB.team_logo}
+                  alt=""
+                  className="h-4 w-4 rounded object-cover shrink-0"
+                />
+              )}
+            </div>
+          </motion.div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Standings Section ───────────────────────────────────────────────
+
+function StandingsSection({
+  standings,
+  userTeamKey,
+  hex,
+}: {
+  standings: StandingsEntry[]
+  userTeamKey: string | null
+  hex: string
+}) {
+  const sorted = [...standings].sort(
+    (a, b) => (a.rank ?? 99) - (b.rank ?? 99),
+  )
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-[10px] font-bold text-base-content/30 uppercase tracking-widest mb-2">
+        Standings
+      </p>
+      {sorted.map((team, i) => {
+        const isUser = team.team_key === userTeamKey
+        return (
+          <motion.div
+            key={team.team_key}
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{
+              delay: i * 0.03,
+              type: 'spring',
+              stiffness: 400,
+              damping: 30,
+            }}
+            className={`flex items-center justify-between p-2.5 rounded border ${
+              isUser
+                ? 'bg-base-100/80'
+                : 'bg-base-100/40 border-base-300/20'
+            }`}
+            style={
+              isUser
+                ? {
+                    borderColor: `${hex}25`,
+                    background: `${hex}06`,
+                  }
+                : undefined
+            }
+          >
+            <div className="flex items-center gap-3">
+              <span
+                className="text-[10px] font-mono w-4 text-right"
+                style={isUser ? { color: hex } : undefined}
+              >
+                {team.rank ?? i + 1}
+              </span>
+              {team.team_logo && (
+                <img
+                  src={team.team_logo}
+                  alt=""
+                  className="h-5 w-5 rounded object-cover"
+                />
+              )}
+              <div className="min-w-0">
+                <span
+                  className={`text-xs font-bold truncate block max-w-[140px] ${isUser ? '' : ''}`}
+                  style={isUser ? { color: hex } : undefined}
+                >
+                  {team.name}
+                </span>
+                {team.manager_name && (
+                  <span className="text-[9px] text-base-content/25 block truncate max-w-[120px]">
+                    {team.manager_name}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              {team.clinched_playoffs && (
+                <Shield size={10} className="text-success" />
+              )}
+              <span className="text-[10px] font-mono text-base-content/40 tabular-nums">
+                {team.wins}-{team.losses}
+                {team.ties > 0 ? `-${team.ties}` : ''}
+              </span>
+              <span className="text-[10px] font-mono text-base-content/25 tabular-nums w-16 text-right">
+                {team.points_for} PF
+              </span>
+            </div>
+          </motion.div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Roster Section ──────────────────────────────────────────────────
+
+function RosterSection({
+  rosters,
+  userTeamKey,
+}: {
+  rosters: RosterEntry[]
+  userTeamKey: string | null
+  hex: string
+}) {
+  const [selectedTeam, setSelectedTeam] = useState<string>(
+    userTeamKey ?? rosters[0]?.team_key ?? '',
+  )
+
+  const currentRoster = rosters.find((r) => r.team_key === selectedTeam)
+  const players = currentRoster?.data?.players ?? []
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] font-bold text-base-content/30 uppercase tracking-widest">
+          Roster
+        </p>
+        {rosters.length > 1 && (
+          <select
+            value={selectedTeam}
+            onChange={(e) => setSelectedTeam(e.target.value)}
+            className="text-[10px] bg-base-200/50 border border-base-300/25 rounded px-2 py-1 text-base-content/60 focus:outline-none"
+          >
+            {rosters.map((r) => (
+              <option key={r.team_key} value={r.team_key}>
+                {r.data?.team_name || r.team_key}
+                {r.team_key === userTeamKey ? ' (You)' : ''}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      <div className="space-y-1">
+        {players.map((player) => {
+          const hasInjury = !!player.status
+          const injuryColor = INJURY_COLORS[player.status ?? ''] ?? '#a3a3a3'
+
+          return (
+            <div
+              key={player.player_key}
+              className="flex items-center justify-between py-1.5 px-2 rounded"
+            >
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <span className="text-[9px] font-mono text-base-content/25 w-6 text-center shrink-0">
+                  {player.selected_position}
+                </span>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-bold truncate max-w-[120px]">
+                      {player.name.full || player.name.last}
+                    </span>
+                    {hasInjury && (
+                      <span
+                        className="text-[8px] font-bold px-1 rounded"
+                        style={{
+                          color: injuryColor,
+                          background: `${injuryColor}15`,
+                        }}
+                      >
+                        {player.status}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[9px] text-base-content/25">
+                    {player.editorial_team_abbr}
+                    {player.display_position
+                      ? ` - ${player.display_position}`
+                      : ''}
+                    {hasInjury && player.injury_note
+                      ? ` \u00b7 ${player.injury_note}`
+                      : ''}
+                  </span>
+                </div>
+              </div>
+              {player.player_points !== null &&
+                player.player_points !== undefined && (
+                  <span className="text-[10px] font-mono font-bold tabular-nums text-base-content/50 shrink-0">
+                    {player.player_points.toFixed(1)}
+                  </span>
+                )}
+            </div>
+          )
+        })}
+
+        {players.length === 0 && (
+          <p className="text-[10px] text-base-content/25 uppercase text-center py-3">
+            No roster data available
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Channel Export ───────────────────────────────────────────────────
 
 export const fantasyChannel: ChannelManifest = {
   id: 'fantasy',
   name: 'Fantasy',
   tabLabel: 'Fantasy',
-  description: 'Yahoo Fantasy channel',
+  description: 'Yahoo Fantasy Sports',
   hex: HEX,
   icon: Ghost,
   DashboardTab: FantasyDashboardTab,

@@ -44,6 +44,7 @@ const DASHBOARD_KEY_MAP: Record<string, string> = {
   finance: "finance",
   sports: "sports",
   rss: "rss",
+  fantasy: "fantasy",
 };
 
 export default function FeedBar({
@@ -76,10 +77,12 @@ export default function FeedBar({
   }, [activeTabs, activeTab]);
 
   // Build channelConfig for the active channel, injecting __initialItems
+  // Most channels store a flat array; fantasy stores a nested object —
+  // each FeedTab is responsible for interpreting __initialItems.
   const channelConfig = useMemo(() => {
     const dashboardKey = DASHBOARD_KEY_MAP[activeTab];
     const initialItems = dashboardKey
-      ? ((dashboard?.data?.[dashboardKey] as unknown[] | undefined) ?? [])
+      ? (dashboard?.data?.[dashboardKey] ?? [])
       : [];
     return {
       __initialItems: initialItems,

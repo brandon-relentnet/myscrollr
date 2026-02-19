@@ -19,23 +19,20 @@ import (
 // =============================================================================
 
 const (
-	CacheKeyYahooLeaguesPrefix   = "cache:yahoo:leagues:"
-	CacheKeyYahooStandingsPrefix = "cache:yahoo:standings:"
-	CacheKeyYahooMatchupsPrefix  = "cache:yahoo:matchups:"
-	CacheKeyYahooRosterPrefix    = "cache:yahoo:roster:"
-	YahooCacheTTL                = 5 * time.Minute
-	YahooAPITimeout              = 10 * time.Second
-	YahooAuthCookieExpiry        = 24 * time.Hour
-	YahooRefreshCookieExpiry     = 30 * 24 * time.Hour
-	RedisCSRFPrefix              = "csrf:"
-	RedisYahooStateLogtoPrefix   = "yahoo_state_logto:"
-	RedisTokenToGuidPrefix       = "token_to_guid:"
-	TokenToGuidTTL               = 24 * time.Hour
-	RedisScanCount               = 100
-	OAuthStateExpiry             = 10 * time.Minute
-	OAuthStateBytes              = 16
-	DefaultFrontendURL           = "https://myscrollr.com"
-	AuthPopupCloseDelayMs        = 1500
+	// Redis key prefixes for CDC subscriber resolution
+	RedisLeagueUsersPrefix = "fantasy:league_users:" // SET of logto_subs per league_key
+	RedisGuidUserPrefix    = "fantasy:guid_user:"    // SET of logto_subs per Yahoo GUID
+
+	// OAuth state management
+	RedisCSRFPrefix            = "csrf:"
+	RedisYahooStateLogtoPrefix = "yahoo_state_logto:"
+
+	// Timeouts and expiries
+	YahooAPITimeout      = 10 * time.Second
+	OAuthStateExpiry     = 10 * time.Minute
+	OAuthStateBytes      = 16
+	DefaultFrontendURL   = "https://myscrollr.com"
+	AuthPopupCloseDelayMs = 1500
 )
 
 // =============================================================================
@@ -79,8 +76,9 @@ func resolveFrontendURL() string {
 // handleInternalCDC receives CDC records from the core gateway and returns the
 // list of users who should receive these records.
 //
-// Fantasy CDC routing is complex — each table type uses a different resolution
-// strategy to map records to user logto_sub values via DB JOINs.
+// Fantasy uses per-league Redis SET routing for standings/matchups/rosters,
+// and per-GUID Redis SET routing for yahoo_leagues changes.
+// Zero SQL JOINs in the hot path — all lookups are Redis SMEMBERS.
 func (a *App) handleInternalCDC(c *fiber.Ctx) error {
 	var req struct {
 		Records []CDCRecord `json:"records"`
@@ -98,13 +96,49 @@ func (a *App) handleInternalCDC(c *fiber.Ctx) error {
 	for _, record := range req.Records {
 		switch record.Metadata.TableName {
 		case "yahoo_leagues":
-			a.resolveByGuid(ctx, record.Record, userSet)
-		case "yahoo_standings":
-			a.resolveByLeagueKey(ctx, record.Record, userSet)
-		case "yahoo_matchups":
-			a.resolveByTeamKey(ctx, record.Record, userSet)
+			// yahoo_leagues has a guid column — look up via fantasy:guid_user:{guid}
+			guid, ok := record.Record["guid"].(string)
+			if !ok || guid == "" {
+				continue
+			}
+			subs, err := GetSubscribers(a.rdb, ctx, RedisGuidUserPrefix+guid)
+			if err != nil {
+				log.Printf("[Fantasy CDC] Failed to get subscribers for guid=%s: %v", guid, err)
+				continue
+			}
+			for _, sub := range subs {
+				userSet[sub] = struct{}{}
+			}
+
+		case "yahoo_standings", "yahoo_matchups":
+			// Both have league_key — look up via fantasy:league_users:{league_key}
+			leagueKey, ok := record.Record["league_key"].(string)
+			if !ok || leagueKey == "" {
+				continue
+			}
+			subs, err := GetSubscribers(a.rdb, ctx, RedisLeagueUsersPrefix+leagueKey)
+			if err != nil {
+				log.Printf("[Fantasy CDC] Failed to get subscribers for league=%s: %v", leagueKey, err)
+				continue
+			}
+			for _, sub := range subs {
+				userSet[sub] = struct{}{}
+			}
+
 		case "yahoo_rosters":
-			a.resolveByTeamKey(ctx, record.Record, userSet)
+			// yahoo_rosters has league_key — same as standings/matchups
+			leagueKey, ok := record.Record["league_key"].(string)
+			if !ok || leagueKey == "" {
+				continue
+			}
+			subs, err := GetSubscribers(a.rdb, ctx, RedisLeagueUsersPrefix+leagueKey)
+			if err != nil {
+				log.Printf("[Fantasy CDC] Failed to get subscribers for league=%s: %v", leagueKey, err)
+				continue
+			}
+			for _, sub := range subs {
+				userSet[sub] = struct{}{}
+			}
 		}
 	}
 
@@ -117,6 +151,8 @@ func (a *App) handleInternalCDC(c *fiber.Ctx) error {
 }
 
 // handleInternalDashboard returns fantasy data for a user's dashboard.
+// Returns all leagues the user has imported, with standings, current matchups,
+// and rosters for all teams in each league.
 // Query param: user={logto_sub}
 func (a *App) handleInternalDashboard(c *fiber.Ctx) error {
 	userSub := c.Query("user")
@@ -124,128 +160,120 @@ func (a *App) handleInternalDashboard(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"fantasy": nil})
 	}
 
-	// Resolve logto_sub -> guid
+	// Resolve logto_sub → guid
 	var guid string
-	err := a.db.QueryRow(context.Background(), "SELECT guid FROM yahoo_users WHERE logto_sub = $1", userSub).Scan(&guid)
+	err := a.db.QueryRow(context.Background(),
+		"SELECT guid FROM yahoo_users WHERE logto_sub = $1", userSub).Scan(&guid)
 	if err != nil {
-		// User hasn't connected Yahoo — return nil (no data)
 		return c.JSON(fiber.Map{"fantasy": nil})
 	}
 
-	cacheKey := CacheKeyYahooLeaguesPrefix + guid
+	// Fetch all leagues for this user via the user_leagues junction table
+	leagueRows, err := a.db.Query(context.Background(), `
+		SELECT l.league_key, l.name, l.game_code, l.season, l.data,
+		       ul.team_key, ul.team_name
+		FROM yahoo_leagues l
+		JOIN yahoo_user_leagues ul ON l.league_key = ul.league_key
+		WHERE ul.guid = $1
+		ORDER BY l.game_code, l.season DESC
+	`, guid)
+	if err != nil {
+		log.Printf("[Dashboard] League query error for guid=%s: %v", guid, err)
+		return c.JSON(fiber.Map{"fantasy": nil})
+	}
+	defer leagueRows.Close()
 
-	var content FantasyContent
-	if GetCache(a.rdb, cacheKey, &content) {
-		return c.JSON(fiber.Map{"fantasy": content})
+	leagues := make([]LeagueResponse, 0)
+	leagueKeys := make([]string, 0)
+	for leagueRows.Next() {
+		var lr LeagueResponse
+		if err := leagueRows.Scan(
+			&lr.LeagueKey, &lr.Name, &lr.GameCode, &lr.Season, &lr.Data,
+			&lr.TeamKey, &lr.TeamName,
+		); err != nil {
+			log.Printf("[Dashboard] Scan error: %v", err)
+			continue
+		}
+		leagues = append(leagues, lr)
+		leagueKeys = append(leagueKeys, lr.LeagueKey)
 	}
 
-	// Try Database (Active Sync data)
-	var data []byte
-	err = a.db.QueryRow(context.Background(), "SELECT data FROM yahoo_leagues WHERE guid = $1 LIMIT 1", guid).Scan(&data)
+	if len(leagues) == 0 {
+		return c.JSON(fiber.Map{"fantasy": MyLeaguesResponse{Leagues: leagues}})
+	}
+
+	// Batch-fetch standings for all leagues
+	standingsMap := make(map[string]json.RawMessage)
+	standingsRows, err := a.db.Query(context.Background(),
+		"SELECT league_key, data FROM yahoo_standings WHERE league_key = ANY($1)", leagueKeys)
 	if err == nil {
-		if err := json.Unmarshal(data, &content); err == nil {
-			SetCache(a.rdb, cacheKey, content, YahooCacheTTL)
-			return c.JSON(fiber.Map{"fantasy": content})
+		defer standingsRows.Close()
+		for standingsRows.Next() {
+			var lk string
+			var data json.RawMessage
+			if err := standingsRows.Scan(&lk, &data); err == nil {
+				standingsMap[lk] = data
+			}
 		}
 	}
 
-	// No cached or DB data
-	return c.JSON(fiber.Map{"fantasy": nil})
+	// Batch-fetch current matchups for all leagues (most recent week per league)
+	matchupsMap := make(map[string]json.RawMessage)
+	matchupsRows, err := a.db.Query(context.Background(), `
+		SELECT DISTINCT ON (league_key) league_key, data
+		FROM yahoo_matchups
+		WHERE league_key = ANY($1)
+		ORDER BY league_key, week DESC
+	`, leagueKeys)
+	if err == nil {
+		defer matchupsRows.Close()
+		for matchupsRows.Next() {
+			var lk string
+			var data json.RawMessage
+			if err := matchupsRows.Scan(&lk, &data); err == nil {
+				matchupsMap[lk] = data
+			}
+		}
+	}
+
+	// Batch-fetch all rosters grouped by league
+	rostersMap := make(map[string]json.RawMessage)
+	rostersRows, err := a.db.Query(context.Background(), `
+		SELECT league_key,
+		       json_agg(json_build_object('team_key', team_key, 'data', data)) AS rosters
+		FROM yahoo_rosters
+		WHERE league_key = ANY($1)
+		GROUP BY league_key
+	`, leagueKeys)
+	if err == nil {
+		defer rostersRows.Close()
+		for rostersRows.Next() {
+			var lk string
+			var data json.RawMessage
+			if err := rostersRows.Scan(&lk, &data); err == nil {
+				rostersMap[lk] = data
+			}
+		}
+	}
+
+	// Attach associated data to each league
+	for i := range leagues {
+		lk := leagues[i].LeagueKey
+		if s, ok := standingsMap[lk]; ok {
+			leagues[i].Standings = s
+		}
+		if m, ok := matchupsMap[lk]; ok {
+			leagues[i].Matchups = m
+		}
+		if r, ok := rostersMap[lk]; ok {
+			leagues[i].Rosters = r
+		}
+	}
+
+	return c.JSON(fiber.Map{"fantasy": MyLeaguesResponse{Leagues: leagues}})
 }
 
-// handleInternalHealth is a simple liveness check for the core gateway.
-func (a *App) handleInternalHealth(c *fiber.Ctx) error {
-	return c.JSON(fiber.Map{"status": "healthy"})
-}
-
-// healthHandler proxies a health check to the internal Rust yahoo service.
+// healthHandler proxies a health check to the internal Python yahoo service.
 func (a *App) healthHandler(c *fiber.Ctx) error {
 	return ProxyInternalHealth(c, os.Getenv("INTERNAL_YAHOO_URL"))
-}
-
-// =============================================================================
-// CDC Routing Resolvers
-// =============================================================================
-
-// resolveByGuid resolves a yahoo_leagues record's guid to a logto_sub.
-func (a *App) resolveByGuid(ctx context.Context, record map[string]interface{}, userSet map[string]struct{}) {
-	guid, ok := record["guid"].(string)
-	if !ok || guid == "" {
-		return
-	}
-	var logtoSub string
-	err := a.db.QueryRow(ctx, "SELECT logto_sub FROM yahoo_users WHERE guid = $1", guid).Scan(&logtoSub)
-	if err != nil {
-		return // User not found or DB error — skip silently
-	}
-	userSet[logtoSub] = struct{}{}
-}
-
-// resolveByLeagueKey resolves a yahoo_standings record's league_key to a logto_sub
-// via a JOIN through yahoo_leagues -> yahoo_users.
-func (a *App) resolveByLeagueKey(ctx context.Context, record map[string]interface{}, userSet map[string]struct{}) {
-	leagueKey, ok := record["league_key"].(string)
-	if !ok || leagueKey == "" {
-		return
-	}
-	var logtoSub string
-	err := a.db.QueryRow(ctx, `
-		SELECT yu.logto_sub FROM yahoo_leagues yl
-		JOIN yahoo_users yu ON yl.guid = yu.guid
-		WHERE yl.league_key = $1
-	`, leagueKey).Scan(&logtoSub)
-	if err != nil {
-		return
-	}
-	userSet[logtoSub] = struct{}{}
-}
-
-// resolveByTeamKey resolves a yahoo_matchups/yahoo_rosters record's team_key
-// to a logto_sub. Team keys follow the format "nfl.l.{league_id}.t.{team_id}"
-// — we extract the league portion and JOIN through yahoo_leagues -> yahoo_users.
-func (a *App) resolveByTeamKey(ctx context.Context, record map[string]interface{}, userSet map[string]struct{}) {
-	teamKey, ok := record["team_key"].(string)
-	if !ok || teamKey == "" {
-		return
-	}
-
-	// Extract league_key from team_key: "nfl.l.12345.t.1" → "nfl.l.12345"
-	parts := strings.SplitN(teamKey, ".t.", 2)
-	if len(parts) == 0 {
-		return
-	}
-	leagueKey := parts[0]
-
-	var logtoSub string
-	err := a.db.QueryRow(ctx, `
-		SELECT yu.logto_sub FROM yahoo_leagues yl
-		JOIN yahoo_users yu ON yl.guid = yu.guid
-		WHERE yl.league_key = $1
-	`, leagueKey).Scan(&logtoSub)
-	if err != nil {
-		return
-	}
-	userSet[logtoSub] = struct{}{}
-}
-
-// =============================================================================
-// Database Helpers
-// =============================================================================
-
-// UpsertYahooUser inserts or updates a Yahoo user with an encrypted refresh token.
-func (a *App) UpsertYahooUser(guid, logtoSub, refreshToken string) error {
-	encryptedToken, err := Encrypt(refreshToken)
-	if err != nil {
-		log.Printf("[Security Error] Failed to encrypt refresh token for user %s: %v", guid, err)
-		return err
-	}
-
-	_, err = a.db.Exec(context.Background(), `
-		INSERT INTO yahoo_users (guid, logto_sub, refresh_token)
-		VALUES ($1, $2, $3)
-		ON CONFLICT (guid) DO UPDATE
-		SET logto_sub = EXCLUDED.logto_sub, refresh_token = EXCLUDED.refresh_token;
-	`, guid, logtoSub, encryptedToken)
-
-	return err
 }

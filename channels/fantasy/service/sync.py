@@ -1,11 +1,14 @@
 """
 Yahoo Fantasy sync engine.
 
-Mirrors the former Rust service's sync loop (lib.rs start_active_sync /
-sync_user_data) but uses the yahoofantasy Python library for API calls.
-Adds matchup and roster syncing (Rust never populated those tables).
+Rewritten to:
+  - Sync league-wide matchups (all teams, not just user's)
+  - Sync ALL teams' rosters (dashboard shows every team)
+  - Store team_key/team_name in yahoo_user_leagues
+  - Use new (league_key, week) matchup schema
+  - Only sync current_week ± 1 for matchups (not all weeks)
 
-Data changes flow through: Postgres -> Sequin -> Redis Pub/Sub -> Go SSE -> Frontend
+Data changes flow: Postgres -> Sequin -> Redis Pub/Sub -> Go SSE -> Frontend
 """
 
 from __future__ import annotations
@@ -23,17 +26,20 @@ import asyncpg
 import database as db
 from serializers import (
     serialize_league,
-    serialize_matchups,
     serialize_roster,
     serialize_standings,
+    serialize_week_matchups,
+    _safe_str,
+    _safe_int,
+    _as_list,
 )
 
 log = logging.getLogger("yahoo-sync")
 
-# Supported game codes (must match Rust's categorisation)
+# Supported game codes
 _GAME_CODES = ("nfl", "nba", "nhl", "mlb")
 
-# Delay between individual Yahoo API calls to avoid rate-limiting (ms in Rust was 500)
+# Delay between Yahoo API calls to avoid rate-limiting
 _API_DELAY_SECS = 0.5
 
 
@@ -50,11 +56,12 @@ async def sync_user(
     """
     Sync all data for a single Yahoo user:
       1. Fetch leagues (all game codes for current + recent seasons)
-      2. Upsert league metadata
+      2. Upsert league metadata + user_leagues with team_key
       3. Fetch standings for active leagues
-      4. Fetch matchups for active leagues (NEW)
-      5. Fetch rosters for user's teams in active leagues (NEW)
-      6. Update last_sync timestamp
+      4. Fetch matchups for active leagues (ALL matchups, league-wide)
+      5. Fetch rosters for ALL teams in active leagues
+      6. Capture refreshed token
+      7. Update last_sync timestamp
     """
     log.info("Syncing data for user %s ...", user.guid)
 
@@ -64,9 +71,6 @@ async def sync_user(
         log.error("yahoofantasy library not installed — cannot sync")
         return
 
-    # Create a per-user yahoofantasy context.
-    # The library handles token refresh internally.
-    # persist_key isolates file-based cache per user so users don't share stale data.
     ctx = Context(
         client_id=client_id,
         client_secret=client_secret,
@@ -80,8 +84,6 @@ async def sync_user(
     all_leagues: list[tuple[Any, str]] = []  # (league_obj, game_code)
 
     current_year = datetime.now().year
-    # Fetch current year and previous year (covers in-progress seasons
-    # like NBA 2025 running Oct 2025 – Apr 2026)
     seasons = [current_year, current_year - 1]
 
     for game_code in _GAME_CODES:
@@ -91,7 +93,6 @@ async def sync_user(
                 for league in leagues:
                     all_leagues.append((league, game_code))
             except Exception as exc:
-                # Some game/season combos just don't exist for a user
                 log.debug(
                     "No %s leagues for user %s season %d: %s",
                     game_code, user.guid, season, exc,
@@ -100,7 +101,7 @@ async def sync_user(
     log.info("Found %d leagues for user %s", len(all_leagues), user.guid)
 
     # ------------------------------------------------------------------
-    # 2. Upsert league metadata
+    # 2. Upsert league metadata + identify user's team in each league
     # ------------------------------------------------------------------
     for league_obj, game_code in all_leagues:
         league_data = serialize_league(league_obj, game_code)
@@ -115,10 +116,17 @@ async def sync_user(
             season=str(league_data["season"]),
             data=league_data,
         )
-        await db.upsert_yahoo_user_league(pool, user.guid, league_key)
+
+        # Find the user's team in this league and store it
+        team_key, team_name = _find_user_team(league_obj, user.guid)
+        await db.upsert_yahoo_user_league(
+            pool, user.guid, league_key,
+            team_key=team_key,
+            team_name=team_name,
+        )
 
     # ------------------------------------------------------------------
-    # 3. Standings for active (not finished) leagues
+    # 3. Filter to active (not finished) leagues
     # ------------------------------------------------------------------
     active_leagues = [
         (lo, gc) for lo, gc in all_leagues
@@ -126,8 +134,11 @@ async def sync_user(
     ]
     skipped = len(all_leagues) - len(active_leagues)
     if skipped > 0:
-        log.info("Skipping standings for %d finished leagues", skipped)
+        log.info("Skipping %d finished leagues", skipped)
 
+    # ------------------------------------------------------------------
+    # 4. Standings for active leagues
+    # ------------------------------------------------------------------
     for league_obj, game_code in active_leagues:
         league_key = getattr(league_obj, "league_key", "")
         await asyncio.sleep(_API_DELAY_SECS)
@@ -136,78 +147,93 @@ async def sync_user(
             standings_objs = league_obj.standings()
             standings_data = serialize_standings(standings_objs)
             await db.upsert_yahoo_standings(pool, league_key, standings_data)
-            log.info("Synced standings for league %s", league_key)
+            log.info("Synced standings for league %s (%d teams)", league_key, len(standings_data))
         except Exception as exc:
-            log.warning(
-                "Failed to fetch standings for league %s: %s", league_key, exc
-            )
+            log.warning("Failed standings for league %s: %s", league_key, exc)
 
     # ------------------------------------------------------------------
-    # 4. Matchups for active leagues (NEW — Rust never did this)
+    # 5. Matchups for active leagues — ALL matchups, league-wide
+    #    Only sync current_week and current_week-1 (completed) to limit
+    #    API calls.  Full history isn't needed for the dashboard/feed.
     # ------------------------------------------------------------------
     for league_obj, game_code in active_leagues:
         league_key = getattr(league_obj, "league_key", "")
         await asyncio.sleep(_API_DELAY_SECS)
 
         try:
-            weeks = league_obj.weeks()
-            # We need team keys for this user's teams in this league
-            team_keys = _get_user_team_keys(league_obj, user.guid)
+            current_week = _safe_int(league_obj, "current_week", 0)
+            if current_week <= 0:
+                log.debug("No current_week for league %s, skipping matchups", league_key)
+                continue
 
-            for team_key in team_keys:
-                matchup_data = serialize_matchups(weeks, team_key)
-                if matchup_data:
-                    await db.upsert_yahoo_matchups(pool, team_key, matchup_data)
-                    log.info(
-                        "Synced %d matchups for team %s",
-                        len(matchup_data), team_key,
+            # Sync current week + previous week
+            weeks_to_sync = [current_week]
+            if current_week > 1:
+                weeks_to_sync.append(current_week - 1)
+
+            for week_num in weeks_to_sync:
+                await asyncio.sleep(_API_DELAY_SECS)
+                try:
+                    week_obj = _get_week(league_obj, week_num)
+                    if week_obj is None:
+                        continue
+
+                    wk, matchup_data = serialize_week_matchups(week_obj)
+                    if wk <= 0:
+                        wk = week_num  # fallback to the requested week
+
+                    if matchup_data:
+                        await db.upsert_yahoo_matchups(pool, league_key, wk, matchup_data)
+                        log.info(
+                            "Synced %d matchups for league %s week %d",
+                            len(matchup_data), league_key, wk,
+                        )
+                except Exception as exc:
+                    log.warning(
+                        "Failed matchups for league %s week %d: %s",
+                        league_key, week_num, exc,
                     )
         except Exception as exc:
-            log.warning(
-                "Failed to fetch matchups for league %s: %s", league_key, exc
-            )
+            log.warning("Failed matchups for league %s: %s", league_key, exc)
 
     # ------------------------------------------------------------------
-    # 5. Rosters for user's teams in active leagues (NEW)
+    # 6. Rosters for ALL teams in active leagues
+    #    (Dashboard needs to show every team's roster, not just the user's)
     # ------------------------------------------------------------------
     for league_obj, game_code in active_leagues:
         league_key = getattr(league_obj, "league_key", "")
 
         try:
-            teams = _get_user_teams(league_obj, user.guid)
+            teams = _get_all_teams(league_obj)
             for team_obj in teams:
                 team_key = getattr(team_obj, "team_key", "")
+                team_name = _safe_str(team_obj, "name")
                 await asyncio.sleep(_API_DELAY_SECS)
 
                 try:
                     roster_obj = team_obj.roster()
-                    roster_data = serialize_roster(roster_obj)
-                    await db.upsert_yahoo_roster(
-                        pool, team_key, league_key, roster_data
+                    roster_data = serialize_roster(
+                        roster_obj,
+                        team_key=team_key,
+                        team_name=team_name,
                     )
-                    log.info("Synced roster for team %s", team_key)
+                    await db.upsert_yahoo_roster(pool, team_key, league_key, roster_data)
+                    log.info("Synced roster for team %s (%s)", team_key, team_name)
                 except Exception as exc:
-                    log.warning(
-                        "Failed to fetch roster for team %s: %s",
-                        team_key, exc,
-                    )
+                    log.warning("Failed roster for team %s: %s", team_key, exc)
         except Exception as exc:
-            log.warning(
-                "Failed to get teams for league %s: %s", league_key, exc
-            )
+            log.warning("Failed to get teams for league %s: %s", league_key, exc)
 
     # ------------------------------------------------------------------
-    # 6. Capture refreshed token if the library refreshed it
+    # 7. Capture refreshed token if the library refreshed it
     # ------------------------------------------------------------------
     new_refresh = getattr(ctx, "_refresh_token", None)
     if new_refresh and new_refresh != user.refresh_token:
-        log.info("Refresh token was updated for user %s, persisting...", user.guid)
-        await db.upsert_yahoo_user(
-            pool, user.guid, user.logto_sub, new_refresh
-        )
+        log.info("Refresh token updated for user %s, persisting...", user.guid)
+        await db.upsert_yahoo_user(pool, user.guid, user.logto_sub, new_refresh)
 
     # ------------------------------------------------------------------
-    # 7. Mark sync complete
+    # 8. Mark sync complete
     # ------------------------------------------------------------------
     await db.update_user_sync_time(pool, user.guid)
     log.info("Sync complete for user %s", user.guid)
@@ -247,7 +273,6 @@ async def discover_leagues(
     current_year = datetime.now().year
     seasons = [current_year, current_year - 1]
 
-    # Build the list of (game_code, season) combos to fetch
     combos = [(gc, s) for gc in _GAME_CODES for s in seasons]
 
     def _fetch_combo(game_code: str, season: int) -> list[tuple[Any, str]]:
@@ -280,7 +305,6 @@ async def discover_leagues(
 
     log.info("Discovered %d leagues for user %s", len(all_leagues), user.guid)
 
-    # Serialize without DB writes
     serialized: list[dict[str, Any]] = []
     for league_obj, game_code in all_leagues:
         try:
@@ -323,11 +347,8 @@ async def import_single_league(
         persist_key=user.guid,
     )
 
-    # Fetch leagues for this specific game_code + season
-    # (yahoofantasy file persistence may cache this from the discover call)
     leagues = ctx.get_leagues(game_code, season)
 
-    # Find the specific league by league_key
     target_league = None
     for league in leagues:
         if getattr(league, "league_key", "") == league_key:
@@ -348,7 +369,14 @@ async def import_single_league(
         season=str(league_data["season"]),
         data=league_data,
     )
-    await db.upsert_yahoo_user_league(pool, user.guid, league_key)
+
+    # Store user's team_key
+    team_key, team_name = _find_user_team(target_league, user.guid)
+    await db.upsert_yahoo_user_league(
+        pool, user.guid, league_key,
+        team_key=team_key,
+        team_name=team_name,
+    )
 
     result: dict[str, Any] = {"league": league_data, "standings": None}
 
@@ -365,32 +393,57 @@ async def import_single_league(
         except Exception as exc:
             log.warning("import: failed standings for %s: %s", league_key, exc)
 
-        # Matchups
+        # Matchups — all matchups for current week (league-wide)
         try:
-            await asyncio.sleep(_API_DELAY_SECS)
-            weeks = target_league.weeks()
-            team_keys = _get_user_team_keys(target_league, user.guid)
-            for team_key in team_keys:
-                matchup_data = serialize_matchups(weeks, team_key)
-                if matchup_data:
-                    await db.upsert_yahoo_matchups(pool, team_key, matchup_data)
-                    log.info("import: synced %d matchups for %s", len(matchup_data), team_key)
+            current_week = _safe_int(target_league, "current_week", 0)
+            if current_week > 0:
+                weeks_to_sync = [current_week]
+                if current_week > 1:
+                    weeks_to_sync.append(current_week - 1)
+
+                for week_num in weeks_to_sync:
+                    await asyncio.sleep(_API_DELAY_SECS)
+                    try:
+                        week_obj = _get_week(target_league, week_num)
+                        if week_obj is None:
+                            continue
+
+                        wk, matchup_data = serialize_week_matchups(week_obj)
+                        if wk <= 0:
+                            wk = week_num
+
+                        if matchup_data:
+                            await db.upsert_yahoo_matchups(pool, league_key, wk, matchup_data)
+                            log.info(
+                                "import: synced %d matchups for %s week %d",
+                                len(matchup_data), league_key, wk,
+                            )
+                    except Exception as exc:
+                        log.warning(
+                            "import: failed matchups for %s week %d: %s",
+                            league_key, week_num, exc,
+                        )
         except Exception as exc:
             log.warning("import: failed matchups for %s: %s", league_key, exc)
 
-        # Rosters
+        # Rosters — ALL teams (dashboard needs full league visibility)
         try:
-            teams = _get_user_teams(target_league, user.guid)
+            teams = _get_all_teams(target_league)
             for team_obj in teams:
-                team_key = getattr(team_obj, "team_key", "")
+                tk = getattr(team_obj, "team_key", "")
+                tn = _safe_str(team_obj, "name")
                 await asyncio.sleep(_API_DELAY_SECS)
                 try:
                     roster_obj = team_obj.roster()
-                    roster_data = serialize_roster(roster_obj)
-                    await db.upsert_yahoo_roster(pool, team_key, league_key, roster_data)
-                    log.info("import: synced roster for %s", team_key)
+                    roster_data = serialize_roster(
+                        roster_obj,
+                        team_key=tk,
+                        team_name=tn,
+                    )
+                    await db.upsert_yahoo_roster(pool, tk, league_key, roster_data)
+                    log.info("import: synced roster for %s", tk)
                 except Exception as exc:
-                    log.warning("import: failed roster for %s: %s", team_key, exc)
+                    log.warning("import: failed roster for %s: %s", tk, exc)
         except Exception as exc:
             log.warning("import: failed to get teams for %s: %s", league_key, exc)
     else:
@@ -402,7 +455,6 @@ async def import_single_league(
         log.info("import: refresh token updated for user %s, persisting...", user.guid)
         await db.upsert_yahoo_user(pool, user.guid, user.logto_sub, new_refresh)
 
-    # Update last_sync
     await db.update_user_sync_time(pool, user.guid)
     log.info("import: complete for league %s (user %s)", league_key, user.guid)
 
@@ -410,57 +462,84 @@ async def import_single_league(
 
 
 # ---------------------------------------------------------------------------
-# Helpers to find user's own teams in a league
+# Helpers
 # ---------------------------------------------------------------------------
 
-def _get_user_team_keys(league: Any, guid: str) -> list[str]:
-    """Return team_keys owned by the given Yahoo GUID in a league."""
-    teams = _get_user_teams(league, guid)
-    return [getattr(t, "team_key", "") for t in teams if getattr(t, "team_key", "")]
-
-
-def _get_user_teams(league: Any, guid: str) -> list:
+def _find_user_team(league: Any, guid: str) -> tuple[str | None, str | None]:
     """
-    Return Team objects owned by the given user in a league.
-
-    yahoofantasy doesn't directly expose ownership, so we use
-    league.teams() and check the manager GUID.  Fallback: return
-    all teams if we can't determine ownership (better to over-fetch
-    than miss data).
+    Find the team_key and team_name owned by the given Yahoo GUID in a league.
+    Returns (team_key, team_name) or (None, None) if not found.
     """
     try:
         teams = league.teams()
     except Exception:
-        return []
+        return None, None
 
     if not teams:
-        return []
+        return None, None
 
-    # Try to filter by manager guid
-    user_teams = []
     for team in teams:
         managers = getattr(team, "managers", None)
         if managers is None:
             managers = getattr(team, "manager", None)
-
         if managers is None:
             continue
 
-        if not isinstance(managers, list):
-            managers = [managers]
+        mgr_list = _as_list(
+            getattr(managers, "manager", managers)
+            if hasattr(managers, "manager") else managers
+        )
 
-        for mgr in managers:
+        for mgr in mgr_list:
             mgr_guid = getattr(mgr, "guid", None)
             if mgr_guid and str(mgr_guid) == guid:
-                user_teams.append(team)
-                break
+                return (
+                    _safe_str(team, "team_key") or None,
+                    _safe_str(team, "name") or None,
+                )
 
-    # If we couldn't identify any, return all teams — the serializer
-    # filters matchups by team_key anyway, so it's safe
-    if not user_teams:
-        return list(teams)
+    return None, None
 
-    return user_teams
+
+def _get_all_teams(league: Any) -> list:
+    """Return all Team objects in a league."""
+    try:
+        teams = league.teams()
+        return list(teams) if teams else []
+    except Exception:
+        return []
+
+
+def _get_week(league: Any, week_num: int) -> Any | None:
+    """
+    Get a single Week object from a league for the given week number.
+
+    yahoofantasy's league.weeks() returns all weeks but triggers API
+    calls for each.  Instead, we use league.scoreboard(week_num) which
+    returns the scoreboard for a specific week — much more efficient.
+
+    Falls back to league.weeks() and filtering if scoreboard() fails.
+    """
+    # Try the efficient path: scoreboard for a specific week
+    try:
+        scoreboard = league.scoreboard(week_num)
+        if scoreboard is not None:
+            return scoreboard
+    except Exception:
+        pass
+
+    # Fallback: get all weeks and find the right one
+    try:
+        weeks = league.weeks()
+        if weeks:
+            for week in weeks:
+                wn = getattr(week, "week_num", None)
+                if wn is not None and int(wn) == week_num:
+                    return week
+    except Exception:
+        pass
+
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -474,10 +553,6 @@ async def run_sync_loop(
     """
     Main sync loop.  Fetches all users and syncs each one, then sleeps
     for SYNC_INTERVAL_SECS (default 120s).
-
-    The entire function body is wrapped in try/except so that if this
-    coroutine is running inside asyncio.create_task(), any unexpected
-    crash is logged instead of silently swallowed.
     """
     try:
         client_id = os.environ["YAHOO_CLIENT_ID"]
@@ -534,6 +609,6 @@ async def run_sync_loop(
             "Sync loop crashed with unhandled exception: %s", exc,
             exc_info=True,
         )
-        raise  # Re-raise so the task's done_callback also sees it
+        raise
 
     log.info("Yahoo sync loop shut down")

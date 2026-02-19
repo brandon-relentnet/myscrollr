@@ -6,7 +6,6 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -22,31 +21,32 @@ import (
 // HealthProxyTimeout is the HTTP timeout for proxying health checks.
 const HealthProxyTimeout = 5 * time.Second
 
-// GetCache attempts to retrieve and deserialize a value from Redis.
-// Returns true if the cache hit was successful.
-func GetCache(rdb *redis.Client, key string, target interface{}) bool {
-	val, err := rdb.Get(context.Background(), key).Result()
-	if err != nil {
-		return false
-	}
+// =============================================================================
+// Redis Subscriber SET Helpers (used for CDC resolution)
+// =============================================================================
 
-	err = json.Unmarshal([]byte(val), target)
-	return err == nil
+// GetSubscribers returns all user subs in a Redis subscription set.
+func GetSubscribers(rdb *redis.Client, ctx context.Context, setKey string) ([]string, error) {
+	return rdb.SMembers(ctx, setKey).Result()
 }
 
-// SetCache serializes and stores a value in Redis with an expiration.
-func SetCache(rdb *redis.Client, key string, value interface{}, expiration time.Duration) {
-	data, err := json.Marshal(value)
-	if err != nil {
-		log.Printf("[Redis Error] Failed to marshal cache data for %s: %v", key, err)
-		return
-	}
-
-	err = rdb.Set(context.Background(), key, data, expiration).Err()
-	if err != nil {
-		log.Printf("[Redis Error] Failed to set cache for %s: %v", key, err)
+// AddSubscriber adds a user to a Redis subscriber set.
+func AddSubscriber(rdb *redis.Client, ctx context.Context, setKey, userSub string) {
+	if err := rdb.SAdd(ctx, setKey, userSub).Err(); err != nil {
+		log.Printf("[Redis] Failed to add subscriber %s to %s: %v", userSub, setKey, err)
 	}
 }
+
+// RemoveSubscriber removes a user from a Redis subscriber set.
+func RemoveSubscriber(rdb *redis.Client, ctx context.Context, setKey, userSub string) {
+	if err := rdb.SRem(ctx, setKey, userSub).Err(); err != nil {
+		log.Printf("[Redis] Failed to remove subscriber %s from %s: %v", userSub, setKey, err)
+	}
+}
+
+// =============================================================================
+// Health Proxy
+// =============================================================================
 
 // buildHealthURL ensures the URL ends with /health.
 func buildHealthURL(baseURL string) string {
@@ -82,6 +82,10 @@ func ProxyInternalHealth(c *fiber.Ctx, internalURL string) error {
 	return c.Status(resp.StatusCode).Send(body)
 }
 
+// =============================================================================
+// Encryption
+// =============================================================================
+
 // Encrypt encrypts a plaintext string using AES-256-GCM and returns a
 // base64-encoded ciphertext.
 func Encrypt(plaintext string) (string, error) {
@@ -109,6 +113,10 @@ func Encrypt(plaintext string) (string, error) {
 	ciphertext := gcm.Seal(nonce, nonce, []byte(plaintext), nil)
 	return base64.StdEncoding.EncodeToString(ciphertext), nil
 }
+
+// =============================================================================
+// URL / Environment Helpers
+// =============================================================================
 
 // CleanFQDN reads COOLIFY_FQDN from the environment and returns the bare
 // hostname with any scheme prefix (https://, http://) and trailing slash

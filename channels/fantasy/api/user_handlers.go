@@ -3,9 +3,7 @@ package main
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"database/sql"
-	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
@@ -26,16 +24,13 @@ import (
 
 // YahooStart initiates the Yahoo OAuth flow.
 func (a *App) YahooStart(c *fiber.Ctx) error {
-	log.Printf("[YahooStart] Hit — query logto_sub=%q, X-User-Sub=%q, cookie logto_sub=%q",
-		c.Query("logto_sub"), GetUserSub(c), c.Cookies("logto_sub"))
+	log.Printf("[YahooStart] Hit — query logto_sub=%q, X-User-Sub=%q",
+		c.Query("logto_sub"), GetUserSub(c))
 
 	// Extract logto_sub from query parameter (passed by frontend) or X-User-Sub header
 	logtoSub := c.Query("logto_sub")
 	if logtoSub == "" {
 		logtoSub = GetUserSub(c)
-	}
-	if logtoSub == "" {
-		logtoSub = c.Cookies("logto_sub")
 	}
 
 	if logtoSub == "" {
@@ -46,7 +41,7 @@ func (a *App) YahooStart(c *fiber.Ctx) error {
 
 	b := make([]byte, OAuthStateBytes)
 	rand.Read(b)
-	state := hex.EncodeToString(b)
+	state := fmt.Sprintf("%x", b)
 
 	// Store state and logto_sub mapping
 	pipe := a.rdb.Pipeline()
@@ -61,14 +56,16 @@ func (a *App) YahooStart(c *fiber.Ctx) error {
 	}
 
 	// Force Yahoo to show the login screen every time so the user can pick
-	// the correct Yahoo account.  Without this, the popup reuses the browser's
-	// Yahoo session and silently returns the first account's tokens.
+	// the correct Yahoo account.
 	authURL := a.yahooConfig.AuthCodeURL(state, oauth2.SetAuthURLParam("prompt", "login"))
 	log.Printf("[YahooStart] Redirecting to Yahoo OAuth (state=%s…) redirect_uri=%s", state[:8], a.yahooConfig.RedirectURL)
 	return c.Redirect(authURL, fiber.StatusTemporaryRedirect)
 }
 
 // YahooCallback handles the Yahoo OAuth callback.
+// No cookies are set — the Python service owns all Yahoo token management.
+// We only persist the refresh token to Postgres (encrypted) and populate
+// Redis CDC subscriber sets.
 func (a *App) YahooCallback(c *fiber.Ctx) error {
 	state, code := c.Query("state"), c.Query("code")
 	log.Printf("[YahooCallback] Hit — state=%q code_present=%v", state, code != "")
@@ -102,28 +99,14 @@ func (a *App) YahooCallback(c *fiber.Ctx) error {
 	log.Printf("[YahooCallback] Token exchange succeeded — access_token_len=%d refresh_token_present=%v expires=%v",
 		len(token.AccessToken), token.RefreshToken != "", token.Expiry)
 
-	c.Cookie(&fiber.Cookie{
-		Name: "yahoo-auth", Value: token.AccessToken,
-		Expires: time.Now().Add(YahooAuthCookieExpiry),
-		HTTPOnly: true, Secure: true, SameSite: "Strict", Path: "/",
-	})
-
 	if token.RefreshToken != "" {
-		c.Cookie(&fiber.Cookie{
-			Name: "yahoo-refresh", Value: token.RefreshToken,
-			Expires: time.Now().Add(YahooRefreshCookieExpiry),
-			HTTPOnly: true, Secure: true, SameSite: "Strict", Path: "/",
-		})
-
-		// Fetch GUID and persist for Active Sync — synchronous so we can
-		// return an error page if linking fails (instead of silently swallowing).
+		// Fetch GUID and persist — synchronous so we can return an error page
+		// if linking fails.
 		log.Printf("[YahooCallback] Linking Yahoo account (logto_sub=%s)…", logtoSub)
 		linkErr := a.fetchAndLinkYahooUser(token.AccessToken, token.RefreshToken, logtoSub)
 		if linkErr != nil {
 			log.Printf("[YahooCallback] Failed to link Yahoo account: %v", linkErr)
 
-			// Show a tailored message when the Yahoo account is already
-			// owned by a different Scrollr user.
 			userMsg := "Yahoo authentication succeeded, but we failed to link your account. Please try again."
 			if strings.Contains(linkErr.Error(), "already connected to another") {
 				userMsg = "This Yahoo account is already connected to a different Scrollr account. Please sign into a different Yahoo account or disconnect it from the other Scrollr account first."
@@ -146,8 +129,8 @@ func (a *App) YahooCallback(c *fiber.Ctx) error {
 
 	log.Printf("[YahooCallback] Auth complete — sending postMessage to %s and closing popup", frontendURL)
 	html := fmt.Sprintf(`<!doctype html><html><head><meta charset="utf-8"><title>Auth Complete</title></head>
-            <body style="font-family: ui-sans-serif, system-ui;"><script>(function() { try { if (window.opener) { window.opener.postMessage({ type: 'yahoo-auth-complete' }, '%s'); } } catch(e) { } setTimeout(function(){ window.close(); }, %d); })();</script>
-            <p>Authentication successful. You can close this window.</p></body></html>`, frontendURL, AuthPopupCloseDelayMs)
+		<body style="font-family: ui-sans-serif, system-ui;"><script>(function() { try { if (window.opener) { window.opener.postMessage({ type: 'yahoo-auth-complete' }, '%s'); } } catch(e) { } setTimeout(function(){ window.close(); }, %d); })();</script>
+		<p>Authentication successful. You can close this window.</p></body></html>`, frontendURL, AuthPopupCloseDelayMs)
 	c.Set("Content-Type", "text/html")
 	return c.Status(fiber.StatusOK).SendString(html)
 }
@@ -157,8 +140,7 @@ func (a *App) YahooCallback(c *fiber.Ctx) error {
 // =============================================================================
 
 // fetchAndLinkYahooUser fetches the Yahoo GUID for the given access token,
-// upserts the yahoo_users row, and caches the token→GUID mapping in Redis.
-// Returns an error if any step fails (instead of silently swallowing).
+// upserts the yahoo_users row, and populates the Redis guid→user CDC set.
 func (a *App) fetchAndLinkYahooUser(accessToken, refreshToken, logtoSub string) error {
 	log.Printf("[fetchAndLinkYahooUser] Starting — logto_sub=%s access_token_len=%d", logtoSub, len(accessToken))
 
@@ -211,9 +193,7 @@ func (a *App) fetchAndLinkYahooUser(accessToken, refreshToken, logtoSub string) 
 	}
 
 	// Safety check: make sure this Yahoo account isn't already linked to a
-	// *different* Scrollr user.  Without this guard the ON CONFLICT upsert
-	// silently reassigns the Yahoo GUID to the new logto_sub, causing the
-	// original owner to lose access and the new user to see the wrong data.
+	// *different* Scrollr user.
 	var existingSub string
 	checkErr := a.db.QueryRow(context.Background(),
 		"SELECT logto_sub FROM yahoo_users WHERE guid = $1", guid,
@@ -231,10 +211,8 @@ func (a *App) fetchAndLinkYahooUser(accessToken, refreshToken, logtoSub string) 
 
 	log.Printf("[Yahoo Sync] Registered user %s (Logto: %s) for active sync", guid, logtoIdentifier)
 
-	// Cache token→GUID mapping in Redis
-	h := sha256.Sum256([]byte(accessToken))
-	tokenHash := hex.EncodeToString(h[:])
-	a.rdb.Set(context.Background(), RedisTokenToGuidPrefix+tokenHash, guid, TokenToGuidTTL)
+	// Populate Redis guid→user mapping for CDC resolution
+	AddSubscriber(a.rdb, context.Background(), RedisGuidUserPrefix+guid, logtoIdentifier)
 
 	return nil
 }
@@ -248,7 +226,6 @@ func (a *App) GetYahooStatus(c *fiber.Ctx) error {
 	userID := GetUserSub(c)
 	log.Printf("[GetYahooStatus] Hit — X-User-Sub=%q", userID)
 	if userID == "" {
-		log.Println("[GetYahooStatus] No X-User-Sub header — returning 401")
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "unauthorized",
 			Error:  "Authentication required",
@@ -263,7 +240,6 @@ func (a *App) GetYahooStatus(c *fiber.Ctx) error {
 	if err != nil {
 		errStr := err.Error()
 		if err == sql.ErrNoRows || strings.Contains(errStr, "no rows") {
-			log.Printf("[GetYahooStatus] No yahoo_users row for logto_sub=%s — not connected", userID)
 			return c.JSON(YahooStatusResponse{Connected: false, Synced: false})
 		}
 		log.Printf("[GetYahooStatus] DB error for logto_sub=%s: %v", userID, err)
@@ -273,42 +249,40 @@ func (a *App) GetYahooStatus(c *fiber.Ctx) error {
 		})
 	}
 
-	log.Printf("[GetYahooStatus] logto_sub=%s connected=true synced=%v", userID, lastSync.Valid)
 	return c.JSON(YahooStatusResponse{
 		Connected: true,
 		Synced:    lastSync.Valid,
 	})
 }
 
-// GetMyYahooLeagues returns all yahoo leagues + standings for the authenticated user.
+// GetMyYahooLeagues returns all leagues + standings + matchups + rosters for
+// the authenticated user in a single response. This is the main data endpoint
+// for the dashboard — Postgres is the single source of truth.
 func (a *App) GetMyYahooLeagues(c *fiber.Ctx) error {
 	userID := GetUserSub(c)
-	log.Printf("[GetMyYahooLeagues] Hit — X-User-Sub=%q", userID)
 	if userID == "" {
-		log.Println("[GetMyYahooLeagues] No X-User-Sub header — returning 401")
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "unauthorized",
 			Error:  "Authentication required",
 		})
 	}
 
-	// Get user's GUID from logto_sub
+	// Resolve logto_sub → guid
 	var guid string
-	err := a.db.QueryRow(context.Background(), `
-		SELECT guid FROM yahoo_users WHERE logto_sub = $1
-	`, userID).Scan(&guid)
+	err := a.db.QueryRow(context.Background(),
+		"SELECT guid FROM yahoo_users WHERE logto_sub = $1", userID).Scan(&guid)
 	if err != nil {
-		log.Printf("[GetMyYahooLeagues] No GUID found for logto_sub=%s: %v — returning empty", userID, err)
-		return c.JSON(fiber.Map{"leagues": []any{}, "standings": map[string]any{}})
+		return c.JSON(MyLeaguesResponse{Leagues: []LeagueResponse{}})
 	}
-	log.Printf("[GetMyYahooLeagues] Resolved logto_sub=%s -> guid=%s", userID, guid)
 
-	// Fetch all leagues for this user via junction table
+	// Fetch all leagues for this user
 	leagueRows, err := a.db.Query(context.Background(), `
-		SELECT l.league_key, l.guid, l.name, l.game_code, l.season, l.data
+		SELECT l.league_key, l.name, l.game_code, l.season, l.data,
+		       ul.team_key, ul.team_name
 		FROM yahoo_leagues l
 		JOIN yahoo_user_leagues ul ON l.league_key = ul.league_key
 		WHERE ul.guid = $1
+		ORDER BY l.game_code, l.season DESC
 	`, guid)
 	if err != nil {
 		log.Printf("[GetMyYahooLeagues] League query error: %v", err)
@@ -316,54 +290,100 @@ func (a *App) GetMyYahooLeagues(c *fiber.Ctx) error {
 	}
 	defer leagueRows.Close()
 
-	leagues := make([]fiber.Map, 0)
+	leagues := make([]LeagueResponse, 0)
 	leagueKeys := make([]string, 0)
 	for leagueRows.Next() {
-		var lk, g, name, gameCode, season string
-		var data json.RawMessage
-		if err := leagueRows.Scan(&lk, &g, &name, &gameCode, &season, &data); err != nil {
+		var lr LeagueResponse
+		if err := leagueRows.Scan(
+			&lr.LeagueKey, &lr.Name, &lr.GameCode, &lr.Season, &lr.Data,
+			&lr.TeamKey, &lr.TeamName,
+		); err != nil {
+			log.Printf("[GetMyYahooLeagues] Scan error: %v", err)
 			continue
 		}
-		leagues = append(leagues, fiber.Map{
-			"league_key": lk,
-			"guid":       g,
-			"name":       name,
-			"game_code":  gameCode,
-			"season":     season,
-			"data":       json.RawMessage(data),
-		})
-		leagueKeys = append(leagueKeys, lk)
+		leagues = append(leagues, lr)
+		leagueKeys = append(leagueKeys, lr.LeagueKey)
 	}
 
-	// Fetch standings for all leagues
-	standings := make(map[string]json.RawMessage)
-	if len(leagueKeys) > 0 {
-		standingsRows, err := a.db.Query(context.Background(), `
-			SELECT league_key, data FROM yahoo_standings WHERE league_key = ANY($1)
-		`, leagueKeys)
-		if err == nil {
-			defer standingsRows.Close()
-			for standingsRows.Next() {
-				var lk string
-				var data json.RawMessage
-				if err := standingsRows.Scan(&lk, &data); err == nil {
-					standings[lk] = data
-				}
+	if len(leagues) == 0 {
+		return c.JSON(MyLeaguesResponse{Leagues: leagues})
+	}
+
+	// Batch-fetch standings
+	standingsMap := make(map[string]json.RawMessage)
+	standingsRows, err := a.db.Query(context.Background(),
+		"SELECT league_key, data FROM yahoo_standings WHERE league_key = ANY($1)", leagueKeys)
+	if err == nil {
+		defer standingsRows.Close()
+		for standingsRows.Next() {
+			var lk string
+			var data json.RawMessage
+			if err := standingsRows.Scan(&lk, &data); err == nil {
+				standingsMap[lk] = data
 			}
 		}
 	}
 
-	return c.JSON(fiber.Map{
-		"leagues":   leagues,
-		"standings": standings,
-	})
+	// Batch-fetch current matchups (most recent week per league)
+	matchupsMap := make(map[string]json.RawMessage)
+	matchupsRows, err := a.db.Query(context.Background(), `
+		SELECT DISTINCT ON (league_key) league_key, data
+		FROM yahoo_matchups
+		WHERE league_key = ANY($1)
+		ORDER BY league_key, week DESC
+	`, leagueKeys)
+	if err == nil {
+		defer matchupsRows.Close()
+		for matchupsRows.Next() {
+			var lk string
+			var data json.RawMessage
+			if err := matchupsRows.Scan(&lk, &data); err == nil {
+				matchupsMap[lk] = data
+			}
+		}
+	}
+
+	// Batch-fetch all rosters grouped by league
+	rostersMap := make(map[string]json.RawMessage)
+	rostersRows, err := a.db.Query(context.Background(), `
+		SELECT league_key,
+		       json_agg(json_build_object('team_key', team_key, 'data', data)) AS rosters
+		FROM yahoo_rosters
+		WHERE league_key = ANY($1)
+		GROUP BY league_key
+	`, leagueKeys)
+	if err == nil {
+		defer rostersRows.Close()
+		for rostersRows.Next() {
+			var lk string
+			var data json.RawMessage
+			if err := rostersRows.Scan(&lk, &data); err == nil {
+				rostersMap[lk] = data
+			}
+		}
+	}
+
+	// Attach data to each league
+	for i := range leagues {
+		lk := leagues[i].LeagueKey
+		if s, ok := standingsMap[lk]; ok {
+			leagues[i].Standings = s
+		}
+		if m, ok := matchupsMap[lk]; ok {
+			leagues[i].Matchups = m
+		}
+		if r, ok := rostersMap[lk]; ok {
+			leagues[i].Rosters = r
+		}
+	}
+
+	return c.JSON(MyLeaguesResponse{Leagues: leagues})
 }
 
 // DiscoverYahooLeagues calls the Python sync service to quickly discover all
 // Yahoo Fantasy leagues for the current user WITHOUT persisting them.
 func (a *App) DiscoverYahooLeagues(c *fiber.Ctx) error {
 	userID := GetUserSub(c)
-	log.Printf("[DiscoverYahooLeagues] Hit — X-User-Sub=%q", userID)
 	if userID == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "unauthorized",
@@ -376,13 +396,11 @@ func (a *App) DiscoverYahooLeagues(c *fiber.Ctx) error {
 		"SELECT guid FROM yahoo_users WHERE logto_sub = $1", userID,
 	).Scan(&guid)
 	if err != nil {
-		log.Printf("[DiscoverYahooLeagues] No GUID for logto_sub=%s: %v", userID, err)
 		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Yahoo account not connected",
 		})
 	}
-	log.Printf("[DiscoverYahooLeagues] Resolved logto_sub=%s -> guid=%s", userID, guid)
 
 	internalURL := strings.TrimSuffix(os.Getenv("INTERNAL_YAHOO_URL"), "/")
 	if internalURL == "" {
@@ -411,15 +429,15 @@ func (a *App) DiscoverYahooLeagues(c *fiber.Ctx) error {
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+	respBody, _ := io.ReadAll(resp.Body)
 	c.Set("Content-Type", "application/json")
-	return c.Status(resp.StatusCode).Send(body)
+	return c.Status(resp.StatusCode).Send(respBody)
 }
 
-// ImportYahooLeague calls the Python sync service to import a single league.
+// ImportYahooLeague calls the Python sync service to import a single league,
+// then populates the Redis CDC subscriber set for that league.
 func (a *App) ImportYahooLeague(c *fiber.Ctx) error {
 	userID := GetUserSub(c)
-	log.Printf("[ImportYahooLeague] Hit — X-User-Sub=%q", userID)
 	if userID == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "unauthorized",
@@ -432,15 +450,13 @@ func (a *App) ImportYahooLeague(c *fiber.Ctx) error {
 		"SELECT guid FROM yahoo_users WHERE logto_sub = $1", userID,
 	).Scan(&guid)
 	if err != nil {
-		log.Printf("[ImportYahooLeague] No GUID for logto_sub=%s: %v", userID, err)
 		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Yahoo account not connected",
 		})
 	}
-	log.Printf("[ImportYahooLeague] Resolved logto_sub=%s -> guid=%s", userID, guid)
 
-	// Parse the incoming request body to get league_key, game_code, season
+	// Parse the incoming request body
 	var incoming struct {
 		LeagueKey string `json:"league_key"`
 		GameCode  string `json:"game_code"`
@@ -496,95 +512,23 @@ func (a *App) ImportYahooLeague(c *fiber.Ctx) error {
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+	respBody, _ := io.ReadAll(resp.Body)
+
+	// On successful import, populate Redis CDC subscriber sets
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		ctx := context.Background()
+		a.AddLeagueSubscriber(ctx, incoming.LeagueKey, userID)
+		// Also ensure guid→user mapping exists
+		AddSubscriber(a.rdb, ctx, RedisGuidUserPrefix+guid, userID)
+		log.Printf("[ImportYahooLeague] Added user %s to CDC set for league %s", userID, incoming.LeagueKey)
+	}
+
 	c.Set("Content-Type", "application/json")
-	return c.Status(resp.StatusCode).Send(body)
+	return c.Status(resp.StatusCode).Send(respBody)
 }
 
-// DebugYahooState dumps the yahoo_users, yahoo_user_leagues, and yahoo_leagues
-// tables so we can inspect stale data.  TEMPORARY — remove after debugging.
-func (a *App) DebugYahooState(c *fiber.Ctx) error {
-	type userRow struct {
-		GUID     string  `json:"guid"`
-		LogtoSub string  `json:"logto_sub"`
-		LastSync *string `json:"last_sync"`
-	}
-	type userLeagueRow struct {
-		GUID      string `json:"guid"`
-		LeagueKey string `json:"league_key"`
-	}
-	type leagueRow struct {
-		LeagueKey string `json:"league_key"`
-		GUID      string `json:"guid"`
-		Name      string `json:"name"`
-		GameCode  string `json:"game_code"`
-		Season    string `json:"season"`
-	}
-
-	// yahoo_users
-	users := make([]userRow, 0)
-	uRows, err := a.db.Query(context.Background(), "SELECT guid, logto_sub, last_sync::text FROM yahoo_users ORDER BY logto_sub")
-	if err == nil {
-		defer uRows.Close()
-		for uRows.Next() {
-			var u userRow
-			var ls *string
-			if err := uRows.Scan(&u.GUID, &u.LogtoSub, &ls); err == nil {
-				u.LastSync = ls
-				users = append(users, u)
-			}
-		}
-	}
-
-	// yahoo_user_leagues
-	links := make([]userLeagueRow, 0)
-	lRows, err := a.db.Query(context.Background(), "SELECT guid, league_key FROM yahoo_user_leagues ORDER BY guid, league_key")
-	if err == nil {
-		defer lRows.Close()
-		for lRows.Next() {
-			var l userLeagueRow
-			if err := lRows.Scan(&l.GUID, &l.LeagueKey); err == nil {
-				links = append(links, l)
-			}
-		}
-	}
-
-	// yahoo_leagues (metadata only, no data blob)
-	leagues := make([]leagueRow, 0)
-	lgRows, err := a.db.Query(context.Background(), "SELECT league_key, guid, name, game_code, season FROM yahoo_leagues ORDER BY league_key")
-	if err == nil {
-		defer lgRows.Close()
-		for lgRows.Next() {
-			var lg leagueRow
-			if err := lgRows.Scan(&lg.LeagueKey, &lg.GUID, &lg.Name, &lg.GameCode, &lg.Season); err == nil {
-				leagues = append(leagues, lg)
-			}
-		}
-	}
-
-	// Also dump relevant Redis cache keys
-	redisKeys := make([]string, 0)
-	iter := a.rdb.Scan(context.Background(), 0, "cache:yahoo:*", 200).Iterator()
-	for iter.Next(context.Background()) {
-		redisKeys = append(redisKeys, iter.Val())
-	}
-	tokenKeys := make([]string, 0)
-	iter2 := a.rdb.Scan(context.Background(), 0, "token_to_guid:*", 200).Iterator()
-	for iter2.Next(context.Background()) {
-		val, _ := a.rdb.Get(context.Background(), iter2.Val()).Result()
-		tokenKeys = append(tokenKeys, iter2.Val()+"="+val)
-	}
-
-	return c.JSON(fiber.Map{
-		"yahoo_users":        users,
-		"yahoo_user_leagues": links,
-		"yahoo_leagues":      leagues,
-		"redis_cache_keys":   redisKeys,
-		"redis_token_guids":  tokenKeys,
-	})
-}
-
-// DisconnectYahoo removes the user's Yahoo connection and all associated data.
+// DisconnectYahoo removes the user's Yahoo connection and all associated data,
+// including Redis CDC subscriber sets.
 func (a *App) DisconnectYahoo(c *fiber.Ctx) error {
 	userID := GetUserSub(c)
 	if userID == "" {
@@ -596,40 +540,25 @@ func (a *App) DisconnectYahoo(c *fiber.Ctx) error {
 
 	// Look up the user's Yahoo GUID before deleting
 	var guid string
-	err := a.db.QueryRow(context.Background(), `
-		SELECT guid FROM yahoo_users WHERE logto_sub = $1
-	`, userID).Scan(&guid)
+	err := a.db.QueryRow(context.Background(),
+		"SELECT guid FROM yahoo_users WHERE logto_sub = $1", userID).Scan(&guid)
 	if err != nil {
 		return c.JSON(fiber.Map{"status": "ok", "message": "No Yahoo account connected"})
 	}
 
-	// Delete from yahoo_users — cascades to yahoo_leagues, yahoo_standings, yahoo_rosters
-	_, err = a.db.Exec(context.Background(), `
-		DELETE FROM yahoo_users WHERE logto_sub = $1
-	`, userID)
+	// Clean up Redis CDC subscriber sets BEFORE deleting DB rows
+	// (we need the user_leagues data to know which sets to clean)
+	a.CleanupLeagueSubscribers(context.Background(), guid, userID)
+
+	// Delete from yahoo_users — cascading deletes handle leagues, standings, etc.
+	_, err = a.db.Exec(context.Background(),
+		"DELETE FROM yahoo_users WHERE logto_sub = $1", userID)
 	if err != nil {
 		log.Printf("[DisconnectYahoo] Error deleting yahoo_users: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Failed to disconnect Yahoo account",
 		})
-	}
-
-	// Clear Redis cache keys for this user
-	cacheKeys := []string{
-		CacheKeyYahooLeaguesPrefix + guid,
-	}
-	for _, key := range cacheKeys {
-		a.rdb.Del(context.Background(), key)
-	}
-
-	// Clear any token_to_guid mappings (scan for matching GUID values)
-	iter := a.rdb.Scan(context.Background(), 0, RedisTokenToGuidPrefix+"*", RedisScanCount).Iterator()
-	for iter.Next(context.Background()) {
-		val, err := a.rdb.Get(context.Background(), iter.Val()).Result()
-		if err == nil && val == guid {
-			a.rdb.Del(context.Background(), iter.Val())
-		}
 	}
 
 	log.Printf("[DisconnectYahoo] User %s disconnected Yahoo (GUID: %s)", userID, guid)

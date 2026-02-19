@@ -35,8 +35,9 @@ async function syncActiveTabs(): Promise<void> {
     if (isVisible) visible.push(type);
   }
   // Preserve a stable order from the registry, unknown IDs appended alphabetically
-  const known = TAB_ORDER.filter((t) => visible.includes(t));
-  const unknown = visible.filter((t) => !TAB_ORDER.includes(t)).sort();
+  const order = TAB_ORDER as readonly string[];
+  const known = order.filter((t) => visible.includes(t));
+  const unknown = visible.filter((t) => !order.includes(t)).sort();
   const sorted = [...known, ...unknown];
   await activeFeedTabs.setValue(sorted);
 }

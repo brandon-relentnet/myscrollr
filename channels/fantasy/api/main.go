@@ -146,7 +146,7 @@ func main() {
 	}
 
 	// NOTE: We do NOT create the yahoo_users table here.
-	// The Rust yahoo_service owns that table and creates it on startup.
+	// The Python yahoo_service owns that table and creates it on startup.
 
 	// -------------------------------------------------------------------------
 	// Start Redis self-registration heartbeat
@@ -166,34 +166,22 @@ func main() {
 		DisableStartupMessage: false,
 	})
 
-	// Public routes (proxied by core gateway)
+	// Public routes (proxied by core gateway, no auth required)
 	fiberApp.Get("/yahoo/start", app.YahooStart)
 	fiberApp.Get("/yahoo/callback", app.YahooCallback)
 	fiberApp.Get("/yahoo/health", app.healthHandler)
 
-	// TEMPORARY debug route — remove after resolving stale data issue
-	fiberApp.Get("/debug/yahoo-state", app.DebugYahooState)
-
 	// Protected routes (core gateway sets X-User-Sub header)
-	fiberApp.Get("/yahoo/leagues", app.YahooLeagues)
-	fiberApp.Get("/yahoo/league/:league_key/standings", app.YahooStandings)
-	fiberApp.Get("/yahoo/team/:team_key/matchups", app.YahooMatchups)
-	fiberApp.Get("/yahoo/team/:team_key/roster", app.YahooRoster)
-
-	// User management (core gateway sets X-User-Sub header)
 	fiberApp.Get("/users/me/yahoo-status", app.GetYahooStatus)
 	fiberApp.Get("/users/me/yahoo-leagues", app.GetMyYahooLeagues)
 	fiberApp.Post("/users/me/yahoo-leagues/discover", app.DiscoverYahooLeagues)
 	fiberApp.Post("/users/me/yahoo-leagues/import", app.ImportYahooLeague)
 	fiberApp.Delete("/users/me/yahoo", app.DisconnectYahoo)
 
-	// Internal routes (called by core gateway directly)
+	// Internal routes (called by core gateway directly, not proxied)
 	fiberApp.Post("/internal/cdc", app.handleInternalCDC)
 	fiberApp.Get("/internal/dashboard", app.handleInternalDashboard)
 	fiberApp.Get("/internal/health", app.handleInternalHealth)
-
-	// TEMPORARY debug endpoint — remove after resolving stale data issue
-	fiberApp.Get("/internal/debug-yahoo-state", app.DebugYahooState)
 
 	// -------------------------------------------------------------------------
 	// Start server with graceful shutdown
@@ -244,14 +232,11 @@ func startRegistration(ctx context.Context, rdb *redis.Client) {
 		Capabilities: []string{"cdc_handler", "dashboard_provider", "health_checker"},
 		CDCTables:    []string{"yahoo_leagues", "yahoo_standings", "yahoo_matchups", "yahoo_rosters"},
 		Routes: []registrationRoute{
+			// Public (no auth)
 			{Method: "GET", Path: "/yahoo/start", Auth: false},
 			{Method: "GET", Path: "/yahoo/callback", Auth: false},
 			{Method: "GET", Path: "/yahoo/health", Auth: false},
-			{Method: "GET", Path: "/debug/yahoo-state", Auth: false}, // TEMPORARY
-			{Method: "GET", Path: "/yahoo/leagues", Auth: true},
-			{Method: "GET", Path: "/yahoo/league/:league_key/standings", Auth: true},
-			{Method: "GET", Path: "/yahoo/team/:team_key/matchups", Auth: true},
-			{Method: "GET", Path: "/yahoo/team/:team_key/roster", Auth: true},
+			// Protected (auth required)
 			{Method: "GET", Path: "/users/me/yahoo-status", Auth: true},
 			{Method: "GET", Path: "/users/me/yahoo-leagues", Auth: true},
 			{Method: "POST", Path: "/users/me/yahoo-leagues/discover", Auth: true},
