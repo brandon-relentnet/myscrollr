@@ -281,36 +281,66 @@ async def run_sync_loop(
     """
     Main sync loop.  Fetches all users and syncs each one, then sleeps
     for SYNC_INTERVAL_SECS (default 120s).
-    """
-    client_id = os.environ["YAHOO_CLIENT_ID"]
-    client_secret = os.environ["YAHOO_CLIENT_SECRET"]
 
-    interval = int(os.environ.get("SYNC_INTERVAL_SECS", "120"))
+    The entire function body is wrapped in try/except so that if this
+    coroutine is running inside asyncio.create_task(), any unexpected
+    crash is logged instead of silently swallowed.
+    """
+    try:
+        client_id = os.environ["YAHOO_CLIENT_ID"]
+        client_secret = os.environ["YAHOO_CLIENT_SECRET"]
+    except KeyError as exc:
+        log.error("Sync loop cannot start — missing env var: %s", exc)
+        return
+
+    raw_interval = os.environ.get("SYNC_INTERVAL_SECS", "").strip()
+    try:
+        interval = int(raw_interval) if raw_interval else 120
+    except ValueError:
+        log.warning(
+            "SYNC_INTERVAL_SECS=%r is not a valid integer, defaulting to 120s",
+            raw_interval,
+        )
+        interval = 120
+
     log.info(
         "Yahoo sync loop starting (interval=%ds, client_id=%s...)",
-        interval, client_id[:8],
+        interval, client_id[:8] if client_id else "<empty>",
     )
 
-    while not shutdown_event.is_set():
-        try:
-            users = await db.get_all_yahoo_users(pool)
-            log.info("Syncing %d Yahoo users...", len(users))
+    try:
+        while not shutdown_event.is_set():
+            try:
+                users = await db.get_all_yahoo_users(pool)
+                log.info("Syncing %d Yahoo users...", len(users))
 
-            for user in users:
+                for user in users:
+                    if shutdown_event.is_set():
+                        break
+                    try:
+                        await sync_user(user, pool, client_id, client_secret)
+                    except Exception as exc:
+                        log.error(
+                            "Failed to sync user %s: %s", user.guid, exc,
+                            exc_info=True,
+                        )
+
+            except Exception as exc:
+                log.error(
+                    "Failed to fetch users from DB: %s", exc, exc_info=True,
+                )
+
+            # Sleep in small increments so we can respond to shutdown quickly
+            for _ in range(interval):
                 if shutdown_event.is_set():
                     break
-                try:
-                    await sync_user(user, pool, client_id, client_secret)
-                except Exception as exc:
-                    log.error("Failed to sync user %s: %s", user.guid, exc)
+                await asyncio.sleep(1)
 
-        except Exception as exc:
-            log.error("Failed to fetch users from DB: %s", exc)
-
-        # Sleep in small increments so we can respond to shutdown quickly
-        for _ in range(interval):
-            if shutdown_event.is_set():
-                break
-            await asyncio.sleep(1)
+    except Exception as exc:
+        log.error(
+            "Sync loop crashed with unhandled exception: %s", exc,
+            exc_info=True,
+        )
+        raise  # Re-raise so the task's done_callback also sees it
 
     log.info("Yahoo sync loop shut down")

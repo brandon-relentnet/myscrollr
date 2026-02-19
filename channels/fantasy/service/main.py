@@ -60,6 +60,27 @@ _health = {
 # FastAPI app with lifespan
 # ---------------------------------------------------------------------------
 
+def _on_sync_task_done(task: asyncio.Task) -> None:
+    """Callback attached to the sync background task so exceptions are never silent."""
+    try:
+        exc = task.exception()
+    except asyncio.CancelledError:
+        log.info("Sync task was cancelled")
+        return
+    if exc is not None:
+        log.error("Sync task crashed with unhandled exception: %s", exc, exc_info=exc)
+
+
+def _check_required_env(name: str) -> str:
+    """Return the env var value or log a FATAL-level message and raise."""
+    val = os.environ.get(name, "")
+    if not val:
+        msg = f"Required environment variable {name} is missing or empty"
+        log.error(msg)
+        raise RuntimeError(msg)
+    return val
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup: create DB pool, tables, and launch sync loop. Shutdown: clean up."""
@@ -67,12 +88,27 @@ async def lifespan(app: FastAPI):
 
     log.info("Yahoo Worker Service starting...")
 
+    # Validate required env vars BEFORE creating the task so failures are loud
+    try:
+        _check_required_env("YAHOO_CLIENT_ID")
+        _check_required_env("YAHOO_CLIENT_SECRET")
+        _check_required_env("ENCRYPTION_KEY")
+        log.info("Required env vars validated (YAHOO_CLIENT_ID, YAHOO_CLIENT_SECRET, ENCRYPTION_KEY)")
+    except RuntimeError as exc:
+        log.error("Cannot start sync loop — %s", exc)
+        # Still yield so the health endpoint runs (reports unhealthy)
+        _health["status"] = "unhealthy"
+        _health["last_error"] = str(exc)
+        yield
+        return
+
     # Create DB pool and ensure tables exist
     _pool = await db.create_pool()
     await db.create_tables(_pool)
 
-    # Start the background sync loop
+    # Start the background sync loop with exception logging
     _sync_task = asyncio.create_task(run_sync_loop(_pool, _shutdown_event))
+    _sync_task.add_done_callback(_on_sync_task_done)
 
     yield
 

@@ -49,6 +49,29 @@ type App struct {
 	yahooConfig *oauth2.Config
 }
 
+// resolveFrontendURL returns the URL to use for postMessage targetOrigin.
+// Priority: FRONTEND_URL env > first origin in ALLOWED_ORIGINS > DefaultFrontendURL.
+func resolveFrontendURL() string {
+	if v := strings.TrimSpace(os.Getenv("FRONTEND_URL")); v != "" {
+		return ValidateURL(v, DefaultFrontendURL)
+	}
+
+	// ALLOWED_ORIGINS is a comma-separated list of origins the core gateway
+	// accepts (e.g. "https://myscrollr.relentnet.dev,https://myscrollr.com").
+	// The first entry is typically the primary frontend.
+	if origins := strings.TrimSpace(os.Getenv("ALLOWED_ORIGINS")); origins != "" {
+		first := strings.SplitN(origins, ",", 2)[0]
+		first = strings.TrimSpace(first)
+		if first != "" {
+			log.Printf("[FrontendURL] FRONTEND_URL not set, deriving from ALLOWED_ORIGINS: %s", first)
+			return ValidateURL(first, DefaultFrontendURL)
+		}
+	}
+
+	log.Printf("[Security Warning] FRONTEND_URL and ALLOWED_ORIGINS not set, using default %s", DefaultFrontendURL)
+	return DefaultFrontendURL
+}
+
 // =============================================================================
 // Internal Routes (called by core gateway)
 // =============================================================================

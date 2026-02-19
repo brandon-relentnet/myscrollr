@@ -12,7 +12,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -131,10 +130,7 @@ func (a *App) YahooCallback(c *fiber.Ctx) error {
 		log.Println("[YahooCallback] Warning: No refresh token received from Yahoo")
 	}
 
-	frontendURL := ValidateURL(os.Getenv("FRONTEND_URL"), DefaultFrontendURL)
-	if os.Getenv("FRONTEND_URL") == "" {
-		log.Printf("[Security Warning] FRONTEND_URL not set, defaulting to %s for postMessage", DefaultFrontendURL)
-	}
+	frontendURL := resolveFrontendURL()
 
 	log.Printf("[YahooCallback] Auth complete — sending postMessage to %s and closing popup", frontendURL)
 	html := fmt.Sprintf(`<!doctype html><html><head><meta charset="utf-8"><title>Auth Complete</title></head>
