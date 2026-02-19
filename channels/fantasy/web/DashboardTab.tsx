@@ -298,11 +298,12 @@ function FantasyDashboardTab({
       setImportStatuses({ ...statuses })
     }
 
-    // All done — switch to connected
+    // All done — switch to connected.
+    // Don't call fetchYahooData() here: the local state is already up-to-date
+    // from the per-league updates above, and a refetch could overwrite it with
+    // empty data if the API call fails or returns before the DB commits flush.
     setPhase('connected')
-    // Refresh data to get full picture from DB
-    await fetchYahooData()
-  }, [selectedKeys, discoveredLeagues, getToken, fetchYahooData])
+  }, [selectedKeys, discoveredLeagues, getToken])
 
   // ── Listen for Yahoo auth popup completion ──────────────────────
 
