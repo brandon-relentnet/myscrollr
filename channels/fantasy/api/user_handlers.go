@@ -59,7 +59,10 @@ func (a *App) YahooStart(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to store state"})
 	}
 
-	authURL := a.yahooConfig.AuthCodeURL(state)
+	// Force Yahoo to show the login screen every time so the user can pick
+	// the correct Yahoo account.  Without this, the popup reuses the browser's
+	// Yahoo session and silently returns the first account's tokens.
+	authURL := a.yahooConfig.AuthCodeURL(state, oauth2.SetAuthURLParam("prompt", "login"))
 	log.Printf("[YahooStart] Redirecting to Yahoo OAuth (state=%s…) redirect_uri=%s", state[:8], a.yahooConfig.RedirectURL)
 	return c.Redirect(authURL, fiber.StatusTemporaryRedirect)
 }
@@ -117,14 +120,21 @@ func (a *App) YahooCallback(c *fiber.Ctx) error {
 		linkErr := a.fetchAndLinkYahooUser(token.AccessToken, token.RefreshToken, logtoSub)
 		if linkErr != nil {
 			log.Printf("[YahooCallback] Failed to link Yahoo account: %v", linkErr)
-			// Still show the user a meaningful error instead of a false success
+
+			// Show a tailored message when the Yahoo account is already
+			// owned by a different Scrollr user.
+			userMsg := "Yahoo authentication succeeded, but we failed to link your account. Please try again."
+			if strings.Contains(linkErr.Error(), "already connected to another") {
+				userMsg = "This Yahoo account is already connected to a different Scrollr account. Please sign into a different Yahoo account or disconnect it from the other Scrollr account first."
+			}
+
 			html := fmt.Sprintf(`<!doctype html><html><head><meta charset="utf-8"><title>Auth Error</title></head>
-				<body style="font-family: ui-sans-serif, system-ui;">
-				<p>Yahoo authentication succeeded, but we failed to link your account. Please try again.</p>
+				<body style="font-family: ui-sans-serif, system-ui; max-width: 420px; margin: 2rem auto; line-height: 1.5;">
+				<p>%s</p>
 				<script>setTimeout(function(){ window.close(); }, %d);</script>
-				</body></html>`, AuthPopupCloseDelayMs)
+				</body></html>`, userMsg, AuthPopupCloseDelayMs)
 			c.Set("Content-Type", "text/html")
-			return c.Status(fiber.StatusInternalServerError).SendString(html)
+			return c.Status(fiber.StatusConflict).SendString(html)
 		}
 		log.Printf("[YahooCallback] Yahoo account linked successfully")
 	} else {
@@ -197,6 +207,20 @@ func (a *App) fetchAndLinkYahooUser(accessToken, refreshToken, logtoSub string) 
 	if logtoIdentifier == "" {
 		log.Printf("[fetchAndLinkYahooUser] No logto_sub, falling back to GUID=%s as identifier", guid)
 		logtoIdentifier = guid
+	}
+
+	// Safety check: make sure this Yahoo account isn't already linked to a
+	// *different* Scrollr user.  Without this guard the ON CONFLICT upsert
+	// silently reassigns the Yahoo GUID to the new logto_sub, causing the
+	// original owner to lose access and the new user to see the wrong data.
+	var existingSub string
+	checkErr := a.db.QueryRow(context.Background(),
+		"SELECT logto_sub FROM yahoo_users WHERE guid = $1", guid,
+	).Scan(&existingSub)
+	if checkErr == nil && existingSub != logtoIdentifier {
+		log.Printf("[fetchAndLinkYahooUser] BLOCKED — Yahoo GUID %s already linked to logto_sub=%s, current user is logto_sub=%s",
+			guid, existingSub, logtoIdentifier)
+		return fmt.Errorf("this Yahoo account is already connected to another Scrollr account")
 	}
 
 	log.Printf("[fetchAndLinkYahooUser] Upserting user — guid=%s logto_sub=%s", guid, logtoIdentifier)
