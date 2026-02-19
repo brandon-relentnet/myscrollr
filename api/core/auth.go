@@ -105,8 +105,11 @@ func ValidateToken(tokenString string) (sub string, claims jwt.MapClaims, err er
 	return sub, mapClaims, nil
 }
 
-// LogtoAuth is the middleware that validates the Logto JWT.
-func LogtoAuth(c *fiber.Ctx) error {
+// ValidateAuth extracts and validates the JWT from the request, setting
+// user_id and user_roles in c.Locals. It does NOT call c.Next(), making it
+// safe to use inline (e.g. from the dynamic proxy) without advancing
+// Fiber's handler chain.
+func ValidateAuth(c *fiber.Ctx) error {
 	tokenString := ""
 	authHeader := c.Get("Authorization")
 
@@ -152,5 +155,15 @@ func LogtoAuth(c *fiber.Ctx) error {
 	}
 	c.Locals("user_roles", roles)
 
+	return nil
+}
+
+// LogtoAuth is the Fiber middleware that validates the Logto JWT and advances
+// to the next handler. For inline auth checks (e.g. in the dynamic proxy),
+// use ValidateAuth instead.
+func LogtoAuth(c *fiber.Ctx) error {
+	if err := ValidateAuth(c); err != nil {
+		return err
+	}
 	return c.Next()
 }

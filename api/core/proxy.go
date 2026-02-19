@@ -56,16 +56,11 @@ func dynamicProxyHandler(c *fiber.Ctx) error {
 		log.Printf("[Proxy] Matched %s %s -> channel=%s url=%s auth=%v",
 			requestMethod, requestPath, intg.Name, intg.InternalURL, route.Auth)
 
-		// If auth is required, run LogtoAuth middleware inline
+		// If auth is required, validate the JWT inline (without c.Next())
 		if route.Auth {
-			if err := LogtoAuth(c); err != nil {
-				log.Printf("[Proxy] LogtoAuth error for %s %s: %v", requestMethod, requestPath, err)
+			if err := ValidateAuth(c); err != nil {
+				log.Printf("[Proxy] Auth failed for %s %s: %v", requestMethod, requestPath, err)
 				return err
-			}
-			// Check if LogtoAuth already sent a response (e.g., 401)
-			if c.Response().StatusCode() == fiber.StatusUnauthorized {
-				log.Printf("[Proxy] LogtoAuth returned 401 for %s %s", requestMethod, requestPath)
-				return nil
 			}
 		}
 
