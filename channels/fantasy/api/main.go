@@ -171,6 +171,9 @@ func main() {
 	fiberApp.Get("/yahoo/callback", app.YahooCallback)
 	fiberApp.Get("/yahoo/health", app.healthHandler)
 
+	// TEMPORARY debug route — remove after resolving stale data issue
+	fiberApp.Get("/debug/yahoo-state", app.DebugYahooState)
+
 	// Protected routes (core gateway sets X-User-Sub header)
 	fiberApp.Get("/yahoo/leagues", app.YahooLeagues)
 	fiberApp.Get("/yahoo/league/:league_key/standings", app.YahooStandings)
@@ -188,6 +191,9 @@ func main() {
 	fiberApp.Post("/internal/cdc", app.handleInternalCDC)
 	fiberApp.Get("/internal/dashboard", app.handleInternalDashboard)
 	fiberApp.Get("/internal/health", app.handleInternalHealth)
+
+	// TEMPORARY debug endpoint — remove after resolving stale data issue
+	fiberApp.Get("/internal/debug-yahoo-state", app.DebugYahooState)
 
 	// -------------------------------------------------------------------------
 	// Start server with graceful shutdown
@@ -241,6 +247,7 @@ func startRegistration(ctx context.Context, rdb *redis.Client) {
 			{Method: "GET", Path: "/yahoo/start", Auth: false},
 			{Method: "GET", Path: "/yahoo/callback", Auth: false},
 			{Method: "GET", Path: "/yahoo/health", Auth: false},
+			{Method: "GET", Path: "/debug/yahoo-state", Auth: false}, // TEMPORARY
 			{Method: "GET", Path: "/yahoo/leagues", Auth: true},
 			{Method: "GET", Path: "/yahoo/league/:league_key/standings", Auth: true},
 			{Method: "GET", Path: "/yahoo/team/:team_key/matchups", Auth: true},

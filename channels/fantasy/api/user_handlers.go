@@ -500,6 +500,89 @@ func (a *App) ImportYahooLeague(c *fiber.Ctx) error {
 	return c.Status(resp.StatusCode).Send(body)
 }
 
+// DebugYahooState dumps the yahoo_users, yahoo_user_leagues, and yahoo_leagues
+// tables so we can inspect stale data.  TEMPORARY — remove after debugging.
+func (a *App) DebugYahooState(c *fiber.Ctx) error {
+	type userRow struct {
+		GUID     string  `json:"guid"`
+		LogtoSub string  `json:"logto_sub"`
+		LastSync *string `json:"last_sync"`
+	}
+	type userLeagueRow struct {
+		GUID      string `json:"guid"`
+		LeagueKey string `json:"league_key"`
+	}
+	type leagueRow struct {
+		LeagueKey string `json:"league_key"`
+		GUID      string `json:"guid"`
+		Name      string `json:"name"`
+		GameCode  string `json:"game_code"`
+		Season    string `json:"season"`
+	}
+
+	// yahoo_users
+	users := make([]userRow, 0)
+	uRows, err := a.db.Query(context.Background(), "SELECT guid, logto_sub, last_sync::text FROM yahoo_users ORDER BY logto_sub")
+	if err == nil {
+		defer uRows.Close()
+		for uRows.Next() {
+			var u userRow
+			var ls *string
+			if err := uRows.Scan(&u.GUID, &u.LogtoSub, &ls); err == nil {
+				u.LastSync = ls
+				users = append(users, u)
+			}
+		}
+	}
+
+	// yahoo_user_leagues
+	links := make([]userLeagueRow, 0)
+	lRows, err := a.db.Query(context.Background(), "SELECT guid, league_key FROM yahoo_user_leagues ORDER BY guid, league_key")
+	if err == nil {
+		defer lRows.Close()
+		for lRows.Next() {
+			var l userLeagueRow
+			if err := lRows.Scan(&l.GUID, &l.LeagueKey); err == nil {
+				links = append(links, l)
+			}
+		}
+	}
+
+	// yahoo_leagues (metadata only, no data blob)
+	leagues := make([]leagueRow, 0)
+	lgRows, err := a.db.Query(context.Background(), "SELECT league_key, guid, name, game_code, season FROM yahoo_leagues ORDER BY league_key")
+	if err == nil {
+		defer lgRows.Close()
+		for lgRows.Next() {
+			var lg leagueRow
+			if err := lgRows.Scan(&lg.LeagueKey, &lg.GUID, &lg.Name, &lg.GameCode, &lg.Season); err == nil {
+				leagues = append(leagues, lg)
+			}
+		}
+	}
+
+	// Also dump relevant Redis cache keys
+	redisKeys := make([]string, 0)
+	iter := a.rdb.Scan(context.Background(), 0, "cache:yahoo:*", 200).Iterator()
+	for iter.Next(context.Background()) {
+		redisKeys = append(redisKeys, iter.Val())
+	}
+	tokenKeys := make([]string, 0)
+	iter2 := a.rdb.Scan(context.Background(), 0, "token_to_guid:*", 200).Iterator()
+	for iter2.Next(context.Background()) {
+		val, _ := a.rdb.Get(context.Background(), iter2.Val()).Result()
+		tokenKeys = append(tokenKeys, iter2.Val()+"="+val)
+	}
+
+	return c.JSON(fiber.Map{
+		"yahoo_users":        users,
+		"yahoo_user_leagues": links,
+		"yahoo_leagues":      leagues,
+		"redis_cache_keys":   redisKeys,
+		"redis_token_guids":  tokenKeys,
+	})
+}
+
 // DisconnectYahoo removes the user's Yahoo connection and all associated data.
 func (a *App) DisconnectYahoo(c *fiber.Ctx) error {
 	userID := GetUserSub(c)
