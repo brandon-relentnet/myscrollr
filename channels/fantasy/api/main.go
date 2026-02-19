@@ -16,6 +16,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/yahoo"
 )
 
 // =============================================================================
@@ -136,10 +137,9 @@ func main() {
 	yahooConfig := &oauth2.Config{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
-		Scopes:       []string{"fspt-r"},
 		Endpoint: oauth2.Endpoint{
-			AuthURL:   "https://api.login.yahoo.com/oauth2/request_auth",
-			TokenURL:  "https://api.login.yahoo.com/oauth2/get_token",
+			AuthURL:   yahoo.Endpoint.AuthURL,
+			TokenURL:  yahoo.Endpoint.TokenURL,
 			AuthStyle: oauth2.AuthStyleInHeader,
 		},
 		RedirectURL: redirectURL,
