@@ -37,6 +37,8 @@ func dynamicProxyHandler(c *fiber.Ctx) error {
 
 	// Find a matching channel route
 	routes := GetChannelRoutes()
+	log.Printf("[Proxy] %s %s — checking %d channel route(s)", requestMethod, requestPath, len(routes))
+
 	for _, entry := range routes {
 		route := entry.Route
 		intg := entry.Channel
@@ -51,13 +53,18 @@ func dynamicProxyHandler(c *fiber.Ctx) error {
 			continue
 		}
 
+		log.Printf("[Proxy] Matched %s %s -> channel=%s url=%s auth=%v",
+			requestMethod, requestPath, intg.Name, intg.InternalURL, route.Auth)
+
 		// If auth is required, run LogtoAuth middleware inline
 		if route.Auth {
 			if err := LogtoAuth(c); err != nil {
+				log.Printf("[Proxy] LogtoAuth error for %s %s: %v", requestMethod, requestPath, err)
 				return err
 			}
 			// Check if LogtoAuth already sent a response (e.g., 401)
 			if c.Response().StatusCode() == fiber.StatusUnauthorized {
+				log.Printf("[Proxy] LogtoAuth returned 401 for %s %s", requestMethod, requestPath)
 				return nil
 			}
 		}
@@ -72,6 +79,7 @@ func dynamicProxyHandler(c *fiber.Ctx) error {
 	}
 
 	// No matching route found — return 404
+	log.Printf("[Proxy] No matching channel route for %s %s (checked %d routes)", requestMethod, requestPath, len(routes))
 	return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 		"status": "error",
 		"error":  "Not found",
