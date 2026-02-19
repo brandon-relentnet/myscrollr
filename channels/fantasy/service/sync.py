@@ -115,6 +115,7 @@ async def sync_user(
             season=str(league_data["season"]),
             data=league_data,
         )
+        await db.upsert_yahoo_user_league(pool, user.guid, league_key)
 
     # ------------------------------------------------------------------
     # 3. Standings for active (not finished) leagues
@@ -347,6 +348,7 @@ async def import_single_league(
         season=str(league_data["season"]),
         data=league_data,
     )
+    await db.upsert_yahoo_user_league(pool, user.guid, league_key)
 
     result: dict[str, Any] = {"league": league_data, "standings": None}
 

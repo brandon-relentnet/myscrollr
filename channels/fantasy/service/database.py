@@ -104,6 +104,13 @@ CREATE TABLE IF NOT EXISTS yahoo_matchups (
     data JSONB NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS yahoo_user_leagues (
+    guid VARCHAR(100) NOT NULL REFERENCES yahoo_users(guid) ON DELETE CASCADE,
+    league_key VARCHAR(50) NOT NULL REFERENCES yahoo_leagues(league_key) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (guid, league_key)
+);
 """
 
 
@@ -299,6 +306,24 @@ async def upsert_yahoo_roster(
             team_key,
             league_key,
             json.dumps(data),
+        )
+
+
+async def upsert_yahoo_user_league(
+    pool: asyncpg.Pool,
+    guid: str,
+    league_key: str,
+) -> None:
+    """Record that a user is a member of a league (junction table)."""
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO yahoo_user_leagues (guid, league_key)
+            VALUES ($1, $2)
+            ON CONFLICT (guid, league_key) DO NOTHING
+            """,
+            guid,
+            league_key,
         )
 
 

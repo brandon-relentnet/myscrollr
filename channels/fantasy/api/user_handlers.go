@@ -278,9 +278,12 @@ func (a *App) GetMyYahooLeagues(c *fiber.Ctx) error {
 	}
 	log.Printf("[GetMyYahooLeagues] Resolved logto_sub=%s -> guid=%s", userID, guid)
 
-	// Fetch all leagues for this user
+	// Fetch all leagues for this user via junction table
 	leagueRows, err := a.db.Query(context.Background(), `
-		SELECT league_key, guid, name, game_code, season, data FROM yahoo_leagues WHERE guid = $1
+		SELECT l.league_key, l.guid, l.name, l.game_code, l.season, l.data
+		FROM yahoo_leagues l
+		JOIN yahoo_user_leagues ul ON l.league_key = ul.league_key
+		WHERE ul.guid = $1
 	`, guid)
 	if err != nil {
 		log.Printf("[GetMyYahooLeagues] League query error: %v", err)
