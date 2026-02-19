@@ -17,6 +17,7 @@ services:
       - COOLIFY_FQDN=${COOLIFY_FQDN}
       - YAHOO_CLIENT_ID=${YAHOO_CLIENT_ID}
       - YAHOO_CLIENT_SECRET=${YAHOO_CLIENT_SECRET}
+      - YAHOO_CALLBACK_URL=${YAHOO_CALLBACK_URL}
       - FRONTEND_URL=${FRONTEND_URL}
       - INTERNAL_YAHOO_URL=http://scrollr-fantasy-service:3003
     restart: unless-stopped
