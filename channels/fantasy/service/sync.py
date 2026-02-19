@@ -13,7 +13,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import tempfile
 from datetime import datetime
 from typing import Any
 
@@ -28,12 +27,6 @@ from serializers import (
 )
 
 log = logging.getLogger("yahoo-sync")
-
-# yahoofantasy uses file-based caching; we point it to a temp dir so
-# Docker containers don't accumulate stale cache.  Import is deferred
-# to inside functions so module-level import doesn't fail if the lib
-# isn't installed yet (helps with testing).
-_CACHE_DIR = os.path.join(tempfile.gettempdir(), "yahoofantasy_cache")
 
 # Supported game codes (must match Rust's categorisation)
 _GAME_CODES = ("nfl", "nba", "nhl", "mlb")
@@ -71,11 +64,12 @@ async def sync_user(
 
     # Create a per-user yahoofantasy context.
     # The library handles token refresh internally.
+    # persist_key isolates file-based cache per user so users don't share stale data.
     ctx = Context(
         client_id=client_id,
         client_secret=client_secret,
         refresh_token=user.refresh_token,
-        cache_dir=_CACHE_DIR,
+        persist_key=user.guid,
     )
 
     # ------------------------------------------------------------------
