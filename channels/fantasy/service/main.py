@@ -21,8 +21,10 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
+from pydantic import BaseModel
+
 import database as db
-from sync import run_sync_loop
+from sync import discover_leagues, import_single_league, run_sync_loop
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -136,6 +138,110 @@ app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None)
 async def health():
     """Health check endpoint consumed by the Go API's ProxyInternalHealth."""
     return JSONResponse(content=_health)
+
+
+# ---------------------------------------------------------------------------
+# League discovery & import endpoints
+# ---------------------------------------------------------------------------
+
+@app.post("/discover/{guid}")
+async def discover(guid: str):
+    """
+    Fast league discovery — returns all Yahoo Fantasy leagues for a user
+    without persisting anything to the database.  Called by the Go API
+    after OAuth completes (or from the "Add Leagues" button).
+    """
+    if not _pool:
+        return JSONResponse(
+            status_code=503,
+            content={"error": "Service not ready — database pool unavailable"},
+        )
+
+    user = await db.get_yahoo_user_by_guid(_pool, guid)
+    if user is None:
+        return JSONResponse(
+            status_code=404,
+            content={"error": f"Yahoo user {guid} not found"},
+        )
+
+    try:
+        client_id = os.environ["YAHOO_CLIENT_ID"]
+        client_secret = os.environ["YAHOO_CLIENT_SECRET"]
+    except KeyError as exc:
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Missing env var: {exc}"},
+        )
+
+    try:
+        leagues = await discover_leagues(user, client_id, client_secret)
+    except Exception as exc:
+        log.error("discover failed for %s: %s", guid, exc, exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Discovery failed: {exc}"},
+        )
+
+    return JSONResponse(content={"leagues": leagues})
+
+
+class ImportLeagueRequest(BaseModel):
+    guid: str
+    league_key: str
+    game_code: str
+    season: int
+
+
+@app.post("/import-league")
+async def import_league(req: ImportLeagueRequest):
+    """
+    Import a single league — fetches full data from Yahoo and persists
+    league metadata, standings, matchups, and rosters to the database.
+    Returns the imported data for immediate frontend rendering.
+    """
+    if not _pool:
+        return JSONResponse(
+            status_code=503,
+            content={"error": "Service not ready — database pool unavailable"},
+        )
+
+    user = await db.get_yahoo_user_by_guid(_pool, req.guid)
+    if user is None:
+        return JSONResponse(
+            status_code=404,
+            content={"error": f"Yahoo user {req.guid} not found"},
+        )
+
+    try:
+        client_id = os.environ["YAHOO_CLIENT_ID"]
+        client_secret = os.environ["YAHOO_CLIENT_SECRET"]
+    except KeyError as exc:
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Missing env var: {exc}"},
+        )
+
+    try:
+        result = await import_single_league(
+            user, _pool, client_id, client_secret,
+            req.league_key, req.game_code, req.season,
+        )
+    except ValueError as exc:
+        return JSONResponse(
+            status_code=404,
+            content={"error": str(exc)},
+        )
+    except Exception as exc:
+        log.error(
+            "import failed for %s league %s: %s",
+            req.guid, req.league_key, exc, exc_info=True,
+        )
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Import failed: {exc}"},
+        )
+
+    return JSONResponse(content={"status": "ok", **result})
 
 
 # ---------------------------------------------------------------------------

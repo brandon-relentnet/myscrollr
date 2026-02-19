@@ -12,6 +12,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -328,6 +329,148 @@ func (a *App) GetMyYahooLeagues(c *fiber.Ctx) error {
 		"leagues":   leagues,
 		"standings": standings,
 	})
+}
+
+// DiscoverYahooLeagues calls the Python sync service to quickly discover all
+// Yahoo Fantasy leagues for the current user WITHOUT persisting them.
+func (a *App) DiscoverYahooLeagues(c *fiber.Ctx) error {
+	userID := GetUserSub(c)
+	log.Printf("[DiscoverYahooLeagues] Hit — X-User-Sub=%q", userID)
+	if userID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Status: "unauthorized",
+			Error:  "Authentication required",
+		})
+	}
+
+	var guid string
+	err := a.db.QueryRow(context.Background(),
+		"SELECT guid FROM yahoo_users WHERE logto_sub = $1", userID,
+	).Scan(&guid)
+	if err != nil {
+		log.Printf("[DiscoverYahooLeagues] No GUID for logto_sub=%s: %v", userID, err)
+		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
+			Status: "error",
+			Error:  "Yahoo account not connected",
+		})
+	}
+	log.Printf("[DiscoverYahooLeagues] Resolved logto_sub=%s -> guid=%s", userID, guid)
+
+	internalURL := strings.TrimSuffix(os.Getenv("INTERNAL_YAHOO_URL"), "/")
+	if internalURL == "" {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(ErrorResponse{
+			Status: "error",
+			Error:  "Internal service URL not configured",
+		})
+	}
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	req, err := http.NewRequest("POST", internalURL+"/discover/"+guid, nil)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Status: "error",
+			Error:  "Failed to create request",
+		})
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("[DiscoverYahooLeagues] Proxy to service failed: %v", err)
+		return c.Status(fiber.StatusServiceUnavailable).JSON(ErrorResponse{
+			Status: "error",
+			Error:  "Sync service unavailable",
+		})
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	c.Set("Content-Type", "application/json")
+	return c.Status(resp.StatusCode).Send(body)
+}
+
+// ImportYahooLeague calls the Python sync service to import a single league.
+func (a *App) ImportYahooLeague(c *fiber.Ctx) error {
+	userID := GetUserSub(c)
+	log.Printf("[ImportYahooLeague] Hit — X-User-Sub=%q", userID)
+	if userID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Status: "unauthorized",
+			Error:  "Authentication required",
+		})
+	}
+
+	var guid string
+	err := a.db.QueryRow(context.Background(),
+		"SELECT guid FROM yahoo_users WHERE logto_sub = $1", userID,
+	).Scan(&guid)
+	if err != nil {
+		log.Printf("[ImportYahooLeague] No GUID for logto_sub=%s: %v", userID, err)
+		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
+			Status: "error",
+			Error:  "Yahoo account not connected",
+		})
+	}
+	log.Printf("[ImportYahooLeague] Resolved logto_sub=%s -> guid=%s", userID, guid)
+
+	// Parse the incoming request body to get league_key, game_code, season
+	var incoming struct {
+		LeagueKey string `json:"league_key"`
+		GameCode  string `json:"game_code"`
+		Season    int    `json:"season"`
+	}
+	if err := c.BodyParser(&incoming); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+			Status: "error",
+			Error:  "Invalid request body",
+		})
+	}
+	if incoming.LeagueKey == "" || incoming.GameCode == "" || incoming.Season == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+			Status: "error",
+			Error:  "league_key, game_code, and season are required",
+		})
+	}
+
+	internalURL := strings.TrimSuffix(os.Getenv("INTERNAL_YAHOO_URL"), "/")
+	if internalURL == "" {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(ErrorResponse{
+			Status: "error",
+			Error:  "Internal service URL not configured",
+		})
+	}
+
+	// Build the request body for the Python service (add guid)
+	payload, _ := json.Marshal(map[string]interface{}{
+		"guid":       guid,
+		"league_key": incoming.LeagueKey,
+		"game_code":  incoming.GameCode,
+		"season":     incoming.Season,
+	})
+
+	client := &http.Client{Timeout: 60 * time.Second}
+	req, err := http.NewRequest("POST", internalURL+"/import-league",
+		strings.NewReader(string(payload)))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Status: "error",
+			Error:  "Failed to create request",
+		})
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("[ImportYahooLeague] Proxy to service failed: %v", err)
+		return c.Status(fiber.StatusServiceUnavailable).JSON(ErrorResponse{
+			Status: "error",
+			Error:  "Sync service unavailable",
+		})
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	c.Set("Content-Type", "application/json")
+	return c.Status(resp.StatusCode).Send(body)
 }
 
 // DisconnectYahoo removes the user's Yahoo connection and all associated data.

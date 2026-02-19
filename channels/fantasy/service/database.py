@@ -157,6 +157,33 @@ async def get_all_yahoo_users(pool: asyncpg.Pool) -> list[YahooUser]:
     return users
 
 
+async def get_yahoo_user_by_guid(pool: asyncpg.Pool, guid: str) -> YahooUser | None:
+    """Fetch a single yahoo_user by GUID and decrypt the refresh token."""
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT guid, logto_sub, refresh_token, last_sync, created_at "
+            "FROM yahoo_users WHERE guid = $1",
+            guid,
+        )
+
+    if row is None:
+        return None
+
+    try:
+        plaintext_token = decrypt(row["refresh_token"])
+    except Exception as exc:
+        log.error("Failed to decrypt token for user %s: %s", guid, exc)
+        return None
+
+    return YahooUser(
+        guid=row["guid"],
+        logto_sub=row["logto_sub"],
+        refresh_token=plaintext_token,
+        last_sync=row["last_sync"],
+        created_at=row["created_at"],
+    )
+
+
 # ---------------------------------------------------------------------------
 # Upsert helpers  (match database.rs upserts exactly)
 # ---------------------------------------------------------------------------
