@@ -204,6 +204,26 @@ func (a *App) fetchAndLinkYahooUser(accessToken, refreshToken, logtoSub string) 
 		return fmt.Errorf("this Yahoo account is already connected to another Scrollr account")
 	}
 
+	// Clean up any *previous* Yahoo account this Scrollr user had linked.
+	// Without this, connecting a new Yahoo account leaves the old yahoo_users
+	// row (and its yahoo_user_leagues rows) behind, causing the dashboard to
+	// show stale leagues from the old account.
+	var oldGUID string
+	oldErr := a.db.QueryRow(context.Background(),
+		"SELECT guid FROM yahoo_users WHERE logto_sub = $1", logtoIdentifier,
+	).Scan(&oldGUID)
+	if oldErr == nil && oldGUID != guid {
+		log.Printf("[fetchAndLinkYahooUser] Replacing old Yahoo link — old_guid=%s new_guid=%s logto_sub=%s", oldGUID, guid, logtoIdentifier)
+		// Remove from Redis CDC subscriber sets before deleting DB rows
+		a.CleanupLeagueSubscribers(context.Background(), oldGUID, logtoIdentifier)
+		// Delete the old yahoo_users row; CASCADE removes yahoo_user_leagues rows
+		_, delErr := a.db.Exec(context.Background(),
+			"DELETE FROM yahoo_users WHERE guid = $1", oldGUID)
+		if delErr != nil {
+			log.Printf("[fetchAndLinkYahooUser] Warning: failed to delete old Yahoo link guid=%s: %v", oldGUID, delErr)
+		}
+	}
+
 	log.Printf("[fetchAndLinkYahooUser] Upserting user — guid=%s logto_sub=%s", guid, logtoIdentifier)
 	if err := a.UpsertYahooUser(guid, logtoIdentifier, refreshToken); err != nil {
 		return fmt.Errorf("upsert Yahoo user: %w", err)

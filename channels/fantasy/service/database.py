@@ -177,6 +177,27 @@ _MIGRATE_STATEMENTS = [
         END IF;
     END $$;
     """,
+    # Enforce UNIQUE on yahoo_users.logto_sub for databases where the table was
+    # created before the constraint was added to the CREATE TABLE statement.
+    # First, clean up any duplicate logto_sub rows (keep the most recent).
+    """
+    DO $$ BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint
+            WHERE conrelid = 'yahoo_users'::regclass
+            AND contype = 'u'
+            AND conname LIKE '%logto_sub%'
+        ) THEN
+            -- Delete older duplicates, keeping only the row with the latest created_at
+            DELETE FROM yahoo_users a USING yahoo_users b
+            WHERE a.logto_sub = b.logto_sub
+              AND a.logto_sub IS NOT NULL
+              AND a.created_at < b.created_at;
+            -- Now add the constraint
+            ALTER TABLE yahoo_users ADD CONSTRAINT yahoo_users_logto_sub_key UNIQUE (logto_sub);
+        END IF;
+    END $$;
+    """,
 ]
 
 
