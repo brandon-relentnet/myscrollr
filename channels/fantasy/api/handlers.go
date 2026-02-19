@@ -33,12 +33,9 @@ func (a *App) UpsertYahooUser(guid, logtoSub, refreshToken string) error {
 // Redis CDC Subscriber Set Management
 // =============================================================================
 
-// PopulateLeagueSubscribers adds a user to all their league subscriber sets
-// and sets the guid→user mapping. Called after ImportYahooLeague succeeds.
+// PopulateLeagueSubscribers adds a user to all their league subscriber sets.
+// Called after OAuth link succeeds to restore CDC subscriptions on reconnect.
 func (a *App) PopulateLeagueSubscribers(ctx context.Context, guid, logtoSub string) error {
-	// Set guid → logto_sub mapping for yahoo_leagues CDC resolution
-	AddSubscriber(a.rdb, ctx, RedisGuidUserPrefix+guid, logtoSub)
-
 	// Find all leagues this user belongs to and add them to per-league sets
 	rows, err := a.db.Query(ctx,
 		"SELECT league_key FROM yahoo_user_leagues WHERE guid = $1", guid)
@@ -57,12 +54,9 @@ func (a *App) PopulateLeagueSubscribers(ctx context.Context, guid, logtoSub stri
 	return nil
 }
 
-// CleanupLeagueSubscribers removes a user from all their league subscriber sets
-// and the guid→user mapping. Called during DisconnectYahoo.
+// CleanupLeagueSubscribers removes a user from all their league subscriber sets.
+// Called during DisconnectYahoo.
 func (a *App) CleanupLeagueSubscribers(ctx context.Context, guid, logtoSub string) {
-	// Remove guid → logto_sub mapping
-	RemoveSubscriber(a.rdb, ctx, RedisGuidUserPrefix+guid, logtoSub)
-
 	// Find all leagues this user belongs to and remove from per-league sets
 	rows, err := a.db.Query(ctx,
 		"SELECT league_key FROM yahoo_user_leagues WHERE guid = $1", guid)

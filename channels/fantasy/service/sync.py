@@ -54,16 +54,36 @@ async def sync_user(
     client_secret: str,
 ) -> None:
     """
-    Sync all data for a single Yahoo user:
-      1. Fetch leagues (all game codes for current + recent seasons)
-      2. Upsert league metadata + user_leagues with team_key
-      3. Fetch standings for active leagues
-      4. Fetch matchups for active leagues (ALL matchups, league-wide)
-      5. Fetch rosters for ALL teams in active leagues
-      6. Capture refreshed token
-      7. Update last_sync timestamp
+    Sync data for a single Yahoo user — ONLY for explicitly-imported leagues.
+
+    The sync loop does NOT auto-discover or auto-import leagues.  It only
+    refreshes data (metadata, standings, matchups, rosters) for leagues the
+    user already imported via the dashboard discover/import flow.
+
+    Steps:
+      1. Query yahoo_user_leagues to get the set of imported league_keys
+      2. Fetch ONLY those leagues from Yahoo and refresh metadata
+      3. Update team_key/team_name in yahoo_user_leagues (no new rows created)
+      4. Fetch standings for active leagues
+      5. Fetch matchups for active leagues (ALL matchups, league-wide)
+      6. Fetch rosters for ALL teams in active leagues
+      7. Capture refreshed token
+      8. Update last_sync timestamp
     """
     log.info("Syncing data for user %s ...", user.guid)
+
+    # ------------------------------------------------------------------
+    # 1. Get the set of league_keys the user has explicitly imported
+    # ------------------------------------------------------------------
+    imported_teams = await db.get_user_league_team_keys(pool, user.guid)
+    imported_keys = set(imported_teams.keys())
+
+    if not imported_keys:
+        log.info("User %s has no imported leagues — skipping sync", user.guid)
+        await db.update_user_sync_time(pool, user.guid)
+        return
+
+    log.info("User %s has %d imported leagues to sync", user.guid, len(imported_keys))
 
     try:
         from yahoofantasy import Context
@@ -79,7 +99,7 @@ async def sync_user(
     )
 
     # ------------------------------------------------------------------
-    # 1. Fetch leagues across all supported game codes / seasons
+    # 2. Fetch leagues from Yahoo, but ONLY keep imported ones
     # ------------------------------------------------------------------
     all_leagues: list[tuple[Any, str]] = []  # (league_obj, game_code)
 
@@ -91,17 +111,19 @@ async def sync_user(
             try:
                 leagues = ctx.get_leagues(game_code, season)
                 for league in leagues:
-                    all_leagues.append((league, game_code))
+                    lk = getattr(league, "league_key", "")
+                    if lk in imported_keys:
+                        all_leagues.append((league, game_code))
             except Exception as exc:
                 log.debug(
                     "No %s leagues for user %s season %d: %s",
                     game_code, user.guid, season, exc,
                 )
 
-    log.info("Found %d leagues for user %s", len(all_leagues), user.guid)
+    log.info("Matched %d imported leagues from Yahoo for user %s", len(all_leagues), user.guid)
 
     # ------------------------------------------------------------------
-    # 2. Upsert league metadata + identify user's team in each league
+    # 3. Refresh league metadata + update team_key in user_leagues
     # ------------------------------------------------------------------
     for league_obj, game_code in all_leagues:
         league_data = serialize_league(league_obj, game_code)
@@ -109,7 +131,6 @@ async def sync_user(
 
         await db.upsert_yahoo_league(
             pool,
-            guid=user.guid,
             league_key=league_key,
             name=league_data["name"],
             game_code=game_code,
@@ -117,7 +138,7 @@ async def sync_user(
             data=league_data,
         )
 
-        # Find the user's team in this league and store it
+        # Update team_key/team_name (row already exists from import)
         team_key, team_name = _find_user_team(league_obj, user.guid)
         await db.upsert_yahoo_user_league(
             pool, user.guid, league_key,
@@ -362,7 +383,6 @@ async def import_single_league(
     league_data = serialize_league(target_league, game_code)
     await db.upsert_yahoo_league(
         pool,
-        guid=user.guid,
         league_key=league_key,
         name=league_data["name"],
         game_code=game_code,

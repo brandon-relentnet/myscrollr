@@ -211,8 +211,10 @@ func (a *App) fetchAndLinkYahooUser(accessToken, refreshToken, logtoSub string) 
 
 	log.Printf("[Yahoo Sync] Registered user %s (Logto: %s) for active sync", guid, logtoIdentifier)
 
-	// Populate Redis guid→user mapping for CDC resolution
-	AddSubscriber(a.rdb, context.Background(), RedisGuidUserPrefix+guid, logtoIdentifier)
+	// Restore Redis league subscriber sets for any previously-imported leagues
+	if err := a.PopulateLeagueSubscribers(context.Background(), guid, logtoIdentifier); err != nil {
+		log.Printf("[fetchAndLinkYahooUser] Warning: failed to populate league subscribers: %v", err)
+	}
 
 	return nil
 }
@@ -514,12 +516,9 @@ func (a *App) ImportYahooLeague(c *fiber.Ctx) error {
 
 	respBody, _ := io.ReadAll(resp.Body)
 
-	// On successful import, populate Redis CDC subscriber sets
+	// On successful import, populate Redis CDC subscriber set for this league
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		ctx := context.Background()
-		a.AddLeagueSubscriber(ctx, incoming.LeagueKey, userID)
-		// Also ensure guid→user mapping exists
-		AddSubscriber(a.rdb, ctx, RedisGuidUserPrefix+guid, userID)
+		a.AddLeagueSubscriber(context.Background(), incoming.LeagueKey, userID)
 		log.Printf("[ImportYahooLeague] Added user %s to CDC set for league %s", userID, incoming.LeagueKey)
 	}
 

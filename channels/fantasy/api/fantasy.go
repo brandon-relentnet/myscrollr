@@ -19,9 +19,8 @@ import (
 // =============================================================================
 
 const (
-	// Redis key prefixes for CDC subscriber resolution
+	// Redis key prefix for CDC subscriber resolution — all tables route via league_key
 	RedisLeagueUsersPrefix = "fantasy:league_users:" // SET of logto_subs per league_key
-	RedisGuidUserPrefix    = "fantasy:guid_user:"    // SET of logto_subs per Yahoo GUID
 
 	// OAuth state management
 	RedisCSRFPrefix            = "csrf:"
@@ -76,9 +75,9 @@ func resolveFrontendURL() string {
 // handleInternalCDC receives CDC records from the core gateway and returns the
 // list of users who should receive these records.
 //
-// Fantasy uses per-league Redis SET routing for standings/matchups/rosters,
-// and per-GUID Redis SET routing for yahoo_leagues changes.
-// Zero SQL JOINs in the hot path — all lookups are Redis SMEMBERS.
+// All fantasy tables route via league_key → fantasy:league_users:{league_key}.
+// yahoo_leagues uses league_key as its PK; standings/matchups/rosters have it
+// as a column.  Zero SQL JOINs in the hot path — all lookups are Redis SMEMBERS.
 func (a *App) handleInternalCDC(c *fiber.Ctx) error {
 	var req struct {
 		Records []CDCRecord `json:"records"`
@@ -94,51 +93,36 @@ func (a *App) handleInternalCDC(c *fiber.Ctx) error {
 	userSet := make(map[string]struct{})
 
 	for _, record := range req.Records {
+		var leagueKey string
+
 		switch record.Metadata.TableName {
 		case "yahoo_leagues":
-			// yahoo_leagues has a guid column — look up via fantasy:guid_user:{guid}
-			guid, ok := record.Record["guid"].(string)
-			if !ok || guid == "" {
+			// league_key is the PK of yahoo_leagues
+			lk, ok := record.Record["league_key"].(string)
+			if !ok || lk == "" {
 				continue
 			}
-			subs, err := GetSubscribers(a.rdb, ctx, RedisGuidUserPrefix+guid)
-			if err != nil {
-				log.Printf("[Fantasy CDC] Failed to get subscribers for guid=%s: %v", guid, err)
-				continue
-			}
-			for _, sub := range subs {
-				userSet[sub] = struct{}{}
-			}
+			leagueKey = lk
 
-		case "yahoo_standings", "yahoo_matchups":
-			// Both have league_key — look up via fantasy:league_users:{league_key}
-			leagueKey, ok := record.Record["league_key"].(string)
-			if !ok || leagueKey == "" {
+		case "yahoo_standings", "yahoo_matchups", "yahoo_rosters":
+			// All have a league_key column
+			lk, ok := record.Record["league_key"].(string)
+			if !ok || lk == "" {
 				continue
 			}
-			subs, err := GetSubscribers(a.rdb, ctx, RedisLeagueUsersPrefix+leagueKey)
-			if err != nil {
-				log.Printf("[Fantasy CDC] Failed to get subscribers for league=%s: %v", leagueKey, err)
-				continue
-			}
-			for _, sub := range subs {
-				userSet[sub] = struct{}{}
-			}
+			leagueKey = lk
 
-		case "yahoo_rosters":
-			// yahoo_rosters has league_key — same as standings/matchups
-			leagueKey, ok := record.Record["league_key"].(string)
-			if !ok || leagueKey == "" {
-				continue
-			}
-			subs, err := GetSubscribers(a.rdb, ctx, RedisLeagueUsersPrefix+leagueKey)
-			if err != nil {
-				log.Printf("[Fantasy CDC] Failed to get subscribers for league=%s: %v", leagueKey, err)
-				continue
-			}
-			for _, sub := range subs {
-				userSet[sub] = struct{}{}
-			}
+		default:
+			continue
+		}
+
+		subs, err := GetSubscribers(a.rdb, ctx, RedisLeagueUsersPrefix+leagueKey)
+		if err != nil {
+			log.Printf("[Fantasy CDC] Failed to get subscribers for league=%s: %v", leagueKey, err)
+			continue
+		}
+		for _, sub := range subs {
+			userSet[sub] = struct{}{}
 		}
 	}
 

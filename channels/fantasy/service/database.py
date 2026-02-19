@@ -80,7 +80,6 @@ CREATE TABLE IF NOT EXISTS yahoo_users (
 
 CREATE TABLE IF NOT EXISTS yahoo_leagues (
     league_key VARCHAR(50) PRIMARY KEY,
-    guid VARCHAR(100) NOT NULL REFERENCES yahoo_users(guid) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     game_code VARCHAR(10) NOT NULL,
     season VARCHAR(10) NOT NULL,
@@ -162,6 +161,19 @@ _MIGRATE_STATEMENTS = [
             AND table_schema = 'public'
         ) THEN
             DROP TABLE yahoo_matchups;
+        END IF;
+    END $$;
+    """,
+    # Remove the guid column from yahoo_leagues — leagues are shared resources,
+    # ownership is tracked solely through yahoo_user_leagues junction table.
+    """
+    DO $$ BEGIN
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'yahoo_leagues' AND column_name = 'guid'
+            AND table_schema = 'public'
+        ) THEN
+            ALTER TABLE yahoo_leagues DROP COLUMN guid;
         END IF;
     END $$;
     """,
@@ -294,7 +306,6 @@ async def upsert_yahoo_user(
 
 async def upsert_yahoo_league(
     pool: asyncpg.Pool,
-    guid: str,
     league_key: str,
     name: str,
     game_code: str,
@@ -305,15 +316,14 @@ async def upsert_yahoo_league(
     async with pool.acquire() as conn:
         await conn.execute(
             """
-            INSERT INTO yahoo_leagues (league_key, guid, name, game_code, season, data, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6::jsonb, CURRENT_TIMESTAMP)
+            INSERT INTO yahoo_leagues (league_key, name, game_code, season, data, updated_at)
+            VALUES ($1, $2, $3, $4, $5::jsonb, CURRENT_TIMESTAMP)
             ON CONFLICT (league_key) DO UPDATE
             SET name = EXCLUDED.name,
                 data = EXCLUDED.data,
                 updated_at = CURRENT_TIMESTAMP
             """,
             league_key,
-            guid,
             name,
             game_code,
             season,
