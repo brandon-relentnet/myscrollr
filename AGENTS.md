@@ -142,6 +142,17 @@ import type { ChannelConfig } from '@/api/client'
 5. **Convention-based UI discovery**: Frontend and extension use `import.meta.glob` to discover channel components at build time.
 6. **Database tables are created programmatically** via `CREATE TABLE IF NOT EXISTS` on service startup. No migration framework.
 
+## Git Workflow
+
+All feature work must happen on a branch with a PR back into `staging`. Commit quick one-off fixes (typos, config tweaks) directly to `staging`.
+
+1. Branch off `staging`: `git checkout -b <prefix>/short-description`
+2. Commit work on the branch.
+3. Push and open a PR into `staging`.
+4. Squash merge to keep history clean.
+
+**Branch prefixes**: `feature/`, `fix/`, `refactor/`, `chore/`.
+
 ## Real-Time Data Pipeline
 
 Rust services write to PostgreSQL. Sequin CDC detects changes and sends webhooks to `POST /webhooks/sequin` on the core API. Core forwards the CDC record to the relevant channel's `POST /internal/cdc`. Channel returns a list of user subs to notify. Core publishes to per-user Redis channels (`events:user:{sub}`). SSE Hub dispatches to connected clients. Frontend `useRealtime` hook and extension background script consume CDC records.
