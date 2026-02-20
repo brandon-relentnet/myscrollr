@@ -14,8 +14,11 @@ export const SSE_RECONNECT_BASE = 1000;
 /** SSE reconnect: maximum delay in ms. */
 export const SSE_RECONNECT_MAX = 30_000;
 
-/** Polling interval in minutes for chrome.alarms (0.5 = 30 seconds). */
-export const POLLING_ALARM_INTERVAL = 0.5;
+/** Polling interval for free tier in minutes (1 = 60 seconds). */
+export const FREE_POLLING_ALARM_INTERVAL = 1;
+
+/** Polling interval for Uplink tier in minutes (0.5 = 30 seconds). */
+export const UPLINK_POLLING_ALARM_INTERVAL = 0.5;
 
 /** Alarm name for the polling timer. */
 export const POLLING_ALARM_NAME = 'scrollr-poll';
