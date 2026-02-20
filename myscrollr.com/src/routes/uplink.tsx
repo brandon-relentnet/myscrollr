@@ -1,21 +1,25 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
-import { motion, useMotionValue, useTransform, animate } from 'motion/react'
+import {
+  AnimatePresence,
+  motion,
+  useMotionValue,
+  useTransform,
+  animate,
+} from 'motion/react'
+import { AnimateNumber } from 'motion-plus/react'
 import { useEffect, useRef, useState, lazy, Suspense } from 'react'
 import {
   Check,
   CheckCircle2,
   ChevronRight,
-  Clock,
   Crown,
   Gauge,
   Loader2,
   Minus,
   Rocket,
   Satellite,
-  Shield,
   Signal,
   Sparkles,
-  Star,
   TrendingUp,
   Zap,
 } from 'lucide-react'
@@ -145,45 +149,101 @@ const COMPARISON: ComparisonRow[] = [
   },
 ]
 
-// ── Feature Cards ───────────────────────────────────────────────
+// ── Tier Feature Showcases ──────────────────────────────────────
 
-interface Feature {
+interface TierShowcase {
+  tier: 'uplink' | 'unlimited'
   Icon: typeof Gauge
-  title: string
-  description: string
+  name: string
+  tagline: string
   hex: string
+  delivery: string
+  features: string[]
 }
 
-const FEATURES: Feature[] = [
+const TIER_SHOWCASES: TierShowcase[] = [
   {
-    Icon: Gauge,
-    title: 'Expanded Limits',
-    description:
-      'Uplink expands your tracked symbols, RSS feeds, fantasy leagues, and more. Unlimited removes all caps entirely.',
+    tier: 'uplink',
+    Icon: Rocket,
+    name: 'Uplink',
+    tagline: 'More data, faster updates',
     hex: '#00b8db',
+    delivery: '30s polling',
+    features: [
+      '25 tracked symbols',
+      '50 RSS feeds, 10 custom',
+      '3 fantasy leagues',
+      'Pro + College sports',
+      'Blacklist site filtering',
+      'Early access to features',
+    ],
   },
   {
-    Icon: Zap,
-    title: 'Faster Delivery',
-    description:
-      'Uplink polls every 30s instead of 60s. Unlimited gets instant data via real-time SSE — your feed updates the moment data changes.',
+    tier: 'unlimited',
+    Icon: Crown,
+    name: 'Unlimited',
+    tagline: 'Everything. In real time.',
     hex: '#34d399',
-  },
-  {
-    Icon: Shield,
-    title: 'Early Access',
-    description:
-      'Both tiers get first access to new channels and features before they go live. Help shape the roadmap.',
-    hex: '#a855f7',
-  },
-  {
-    Icon: Signal,
-    title: 'Extended Retention',
-    description:
-      'Unlimited subscribers get longer data retention windows for historical lookback on trades, scores, and articles.',
-    hex: '#ff4757',
+    delivery: 'Real-time SSE',
+    features: [
+      'Unlimited tracked symbols',
+      'Unlimited RSS feeds & custom',
+      'Unlimited fantasy leagues',
+      'Pro + College sports',
+      'Blacklist + Whitelist filtering',
+      'Early access to features',
+      'Extended data retention',
+    ],
   },
 ]
+
+// ── Pricing Plans ──────────────────────────────────────────────
+
+interface PricingPlan {
+  price: number
+  period: string
+  perMonth: number
+  savings?: string
+}
+
+const PRICING: Record<TierKey, Record<PlanKey, PricingPlan>> = {
+  uplink: {
+    monthly: { price: 8.99, period: '/mo', perMonth: 8.99 },
+    quarterly: {
+      price: 21.99,
+      period: '/3mo',
+      perMonth: 7.33,
+      savings: 'Save 18%',
+    },
+    annual: {
+      price: 69.99,
+      period: '/yr',
+      perMonth: 5.83,
+      savings: 'Save 35%',
+    },
+  },
+  unlimited: {
+    monthly: { price: 24.99, period: '/mo', perMonth: 24.99 },
+    quarterly: {
+      price: 59.99,
+      period: '/3mo',
+      perMonth: 20.0,
+      savings: 'Save 20%',
+    },
+    annual: {
+      price: 199.99,
+      period: '/yr',
+      perMonth: 16.67,
+      savings: 'Save 33%',
+    },
+  },
+}
+
+const BILLING_LABELS: Record<PlanKey, string> = {
+  monthly: 'Monthly',
+  quarterly: 'Quarterly',
+  annual: 'Annual',
+}
 
 // ── Terminal Lines ──────────────────────────────────────────────
 
@@ -416,6 +476,7 @@ function UplinkPage() {
   const [showCheckout, setShowCheckout] = useState(false)
   const [checkoutSuccess, setCheckoutSuccess] = useState(false)
   const [checkingSession, setCheckingSession] = useState(false)
+  const [billingPeriod, setBillingPeriod] = useState<PlanKey>('annual')
 
   // Handle return from Stripe checkout via ?session_id=
   useEffect(() => {
@@ -661,245 +722,18 @@ function UplinkPage() {
       </section>
 
       {/* ================================================================
-          COMPARISON TABLE
+          PRICING — TOGGLE + 4 COLUMNS
           ================================================================ */}
       <section className="relative overflow-hidden">
         <div className="container">
-          {/* Section header — homepage pattern */}
+          {/* Section header */}
           <motion.div
             style={{ opacity: 0 }}
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
             transition={{ duration: 0.7, ease: EASE }}
-            className="text-center mb-12 sm:mb-16"
-          >
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
-              Compare <span className="text-gradient-primary">Tiers</span>
-            </h2>
-            <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
-              Free is forever. Uplink and Unlimited unlock more.
-            </p>
-          </motion.div>
-
-          <motion.div
-            style={{ opacity: 0 }}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.6, delay: 0.1, ease: EASE }}
-            className="relative overflow-hidden rounded-xl border border-base-300/60 bg-base-200/40 backdrop-blur-sm"
-          >
-            {/* Top accent line */}
-            <div
-              className="absolute top-0 left-0 right-0 h-px"
-              style={{
-                background:
-                  'linear-gradient(90deg, transparent, #34d399 50%, transparent)',
-              }}
-            />
-
-            {/* Watermark */}
-            <TrendingUp
-              size={140}
-              strokeWidth={0.4}
-              className="absolute -bottom-6 -right-6 text-base-content/[0.025] pointer-events-none"
-            />
-
-            {/* Table Header */}
-            <div className="grid grid-cols-4 border-b border-base-300/60 bg-base-200/60">
-              <div className="p-4 pl-6">
-                <span className="text-[9px] text-base-content/30 uppercase tracking-wide">
-                  Feature
-                </span>
-              </div>
-              <div className="p-4 text-center border-l border-base-300/30">
-                <span className="text-[10px] font-bold uppercase tracking-wide text-base-content/40">
-                  Free
-                </span>
-              </div>
-              <div className="p-4 text-center border-l border-info/10 bg-info/[0.02]">
-                <span className="text-[10px] font-bold uppercase tracking-wide text-info flex items-center justify-center gap-1.5">
-                  <Rocket size={12} /> Uplink
-                </span>
-              </div>
-              <div className="p-4 text-center border-l border-primary/10 bg-primary/[0.03]">
-                <span className="text-[10px] font-bold uppercase tracking-wide text-primary flex items-center justify-center gap-1.5">
-                  <Crown size={12} /> Unlimited
-                </span>
-              </div>
-            </div>
-
-            {/* Table Rows */}
-            {COMPARISON.map((row, i) => (
-              <motion.div
-                key={row.label}
-                style={{ opacity: 0 }}
-                initial={{ opacity: 0, x: -10 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.04, duration: 0.4, ease: 'easeOut' }}
-                className={`grid grid-cols-4 ${i < COMPARISON.length - 1 ? 'border-b border-base-300/30' : ''} group hover:bg-base-200/30 transition-colors`}
-              >
-                <div className="p-4 pl-6 flex items-center">
-                  <span className="text-xs text-base-content/60 font-medium">
-                    {row.label}
-                  </span>
-                </div>
-                <div className="p-4 flex items-center justify-center border-l border-base-300/30">
-                  <span className="text-xs font-mono text-base-content/30">
-                    {row.free}
-                  </span>
-                </div>
-                <div className="p-4 flex items-center justify-center border-l border-info/10 bg-info/[0.01]">
-                  {row.uplinkUp ? (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-bold font-mono text-info/90">
-                      <Check size={12} className="text-info" />
-                      {row.uplink}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-mono text-base-content/30">
-                      <Minus size={10} className="text-base-content/20" />
-                      {row.uplink}
-                    </span>
-                  )}
-                </div>
-                <div className="p-4 flex items-center justify-center border-l border-primary/10 bg-primary/[0.02]">
-                  {row.unlimitedUp ? (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-bold font-mono text-primary/90">
-                      <Check size={12} className="text-primary" />
-                      {row.unlimited}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-mono text-base-content/30">
-                      <Minus size={10} className="text-base-content/20" />
-                      {row.unlimited}
-                    </span>
-                  )}
-                </div>
-              </motion.div>
-            ))}
-
-            {/* Table Footer */}
-            <div className="border-t border-base-300/40 bg-base-200/40 p-4 text-center">
-              <span className="text-[9px] text-base-content/20">
-                Per-account &middot; Free tier always included &middot; Upgrade
-                anytime
-              </span>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ================================================================
-          FEATURE GRID
-          ================================================================ */}
-      <section className="relative overflow-hidden">
-        {/* Tinted background for visual separation */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-base-200/20 to-transparent pointer-events-none" />
-
-        <div className="container relative z-10">
-          {/* Section header — homepage pattern */}
-          <motion.div
-            style={{ opacity: 0 }}
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.7, ease: EASE }}
-            className="text-center mb-12 sm:mb-16"
-          >
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
-              What You <span className="text-gradient-primary">Get</span>
-            </h2>
-            <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
-              The full power-user experience
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {FEATURES.map((feature, i) => (
-              <motion.div
-                key={feature.title}
-                style={{ opacity: 0 }}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1, duration: 0.5, ease: EASE }}
-                whileHover={{
-                  y: -3,
-                  transition: { type: 'tween', duration: 0.2 },
-                }}
-                className="group relative bg-base-200/40 border border-base-300/25 rounded-xl p-6 hover:border-base-300/50 transition-colors overflow-hidden"
-              >
-                {/* Top accent line */}
-                <div
-                  className="absolute top-0 left-0 right-0 h-px"
-                  style={{
-                    background: `linear-gradient(90deg, transparent, ${feature.hex} 50%, transparent)`,
-                  }}
-                />
-
-                {/* Corner dot grid */}
-                <div
-                  className="absolute top-0 right-0 w-20 h-20 opacity-[0.04] text-base-content"
-                  style={{
-                    backgroundImage:
-                      'radial-gradient(circle, currentColor 1px, transparent 1px)',
-                    backgroundSize: '8px 8px',
-                  }}
-                />
-
-                {/* Watermark icon */}
-                <feature.Icon
-                  size={80}
-                  strokeWidth={0.4}
-                  className="absolute -bottom-3 -right-3 text-base-content/[0.025] pointer-events-none"
-                />
-
-                {/* Ambient glow on hover */}
-                <div
-                  className="absolute -top-10 -right-10 w-32 h-32 rounded-full pointer-events-none blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                  style={{ background: `${feature.hex}10` }}
-                />
-
-                <div className="relative z-10">
-                  {/* Icon badge — DESIGN.md pattern */}
-                  <div
-                    className="w-11 h-11 rounded-xl flex items-center justify-center mb-5"
-                    style={{
-                      background: `${feature.hex}15`,
-                      boxShadow: `0 0 20px ${feature.hex}15, 0 0 0 1px ${feature.hex}20`,
-                    }}
-                  >
-                    <feature.Icon size={20} className="text-base-content/80" />
-                  </div>
-
-                  <h3 className="text-sm font-bold text-base-content mb-2">
-                    {feature.title}
-                  </h3>
-                  <p className="text-xs text-base-content/40 leading-relaxed">
-                    {feature.description}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ================================================================
-          PRICING
-          ================================================================ */}
-      <section className="relative overflow-hidden">
-        <div className="container">
-          {/* Section header — homepage pattern */}
-          <motion.div
-            style={{ opacity: 0 }}
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.7, ease: EASE }}
-            className="text-center mb-12 sm:mb-16"
+            className="text-center mb-10 sm:mb-14"
           >
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
               Pick Your <span className="text-gradient-primary">Plan</span>
@@ -909,90 +743,118 @@ function UplinkPage() {
             </p>
           </motion.div>
 
-          {/* ──────────────────── UPLINK TIER ──────────────────── */}
+          {/* Billing period toggle */}
           <motion.div
             style={{ opacity: 0 }}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.5, ease: EASE }}
-            className="mb-6"
+            transition={{ duration: 0.5, delay: 0.1, ease: EASE }}
+            className="flex items-center justify-center mb-10"
           >
-            <div className="flex items-center gap-3 mb-4">
-              <div
-                className="h-7 w-7 rounded-lg flex items-center justify-center"
-                style={{
-                  background: '#00b8db15',
-                  boxShadow: '0 0 16px #00b8db15, 0 0 0 1px #00b8db20',
-                }}
-              >
-                <Rocket size={14} className="text-info/80" />
-              </div>
-              <h3 className="text-sm font-bold text-base-content">Uplink</h3>
-              <span className="text-[9px] text-base-content/25 uppercase tracking-wide">
-                30s polling &middot; expanded limits
-              </span>
+            <div className="relative inline-flex items-center gap-1 p-1 rounded-xl bg-base-200/60 border border-base-300/30 backdrop-blur-sm">
+              {(['monthly', 'quarterly', 'annual'] as const).map(
+                (period) => (
+                  <button
+                    key={period}
+                    type="button"
+                    onClick={() => setBillingPeriod(period)}
+                    className={`relative z-10 px-5 py-2 text-[11px] font-bold uppercase tracking-wider rounded-lg transition-colors duration-200 ${
+                      billingPeriod === period
+                        ? 'text-primary-content'
+                        : 'text-base-content/35 hover:text-base-content/55'
+                    }`}
+                  >
+                    {billingPeriod === period && (
+                      <motion.div
+                        layoutId="billing-toggle"
+                        className="absolute inset-0 rounded-lg bg-primary"
+                        transition={{
+                          type: 'spring',
+                          bounce: 0.15,
+                          duration: 0.5,
+                        }}
+                      />
+                    )}
+                    <span className="relative z-10">
+                      {BILLING_LABELS[period]}
+                    </span>
+                    {period === 'annual' && (
+                      <span
+                        className={`relative z-10 ml-1.5 text-[8px] ${billingPeriod === period ? 'text-primary-content/70' : 'text-primary/50'}`}
+                      >
+                        Best
+                      </span>
+                    )}
+                  </button>
+                ),
+              )}
             </div>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start mb-14">
-            {/* ─── Uplink Monthly ─── */}
+          {/* 4-column pricing grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+            {/* ─── FREE ─── */}
             <motion.div
               style={{ opacity: 0 }}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, ease: EASE }}
-              whileHover={{
-                y: -3,
-                transition: { type: 'tween', duration: 0.2 },
-              }}
-              role="button"
-              tabIndex={0}
-              aria-label="Select Uplink Monthly plan — $8.99 per month"
-              onClick={() => handleSelectPlan('monthly', 'uplink')}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  handleSelectPlan('monthly', 'uplink')
-                }
-              }}
-              className="group relative bg-base-200/40 border border-base-300/25 rounded-xl p-6 hover:border-base-300/50 transition-colors overflow-hidden cursor-pointer"
+              className="group relative bg-base-200/40 border border-base-300/25 rounded-xl p-6 overflow-hidden"
             >
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-base-300/50 to-transparent" />
-              <Clock
-                size={100}
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-base-300/40 to-transparent" />
+              <Signal
+                size={90}
                 strokeWidth={0.4}
-                className="absolute -bottom-4 -right-4 text-base-content/[0.025] pointer-events-none"
+                className="absolute -bottom-4 -right-4 text-base-content/[0.02] pointer-events-none"
               />
               <div className="relative z-10">
-                <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2.5 mb-5">
                   <div className="h-9 w-9 rounded-lg bg-base-300/30 border border-base-300/40 flex items-center justify-center text-base-content/40">
-                    <Clock size={18} />
+                    <Signal size={16} />
                   </div>
-                  <span className="text-[9px] text-base-content/25 uppercase tracking-wide">
-                    Flexible
+                  <div>
+                    <h3 className="text-sm font-bold text-base-content">
+                      Free
+                    </h3>
+                    <p className="text-[9px] text-base-content/25">
+                      Always free
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-baseline gap-1 mb-1">
+                  <span className="text-3xl font-black text-base-content tracking-tight">
+                    $0
+                  </span>
+                  <span className="text-xs font-mono text-base-content/25">
+                    / forever
                   </span>
                 </div>
-                <h3 className="text-sm font-bold text-base-content mb-1">Monthly</h3>
-                <p className="text-[10px] text-base-content/25 mb-4">Cancel anytime</p>
-                <div className="flex items-baseline gap-1.5 mb-1">
-                  <span className="text-3xl font-black text-base-content tracking-tight">$8.99</span>
-                  <span className="text-xs font-mono text-base-content/25">/ month</span>
+                <p className="text-[10px] text-base-content/20 mb-6">
+                  No credit card required
+                </p>
+
+                <div className="space-y-2.5 mb-6">
+                  <PricingFeature>60s polling delivery</PricingFeature>
+                  <PricingFeature>10 tracked symbols</PricingFeature>
+                  <PricingFeature>5 RSS feeds, 1 custom</PricingFeature>
+                  <PricingFeature>1 fantasy league</PricingFeature>
+                  <PricingFeature>Pro sports only</PricingFeature>
+                  <PricingFeature>Full dashboard access</PricingFeature>
                 </div>
-                <p className="text-[10px] text-base-content/20 mb-5">No commitment</p>
-                <div className="space-y-2.5">
-                  <PricingFeature>30s polling delivery</PricingFeature>
-                  <PricingFeature>25 symbols, 50 RSS feeds</PricingFeature>
-                  <PricingFeature>Early access</PricingFeature>
-                </div>
-                <div className="mt-5 w-full py-2.5 text-center text-[10px] font-semibold border border-base-content/15 text-base-content/50 rounded-lg group-hover:border-base-content/30 group-hover:text-base-content/70 transition-colors">
-                  Select Monthly
-                </div>
+
+                <Link
+                  to="/dashboard"
+                  className="block w-full py-2.5 text-center text-[10px] font-semibold border border-base-content/15 text-base-content/40 rounded-lg hover:border-base-content/25 hover:text-base-content/60 transition-colors"
+                >
+                  Get Started Free
+                </Link>
               </div>
             </motion.div>
 
-            {/* ─── Uplink Quarterly ─── */}
+            {/* ─── UPLINK ─── */}
             <motion.div
               style={{ opacity: 0 }}
               initial={{ opacity: 0, y: 20 }}
@@ -1005,55 +867,124 @@ function UplinkPage() {
               }}
               role="button"
               tabIndex={0}
-              aria-label="Select Uplink Quarterly plan — $21.99 per 3 months"
-              onClick={() => handleSelectPlan('quarterly', 'uplink')}
+              aria-label={`Select Uplink ${BILLING_LABELS[billingPeriod]} plan`}
+              onClick={() => handleSelectPlan(billingPeriod, 'uplink')}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault()
-                  handleSelectPlan('quarterly', 'uplink')
+                  handleSelectPlan(billingPeriod, 'uplink')
                 }
               }}
-              className="group relative bg-base-200/40 border border-base-300/25 rounded-xl p-6 hover:border-base-300/50 transition-colors overflow-hidden cursor-pointer"
+              className="group relative bg-base-200/40 border border-info/15 rounded-xl p-6 hover:border-info/30 transition-colors overflow-hidden cursor-pointer"
             >
               <div
                 className="absolute top-0 left-0 right-0 h-px"
-                style={{ background: 'linear-gradient(90deg, transparent, #00b8db 50%, transparent)' }}
+                style={{
+                  background:
+                    'linear-gradient(90deg, transparent, #00b8db 50%, transparent)',
+                }}
               />
+              <div className="absolute -top-12 -right-12 w-36 h-36 rounded-full pointer-events-none blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-info/[0.06]" />
               <Rocket
-                size={100}
+                size={90}
                 strokeWidth={0.4}
-                className="absolute -bottom-4 -right-4 text-base-content/[0.025] pointer-events-none"
+                className="absolute -bottom-4 -right-4 text-base-content/[0.02] pointer-events-none"
               />
-              <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full pointer-events-none blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-info/[0.06]" />
               <div className="relative z-10">
-                <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2.5 mb-5">
                   <div
                     className="h-9 w-9 rounded-lg flex items-center justify-center"
-                    style={{ background: '#00b8db15', boxShadow: '0 0 20px #00b8db15, 0 0 0 1px #00b8db20' }}
+                    style={{
+                      background: '#00b8db15',
+                      boxShadow:
+                        '0 0 20px #00b8db15, 0 0 0 1px #00b8db20',
+                    }}
                   >
-                    <Rocket size={18} className="text-base-content/80" />
+                    <Rocket size={16} className="text-base-content/80" />
                   </div>
-                  <span className="text-[9px] text-info/50 uppercase tracking-wide">Save 18%</span>
+                  <div>
+                    <h3 className="text-sm font-bold text-base-content">
+                      Uplink
+                    </h3>
+                    <p className="text-[9px] text-info/50">
+                      30s polling &middot; expanded limits
+                    </p>
+                  </div>
                 </div>
-                <h3 className="text-sm font-bold text-base-content mb-1">Quarterly</h3>
-                <p className="text-[10px] text-base-content/25 mb-4">3-month access</p>
-                <div className="flex items-baseline gap-1.5 mb-1">
-                  <span className="text-3xl font-black text-base-content tracking-tight">$21.99</span>
-                  <span className="text-xs font-mono text-base-content/25">/ 3 months</span>
+
+                {/* Price — per-digit slot animation */}
+                <div className="mb-4">
+                  <div className="flex items-baseline gap-1 mb-1">
+                    <span className="text-3xl font-black text-base-content tracking-tight font-mono tabular-nums">
+                      $
+                      <AnimateNumber
+                        transition={{
+                          y: { type: 'spring', bounce: 0.15, duration: 0.45 },
+                          opacity: { duration: 0.15 },
+                        }}
+                      >
+                        {PRICING.uplink[billingPeriod].price}
+                      </AnimateNumber>
+                    </span>
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        key={PRICING.uplink[billingPeriod].period}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15 }}
+                        className="text-xs font-mono text-base-content/25"
+                      >
+                        {PRICING.uplink[billingPeriod].period}
+                      </motion.span>
+                    </AnimatePresence>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono text-base-content/25 tabular-nums">
+                      ~$
+                      <AnimateNumber
+                        transition={{
+                          y: { type: 'spring', bounce: 0.15, duration: 0.45 },
+                          opacity: { duration: 0.15 },
+                        }}
+                      >
+                        {PRICING.uplink[billingPeriod].perMonth}
+                      </AnimateNumber>
+                      /mo
+                    </span>
+                    <AnimatePresence mode="wait">
+                      {PRICING.uplink[billingPeriod].savings && (
+                        <motion.span
+                          key={PRICING.uplink[billingPeriod].savings}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.9 }}
+                          transition={{ duration: 0.2, ease: EASE }}
+                          className="text-[8px] font-bold text-info/60 bg-info/8 px-1.5 py-0.5 rounded"
+                        >
+                          {PRICING.uplink[billingPeriod].savings}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
-                <p className="text-[10px] font-mono text-base-content/20 mb-5">~$7.33/mo</p>
-                <div className="space-y-2.5">
+
+                <div className="space-y-2.5 mb-6">
                   <PricingFeature>30s polling delivery</PricingFeature>
                   <PricingFeature>25 symbols, 50 RSS feeds</PricingFeature>
+                  <PricingFeature>10 custom RSS feeds</PricingFeature>
+                  <PricingFeature>3 fantasy leagues</PricingFeature>
+                  <PricingFeature>Pro + College sports</PricingFeature>
                   <PricingFeature>Early access</PricingFeature>
                 </div>
-                <div className="mt-5 w-full py-2.5 text-center text-[10px] font-semibold border border-info/20 text-info/60 rounded-lg group-hover:border-info/40 group-hover:text-info/80 transition-colors">
-                  Select Quarterly
+
+                <div className="w-full py-2.5 text-center text-[10px] font-semibold border border-info/20 text-info/60 rounded-lg group-hover:border-info/40 group-hover:text-info/80 transition-colors">
+                  Get Uplink
                 </div>
               </div>
             </motion.div>
 
-            {/* ─── Uplink Annual ─── */}
+            {/* ─── UNLIMITED — THE ONE ─── */}
             <motion.div
               style={{ opacity: 0 }}
               initial={{ opacity: 0, y: 20 }}
@@ -1066,287 +997,161 @@ function UplinkPage() {
               }}
               role="button"
               tabIndex={0}
-              aria-label="Select Uplink Annual plan — $69.99 per year, best value"
-              onClick={() => handleSelectPlan('annual', 'uplink')}
+              aria-label={`Select Unlimited ${BILLING_LABELS[billingPeriod]} plan`}
+              onClick={() =>
+                handleSelectPlan(billingPeriod, 'unlimited')
+              }
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault()
-                  handleSelectPlan('annual', 'uplink')
+                  handleSelectPlan(billingPeriod, 'unlimited')
                 }
               }}
               className="group relative rounded-xl overflow-hidden cursor-pointer"
             >
-              <motion.div
-                className="absolute -inset-px rounded-xl bg-gradient-to-b from-info/30 via-info/10 to-info/5"
-                animate={{ opacity: [0.7, 1, 0.7] }}
-                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-              />
-              <div className="relative bg-base-200/80 backdrop-blur-sm p-6 border border-info/20 rounded-xl">
-                <div
-                  className="absolute top-0 left-0 right-0 h-px"
-                  style={{ background: 'linear-gradient(90deg, transparent, #00b8db 50%, transparent)' }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-b from-info/[0.04] to-transparent pointer-events-none rounded-xl" />
-                <Star
-                  size={100}
-                  strokeWidth={0.4}
-                  className="absolute -bottom-4 -right-4 text-base-content/[0.025] pointer-events-none"
-                />
-                <div className="absolute top-0 right-0">
-                  <div className="bg-info text-info-content text-[8px] font-bold uppercase tracking-wide px-3 py-1.5 rounded-bl-lg">
-                    Best Value
-                  </div>
-                </div>
-                <div className="relative z-10">
-                  <div className="flex items-center justify-between mb-5">
-                    <div
-                      className="h-9 w-9 rounded-lg flex items-center justify-center"
-                      style={{ background: '#00b8db15', boxShadow: '0 0 20px #00b8db15, 0 0 0 1px #00b8db20' }}
-                    >
-                      <Star size={18} className="text-base-content/80" />
-                    </div>
-                    <span className="text-[9px] text-info/60 uppercase tracking-wide">Save 35%</span>
-                  </div>
-                  <h3 className="text-sm font-bold text-base-content mb-1">Annual</h3>
-                  <p className="text-[10px] text-info/40 mb-4">12-month access</p>
-                  <div className="flex items-baseline gap-1.5 mb-1">
-                    <span className="text-3xl font-black text-base-content tracking-tight">$69.99</span>
-                    <span className="text-xs font-mono text-base-content/25">/ year</span>
-                  </div>
-                  <p className="text-[10px] font-mono text-info/40 mb-5">~$5.83/mo</p>
-                  <div className="space-y-2.5">
-                    <PricingFeature highlight>30s polling delivery</PricingFeature>
-                    <PricingFeature highlight>25 symbols, 50 RSS feeds</PricingFeature>
-                    <PricingFeature highlight>Early access to features</PricingFeature>
-                    <PricingFeature highlight>Pro + College sports</PricingFeature>
-                  </div>
-                  <div className="mt-5 w-full py-2.5 text-center text-[10px] font-semibold bg-info/10 border border-info/30 text-info rounded-lg group-hover:bg-info/20 group-hover:border-info/50 transition-colors">
-                    Get Annual — Best Value
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* ──────────────────── UNLIMITED TIER ──────────────────── */}
-          <motion.div
-            style={{ opacity: 0 }}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, ease: EASE }}
-            className="mb-6"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div
-                className="h-7 w-7 rounded-lg flex items-center justify-center"
-                style={{
-                  background: '#34d39915',
-                  boxShadow: '0 0 16px #34d39915, 0 0 0 1px #34d39920',
-                }}
-              >
-                <Crown size={14} className="text-primary/80" />
-              </div>
-              <h3 className="text-sm font-bold text-base-content">Uplink Unlimited</h3>
-              <span className="text-[9px] text-base-content/25 uppercase tracking-wide">
-                real-time SSE &middot; no limits
-              </span>
-            </div>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 items-start">
-            {/* ─── Unlimited Monthly ─── */}
-            <motion.div
-              style={{ opacity: 0 }}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, ease: EASE }}
-              whileHover={{
-                y: -3,
-                transition: { type: 'tween', duration: 0.2 },
-              }}
-              role="button"
-              tabIndex={0}
-              aria-label="Select Unlimited Monthly plan — $24.99 per month"
-              onClick={() => handleSelectPlan('monthly', 'unlimited')}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  handleSelectPlan('monthly', 'unlimited')
-                }
-              }}
-              className="group relative bg-base-200/40 border border-base-300/25 rounded-xl p-6 hover:border-base-300/50 transition-colors overflow-hidden cursor-pointer"
-            >
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-base-300/50 to-transparent" />
-              <Clock
-                size={100}
-                strokeWidth={0.4}
-                className="absolute -bottom-4 -right-4 text-base-content/[0.025] pointer-events-none"
-              />
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-5">
-                  <div className="h-9 w-9 rounded-lg bg-base-300/30 border border-base-300/40 flex items-center justify-center text-base-content/40">
-                    <Clock size={18} />
-                  </div>
-                  <span className="text-[9px] text-base-content/25 uppercase tracking-wide">
-                    Flexible
-                  </span>
-                </div>
-                <h3 className="text-sm font-bold text-base-content mb-1">Monthly</h3>
-                <p className="text-[10px] text-base-content/25 mb-4">Cancel anytime</p>
-                <div className="flex items-baseline gap-1.5 mb-1">
-                  <span className="text-3xl font-black text-base-content tracking-tight">$24.99</span>
-                  <span className="text-xs font-mono text-base-content/25">/ month</span>
-                </div>
-                <p className="text-[10px] text-base-content/20 mb-5">No commitment</p>
-                <div className="space-y-2.5">
-                  <PricingFeature>Real-time SSE delivery</PricingFeature>
-                  <PricingFeature>Unlimited everything</PricingFeature>
-                  <PricingFeature>Extended retention</PricingFeature>
-                </div>
-                <div className="mt-5 w-full py-2.5 text-center text-[10px] font-semibold border border-base-content/15 text-base-content/50 rounded-lg group-hover:border-base-content/30 group-hover:text-base-content/70 transition-colors">
-                  Select Monthly
-                </div>
-              </div>
-            </motion.div>
-
-            {/* ─── Unlimited Quarterly ─── */}
-            <motion.div
-              style={{ opacity: 0 }}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.06, duration: 0.5, ease: EASE }}
-              whileHover={{
-                y: -3,
-                transition: { type: 'tween', duration: 0.2 },
-              }}
-              role="button"
-              tabIndex={0}
-              aria-label="Select Unlimited Quarterly plan — $59.99 per 3 months"
-              onClick={() => handleSelectPlan('quarterly', 'unlimited')}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  handleSelectPlan('quarterly', 'unlimited')
-                }
-              }}
-              className="group relative bg-base-200/40 border border-base-300/25 rounded-xl p-6 hover:border-base-300/50 transition-colors overflow-hidden cursor-pointer"
-            >
-              <div
-                className="absolute top-0 left-0 right-0 h-px"
-                style={{ background: 'linear-gradient(90deg, transparent, #34d399 50%, transparent)' }}
-              />
-              <Rocket
-                size={100}
-                strokeWidth={0.4}
-                className="absolute -bottom-4 -right-4 text-base-content/[0.025] pointer-events-none"
-              />
-              <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full pointer-events-none blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-primary/[0.06]" />
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-5">
-                  <div
-                    className="h-9 w-9 rounded-lg flex items-center justify-center"
-                    style={{ background: '#34d39915', boxShadow: '0 0 20px #34d39915, 0 0 0 1px #34d39920' }}
-                  >
-                    <Rocket size={18} className="text-base-content/80" />
-                  </div>
-                  <span className="text-[9px] text-primary/50 uppercase tracking-wide">Save 20%</span>
-                </div>
-                <h3 className="text-sm font-bold text-base-content mb-1">Quarterly</h3>
-                <p className="text-[10px] text-base-content/25 mb-4">3-month access</p>
-                <div className="flex items-baseline gap-1.5 mb-1">
-                  <span className="text-3xl font-black text-base-content tracking-tight">$59.99</span>
-                  <span className="text-xs font-mono text-base-content/25">/ 3 months</span>
-                </div>
-                <p className="text-[10px] font-mono text-base-content/20 mb-5">~$20.00/mo</p>
-                <div className="space-y-2.5">
-                  <PricingFeature>Real-time SSE delivery</PricingFeature>
-                  <PricingFeature>Unlimited everything</PricingFeature>
-                  <PricingFeature>Extended retention</PricingFeature>
-                </div>
-                <div className="mt-5 w-full py-2.5 text-center text-[10px] font-semibold border border-primary/20 text-primary/60 rounded-lg group-hover:border-primary/40 group-hover:text-primary/80 transition-colors">
-                  Select Quarterly
-                </div>
-              </div>
-            </motion.div>
-
-            {/* ─── Unlimited Annual — THE ONE ─── */}
-            <motion.div
-              style={{ opacity: 0 }}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.12, duration: 0.5, ease: EASE }}
-              whileHover={{
-                y: -4,
-                transition: { type: 'tween', duration: 0.2 },
-              }}
-              role="button"
-              tabIndex={0}
-              aria-label="Select Unlimited Annual plan — $199.99 per year, best value"
-              onClick={() => handleSelectPlan('annual', 'unlimited')}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  handleSelectPlan('annual', 'unlimited')
-                }
-              }}
-              className="group relative rounded-xl overflow-hidden cursor-pointer"
-            >
+              {/* Pulsing border glow */}
               <motion.div
                 className="absolute -inset-px rounded-xl bg-gradient-to-b from-primary/30 via-primary/10 to-primary/5"
-                animate={{ opacity: [0.7, 1, 0.7] }}
-                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                animate={{ opacity: [0.6, 1, 0.6] }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
               />
               <div className="relative bg-base-200/80 backdrop-blur-sm p-6 border border-primary/20 rounded-xl">
                 <div
                   className="absolute top-0 left-0 right-0 h-px"
-                  style={{ background: 'linear-gradient(90deg, transparent, #34d399 50%, transparent)' }}
+                  style={{
+                    background:
+                      'linear-gradient(90deg, transparent, #34d399 50%, transparent)',
+                  }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.04] to-transparent pointer-events-none rounded-xl" />
-                <Star
-                  size={100}
+                <Crown
+                  size={90}
                   strokeWidth={0.4}
-                  className="absolute -bottom-4 -right-4 text-base-content/[0.025] pointer-events-none"
+                  className="absolute -bottom-4 -right-4 text-base-content/[0.02] pointer-events-none"
                 />
+
+                {/* "Popular" badge */}
                 <div className="absolute top-0 right-0">
-                  <div className="bg-primary text-primary-content text-[8px] font-bold uppercase tracking-wide px-3 py-1.5 rounded-bl-lg">
-                    Best Value
+                  <div className="bg-primary text-primary-content text-[7px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-bl-lg">
+                    Most Popular
                   </div>
                 </div>
+
                 <div className="relative z-10">
-                  <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-2.5 mb-5">
                     <div
                       className="h-9 w-9 rounded-lg flex items-center justify-center"
-                      style={{ background: '#34d39915', boxShadow: '0 0 20px #34d39915, 0 0 0 1px #34d39920' }}
+                      style={{
+                        background: '#34d39915',
+                        boxShadow:
+                          '0 0 20px #34d39915, 0 0 0 1px #34d39920',
+                      }}
                     >
-                      <Star size={18} className="text-base-content/80" />
+                      <Crown
+                        size={16}
+                        className="text-base-content/80"
+                      />
                     </div>
-                    <span className="text-[9px] text-primary/60 uppercase tracking-wide">Save 33%</span>
+                    <div>
+                      <h3 className="text-sm font-bold text-base-content">
+                        Unlimited
+                      </h3>
+                      <p className="text-[9px] text-primary/50">
+                        Real-time SSE &middot; no limits
+                      </p>
+                    </div>
                   </div>
-                  <h3 className="text-sm font-bold text-base-content mb-1">Annual</h3>
-                  <p className="text-[10px] text-primary/40 mb-4">12-month access</p>
-                  <div className="flex items-baseline gap-1.5 mb-1">
-                    <span className="text-3xl font-black text-base-content tracking-tight">$199.99</span>
-                    <span className="text-xs font-mono text-base-content/25">/ year</span>
+
+                  {/* Price — per-digit slot animation */}
+                  <div className="mb-4">
+                    <div className="flex items-baseline gap-1 mb-1">
+                      <span className="text-3xl font-black text-base-content tracking-tight font-mono tabular-nums">
+                        $
+                        <AnimateNumber
+                          transition={{
+                            y: { type: 'spring', bounce: 0.15, duration: 0.45 },
+                            opacity: { duration: 0.15 },
+                          }}
+                        >
+                          {PRICING.unlimited[billingPeriod].price}
+                        </AnimateNumber>
+                      </span>
+                      <AnimatePresence mode="wait">
+                        <motion.span
+                          key={PRICING.unlimited[billingPeriod].period}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.15 }}
+                          className="text-xs font-mono text-base-content/25"
+                        >
+                          {PRICING.unlimited[billingPeriod].period}
+                        </motion.span>
+                      </AnimatePresence>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono text-primary/40 tabular-nums">
+                        ~$
+                        <AnimateNumber
+                          transition={{
+                            y: { type: 'spring', bounce: 0.15, duration: 0.45 },
+                            opacity: { duration: 0.15 },
+                          }}
+                        >
+                          {PRICING.unlimited[billingPeriod].perMonth}
+                        </AnimateNumber>
+                        /mo
+                      </span>
+                      <AnimatePresence mode="wait">
+                        {PRICING.unlimited[billingPeriod].savings && (
+                          <motion.span
+                            key={PRICING.unlimited[billingPeriod].savings}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            transition={{ duration: 0.2, ease: EASE }}
+                            className="text-[8px] font-bold text-primary/70 bg-primary/10 px-1.5 py-0.5 rounded"
+                          >
+                            {PRICING.unlimited[billingPeriod].savings}
+                          </motion.span>
+                        )}
+                      </AnimatePresence>
+                    </div>
                   </div>
-                  <p className="text-[10px] font-mono text-primary/40 mb-5">~$16.67/mo</p>
-                  <div className="space-y-2.5">
-                    <PricingFeature highlight>Real-time SSE delivery</PricingFeature>
-                    <PricingFeature highlight>Unlimited everything</PricingFeature>
-                    <PricingFeature highlight>Extended retention</PricingFeature>
-                    <PricingFeature highlight>Early access to features</PricingFeature>
+
+                  <div className="space-y-2.5 mb-6">
+                    <PricingFeature highlight>
+                      Real-time SSE delivery
+                    </PricingFeature>
+                    <PricingFeature highlight>
+                      Unlimited symbols & RSS
+                    </PricingFeature>
+                    <PricingFeature highlight>
+                      Unlimited fantasy leagues
+                    </PricingFeature>
+                    <PricingFeature highlight>
+                      Blacklist + Whitelist filtering
+                    </PricingFeature>
+                    <PricingFeature highlight>
+                      Extended data retention
+                    </PricingFeature>
+                    <PricingFeature highlight>
+                      Early access to features
+                    </PricingFeature>
                   </div>
-                  <div className="mt-5 w-full py-2.5 text-center text-[10px] font-semibold bg-primary/10 border border-primary/30 text-primary rounded-lg group-hover:bg-primary/20 group-hover:border-primary/50 transition-colors">
-                    Get Annual — Best Value
+
+                  <div className="w-full py-2.5 text-center text-[10px] font-semibold bg-primary/10 border border-primary/30 text-primary rounded-lg group-hover:bg-primary/20 group-hover:border-primary/50 transition-colors">
+                    Get Unlimited
                   </div>
                 </div>
               </div>
             </motion.div>
 
-            {/* ─── Lifetime — The First Byte ─── */}
+            {/* ─── LIFETIME — The First Byte ─── */}
             <Link
               to="/uplink/lifetime"
               search={{ session_id: undefined }}
@@ -1362,44 +1167,67 @@ function UplinkPage() {
                   y: -3,
                   transition: { type: 'tween', duration: 0.2 },
                 }}
-                className="group relative bg-base-200/40 border border-base-300/25 rounded-xl p-6 hover:border-warning/20 transition-colors overflow-hidden cursor-pointer"
+                className="group relative bg-base-200/40 border border-base-300/25 rounded-xl p-6 hover:border-warning/20 transition-colors overflow-hidden cursor-pointer h-full"
               >
                 <div
                   className="absolute top-0 left-0 right-0 h-px"
-                  style={{ background: 'linear-gradient(90deg, transparent, #f59e0b 50%, transparent)' }}
+                  style={{
+                    background:
+                      'linear-gradient(90deg, transparent, #f59e0b 50%, transparent)',
+                  }}
                 />
                 <Sparkles
-                  size={100}
+                  size={90}
                   strokeWidth={0.4}
-                  className="absolute -bottom-4 -right-4 text-base-content/[0.025] pointer-events-none"
+                  className="absolute -bottom-4 -right-4 text-base-content/[0.02] pointer-events-none"
                 />
-                <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full pointer-events-none blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-warning/[0.06]" />
+                <div className="absolute -top-12 -right-12 w-36 h-36 rounded-full pointer-events-none blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-warning/[0.06]" />
                 <div className="relative z-10">
-                  <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-2.5 mb-5">
                     <div
                       className="h-9 w-9 rounded-lg flex items-center justify-center"
-                      style={{ background: '#f59e0b15', boxShadow: '0 0 20px #f59e0b15, 0 0 0 1px #f59e0b20' }}
+                      style={{
+                        background: '#f59e0b15',
+                        boxShadow:
+                          '0 0 20px #f59e0b15, 0 0 0 1px #f59e0b20',
+                      }}
                     >
-                      <Sparkles size={18} className="text-base-content/80" />
+                      <Sparkles
+                        size={16}
+                        className="text-base-content/80"
+                      />
                     </div>
-                    <span className="text-[9px] text-warning/50 uppercase tracking-wide">Limited</span>
+                    <div>
+                      <h3 className="text-sm font-bold text-base-content">
+                        Lifetime
+                      </h3>
+                      <p className="text-[9px] text-warning/50">
+                        The First Byte &middot; Uplink tier
+                      </p>
+                    </div>
                   </div>
-                  <h3 className="text-sm font-bold text-base-content mb-1">Lifetime</h3>
-                  <p className="text-[10px] text-warning/40 mb-4">
-                    Uplink tier &middot; The First Byte
-                  </p>
-                  <div className="flex items-baseline gap-1.5 mb-1">
-                    <span className="text-3xl font-black text-base-content tracking-tight">$549</span>
-                    <span className="text-xs font-mono text-base-content/25">/ forever</span>
+
+                  <div className="flex items-baseline gap-1 mb-1">
+                    <span className="text-3xl font-black text-base-content tracking-tight">
+                      $549
+                    </span>
+                    <span className="text-xs font-mono text-base-content/25">
+                      / forever
+                    </span>
                   </div>
-                  <p className="text-[10px] font-mono text-warning/40 mb-3">
-                    Only 128 available &middot; 50% off Unlimited
+                  <p className="text-[10px] font-mono text-warning/40 mb-4">
+                    128 slots &middot; 50% off Unlimited
                   </p>
+
+                  {/* Slot progress */}
                   <div className="mb-5 p-3 rounded-xl bg-base-100/60 border border-base-300/30">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-[9px] text-base-content/25 uppercase tracking-wide">Slots</span>
+                      <span className="text-[9px] text-base-content/25 uppercase tracking-wide">
+                        Slots
+                      </span>
                       <span className="text-[9px] font-mono text-warning/50">
-                        <AnimatedNumber target={128} duration={2} /> / 128
+                        <AnimatedNumber target={128} duration={2} />{' '}
+                        / 128
                       </span>
                     </div>
                     <div className="h-1 rounded-full bg-base-300/50 overflow-hidden">
@@ -1408,16 +1236,27 @@ function UplinkPage() {
                         initial={{ scaleX: 0 }}
                         whileInView={{ scaleX: 1 }}
                         viewport={{ once: true }}
-                        transition={{ duration: 1.5, delay: 0.3, ease: EASE }}
+                        transition={{
+                          duration: 1.5,
+                          delay: 0.3,
+                          ease: EASE,
+                        }}
                       />
                     </div>
                   </div>
-                  <div className="space-y-2.5">
+
+                  <div className="space-y-2.5 mb-6">
                     <PricingFeature>Permanent Uplink access</PricingFeature>
-                    <PricingFeature>50% off Unlimited upgrade</PricingFeature>
+                    <PricingFeature>
+                      50% off Unlimited upgrade
+                    </PricingFeature>
                     <PricingFeature>Founding member status</PricingFeature>
+                    <PricingFeature>
+                      Early access to features
+                    </PricingFeature>
                   </div>
-                  <div className="mt-5 w-full py-2.5 text-center text-[10px] font-semibold border border-warning/20 text-warning/60 rounded-lg group-hover:border-warning/40 group-hover:text-warning/80 transition-colors flex items-center justify-center gap-1.5">
+
+                  <div className="w-full py-2.5 text-center text-[10px] font-semibold border border-warning/20 text-warning/60 rounded-lg group-hover:border-warning/40 group-hover:text-warning/80 transition-colors flex items-center justify-center gap-1.5">
                     View Lifetime
                     <ChevronRight size={12} />
                   </div>
@@ -1440,6 +1279,641 @@ function UplinkPage() {
               &middot; Payments via Stripe
             </p>
           </motion.div>
+        </div>
+      </section>
+
+      {/* ================================================================
+          COMPARISON TABLE
+          ================================================================ */}
+      <section className="relative overflow-hidden">
+        <div className="container">
+          {/* Section header */}
+          <motion.div
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.7, ease: EASE }}
+            className="text-center mb-12 sm:mb-16"
+          >
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
+              Compare <span className="text-gradient-primary">Tiers</span>
+            </h2>
+            <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
+              Free is forever. Uplink and Unlimited unlock more.
+            </p>
+          </motion.div>
+
+          <motion.div
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.6, delay: 0.1, ease: EASE }}
+            className="relative rounded-2xl border border-base-300/40 bg-base-100/60 backdrop-blur-md"
+          >
+            {/* ── Unlimited column full-column smoke ──
+                 Grid is 1.4fr+1fr+1fr+1fr = 4.4fr.
+                 Unlimited column = rightmost 1/4.4 ≈ 22.7% of table.
+                 Smoke fills the full column and bleeds at edges. */}
+            <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 1 }}>
+              {/* Base wash — fills exact column bounds, breathing opacity */}
+              <motion.div
+                className="absolute inset-y-0 right-0 w-[22.7%]"
+                style={{
+                  background:
+                    'linear-gradient(180deg, #34d39906 0%, #34d39914 25%, #34d39918 50%, #34d39914 75%, #34d39906 100%)',
+                }}
+                animate={{ opacity: [0.5, 0.85, 0.5] }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+              />
+
+              {/* Volumetric haze — wider than column, heavy blur, creates depth */}
+              <motion.div
+                className="absolute inset-y-[-8%] right-[-2%] w-[30%] blur-3xl"
+                style={{
+                  background:
+                    'radial-gradient(ellipse 80% 45% at 60% 50%, #34d39920 0%, #34d39908 50%, transparent 80%)',
+                }}
+                animate={{
+                  scaleX: [1, 1.08, 1],
+                  scaleY: [1, 1.04, 1],
+                  opacity: [0.5, 0.9, 0.5],
+                }}
+                transition={{
+                  duration: 6,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+              />
+
+              {/* Left edge glow — vertical strip along column's left border */}
+              <motion.div
+                className="absolute inset-y-[5%] right-[20%] w-[6%] blur-2xl"
+                style={{
+                  background:
+                    'linear-gradient(180deg, transparent 5%, #34d39918 25%, #34d39922 50%, #34d39918 75%, transparent 95%)',
+                }}
+                animate={{
+                  opacity: [0.3, 0.7, 0.3],
+                  x: [0, -8, 0],
+                }}
+                transition={{
+                  duration: 5,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+              />
+
+              {/* Rising plume — bottom to mid, drifts upward within column */}
+              <motion.div
+                className="absolute bottom-[-5%] right-[2%] w-[20%] h-[60%] rounded-full blur-2xl"
+                style={{
+                  background:
+                    'radial-gradient(ellipse 70% 60% at center bottom, #34d39925 0%, #34d39910 40%, transparent 75%)',
+                }}
+                animate={{
+                  y: [0, -60, 0],
+                  scaleX: [1, 1.3, 1],
+                  opacity: [0.35, 0.8, 0.35],
+                }}
+                transition={{
+                  duration: 7,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+              />
+
+              {/* Descending plume — top to mid, fills upper column */}
+              <motion.div
+                className="absolute top-[-5%] right-[4%] w-[18%] h-[55%] rounded-full blur-2xl"
+                style={{
+                  background:
+                    'radial-gradient(ellipse 65% 55% at center top, #34d39920 0%, #34d39908 45%, transparent 70%)',
+                }}
+                animate={{
+                  y: [0, 40, 0],
+                  scaleX: [1, 1.2, 1],
+                  opacity: [0.25, 0.6, 0.25],
+                }}
+                transition={{
+                  duration: 8,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                  delay: 1.5,
+                }}
+              />
+
+              {/* Mid-column turbulence — slow shape-shifting blob */}
+              <motion.div
+                className="absolute top-[20%] right-[1%] w-[22%] h-[60%] rounded-full blur-3xl"
+                style={{
+                  background:
+                    'radial-gradient(ellipse 75% 50%, #34d39918 0%, transparent 65%)',
+                }}
+                animate={{
+                  scaleX: [1, 1.25, 0.9, 1],
+                  scaleY: [1, 0.9, 1.15, 1],
+                  x: [0, -15, 10, 0],
+                  opacity: [0.35, 0.65, 0.45, 0.35],
+                }}
+                transition={{
+                  duration: 10,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+              />
+
+              {/* Left drift tendril — leaks from column into Uplink territory */}
+              <motion.div
+                className="absolute top-[15%] right-[14%] w-[25%] h-[40%] rounded-full blur-3xl"
+                style={{
+                  background:
+                    'radial-gradient(ellipse 70% 45%, #34d39910 0%, transparent 65%)',
+                }}
+                animate={{
+                  x: [0, -80, 0],
+                  y: [0, 20, 0],
+                  opacity: [0.06, 0.3, 0.06],
+                }}
+                transition={{
+                  duration: 11,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+              />
+
+              {/* Bright accent particle — upper column */}
+              <motion.div
+                className="absolute top-[25%] right-[7%] w-[60px] h-[60px] rounded-full blur-xl"
+                style={{
+                  background:
+                    'radial-gradient(circle, #34d39938 0%, transparent 70%)',
+                }}
+                animate={{
+                  y: [0, -20, 15, 0],
+                  x: [0, -10, 5, 0],
+                  opacity: [0, 0.7, 0.3, 0],
+                }}
+                transition={{
+                  duration: 5,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+              />
+
+              {/* Bright accent particle — lower column */}
+              <motion.div
+                className="absolute top-[65%] right-[14%] w-[50px] h-[50px] rounded-full blur-lg"
+                style={{
+                  background:
+                    'radial-gradient(circle, #34d39930 0%, transparent 70%)',
+                }}
+                animate={{
+                  y: [0, -15, 10, 0],
+                  x: [0, 8, -12, 0],
+                  opacity: [0, 0.5, 0.6, 0],
+                }}
+                transition={{
+                  duration: 7,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                  delay: 2,
+                }}
+              />
+
+              {/* Bright accent particle — mid column */}
+              <motion.div
+                className="absolute top-[45%] right-[4%] w-[40px] h-[40px] rounded-full blur-lg"
+                style={{
+                  background:
+                    'radial-gradient(circle, #34d39940 0%, transparent 70%)',
+                }}
+                animate={{
+                  y: [0, -25, 0],
+                  opacity: [0, 0.5, 0],
+                }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                  delay: 3,
+                }}
+              />
+
+              {/* Top spill — smoke bleeds above the table */}
+              <motion.div
+                className="absolute -top-24 right-0 w-[28%] h-[200px] rounded-full blur-3xl"
+                style={{
+                  background:
+                    'radial-gradient(ellipse 70% 60% at 55% 80%, #34d39918 0%, transparent 70%)',
+                }}
+                animate={{
+                  scaleX: [1, 1.2, 1],
+                  opacity: [0.2, 0.5, 0.2],
+                }}
+                transition={{
+                  duration: 8,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+              />
+
+              {/* Bottom spill — smoke bleeds below the table */}
+              <motion.div
+                className="absolute -bottom-20 right-0 w-[28%] h-[180px] rounded-full blur-3xl"
+                style={{
+                  background:
+                    'radial-gradient(ellipse 70% 60% at 55% 20%, #34d39915 0%, transparent 70%)',
+                }}
+                animate={{
+                  scaleX: [1.1, 1, 1.1],
+                  opacity: [0.15, 0.45, 0.15],
+                }}
+                transition={{
+                  duration: 9,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+              />
+            </div>
+
+            {/* Dot grid overlay */}
+            <div
+              className="absolute inset-0 opacity-[0.02] pointer-events-none rounded-2xl overflow-hidden"
+              style={{
+                backgroundImage: `radial-gradient(circle at 1px 1px, var(--grid-dot-primary) 1px, transparent 0)`,
+                backgroundSize: '20px 20px',
+              }}
+            />
+
+            {/* Watermark */}
+            <TrendingUp
+              size={160}
+              strokeWidth={0.3}
+              className="absolute -bottom-8 -right-8 text-base-content/[0.02] pointer-events-none"
+            />
+
+            {/* Table Header */}
+            <div className="relative grid grid-cols-[1.4fr_1fr_1fr_1fr] border-b border-base-300/40">
+              <div className="p-5 pl-6">
+                <span className="text-[9px] text-base-content/25 uppercase tracking-wider font-medium">
+                  Feature
+                </span>
+              </div>
+              <div className="p-5 text-center border-l border-base-300/20">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-base-content/35">
+                  Free
+                </span>
+              </div>
+              <div className="p-5 text-center border-l border-info/15 bg-info/[0.03]">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-info flex items-center justify-center gap-1.5">
+                  <Rocket size={11} /> Uplink
+                </span>
+              </div>
+              <div className="relative p-5 text-center border-l border-primary/15 bg-primary/[0.04] rounded-tr-2xl">
+                {/* Popular badge — absolute within header cell */}
+                <motion.div
+                  className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full"
+                  initial={{ opacity: 0, y: 4 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.5, duration: 0.4, ease: EASE }}
+                >
+                  <span className="bg-primary text-primary-content text-[7px] font-bold uppercase tracking-wider px-3 py-1 rounded-t-md block">
+                    Popular
+                  </span>
+                </motion.div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-primary flex items-center justify-center gap-1.5">
+                  <Crown size={11} /> Unlimited
+                </span>
+              </div>
+            </div>
+
+            {/* Table Rows */}
+            {COMPARISON.map((row, i) => (
+              <motion.div
+                key={row.label}
+                style={{ opacity: 0 }}
+                initial={{ opacity: 0, x: -12 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{
+                  delay: i * 0.05,
+                  duration: 0.4,
+                  ease: EASE,
+                }}
+                className={`grid grid-cols-[1.4fr_1fr_1fr_1fr] ${i < COMPARISON.length - 1 ? 'border-b border-base-300/20' : ''} group hover:bg-base-200/40 transition-colors duration-200`}
+              >
+                <div className="p-4 pl-6 flex items-center">
+                  <span className="text-xs text-base-content/55 font-medium">
+                    {row.label}
+                  </span>
+                </div>
+                <div className="p-4 flex items-center justify-center border-l border-base-300/20">
+                  <span className="text-[11px] font-mono text-base-content/25">
+                    {row.free}
+                  </span>
+                </div>
+                <div className="p-4 flex items-center justify-center border-l border-info/10 bg-info/[0.015]">
+                  {row.uplinkUp ? (
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold font-mono text-info/80">
+                      <Check size={11} className="text-info shrink-0" />
+                      {row.uplink}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-base-content/25">
+                      <Minus size={9} className="text-base-content/15 shrink-0" />
+                      {row.uplink}
+                    </span>
+                  )}
+                </div>
+                <div className="p-4 flex items-center justify-center border-l border-primary/10 bg-primary/[0.025] relative">
+                  {/* Ethereal row glow for unlimited upgrades */}
+                  {row.unlimitedUp && (
+                    <motion.div
+                      className="absolute inset-0 pointer-events-none"
+                      style={{
+                        background:
+                          'linear-gradient(90deg, transparent 0%, #34d39906 30%, #34d39910 70%, #34d39908 100%)',
+                      }}
+                      animate={{
+                        opacity: [0.5, 1, 0.5],
+                      }}
+                      transition={{
+                        duration: 3 + i * 0.3,
+                        repeat: Infinity,
+                        ease: 'easeInOut',
+                      }}
+                    />
+                  )}
+                  {row.unlimitedUp ? (
+                    <span className="relative inline-flex items-center gap-1.5 text-[11px] font-bold font-mono text-primary">
+                      <motion.span
+                        className="shrink-0"
+                        whileInView={{ scale: [0, 1.2, 1] }}
+                        viewport={{ once: true }}
+                        transition={{
+                          delay: 0.3 + i * 0.05,
+                          duration: 0.4,
+                          ease: EASE,
+                        }}
+                      >
+                        <Check size={11} className="text-primary" />
+                      </motion.span>
+                      {row.unlimited}
+                    </span>
+                  ) : (
+                    <span className="relative inline-flex items-center gap-1.5 text-[11px] font-mono text-base-content/25">
+                      <Minus size={9} className="text-base-content/15 shrink-0" />
+                      {row.unlimited}
+                    </span>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+
+            {/* Table Footer */}
+            <div className="border-t border-base-300/30 bg-base-200/30 px-6 py-4 flex items-center justify-between">
+              <span className="text-[9px] text-base-content/20">
+                Per-account &middot; Free tier always included &middot; Upgrade
+                anytime
+              </span>
+              <motion.span
+                className="text-[9px] text-primary/40 font-mono"
+                animate={{ opacity: [0.3, 0.6, 0.3] }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+              >
+                signal:locked
+              </motion.span>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ================================================================
+          WHAT YOU GET — TIER SHOWCASES
+          ================================================================ */}
+      <section className="relative overflow-hidden">
+        {/* Tinted background */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-base-200/20 to-transparent pointer-events-none" />
+
+        <div className="container relative z-10">
+          {/* Section header */}
+          <motion.div
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.7, ease: EASE }}
+            className="text-center mb-12 sm:mb-16"
+          >
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
+              What You <span className="text-gradient-primary">Get</span>
+            </h2>
+            <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
+              Two tiers, one mission: total coverage
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {TIER_SHOWCASES.map((tier, tierIdx) => (
+              <motion.div
+                key={tier.tier}
+                style={{ opacity: 0 }}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{
+                  delay: tierIdx * 0.15,
+                  duration: 0.6,
+                  ease: EASE,
+                }}
+                className={`group relative rounded-2xl overflow-hidden ${
+                  tier.tier === 'unlimited'
+                    ? 'border border-primary/20'
+                    : 'border border-base-300/30'
+                }`}
+              >
+                {/* Animated border glow for Unlimited */}
+                {tier.tier === 'unlimited' && (
+                  <motion.div
+                    className="absolute -inset-px rounded-2xl bg-gradient-to-b from-primary/25 via-primary/8 to-primary/3 -z-10"
+                    animate={{ opacity: [0.6, 1, 0.6] }}
+                    transition={{
+                      duration: 4,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                    }}
+                  />
+                )}
+
+                <div
+                  className={`relative p-7 md:p-8 ${
+                    tier.tier === 'unlimited'
+                      ? 'bg-base-200/80 backdrop-blur-sm'
+                      : 'bg-base-200/40'
+                  }`}
+                >
+                  {/* Top accent line */}
+                  <div
+                    className="absolute top-0 left-0 right-0 h-px"
+                    style={{
+                      background: `linear-gradient(90deg, transparent, ${tier.hex} 50%, transparent)`,
+                    }}
+                  />
+
+                  {/* Corner dot grid */}
+                  <div
+                    className="absolute top-0 right-0 w-32 h-32 opacity-[0.03] text-base-content"
+                    style={{
+                      backgroundImage:
+                        'radial-gradient(circle, currentColor 1px, transparent 1px)',
+                      backgroundSize: '8px 8px',
+                    }}
+                  />
+
+                  {/* Ambient glow */}
+                  <motion.div
+                    className="absolute -top-16 -right-16 w-48 h-48 rounded-full pointer-events-none blur-3xl"
+                    style={{ background: `${tier.hex}08` }}
+                    animate={{
+                      scale: [1, 1.2, 1],
+                      opacity: [0.5, 1, 0.5],
+                    }}
+                    transition={{
+                      duration: 6,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                      delay: tierIdx * 2,
+                    }}
+                  />
+
+                  {/* Watermark */}
+                  <tier.Icon
+                    size={120}
+                    strokeWidth={0.3}
+                    className="absolute -bottom-6 -right-6 text-base-content/[0.02] pointer-events-none"
+                  />
+
+                  {/* "Recommended" badge for Unlimited */}
+                  {tier.tier === 'unlimited' && (
+                    <div className="absolute top-0 right-0">
+                      <div className="bg-primary text-primary-content text-[7px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-bl-lg">
+                        Recommended
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="relative z-10">
+                    {/* Header */}
+                    <div className="flex items-center gap-3 mb-6">
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center"
+                        style={{
+                          background: `${tier.hex}15`,
+                          boxShadow: `0 0 24px ${tier.hex}15, 0 0 0 1px ${tier.hex}20`,
+                        }}
+                      >
+                        <tier.Icon size={18} className="text-base-content/80" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-base-content">
+                          {tier.name}
+                        </h3>
+                        <p className="text-[10px] text-base-content/35">
+                          {tier.tagline}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Delivery highlight */}
+                    <div
+                      className="mb-6 p-3.5 rounded-xl border"
+                      style={{
+                        background: `${tier.hex}06`,
+                        borderColor: `${tier.hex}15`,
+                      }}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Zap
+                          size={14}
+                          style={{ color: tier.hex }}
+                          className="shrink-0"
+                        />
+                        <div>
+                          <span
+                            className="text-xs font-bold"
+                            style={{ color: tier.hex }}
+                          >
+                            {tier.delivery}
+                          </span>
+                          <span className="text-[10px] text-base-content/30 ml-2">
+                            {tier.tier === 'uplink'
+                              ? '2x faster than free'
+                              : 'Instant — zero delay'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Feature list */}
+                    <div className="space-y-3">
+                      {tier.features.map((feature, i) => (
+                        <motion.div
+                          key={feature}
+                          style={{ opacity: 0 }}
+                          initial={{ opacity: 0, x: -8 }}
+                          whileInView={{ opacity: 1, x: 0 }}
+                          viewport={{ once: true }}
+                          transition={{
+                            delay: 0.2 + tierIdx * 0.1 + i * 0.05,
+                            duration: 0.35,
+                            ease: EASE,
+                          }}
+                          className="flex items-center gap-2.5"
+                        >
+                          <Check
+                            size={12}
+                            className="shrink-0"
+                            style={{ color: tier.hex }}
+                          />
+                          <span className="text-xs text-base-content/55">
+                            {feature}
+                          </span>
+                        </motion.div>
+                      ))}
+                    </div>
+
+                    {/* CTA */}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleSelectPlan('annual', tier.tier)
+                      }
+                      className={`mt-7 w-full py-2.5 text-center text-[10px] font-semibold rounded-lg transition-colors ${
+                        tier.tier === 'unlimited'
+                          ? 'bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 hover:border-primary/50'
+                          : 'border border-info/20 text-info/60 hover:border-info/40 hover:text-info/80'
+                      }`}
+                    >
+                      {tier.tier === 'unlimited'
+                        ? 'Get Unlimited — from $16.67/mo'
+                        : 'Get Uplink — from $5.83/mo'}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
         </div>
       </section>
 
