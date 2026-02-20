@@ -443,18 +443,22 @@ function DashboardPage() {
                 <QuickStat
                   label="Delivery"
                   value={
-                    subscriptionTier === 'uplink'
+                    subscriptionTier === 'uplink_unlimited'
                       ? status === 'connected'
-                        ? 'Live'
+                        ? 'Live SSE'
                         : 'Offline'
-                      : 'Polling'
+                      : subscriptionTier === 'uplink'
+                        ? 'Poll 30s'
+                        : 'Poll 60s'
                   }
                   color={
-                    subscriptionTier === 'uplink'
+                    subscriptionTier === 'uplink_unlimited'
                       ? status === 'connected'
                         ? 'text-primary'
                         : 'text-base-content/40'
-                      : 'text-info'
+                      : subscriptionTier === 'uplink'
+                        ? 'text-info'
+                        : 'text-base-content/60'
                   }
                 />
               </div>
