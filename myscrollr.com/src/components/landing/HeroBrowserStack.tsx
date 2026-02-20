@@ -1,43 +1,67 @@
-import { easeIn, mix, motion, progress, wrap } from 'motion/react'
+import { useEffect, useRef, useState } from 'react'
+import {
+  AnimatePresence,
+  motion,
+  useMotionTemplate,
+  useSpring,
+  useTransform,
+  useVelocity,
+} from 'motion/react'
 
-// ── Accent color map (ticker / integration colors) ───────────────
-
+// ── Accent color maps ────────────────────────────────────────────
+// Tailwind classes for ticker chip styling
 const accentMap = {
   secondary: {
-    borderActive: 'border-secondary/25',
-    shadow: '0 0 30px rgba(255,71,87,0.08), 0 0 60px rgba(255,71,87,0.04)',
     chipBg: 'bg-secondary/8',
     chipBorder: 'border-secondary/20',
     chipText: 'text-secondary',
     chipSub: 'text-secondary/60',
-    tickerBorder: 'border-t-secondary/40',
   },
   primary: {
-    borderActive: 'border-primary/25',
-    shadow: '0 0 30px rgba(52,211,153,0.08), 0 0 60px rgba(52,211,153,0.04)',
     chipBg: 'bg-primary/8',
     chipBorder: 'border-primary/20',
     chipText: 'text-primary',
     chipSub: 'text-primary/60',
-    tickerBorder: 'border-t-primary/40',
   },
   info: {
-    borderActive: 'border-info/25',
-    shadow: '0 0 30px rgba(0,212,255,0.08), 0 0 60px rgba(0,212,255,0.04)',
     chipBg: 'bg-info/8',
     chipBorder: 'border-info/20',
     chipText: 'text-info',
     chipSub: 'text-info/60',
-    tickerBorder: 'border-t-info/40',
   },
   accent: {
-    borderActive: 'border-accent/25',
-    shadow: '0 0 30px rgba(168,85,247,0.08), 0 0 60px rgba(168,85,247,0.04)',
     chipBg: 'bg-accent/8',
     chipBorder: 'border-accent/20',
     chipText: 'text-accent',
     chipSub: 'text-accent/60',
-    tickerBorder: 'border-t-accent/40',
+  },
+} as const
+
+// Inline-style rgba values for smooth CSS transitions between accents
+const ACCENT_STYLES = {
+  secondary: {
+    border: 'rgba(255,71,87,0.25)',
+    shadow: '0 0 30px rgba(255,71,87,0.08), 0 0 60px rgba(255,71,87,0.04)',
+    tickerBorder: 'rgba(255,71,87,0.4)',
+    glow: 'rgba(255,71,87,0.04)',
+  },
+  primary: {
+    border: 'rgba(52,211,153,0.25)',
+    shadow: '0 0 30px rgba(52,211,153,0.08), 0 0 60px rgba(52,211,153,0.04)',
+    tickerBorder: 'rgba(52,211,153,0.4)',
+    glow: 'rgba(52,211,153,0.04)',
+  },
+  info: {
+    border: 'rgba(0,212,255,0.25)',
+    shadow: '0 0 30px rgba(0,212,255,0.08), 0 0 60px rgba(0,212,255,0.04)',
+    tickerBorder: 'rgba(0,212,255,0.4)',
+    glow: 'rgba(0,212,255,0.04)',
+  },
+  accent: {
+    border: 'rgba(168,85,247,0.25)',
+    shadow: '0 0 30px rgba(168,85,247,0.08), 0 0 60px rgba(168,85,247,0.04)',
+    tickerBorder: 'rgba(168,85,247,0.4)',
+    glow: 'rgba(168,85,247,0.04)',
   },
 } as const
 
@@ -109,13 +133,6 @@ const MOCKUPS: MockupConfig[] = [
     ],
   },
 ]
-
-// ── Constants ────────────────────────────────────────────────────
-
-const TOTAL = MOCKUPS.length
-const MAX_ROTATE = 3
-const CASCADE_X = -25
-const CASCADE_Y = -20
 
 // ── Fake page content — each is an unrelated site ────────────────
 // The ticker shows integration data (scores, markets, etc.)
@@ -306,6 +323,63 @@ const CONTENT_RENDERERS: Record<string, React.FC> = {
   Leagues: XPageContent,
 }
 
+// ── Content carousel (FAQ-style spring + motion blur) ────────────
+
+function calculateViewX(difference: number, containerWidth: number) {
+  return difference * containerWidth * 0.75 * -1
+}
+
+function ContentView({
+  children,
+  containerWidth,
+  viewIndex,
+  activeIndex,
+}: {
+  children: React.ReactNode
+  containerWidth: number
+  viewIndex: number
+  activeIndex: number
+}) {
+  const x = useSpring(
+    calculateViewX(activeIndex - viewIndex, containerWidth),
+    { stiffness: 400, damping: 60 },
+  )
+
+  const xVelocity = useVelocity(x)
+
+  const opacity = useTransform(
+    x,
+    [-containerWidth * 0.6, 0, containerWidth * 0.6],
+    [0, 1, 0],
+  )
+
+  const blur = useTransform(xVelocity, [-1000, 0, 1000], [4, 0, 4], {
+    clamp: false,
+  })
+
+  const filter = useMotionTemplate`blur(${blur}px)`
+
+  useEffect(() => {
+    x.set(calculateViewX(activeIndex - viewIndex, containerWidth))
+  }, [activeIndex, containerWidth, viewIndex, x])
+
+  return (
+    <motion.div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        x,
+        opacity,
+        filter,
+        willChange: 'transform, filter',
+        isolation: 'isolate',
+      }}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
 // ── Main Component ───────────────────────────────────────────────
 
 interface HeroBrowserStackProps {
@@ -317,6 +391,29 @@ export function HeroBrowserStack({
   activeIndex,
   onSelect,
 }: HeroBrowserStackProps) {
+  const contentRef = useRef<HTMLDivElement>(null)
+  const [contentWidth, setContentWidth] = useState(0)
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  useEffect(() => {
+    const updateWidth = () => {
+      if (contentRef.current) {
+        setContentWidth(contentRef.current.getBoundingClientRect().width)
+      }
+    }
+    updateWidth()
+    window.addEventListener('resize', updateWidth)
+    return () => window.removeEventListener('resize', updateWidth)
+  }, [contentWidth])
+
+  const activeMockup = MOCKUPS[activeIndex]
+  const styles = ACCENT_STYLES[activeMockup.accent]
+  const chipColors = accentMap[activeMockup.accent]
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
@@ -324,148 +421,198 @@ export function HeroBrowserStack({
       transition={{ duration: 0.8, ease: 'easeOut' }}
       className="relative w-[360px] sm:w-[480px] lg:w-[500px] xl:w-[640px] 2xl:w-[780px] aspect-[4/3]"
     >
-      {/* Ambient glow behind the stack */}
-      <div className="absolute -inset-8 bg-primary/[0.04] rounded-3xl blur-3xl pointer-events-none" />
+      {/* Ambient glow — transitions to active accent color */}
+      <div
+        className="absolute -inset-8 rounded-3xl blur-3xl pointer-events-none transition-[background-color] duration-700"
+        style={{ backgroundColor: styles.glow }}
+      />
 
-      {MOCKUPS.map((mockup, i) => {
-        const zIndex = TOTAL - wrap(TOTAL, 0, i - activeIndex + 1)
-        const stackProgress = progress(0, TOTAL - 1, zIndex)
-        const scale = mix(0.85, 1, easeIn(stackProgress))
-        const opacity = progress(TOTAL * 0.1, TOTAL * 0.7, zIndex)
-        const baseRotate = mix(-MAX_ROTATE, MAX_ROTATE, Math.sin(i))
-        const distFromFront = TOTAL - zIndex
-        const x = distFromFront * CASCADE_X
-        const y = distFromFront * CASCADE_Y
+      {/* ── Single browser frame ── */}
+      <div
+        className="relative h-full rounded-xl overflow-hidden flex flex-col border bg-base-200/80 backdrop-blur-sm transition-[border-color,box-shadow] duration-500"
+        style={{
+          borderColor: styles.border,
+          boxShadow: styles.shadow,
+        }}
+      >
+        {/* ── Tab strip — all 4 tabs visible ── */}
+        <div
+          className="shrink-0 flex items-end px-2 pt-2 bg-base-200/95 border-b border-base-300/20"
+          role="tablist"
+        >
+          {MOCKUPS.map((mockup, i) => {
+            const isActive = i === activeIndex
 
-        const colors = accentMap[mockup.accent]
-        const isFront = zIndex === TOTAL
-        const ContentComponent = CONTENT_RENDERERS[mockup.word]
-
-        return (
-          <motion.div
-            key={mockup.word}
-            animate={{ scale, opacity, x, y }}
-            style={{
-              zIndex,
-              rotate: baseRotate,
-              boxShadow: isFront ? colors.shadow : undefined,
-            }}
-            transition={{
-              type: 'spring',
-              stiffness: 500,
-              damping: 35,
-            }}
-            role="button"
-            tabIndex={0}
-            aria-label={`View ${mockup.word} demo`}
-            onClick={() => onSelect?.(i)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                onSelect?.(i)
-              }
-            }}
-            className={`absolute inset-0 rounded-xl overflow-hidden flex flex-col border cursor-pointer ${
-              isFront ? colors.borderActive : 'border-base-300/40'
-            } bg-base-200/80 backdrop-blur-sm`}
-          >
-            {/* ── Tab strip ── */}
-            <div className="shrink-0 flex items-end gap-0 px-2 pt-2 bg-base-200/95 border-b border-base-300/20">
-              {/* Active tab — uses the PAGE's brand color, not the ticker accent */}
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-t-lg bg-base-100/80 border border-b-0 border-base-300/15 max-w-[200px]">
-                <div
-                  className={`w-3 h-3 rounded-sm ${mockup.tabIconBg} flex items-center justify-center shrink-0`}
-                >
-                  <div
-                    className={`w-1.5 h-1.5 rounded-full ${mockup.tabIconDot}`}
+            return (
+              <button
+                key={mockup.word}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                aria-label={`View ${mockup.word} demo`}
+                onClick={() => onSelect?.(i)}
+                className="relative flex-1 min-w-0 cursor-pointer"
+              >
+                {/* Sliding active tab background */}
+                {isActive && (
+                  <motion.div
+                    layoutId="hero-active-tab"
+                    className="absolute top-0 left-0 right-0 -bottom-px rounded-t-lg bg-base-100/80 border border-b-0 border-base-300/15"
+                    transition={{
+                      type: 'spring',
+                      bounce: 0.15,
+                      duration: 0.4,
+                    }}
                   />
+                )}
+
+                {/* Tab content */}
+                <div className="relative z-10 flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 py-1.5">
+                  <div
+                    className={`w-3 h-3 rounded-sm ${mockup.tabIconBg} flex items-center justify-center shrink-0`}
+                  >
+                    <div
+                      className={`w-1.5 h-1.5 rounded-full ${mockup.tabIconDot}`}
+                    />
+                  </div>
+                  <span
+                    className={`text-[10px] truncate transition-colors duration-300 ${
+                      isActive
+                        ? 'text-base-content/50'
+                        : 'text-base-content/25'
+                    }`}
+                  >
+                    {mockup.tabTitle}
+                  </span>
+                  {isActive && (
+                    <span className="text-[9px] text-base-content/20 ml-auto shrink-0 hidden sm:inline">
+                      ×
+                    </span>
+                  )}
                 </div>
-                <span className="text-[10px] text-base-content/50 truncate">
-                  {mockup.tabTitle}
-                </span>
-                <span className="text-[9px] text-base-content/20 ml-auto shrink-0">
-                  ×
-                </span>
-              </div>
-              {/* New tab button */}
-              <div className="flex items-center justify-center w-6 h-6 mb-0.5 ml-1 rounded-sm text-base-content/20">
-                <span className="text-[11px] leading-none">+</span>
-              </div>
-            </div>
+              </button>
+            )
+          })}
 
-            {/* ── Toolbar ── */}
-            <div className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-base-200/90">
-              {/* Nav buttons */}
-              <div className="flex items-center gap-1 shrink-0">
-                <span className="text-[10px] text-base-content/15 w-4 text-center">
-                  ←
-                </span>
-                <span className="text-[10px] text-base-content/15 w-4 text-center">
-                  →
-                </span>
-                <span className="text-[10px] text-base-content/15 w-4 text-center">
-                  ↻
-                </span>
-              </div>
+          {/* New tab button */}
+          <div className="flex items-center justify-center w-6 h-6 mb-0.5 ml-1 shrink-0 rounded-sm text-base-content/20">
+            <span className="text-[11px] leading-none">+</span>
+          </div>
+        </div>
 
-              {/* URL bar */}
-              <div className="flex-1 flex items-center gap-2 px-2.5 py-1 rounded-full bg-base-100/50 border border-base-300/15">
-                <div className="w-2.5 h-2.5 rounded-full bg-success/25 shrink-0" />
-                <span className="text-[10px] font-mono text-base-content/25 truncate">
-                  {mockup.url}
-                </span>
-              </div>
+        {/* ── Toolbar ── */}
+        <div className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-base-200/90">
+          {/* Nav buttons */}
+          <div className="flex items-center gap-1 shrink-0">
+            <span className="text-[10px] text-base-content/15 w-4 text-center">
+              ←
+            </span>
+            <span className="text-[10px] text-base-content/15 w-4 text-center">
+              →
+            </span>
+            <span className="text-[10px] text-base-content/15 w-4 text-center">
+              ↻
+            </span>
+          </div>
 
-              {/* Scrollr extension icon — always primary/green */}
-              <div className="flex items-center justify-center w-6 h-6 rounded-sm bg-primary/8 shrink-0">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
-                </span>
-              </div>
-            </div>
+          {/* URL bar — crossfades between URLs */}
+          <div className="flex-1 flex items-center gap-2 px-2.5 py-1 rounded-full bg-base-100/50 border border-base-300/15 overflow-hidden">
+            <div className="w-2.5 h-2.5 rounded-full bg-success/25 shrink-0" />
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={activeMockup.url}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.15 }}
+                className="text-[10px] font-mono text-base-content/25 truncate"
+              >
+                {activeMockup.url}
+              </motion.span>
+            </AnimatePresence>
+          </div>
 
-            {/* ── Page content (unrelated to ticker — that's the point) ── */}
-            <div className="flex-1 min-h-0 px-4 py-3 bg-base-100/30 overflow-hidden">
-              {ContentComponent && <ContentComponent />}
-            </div>
+          {/* Scrollr extension icon — always primary/green */}
+          <div className="flex items-center justify-center w-6 h-6 rounded-sm bg-primary/8 shrink-0">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
+            </span>
+          </div>
+        </div>
 
-            {/* ── Scrollr ticker bar (the extension overlay) ── */}
-            <div
-              className={`shrink-0 flex items-center gap-2 px-3 py-2 border-t-2 ${colors.tickerBorder} bg-base-100/60 overflow-hidden`}
+        {/* ── Page content — spring-animated vertical carousel ── */}
+        <div
+          ref={contentRef}
+          className="relative flex-1 min-h-0 overflow-hidden bg-base-100/30"
+          role="tabpanel"
+        >
+          {isMounted &&
+            MOCKUPS.map((mockup, idx) => {
+              const ContentComponent = CONTENT_RENDERERS[mockup.word]
+
+              return (
+                <ContentView
+                  key={mockup.word}
+                  containerWidth={contentWidth}
+                  viewIndex={idx}
+                  activeIndex={activeIndex}
+                >
+                  <div className="px-4 py-3 h-full overflow-hidden">
+                    {ContentComponent && <ContentComponent />}
+                  </div>
+                </ContentView>
+              )
+            })}
+        </div>
+
+        {/* ── Scrollr ticker bar ── */}
+        <div
+          className="shrink-0 flex items-center gap-2 px-3 py-2 border-t-2 bg-base-100/60 overflow-hidden transition-[border-color] duration-500"
+          style={{ borderTopColor: styles.tickerBorder }}
+        >
+          {/* Scrollr label */}
+          <div className="flex items-center gap-1 shrink-0 pr-2 border-r border-base-300/15">
+            <span className="relative flex h-1 w-1">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+              <span className="relative inline-flex rounded-full h-1 w-1 bg-primary" />
+            </span>
+            <span className="text-[8px] font-bold font-mono text-primary/60 uppercase tracking-wider">
+              Scrollr
+            </span>
+          </div>
+
+          {/* Ticker chips — crossfade per active tab */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeMockup.word}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="flex items-center gap-2"
             >
-              {/* Scrollr label */}
-              <div className="flex items-center gap-1 shrink-0 pr-2 border-r border-base-300/15">
-                <span className="relative flex h-1 w-1">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1 w-1 bg-primary" />
-                </span>
-                <span className="text-[8px] font-bold font-mono text-primary/60 uppercase tracking-wider">
-                  Scrollr
-                </span>
-              </div>
-              {/* Ticker chips */}
-              {mockup.tickerChips.map((chip) => (
+              {activeMockup.tickerChips.map((chip) => (
                 <div
                   key={chip.label}
-                  className={`flex items-center gap-1.5 px-2 py-1 rounded-sm border ${colors.chipBorder} ${colors.chipBg} shrink-0`}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded-sm border ${chipColors.chipBorder} ${chipColors.chipBg} shrink-0`}
                 >
                   <span
-                    className={`text-[9px] font-bold font-mono ${colors.chipText} whitespace-nowrap`}
+                    className={`text-[9px] font-bold font-mono ${chipColors.chipText} whitespace-nowrap`}
                   >
                     {chip.label}
                   </span>
                   <span
-                    className={`text-[8px] font-mono ${colors.chipSub} whitespace-nowrap`}
+                    className={`text-[8px] font-mono ${chipColors.chipSub} whitespace-nowrap`}
                   >
                     {chip.value}
                   </span>
                 </div>
               ))}
-            </div>
-          </motion.div>
-        )
-      })}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
     </motion.div>
   )
 }
