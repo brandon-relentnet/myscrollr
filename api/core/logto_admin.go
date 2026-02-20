@@ -26,11 +26,12 @@ var (
 
 // logtoM2MConfig holds the env-derived configuration for M2M calls.
 type logtoM2MConfig struct {
-	Endpoint  string // e.g. https://auth.myscrollr.relentnet.dev
-	AppID     string
-	AppSecret string
-	RoleID    string
-	Resource  string // https://default.logto.app/api
+	Endpoint        string // e.g. https://auth.myscrollr.relentnet.dev
+	AppID           string
+	AppSecret       string
+	RoleID          string // "uplink" role
+	UnlimitedRoleID string // "uplink_unlimited" role
+	Resource        string // https://default.logto.app/api
 }
 
 // getM2MConfig reads Logto M2M config from environment once.
@@ -47,11 +48,12 @@ func getM2MConfig() logtoM2MConfig {
 	}
 
 	return logtoM2MConfig{
-		Endpoint:  endpoint,
-		AppID:     os.Getenv("LOGTO_M2M_APP_ID"),
-		AppSecret: os.Getenv("LOGTO_M2M_APP_SECRET"),
-		RoleID:    os.Getenv("LOGTO_UPLINK_ROLE_ID"),
-		Resource:  resource,
+		Endpoint:        endpoint,
+		AppID:           os.Getenv("LOGTO_M2M_APP_ID"),
+		AppSecret:       os.Getenv("LOGTO_M2M_APP_SECRET"),
+		RoleID:          os.Getenv("LOGTO_UPLINK_ROLE_ID"),
+		UnlimitedRoleID: os.Getenv("LOGTO_UNLIMITED_ROLE_ID"),
+		Resource:        resource,
 	}
 }
 
@@ -147,6 +149,83 @@ func AssignUplinkRole(logtoSub string) error {
 	}
 
 	log.Printf("[Logto M2M] Assigned uplink role to user %s", logtoSub)
+	return nil
+}
+
+// AssignUnlimitedRole assigns the "uplink_unlimited" role to a Logto user via Management API.
+func AssignUnlimitedRole(logtoSub string) error {
+	cfg := getM2MConfig()
+	if cfg.UnlimitedRoleID == "" {
+		return fmt.Errorf("LOGTO_UNLIMITED_ROLE_ID must be set")
+	}
+
+	token, err := getM2MToken()
+	if err != nil {
+		return err
+	}
+
+	payload, _ := json.Marshal(map[string][]string{
+		"roleIds": {cfg.UnlimitedRoleID},
+	})
+
+	reqURL := fmt.Sprintf("%s/api/users/%s/roles", cfg.Endpoint, logtoSub)
+	req, err := http.NewRequest("POST", reqURL, bytes.NewReader(payload))
+	if err != nil {
+		return fmt.Errorf("create assign unlimited role request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: LogtoM2MTokenTimeout}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("assign unlimited role request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// 201 = assigned, 422 = already assigned (both are fine)
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusUnprocessableEntity {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("assign unlimited role returned %d: %s", resp.StatusCode, string(body))
+	}
+
+	log.Printf("[Logto M2M] Assigned uplink_unlimited role to user %s", logtoSub)
+	return nil
+}
+
+// RemoveUnlimitedRole removes the "uplink_unlimited" role from a Logto user via Management API.
+func RemoveUnlimitedRole(logtoSub string) error {
+	cfg := getM2MConfig()
+	if cfg.UnlimitedRoleID == "" {
+		return fmt.Errorf("LOGTO_UNLIMITED_ROLE_ID must be set")
+	}
+
+	token, err := getM2MToken()
+	if err != nil {
+		return err
+	}
+
+	reqURL := fmt.Sprintf("%s/api/users/%s/roles/%s", cfg.Endpoint, logtoSub, cfg.UnlimitedRoleID)
+	req, err := http.NewRequest("DELETE", reqURL, nil)
+	if err != nil {
+		return fmt.Errorf("create remove unlimited role request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	client := &http.Client{Timeout: LogtoM2MTokenTimeout}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("remove unlimited role request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// 204 = removed, 404 = not assigned (both are fine)
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusNotFound {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("remove unlimited role returned %d: %s", resp.StatusCode, string(body))
+	}
+
+	log.Printf("[Logto M2M] Removed uplink_unlimited role from user %s", logtoSub)
 	return nil
 }
 
