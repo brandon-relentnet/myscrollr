@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react'
-import { billingApi, type SubscriptionStatus as SubStatus } from '@/api/client'
+import {
+  billingApi,
+  getPreferences,
+  type SubscriptionStatus as SubStatus,
+} from '@/api/client'
 import { Crown, Loader2, AlertTriangle, Calendar, Infinity } from 'lucide-react'
 
 interface SubscriptionStatusProps {
@@ -24,9 +28,12 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 
 export default function SubscriptionStatus({ getToken }: SubscriptionStatusProps) {
   const [subscription, setSubscription] = useState<SubStatus | null>(null)
+  const [tier, setTier] = useState<string>('free')
   const [loading, setLoading] = useState(true)
   const [canceling, setCanceling] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const isUnlimited = tier === 'uplink_unlimited'
 
   useEffect(() => {
     loadSubscription()
@@ -35,8 +42,12 @@ export default function SubscriptionStatus({ getToken }: SubscriptionStatusProps
   async function loadSubscription() {
     try {
       setLoading(true)
-      const sub = await billingApi.getSubscription(getToken)
+      const [sub, prefs] = await Promise.all([
+        billingApi.getSubscription(getToken),
+        getPreferences(getToken).catch(() => null),
+      ])
       setSubscription(sub)
+      if (prefs?.subscription_tier) setTier(prefs.subscription_tier)
     } catch {
       setError('Failed to load subscription')
     } finally {
@@ -89,7 +100,7 @@ export default function SubscriptionStatus({ getToken }: SubscriptionStatusProps
           </span>
         </div>
         <p className="text-xs text-base-content/30">
-          Upgrade to Uplink for real-time data, unlimited tracking, and more.
+          Upgrade to Uplink for faster polling, or Unlimited for real-time SSE.
         </p>
       </div>
     )
@@ -101,13 +112,19 @@ export default function SubscriptionStatus({ getToken }: SubscriptionStatusProps
     : null
 
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${isUnlimited ? 'unlimited-glow rounded-xl p-4 -m-4' : ''}`}
+      style={isUnlimited ? { background: 'rgba(52, 211, 153, 0.03)', borderColor: 'rgba(52, 211, 153, 0.15)' } : undefined}
+    >
       {/* Plan + Status */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Crown size={14} className="text-primary" />
-          <span className="text-xs font-semibold text-primary">
-            Uplink {PLAN_LABELS[subscription.plan] || subscription.plan}
+          <Crown
+            size={14}
+            className={isUnlimited ? 'text-primary unlimited-dot-glow rounded-full' : 'text-primary'}
+          />
+          <span className={`text-xs font-semibold text-primary ${isUnlimited ? 'unlimited-text-glow' : ''}`}>
+            {isUnlimited ? 'Uplink Unlimited' : 'Uplink'}{' '}
+            {PLAN_LABELS[subscription.plan] || subscription.plan}
           </span>
         </div>
         <span className={`text-[10px] font-semibold uppercase tracking-wide ${statusInfo.color}`}>

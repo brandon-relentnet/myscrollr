@@ -348,16 +348,57 @@ function LifetimePage() {
                     Equivalent to ~5.1 years of Uplink Monthly at $8.99/mo
                   </p>
 
-                  {/* Unlimited upgrade callout */}
-                  <div className="mb-8 p-3 rounded-xl bg-primary/[0.04] border border-primary/15">
-                    <p className="text-[10px] text-primary/70 font-semibold mb-1">
-                      Want real-time SSE?
-                    </p>
-                    <p className="text-[10px] text-base-content/35 leading-relaxed">
-                      Lifetime members get 50% off any Unlimited subscription.
-                      Add real-time delivery, unlimited limits, and extended
-                      retention starting at $12.50/mo.
-                    </p>
+                  {/* Unlimited upgrade callout — with aura */}
+                  <div className="relative mb-8 p-3 rounded-xl border border-primary/15 overflow-hidden unlimited-glow"
+                    style={{ background: 'rgba(52, 211, 153, 0.04)' }}
+                  >
+                    {/* Smoke layer — left bloom */}
+                    <motion.div
+                      className="absolute inset-0 pointer-events-none"
+                      style={{
+                        background:
+                          'radial-gradient(ellipse 80% 70% at 15% 50%, #34d39914 0%, transparent 70%)',
+                      }}
+                      animate={{ opacity: [0.3, 0.7, 0.3] }}
+                      transition={{
+                        duration: 4,
+                        repeat: Infinity,
+                        ease: 'easeInOut',
+                      }}
+                    />
+                    {/* Smoke layer — right bloom */}
+                    <motion.div
+                      className="absolute inset-0 pointer-events-none"
+                      style={{
+                        background:
+                          'radial-gradient(ellipse 60% 80% at 85% 50%, #34d39910 0%, transparent 65%)',
+                      }}
+                      animate={{ opacity: [0.2, 0.55, 0.2] }}
+                      transition={{
+                        duration: 6,
+                        repeat: Infinity,
+                        ease: 'easeInOut',
+                        delay: 1,
+                      }}
+                    />
+                    {/* Accent top line */}
+                    <div
+                      className="absolute top-0 left-0 right-0 h-px"
+                      style={{
+                        background:
+                          'linear-gradient(90deg, transparent, #34d399 50%, transparent)',
+                      }}
+                    />
+                    <div className="relative z-10">
+                      <p className="text-[10px] text-primary/70 font-semibold mb-1">
+                        Want real-time SSE?
+                      </p>
+                      <p className="text-[10px] text-base-content/35 leading-relaxed">
+                        Lifetime members get 50% off any Unlimited subscription.
+                        Add real-time delivery, unlimited limits, and extended
+                        retention starting at $12.50/mo.
+                      </p>
+                    </div>
                   </div>
 
                   {/* Slot progress (marketing) */}

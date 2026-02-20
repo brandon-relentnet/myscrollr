@@ -115,10 +115,24 @@ export default function CheckoutForm({
               : 'Subscribe to Uplink'
         }
         tabIndex={-1}
-        className="relative w-full max-w-lg mx-4 bg-base-200 border border-base-content/10 rounded-xl overflow-hidden"
+        className={`relative w-full max-w-lg mx-4 bg-base-200 border rounded-xl overflow-hidden ${
+          isUnlimited
+            ? 'border-primary/20 unlimited-glow'
+            : 'border-base-content/10'
+        }`}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-base-content/10">
-          <h3 className="text-xs font-semibold text-base-content/60">
+        <div
+          className={`flex items-center justify-between px-6 py-4 border-b ${
+            isUnlimited
+              ? 'border-primary/15 bg-primary/[0.03]'
+              : 'border-base-content/10'
+          }`}
+        >
+          <h3
+            className={`text-xs font-semibold ${
+              isUnlimited ? 'text-primary unlimited-text-glow' : 'text-base-content/60'
+            }`}
+          >
             {isLifetime
               ? 'Lifetime Purchase'
               : isUnlimited

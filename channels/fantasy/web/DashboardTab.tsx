@@ -471,6 +471,7 @@ function FantasyDashboardTab({
             label="Delivery"
             value={isUnlimited ? 'Real-time SSE' : isUplink ? 'Poll 30s' : 'Poll 60s'}
             hex={hex}
+            glow={isUnlimited}
           />
         </div>
       )}

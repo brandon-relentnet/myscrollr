@@ -199,6 +199,7 @@ function FinanceDashboardTab({
           label="Delivery"
           value={isUnlimited ? "Real-time SSE" : isUplink ? "Poll \u00b7 30s" : "Poll \u00b7 60s"}
           hex={hex}
+          glow={isUnlimited}
         />
       </div>
 

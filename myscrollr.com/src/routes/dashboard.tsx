@@ -460,6 +460,10 @@ function DashboardPage() {
                         ? 'text-info'
                         : 'text-base-content/60'
                   }
+                  glow={
+                    subscriptionTier === 'uplink_unlimited' &&
+                    status === 'connected'
+                  }
                 />
               </div>
             </div>
@@ -621,15 +625,20 @@ function QuickStat({
   label,
   value,
   color = 'text-base-content/80',
+  glow = false,
 }: {
   label: string
   value: string
   color?: string
+  /** When true, applies the Unlimited tier green text glow */
+  glow?: boolean
 }) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-xs text-base-content/40">{label}</span>
-      <span className={`text-sm font-semibold font-mono ${color}`}>
+      <span
+        className={`text-sm font-semibold font-mono ${color} ${glow ? 'unlimited-text-glow' : ''}`}
+      >
         {value}
       </span>
     </div>
