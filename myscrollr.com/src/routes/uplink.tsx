@@ -942,68 +942,266 @@ function UplinkPage() {
             </span>
           </motion.div>
 
-          {/* Headline */}
-          <div className="max-w-5xl">
-            <motion.h1
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.15, ease: EASE }}
-              className="text-6xl md:text-8xl lg:text-9xl font-black tracking-tight leading-[0.85] mb-8"
-            >
-              Total
-              <br />
-              <span className="relative inline-block">
-                <span className="text-gradient-primary">Coverage</span>
-                {/* Underline accent */}
-                <motion.span
-                  className="absolute -bottom-2 left-0 right-0 h-[3px] bg-gradient-to-r from-primary via-primary/60 to-transparent origin-left"
-                  initial={{ scaleX: 0 }}
-                  animate={{ scaleX: 1 }}
-                  transition={{ duration: 0.8, delay: 0.8, ease: EASE }}
-                />
-              </span>
-            </motion.h1>
-
-            {/* Subtitle */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.35, ease: EASE }}
-              className="flex items-start gap-3 mb-12 max-w-xl"
-            >
-              <span className="text-primary/30 font-mono text-sm mt-0.5 select-none shrink-0">
-                $
-              </span>
-              <p className="text-base text-base-content/40 leading-relaxed">
-                Scrollr is free and open source. Uplink tiers are for power
-                users who want more — expanded limits, faster delivery, and
-                real-time data via SSE.
-              </p>
-            </motion.div>
-
-            {/* CTA row */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.5, ease: EASE }}
-              className="flex flex-wrap items-center gap-5"
-            >
-              <button
-                type="button"
-                onClick={() => handleSelectPlan('annual')}
-                className="btn btn-pulse btn-lg gap-2.5"
+          {/* Two-column: text left, tier cards right */}
+          <div className="flex items-center gap-6">
+            {/* Left — headline + CTA */}
+            <div className="flex-1 min-w-0">
+              <motion.h1
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.15, ease: EASE }}
+                className="text-6xl md:text-8xl lg:text-9xl font-black tracking-tight leading-[0.85] mb-8"
               >
-                <Rocket size={14} />
-                Get Uplink
-              </button>
-
-              <div className="flex items-center gap-3">
-                <span className="h-px w-6 bg-base-300/50" />
-                <span className="text-[10px] font-mono text-base-content/20">
-                  From $5.83/mo &middot; Unlimited from $16.67/mo
+                Total
+                <br />
+                <span className="relative inline-block">
+                  <span className="text-gradient-primary">Coverage</span>
+                  {/* Underline accent */}
+                  <motion.span
+                    className="absolute -bottom-2 left-0 right-0 h-[3px] bg-gradient-to-r from-primary via-primary/60 to-transparent origin-left"
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: 1 }}
+                    transition={{ duration: 0.8, delay: 0.8, ease: EASE }}
+                  />
                 </span>
+              </motion.h1>
+
+              {/* Subtitle */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.35, ease: EASE }}
+                className="flex items-start gap-3 mb-12 max-w-xl"
+              >
+                <span className="text-primary/30 font-mono text-sm mt-0.5 select-none shrink-0">
+                  $
+                </span>
+                <p className="text-base text-base-content/40 leading-relaxed">
+                  Scrollr is free and open source. Uplink tiers are for power
+                  users who want more — expanded limits, faster delivery, and
+                  real-time data via SSE.
+                </p>
+              </motion.div>
+
+              {/* CTA row */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.5, ease: EASE }}
+                className="flex flex-wrap items-center gap-5"
+              >
+                <button
+                  type="button"
+                  onClick={() => handleSelectPlan('annual')}
+                  className="btn btn-pulse btn-lg gap-2.5"
+                >
+                  <Rocket size={14} />
+                  Get Uplink
+                </button>
+
+                <div className="flex items-center gap-3">
+                  <span className="h-px w-6 bg-base-300/50" />
+                  <span className="text-[10px] font-mono text-base-content/20">
+                    From $5.83/mo &middot; Unlimited from $16.67/mo
+                  </span>
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Right — concentric signal rings (hidden on mobile) */}
+            <div className="hidden lg:flex items-center justify-center w-[380px] shrink-0">
+              <div className="relative w-[340px] h-[340px]">
+                {/* ── Outer ring: Unlimited (green glow) ── */}
+                <motion.div
+                  className="absolute inset-0 rounded-full"
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.8, duration: 1, ease: EASE }}
+                >
+                  {/* Glow layer */}
+                  <motion.div
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      boxShadow:
+                        '0 0 40px #34d39920, 0 0 80px #34d39910, inset 0 0 40px #34d39908',
+                    }}
+                    animate={{ opacity: [0.5, 1, 0.5] }}
+                    transition={{
+                      duration: 4,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                    }}
+                  />
+                  <div
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      border: '1.5px solid #34d39930',
+                      background:
+                        'radial-gradient(circle, transparent 60%, #34d39908 100%)',
+                    }}
+                  />
+                  {/* Label */}
+                  <motion.div
+                    className="absolute -top-1 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1.4, duration: 0.5, ease: EASE }}
+                  >
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-primary/70 bg-base-100/80 backdrop-blur-sm px-3 py-1 rounded-full border border-primary/15">
+                      Unlimited
+                    </span>
+                  </motion.div>
+                </motion.div>
+
+                {/* ── Middle ring: Uplink (cyan) ── */}
+                <motion.div
+                  className="absolute inset-[55px] rounded-full"
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.6, duration: 0.9, ease: EASE }}
+                >
+                  <div
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      border: '1.5px solid #00b8db25',
+                      background:
+                        'radial-gradient(circle, transparent 55%, #00b8db06 100%)',
+                    }}
+                  />
+                  {/* Label */}
+                  <motion.div
+                    className="absolute -top-1 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1.2, duration: 0.5, ease: EASE }}
+                  >
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-info/50 bg-base-100/80 backdrop-blur-sm px-3 py-1 rounded-full border border-info/10">
+                      Uplink
+                    </span>
+                  </motion.div>
+                </motion.div>
+
+                {/* ── Inner ring: Free (muted) ── */}
+                <motion.div
+                  className="absolute inset-[110px] rounded-full"
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.4, duration: 0.8, ease: EASE }}
+                >
+                  <div
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      border: '1px solid rgba(255,255,255,0.06)',
+                    }}
+                  />
+                  {/* Label */}
+                  <motion.div
+                    className="absolute -top-1 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1.0, duration: 0.5, ease: EASE }}
+                  >
+                    <span className="text-[8px] font-bold uppercase tracking-widest text-base-content/25 bg-base-100/80 backdrop-blur-sm px-2.5 py-1 rounded-full border border-base-300/15">
+                      Free
+                    </span>
+                  </motion.div>
+                </motion.div>
+
+                {/* ── Center: Satellite icon ── */}
+                <motion.div
+                  className="absolute inset-0 flex items-center justify-center"
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.3, duration: 0.7, ease: EASE }}
+                >
+                  <div className="relative">
+                    {/* Icon glow */}
+                    <div
+                      className="absolute inset-0 rounded-full blur-xl"
+                      style={{
+                        background:
+                          'radial-gradient(circle, #34d39925 0%, transparent 70%)',
+                        width: 80,
+                        height: 80,
+                        left: -16,
+                        top: -16,
+                      }}
+                    />
+                    <div
+                      className="relative w-12 h-12 rounded-2xl flex items-center justify-center"
+                      style={{
+                        background: '#34d39910',
+                        boxShadow:
+                          '0 0 24px #34d39915, 0 0 0 1px #34d39920',
+                      }}
+                    >
+                      <Satellite
+                        size={22}
+                        className="text-primary/70"
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* ── Radiating pulse (perpetual) ── */}
+                {[0, 1, 2].map((i) => (
+                  <motion.div
+                    key={i}
+                    className="absolute inset-0 rounded-full border border-primary/10 pointer-events-none"
+                    animate={{ scale: [0.35, 1.15], opacity: [0.6, 0] }}
+                    transition={{
+                      delay: 1.5 + i * 1.2,
+                      duration: 3,
+                      ease: 'easeOut',
+                      repeat: Infinity,
+                      repeatDelay: 1.6,
+                    }}
+                  />
+                ))}
+
+                {/* ── Floating data dots ── */}
+                {[
+                  { angle: 30, radius: 45, color: '#34d399', size: 3, delay: 2 },
+                  { angle: 150, radius: 70, color: '#00b8db', size: 2.5, delay: 2.8 },
+                  { angle: 250, radius: 55, color: '#34d399', size: 2, delay: 3.5 },
+                  { angle: 80, radius: 85, color: '#00b8db', size: 3, delay: 2.4 },
+                  { angle: 200, radius: 40, color: '#34d399', size: 2.5, delay: 3.2 },
+                  { angle: 320, radius: 75, color: '#00b8db', size: 2, delay: 2.6 },
+                ].map((dot) => (
+                  <motion.div
+                    key={`${dot.angle}-${dot.radius}`}
+                    className="absolute rounded-full pointer-events-none"
+                    style={{
+                      width: dot.size,
+                      height: dot.size,
+                      backgroundColor: dot.color,
+                      left: '50%',
+                      top: '50%',
+                      marginLeft: -dot.size / 2,
+                      marginTop: -dot.size / 2,
+                    }}
+                    animate={{
+                      x: [
+                        Math.cos((dot.angle * Math.PI) / 180) * (dot.radius * 0.6),
+                        Math.cos((dot.angle * Math.PI) / 180) * (dot.radius * 1.8),
+                      ],
+                      y: [
+                        Math.sin((dot.angle * Math.PI) / 180) * (dot.radius * 0.6),
+                        Math.sin((dot.angle * Math.PI) / 180) * (dot.radius * 1.8),
+                      ],
+                      opacity: [0, 0.8, 0],
+                    }}
+                    transition={{
+                      delay: dot.delay,
+                      duration: 4,
+                      ease: 'easeInOut',
+                      repeat: Infinity,
+                      repeatDelay: 2,
+                    }}
+                  />
+                ))}
               </div>
-            </motion.div>
+            </div>
           </div>
         </div>
 
