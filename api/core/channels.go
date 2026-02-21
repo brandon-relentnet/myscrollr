@@ -90,6 +90,7 @@ func SyncChannelSubscriptions(logtoSub string) {
 
 // addChannelSubscriptions adds Redis subscription entries for a newly created/enabled channel.
 // For sports, this also adds the user to all per-league subscriber sets.
+// Also updates the in-memory topic registry for active SSE connections.
 func addChannelSubscriptions(ctx context.Context, logtoSub, channelType string, config map[string]interface{}) {
 	AddSubscriber(ctx, RedisChannelSubscribersPrefix+channelType, logtoSub)
 
@@ -106,12 +107,16 @@ func addChannelSubscriptions(ctx context.Context, logtoSub, channelType string, 
 		}
 	}
 
+	// Rebuild topic subscriptions so active SSE connections get the new channel
+	UpdateUserTopicSubscriptions(logtoSub)
+
 	enabled := true
 	callChannelLifecycle(ctx, channelType, "sync", logtoSub, config, nil, &enabled)
 }
 
 // removeChannelSubscriptions removes Redis subscription entries for a deleted/disabled channel.
 // For sports, this also removes the user from all per-league subscriber sets.
+// Also updates the in-memory topic registry for active SSE connections.
 func removeChannelSubscriptions(ctx context.Context, logtoSub, channelType string, config map[string]interface{}) {
 	RemoveSubscriber(ctx, RedisChannelSubscribersPrefix+channelType, logtoSub)
 
@@ -125,6 +130,9 @@ func removeChannelSubscriptions(ctx context.Context, logtoSub, channelType strin
 			log.Printf("[Channels] Failed to remove sports league subscriptions for %s: %v", logtoSub, err)
 		}
 	}
+
+	// Rebuild topic subscriptions so active SSE connections stop receiving this channel
+	UpdateUserTopicSubscriptions(logtoSub)
 
 	enabled := false
 	callChannelLifecycle(ctx, channelType, "sync", logtoSub, config, nil, &enabled)
