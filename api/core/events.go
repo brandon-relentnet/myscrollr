@@ -2,6 +2,8 @@ package core
 
 import (
 	"context"
+	"fmt"
+	"hash/fnv"
 	"log"
 	"strings"
 	"sync"
@@ -11,6 +13,7 @@ import (
 // Client represents a single SSE connection tied to an authenticated user.
 type Client struct {
 	UserID string
+	Shard  int
 	Ch     chan []byte
 }
 
@@ -23,14 +26,8 @@ type clientList struct {
 }
 
 // trySend attempts a non-blocking send to a client's buffered channel.
-// Returns false if the channel is full or has been closed (client disconnected).
-//
-// With sync.Map, unregister can close a client's channel while the dispatch
-// goroutine is iterating a stale snapshot of the client list. A bare
-// `client.Ch <- payload` would panic with "send on closed channel". The
-// deferred recover() catches this safely. The window is extremely narrow
-// (between sync.Map.Load and the CAS in unregister) and the client is already
-// removed from the map, so no repeated recovery occurs.
+// Recovers from "send on closed channel" panic that can occur when unregister
+// closes a client's channel while the dispatch goroutine holds a stale snapshot.
 func trySend(client *Client, payload []byte) bool {
 	defer func() { recover() }()
 	select {
@@ -41,67 +38,146 @@ func trySend(client *Client, payload []byte) bool {
 	}
 }
 
-// Hub maintains per-user SSE client connections and routes messages from
-// Redis per-user channels to the correct clients.
-type Hub struct {
-	// clients maps userID -> *clientList using sync.Map for lock-free reads.
-	// sync.Map is optimal here because reads (message dispatch) vastly
-	// outnumber writes (connect/disconnect).
-	clients sync.Map
+// hubShard is an independent dispatch worker with its own Redis subscription
+// and client registry.
+type hubShard struct {
+	id      int
+	clients sync.Map // userID -> *clientList
+}
 
+// Hub maintains sharded per-user SSE client connections and routes messages
+// from Redis per-user channels to the correct clients.
+type Hub struct {
+	shards      [HubShardCount]*hubShard
 	clientCount atomic.Int64
 }
 
-var globalHub = &Hub{}
+var globalHub *Hub
 
-// Run starts the hub's main loop. It exits when ctx is cancelled.
-func (h *Hub) Run(ctx context.Context) {
-	go h.listenToRedis(ctx)
-
-	log.Println("[EventHub] Hub started (per-user mode)")
-
-	<-ctx.Done()
-	log.Println("[EventHub] Hub shutting down")
-
-	// Close all client channels
-	h.clients.Range(func(key, value any) bool {
-		list := value.(*clientList)
-		for _, c := range list.entries {
-			close(c.Ch)
-		}
-		h.clients.Delete(key)
-		return true
-	})
+// shardFor returns the shard index for a given user ID.
+func shardFor(userID string) int {
+	h := fnv.New32a()
+	h.Write([]byte(userID))
+	return int(h.Sum32()) & (HubShardCount - 1) // bit mask for power-of-2
 }
 
-// register adds an authenticated client to the hub.
-func (h *Hub) register(client *Client) {
+// shardPrefix returns the hex-encoded shard prefix for a user ID.
+// This is embedded in the Redis channel name for pattern-based routing.
+func shardPrefix(userID string) string {
+	return fmt.Sprintf("%x", shardFor(userID))
+}
+
+// userChannel returns the full Redis channel name for a user, including shard prefix.
+func userChannel(userID string) string {
+	return fmt.Sprintf("%s%s:%s", RedisEventsUserPrefix, shardPrefix(userID), userID)
+}
+
+// InitHub creates the sharded hub and starts all workers.
+func InitHub(ctx context.Context) {
+	hub := &Hub{}
+	for i := 0; i < HubShardCount; i++ {
+		hub.shards[i] = &hubShard{id: i}
+	}
+	globalHub = hub
+
+	for i := 0; i < HubShardCount; i++ {
+		go hub.shards[i].listenToRedis(ctx)
+	}
+
+	// Shutdown watcher
+	go func() {
+		<-ctx.Done()
+		log.Println("[EventHub] Hub shutting down")
+		for _, shard := range hub.shards {
+			shard.clients.Range(func(key, value any) bool {
+				list := value.(*clientList)
+				for _, c := range list.entries {
+					close(c.Ch)
+				}
+				shard.clients.Delete(key)
+				return true
+			})
+		}
+	}()
+
+	log.Printf("[EventHub] Hub started with %d shards", HubShardCount)
+}
+
+// listenToRedis subscribes to this shard's Redis pattern and dispatches
+// messages to registered clients.
+func (s *hubShard) listenToRedis(ctx context.Context) {
+	// Pattern: events:user:{shard_hex}:*
+	pattern := fmt.Sprintf("%s%x:*", RedisEventsUserPrefix, s.id)
+	pubsub := PSubscribe(ctx, pattern)
+	defer pubsub.Close()
+
+	ch := pubsub.Channel()
+
+	log.Printf("[EventHub] Shard %d listening to pattern: %s", s.id, pattern)
+
+	// The shard-specific prefix to strip when extracting the user ID.
+	// e.g., "events:user:a:" for shard 10
+	prefix := fmt.Sprintf("%s%x:", RedisEventsUserPrefix, s.id)
+
 	for {
-		existing, loaded := h.clients.Load(client.UserID)
+		select {
+		case <-ctx.Done():
+			return
+		case msg, ok := <-ch:
+			if !ok {
+				return
+			}
+
+			// Extract userID by stripping the shard prefix
+			if !strings.HasPrefix(msg.Channel, prefix) {
+				continue
+			}
+			userID := msg.Channel[len(prefix):]
+			if userID == "" {
+				continue
+			}
+
+			// Lock-free dispatch via sync.Map
+			value, ok := s.clients.Load(userID)
+			if !ok {
+				continue
+			}
+			list := value.(*clientList)
+			payload := []byte(msg.Payload)
+			for _, client := range list.entries {
+				trySend(client, payload)
+			}
+		}
+	}
+}
+
+// register adds a client to the correct shard.
+func (s *hubShard) register(client *Client) {
+	for {
+		existing, loaded := s.clients.Load(client.UserID)
 		if loaded {
 			old := existing.(*clientList)
 			newList := &clientList{
 				entries: append(old.entries, client),
 			}
-			if h.clients.CompareAndSwap(client.UserID, old, newList) {
+			if s.clients.CompareAndSwap(client.UserID, old, newList) {
 				break
 			}
-			// CAS failed — another goroutine modified the list concurrently; retry
+			// CAS failed -- another goroutine modified the list; retry
 		} else {
 			newList := &clientList{entries: []*Client{client}}
-			if _, swapped := h.clients.LoadOrStore(client.UserID, newList); !swapped {
+			if _, swapped := s.clients.LoadOrStore(client.UserID, newList); !swapped {
 				break
 			}
 			// Another goroutine stored first; retry with Load path
 		}
 	}
-	h.clientCount.Add(1)
 }
 
-// unregister removes a client from the hub and closes its channel.
-func (h *Hub) unregister(client *Client) {
+// unregister removes a client from its shard and closes the channel.
+func (s *hubShard) unregister(client *Client) {
 	for {
-		existing, ok := h.clients.Load(client.UserID)
+		existing, ok := s.clients.Load(client.UserID)
 		if !ok {
 			return
 		}
@@ -120,74 +196,31 @@ func (h *Hub) unregister(client *Client) {
 			return
 		}
 		if len(newEntries) == 0 {
-			if h.clients.CompareAndDelete(client.UserID, old) {
+			if s.clients.CompareAndDelete(client.UserID, old) {
 				break
 			}
 		} else {
 			newList := &clientList{entries: newEntries}
-			if h.clients.CompareAndSwap(client.UserID, old, newList) {
+			if s.clients.CompareAndSwap(client.UserID, old, newList) {
 				break
 			}
 		}
 		// CAS failed; retry
 	}
-	h.clientCount.Add(-1)
 }
 
-// listenToRedis subscribes to all per-user channels via pattern and routes
-// messages to the correct SSE clients. Exits when ctx is cancelled.
-func (h *Hub) listenToRedis(ctx context.Context) {
-	pubsub := PSubscribe(ctx, RedisEventsUserPrefix+"*")
-	defer pubsub.Close()
+// --- Public API (unchanged signatures from Phase 1) ---
 
-	ch := pubsub.Channel()
-
-	log.Printf("[EventHub] Listening to Redis pattern: %s*", RedisEventsUserPrefix)
-
-	for {
-		select {
-		case <-ctx.Done():
-			log.Println("[EventHub] Redis listener shutting down")
-			return
-		case msg, ok := <-ch:
-			if !ok {
-				return
-			}
-			parts := strings.SplitN(msg.Channel, RedisEventsUserPrefix, 2)
-			if len(parts) != 2 || parts[1] == "" {
-				continue
-			}
-			userID := parts[1]
-
-			// sync.Map.Load is lock-free — no mutex contention
-			value, ok := h.clients.Load(userID)
-			if !ok {
-				continue // No connected clients for this user
-			}
-			list := value.(*clientList)
-			payload := []byte(msg.Payload)
-			for _, client := range list.entries {
-				trySend(client, payload)
-			}
-		}
-	}
-}
-
-// InitHub starts the global event hub with context for graceful shutdown.
-func InitHub(ctx context.Context) {
-	go globalHub.Run(ctx)
-}
-
-// SendToUser publishes a pre-serialised message to a specific user's Redis channel.
-// This is called by the webhook handler for single-user routes (core-owned tables).
+// SendToUser publishes a message to a specific user's sharded Redis channel.
 func SendToUser(sub string, msg []byte) {
-	if err := PublishRaw(RedisEventsUserPrefix+sub, msg); err != nil {
+	channel := userChannel(sub)
+	if err := PublishRaw(channel, msg); err != nil {
 		log.Printf("[EventHub] Failed to send to user %s: %v", sub, err)
 	}
 }
 
-// SendToUsers publishes a pre-serialised message to multiple users' Redis
-// channels in a single pipeline round-trip.
+// SendToUsers publishes a message to multiple users' sharded Redis channels
+// in a single pipeline round-trip.
 func SendToUsers(subs []string, msg []byte) {
 	if len(subs) == 0 {
 		return
@@ -195,7 +228,7 @@ func SendToUsers(subs []string, msg []byte) {
 
 	channels := make([]string, len(subs))
 	for i, sub := range subs {
-		channels[i] = RedisEventsUserPrefix + sub
+		channels[i] = userChannel(sub)
 	}
 
 	if errCount := PublishBatch(channels, msg); errCount > 0 {
@@ -203,22 +236,26 @@ func SendToUsers(subs []string, msg []byte) {
 	}
 }
 
-// RegisterClient adds an authenticated client to the hub.
+// RegisterClient adds an authenticated client to the correct hub shard.
 func RegisterClient(userID string) *Client {
+	shard := shardFor(userID)
 	client := &Client{
 		UserID: userID,
+		Shard:  shard,
 		Ch:     make(chan []byte, SSEClientBufferSize),
 	}
-	globalHub.register(client)
+	globalHub.shards[shard].register(client)
+	globalHub.clientCount.Add(1)
 	return client
 }
 
-// UnregisterClient removes a client from the hub.
+// UnregisterClient removes a client from its hub shard.
 func UnregisterClient(client *Client) {
-	globalHub.unregister(client)
+	globalHub.shards[client.Shard].unregister(client)
+	globalHub.clientCount.Add(-1)
 }
 
-// ClientCount returns the total number of connected SSE clients across all users.
+// ClientCount returns the total number of connected SSE clients.
 func ClientCount() int {
 	return int(globalHub.clientCount.Load())
 }
