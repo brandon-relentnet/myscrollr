@@ -2,12 +2,14 @@ import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import {
   AnimatePresence,
   motion,
+  useInView,
   useMotionValue,
+  useSpring,
   useTransform,
   animate,
 } from 'motion/react'
 import { AnimateNumber } from 'motion-plus/react'
-import { useEffect, useState, lazy, Suspense } from 'react'
+import { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react'
 import {
   BarChart3,
   Check,
@@ -254,6 +256,18 @@ const BILLING_LABELS: Record<PlanKey, string> = {
   annual: 'Annual',
 }
 
+// ── CTA Particles ──────────────────────────────────────────────
+
+const CTA_PARTICLES = Array.from({ length: 20 }, (_, i) => ({
+  id: i,
+  x: Math.random() * 100,
+  y: Math.random() * 100,
+  size: Math.random() * 3 + 1.5,
+  delay: Math.random() * 5,
+  duration: Math.random() * 6 + 8,
+  color: i % 3 === 0 ? '#00b8db' : '#34d399', // alternate cyan + green
+}))
+
 // ── Uplink FAQ ─────────────────────────────────────────────────
 
 const UPLINK_FAQ: FAQItem[] = [
@@ -397,6 +411,312 @@ function SignalBars() {
         />
       ))}
     </div>
+  )
+}
+
+// ── Bottom CTA (full-section, matches homepage quality) ──────────
+
+function BottomCTA({
+  handleSelectPlan,
+}: {
+  handleSelectPlan: (period: PlanKey, tier: 'uplink' | 'unlimited') => void
+}) {
+  const sectionRef = useRef<HTMLElement>(null)
+  const isInView = useInView(sectionRef, { amount: 0.15 })
+
+  // Mouse parallax for ambient orb
+  const mouseX = useMotionValue(0.5)
+  const mouseY = useMotionValue(0.5)
+  const orbX = useTransform(mouseX, [0, 1], [-30, 30])
+  const orbY = useTransform(mouseY, [0, 1], [-30, 30])
+  const smoothOrbX = useSpring(orbX, { stiffness: 50, damping: 30 })
+  const smoothOrbY = useSpring(orbY, { stiffness: 50, damping: 30 })
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      const rect = e.currentTarget.getBoundingClientRect()
+      mouseX.set((e.clientX - rect.left) / rect.width)
+      mouseY.set((e.clientY - rect.top) / rect.height)
+    },
+    [mouseX, mouseY],
+  )
+
+  return (
+    <section
+      ref={sectionRef}
+      className="relative overflow-clip py-32 lg:py-44"
+      onMouseMove={handleMouseMove}
+    >
+      {/* ── Background layers ─────────────────────────────────────── */}
+
+      {/* Dark gradient base */}
+      <div className="absolute inset-0 bg-gradient-to-b from-base-100 via-base-200/80 to-base-100 pointer-events-none" />
+
+      {/* Mouse-following ambient orb */}
+      <motion.div
+        className="absolute pointer-events-none"
+        style={{
+          width: 600,
+          height: 600,
+          left: '50%',
+          top: '50%',
+          x: smoothOrbX,
+          y: smoothOrbY,
+          translateX: '-50%',
+          translateY: '-50%',
+          background:
+            'radial-gradient(circle, rgba(52,211,153,0.08) 0%, rgba(0,184,219,0.04) 40%, transparent 70%)',
+          filter: 'blur(60px)',
+        }}
+      />
+
+      {/* Convergence beams — green (Unlimited) + cyan (Uplink) */}
+      <div className="absolute inset-0 pointer-events-none">
+        {[
+          { angle: 35, color: '#34d399', delay: 0.3 },
+          { angle: 145, color: '#00b8db', delay: 0.45 },
+          { angle: 215, color: '#34d399', delay: 0.6 },
+          { angle: 325, color: '#00b8db', delay: 0.75 },
+        ].map((beam) => (
+          <motion.div
+            key={beam.angle}
+            className="absolute left-1/2 top-1/2 pointer-events-none"
+            style={{
+              width: '200%',
+              height: 2,
+              transformOrigin: 'left center',
+              rotate: beam.angle,
+              x: '-50%',
+              y: '-50%',
+              background: `linear-gradient(90deg, transparent 0%, ${beam.color}00 20%, ${beam.color}40 50%, ${beam.color}00 80%, transparent 100%)`,
+              opacity: 0,
+            }}
+            initial={{ opacity: 0, scaleX: 0 }}
+            animate={
+              isInView
+                ? { opacity: [0, 0.6, 0.3], scaleX: [0, 1, 1] }
+                : {}
+            }
+            transition={{ delay: beam.delay, duration: 2, ease: EASE }}
+          />
+        ))}
+      </div>
+
+      {/* Floating particles */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {CTA_PARTICLES.map((p) => (
+          <motion.div
+            key={p.id}
+            className="absolute rounded-full"
+            style={{
+              left: `${p.x}%`,
+              top: `${p.y}%`,
+              width: p.size,
+              height: p.size,
+              backgroundColor: p.color,
+              opacity: 0,
+            }}
+            animate={
+              isInView
+                ? { y: [0, -80, -160], opacity: [0, 0.5, 0] }
+                : {}
+            }
+            transition={{
+              delay: p.delay,
+              duration: p.duration,
+              ease: 'easeInOut',
+              repeat: Infinity,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Pulse rings */}
+      {[0, 1, 2].map((i) => (
+        <motion.div
+          key={i}
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/20 pointer-events-none"
+          style={{ width: 280, height: 280, opacity: 0 }}
+          animate={
+            isInView
+              ? { scale: [0.8, 2.5], opacity: [0.4, 0] }
+              : {}
+          }
+          transition={{
+            delay: 1.2 + i,
+            duration: 3,
+            ease: 'easeOut',
+            repeat: Infinity,
+            repeatDelay: 1,
+          }}
+        />
+      ))}
+
+      {/* ── Content ───────────────────────────────────────────────── */}
+      <div
+        className="relative mx-auto px-5 sm:px-6 lg:px-8"
+        style={{ maxWidth: 1400 }}
+      >
+        <div className="flex flex-col items-center text-center">
+          {/* Pill badge */}
+          <motion.div
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.5, ease: EASE }}
+          >
+            <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-medium text-primary backdrop-blur-sm">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
+              </span>
+              Available Now
+            </span>
+          </motion.div>
+
+          {/* Main headline */}
+          <motion.h2
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ delay: 0.1, duration: 0.6, ease: EASE }}
+            className="mt-8 text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black tracking-tight leading-none"
+          >
+            <span className="block">Upgrade Your</span>
+            <span className="block mt-2 text-gradient-primary">Signal.</span>
+          </motion.h2>
+
+          {/* Sub-copy */}
+          <motion.span
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.25, duration: 0.5, ease: EASE }}
+            className="block mt-6 text-lg sm:text-xl text-base-content/50 max-w-lg leading-relaxed"
+          >
+            The core is free forever. Uplink and Unlimited are for those who
+            want more data, faster delivery, and zero limits.
+          </motion.span>
+
+          {/* CTA buttons with central glow */}
+          <motion.div
+            className="relative mt-10"
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.4, duration: 0.6, ease: EASE }}
+          >
+            {/* Central glow behind buttons */}
+            <div
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none"
+              style={{
+                width: 240,
+                height: 240,
+                background:
+                  'radial-gradient(circle, rgba(52,211,153,0.15) 0%, transparent 70%)',
+                filter: 'blur(30px)',
+              }}
+            />
+
+            <div className="relative z-10 flex flex-wrap items-center justify-center gap-4">
+              <button
+                type="button"
+                onClick={() => handleSelectPlan('annual', 'unlimited')}
+                className="btn btn-pulse gap-2 text-base px-8 py-5 shadow-2xl"
+              >
+                <Crown size={14} /> Get Unlimited — $16.67/mo
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectPlan('annual', 'uplink')}
+                className="btn btn-outline gap-2 px-6 py-4"
+              >
+                <Rocket size={14} /> Uplink — $5.83/mo
+              </button>
+            </div>
+          </motion.div>
+
+          {/* Trust signals */}
+          <motion.div
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.6, duration: 0.5, ease: EASE }}
+            className="mt-6 flex items-center gap-4 text-xs text-base-content/30"
+          >
+            {[
+              'Cancel anytime',
+              'No contracts',
+              'Instant activation',
+              'Secure checkout',
+            ].map((item) => (
+              <span key={item} className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/40" />
+                {item}
+              </span>
+            ))}
+          </motion.div>
+
+          {/* Bottom links */}
+          <motion.div
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.75, duration: 0.5, ease: EASE }}
+            className="mt-14 flex items-center gap-6"
+          >
+            <Link
+              to="/uplink/lifetime"
+              search={{ session_id: undefined }}
+              className="inline-flex items-center gap-2 text-sm text-base-content/40 hover:text-warning transition-colors duration-200"
+            >
+              <Sparkles className="size-4" aria-hidden />
+              Lifetime Access
+            </Link>
+            <span className="w-px h-4 bg-base-content/10" />
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center gap-2 text-sm text-base-content/40 hover:text-primary transition-colors duration-200"
+            >
+              <Satellite className="size-4" aria-hidden />
+              Try Free First
+            </Link>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* ── Bottom horizon glow ───────────────────────────────────── */}
+      <div className="absolute bottom-0 left-0 right-0 h-px pointer-events-none">
+        <motion.div
+          className="absolute inset-0"
+          style={{
+            background:
+              'linear-gradient(90deg, transparent, var(--color-primary), var(--color-info), var(--color-primary), transparent)',
+            opacity: 0,
+          }}
+          animate={isInView ? { opacity: [0, 0.4, 0.2] } : {}}
+          transition={{ delay: 1.5, duration: 2 }}
+        />
+        <motion.div
+          className="absolute bottom-0 left-1/2 -translate-x-1/2"
+          style={{
+            width: '60%',
+            height: 120,
+            background:
+              'radial-gradient(ellipse at bottom, rgba(52,211,153,0.08) 0%, transparent 70%)',
+            opacity: 0,
+          }}
+          animate={isInView ? { opacity: 1 } : {}}
+          transition={{ delay: 1.8, duration: 1.5 }}
+        />
+      </div>
+    </section>
   )
 }
 
@@ -2162,135 +2482,7 @@ function UplinkPage() {
       {/* ================================================================
           BOTTOM CTA
           ================================================================ */}
-      <section className="relative overflow-hidden">
-        <div className="container pb-8">
-          <motion.div
-            style={{ opacity: 0 }}
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.7, ease: EASE }}
-            className="relative overflow-hidden rounded-2xl bg-base-200/40 border border-base-300/25 backdrop-blur-sm"
-          >
-            {/* Top accent line */}
-            <div
-              className="absolute top-0 left-0 right-0 h-px"
-              style={{
-                background:
-                  'linear-gradient(90deg, transparent, #34d399 50%, transparent)',
-              }}
-            />
-
-            {/* Background layers */}
-            <div className="absolute inset-0 pointer-events-none">
-              <motion.div
-                className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full"
-                style={{
-                  background:
-                    'radial-gradient(circle, var(--glow-primary-subtle) 0%, transparent 70%)',
-                }}
-                animate={{
-                  scale: [1, 1.1, 1],
-                  opacity: [0.5, 0.8, 0.5],
-                }}
-                transition={{
-                  duration: 6,
-                  repeat: Infinity,
-                  ease: 'easeInOut',
-                }}
-              />
-              <div
-                className="absolute inset-0 opacity-[0.015]"
-                style={{
-                  backgroundImage: `
-                    linear-gradient(var(--grid-line-color) 1px, transparent 1px),
-                    linear-gradient(90deg, var(--grid-line-color) 1px, transparent 1px)
-                  `,
-                  backgroundSize: '40px 40px',
-                }}
-              />
-            </div>
-
-            {/* Watermark */}
-            <Satellite
-              size={160}
-              strokeWidth={0.4}
-              className="absolute -bottom-8 -right-8 text-base-content/[0.025] pointer-events-none"
-            />
-
-            <div className="relative z-10 p-10 md:p-16 lg:p-20 text-center max-w-3xl mx-auto">
-              <motion.div
-                style={{ opacity: 0 }}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                className="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-lg bg-primary/8 border border-primary/15"
-              >
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
-                </span>
-                <span className="text-[10px] uppercase tracking-wide text-primary">
-                  Available Now
-                </span>
-              </motion.div>
-
-              <motion.h2
-                style={{ opacity: 0 }}
-                initial={{ opacity: 0, y: 15 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.1, duration: 0.6, ease: EASE }}
-                className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mb-6 leading-[0.95]"
-              >
-                Scrollr is{' '}
-                <span className="text-gradient-primary">free forever</span>
-                <br />
-                <span className="text-base-content/60">
-                  Uplink tiers are for those who want more
-                </span>
-              </motion.h2>
-
-              <motion.p
-                style={{ opacity: 0 }}
-                initial={{ opacity: 0, y: 15 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.2, duration: 0.6, ease: EASE }}
-                className="text-sm text-base-content/35 leading-relaxed mb-10 max-w-lg mx-auto"
-              >
-                The core platform stays open source and always free. Uplink
-                unlocks expanded limits and faster polling. Unlimited adds
-                real-time SSE and total coverage across every channel.
-              </motion.p>
-
-              <motion.div
-                style={{ opacity: 0 }}
-                initial={{ opacity: 0, y: 15 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.3, duration: 0.6, ease: EASE }}
-                className="flex flex-wrap items-center justify-center gap-4"
-              >
-                <button
-                  type="button"
-                  onClick={() => handleSelectPlan('annual', 'unlimited')}
-                  className="btn btn-pulse gap-2"
-                >
-                  <Crown size={12} /> Get Unlimited — $16.67/mo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSelectPlan('annual', 'uplink')}
-                  className="btn btn-outline btn-sm gap-2"
-                >
-                  <Rocket size={12} /> Uplink — $5.83/mo
-                </button>
-              </motion.div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
+      <BottomCTA handleSelectPlan={handleSelectPlan} />
     </div>
   )
 }
