@@ -14,11 +14,19 @@ type Client struct {
 	Ch     chan []byte
 }
 
+// clientList wraps a []*Client slice so it can be stored in sync.Map.
+// sync.Map.CompareAndSwap requires comparable values, and Go slices are NOT
+// comparable (using == on a slice panics at runtime). Wrapping in a struct
+// and storing a *clientList makes the value a pointer, which IS comparable.
+type clientList struct {
+	entries []*Client
+}
+
 // trySend attempts a non-blocking send to a client's buffered channel.
 // Returns false if the channel is full or has been closed (client disconnected).
 //
 // With sync.Map, unregister can close a client's channel while the dispatch
-// goroutine is iterating a stale snapshot of the client slice. A bare
+// goroutine is iterating a stale snapshot of the client list. A bare
 // `client.Ch <- payload` would panic with "send on closed channel". The
 // deferred recover() catches this safely. The window is extremely narrow
 // (between sync.Map.Load and the CAS in unregister) and the client is already
@@ -36,7 +44,7 @@ func trySend(client *Client, payload []byte) bool {
 // Hub maintains per-user SSE client connections and routes messages from
 // Redis per-user channels to the correct clients.
 type Hub struct {
-	// clients maps userID -> []*Client using sync.Map for lock-free reads.
+	// clients maps userID -> *clientList using sync.Map for lock-free reads.
 	// sync.Map is optimal here because reads (message dispatch) vastly
 	// outnumber writes (connect/disconnect).
 	clients sync.Map
@@ -57,8 +65,8 @@ func (h *Hub) Run(ctx context.Context) {
 
 	// Close all client channels
 	h.clients.Range(func(key, value any) bool {
-		clients := value.([]*Client)
-		for _, c := range clients {
+		list := value.(*clientList)
+		for _, c := range list.entries {
 			close(c.Ch)
 		}
 		h.clients.Delete(key)
@@ -70,19 +78,18 @@ func (h *Hub) Run(ctx context.Context) {
 func (h *Hub) register(client *Client) {
 	for {
 		existing, loaded := h.clients.Load(client.UserID)
-		var newSlice []*Client
 		if loaded {
-			newSlice = append(existing.([]*Client), client)
-		} else {
-			newSlice = []*Client{client}
-		}
-		if loaded {
-			if h.clients.CompareAndSwap(client.UserID, existing, newSlice) {
+			old := existing.(*clientList)
+			newList := &clientList{
+				entries: append(old.entries, client),
+			}
+			if h.clients.CompareAndSwap(client.UserID, old, newList) {
 				break
 			}
-			// CAS failed — another goroutine modified the slice concurrently; retry
+			// CAS failed — another goroutine modified the list concurrently; retry
 		} else {
-			if _, swapped := h.clients.LoadOrStore(client.UserID, newSlice); !swapped {
+			newList := &clientList{entries: []*Client{client}}
+			if _, swapped := h.clients.LoadOrStore(client.UserID, newList); !swapped {
 				break
 			}
 			// Another goroutine stored first; retry with Load path
@@ -98,26 +105,27 @@ func (h *Hub) unregister(client *Client) {
 		if !ok {
 			return
 		}
-		clients := existing.([]*Client)
-		var newSlice []*Client
+		old := existing.(*clientList)
+		var newEntries []*Client
 		found := false
-		for _, c := range clients {
+		for _, c := range old.entries {
 			if c == client {
 				found = true
 				close(c.Ch)
 			} else {
-				newSlice = append(newSlice, c)
+				newEntries = append(newEntries, c)
 			}
 		}
 		if !found {
 			return
 		}
-		if len(newSlice) == 0 {
-			if h.clients.CompareAndDelete(client.UserID, existing) {
+		if len(newEntries) == 0 {
+			if h.clients.CompareAndDelete(client.UserID, old) {
 				break
 			}
 		} else {
-			if h.clients.CompareAndSwap(client.UserID, existing, newSlice) {
+			newList := &clientList{entries: newEntries}
+			if h.clients.CompareAndSwap(client.UserID, old, newList) {
 				break
 			}
 		}
@@ -156,9 +164,9 @@ func (h *Hub) listenToRedis(ctx context.Context) {
 			if !ok {
 				continue // No connected clients for this user
 			}
-			clients := value.([]*Client)
+			list := value.(*clientList)
 			payload := []byte(msg.Payload)
-			for _, client := range clients {
+			for _, client := range list.entries {
 				trySend(client, payload)
 			}
 		}
