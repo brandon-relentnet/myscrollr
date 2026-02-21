@@ -94,4 +94,33 @@ func RemoveSubscriber(ctx context.Context, setKey, userSub string) error {
 	return Rdb.SRem(ctx, setKey, userSub).Err()
 }
 
+// AddSubscriberMulti adds a user to multiple subscription sets in a single
+// pipeline round-trip. Used for sports per-league sets where a single subscribe
+// action touches 8+ Redis keys.
+func AddSubscriberMulti(ctx context.Context, setKeys []string, userSub string) error {
+	if len(setKeys) == 0 {
+		return nil
+	}
+	pipe := Rdb.Pipeline()
+	for _, key := range setKeys {
+		pipe.SAdd(ctx, key, userSub)
+	}
+	_, err := pipe.Exec(ctx)
+	return err
+}
+
+// RemoveSubscriberMulti removes a user from multiple subscription sets in a
+// single pipeline round-trip.
+func RemoveSubscriberMulti(ctx context.Context, setKeys []string, userSub string) error {
+	if len(setKeys) == 0 {
+		return nil
+	}
+	pipe := Rdb.Pipeline()
+	for _, key := range setKeys {
+		pipe.SRem(ctx, key, userSub)
+	}
+	_, err := pipe.Exec(ctx)
+	return err
+}
+
 

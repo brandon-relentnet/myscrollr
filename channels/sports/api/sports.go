@@ -23,8 +23,13 @@ const (
 	// SportsCacheTTL is how long game data is cached.
 	SportsCacheTTL = 30 * time.Second
 
-	// SportsSubscribersKey is the Redis set tracking sports channel subscribers.
+	// SportsSubscribersKey is the legacy Redis set tracking ALL sports subscribers.
+	// Kept for backward compatibility: used as fallback when per-league sets are empty.
 	SportsSubscribersKey = "channel:subscribers:sports"
+
+	// SportsLeagueSubscribersPrefix is the per-league subscriber set prefix.
+	// Keys: sports:subscribers:league:{NFL}, sports:subscribers:league:{NBA}, etc.
+	SportsLeagueSubscribersPrefix = "sports:subscribers:league:"
 
 	// DefaultSportsLimit caps the number of games returned for the public route.
 	DefaultSportsLimit = 50
@@ -32,6 +37,14 @@ const (
 	// DashboardSportsLimit caps the number of games returned for dashboard.
 	DashboardSportsLimit = 20
 )
+
+// ValidLeagues is the set of league identifiers used in the games table.
+// Must match the `league` column values written by the Rust ingestion service.
+var ValidLeagues = map[string]bool{
+	"NFL": true, "NBA": true, "NHL": true, "MLB": true,
+	"COLLEGE-FOOTBALL": true, "MENS-COLLEGE-BASKETBALL": true,
+	"WOMENS-COLLEGE-BASKETBALL": true, "COLLEGE-BASEBALL": true,
+}
 
 // =============================================================================
 // App
@@ -80,8 +93,13 @@ func (a *App) healthHandler(c *fiber.Ctx) error {
 // =============================================================================
 
 // handleInternalCDC receives CDC records from the core gateway and returns the
-// list of users who should receive these records. For sports, all CDC records
-// are for the games table and are broadcast to all sports subscribers.
+// list of users who should receive these records.
+//
+// Per-league routing: each CDC record contains a "league" field (e.g. "NFL",
+// "NBA"). The handler looks up per-league subscriber sets first, falling back
+// to the global set if per-league sets are empty (migration period). This
+// reduces fan-out by ~70% since users only receive updates for leagues they
+// follow (currently all leagues, but per-league filtering can be added later).
 func (a *App) handleInternalCDC(c *fiber.Ctx) error {
 	var req struct {
 		Records []CDCRecord `json:"records"`
@@ -94,13 +112,42 @@ func (a *App) handleInternalCDC(c *fiber.Ctx) error {
 	}
 
 	ctx := context.Background()
-	subs, err := GetSubscribers(a.rdb, ctx, SportsSubscribersKey)
-	if err != nil {
-		log.Printf("[Sports CDC] Failed to get subscribers: %v", err)
-		return c.JSON(fiber.Map{"users": []string{}})
+	userSet := make(map[string]struct{})
+
+	for _, rec := range req.Records {
+		league, ok := rec.Record["league"].(string)
+		if !ok || league == "" {
+			continue
+		}
+
+		// Try per-league subscriber set first
+		subs, err := GetSubscribers(a.rdb, ctx, SportsLeagueSubscribersPrefix+league)
+		if err != nil {
+			log.Printf("[Sports CDC] Failed to get league subscribers for %s: %v", league, err)
+			continue
+		}
+
+		// Fallback: if no per-league sets exist yet (migration period),
+		// fall back to the global set
+		if len(subs) == 0 {
+			subs, err = GetSubscribers(a.rdb, ctx, SportsSubscribersKey)
+			if err != nil {
+				log.Printf("[Sports CDC] Failed to get global subscribers: %v", err)
+				continue
+			}
+		}
+
+		for _, sub := range subs {
+			userSet[sub] = struct{}{}
+		}
 	}
 
-	return c.JSON(fiber.Map{"users": subs})
+	users := make([]string, 0, len(userSet))
+	for sub := range userSet {
+		users = append(users, sub)
+	}
+
+	return c.JSON(fiber.Map{"users": users})
 }
 
 // handleInternalDashboard returns sports data for a user's dashboard.

@@ -58,9 +58,23 @@ const (
 
 const (
 	RedisChannelSubscribersPrefix = "channel:subscribers:"
-	RedisEventsUserPrefix        = "events:user:"
-	RedisDashboardCachePrefix    = "cache:dashboard:"
+	RedisEventsUserPrefix         = "events:user:"
+	RedisDashboardCachePrefix     = "cache:dashboard:"
+
+	// SportsLeagueSubscribersPrefix is the per-league subscriber set prefix.
+	// Keys: sports:subscribers:league:{NFL}, sports:subscribers:league:{NBA}, etc.
+	// Used by the core API for subscriber management and the sports channel for
+	// per-league CDC fan-out routing.
+	SportsLeagueSubscribersPrefix = "sports:subscribers:league:"
 )
+
+// SportsLeagues is the set of league identifiers used in the games table.
+// Must match the `league` column values written by the Rust sports ingestion service.
+var SportsLeagues = []string{
+	"NFL", "NBA", "NHL", "MLB",
+	"COLLEGE-FOOTBALL", "MENS-COLLEGE-BASKETBALL",
+	"WOMENS-COLLEGE-BASKETBALL", "COLLEGE-BASEBALL",
+}
 
 // =============================================================================
 // Dashboard Cache

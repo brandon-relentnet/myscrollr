@@ -66,22 +66,65 @@ func SyncChannelSubscriptions(logtoSub string) {
 			RemoveSubscriber(ctx, setKey, logtoSub)
 		}
 
+		// Sports: sync per-league subscriber sets
+		if ch.ChannelType == "sports" {
+			leagueKeys := make([]string, len(SportsLeagues))
+			for i, league := range SportsLeagues {
+				leagueKeys[i] = SportsLeagueSubscribersPrefix + league
+			}
+			if ch.Enabled {
+				if err := AddSubscriberMulti(ctx, leagueKeys, logtoSub); err != nil {
+					log.Printf("[Channels] Failed to sync sports league subscriptions for %s: %v", logtoSub, err)
+				}
+			} else {
+				if err := RemoveSubscriberMulti(ctx, leagueKeys, logtoSub); err != nil {
+					log.Printf("[Channels] Failed to remove sports league subscriptions for %s: %v", logtoSub, err)
+				}
+			}
+		}
+
 		// Call channel lifecycle hook via HTTP
 		callChannelLifecycle(ctx, ch.ChannelType, "sync", logtoSub, ch.Config, nil, &ch.Enabled)
 	}
 }
 
 // addChannelSubscriptions adds Redis subscription entries for a newly created/enabled channel.
+// For sports, this also adds the user to all per-league subscriber sets.
 func addChannelSubscriptions(ctx context.Context, logtoSub, channelType string, config map[string]interface{}) {
 	AddSubscriber(ctx, RedisChannelSubscribersPrefix+channelType, logtoSub)
+
+	// Sports: also populate per-league subscriber sets for targeted CDC fan-out.
+	// Currently adds to ALL leagues; per-league filtering can be added later
+	// by reading league preferences from the config JSONB.
+	if channelType == "sports" {
+		leagueKeys := make([]string, len(SportsLeagues))
+		for i, league := range SportsLeagues {
+			leagueKeys[i] = SportsLeagueSubscribersPrefix + league
+		}
+		if err := AddSubscriberMulti(ctx, leagueKeys, logtoSub); err != nil {
+			log.Printf("[Channels] Failed to add sports league subscriptions for %s: %v", logtoSub, err)
+		}
+	}
 
 	enabled := true
 	callChannelLifecycle(ctx, channelType, "sync", logtoSub, config, nil, &enabled)
 }
 
 // removeChannelSubscriptions removes Redis subscription entries for a deleted/disabled channel.
+// For sports, this also removes the user from all per-league subscriber sets.
 func removeChannelSubscriptions(ctx context.Context, logtoSub, channelType string, config map[string]interface{}) {
 	RemoveSubscriber(ctx, RedisChannelSubscribersPrefix+channelType, logtoSub)
+
+	// Sports: also remove from per-league subscriber sets.
+	if channelType == "sports" {
+		leagueKeys := make([]string, len(SportsLeagues))
+		for i, league := range SportsLeagues {
+			leagueKeys[i] = SportsLeagueSubscribersPrefix + league
+		}
+		if err := RemoveSubscriberMulti(ctx, leagueKeys, logtoSub); err != nil {
+			log.Printf("[Channels] Failed to remove sports league subscriptions for %s: %v", logtoSub, err)
+		}
+	}
 
 	enabled := false
 	callChannelLifecycle(ctx, channelType, "sync", logtoSub, config, nil, &enabled)
