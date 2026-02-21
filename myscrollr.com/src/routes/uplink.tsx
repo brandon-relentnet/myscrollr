@@ -939,7 +939,7 @@ function UplinkPage() {
                       </motion.span>
                     </AnimatePresence>
                   </div>
-                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 h-5">
                     <span className="text-[10px] font-mono text-base-content/25 tabular-nums">
                       ~$
                       <AnimateNumber
@@ -1214,7 +1214,7 @@ function UplinkPage() {
                         </motion.span>
                       </AnimatePresence>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 h-5">
                       <span className="text-[10px] font-mono text-primary/40 tabular-nums">
                         ~$
                         <AnimateNumber
@@ -1878,7 +1878,7 @@ function UplinkPage() {
                 )}
 
                 <div
-                  className={`relative p-7 md:p-8 ${
+                  className={`relative p-7 md:p-8 h-full flex flex-col ${
                     tier.tier === 'unlimited' ? '' : 'bg-base-200/40'
                   }`}
                 >
@@ -2073,7 +2073,7 @@ function UplinkPage() {
                     </div>
                   )}
 
-                  <div className="relative z-10">
+                  <div className="relative z-10 flex flex-col flex-1">
                     {/* Header */}
                     <div className="flex items-center gap-3 mb-6">
                       <div
@@ -2153,22 +2153,24 @@ function UplinkPage() {
                       ))}
                     </div>
 
-                    {/* CTA */}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleSelectPlan('annual', tier.tier)
-                      }
-                      className={`mt-7 w-full py-2.5 text-center text-[10px] font-semibold rounded-lg transition-colors ${
-                        tier.tier === 'unlimited'
-                          ? 'bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 hover:border-primary/50'
-                          : 'border border-info/20 text-info/60 hover:border-info/40 hover:text-info/80'
-                      }`}
-                    >
-                      {tier.tier === 'unlimited'
-                        ? 'Get Unlimited — from $16.67/mo'
-                        : 'Get Uplink — from $5.83/mo'}
-                    </button>
+                    {/* CTA — mt-auto pushes to bottom, pt-7 guarantees min gap */}
+                    <div className="mt-auto pt-7">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleSelectPlan('annual', tier.tier)
+                        }
+                        className={`w-full py-2.5 text-center text-[10px] font-semibold rounded-lg transition-colors ${
+                          tier.tier === 'unlimited'
+                            ? 'bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 hover:border-primary/50'
+                            : 'border border-info/20 text-info/60 hover:border-info/40 hover:text-info/80'
+                        }`}
+                      >
+                        {tier.tier === 'unlimited'
+                          ? 'Get Unlimited — from $16.67/mo'
+                          : 'Get Uplink — from $5.83/mo'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </motion.div>
