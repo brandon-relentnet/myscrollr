@@ -129,10 +129,8 @@ func routeCDCRecord(ctx context.Context, rec CDCRecord) {
 		return
 	}
 
-	// Publish the SSE payload to each user
-	for _, sub := range users {
-		SendToUser(sub, payload)
-	}
+	// Publish the SSE payload to all target users in a single pipeline round-trip
+	SendToUsers(users, payload)
 }
 
 // forwardCDCToChannel sends CDC records to a channel's /internal/cdc endpoint
