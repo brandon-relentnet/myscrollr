@@ -41,6 +41,11 @@ const (
 	SSEHeartbeatInterval = 15 * time.Second
 	SSERetryIntervalMs   = 3000
 	SSEClientBufferSize  = 100
+
+	// HubShardCount is the number of independent Hub dispatch workers.
+	// Must be a power of 2 for efficient hash-to-shard mapping.
+	// 16 shards = 16 goroutines, each handling ~1/16th of all users.
+	HubShardCount = 16
 )
 
 // =============================================================================
