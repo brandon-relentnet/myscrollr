@@ -41,11 +41,20 @@ const (
 	SSEHeartbeatInterval = 15 * time.Second
 	SSERetryIntervalMs   = 3000
 	SSEClientBufferSize  = 100
+)
 
-	// HubShardCount is the number of independent Hub dispatch workers.
-	// Must be a power of 2 for efficient hash-to-shard mapping.
-	// 16 shards = 16 goroutines, each handling ~1/16th of all users.
-	HubShardCount = 16
+// =============================================================================
+// Topic Channel Prefixes
+// =============================================================================
+
+const (
+	// Each CDC event is published to exactly one topic channel.
+	// The Hub subscribes to all topic patterns and fans out in-memory.
+	TopicPrefixFinance = "cdc:finance:" // cdc:finance:{SYMBOL}
+	TopicPrefixSports  = "cdc:sports:"  // cdc:sports:{LEAGUE}
+	TopicPrefixRSS     = "cdc:rss:"     // cdc:rss:{feed_url_fnv_hash}
+	TopicPrefixFantasy = "cdc:fantasy:" // cdc:fantasy:{league_key}
+	TopicPrefixCore    = "cdc:core:user:" // cdc:core:user:{logto_sub}
 )
 
 // =============================================================================

@@ -65,9 +65,9 @@ func PublishBatch(channels []string, data []byte) int {
 	return errCount
 }
 
-// PSubscribe listens to Redis channels matching a pattern.
-func PSubscribe(ctx context.Context, pattern string) *redis.PubSub {
-	return Rdb.PSubscribe(ctx, pattern)
+// PSubscribe listens to Redis channels matching one or more patterns.
+func PSubscribe(ctx context.Context, patterns ...string) *redis.PubSub {
+	return Rdb.PSubscribe(ctx, patterns...)
 }
 
 // InvalidateDashboardCache removes the cached dashboard response for a user.

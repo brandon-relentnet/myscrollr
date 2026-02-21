@@ -1,15 +1,11 @@
 package core
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
 	"os"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -23,10 +19,6 @@ type CDCRecord struct {
 		TableSchema string `json:"table_schema"`
 		TableName   string `json:"table_name"`
 	} `json:"metadata"`
-}
-
-var cdcClient = &http.Client{
-	Timeout: 10 * time.Second,
 }
 
 // HandleSequinWebhook processes incoming CDC events from Sequin.
@@ -85,10 +77,13 @@ func parseCDCRecords(body []byte) ([]CDCRecord, error) {
 	return nil, fmt.Errorf("unrecognized CDC payload format")
 }
 
+// routeCDCRecord publishes a CDC event to the appropriate topic channel.
+// The Hub's listenToTopics goroutine receives the message and fans out
+// to all subscribed clients in-memory.
 func routeCDCRecord(ctx context.Context, rec CDCRecord) {
 	table := rec.Metadata.TableName
 
-	// Build the envelope payload that will be sent to users via SSE
+	// Build the SSE payload envelope
 	envelope := map[string]interface{}{
 		"data": []map[string]interface{}{
 			{
@@ -105,72 +100,61 @@ func routeCDCRecord(ctx context.Context, rec CDCRecord) {
 		return
 	}
 
-	// Handle core-owned tables directly
-	switch table {
-	case "user_preferences":
-		RouteToRecordOwner(rec.Record, "logto_sub", payload)
-		return
-	case "user_channels":
-		RouteToRecordOwner(rec.Record, "logto_sub", payload)
+	// Determine the topic channel based on the table and record content
+	topic := topicForRecord(table, rec.Record)
+	if topic == "" {
 		return
 	}
 
-	// Look up which channel handles this table
-	intg := GetChannelForTable(table)
-	if intg == nil {
-		// Unknown table — silently ignore
-		return
-	}
-
-	// Forward CDC records to channel service
-	users, err := forwardCDCToChannel(ctx, intg, []CDCRecord{rec})
-	if err != nil {
-		log.Printf("[Sequin] Failed to forward CDC for table %s to channel %s: %v", table, intg.Name, err)
-		return
-	}
-
-	// Publish the SSE payload to all target users in a single pipeline round-trip
-	SendToUsers(users, payload)
+	// Single PUBLISH to the topic channel -- Hub handles fan-out in memory
+	PublishToTopic(topic, payload)
 }
 
-// forwardCDCToChannel sends CDC records to a channel's /internal/cdc endpoint
-// and returns the list of user subs to route the event to.
-func forwardCDCToChannel(ctx context.Context, intg *ChannelInfo, records []CDCRecord) ([]string, error) {
-	reqBody, err := json.Marshal(map[string]interface{}{
-		"records": records,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("marshal error: %w", err)
-	}
+// topicForRecord maps a CDC table + record to the correct topic channel.
+// This replaces the HTTP call to channel APIs and the per-user PUBLISH loop.
+func topicForRecord(table string, record map[string]interface{}) string {
+	switch table {
+	// Core-owned tables: route to specific user
+	case "user_preferences", "user_channels":
+		sub, ok := record["logto_sub"].(string)
+		if !ok || sub == "" {
+			return ""
+		}
+		return TopicPrefixCore + sub
 
-	url := intg.InternalURL + "/internal/cdc"
-	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(reqBody))
-	if err != nil {
-		return nil, fmt.Errorf("request creation error: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
+	// Finance: route by symbol
+	case "trades":
+		symbol, ok := record["symbol"].(string)
+		if !ok || symbol == "" {
+			return ""
+		}
+		return TopicPrefixFinance + symbol
 
-	resp, err := cdcClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("HTTP error: %w", err)
-	}
-	defer resp.Body.Close()
+	// Sports: route by league
+	case "games":
+		league, ok := record["league"].(string)
+		if !ok || league == "" {
+			return ""
+		}
+		return TopicPrefixSports + league
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("read error: %w", err)
-	}
+	// RSS: route by feed URL (hashed)
+	case "rss_items":
+		feedURL, ok := record["feed_url"].(string)
+		if !ok || feedURL == "" {
+			return ""
+		}
+		return TopicForRSSFeed(feedURL)
 
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("status %d: %s", resp.StatusCode, string(body))
-	}
+	// Fantasy: route by league key (all 4 tables have league_key)
+	case "yahoo_leagues", "yahoo_standings", "yahoo_matchups", "yahoo_rosters":
+		leagueKey, ok := record["league_key"].(string)
+		if !ok || leagueKey == "" {
+			return ""
+		}
+		return TopicPrefixFantasy + leagueKey
 
-	var result struct {
-		Users []string `json:"users"`
+	default:
+		return ""
 	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("unmarshal error: %w", err)
-	}
-
-	return result.Users, nil
 }
