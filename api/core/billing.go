@@ -30,24 +30,42 @@ func initStripe() {
 }
 
 // planFromPriceID maps a Stripe price ID to a human-readable plan name.
+// Handles both Uplink and Unlimited tiers, plus grandfathered legacy price IDs.
 func planFromPriceID(priceID string) string {
-	monthly := os.Getenv("STRIPE_PRICE_MONTHLY")
-	quarterly := os.Getenv("STRIPE_PRICE_QUARTERLY")
-	annual := os.Getenv("STRIPE_PRICE_ANNUAL")
-	lifetime := os.Getenv("STRIPE_PRICE_LIFETIME")
-
-	switch priceID {
-	case monthly:
-		return "monthly"
-	case quarterly:
-		return "quarterly"
-	case annual:
-		return "annual"
-	case lifetime:
-		return "lifetime"
-	default:
-		return "unknown"
+	priceMap := map[string]string{
+		// Uplink (mid-tier)
+		os.Getenv("STRIPE_PRICE_MONTHLY"):   "monthly",
+		os.Getenv("STRIPE_PRICE_QUARTERLY"):  "quarterly",
+		os.Getenv("STRIPE_PRICE_ANNUAL"):     "annual",
+		os.Getenv("STRIPE_PRICE_LIFETIME"):   "lifetime",
+		// Uplink Unlimited (top-tier)
+		os.Getenv("STRIPE_PRICE_UNLIMITED_MONTHLY"):  "unlimited_monthly",
+		os.Getenv("STRIPE_PRICE_UNLIMITED_QUARTERLY"): "unlimited_quarterly",
+		os.Getenv("STRIPE_PRICE_UNLIMITED_ANNUAL"):    "unlimited_annual",
+		// Grandfathered legacy prices (old Uplink subscribers → mapped to unlimited)
+		os.Getenv("STRIPE_PRICE_LEGACY_MONTHLY"):  "legacy_monthly",
+		os.Getenv("STRIPE_PRICE_LEGACY_QUARTERLY"): "legacy_quarterly",
+		os.Getenv("STRIPE_PRICE_LEGACY_ANNUAL"):    "legacy_annual",
 	}
+
+	// Remove empty-key entry (unset env vars map to "")
+	delete(priceMap, "")
+
+	if plan, ok := priceMap[priceID]; ok {
+		return plan
+	}
+	return "unknown"
+}
+
+// isUnlimitedPlan returns true if the plan name corresponds to the top-tier (Uplink Unlimited).
+// Grandfathered legacy subscribers are also treated as unlimited.
+func isUnlimitedPlan(plan string) bool {
+	switch plan {
+	case "unlimited_monthly", "unlimited_quarterly", "unlimited_annual",
+		"legacy_monthly", "legacy_quarterly", "legacy_annual":
+		return true
+	}
+	return false
 }
 
 // getOrCreateStripeCustomer looks up or creates a Stripe customer for the user.
@@ -135,13 +153,20 @@ func HandleCreateCheckoutSession(c *fiber.Ctx) error {
 	// Check if user already has an active subscription
 	var existingPlan string
 	var existingStatus string
+	var isLifetime bool
 	err := DBPool.QueryRow(context.Background(),
-		`SELECT plan, status FROM stripe_customers WHERE logto_sub = $1`, userID,
-	).Scan(&existingPlan, &existingStatus)
+		`SELECT plan, status, lifetime FROM stripe_customers WHERE logto_sub = $1`, userID,
+	).Scan(&existingPlan, &existingStatus, &isLifetime)
+
 	if err == nil && existingPlan != "free" && existingStatus == "active" {
-		return c.Status(fiber.StatusConflict).JSON(ErrorResponse{
-			Status: "error", Error: "You already have an active subscription",
-		})
+		// Lifetime members can add an Unlimited subscription for 50% off
+		if isLifetime && isUnlimitedPlan(plan) {
+			// Allow through — coupon applied below
+		} else {
+			return c.Status(fiber.StatusConflict).JSON(ErrorResponse{
+				Status: "error", Error: "You already have an active subscription",
+			})
+		}
 	}
 
 	// Get email from JWT claims (may be empty)
@@ -171,6 +196,17 @@ func HandleCreateCheckoutSession(c *fiber.Ctx) error {
 	}
 	params.AddMetadata("logto_sub", userID)
 	params.AddMetadata("plan", plan)
+
+	// Lifetime members get 50% off Unlimited subscriptions
+	if isLifetime && isUnlimitedPlan(plan) {
+		couponID := os.Getenv("STRIPE_LIFETIME_UNLIMITED_COUPON_ID")
+		if couponID != "" {
+			params.Discounts = []*stripe.CheckoutSessionDiscountParams{
+				{Coupon: stripe.String(couponID)},
+			}
+			log.Printf("[Billing] Applied lifetime 50%% discount coupon for %s", userID)
+		}
+	}
 
 	session, err := checkoutsession.New(params)
 	if err != nil {

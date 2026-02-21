@@ -169,7 +169,8 @@ function FantasyDashboardTab({
   onToggle,
   onDelete,
 }: DashboardTabProps) {
-  const isUplink = subscriptionTier === 'uplink'
+  const isUnlimited = subscriptionTier === 'uplink_unlimited'
+  const isUplink = subscriptionTier === 'uplink' || isUnlimited
 
   // ── Core state ──────────────────────────────────────────────────
   const [leagues, setLeagues] = useState<LeagueData[]>([])
@@ -468,14 +469,15 @@ function FantasyDashboardTab({
           />
           <InfoCard
             label="Delivery"
-            value={isUplink ? 'Real-time' : 'Polling'}
+            value={isUnlimited ? 'Real-time SSE' : isUplink ? 'Poll 30s' : 'Poll 60s'}
             hex={hex}
+            glow={isUnlimited}
           />
         </div>
       )}
 
       {/* ── Upgrade CTA ────────────────────────────────────────── */}
-      {phase === 'connected' && leagues.length > 0 && !isUplink && (
+      {phase === 'connected' && leagues.length > 0 && !isUnlimited && (
         <a
           href="/uplink"
           className="flex items-center gap-2 px-4 py-3 rounded-sm border transition-all group"
@@ -486,7 +488,9 @@ function FantasyDashboardTab({
             className="text-base-content/40 group-hover:text-base-content/60 transition-colors"
           />
           <span className="text-[10px] font-bold text-base-content/50 uppercase tracking-widest group-hover:text-base-content/70 transition-colors">
-            Upgrade to Uplink for real-time fantasy delivery
+            {isUplink
+              ? 'Upgrade to Unlimited for real-time fantasy delivery'
+              : 'Upgrade to Uplink for faster fantasy delivery'}
           </span>
         </a>
       )}

@@ -247,9 +247,10 @@ function LifetimePage() {
                 transition={{ duration: 0.6, delay: 0.2, ease: EASE }}
                 className="text-sm text-base-content/40 leading-relaxed max-w-md mb-10"
               >
-                Lifetime Uplink is a one-time payment for permanent access. No
-                renewals, no expiry. Only 128 founding member slots will ever be
-                created — 0x00 through 0x7F.
+                Lifetime Uplink is a one-time payment for permanent Uplink-tier
+                access. No renewals, no expiry. Only 128 founding member slots
+                will ever be created — 0x00 through 0x7F. Want real-time SSE?
+                Add Unlimited at 50% off.
               </motion.p>
 
               {/* Feature list */}
@@ -259,12 +260,12 @@ function LifetimePage() {
                 transition={{ duration: 0.6, delay: 0.3, ease: EASE }}
                 className="space-y-3 mb-10"
               >
-                <Feature>Everything in Annual, permanently</Feature>
-                <Feature>Real-time data delivery — forever</Feature>
-                <Feature>Unlimited tracking across all channels</Feature>
+                <Feature>Permanent Uplink-tier access (30s polling)</Feature>
+                <Feature>25 symbols, 50 RSS feeds, 3 fantasy leagues</Feature>
+                <Feature>Pro + College sports, blacklist filtering</Feature>
                 <Feature>Early access to new features & channels</Feature>
                 <Feature>Founding member badge & priority support</Feature>
-                <Feature>All future Uplink features included</Feature>
+                <Feature>50% off any Unlimited subscription</Feature>
               </motion.div>
             </div>
 
@@ -343,9 +344,62 @@ function LifetimePage() {
                       </span>
                     </div>
                   </div>
-                  <p className="text-[10px] text-warning/40 mb-8">
-                    Equivalent to ~5.1 years of Monthly at $8.99/mo
+                  <p className="text-[10px] text-warning/40 mb-4">
+                    Equivalent to ~5.1 years of Uplink Monthly at $8.99/mo
                   </p>
+
+                  {/* Unlimited upgrade callout — with aura */}
+                  <div className="relative mb-8 p-3 rounded-xl border border-primary/15 overflow-hidden unlimited-glow"
+                    style={{ background: 'rgba(52, 211, 153, 0.04)' }}
+                  >
+                    {/* Smoke layer — left bloom */}
+                    <motion.div
+                      className="absolute inset-0 pointer-events-none"
+                      style={{
+                        background:
+                          'radial-gradient(ellipse 80% 70% at 15% 50%, #34d39914 0%, transparent 70%)',
+                      }}
+                      animate={{ opacity: [0.3, 0.7, 0.3] }}
+                      transition={{
+                        duration: 4,
+                        repeat: Infinity,
+                        ease: 'easeInOut',
+                      }}
+                    />
+                    {/* Smoke layer — right bloom */}
+                    <motion.div
+                      className="absolute inset-0 pointer-events-none"
+                      style={{
+                        background:
+                          'radial-gradient(ellipse 60% 80% at 85% 50%, #34d39910 0%, transparent 65%)',
+                      }}
+                      animate={{ opacity: [0.2, 0.55, 0.2] }}
+                      transition={{
+                        duration: 6,
+                        repeat: Infinity,
+                        ease: 'easeInOut',
+                        delay: 1,
+                      }}
+                    />
+                    {/* Accent top line */}
+                    <div
+                      className="absolute top-0 left-0 right-0 h-px"
+                      style={{
+                        background:
+                          'linear-gradient(90deg, transparent, #34d399 50%, transparent)',
+                      }}
+                    />
+                    <div className="relative z-10">
+                      <p className="text-[10px] text-primary/70 font-semibold mb-1">
+                        Want real-time SSE?
+                      </p>
+                      <p className="text-[10px] text-base-content/35 leading-relaxed">
+                        Lifetime members get 50% off any Unlimited subscription.
+                        Add real-time delivery, unlimited limits, and extended
+                        retention starting at $12.50/mo.
+                      </p>
+                    </div>
+                  </div>
 
                   {/* Slot progress (marketing) */}
                   <div className="mb-8 p-4 rounded-xl bg-base-100/60 border border-base-300/30">

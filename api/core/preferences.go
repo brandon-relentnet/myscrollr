@@ -10,14 +10,18 @@ import (
 )
 
 // tierFromRoles determines the subscription tier based on JWT roles.
-// If the user has the "uplink" role, they get "uplink"; otherwise "free".
+// Priority: uplink_unlimited > uplink > free. Picks highest tier present.
 func tierFromRoles(roles []string) string {
+	tier := "free"
 	for _, r := range roles {
-		if r == "uplink" {
-			return "uplink"
+		switch r {
+		case "uplink_unlimited":
+			return "uplink_unlimited" // highest — return immediately
+		case "uplink":
+			tier = "uplink"
 		}
 	}
-	return "free"
+	return tier
 }
 
 // GetOrCreatePreferences fetches preferences for a user, creating defaults if none exist.

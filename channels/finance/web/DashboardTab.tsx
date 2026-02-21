@@ -50,7 +50,8 @@ function FinanceDashboardTab({
   onDelete,
   onChannelUpdate,
 }: DashboardTabProps) {
-  const isUplink = subscriptionTier === "uplink";
+  const isUnlimited = subscriptionTier === "uplink_unlimited";
+  const isUplink = subscriptionTier === "uplink" || isUnlimited;
   const [catalog, setCatalog] = useState<TrackedSymbol[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState(false);
@@ -196,13 +197,14 @@ function FinanceDashboardTab({
         <InfoCard label="Available" value={String(catalog.length)} hex={hex} />
         <InfoCard
           label="Delivery"
-          value={isUplink ? "Real-time" : "Polling \u00b7 30s"}
+          value={isUnlimited ? "Real-time SSE" : isUplink ? "Poll \u00b7 30s" : "Poll \u00b7 60s"}
           hex={hex}
+          glow={isUnlimited}
         />
       </div>
 
-      {/* Upgrade CTA for free users */}
-      {!isUplink && (
+      {/* Upgrade CTA */}
+      {!isUnlimited && (
         <a
           href="/uplink"
           className="flex items-center gap-2 px-4 py-3 rounded-sm border transition-all group"
@@ -216,7 +218,9 @@ function FinanceDashboardTab({
             className="text-base-content/40 group-hover:text-base-content/60 transition-colors"
           />
           <span className="text-[10px] font-bold text-base-content/50 uppercase tracking-widest group-hover:text-base-content/70 transition-colors">
-            Upgrade to Uplink for real-time data delivery
+            {isUplink
+              ? "Upgrade to Unlimited for real-time SSE delivery"
+              : "Upgrade to Uplink for faster data delivery"}
           </span>
         </a>
       )}

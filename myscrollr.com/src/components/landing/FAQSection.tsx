@@ -22,7 +22,7 @@ import {
 
 // ── Types & Data ─────────────────────────────────────────────────
 
-interface FAQItem {
+export interface FAQItem {
   icon: typeof ShieldCheck
   question: string
   highlight: string
@@ -102,7 +102,7 @@ const FAQ_ITEMS: Array<FAQItem> = [
 
 // ── Accent color map ─────────────────────────────────────────────
 
-const ACCENT_COLORS: Record<
+export const ACCENT_COLORS: Record<
   string,
   { ring: string; glow: string; gradient: string }
 > = {
@@ -145,6 +145,16 @@ const ACCENT_COLORS: Record<
     ring: 'rgba(232,121,249,0.25)',
     glow: 'rgba(232,121,249,0.12)',
     gradient: 'rgba(232,121,249,0.06)',
+  },
+  teal: {
+    ring: 'rgba(45,212,191,0.25)',
+    glow: 'rgba(45,212,191,0.12)',
+    gradient: 'rgba(45,212,191,0.06)',
+  },
+  lime: {
+    ring: 'rgba(163,230,53,0.25)',
+    glow: 'rgba(163,230,53,0.12)',
+    gradient: 'rgba(163,230,53,0.06)',
   },
 }
 
@@ -410,7 +420,19 @@ function AccordionItem({
 
 // ── Main Component ───────────────────────────────────────────────
 
-export function FAQSection() {
+interface FAQSectionProps {
+  items?: FAQItem[]
+  title?: string
+  titleHighlight?: string
+  subtitle?: string
+}
+
+export function FAQSection({
+  items = FAQ_ITEMS,
+  title = 'Before You',
+  titleHighlight = 'Install',
+  subtitle = 'Quick answers, no fluff.',
+}: FAQSectionProps = {}) {
   const [activeIndex, setActiveIndex] = useState(0)
   const sectionRef = useRef<HTMLElement>(null)
   const isMounted = useMounted()
@@ -438,12 +460,12 @@ export function FAQSection() {
   }, [])
 
   const goNext = useCallback(() => {
-    handleSelect((activeIndex + 1) % FAQ_ITEMS.length)
-  }, [activeIndex, handleSelect])
+    handleSelect((activeIndex + 1) % items.length)
+  }, [activeIndex, handleSelect, items.length])
 
   const goPrev = useCallback(() => {
-    handleSelect((activeIndex - 1 + FAQ_ITEMS.length) % FAQ_ITEMS.length)
-  }, [activeIndex, handleSelect])
+    handleSelect((activeIndex - 1 + items.length) % items.length)
+  }, [activeIndex, handleSelect, items.length])
 
   // ── Keyboard nav ───────────────────────────────────────────────
   useEffect(() => {
@@ -486,10 +508,10 @@ export function FAQSection() {
           className="flex flex-col items-center text-center mb-14 lg:mb-16"
         >
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4 text-center">
-            Before You <span className="text-gradient-primary">Install</span>
+            {title} <span className="text-gradient-primary">{titleHighlight}</span>
           </h2>
           <p className="text-base text-base-content/50 leading-relaxed text-center max-w-lg">
-            Quick answers, no fluff.
+            {subtitle}
           </p>
         </motion.div>
 
@@ -498,7 +520,7 @@ export function FAQSection() {
           {/* Left — question nav */}
           <div className="w-[360px] shrink-0 flex flex-col">
             <div className="flex-1 space-y-1">
-              {FAQ_ITEMS.map((item, i) => {
+              {items.map((item, i) => {
                 const NavIcon = item.icon
                 const isActive = activeIndex === i
                 return (
@@ -564,7 +586,7 @@ export function FAQSection() {
               className="relative min-h-[380px] flex-1 overflow-hidden rounded-2xl"
             >
               {isMounted &&
-                FAQ_ITEMS.map((item, idx) => (
+                items.map((item, idx) => (
                   <AnswerView
                     key={item.question}
                     containerHeight={viewsContainerHeight}
@@ -582,7 +604,7 @@ export function FAQSection() {
               <span className="text-sm text-base-content/30 font-medium tabular-nums">
                 {activeIndex + 1}{' '}
                 <span className="text-base-content/15">
-                  / {FAQ_ITEMS.length}
+                  / {items.length}
                 </span>
               </span>
 
@@ -611,7 +633,7 @@ export function FAQSection() {
 
         {/* ── Mobile / Tablet: Accordion ── */}
         <div className="lg:hidden max-w-3xl mx-auto space-y-3">
-          {FAQ_ITEMS.map((item, i) => (
+          {items.map((item, i) => (
             <AccordionItem
               key={item.question}
               item={item}

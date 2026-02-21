@@ -9,7 +9,7 @@ export interface DashboardTabProps {
   onChannelUpdate: (updated: Channel) => void
   /** SSE connection status */
   connected: boolean
-  /** User's subscription tier: 'free' | 'uplink' */
+  /** User's subscription tier: 'free' | 'uplink' | 'uplink_unlimited' */
   subscriptionTier: string
   /** Channel accent hex color (e.g. '#34d399') */
   hex: string

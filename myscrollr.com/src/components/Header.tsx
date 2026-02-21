@@ -6,6 +6,7 @@ import {
   LogOut,
   Menu,
   Puzzle,
+  Satellite,
   UserCircle,
   X,
 } from 'lucide-react'
@@ -101,6 +102,11 @@ export default function Header() {
             <NavLink to="/channels" activeOn="/channels">
               <Puzzle size={14} />
               Channels
+            </NavLink>
+
+            <NavLink to="/uplink" activeOn="/uplink">
+              <Satellite size={14} />
+              Uplink
             </NavLink>
 
             {isAuthenticated && (
@@ -240,6 +246,14 @@ export default function Header() {
                   onClick={() => setIsOpen(false)}
                 >
                   Channels
+                </MobileNavLink>
+
+                <MobileNavLink
+                  to="/uplink"
+                  icon={<ChevronRight size={18} />}
+                  onClick={() => setIsOpen(false)}
+                >
+                  Uplink
                 </MobileNavLink>
 
                 {isAuthenticated && (

@@ -1,6 +1,6 @@
 import type { ClientMessage, BackgroundMessage, StateSnapshotMessage } from '~/utils/messaging';
 import type { CDCRecord } from '~/utils/types';
-import { FRONTEND_URL } from '~/utils/constants';
+import { FRONTEND_URL, FREE_POLLING_ALARM_INTERVAL, UPLINK_POLLING_ALARM_INTERVAL } from '~/utils/constants';
 import {
   deliveryMode as deliveryModeStorage,
   subscriptionTier as subscriptionTierStorage,
@@ -48,14 +48,18 @@ function setupTabCleanup() {
 export async function startAuthenticatedDelivery(): Promise<void> {
   const tier = await subscriptionTierStorage.getValue();
 
-  if (tier === 'uplink') {
-    // Uplink tier gets real-time SSE + CDC push
+  if (tier === 'uplink_unlimited') {
+    // Unlimited tier gets real-time SSE + CDC push
     await deliveryModeStorage.setValue('sse');
     startSSE();
-  } else {
-    // Free tier gets polling at 30s intervals
+  } else if (tier === 'uplink') {
+    // Uplink tier gets faster polling at 30s intervals
     await deliveryModeStorage.setValue('polling');
-    startPolling();
+    startPolling(UPLINK_POLLING_ALARM_INTERVAL);
+  } else {
+    // Free tier gets polling at 60s intervals
+    await deliveryModeStorage.setValue('polling');
+    startPolling(FREE_POLLING_ALARM_INTERVAL);
   }
 }
 

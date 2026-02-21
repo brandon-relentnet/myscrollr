@@ -46,11 +46,18 @@ export function ChannelHeader({
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const active = channel.visible
-  const isUplink = subscriptionTier === 'uplink'
+  const isUnlimited = subscriptionTier === 'uplink_unlimited'
+  const isUplink = subscriptionTier === 'uplink' || isUnlimited
 
   // Determine badge text and style based on tier
-  const badgeLabel = isUplink ? (connected ? 'Live' : 'Offline') : 'Polling'
-  const badgeActive = isUplink ? !!connected : true
+  const badgeLabel = isUnlimited
+    ? connected
+      ? 'Live'
+      : 'Offline'
+    : isUplink
+      ? 'Poll 30s'
+      : 'Poll 60s'
+  const badgeActive = isUnlimited ? !!connected : true
 
   return (
     <div className="space-y-5 mb-6">
@@ -76,24 +83,52 @@ export function ChannelHeader({
         {(connected !== undefined || subscriptionTier) && (
           <span
             className={`flex items-center gap-1.5 px-2 py-1 rounded border ${
-              !badgeActive ? 'bg-base-300/30 border-base-300/25' : ''
+              !badgeActive
+                ? 'bg-base-300/30 border-base-300/25'
+                : isUnlimited && badgeActive
+                  ? 'unlimited-glow'
+                  : ''
             }`}
             style={
               badgeActive
                 ? {
-                    background: `${hex}10`,
-                    borderColor: `${hex}20`,
+                    background: isUnlimited
+                      ? 'rgba(52, 211, 153, 0.08)'
+                      : `${hex}10`,
+                    borderColor: isUnlimited
+                      ? 'rgba(52, 211, 153, 0.2)'
+                      : `${hex}20`,
                   }
                 : undefined
             }
           >
             <span
-              className={`h-1.5 w-1.5 rounded-full ${badgeActive ? 'animate-pulse' : 'bg-base-content/30'}`}
-              style={badgeActive ? { background: hex } : undefined}
+              className={`h-1.5 w-1.5 rounded-full ${
+                isUnlimited && badgeActive
+                  ? 'unlimited-dot-glow'
+                  : badgeActive
+                    ? 'animate-pulse'
+                    : 'bg-base-content/30'
+              }`}
+              style={
+                badgeActive
+                  ? { background: isUnlimited ? '#34d399' : hex }
+                  : undefined
+              }
             />
             <span
-              className={`text-[9px] font-mono uppercase ${!badgeActive ? 'text-base-content/50' : ''}`}
-              style={badgeActive ? { color: hex } : undefined}
+              className={`text-[9px] font-mono uppercase ${
+                isUnlimited && badgeActive
+                  ? 'unlimited-text-glow'
+                  : !badgeActive
+                    ? 'text-base-content/50'
+                    : ''
+              }`}
+              style={
+                badgeActive
+                  ? { color: isUnlimited ? '#34d399' : hex }
+                  : undefined
+              }
             >
               {badgeLabel}
             </span>
@@ -169,26 +204,47 @@ export function InfoCard({
   label,
   value,
   hex,
+  glow,
 }: {
   label: string
   value: string
   hex?: string
+  /** When true, applies the Unlimited tier green aura */
+  glow?: boolean
 }) {
   return (
-    <div className="bg-base-200/40 border border-base-300/25 rounded-lg p-4 relative overflow-hidden">
+    <div
+      className={`border rounded-lg p-4 relative overflow-hidden ${
+        glow
+          ? 'unlimited-glow'
+          : 'bg-base-200/40 border-base-300/25'
+      }`}
+      style={
+        glow
+          ? {
+              background: 'rgba(52, 211, 153, 0.04)',
+              borderColor: 'rgba(52, 211, 153, 0.18)',
+            }
+          : undefined
+      }
+    >
       {/* Accent top line — DESIGN.md card pattern */}
-      {hex && (
+      {(hex || glow) && (
         <div
           className="absolute top-0 left-0 right-0 h-px"
           style={{
-            background: `linear-gradient(90deg, transparent, ${hex} 50%, transparent)`,
+            background: `linear-gradient(90deg, transparent, ${glow ? '#34d399' : hex} 50%, transparent)`,
           }}
         />
       )}
       <p className="text-[10px] text-base-content/30 uppercase tracking-widest mb-1">
         {label}
       </p>
-      <p className="text-sm font-bold font-mono">{value}</p>
+      <p
+        className={`text-sm font-bold font-mono ${glow ? 'unlimited-text-glow text-primary' : ''}`}
+      >
+        {value}
+      </p>
     </div>
   )
 }

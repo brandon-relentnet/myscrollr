@@ -123,4 +123,4 @@ export type FeedBehavior = "overlay" | "push";
 // ── Tiered delivery ──────────────────────────────────────────────
 
 export type DeliveryMode = "polling" | "sse";
-export type SubscriptionTier = "anonymous" | "free" | "uplink";
+export type SubscriptionTier = "anonymous" | "free" | "uplink" | "uplink_unlimited";
