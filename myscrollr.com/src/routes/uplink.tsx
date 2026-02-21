@@ -1019,7 +1019,11 @@ function UplinkPage() {
                   ease: 'easeInOut',
                 }}
               />
-              <div className="relative bg-base-200/80 backdrop-blur-sm p-6 border border-primary/20 rounded-xl">
+              <div className="relative p-6 border border-primary/20 rounded-xl">
+                {/* Background layer — below smoke. No backdrop-blur: it causes a
+                     compositing snap when the parent's whileInView opacity animation
+                     completes and the WAAPI layer is torn down. */}
+                <div className="absolute inset-0 bg-base-200/60 rounded-xl pointer-events-none" />
                 <div
                   className="absolute top-0 left-0 right-0 h-px"
                   style={{
@@ -1035,10 +1039,127 @@ function UplinkPage() {
                 />
 
                 {/* "Popular" badge */}
-                <div className="absolute top-0 right-0">
+                <div className="absolute top-0 right-0" style={{ zIndex: 20 }}>
                   <div className="bg-primary text-primary-content text-[7px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-bl-lg">
                     Most Popular
                   </div>
+                </div>
+
+                {/* ── Ethereal smoke — above background, below content ── */}
+                <div
+                  className="absolute inset-0 pointer-events-none rounded-xl overflow-hidden"
+                  style={{ zIndex: 1 }}
+                >
+                  {/* Base haze — fills card */}
+                  <motion.div
+                    className="absolute inset-0"
+                    style={{
+                      background:
+                        'radial-gradient(ellipse 90% 60% at 50% 40%, #34d39928 0%, transparent 70%)',
+                    }}
+                    animate={{ opacity: [0.5, 1, 0.5] }}
+                    transition={{
+                      duration: 5,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                    }}
+                  />
+
+                  {/* Rising plume */}
+                  <motion.div
+                    className="absolute bottom-[-10%] left-[15%] w-[75%] h-[55%] rounded-full blur-2xl"
+                    style={{
+                      background:
+                        'radial-gradient(ellipse 70% 60% at center bottom, #34d39938 0%, transparent 70%)',
+                    }}
+                    animate={{
+                      y: [0, -30, 0],
+                      scaleX: [1, 1.25, 1],
+                      opacity: [0.4, 0.8, 0.4],
+                    }}
+                    transition={{
+                      duration: 7,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                    }}
+                  />
+
+                  {/* Descending plume */}
+                  <motion.div
+                    className="absolute top-[-8%] right-[10%] w-[65%] h-[50%] rounded-full blur-2xl"
+                    style={{
+                      background:
+                        'radial-gradient(ellipse 65% 55% at center top, #34d39930 0%, transparent 65%)',
+                    }}
+                    animate={{
+                      y: [0, 25, 0],
+                      scaleX: [1, 1.15, 1],
+                      opacity: [0.35, 0.7, 0.35],
+                    }}
+                    transition={{
+                      duration: 8,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                      delay: 1.5,
+                    }}
+                  />
+
+                  {/* Mid-card turbulence */}
+                  <motion.div
+                    className="absolute top-[25%] left-[5%] w-[90%] h-[50%] rounded-full blur-3xl"
+                    style={{
+                      background:
+                        'radial-gradient(ellipse 75% 50%, #34d39922 0%, transparent 60%)',
+                    }}
+                    animate={{
+                      scaleX: [1, 1.2, 0.9, 1],
+                      scaleY: [1, 0.9, 1.1, 1],
+                      opacity: [0.4, 0.7, 0.5, 0.4],
+                    }}
+                    transition={{
+                      duration: 10,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                    }}
+                  />
+
+                  {/* Accent particle */}
+                  <motion.div
+                    className="absolute top-[30%] right-[15%] w-[50px] h-[50px] rounded-full blur-lg"
+                    style={{
+                      background:
+                        'radial-gradient(circle, #34d39950 0%, transparent 70%)',
+                    }}
+                    animate={{
+                      y: [0, -15, 10, 0],
+                      x: [0, -8, 5, 0],
+                      opacity: [0, 0.7, 0.35, 0],
+                    }}
+                    transition={{
+                      duration: 5,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                    }}
+                  />
+
+                  {/* Second accent particle */}
+                  <motion.div
+                    className="absolute top-[65%] left-[20%] w-[40px] h-[40px] rounded-full blur-lg"
+                    style={{
+                      background:
+                        'radial-gradient(circle, #34d39945 0%, transparent 70%)',
+                    }}
+                    animate={{
+                      y: [0, -10, 0],
+                      opacity: [0, 0.6, 0],
+                    }}
+                    transition={{
+                      duration: 4,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                      delay: 2.5,
+                    }}
+                  />
                 </div>
 
                 <div className="relative z-10">
@@ -1758,11 +1879,14 @@ function UplinkPage() {
 
                 <div
                   className={`relative p-7 md:p-8 ${
-                    tier.tier === 'unlimited'
-                      ? 'bg-base-200/80 backdrop-blur-sm'
-                      : 'bg-base-200/40'
+                    tier.tier === 'unlimited' ? '' : 'bg-base-200/40'
                   }`}
                 >
+                  {/* Background layer — separate for Unlimited so smoke sits above it */}
+                  {tier.tier === 'unlimited' && (
+                    <div className="absolute inset-0 bg-base-200/60 rounded-2xl pointer-events-none" />
+                  )}
+
                   {/* Top accent line */}
                   <div
                     className="absolute top-0 left-0 right-0 h-px"
@@ -1806,10 +1930,146 @@ function UplinkPage() {
 
                   {/* "Recommended" badge for Unlimited */}
                   {tier.tier === 'unlimited' && (
-                    <div className="absolute top-0 right-0">
+                    <div className="absolute top-0 right-0" style={{ zIndex: 20 }}>
                       <div className="bg-primary text-primary-content text-[7px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-bl-lg">
                         Recommended
                       </div>
+                    </div>
+                  )}
+
+                   {/* ── Ethereal smoke (Unlimited only) — above background, below content ── */}
+                  {tier.tier === 'unlimited' && (
+                    <div
+                      className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl"
+                      style={{ zIndex: 1 }}
+                    >
+                      {/* Base wash */}
+                      <motion.div
+                        className="absolute inset-0"
+                        style={{
+                          background:
+                            'linear-gradient(135deg, #34d39915 0%, #34d39928 40%, #34d39915 60%, #34d39925 100%)',
+                        }}
+                        animate={{ opacity: [0.5, 0.9, 0.5] }}
+                        transition={{
+                          duration: 4.5,
+                          repeat: Infinity,
+                          ease: 'easeInOut',
+                        }}
+                      />
+
+                      {/* Left bloom */}
+                      <motion.div
+                        className="absolute top-[10%] left-[-5%] w-[55%] h-[60%] rounded-full blur-3xl"
+                        style={{
+                          background:
+                            'radial-gradient(ellipse 75% 60%, #34d39930 0%, transparent 70%)',
+                        }}
+                        animate={{
+                          x: [0, 15, 0],
+                          scaleY: [1, 1.15, 1],
+                          opacity: [0.4, 0.75, 0.4],
+                        }}
+                        transition={{
+                          duration: 7,
+                          repeat: Infinity,
+                          ease: 'easeInOut',
+                        }}
+                      />
+
+                      {/* Right bloom */}
+                      <motion.div
+                        className="absolute bottom-[5%] right-[-3%] w-[50%] h-[55%] rounded-full blur-3xl"
+                        style={{
+                          background:
+                            'radial-gradient(ellipse 70% 55%, #34d39928 0%, transparent 65%)',
+                        }}
+                        animate={{
+                          x: [0, -12, 0],
+                          y: [0, -20, 0],
+                          opacity: [0.35, 0.7, 0.35],
+                        }}
+                        transition={{
+                          duration: 8,
+                          repeat: Infinity,
+                          ease: 'easeInOut',
+                          delay: 1,
+                        }}
+                      />
+
+                      {/* Center turbulence */}
+                      <motion.div
+                        className="absolute top-[30%] left-[20%] w-[60%] h-[45%] rounded-full blur-3xl"
+                        style={{
+                          background:
+                            'radial-gradient(ellipse 70% 50%, #34d39922 0%, transparent 60%)',
+                        }}
+                        animate={{
+                          scaleX: [1, 1.2, 0.9, 1],
+                          scaleY: [1, 0.9, 1.15, 1],
+                          opacity: [0.3, 0.65, 0.45, 0.3],
+                        }}
+                        transition={{
+                          duration: 10,
+                          repeat: Infinity,
+                          ease: 'easeInOut',
+                        }}
+                      />
+
+                      {/* Rising tendril */}
+                      <motion.div
+                        className="absolute bottom-[-8%] left-[30%] w-[45%] h-[50%] rounded-full blur-2xl"
+                        style={{
+                          background:
+                            'radial-gradient(ellipse 65% 60% at center bottom, #34d39935 0%, transparent 70%)',
+                        }}
+                        animate={{
+                          y: [0, -40, 0],
+                          scaleX: [1, 1.3, 1],
+                          opacity: [0.35, 0.75, 0.35],
+                        }}
+                        transition={{
+                          duration: 7,
+                          repeat: Infinity,
+                          ease: 'easeInOut',
+                          delay: 2,
+                        }}
+                      />
+
+                      {/* Accent particles */}
+                      <motion.div
+                        className="absolute top-[22%] right-[18%] w-[55px] h-[55px] rounded-full blur-xl"
+                        style={{
+                          background:
+                            'radial-gradient(circle, #34d39950 0%, transparent 70%)',
+                        }}
+                        animate={{
+                          y: [0, -15, 10, 0],
+                          opacity: [0, 0.7, 0.35, 0],
+                        }}
+                        transition={{
+                          duration: 5,
+                          repeat: Infinity,
+                          ease: 'easeInOut',
+                        }}
+                      />
+                      <motion.div
+                        className="absolute top-[60%] left-[12%] w-[45px] h-[45px] rounded-full blur-lg"
+                        style={{
+                          background:
+                            'radial-gradient(circle, #34d39945 0%, transparent 70%)',
+                        }}
+                        animate={{
+                          y: [0, -12, 0],
+                          opacity: [0, 0.6, 0],
+                        }}
+                        transition={{
+                          duration: 4.5,
+                          repeat: Infinity,
+                          ease: 'easeInOut',
+                          delay: 3,
+                        }}
+                      />
                     </div>
                   )}
 
