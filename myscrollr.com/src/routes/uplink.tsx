@@ -7,20 +7,27 @@ import {
   animate,
 } from 'motion/react'
 import { AnimateNumber } from 'motion-plus/react'
-import { useEffect, useRef, useState, lazy, Suspense } from 'react'
+import { useEffect, useState, lazy, Suspense } from 'react'
 import {
+  BarChart3,
   Check,
   CheckCircle2,
   ChevronRight,
+  Clock,
   Crown,
+  Database,
+  Filter,
   Gauge,
+  LayoutDashboard,
   Loader2,
   Minus,
   Rocket,
+  Rss,
   Satellite,
   Signal,
   Sparkles,
   TrendingUp,
+  Trophy,
   Zap,
 } from 'lucide-react'
 
@@ -28,6 +35,8 @@ import { usePageMeta } from '@/lib/usePageMeta'
 import { useScrollrAuth } from '@/hooks/useScrollrAuth'
 import { useGetToken } from '@/hooks/useGetToken'
 import { billingApi } from '@/api/client'
+import { FAQSection } from '@/components/landing/FAQSection'
+import type { FAQItem } from '@/components/landing/FAQSection'
 
 const CheckoutForm = lazy(() => import('@/components/billing/CheckoutForm'))
 
@@ -245,27 +254,98 @@ const BILLING_LABELS: Record<PlanKey, string> = {
   annual: 'Annual',
 }
 
-// ── Terminal Lines ──────────────────────────────────────────────
+// ── Uplink FAQ ─────────────────────────────────────────────────
 
-const TERMINAL_LINES = [
-  { prompt: true, text: 'scrollr uplink --status' },
-  { label: 'SIGNAL', value: 'LOCKED', valueClass: 'text-primary' },
-  { label: 'TIER', value: 'UPLINK_UNLIMITED', valueClass: 'text-primary' },
-  { label: 'DELIVERY', value: 'REAL-TIME SSE', valueClass: 'text-success' },
-  { label: 'STATUS', value: 'ACTIVE', valueClass: 'text-success' },
-  { label: 'UPLINK', value: '$8.99/mo  $21.99/3mo  $69.99/yr', valueClass: 'text-base-content/50' },
-  { label: 'UNLIMITED', value: '$24.99/mo  $59.99/3mo  $199.99/yr', valueClass: 'text-primary/60' },
+const UPLINK_FAQ: FAQItem[] = [
   {
-    label: 'LIFETIME',
-    value: '$549 (128 slots, Uplink tier)',
-    valueClass: 'text-warning/60',
+    icon: Zap,
+    question: 'What does "data delivery" mean?',
+    highlight:
+      'How fast new data reaches you — from 60-second polling to instant real-time streaming.',
+    answer:
+      'Free users get data refreshed every 60 seconds via polling. Uplink cuts that to 30 seconds. Unlimited eliminates polling entirely — data arrives the instant it changes via Server-Sent Events (SSE), the same technology used by stock trading platforms.',
+    accent: 'emerald',
   },
-  { label: 'FREE_TIER', value: 'ALWAYS_FREE', valueClass: 'text-success/70' },
-  { prompt: true, text: 'scrollr uplink subscribe --tier unlimited --plan annual' },
   {
-    label: '\u2192',
-    value: 'Checkout session created. Redirecting...',
-    valueClass: 'text-primary/50',
+    icon: BarChart3,
+    question: 'How many symbols can I track?',
+    highlight:
+      'Free gets 10, Uplink gets 25, and Unlimited has no cap at all.',
+    answer:
+      'Tracked symbols are the stocks, ETFs, and crypto tickers that appear in your finance feed. Free accounts can follow up to 10 at a time. Uplink raises that to 25. With Unlimited, there is no cap — add every ticker you care about and they all stream in real time.',
+    accent: 'cyan',
+  },
+  {
+    icon: Rss,
+    question: 'How many RSS feeds can I follow?',
+    highlight:
+      'From 5 feeds on Free to completely unlimited on the top tier.',
+    answer:
+      'RSS feeds power the news channel. Free accounts can subscribe to 5 feeds from the default catalog. Uplink expands that to 50, giving you broad coverage across topics. Unlimited removes the limit entirely — subscribe to as many sources as you want.',
+    accent: 'amber',
+  },
+  {
+    icon: Sparkles,
+    question: 'What are custom RSS feeds?',
+    highlight:
+      'Add any RSS URL you want — your own blogs, niche sources, anything with a feed.',
+    answer:
+      'Beyond the built-in catalog, custom feeds let you paste any RSS or Atom URL. Free accounts get 1 custom feed. Uplink gives you 10 — enough for niche industry sources, personal blogs, or company news. Unlimited removes the cap so you can add every source you follow.',
+    accent: 'orange',
+  },
+  {
+    icon: Trophy,
+    question: 'What sports leagues are included?',
+    highlight:
+      'Free covers pro leagues. Uplink and Unlimited add college sports.',
+    answer:
+      'Every tier includes live scores from the NFL, NBA, MLB, NHL, MLS, and Premier League. Uplink and Unlimited add college football (NCAAF) and college basketball (NCAAM), with scores updating at your tier\'s delivery speed.',
+    accent: 'violet',
+  },
+  {
+    icon: Crown,
+    question: 'How many fantasy leagues can I connect?',
+    highlight:
+      'Connect 1 Yahoo league for free, 3 with Uplink, or every league with Unlimited.',
+    answer:
+      'Scrollr syncs with Yahoo Fantasy Sports to show your standings, matchups, and roster updates. Free accounts connect 1 league. Uplink supports up to 3 — enough for most managers. Unlimited connects every league across every sport with no restrictions.',
+    accent: 'rose',
+  },
+  {
+    icon: Filter,
+    question: 'What is site filtering?',
+    highlight:
+      'Control which websites show the Scrollr feed bar, from blocklists to allowlists.',
+    answer:
+      'Site filtering controls where the extension feed bar appears. Free users see it everywhere with no filtering options. Uplink adds a blacklist — hide the bar on specific sites like work tools or video players. Unlimited adds a whitelist on top, so you can restrict the bar to only the sites you choose.',
+    accent: 'sky',
+  },
+  {
+    icon: Clock,
+    question: 'What does early access include?',
+    highlight:
+      'Uplink and Unlimited subscribers get new features and channels before anyone else.',
+    answer:
+      'Both paid tiers unlock early access to new features, channels, and UI updates before they roll out to free users. This includes beta channels, experimental feed modes, and new dashboard widgets. You get to try everything first and provide feedback that shapes the final release.',
+    accent: 'fuchsia',
+  },
+  {
+    icon: Database,
+    question: 'What is extended data retention?',
+    highlight:
+      'Unlimited keeps your historical data longer — prices, scores, and feed items.',
+    answer:
+      'By default, Scrollr retains recent data only — enough to populate your current feed. Extended retention, exclusive to Unlimited, keeps historical records longer: past stock prices, completed game scores, and older news items. This means richer context when you scroll back through your feed.',
+    accent: 'teal',
+  },
+  {
+    icon: LayoutDashboard,
+    question: 'Does every tier get the full dashboard?',
+    highlight:
+      'Yes — the web dashboard is fully accessible on every tier, including free.',
+    answer:
+      'Every user gets complete access to the web dashboard at myscrollr.com. You can view all your channels, manage your watchlists, configure feeds, and adjust preferences regardless of your subscription tier. Paid tiers enhance the data flowing into the dashboard, not the dashboard itself.',
+    accent: 'lime',
   },
 ]
 
@@ -316,116 +396,6 @@ function SignalBars() {
           }}
         />
       ))}
-    </div>
-  )
-}
-
-// ── Terminal With Typing Effect ─────────────────────────────────
-
-function TerminalBlock() {
-  const [visibleLines, setVisibleLines] = useState(0)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const hasStarted = useRef(false)
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !hasStarted.current) {
-          hasStarted.current = true
-          let i = 0
-          const interval = setInterval(() => {
-            i++
-            setVisibleLines(i)
-            if (i >= TERMINAL_LINES.length + 1) clearInterval(interval)
-          }, 180)
-        }
-      },
-      { threshold: 0.3 },
-    )
-    if (containerRef.current) observer.observe(containerRef.current)
-    return () => observer.disconnect()
-  }, [])
-
-  return (
-    <div
-      ref={containerRef}
-      className="relative overflow-hidden rounded-xl border border-base-300/60 bg-base-100/80 backdrop-blur-sm"
-    >
-      {/* Grid overlay */}
-      <div
-        className="absolute inset-0 opacity-[0.015] pointer-events-none"
-        style={{
-          backgroundImage: `
-            linear-gradient(var(--grid-line-color) 1px, transparent 1px),
-            linear-gradient(90deg, var(--grid-line-color) 1px, transparent 1px)
-          `,
-          backgroundSize: '32px 32px',
-        }}
-      />
-
-      {/* Watermark */}
-      <Satellite
-        size={120}
-        strokeWidth={0.4}
-        className="absolute -bottom-6 -right-6 text-base-content/[0.025] pointer-events-none"
-      />
-
-      {/* Terminal chrome */}
-      <div className="flex items-center gap-2 px-5 py-3 border-b border-base-300/40 bg-base-200/60">
-        <span className="w-2.5 h-2.5 rounded-full bg-error/40" />
-        <span className="w-2.5 h-2.5 rounded-full bg-warning/40" />
-        <span className="w-2.5 h-2.5 rounded-full bg-success/40" />
-        <span className="ml-3 text-[9px] font-mono text-base-content/20">
-          uplink_status.sh
-        </span>
-      </div>
-
-      <div className="p-6 md:p-8 font-mono text-sm space-y-2">
-        {TERMINAL_LINES.map((line, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, x: -8 }}
-            animate={i < visibleLines ? { opacity: 1, x: 0 } : {}}
-            transition={{ duration: 0.25, ease: 'easeOut' }}
-          >
-            {'prompt' in line && line.prompt ? (
-              <div className="flex items-center gap-2 mt-2 first:mt-0">
-                <span className="text-primary/40 select-none">$</span>
-                <span className="text-base-content/60">{line.text}</span>
-              </div>
-            ) : (
-              <div className="pl-5 text-xs">
-                <span className="text-primary/60">
-                  {'label' in line ? line.label : ''}
-                </span>{' '}
-                <span
-                  className={
-                    'valueClass' in line ? (line.valueClass ?? '') : ''
-                  }
-                >
-                  {'value' in line ? line.value : ''}
-                </span>
-              </div>
-            )}
-          </motion.div>
-        ))}
-
-        {/* Blinking cursor */}
-        {visibleLines > TERMINAL_LINES.length && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex items-center gap-2 mt-2"
-          >
-            <span className="text-primary/40 select-none">$</span>
-            <motion.span
-              animate={{ opacity: [1, 0] }}
-              transition={{ duration: 0.8, repeat: Infinity }}
-              className="w-2 h-4 bg-primary/40 inline-block"
-            />
-          </motion.div>
-        )}
-      </div>
     </div>
   )
 }
@@ -2180,24 +2150,14 @@ function UplinkPage() {
       </section>
 
       {/* ================================================================
-          TERMINAL BLOCK
+          FAQ — TIER BREAKDOWN
           ================================================================ */}
-      <section className="relative overflow-hidden">
-        {/* Tinted background */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-base-200/20 to-transparent pointer-events-none" />
-
-        <div className="container relative z-10">
-          <motion.div
-            style={{ opacity: 0 }}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.6, ease: EASE }}
-          >
-            <TerminalBlock />
-          </motion.div>
-        </div>
-      </section>
+      <FAQSection
+        items={UPLINK_FAQ}
+        title="Tiers"
+        titleHighlight="Explained"
+        subtitle="Everything in the comparison table, broken down."
+      />
 
       {/* ================================================================
           BOTTOM CTA
