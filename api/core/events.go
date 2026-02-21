@@ -5,6 +5,7 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"sync/atomic"
 )
 
 // Client represents a single SSE connection tied to an authenticated user.
@@ -13,22 +14,37 @@ type Client struct {
 	Ch     chan []byte
 }
 
+// trySend attempts a non-blocking send to a client's buffered channel.
+// Returns false if the channel is full or has been closed (client disconnected).
+//
+// With sync.Map, unregister can close a client's channel while the dispatch
+// goroutine is iterating a stale snapshot of the client slice. A bare
+// `client.Ch <- payload` would panic with "send on closed channel". The
+// deferred recover() catches this safely. The window is extremely narrow
+// (between sync.Map.Load and the CAS in unregister) and the client is already
+// removed from the map, so no repeated recovery occurs.
+func trySend(client *Client, payload []byte) bool {
+	defer func() { recover() }()
+	select {
+	case client.Ch <- payload:
+		return true
+	default:
+		return false
+	}
+}
+
 // Hub maintains per-user SSE client connections and routes messages from
 // Redis per-user channels to the correct clients.
 type Hub struct {
-	clients map[string][]*Client
+	// clients maps userID -> []*Client using sync.Map for lock-free reads.
+	// sync.Map is optimal here because reads (message dispatch) vastly
+	// outnumber writes (connect/disconnect).
+	clients sync.Map
 
-	register   chan *Client
-	unregister chan *Client
-
-	lock sync.Mutex
+	clientCount atomic.Int64
 }
 
-var globalHub = &Hub{
-	register:   make(chan *Client),
-	unregister: make(chan *Client),
-	clients:    make(map[string][]*Client),
-}
+var globalHub = &Hub{}
 
 // Run starts the hub's main loop. It exits when ctx is cancelled.
 func (h *Hub) Run(ctx context.Context) {
@@ -36,41 +52,78 @@ func (h *Hub) Run(ctx context.Context) {
 
 	log.Println("[EventHub] Hub started (per-user mode)")
 
+	<-ctx.Done()
+	log.Println("[EventHub] Hub shutting down")
+
+	// Close all client channels
+	h.clients.Range(func(key, value any) bool {
+		clients := value.([]*Client)
+		for _, c := range clients {
+			close(c.Ch)
+		}
+		h.clients.Delete(key)
+		return true
+	})
+}
+
+// register adds an authenticated client to the hub.
+func (h *Hub) register(client *Client) {
 	for {
-		select {
-		case <-ctx.Done():
-			log.Println("[EventHub] Hub shutting down")
-			h.lock.Lock()
-			for _, clients := range h.clients {
-				for _, c := range clients {
-					close(c.Ch)
-				}
+		existing, loaded := h.clients.Load(client.UserID)
+		var newSlice []*Client
+		if loaded {
+			newSlice = append(existing.([]*Client), client)
+		} else {
+			newSlice = []*Client{client}
+		}
+		if loaded {
+			if h.clients.CompareAndSwap(client.UserID, existing, newSlice) {
+				break
 			}
-			h.clients = make(map[string][]*Client)
-			h.lock.Unlock()
-			return
-
-		case client := <-h.register:
-			h.lock.Lock()
-			h.clients[client.UserID] = append(h.clients[client.UserID], client)
-			h.lock.Unlock()
-
-		case client := <-h.unregister:
-			h.lock.Lock()
-			clients := h.clients[client.UserID]
-			for i, c := range clients {
-				if c == client {
-					h.clients[client.UserID] = append(clients[:i], clients[i+1:]...)
-					close(c.Ch)
-					break
-				}
+			// CAS failed — another goroutine modified the slice concurrently; retry
+		} else {
+			if _, swapped := h.clients.LoadOrStore(client.UserID, newSlice); !swapped {
+				break
 			}
-			if len(h.clients[client.UserID]) == 0 {
-				delete(h.clients, client.UserID)
-			}
-			h.lock.Unlock()
+			// Another goroutine stored first; retry with Load path
 		}
 	}
+	h.clientCount.Add(1)
+}
+
+// unregister removes a client from the hub and closes its channel.
+func (h *Hub) unregister(client *Client) {
+	for {
+		existing, ok := h.clients.Load(client.UserID)
+		if !ok {
+			return
+		}
+		clients := existing.([]*Client)
+		var newSlice []*Client
+		found := false
+		for _, c := range clients {
+			if c == client {
+				found = true
+				close(c.Ch)
+			} else {
+				newSlice = append(newSlice, c)
+			}
+		}
+		if !found {
+			return
+		}
+		if len(newSlice) == 0 {
+			if h.clients.CompareAndDelete(client.UserID, existing) {
+				break
+			}
+		} else {
+			if h.clients.CompareAndSwap(client.UserID, existing, newSlice) {
+				break
+			}
+		}
+		// CAS failed; retry
+	}
+	h.clientCount.Add(-1)
 }
 
 // listenToRedis subscribes to all per-user channels via pattern and routes
@@ -98,16 +151,16 @@ func (h *Hub) listenToRedis(ctx context.Context) {
 			}
 			userID := parts[1]
 
-			h.lock.Lock()
-			clients := h.clients[userID]
-			for _, client := range clients {
-				select {
-				case client.Ch <- []byte(msg.Payload):
-				default:
-					// Client buffer full, skip this message to avoid blocking
-				}
+			// sync.Map.Load is lock-free — no mutex contention
+			value, ok := h.clients.Load(userID)
+			if !ok {
+				continue // No connected clients for this user
 			}
-			h.lock.Unlock()
+			clients := value.([]*Client)
+			payload := []byte(msg.Payload)
+			for _, client := range clients {
+				trySend(client, payload)
+			}
 		}
 	}
 }
@@ -148,24 +201,18 @@ func RegisterClient(userID string) *Client {
 		UserID: userID,
 		Ch:     make(chan []byte, SSEClientBufferSize),
 	}
-	globalHub.register <- client
+	globalHub.register(client)
 	return client
 }
 
 // UnregisterClient removes a client from the hub.
 func UnregisterClient(client *Client) {
-	globalHub.unregister <- client
+	globalHub.unregister(client)
 }
 
 // ClientCount returns the total number of connected SSE clients across all users.
 func ClientCount() int {
-	globalHub.lock.Lock()
-	defer globalHub.lock.Unlock()
-	count := 0
-	for _, clients := range globalHub.clients {
-		count += len(clients)
-	}
-	return count
+	return int(globalHub.clientCount.Load())
 }
 
 // RouteToRecordOwner sends a CDC event directly to the user identified in the record.
