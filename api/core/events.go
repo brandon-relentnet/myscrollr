@@ -118,10 +118,27 @@ func InitHub(ctx context.Context) {
 }
 
 // SendToUser publishes a pre-serialised message to a specific user's Redis channel.
-// This is called by the webhook handler after routing CDC events.
+// This is called by the webhook handler for single-user routes (core-owned tables).
 func SendToUser(sub string, msg []byte) {
 	if err := PublishRaw(RedisEventsUserPrefix+sub, msg); err != nil {
 		log.Printf("[EventHub] Failed to send to user %s: %v", sub, err)
+	}
+}
+
+// SendToUsers publishes a pre-serialised message to multiple users' Redis
+// channels in a single pipeline round-trip.
+func SendToUsers(subs []string, msg []byte) {
+	if len(subs) == 0 {
+		return
+	}
+
+	channels := make([]string, len(subs))
+	for i, sub := range subs {
+		channels[i] = RedisEventsUserPrefix + sub
+	}
+
+	if errCount := PublishBatch(channels, msg); errCount > 0 {
+		log.Printf("[EventHub] Failed to send to %d/%d users", errCount, len(subs))
 	}
 }
 

@@ -38,6 +38,33 @@ func PublishRaw(channel string, data []byte) error {
 	return Rdb.Publish(context.Background(), channel, data).Err()
 }
 
+// PublishBatch publishes the same payload to multiple Redis channels in a single
+// pipeline round-trip. Returns the number of errors encountered.
+func PublishBatch(channels []string, data []byte) int {
+	if len(channels) == 0 {
+		return 0
+	}
+
+	ctx := context.Background()
+	pipe := Rdb.Pipeline()
+	for _, ch := range channels {
+		pipe.Publish(ctx, ch, data)
+	}
+
+	cmds, err := pipe.Exec(ctx)
+	if err != nil && err != redis.Nil {
+		log.Printf("[Redis] Pipeline publish error: %v", err)
+	}
+
+	errCount := 0
+	for _, cmd := range cmds {
+		if cmd.Err() != nil {
+			errCount++
+		}
+	}
+	return errCount
+}
+
 // PSubscribe listens to Redis channels matching a pattern.
 func PSubscribe(ctx context.Context, pattern string) *redis.PubSub {
 	return Rdb.PSubscribe(ctx, pattern)
