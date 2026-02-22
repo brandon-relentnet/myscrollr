@@ -6,27 +6,27 @@ import {
   useMotionValue,
   useSpring,
   useTransform,
-  animate,
 } from 'motion/react'
 import { AnimateNumber } from 'motion-plus/react'
 import { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react'
 import {
   BarChart3,
+  Bell,
   Check,
   CheckCircle2,
-  ChevronRight,
   Clock,
+  Code2,
   Crown,
   Database,
   Filter,
   Gauge,
+  Layers,
   LayoutDashboard,
   Loader2,
   Minus,
   Rocket,
   Rss,
   Satellite,
-  Signal,
   Sparkles,
   TrendingUp,
   Trophy,
@@ -52,6 +52,12 @@ const UPLINK_PRICE_IDS = {
   annual: import.meta.env.VITE_STRIPE_PRICE_ANNUAL || '',
 } as const
 
+const PRO_PRICE_IDS = {
+  monthly: import.meta.env.VITE_STRIPE_PRICE_PRO_MONTHLY || '',
+  quarterly: import.meta.env.VITE_STRIPE_PRICE_PRO_QUARTERLY || '',
+  annual: import.meta.env.VITE_STRIPE_PRICE_PRO_ANNUAL || '',
+} as const
+
 const UNLIMITED_PRICE_IDS = {
   monthly: import.meta.env.VITE_STRIPE_PRICE_UNLIMITED_MONTHLY || '',
   quarterly: import.meta.env.VITE_STRIPE_PRICE_UNLIMITED_QUARTERLY || '',
@@ -59,7 +65,7 @@ const UNLIMITED_PRICE_IDS = {
 } as const
 
 type PlanKey = 'monthly' | 'quarterly' | 'annual'
-type TierKey = 'uplink' | 'unlimited'
+type TierKey = 'uplink' | 'pro' | 'unlimited'
 
 export const Route = createFileRoute('/uplink')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -74,9 +80,11 @@ interface ComparisonRow {
   label: string
   free: string
   uplink: string
+  pro: string
   unlimited: string
   /** Which columns are visually "upgraded" vs free */
   uplinkUp?: boolean
+  proUp?: boolean
   unlimitedUp?: boolean
 }
 
@@ -85,70 +93,156 @@ const COMPARISON: ComparisonRow[] = [
     label: 'Data Delivery',
     free: '60s polling',
     uplink: '30s polling',
+    pro: '10s polling',
     unlimited: 'Real-time SSE',
     uplinkUp: true,
+    proUp: true,
     unlimitedUp: true,
   },
   {
     label: 'Tracked Symbols',
-    free: '10 symbols',
+    free: '5 symbols',
     uplink: '25 symbols',
+    pro: '75 symbols',
     unlimited: 'Unlimited',
     uplinkUp: true,
+    proUp: true,
     unlimitedUp: true,
   },
   {
     label: 'RSS Feeds',
-    free: '5 feeds',
+    free: '3 feeds',
     uplink: '50 feeds',
+    pro: '150 feeds',
     unlimited: 'Unlimited',
     uplinkUp: true,
+    proUp: true,
     unlimitedUp: true,
   },
   {
     label: 'Custom RSS Feeds',
-    free: '1 custom',
+    free: 'None',
     uplink: '10 custom',
+    pro: '25 custom',
     unlimited: 'Unlimited',
     uplinkUp: true,
+    proUp: true,
     unlimitedUp: true,
   },
   {
     label: 'Sports Leagues',
     free: 'Pro only',
     uplink: 'Pro + College',
+    pro: 'Pro + College',
     unlimited: 'Pro + College',
     uplinkUp: true,
+    proUp: true,
     unlimitedUp: true,
   },
   {
     label: 'Fantasy Leagues',
     free: '1 league',
     uplink: '3 leagues',
+    pro: '10 leagues',
     unlimited: 'Unlimited',
     uplinkUp: true,
+    proUp: true,
     unlimitedUp: true,
   },
   {
     label: 'Site Filtering',
-    free: 'None',
+    free: 'Blacklist',
     uplink: 'Blacklist',
+    pro: 'Blacklist + Whitelist',
     unlimited: 'Blacklist + Whitelist',
+    proUp: true,
+    unlimitedUp: true,
+  },
+  {
+    label: 'Feed Retention',
+    free: '25 items',
+    uplink: '50 items',
+    pro: '200 items',
+    unlimited: 'Unlimited',
     uplinkUp: true,
+    proUp: true,
+    unlimitedUp: true,
+  },
+  {
+    label: 'Custom Alerts',
+    free: 'No',
+    uplink: 'No',
+    pro: 'Yes',
+    unlimited: 'Yes',
+    proUp: true,
+    unlimitedUp: true,
+  },
+  {
+    label: 'Feed Profiles',
+    free: 'No',
+    uplink: 'No',
+    pro: 'Yes',
+    unlimited: 'Yes',
+    proUp: true,
+    unlimitedUp: true,
+  },
+  {
+    label: 'Advanced Feed Controls',
+    free: 'No',
+    uplink: 'No',
+    pro: 'Yes',
+    unlimited: 'Yes',
+    proUp: true,
+    unlimitedUp: true,
+  },
+  {
+    label: 'Priority RSS Refresh',
+    free: 'No',
+    uplink: 'No',
+    pro: 'Yes',
+    unlimited: 'Yes',
+    proUp: true,
+    unlimitedUp: true,
+  },
+  {
+    label: 'Webhooks & Integrations',
+    free: 'No',
+    uplink: 'No',
+    pro: 'No',
+    unlimited: 'Yes',
+    unlimitedUp: true,
+  },
+  {
+    label: 'Data Export',
+    free: 'No',
+    uplink: 'No',
+    pro: 'No',
+    unlimited: 'CSV / JSON',
+    unlimitedUp: true,
+  },
+  {
+    label: 'API Access',
+    free: 'No',
+    uplink: 'No',
+    pro: 'No',
+    unlimited: 'Yes',
     unlimitedUp: true,
   },
   {
     label: 'Early Access',
     free: 'No',
     uplink: 'Yes',
+    pro: 'Yes',
     unlimited: 'Yes',
     uplinkUp: true,
+    proUp: true,
     unlimitedUp: true,
   },
   {
-    label: 'Extended Retention',
+    label: 'Priority Support',
     free: 'No',
     uplink: 'No',
+    pro: 'No',
     unlimited: 'Yes',
     unlimitedUp: true,
   },
@@ -156,6 +250,7 @@ const COMPARISON: ComparisonRow[] = [
     label: 'Dashboard Access',
     free: 'Full',
     uplink: 'Full',
+    pro: 'Full',
     unlimited: 'Full',
   },
 ]
@@ -163,12 +258,13 @@ const COMPARISON: ComparisonRow[] = [
 // ── Tier Feature Showcases ──────────────────────────────────────
 
 interface TierShowcase {
-  tier: 'uplink' | 'unlimited'
+  tier: TierKey
   Icon: typeof Gauge
   name: string
   tagline: string
   hex: string
   delivery: string
+  deliverySub: string
   features: string[]
 }
 
@@ -177,9 +273,10 @@ const TIER_SHOWCASES: TierShowcase[] = [
     tier: 'uplink',
     Icon: Rocket,
     name: 'Uplink',
-    tagline: 'More data, faster updates',
+    tagline: 'Your daily driver',
     hex: '#00b8db',
     delivery: '30s polling',
+    deliverySub: '2x faster than free',
     features: [
       '25 tracked symbols',
       '50 RSS feeds, 10 custom',
@@ -190,20 +287,40 @@ const TIER_SHOWCASES: TierShowcase[] = [
     ],
   },
   {
+    tier: 'pro',
+    Icon: Gauge,
+    name: 'Pro',
+    tagline: 'Your command center',
+    hex: '#a78bfa',
+    delivery: '10s polling',
+    deliverySub: '6x faster than free',
+    features: [
+      '75 tracked symbols',
+      '150 RSS feeds, 25 custom',
+      '10 fantasy leagues',
+      'Custom alerts & notifications',
+      'Feed profiles & advanced controls',
+      'Priority RSS refresh',
+      'Blacklist + Whitelist filtering',
+      '200 items retention',
+    ],
+  },
+  {
     tier: 'unlimited',
     Icon: Crown,
     name: 'Unlimited',
     tagline: 'Everything. In real time.',
     hex: '#34d399',
     delivery: 'Real-time SSE',
+    deliverySub: 'Instant — zero delay',
     features: [
-      'Unlimited tracked symbols',
-      'Unlimited RSS feeds & custom',
-      'Unlimited fantasy leagues',
-      'Pro + College sports',
-      'Blacklist + Whitelist filtering',
-      'Early access to features',
-      'Extended data retention',
+      'Unlimited symbols, feeds & leagues',
+      'Webhooks & integrations',
+      'Data export (CSV / JSON)',
+      'API access',
+      'Priority support',
+      'Unlimited data retention',
+      'Everything in Pro, plus more',
     ],
   },
 ]
@@ -219,41 +336,59 @@ interface PricingPlan {
 
 const PRICING: Record<TierKey, Record<PlanKey, PricingPlan>> = {
   uplink: {
-    monthly: { price: 8.99, period: '/mo', perMonth: 8.99 },
+    monthly: { price: 12.99, period: '/mo', perMonth: 12.99 },
     quarterly: {
-      price: 21.99,
+      price: 31.99,
       period: '/3mo',
-      perMonth: 7.33,
+      perMonth: 10.66,
       savings: 'Save 18%',
     },
     annual: {
-      price: 69.99,
+      price: 99.99,
       period: '/yr',
-      perMonth: 5.83,
-      savings: 'Save 35%',
+      perMonth: 8.33,
+      savings: 'Save 36%',
+    },
+  },
+  pro: {
+    monthly: { price: 29.99, period: '/mo', perMonth: 29.99 },
+    quarterly: {
+      price: 74.99,
+      period: '/3mo',
+      perMonth: 25.0,
+      savings: 'Save 17%',
+    },
+    annual: {
+      price: 239.99,
+      period: '/yr',
+      perMonth: 20.0,
+      savings: 'Save 33%',
     },
   },
   unlimited: {
-    monthly: { price: 24.99, period: '/mo', perMonth: 24.99 },
+    monthly: { price: 54.99, period: '/mo', perMonth: 54.99 },
     quarterly: {
-      price: 59.99,
+      price: 134.99,
       period: '/3mo',
-      perMonth: 20.0,
-      savings: 'Save 20%',
+      perMonth: 45.0,
+      savings: 'Save 18%',
     },
     annual: {
-      price: 199.99,
+      price: 449.99,
       period: '/yr',
-      perMonth: 16.67,
-      savings: 'Save 33%',
+      perMonth: 37.5,
+      savings: 'Save 32%',
     },
   },
 }
 
-const BILLING_LABELS: Record<PlanKey, string> = {
+type BillingView = PlanKey | 'lifetime'
+
+const BILLING_LABELS: Record<BillingView, string> = {
   monthly: 'Monthly',
   quarterly: 'Quarterly',
   annual: 'Annual',
+  lifetime: 'Lifetime',
 }
 
 // ── CTA Particles ──────────────────────────────────────────────
@@ -265,7 +400,7 @@ const CTA_PARTICLES = Array.from({ length: 20 }, (_, i) => ({
   size: Math.random() * 3 + 1.5,
   delay: Math.random() * 5,
   duration: Math.random() * 6 + 8,
-  color: i % 3 === 0 ? '#00b8db' : '#34d399', // alternate cyan + green
+  color: i % 3 === 0 ? '#00b8db' : i % 3 === 1 ? '#a78bfa' : '#34d399',
 }))
 
 // ── Uplink FAQ ─────────────────────────────────────────────────
@@ -277,25 +412,25 @@ const UPLINK_FAQ: FAQItem[] = [
     highlight:
       'How fast new data reaches you — from 60-second polling to instant real-time streaming.',
     answer:
-      'Free users get data refreshed every 60 seconds via polling. Uplink cuts that to 30 seconds. Unlimited eliminates polling entirely — data arrives the instant it changes via Server-Sent Events (SSE), the same technology used by stock trading platforms.',
+      'Free users get data refreshed every 60 seconds via polling. Uplink cuts that to 30 seconds. Pro pushes it to 10 seconds. Unlimited eliminates polling entirely — data arrives the instant it changes via Server-Sent Events (SSE), the same technology used by stock trading platforms.',
     accent: 'emerald',
   },
   {
     icon: BarChart3,
     question: 'How many symbols can I track?',
     highlight:
-      'Free gets 10, Uplink gets 25, and Unlimited has no cap at all.',
+      'Free gets 5, Uplink gets 25, Pro gets 75, and Unlimited has no cap at all.',
     answer:
-      'Tracked symbols are the stocks, ETFs, and crypto tickers that appear in your finance feed. Free accounts can follow up to 10 at a time. Uplink raises that to 25. With Unlimited, there is no cap — add every ticker you care about and they all stream in real time.',
+      'Tracked symbols are the stocks, ETFs, and crypto tickers that appear in your finance feed. Free accounts can follow up to 5 at a time. Uplink raises that to 25. Pro gives you 75 — enough for a serious portfolio. With Unlimited, there is no cap — add every ticker you care about and they all stream in real time.',
     accent: 'cyan',
   },
   {
     icon: Rss,
     question: 'How many RSS feeds can I follow?',
     highlight:
-      'From 5 feeds on Free to completely unlimited on the top tier.',
+      'From 3 feeds on Free to completely unlimited on the top tier.',
     answer:
-      'RSS feeds power the news channel. Free accounts can subscribe to 5 feeds from the default catalog. Uplink expands that to 50, giving you broad coverage across topics. Unlimited removes the limit entirely — subscribe to as many sources as you want.',
+      'RSS feeds power the news channel. Free accounts can subscribe to 3 feeds from the default catalog. Uplink expands that to 50, Pro to 150, giving you broad coverage across topics. Unlimited removes the limit entirely — subscribe to as many sources as you want.',
     accent: 'amber',
   },
   {
@@ -304,26 +439,44 @@ const UPLINK_FAQ: FAQItem[] = [
     highlight:
       'Add any RSS URL you want — your own blogs, niche sources, anything with a feed.',
     answer:
-      'Beyond the built-in catalog, custom feeds let you paste any RSS or Atom URL. Free accounts get 1 custom feed. Uplink gives you 10 — enough for niche industry sources, personal blogs, or company news. Unlimited removes the cap so you can add every source you follow.',
+      'Beyond the built-in catalog, custom feeds let you paste any RSS or Atom URL. Free accounts cannot add custom feeds. Uplink gives you 10, Pro gives you 25 — enough for niche industry sources, personal blogs, or company news. Unlimited removes the cap so you can add every source you follow.',
     accent: 'orange',
   },
   {
     icon: Trophy,
     question: 'What sports leagues are included?',
     highlight:
-      'Free covers pro leagues. Uplink and Unlimited add college sports.',
+      'Free covers pro leagues. All paid tiers add college sports.',
     answer:
-      'Every tier includes live scores from the NFL, NBA, MLB, NHL, MLS, and Premier League. Uplink and Unlimited add college football (NCAAF) and college basketball (NCAAM), with scores updating at your tier\'s delivery speed.',
+      'Every tier includes live scores from the NFL, NBA, MLB, NHL, MLS, and Premier League. All paid tiers add college football (NCAAF) and college basketball (NCAAM), with scores updating at your tier\'s delivery speed.',
     accent: 'violet',
   },
   {
     icon: Crown,
     question: 'How many fantasy leagues can I connect?',
     highlight:
-      'Connect 1 Yahoo league for free, 3 with Uplink, or every league with Unlimited.',
+      'Connect 1 Yahoo league for free, 3 with Uplink, 10 with Pro, or every league with Unlimited.',
     answer:
-      'Scrollr syncs with Yahoo Fantasy Sports to show your standings, matchups, and roster updates. Free accounts connect 1 league. Uplink supports up to 3 — enough for most managers. Unlimited connects every league across every sport with no restrictions.',
+      'Scrollr syncs with Yahoo Fantasy Sports to show your standings, matchups, and roster updates. Free accounts connect 1 league. Uplink supports up to 3. Pro gives you 10 — enough for multi-sport managers. Unlimited connects every league across every sport with no restrictions.',
     accent: 'rose',
+  },
+  {
+    icon: Bell,
+    question: 'What are custom alerts?',
+    highlight:
+      'Set price targets, score thresholds, and keyword triggers — Pro and Unlimited only.',
+    answer:
+      'Custom alerts let you define conditions that trigger notifications: a stock hitting a target price, a game entering the 4th quarter, or an RSS item matching a keyword. Alerts are evaluated in the extension background — no server round-trip needed. Available on Pro and Unlimited tiers.',
+    accent: 'sky',
+  },
+  {
+    icon: Layers,
+    question: 'What are feed profiles and advanced controls?',
+    highlight:
+      'Save named configurations and fine-tune exactly what you see — Pro and Unlimited.',
+    answer:
+      'Feed profiles let you save different configurations — like "Work" showing only finance and RSS, or "Weekend" with sports and fantasy. Advanced controls add pinning, custom sort rules, and per-channel filtering within the feed. Both features are exclusive to Pro and Unlimited tiers.',
+    accent: 'fuchsia',
   },
   {
     icon: Filter,
@@ -331,26 +484,35 @@ const UPLINK_FAQ: FAQItem[] = [
     highlight:
       'Control which websites show the Scrollr feed bar, from blocklists to allowlists.',
     answer:
-      'Site filtering controls where the extension feed bar appears. Free users see it everywhere with no filtering options. Uplink adds a blacklist — hide the bar on specific sites like work tools or video players. Unlimited adds a whitelist on top, so you can restrict the bar to only the sites you choose.',
-    accent: 'sky',
+      'Site filtering controls where the extension feed bar appears. Every tier includes blacklist filtering — hide the bar on specific sites like work tools or video players. Pro and Unlimited add whitelist mode on top, so you can restrict the bar to only the sites you choose.',
+    accent: 'cyan',
+  },
+  {
+    icon: Code2,
+    question: 'What about webhooks, data export, and API access?',
+    highlight:
+      'Unlimited-exclusive power features for integrations and automation.',
+    answer:
+      'Webhooks push your alerts to Discord, Slack, or any URL. Data export lets you download tracked symbols, historical prices, and game results as CSV or JSON. API access gives you programmatic read access to your MyScrollr data for personal dashboards or automation. All three are exclusive to Unlimited.',
+    accent: 'teal',
+  },
+  {
+    icon: Database,
+    question: 'How does feed retention work?',
+    highlight:
+      'Free keeps 25 items, Uplink 50, Pro 200, and Unlimited has no limit.',
+    answer:
+      'Feed retention determines how many items your feed holds at once. Free keeps the most recent 25 items. Uplink doubles that to 50. Pro gives you 200 — enough for richer context when scrolling back. Unlimited removes the cap entirely, keeping your full history for as long as you need it.',
+    accent: 'amber',
   },
   {
     icon: Clock,
     question: 'What does early access include?',
     highlight:
-      'Uplink and Unlimited subscribers get new features and channels before anyone else.',
+      'All paid subscribers get new features and channels before anyone else.',
     answer:
-      'Both paid tiers unlock early access to new features, channels, and UI updates before they roll out to free users. This includes beta channels, experimental feed modes, and new dashboard widgets. You get to try everything first and provide feedback that shapes the final release.',
-    accent: 'fuchsia',
-  },
-  {
-    icon: Database,
-    question: 'What is extended data retention?',
-    highlight:
-      'Unlimited keeps your historical data longer — prices, scores, and feed items.',
-    answer:
-      'By default, Scrollr retains recent data only — enough to populate your current feed. Extended retention, exclusive to Unlimited, keeps historical records longer: past stock prices, completed game scores, and older news items. This means richer context when you scroll back through your feed.',
-    accent: 'teal',
+      'Every paid tier unlocks early access to new features, channels, and UI updates before they roll out to free users. This includes beta channels, experimental feed modes, and new dashboard widgets. You get to try everything first and provide feedback that shapes the final release.',
+    accent: 'orange',
   },
   {
     icon: LayoutDashboard,
@@ -362,34 +524,6 @@ const UPLINK_FAQ: FAQItem[] = [
     accent: 'lime',
   },
 ]
-
-// ── Animated Counter ────────────────────────────────────────────
-
-function AnimatedNumber({
-  target,
-  duration = 1.5,
-}: {
-  target: number
-  duration?: number
-}) {
-  const count = useMotionValue(0)
-  const rounded = useTransform(count, (v) => Math.floor(v))
-  const [display, setDisplay] = useState(0)
-
-  useEffect(() => {
-    const controls = animate(count, target, {
-      duration,
-      ease: [0.22, 1, 0.36, 1],
-    })
-    const unsub = rounded.on('change', (v) => setDisplay(v))
-    return () => {
-      controls.stop()
-      unsub()
-    }
-  }, [target, duration, count, rounded])
-
-  return <span>{display}</span>
-}
 
 // ── Signal Bars ─────────────────────────────────────────────────
 
@@ -419,7 +553,7 @@ function SignalBars() {
 function BottomCTA({
   handleSelectPlan,
 }: {
-  handleSelectPlan: (period: PlanKey, tier: 'uplink' | 'unlimited') => void
+  handleSelectPlan: (period: PlanKey, tier: TierKey) => void
 }) {
   const sectionRef = useRef<HTMLElement>(null)
   const isInView = useInView(sectionRef, { amount: 0.15 })
@@ -597,8 +731,8 @@ function BottomCTA({
             transition={{ delay: 0.25, duration: 0.5, ease: EASE }}
             className="block mt-6 text-lg sm:text-xl text-base-content/50 max-w-lg leading-relaxed"
           >
-            The core is free forever. Uplink and Unlimited are for those who
-            want more data, faster delivery, and zero limits.
+            The core is free forever. Uplink, Pro, and Unlimited are for
+            those who want more data, faster delivery, and zero limits.
           </motion.span>
 
           {/* CTA buttons with central glow */}
@@ -628,14 +762,14 @@ function BottomCTA({
                 onClick={() => handleSelectPlan('annual', 'unlimited')}
                 className="btn btn-pulse gap-2 text-base px-8 py-5 shadow-2xl"
               >
-                <Crown size={14} /> Get Unlimited — $16.67/mo
+                <Crown size={14} /> Get Unlimited — $37.50/mo
               </button>
               <button
                 type="button"
-                onClick={() => handleSelectPlan('annual', 'uplink')}
+                onClick={() => handleSelectPlan('annual', 'pro')}
                 className="btn btn-outline gap-2 px-6 py-4"
               >
-                <Rocket size={14} /> Uplink — $5.83/mo
+                <Gauge size={14} /> Pro — $20.00/mo
               </button>
             </div>
           </motion.div>
@@ -766,7 +900,9 @@ function UplinkPage() {
   const [showCheckout, setShowCheckout] = useState(false)
   const [checkoutSuccess, setCheckoutSuccess] = useState(false)
   const [checkingSession, setCheckingSession] = useState(false)
-  const [billingPeriod, setBillingPeriod] = useState<PlanKey>('annual')
+  const [billingView, setBillingView] = useState<BillingView>('monthly')
+  const isLifetime = billingView === 'lifetime'
+  const billingPeriod: PlanKey = isLifetime ? 'annual' : billingView
 
   // Handle return from Stripe checkout via ?session_id=
   useEffect(() => {
@@ -810,9 +946,9 @@ function UplinkPage() {
 
   const getSelectedPriceId = (): string => {
     if (!selectedPlan) return ''
-    return selectedTier === 'unlimited'
-      ? UNLIMITED_PRICE_IDS[selectedPlan]
-      : UPLINK_PRICE_IDS[selectedPlan]
+    if (selectedTier === 'unlimited') return UNLIMITED_PRICE_IDS[selectedPlan]
+    if (selectedTier === 'pro') return PRO_PRICE_IDS[selectedPlan]
+    return UPLINK_PRICE_IDS[selectedPlan]
   }
 
   return (
@@ -977,9 +1113,9 @@ function UplinkPage() {
                   $
                 </span>
                 <p className="text-base text-base-content/40 leading-relaxed">
-                  Scrollr is free and open source. Uplink tiers are for power
-                  users who want more — expanded limits, faster delivery, and
-                  real-time data via SSE.
+                  Scrollr is free and open source. Three paid tiers for power
+                  users who want more — expanded limits, faster delivery,
+                  custom alerts, and real-time data via SSE.
                 </p>
               </motion.div>
 
@@ -992,17 +1128,17 @@ function UplinkPage() {
               >
                 <button
                   type="button"
-                  onClick={() => handleSelectPlan('annual')}
+                  onClick={() => handleSelectPlan('annual', 'pro')}
                   className="btn btn-pulse btn-lg gap-2.5"
                 >
-                  <Rocket size={14} />
-                  Get Uplink
+                  <Gauge size={14} />
+                  Get Pro
                 </button>
 
                 <div className="flex items-center gap-3">
                   <span className="h-px w-6 bg-base-300/50" />
                   <span className="text-[10px] font-mono text-base-content/20">
-                    From $5.83/mo &middot; Unlimited from $16.67/mo
+                    From $8.33/mo &middot; Unlimited from $37.50/mo
                   </span>
                 </div>
               </motion.div>
@@ -1016,7 +1152,7 @@ function UplinkPage() {
                   className="absolute inset-0 rounded-full"
                   initial={{ scale: 0, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.8, duration: 1, ease: EASE }}
+                  transition={{ delay: 0.9, duration: 1, ease: EASE }}
                 >
                   {/* Glow layer */}
                   <motion.div
@@ -1045,7 +1181,7 @@ function UplinkPage() {
                     className="absolute -top-1 left-1/2 -translate-x-1/2 -translate-y-1/2"
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 1.4, duration: 0.5, ease: EASE }}
+                    transition={{ delay: 1.6, duration: 0.5, ease: EASE }}
                   >
                     <span className="text-[9px] font-bold uppercase tracking-widest text-primary/70 bg-base-100/80 backdrop-blur-sm px-3 py-1 rounded-full border border-primary/15">
                       Unlimited
@@ -1053,12 +1189,40 @@ function UplinkPage() {
                   </motion.div>
                 </motion.div>
 
-                {/* ── Middle ring: Uplink (cyan) ── */}
+                {/* ── Pro ring (violet) ── */}
                 <motion.div
-                  className="absolute inset-[55px] rounded-full"
+                  className="absolute inset-[45px] rounded-full"
                   initial={{ scale: 0, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.6, duration: 0.9, ease: EASE }}
+                  transition={{ delay: 0.7, duration: 0.95, ease: EASE }}
+                >
+                  <div
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      border: '1.5px solid #a78bfa25',
+                      background:
+                        'radial-gradient(circle, transparent 55%, #a78bfa06 100%)',
+                    }}
+                  />
+                  {/* Label */}
+                  <motion.div
+                    className="absolute -top-1 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1.4, duration: 0.5, ease: EASE }}
+                  >
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-[#a78bfa]/60 bg-base-100/80 backdrop-blur-sm px-3 py-1 rounded-full border border-[#a78bfa]/15">
+                      Pro
+                    </span>
+                  </motion.div>
+                </motion.div>
+
+                {/* ── Uplink ring (cyan) ── */}
+                <motion.div
+                  className="absolute inset-[85px] rounded-full"
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.5, duration: 0.9, ease: EASE }}
                 >
                   <div
                     className="absolute inset-0 rounded-full"
@@ -1083,10 +1247,10 @@ function UplinkPage() {
 
                 {/* ── Inner ring: Free (muted) ── */}
                 <motion.div
-                  className="absolute inset-[110px] rounded-full"
+                  className="absolute inset-[120px] rounded-full"
                   initial={{ scale: 0, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.4, duration: 0.8, ease: EASE }}
+                  transition={{ delay: 0.3, duration: 0.8, ease: EASE }}
                 >
                   <div
                     className="absolute inset-0 rounded-full"
@@ -1241,22 +1405,26 @@ function UplinkPage() {
             className="flex items-center justify-center mb-10"
           >
             <div className="relative inline-flex items-center gap-1 p-1 rounded-xl bg-base-200/60 border border-base-300/30 backdrop-blur-sm">
-              {(['monthly', 'quarterly', 'annual'] as const).map(
+              {(['monthly', 'quarterly', 'annual', 'lifetime'] as const).map(
                 (period) => (
                   <button
                     key={period}
                     type="button"
-                    onClick={() => setBillingPeriod(period)}
+                    onClick={() => setBillingView(period)}
                     className={`relative z-10 px-5 py-2 text-[11px] font-bold uppercase tracking-wider rounded-lg transition-colors duration-200 ${
-                      billingPeriod === period
-                        ? 'text-primary-content'
-                        : 'text-base-content/35 hover:text-base-content/55'
+                      billingView === period
+                        ? period === 'lifetime'
+                          ? 'text-base-100'
+                          : 'text-primary-content'
+                        : period === 'lifetime'
+                          ? 'text-warning/40 hover:text-warning/60'
+                          : 'text-base-content/35 hover:text-base-content/55'
                     }`}
                   >
-                    {billingPeriod === period && (
+                    {billingView === period && (
                       <motion.div
                         layoutId="billing-toggle"
-                        className="absolute inset-0 rounded-lg bg-primary"
+                        className={`absolute inset-0 rounded-lg ${period === 'lifetime' ? 'bg-warning' : 'bg-primary'}`}
                         transition={{
                           type: 'spring',
                           bounce: 0.15,
@@ -1269,9 +1437,16 @@ function UplinkPage() {
                     </span>
                     {period === 'annual' && (
                       <span
-                        className={`relative z-10 ml-1.5 text-[8px] ${billingPeriod === period ? 'text-primary-content/70' : 'text-primary/50'}`}
+                        className={`relative z-10 ml-1.5 text-[8px] ${billingView === period ? 'text-primary-content/70' : 'text-primary/50'}`}
                       >
                         Best
+                      </span>
+                    )}
+                    {period === 'lifetime' && (
+                      <span
+                        className={`relative z-10 ml-1.5 text-[8px] ${billingView === period ? 'text-base-100/70' : 'text-warning/40'}`}
+                      >
+                        Limited
                       </span>
                     )}
                   </button>
@@ -1280,74 +1455,383 @@ function UplinkPage() {
             </div>
           </motion.div>
 
-          {/* 4-column pricing grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
-            {/* ─── FREE ─── */}
+          {/* Pricing cards — AnimatePresence swaps between tiers and Lifetime */}
+          <AnimatePresence mode="wait">
+          {isLifetime ? (
+            /* ═══════════════════════════════════════════════════════════════
+               LIFETIME REVEAL — Epic single card with aura
+               ═══════════════════════════════════════════════════════════════ */
             <motion.div
-              style={{ opacity: 0 }}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, ease: EASE }}
-              className="group relative bg-base-200/40 border border-base-300/25 rounded-xl p-6 overflow-hidden"
+              key="lifetime-reveal"
+              initial={{ opacity: 0, scale: 0.88 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.94, y: 10 }}
+              transition={{ duration: 0.55, ease: EASE }}
+              className="flex justify-center py-4"
             >
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-base-300/40 to-transparent" />
-              <Signal
-                size={90}
-                strokeWidth={0.4}
-                className="absolute -bottom-4 -right-4 text-base-content/[0.02] pointer-events-none"
-              />
-              <div className="relative z-10">
-                <div className="flex items-center gap-2.5 mb-5">
-                  <div className="h-9 w-9 rounded-lg bg-base-300/30 border border-base-300/40 flex items-center justify-center text-base-content/40">
-                    <Signal size={16} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-base-content">
-                      Free
-                    </h3>
-                    <p className="text-[9px] text-base-content/25">
-                      Always free
-                    </p>
-                  </div>
-                </div>
+              <div className="relative w-full" style={{ maxWidth: 560 }}>
+                {/* ── Expanding aura rings ── */}
+                {[0, 1, 2, 3].map((i) => (
+                  <motion.div
+                    key={i}
+                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border pointer-events-none"
+                    style={{
+                      width: 300 + i * 100,
+                      height: 300 + i * 100,
+                      borderColor: `rgba(245, 158, 11, ${0.12 - i * 0.025})`,
+                    }}
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{
+                      scale: [0.6, 1.1, 1],
+                      opacity: [0, 0.8, 0.3],
+                    }}
+                    transition={{
+                      delay: 0.2 + i * 0.12,
+                      duration: 1.2,
+                      ease: EASE,
+                    }}
+                  />
+                ))}
 
-                <div className="flex items-baseline gap-1 mb-1">
-                  <span className="text-3xl font-black text-base-content tracking-tight">
-                    $0
-                  </span>
-                  <span className="text-xs font-mono text-base-content/25">
-                    / forever
-                  </span>
-                </div>
-                <p className="text-[10px] text-base-content/20 mb-6">
-                  No credit card required
-                </p>
+                {/* ── Perpetual pulse rings ── */}
+                {[0, 1, 2].map((i) => (
+                  <motion.div
+                    key={`pulse-${i}`}
+                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-warning/15 pointer-events-none"
+                    style={{ width: 400, height: 400 }}
+                    animate={{ scale: [0.7, 1.8], opacity: [0.5, 0] }}
+                    transition={{
+                      delay: 1 + i * 1.3,
+                      duration: 3,
+                      ease: 'easeOut',
+                      repeat: Infinity,
+                      repeatDelay: 1.5,
+                    }}
+                  />
+                ))}
 
-                <div className="space-y-2.5 mb-6">
-                  <PricingFeature>60s polling delivery</PricingFeature>
-                  <PricingFeature>10 tracked symbols</PricingFeature>
-                  <PricingFeature>5 RSS feeds, 1 custom</PricingFeature>
-                  <PricingFeature>1 fantasy league</PricingFeature>
-                  <PricingFeature>Pro sports only</PricingFeature>
-                  <PricingFeature>Full dashboard access</PricingFeature>
-                </div>
+                {/* ── Ambient orb ── */}
+                <motion.div
+                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                  style={{
+                    width: 500,
+                    height: 500,
+                    background:
+                      'radial-gradient(circle, rgba(245,158,11,0.1) 0%, rgba(245,158,11,0.03) 40%, transparent 70%)',
+                    filter: 'blur(40px)',
+                  }}
+                  animate={{
+                    scale: [1, 1.15, 1],
+                    opacity: [0.5, 1, 0.5],
+                  }}
+                  transition={{
+                    duration: 5,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                  }}
+                />
 
-                <Link
-                  to="/dashboard"
-                  className="block w-full py-2.5 text-center text-[10px] font-semibold border border-base-content/15 text-base-content/40 rounded-lg hover:border-base-content/25 hover:text-base-content/60 transition-colors"
+                {/* ── Floating particles ── */}
+                {Array.from({ length: 14 }, (_, i) => ({
+                  id: i,
+                  x: 20 + Math.random() * 60,
+                  y: 10 + Math.random() * 80,
+                  size: Math.random() * 2.5 + 1.5,
+                  delay: 0.5 + Math.random() * 3,
+                  duration: Math.random() * 5 + 6,
+                })).map((p) => (
+                  <motion.div
+                    key={p.id}
+                    className="absolute rounded-full pointer-events-none"
+                    style={{
+                      left: `${p.x}%`,
+                      top: `${p.y}%`,
+                      width: p.size,
+                      height: p.size,
+                      backgroundColor: '#f59e0b',
+                    }}
+                    animate={{ y: [0, -60, -120], opacity: [0, 0.6, 0] }}
+                    transition={{
+                      delay: p.delay,
+                      duration: p.duration,
+                      ease: 'easeInOut',
+                      repeat: Infinity,
+                    }}
+                  />
+                ))}
+
+                {/* ── The Card ── */}
+                <motion.div
+                  initial={{ y: 20 }}
+                  animate={{ y: 0 }}
+                  transition={{ delay: 0.15, duration: 0.6, ease: EASE }}
+                  className="relative rounded-2xl overflow-hidden"
                 >
-                  Get Started Free
-                </Link>
+                  {/* Pulsing border glow */}
+                  <motion.div
+                    className="absolute -inset-px rounded-2xl bg-gradient-to-b from-warning/30 via-warning/10 to-warning/5"
+                    animate={{ opacity: [0.5, 1, 0.5] }}
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                    }}
+                  />
+
+                  <div className="relative border border-warning/25 rounded-2xl p-8 sm:p-10">
+                    {/* Background */}
+                    <div className="absolute inset-0 bg-base-200/70 rounded-2xl pointer-events-none" />
+
+                    {/* Top accent */}
+                    <div
+                      className="absolute top-0 left-0 right-0 h-px"
+                      style={{
+                        background:
+                          'linear-gradient(90deg, transparent, #f59e0b 50%, transparent)',
+                      }}
+                    />
+
+                    {/* ── Amber smoke ── */}
+                    <div
+                      className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl"
+                      style={{ zIndex: 1 }}
+                    >
+                      <motion.div
+                        className="absolute inset-0"
+                        style={{
+                          background:
+                            'linear-gradient(135deg, #f59e0b12 0%, #f59e0b20 40%, #f59e0b12 60%, #f59e0b1a 100%)',
+                        }}
+                        animate={{ opacity: [0.4, 0.8, 0.4] }}
+                        transition={{
+                          duration: 4,
+                          repeat: Infinity,
+                          ease: 'easeInOut',
+                        }}
+                      />
+                      <motion.div
+                        className="absolute bottom-[-10%] left-[10%] w-[80%] h-[55%] rounded-full blur-3xl"
+                        style={{
+                          background:
+                            'radial-gradient(ellipse 70% 60% at center bottom, #f59e0b30 0%, transparent 70%)',
+                        }}
+                        animate={{
+                          y: [0, -30, 0],
+                          scaleX: [1, 1.25, 1],
+                          opacity: [0.3, 0.7, 0.3],
+                        }}
+                        transition={{
+                          duration: 7,
+                          repeat: Infinity,
+                          ease: 'easeInOut',
+                        }}
+                      />
+                      <motion.div
+                        className="absolute top-[-8%] right-[5%] w-[70%] h-[50%] rounded-full blur-3xl"
+                        style={{
+                          background:
+                            'radial-gradient(ellipse 65% 55% at center top, #f59e0b25 0%, transparent 65%)',
+                        }}
+                        animate={{
+                          y: [0, 20, 0],
+                          scaleX: [1, 1.15, 1],
+                          opacity: [0.25, 0.6, 0.25],
+                        }}
+                        transition={{
+                          duration: 8,
+                          repeat: Infinity,
+                          ease: 'easeInOut',
+                          delay: 1.5,
+                        }}
+                      />
+                      <motion.div
+                        className="absolute top-[30%] left-[15%] w-[45px] h-[45px] rounded-full blur-xl"
+                        style={{
+                          background:
+                            'radial-gradient(circle, #f59e0b45 0%, transparent 70%)',
+                        }}
+                        animate={{
+                          y: [0, -15, 10, 0],
+                          opacity: [0, 0.7, 0.3, 0],
+                        }}
+                        transition={{
+                          duration: 5,
+                          repeat: Infinity,
+                          ease: 'easeInOut',
+                        }}
+                      />
+                      <motion.div
+                        className="absolute top-[60%] right-[12%] w-[40px] h-[40px] rounded-full blur-lg"
+                        style={{
+                          background:
+                            'radial-gradient(circle, #f59e0b40 0%, transparent 70%)',
+                        }}
+                        animate={{
+                          y: [0, -10, 0],
+                          opacity: [0, 0.5, 0],
+                        }}
+                        transition={{
+                          duration: 4,
+                          repeat: Infinity,
+                          ease: 'easeInOut',
+                          delay: 2.5,
+                        }}
+                      />
+                    </div>
+
+                    {/* Watermark */}
+                    <Sparkles
+                      size={140}
+                      strokeWidth={0.3}
+                      className="absolute -bottom-8 -right-8 text-base-content/[0.02] pointer-events-none"
+                    />
+
+                    {/* ── Content ── */}
+                    <div className="relative z-10">
+                      {/* Header */}
+                      <div className="text-center mb-8">
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{
+                            delay: 0.3,
+                            type: 'spring',
+                            bounce: 0.35,
+                            duration: 0.6,
+                          }}
+                          className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-5"
+                          style={{
+                            background: '#f59e0b15',
+                            boxShadow:
+                              '0 0 40px #f59e0b20, 0 0 0 1px #f59e0b25',
+                          }}
+                        >
+                          <Sparkles
+                            size={28}
+                            className="text-warning"
+                          />
+                        </motion.div>
+
+                        <h3 className="text-2xl font-black text-base-content mb-1">
+                          The First Byte
+                        </h3>
+                        <p className="text-xs text-warning/50 font-medium">
+                          Lifetime Uplink &middot; Founding Member
+                        </p>
+                      </div>
+
+                      {/* Price */}
+                      <div className="text-center mb-6">
+                        <div className="flex items-baseline justify-center gap-2 mb-1">
+                          <span className="text-5xl font-black text-base-content tracking-tight">
+                            $749
+                          </span>
+                          <span className="text-sm text-base-content/25">
+                            one-time
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-warning/40">
+                          Permanent Uplink access &middot; No renewals
+                        </p>
+                      </div>
+
+                      {/* Slot progress */}
+                      <div className="mb-8 p-4 rounded-xl bg-base-100/60 border border-base-300/30">
+                        <div className="flex items-center justify-between mb-2.5">
+                          <span className="text-[9px] text-base-content/25 uppercase tracking-wide">
+                            Founding Member Slots
+                          </span>
+                          <span className="text-[10px] font-mono text-warning/60 font-bold">
+                            128 total &middot; 0x00 — 0x7F
+                          </span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-base-300/50 overflow-hidden">
+                          <motion.div
+                            className="h-full rounded-full bg-gradient-to-r from-warning/70 via-warning to-primary/60 origin-left"
+                            initial={{ scaleX: 0 }}
+                            animate={{ scaleX: 1 }}
+                            transition={{
+                              duration: 2,
+                              delay: 0.5,
+                              ease: EASE,
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Features — 2 columns */}
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-3 mb-8">
+                        {[
+                          'Permanent Uplink-tier access',
+                          '50% off Unlimited upgrade',
+                          '30s polling delivery',
+                          'Founding member badge',
+                          '25 symbols, 50 RSS feeds',
+                          'Priority support',
+                          'Pro + College sports',
+                          'Early access to features',
+                        ].map((feature) => (
+                          <div
+                            key={feature}
+                            className="flex items-center gap-2"
+                          >
+                            <Check
+                              size={12}
+                              className="text-warning shrink-0"
+                            />
+                            <span className="text-[11px] text-base-content/55">
+                              {feature}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Unlimited callout */}
+                      <div className="relative mb-8 p-3.5 rounded-xl border border-primary/15 overflow-hidden"
+                        style={{ background: 'rgba(52, 211, 153, 0.04)' }}
+                      >
+                        <div className="relative z-10">
+                          <p className="text-[10px] text-primary/70 font-semibold mb-1">
+                            Want real-time SSE?
+                          </p>
+                          <p className="text-[10px] text-base-content/35 leading-relaxed">
+                            Lifetime members get 50% off any Unlimited
+                            subscription. Add real-time delivery, webhooks,
+                            API access, and unlimited limits starting at
+                            $27.50/mo.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* CTA */}
+                      <Link
+                        to="/uplink/lifetime"
+                        search={{ session_id: undefined }}
+                        className="block w-full py-3.5 text-center text-xs font-bold bg-warning/10 border border-warning/30 text-warning rounded-xl hover:bg-warning/20 hover:border-warning/50 transition-colors"
+                      >
+                        Claim Your Slot
+                      </Link>
+                    </div>
+                  </div>
+                </motion.div>
               </div>
             </motion.div>
-
+          ) : (
+            /* ═══════════════════════════════════════════════════════════════
+               TIER CARDS — Uplink / Pro / Unlimited
+               ═══════════════════════════════════════════════════════════════ */
+            <motion.div
+              key="tier-cards"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.97, y: 6 }}
+              transition={{ duration: 0.35, ease: EASE }}
+            >
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
             {/* ─── UPLINK ─── */}
             <motion.div
-              style={{ opacity: 0 }}
               initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.06, duration: 0.5, ease: EASE }}
               whileHover={{
                 y: -3,
@@ -1395,7 +1879,7 @@ function UplinkPage() {
                       Uplink
                     </h3>
                     <p className="text-[9px] text-info/50">
-                      30s polling &middot; expanded limits
+                      30s polling &middot; daily driver
                     </p>
                   </div>
                 </div>
@@ -1472,12 +1956,138 @@ function UplinkPage() {
               </div>
             </motion.div>
 
+            {/* ─── PRO — COMMAND CENTER ─── */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.09, duration: 0.5, ease: EASE }}
+              whileHover={{
+                y: -3,
+                transition: { type: 'tween', duration: 0.2 },
+              }}
+              role="button"
+              tabIndex={0}
+              aria-label={`Select Pro ${BILLING_LABELS[billingPeriod]} plan`}
+              onClick={() => handleSelectPlan(billingPeriod, 'pro')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  handleSelectPlan(billingPeriod, 'pro')
+                }
+              }}
+              className="group relative bg-base-200/40 border border-[#a78bfa]/15 rounded-xl p-6 hover:border-[#a78bfa]/30 transition-colors overflow-hidden cursor-pointer"
+            >
+              <div
+                className="absolute top-0 left-0 right-0 h-px"
+                style={{
+                  background:
+                    'linear-gradient(90deg, transparent, #a78bfa 50%, transparent)',
+                }}
+              />
+              <div className="absolute -top-12 -right-12 w-36 h-36 rounded-full pointer-events-none blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-[#a78bfa]/[0.06]" />
+              <Gauge
+                size={90}
+                strokeWidth={0.4}
+                className="absolute -bottom-4 -right-4 text-base-content/[0.02] pointer-events-none"
+              />
+              <div className="relative z-10">
+                <div className="flex items-center gap-2.5 mb-5">
+                  <div
+                    className="h-9 w-9 rounded-lg flex items-center justify-center"
+                    style={{
+                      background: '#a78bfa15',
+                      boxShadow:
+                        '0 0 20px #a78bfa15, 0 0 0 1px #a78bfa20',
+                    }}
+                  >
+                    <Gauge size={16} className="text-base-content/80" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-base-content">
+                      Pro
+                    </h3>
+                    <p className="text-[9px] text-[#a78bfa]/50">
+                      10s polling &middot; command center
+                    </p>
+                  </div>
+                </div>
+
+                {/* Price — per-digit slot animation */}
+                <div className="mb-4">
+                  <div className="flex items-baseline gap-1 mb-1">
+                    <span className="text-3xl font-black text-base-content tracking-tight font-mono tabular-nums">
+                      $
+                      <AnimateNumber
+                        transition={{
+                          y: { type: 'spring', bounce: 0.15, duration: 0.45 },
+                          opacity: { duration: 0.15 },
+                        }}
+                      >
+                        {PRICING.pro[billingPeriod].price}
+                      </AnimateNumber>
+                    </span>
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        key={PRICING.pro[billingPeriod].period}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15 }}
+                        className="text-xs font-mono text-base-content/25"
+                      >
+                        {PRICING.pro[billingPeriod].period}
+                      </motion.span>
+                    </AnimatePresence>
+                  </div>
+                    <div className="flex items-center gap-2 h-5">
+                    <span className="text-[10px] font-mono text-base-content/25 tabular-nums">
+                      ~$
+                      <AnimateNumber
+                        transition={{
+                          y: { type: 'spring', bounce: 0.15, duration: 0.45 },
+                          opacity: { duration: 0.15 },
+                        }}
+                      >
+                        {PRICING.pro[billingPeriod].perMonth}
+                      </AnimateNumber>
+                      /mo
+                    </span>
+                    <AnimatePresence mode="wait">
+                      {PRICING.pro[billingPeriod].savings && (
+                        <motion.span
+                          key={PRICING.pro[billingPeriod].savings}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.9 }}
+                          transition={{ duration: 0.2, ease: EASE }}
+                          className="text-[8px] font-bold text-[#a78bfa]/60 bg-[#a78bfa]/8 px-1.5 py-0.5 rounded"
+                        >
+                          {PRICING.pro[billingPeriod].savings}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5 mb-6">
+                  <PricingFeature highlight>10s polling delivery</PricingFeature>
+                  <PricingFeature highlight>75 symbols, 150 RSS feeds</PricingFeature>
+                  <PricingFeature highlight>Custom alerts & notifications</PricingFeature>
+                  <PricingFeature highlight>Feed profiles & controls</PricingFeature>
+                  <PricingFeature highlight>Priority RSS refresh</PricingFeature>
+                  <PricingFeature highlight>10 fantasy leagues</PricingFeature>
+                </div>
+
+                <div className="w-full py-2.5 text-center text-[10px] font-semibold border border-[#a78bfa]/20 text-[#a78bfa]/60 rounded-lg group-hover:border-[#a78bfa]/40 group-hover:text-[#a78bfa]/80 transition-colors">
+                  Get Pro
+                </div>
+              </div>
+            </motion.div>
+
             {/* ─── UNLIMITED — THE ONE ─── */}
             <motion.div
-              style={{ opacity: 0 }}
               initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.12, duration: 0.5, ease: EASE }}
               whileHover={{
                 y: -4,
@@ -1737,19 +2347,19 @@ function UplinkPage() {
                       Real-time SSE delivery
                     </PricingFeature>
                     <PricingFeature highlight>
-                      Unlimited symbols & RSS
+                      Unlimited everything
                     </PricingFeature>
                     <PricingFeature highlight>
-                      Unlimited fantasy leagues
+                      Webhooks & integrations
                     </PricingFeature>
                     <PricingFeature highlight>
-                      Blacklist + Whitelist filtering
+                      Data export & API access
                     </PricingFeature>
                     <PricingFeature highlight>
-                      Extended data retention
+                      Priority support
                     </PricingFeature>
                     <PricingFeature highlight>
-                      Early access to features
+                      Everything in Pro, plus more
                     </PricingFeature>
                   </div>
 
@@ -1760,119 +2370,10 @@ function UplinkPage() {
               </div>
             </motion.div>
 
-            {/* ─── LIFETIME — The First Byte ─── */}
-            <Link
-              to="/uplink/lifetime"
-              search={{ session_id: undefined }}
-              className="block"
-            >
-              <motion.div
-                style={{ opacity: 0 }}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.18, duration: 0.5, ease: EASE }}
-                whileHover={{
-                  y: -3,
-                  transition: { type: 'tween', duration: 0.2 },
-                }}
-                className="group relative bg-base-200/40 border border-base-300/25 rounded-xl p-6 hover:border-warning/20 transition-colors overflow-hidden cursor-pointer h-full"
-              >
-                <div
-                  className="absolute top-0 left-0 right-0 h-px"
-                  style={{
-                    background:
-                      'linear-gradient(90deg, transparent, #f59e0b 50%, transparent)',
-                  }}
-                />
-                <Sparkles
-                  size={90}
-                  strokeWidth={0.4}
-                  className="absolute -bottom-4 -right-4 text-base-content/[0.02] pointer-events-none"
-                />
-                <div className="absolute -top-12 -right-12 w-36 h-36 rounded-full pointer-events-none blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-warning/[0.06]" />
-                <div className="relative z-10">
-                  <div className="flex items-center gap-2.5 mb-5">
-                    <div
-                      className="h-9 w-9 rounded-lg flex items-center justify-center"
-                      style={{
-                        background: '#f59e0b15',
-                        boxShadow:
-                          '0 0 20px #f59e0b15, 0 0 0 1px #f59e0b20',
-                      }}
-                    >
-                      <Sparkles
-                        size={16}
-                        className="text-base-content/80"
-                      />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-base-content">
-                        Lifetime
-                      </h3>
-                      <p className="text-[9px] text-warning/50">
-                        The First Byte &middot; Uplink tier
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-baseline gap-1 mb-1">
-                    <span className="text-3xl font-black text-base-content tracking-tight">
-                      $549
-                    </span>
-                    <span className="text-xs font-mono text-base-content/25">
-                      / forever
-                    </span>
-                  </div>
-                  <p className="text-[10px] font-mono text-warning/40 mb-4">
-                    128 slots &middot; 50% off Unlimited
-                  </p>
-
-                  {/* Slot progress */}
-                  <div className="mb-5 p-3 rounded-xl bg-base-100/60 border border-base-300/30">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[9px] text-base-content/25 uppercase tracking-wide">
-                        Slots
-                      </span>
-                      <span className="text-[9px] font-mono text-warning/50">
-                        <AnimatedNumber target={128} duration={2} />{' '}
-                        / 128
-                      </span>
-                    </div>
-                    <div className="h-1 rounded-full bg-base-300/50 overflow-hidden">
-                      <motion.div
-                        className="h-full rounded-full bg-gradient-to-r from-warning/60 to-primary/60 origin-left"
-                        initial={{ scaleX: 0 }}
-                        whileInView={{ scaleX: 1 }}
-                        viewport={{ once: true }}
-                        transition={{
-                          duration: 1.5,
-                          delay: 0.3,
-                          ease: EASE,
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2.5 mb-6">
-                    <PricingFeature>Permanent Uplink access</PricingFeature>
-                    <PricingFeature>
-                      50% off Unlimited upgrade
-                    </PricingFeature>
-                    <PricingFeature>Founding member status</PricingFeature>
-                    <PricingFeature>
-                      Early access to features
-                    </PricingFeature>
-                  </div>
-
-                  <div className="w-full py-2.5 text-center text-[10px] font-semibold border border-warning/20 text-warning/60 rounded-lg group-hover:border-warning/40 group-hover:text-warning/80 transition-colors flex items-center justify-center gap-1.5">
-                    View Lifetime
-                    <ChevronRight size={12} />
-                  </div>
-                </div>
-              </motion.div>
-            </Link>
           </div>
+            </motion.div>
+          )}
+          </AnimatePresence>
 
           {/* Pricing footer */}
           <motion.div
@@ -1884,7 +2385,7 @@ function UplinkPage() {
             className="mt-8 text-center"
           >
             <p className="text-[9px] text-base-content/20">
-              All plans include the full free tier &middot; Cancel anytime
+              Free tier always included &middot; Cancel anytime
               &middot; Payments via Stripe
             </p>
           </motion.div>
@@ -1909,7 +2410,7 @@ function UplinkPage() {
               Compare <span className="text-gradient-primary">Tiers</span>
             </h2>
             <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
-              Free is forever. Uplink and Unlimited unlock more.
+              Free is forever. Three tiers unlock more.
             </p>
           </motion.div>
 
@@ -1922,13 +2423,13 @@ function UplinkPage() {
             className="relative rounded-2xl border border-base-300/40 bg-base-100/60 backdrop-blur-md"
           >
             {/* ── Unlimited column full-column smoke ──
-                 Grid is 1.4fr+1fr+1fr+1fr = 4.4fr.
-                 Unlimited column = rightmost 1/4.4 ≈ 22.7% of table.
+                 Grid is 1.4fr+1fr+1fr+1fr+1fr = 5.4fr.
+                 Unlimited column = rightmost 1/5.4 ≈ 18.5% of table.
                  Smoke fills the full column and bleeds at edges. */}
             <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 1 }}>
               {/* Base wash — fills exact column bounds, breathing opacity */}
               <motion.div
-                className="absolute inset-y-0 right-0 w-[22.7%]"
+                className="absolute inset-y-0 right-0 w-[18.5%]"
                 style={{
                   background:
                     'linear-gradient(180deg, #34d39906 0%, #34d39914 25%, #34d39918 50%, #34d39914 75%, #34d39906 100%)',
@@ -1943,7 +2444,7 @@ function UplinkPage() {
 
               {/* Volumetric haze — wider than column, heavy blur, creates depth */}
               <motion.div
-                className="absolute inset-y-[-8%] right-[-2%] w-[30%] blur-3xl"
+                className="absolute inset-y-[-8%] right-[-2%] w-[26%] blur-3xl"
                 style={{
                   background:
                     'radial-gradient(ellipse 80% 45% at 60% 50%, #34d39920 0%, #34d39908 50%, transparent 80%)',
@@ -1962,7 +2463,7 @@ function UplinkPage() {
 
               {/* Left edge glow — vertical strip along column's left border */}
               <motion.div
-                className="absolute inset-y-[5%] right-[20%] w-[6%] blur-2xl"
+                className="absolute inset-y-[5%] right-[16%] w-[5%] blur-2xl"
                 style={{
                   background:
                     'linear-gradient(180deg, transparent 5%, #34d39918 25%, #34d39922 50%, #34d39918 75%, transparent 95%)',
@@ -1980,7 +2481,7 @@ function UplinkPage() {
 
               {/* Rising plume — bottom to mid, drifts upward within column */}
               <motion.div
-                className="absolute bottom-[-5%] right-[2%] w-[20%] h-[60%] rounded-full blur-2xl"
+                className="absolute bottom-[-5%] right-[1%] w-[17%] h-[60%] rounded-full blur-2xl"
                 style={{
                   background:
                     'radial-gradient(ellipse 70% 60% at center bottom, #34d39925 0%, #34d39910 40%, transparent 75%)',
@@ -1999,7 +2500,7 @@ function UplinkPage() {
 
               {/* Descending plume — top to mid, fills upper column */}
               <motion.div
-                className="absolute top-[-5%] right-[4%] w-[18%] h-[55%] rounded-full blur-2xl"
+                className="absolute top-[-5%] right-[2%] w-[16%] h-[55%] rounded-full blur-2xl"
                 style={{
                   background:
                     'radial-gradient(ellipse 65% 55% at center top, #34d39920 0%, #34d39908 45%, transparent 70%)',
@@ -2019,7 +2520,7 @@ function UplinkPage() {
 
               {/* Mid-column turbulence — slow shape-shifting blob */}
               <motion.div
-                className="absolute top-[20%] right-[1%] w-[22%] h-[60%] rounded-full blur-3xl"
+                className="absolute top-[20%] right-[0%] w-[19%] h-[60%] rounded-full blur-3xl"
                 style={{
                   background:
                     'radial-gradient(ellipse 75% 50%, #34d39918 0%, transparent 65%)',
@@ -2027,7 +2528,7 @@ function UplinkPage() {
                 animate={{
                   scaleX: [1, 1.25, 0.9, 1],
                   scaleY: [1, 0.9, 1.15, 1],
-                  x: [0, -15, 10, 0],
+                  x: [0, -10, 6, 0],
                   opacity: [0.35, 0.65, 0.45, 0.35],
                 }}
                 transition={{
@@ -2037,15 +2538,15 @@ function UplinkPage() {
                 }}
               />
 
-              {/* Left drift tendril — leaks from column into Uplink territory */}
+              {/* Left drift tendril — leaks from column into Pro territory */}
               <motion.div
-                className="absolute top-[15%] right-[14%] w-[25%] h-[40%] rounded-full blur-3xl"
+                className="absolute top-[15%] right-[12%] w-[20%] h-[40%] rounded-full blur-3xl"
                 style={{
                   background:
                     'radial-gradient(ellipse 70% 45%, #34d39910 0%, transparent 65%)',
                 }}
                 animate={{
-                  x: [0, -80, 0],
+                  x: [0, -60, 0],
                   y: [0, 20, 0],
                   opacity: [0.06, 0.3, 0.06],
                 }}
@@ -2058,7 +2559,7 @@ function UplinkPage() {
 
               {/* Bright accent particle — upper column */}
               <motion.div
-                className="absolute top-[25%] right-[7%] w-[60px] h-[60px] rounded-full blur-xl"
+                className="absolute top-[25%] right-[5%] w-[50px] h-[50px] rounded-full blur-xl"
                 style={{
                   background:
                     'radial-gradient(circle, #34d39938 0%, transparent 70%)',
@@ -2077,7 +2578,7 @@ function UplinkPage() {
 
               {/* Bright accent particle — lower column */}
               <motion.div
-                className="absolute top-[65%] right-[14%] w-[50px] h-[50px] rounded-full blur-lg"
+                className="absolute top-[65%] right-[10%] w-[40px] h-[40px] rounded-full blur-lg"
                 style={{
                   background:
                     'radial-gradient(circle, #34d39930 0%, transparent 70%)',
@@ -2095,28 +2596,9 @@ function UplinkPage() {
                 }}
               />
 
-              {/* Bright accent particle — mid column */}
-              <motion.div
-                className="absolute top-[45%] right-[4%] w-[40px] h-[40px] rounded-full blur-lg"
-                style={{
-                  background:
-                    'radial-gradient(circle, #34d39940 0%, transparent 70%)',
-                }}
-                animate={{
-                  y: [0, -25, 0],
-                  opacity: [0, 0.5, 0],
-                }}
-                transition={{
-                  duration: 4,
-                  repeat: Infinity,
-                  ease: 'easeInOut',
-                  delay: 3,
-                }}
-              />
-
               {/* Top spill — smoke bleeds above the table */}
               <motion.div
-                className="absolute -top-24 right-0 w-[28%] h-[200px] rounded-full blur-3xl"
+                className="absolute -top-24 right-0 w-[24%] h-[200px] rounded-full blur-3xl"
                 style={{
                   background:
                     'radial-gradient(ellipse 70% 60% at 55% 80%, #34d39918 0%, transparent 70%)',
@@ -2134,7 +2616,7 @@ function UplinkPage() {
 
               {/* Bottom spill — smoke bleeds below the table */}
               <motion.div
-                className="absolute -bottom-20 right-0 w-[28%] h-[180px] rounded-full blur-3xl"
+                className="absolute -bottom-20 right-0 w-[24%] h-[180px] rounded-full blur-3xl"
                 style={{
                   background:
                     'radial-gradient(ellipse 70% 60% at 55% 20%, #34d39915 0%, transparent 70%)',
@@ -2168,7 +2650,7 @@ function UplinkPage() {
             />
 
             {/* Table Header */}
-            <div className="relative grid grid-cols-[1.4fr_1fr_1fr_1fr] border-b border-base-300/40">
+            <div className="relative grid grid-cols-[1.4fr_1fr_1fr_1fr_1fr] border-b border-base-300/40">
               <div className="p-5 pl-6">
                 <span className="text-[9px] text-base-content/25 uppercase tracking-wider font-medium">
                   Feature
@@ -2182,6 +2664,11 @@ function UplinkPage() {
               <div className="p-5 text-center border-l border-info/15 bg-info/[0.03]">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-info flex items-center justify-center gap-1.5">
                   <Rocket size={11} /> Uplink
+                </span>
+              </div>
+              <div className="p-5 text-center border-l border-[#a78bfa]/15 bg-[#a78bfa]/[0.03]">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#a78bfa] flex items-center justify-center gap-1.5">
+                  <Gauge size={11} /> Pro
                 </span>
               </div>
               <div className="relative p-5 text-center border-l border-primary/15 bg-primary/[0.04] rounded-tr-2xl">
@@ -2216,7 +2703,7 @@ function UplinkPage() {
                   duration: 0.4,
                   ease: EASE,
                 }}
-                className={`grid grid-cols-[1.4fr_1fr_1fr_1fr] ${i < COMPARISON.length - 1 ? 'border-b border-base-300/20' : ''} group hover:bg-base-200/40 transition-colors duration-200`}
+                className={`grid grid-cols-[1.4fr_1fr_1fr_1fr_1fr] ${i < COMPARISON.length - 1 ? 'border-b border-base-300/20' : ''} group hover:bg-base-200/40 transition-colors duration-200`}
               >
                 <div className="p-4 pl-6 flex items-center">
                   <span className="text-xs text-base-content/55 font-medium">
@@ -2238,6 +2725,19 @@ function UplinkPage() {
                     <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-base-content/25">
                       <Minus size={9} className="text-base-content/15 shrink-0" />
                       {row.uplink}
+                    </span>
+                  )}
+                </div>
+                <div className="p-4 flex items-center justify-center border-l border-[#a78bfa]/10 bg-[#a78bfa]/[0.015]">
+                  {row.proUp ? (
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold font-mono text-[#a78bfa]/80">
+                      <Check size={11} className="text-[#a78bfa] shrink-0" />
+                      {row.pro}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-base-content/25">
+                      <Minus size={9} className="text-base-content/15 shrink-0" />
+                      {row.pro}
                     </span>
                   )}
                 </div>
@@ -2329,11 +2829,11 @@ function UplinkPage() {
               What You <span className="text-gradient-primary">Get</span>
             </h2>
             <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
-              Two tiers, one mission: total coverage
+              Three tiers, one mission: total coverage
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             {TIER_SHOWCASES.map((tier, tierIdx) => (
               <motion.div
                 key={tier.tier}
@@ -2349,7 +2849,9 @@ function UplinkPage() {
                 className={`group relative rounded-2xl overflow-hidden ${
                   tier.tier === 'unlimited'
                     ? 'border border-primary/20'
-                    : 'border border-base-300/30'
+                    : tier.tier === 'pro'
+                      ? 'border border-[#a78bfa]/20'
+                      : 'border border-base-300/30'
                 }`}
               >
                 {/* Animated border glow for Unlimited */}
@@ -2605,9 +3107,7 @@ function UplinkPage() {
                             {tier.delivery}
                           </span>
                           <span className="text-[10px] text-base-content/30 ml-2">
-                            {tier.tier === 'uplink'
-                              ? '2x faster than free'
-                              : 'Instant — zero delay'}
+                            {tier.deliverySub}
                           </span>
                         </div>
                       </div>
@@ -2651,12 +3151,16 @@ function UplinkPage() {
                         className={`w-full py-2.5 text-center text-[10px] font-semibold rounded-lg transition-colors ${
                           tier.tier === 'unlimited'
                             ? 'bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 hover:border-primary/50'
-                            : 'border border-info/20 text-info/60 hover:border-info/40 hover:text-info/80'
+                            : tier.tier === 'pro'
+                              ? 'border border-[#a78bfa]/20 text-[#a78bfa]/60 hover:border-[#a78bfa]/40 hover:text-[#a78bfa]/80'
+                              : 'border border-info/20 text-info/60 hover:border-info/40 hover:text-info/80'
                         }`}
                       >
                         {tier.tier === 'unlimited'
-                          ? 'Get Unlimited — from $16.67/mo'
-                          : 'Get Uplink — from $5.83/mo'}
+                          ? 'Get Unlimited — from $37.50/mo'
+                          : tier.tier === 'pro'
+                            ? 'Get Pro — from $20.00/mo'
+                            : 'Get Uplink — from $8.33/mo'}
                       </button>
                     </div>
                   </div>

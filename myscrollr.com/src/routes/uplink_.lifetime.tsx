@@ -337,15 +337,15 @@ function LifetimePage() {
                   <div className="mb-2">
                     <div className="flex items-baseline gap-2">
                       <span className="text-5xl font-black text-base-content tracking-tight">
-                        $549
-                      </span>
+                      $749
+                    </span>
                       <span className="text-sm text-base-content/25">
                         one-time
                       </span>
                     </div>
                   </div>
                   <p className="text-[10px] text-warning/40 mb-4">
-                    Equivalent to ~5.1 years of Uplink Monthly at $8.99/mo
+                    Equivalent to ~4.8 years of Uplink Monthly at $12.99/mo
                   </p>
 
                   {/* Unlimited upgrade callout — with aura */}
@@ -396,7 +396,7 @@ function LifetimePage() {
                       <p className="text-[10px] text-base-content/35 leading-relaxed">
                         Lifetime members get 50% off any Unlimited subscription.
                         Add real-time delivery, unlimited limits, and extended
-                        retention starting at $12.50/mo.
+                        retention starting at $27.50/mo.
                       </p>
                     </div>
                   </div>
