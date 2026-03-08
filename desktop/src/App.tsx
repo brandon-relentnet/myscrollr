@@ -5,6 +5,7 @@ import {
   LogicalSize,
 } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
+import { fetch } from "@tauri-apps/plugin-http";
 import type {
   ConnectionStatus,
   FeedPosition,
@@ -14,6 +15,12 @@ import type {
   DeliveryMode,
 } from "~/utils/types";
 import FeedBar from "~/entrypoints/scrollbar.content/FeedBar";
+import {
+  login as authLogin,
+  logout as authLogout,
+  getValidToken,
+  isAuthenticated as checkAuth,
+} from "./auth";
 
 // ── Constants ────────────────────────────────────────────────────
 
@@ -69,18 +76,46 @@ export default function App() {
     loadPref("feedCustomWidth", DEFAULT_NARROW_WIDTH),
   );
 
+  // Auth state
+  const [authenticated, setAuthenticated] = useState(() => checkAuth());
+
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const collapsedRef = useRef(collapsed);
   collapsedRef.current = collapsed;
   const isFullWidthRef = useRef(isFullWidth);
   isFullWidthRef.current = isFullWidth;
+  const authenticatedRef = useRef(authenticated);
+  authenticatedRef.current = authenticated;
   const maxWidthBtnRef = useRef<HTMLButtonElement | null>(null);
 
-  // ── Fetch public feed ────────────────────────────────────────
+  // ── Fetch feed data ───────────────────────────────────────────
+  // When authenticated, fetch /dashboard with Bearer token.
+  // When anonymous, fetch /public/feed (no auth).
 
   const fetchFeed = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/public/feed`);
+      let res: Response;
+
+      if (authenticatedRef.current) {
+        const token = await getValidToken();
+        if (!token) {
+          // Token expired and refresh failed — fall back to anonymous
+          setAuthenticated(false);
+          res = await fetch(`${API_URL}/public/feed`);
+        } else {
+          res = await fetch(`${API_URL}/dashboard`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          // If the authenticated request fails (e.g. 401), fall back
+          if (res.status === 401) {
+            setAuthenticated(false);
+            res = await fetch(`${API_URL}/public/feed`);
+          }
+        }
+      } else {
+        res = await fetch(`${API_URL}/public/feed`);
+      }
+
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setDashboard({ data: data.data });
@@ -290,12 +325,29 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleLogin = useCallback(() => {
-    // Phase 2: Logto OAuth flow
-  }, []);
+  // ── Auth handlers ─────────────────────────────────────────────
+
+  const handleLogin = useCallback(async () => {
+    const result = await authLogin();
+    if (result) {
+      setAuthenticated(true);
+      // Re-fetch immediately so the user sees authenticated data
+      fetchFeed();
+    }
+  }, [fetchFeed]);
+
+  const handleLogout = useCallback(() => {
+    authLogout();
+    setAuthenticated(false);
+    // Re-fetch as anonymous
+    fetchFeed();
+  }, [fetchFeed]);
 
   const _behavior: FeedBehavior = "overlay";
   const _deliveryMode: DeliveryMode = "polling";
+
+  // handleLogout is available for tray menu integration (Phase 2)
+  void handleLogout;
 
   return (
     <FeedBar
@@ -308,7 +360,7 @@ export default function App() {
       collapsed={collapsed}
       behavior={_behavior}
       activeTabs={activeTabs}
-      authenticated={false}
+      authenticated={authenticated}
       onLogin={handleLogin}
       onToggleCollapse={handleToggleCollapse}
       onHeightChange={handleHeightChange}

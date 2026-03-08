@@ -22,6 +22,13 @@
     "core:window:allow-available-monitors",
     "core:window:allow-current-monitor",
     "core:window:allow-primary-monitor",
-    "shell:allow-open"
+    "shell:allow-open",
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "https://api.myscrollr.relentnet.dev/*" },
+        { "url": "https://auth.myscrollr.relentnet.dev/*" }
+      ]
+    }
   ]
 }
