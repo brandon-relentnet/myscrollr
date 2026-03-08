@@ -163,8 +163,14 @@ export default function FeedBar({
         <div className="mx-auto mt-1 h-0.5 w-10 rounded-full bg-fg-4 group-hover:bg-accent/60 transition-colors" />
       </div>
 
-      {/* Header */}
-      <div className="flex items-center justify-between h-8 px-3 border-b border-edge shrink-0">
+      {/* Header — data-tauri-drag-region enables window dragging in the desktop
+           app. Browsers ignore unknown data-* attributes, so this is a no-op
+           in the extension. Interactive children (buttons, tabs) are automatically
+           excluded from the drag region by Tauri. */}
+      <div
+        data-tauri-drag-region
+        className="flex items-center justify-between h-8 px-3 border-b border-edge shrink-0"
+      >
         <div className="flex items-center gap-3">
           <span className="text-[10px] font-mono font-bold tracking-[0.2em] text-accent uppercase select-none">
             scrollr

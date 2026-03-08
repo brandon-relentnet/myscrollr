@@ -1,0 +1,61 @@
+@import "tailwindcss";
+@source "../../channels/*/extension/**/*.tsx";
+@source "../../extension/entrypoints/scrollbar.content/**/*.tsx";
+
+@theme {
+  /* Surfaces — ultra-dark with a cool blue-black undertone */
+  --color-surface: #08080d;
+  --color-surface-2: #0f0f16;
+  --color-surface-hover: #15151d;
+
+  /* Borders */
+  --color-edge: #1c1c26;
+  --color-edge-2: #282834;
+
+  /* Primary accent — the Scrollr green */
+  --color-accent: #bfff00;
+
+  /* Foreground / text hierarchy */
+  --color-fg: #d4d4da;
+  --color-fg-2: #84848e;
+  --color-fg-3: #4e4e58;
+  --color-fg-4: #2e2e36;
+
+  /* Semantic */
+  --color-up: #22c55e;
+  --color-down: #ef4444;
+  --color-live: #ef4444;
+  --color-warn: #eab308;
+
+  --font-sans: "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+}
+
+/* ── Desktop window overrides ─────────────────────────────────── */
+
+/* Fill the Tauri window completely. Background matches FeedBar's
+   surface color so there's no visible gap during resize. */
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+/* Disable FeedBar's height transition in the desktop app.
+   The CSS height and Tauri window resize happen at different speeds —
+   the transition creates a visible gap/flash during drag-resize.
+   In the extension this is fine (no window to resize). */
+#root .fixed {
+  transition: none !important;
+}
+
+/* Thin scrollbars that match the dark theme */
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-edge-2) transparent;
+}
