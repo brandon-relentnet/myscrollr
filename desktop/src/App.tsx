@@ -5,6 +5,7 @@ import {
   LogicalSize,
 } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { fetch } from "@tauri-apps/plugin-http";
 import type {
   ConnectionStatus,
@@ -20,12 +21,18 @@ import {
   logout as authLogout,
   getValidToken,
   isAuthenticated as checkAuth,
+  getTier,
 } from "./auth";
+import type { SubscriptionTier } from "./auth";
 
 // ── Constants ────────────────────────────────────────────────────
 
 const API_URL = "https://api.myscrollr.relentnet.dev";
-const POLL_INTERVAL_MS = 60_000;
+const POLL_INTERVALS: Record<SubscriptionTier, number> = {
+  free: 60_000,
+  uplink: 30_000,
+  uplink_unlimited: 30_000, // Fallback if SSE fails
+};
 const COLLAPSED_HEIGHT = 32;
 const MIN_HEIGHT = 100;
 const MAX_HEIGHT = 600;
@@ -52,6 +59,7 @@ export default function App() {
   // Data state
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
+  const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>("polling");
 
   // Preference state (persisted in localStorage)
   const [position, _setPosition] = useState<FeedPosition>(() =>
@@ -87,6 +95,8 @@ export default function App() {
   const authenticatedRef = useRef(authenticated);
   authenticatedRef.current = authenticated;
   const maxWidthBtnRef = useRef<HTMLButtonElement | null>(null);
+  const tierRef = useRef<SubscriptionTier>("free");
+  const sseActiveRef = useRef(false);
 
   // ── Fetch feed data ───────────────────────────────────────────
   // When authenticated, fetch /dashboard with Bearer token.
@@ -125,13 +135,131 @@ export default function App() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchFeed();
-    pollRef.current = setInterval(fetchFeed, POLL_INTERVAL_MS);
-    return () => {
+  // ── Polling lifecycle ─────────────────────────────────────────
+  // Starts polling at the tier-appropriate interval. Restarts
+  // whenever tier changes. SSE users (uplink_unlimited) skip
+  // polling while SSE is connected; if SSE disconnects, polling
+  // activates as fallback.
+
+  const startPolling = useCallback(
+    (tier: SubscriptionTier) => {
       if (pollRef.current) clearInterval(pollRef.current);
+      const interval = POLL_INTERVALS[tier];
+      fetchFeed();
+      pollRef.current = setInterval(fetchFeed, interval);
+    },
+    [fetchFeed],
+  );
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }, []);
+
+  // ── SSE lifecycle ───────────────────────────────────────────
+  // Starts Rust-side SSE for uplink_unlimited users. Listens for
+  // sse-status events to track connection state, switch delivery
+  // mode, and handle auth expiry (refresh token + restart).
+
+  const startSSE = useCallback(async () => {
+    const token = await getValidToken();
+    if (!token) return;
+    sseActiveRef.current = true;
+    setDeliveryMode("sse");
+    await invoke("start_sse", { token }).catch(() => {
+      // If SSE start fails, fall back to polling
+      sseActiveRef.current = false;
+      setDeliveryMode("polling");
+      startPolling(tierRef.current);
+    });
+  }, [startPolling]);
+
+  const stopSSE = useCallback(async () => {
+    sseActiveRef.current = false;
+    setDeliveryMode("polling");
+    setStatus("disconnected");
+    await invoke("stop_sse").catch(() => {});
+  }, []);
+
+  // Listen for SSE status events from the Rust backend
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+
+    listen<{ status: string; code?: number; error?: string }>(
+      "sse-status",
+      async (event) => {
+        const { status: sseStatus } = event.payload;
+
+        switch (sseStatus) {
+          case "connected":
+            setStatus("connected");
+            setDeliveryMode("sse");
+            // Stop polling — SSE provides real-time data
+            stopPolling();
+            break;
+
+          case "reconnecting":
+            setStatus("reconnecting");
+            break;
+
+          case "disconnected":
+          case "error":
+            setStatus("disconnected");
+            // SSE dropped — fall back to polling while it reconnects
+            if (sseActiveRef.current) {
+              startPolling(tierRef.current);
+            }
+            break;
+
+          case "auth-expired": {
+            // Token expired — refresh and restart SSE
+            sseActiveRef.current = false;
+            const newToken = await getValidToken();
+            if (newToken) {
+              sseActiveRef.current = true;
+              invoke("start_sse", { token: newToken }).catch(() => {
+                sseActiveRef.current = false;
+                setDeliveryMode("polling");
+                startPolling(tierRef.current);
+              });
+            } else {
+              // Refresh failed — user is effectively logged out
+              setDeliveryMode("polling");
+              startPolling(tierRef.current);
+            }
+            break;
+          }
+        }
+      },
+    ).then((fn) => {
+      unlisten = fn;
+    });
+
+    return () => {
+      unlisten?.();
     };
-  }, [fetchFeed]);
+  }, [startPolling, stopPolling]);
+
+  // Initial data fetch + polling start
+  useEffect(() => {
+    const tier = authenticated ? getTier() : "free";
+    tierRef.current = tier;
+
+    if (tier === "uplink_unlimited") {
+      // SSE users: fetch once for the snapshot, then SSE takes over
+      fetchFeed();
+      startSSE();
+    } else {
+      startPolling(tier);
+    }
+
+    return () => {
+      stopPolling();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Window dragging via header ───────────────────────────────
 
@@ -331,29 +459,47 @@ export default function App() {
     const result = await authLogin();
     if (result) {
       setAuthenticated(true);
-      // Re-fetch immediately so the user sees authenticated data
-      fetchFeed();
-    }
-  }, [fetchFeed]);
 
-  const handleLogout = useCallback(() => {
+      // Determine tier from the new JWT and start appropriate delivery
+      const tier = getTier();
+      tierRef.current = tier;
+
+      // Stop anonymous polling
+      stopPolling();
+
+      // Fetch authenticated dashboard immediately
+      await fetchFeed();
+
+      if (tier === "uplink_unlimited") {
+        await startSSE();
+      } else {
+        startPolling(tier);
+      }
+    }
+  }, [fetchFeed, startSSE, startPolling, stopPolling]);
+
+  const handleLogout = useCallback(async () => {
+    // Tear down SSE if running
+    if (sseActiveRef.current) {
+      await stopSSE();
+    }
+    stopPolling();
+
     authLogout();
     setAuthenticated(false);
-    // Re-fetch as anonymous
-    fetchFeed();
-  }, [fetchFeed]);
+    tierRef.current = "free";
+
+    // Restart as anonymous (free tier polling)
+    startPolling("free");
+  }, [startPolling, stopPolling, stopSSE]);
 
   const _behavior: FeedBehavior = "overlay";
-  const _deliveryMode: DeliveryMode = "polling";
-
-  // handleLogout is available for tray menu integration (Phase 2)
-  void handleLogout;
 
   return (
     <FeedBar
       dashboard={dashboard}
       connectionStatus={status}
-      deliveryMode={_deliveryMode}
+      deliveryMode={deliveryMode}
       position={position}
       height={height}
       mode={mode}

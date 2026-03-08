@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { listen } from "@tauri-apps/api/event";
 
 /**
  * Uniqueness key extractor — given a record, returns a string key
@@ -34,17 +35,36 @@ interface UseScrollrCDCResult<T> {
   items: T[];
 }
 
+/** Shape of each CDC record inside an SSE payload. */
+interface CDCRecord {
+  action: "insert" | "update" | "delete";
+  record: Record<string, unknown>;
+  changes: Record<string, unknown>;
+  metadata: { table_name: string };
+}
+
+/** SSE payload emitted by the Rust SSE client as `sse-event`. */
+interface SSEPayload {
+  data: CDCRecord[];
+}
+
 /**
- * Desktop version of the CDC hook.
+ * Desktop CDC hook — manages an in-memory array of items with
+ * real-time upsert/delete from the Rust SSE client.
  *
- * Phase 1: Polling mode only — items are driven entirely by the
- * dashboard/public-feed snapshot that App.tsx fetches on interval.
- * The hook simply returns initialItems and syncs when they change.
+ * In polling mode (no SSE connection), items are driven entirely
+ * by the dashboard snapshot that App.tsx fetches on interval.
  *
- * Phase 2 will add direct EventSource subscription for SSE mode.
+ * In SSE mode, the hook listens for `sse-event` Tauri events,
+ * filters by table name, and applies CDC mutations to the array.
  */
 export function useScrollrCDC<T>({
+  table,
   initialItems,
+  keyOf,
+  sort,
+  maxItems = 50,
+  validate,
 }: UseScrollrCDCOptions<T>): UseScrollrCDCResult<T> {
   const [items, setItems] = useState<T[]>(initialItems);
   const initializedRef = useRef(false);
@@ -56,6 +76,60 @@ export function useScrollrCDC<T>({
     initializedRef.current = true;
     setItems(initialItems);
   }, [initialItems]);
+
+  // Listen for CDC events from the Rust SSE client
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+
+    listen<SSEPayload>("sse-event", (event) => {
+      const payload = event.payload;
+      if (!payload?.data) return;
+
+      // Filter records for this hook's table
+      const relevant = payload.data.filter(
+        (r) => r.metadata?.table_name === table,
+      );
+      if (relevant.length === 0) return;
+
+      setItems((prev) => {
+        let next = [...prev];
+
+        for (const cdc of relevant) {
+          const record = cdc.record as unknown as T;
+
+          if (cdc.action === "delete") {
+            const key = keyOf(record);
+            next = next.filter((item) => keyOf(item) !== key);
+          } else {
+            // insert or update — validate first
+            if (validate && !validate(cdc.record)) continue;
+
+            const key = keyOf(record);
+            const idx = next.findIndex((item) => keyOf(item) === key);
+            if (idx >= 0) {
+              next[idx] = record;
+            } else {
+              next.push(record);
+              if (next.length > maxItems) next.shift();
+            }
+          }
+        }
+
+        // Apply sort if provided
+        if (sort) {
+          next.sort(sort);
+        }
+
+        return next;
+      });
+    }).then((fn) => {
+      unlisten = fn;
+    });
+
+    return () => {
+      unlisten?.();
+    };
+  }, [table, keyOf, sort, maxItems, validate]);
 
   return { items };
 }

@@ -130,13 +130,41 @@ async function refreshTokenRequest(
 
 // ── JWT decode ───────────────────────────────────────────────────
 
-function extractSub(jwt: string): string | null {
+function decodeJwtPayload(jwt: string): Record<string, unknown> | null {
   try {
-    const payload = JSON.parse(atob(jwt.split(".")[1]));
-    return (payload.sub as string) ?? null;
+    return JSON.parse(atob(jwt.split(".")[1])) as Record<string, unknown>;
   } catch {
     return null;
   }
+}
+
+function extractSub(jwt: string): string | null {
+  const payload = decodeJwtPayload(jwt);
+  return (payload?.sub as string) ?? null;
+}
+
+/**
+ * Extract the subscription tier from the JWT's `roles` claim.
+ * Logto injects roles via Custom JWT (e.g. ["uplink_unlimited"]).
+ *
+ * Tier hierarchy: uplink_unlimited > uplink > free
+ */
+export type SubscriptionTier = "free" | "uplink" | "uplink_unlimited";
+
+export function getTier(): SubscriptionTier {
+  const auth = loadAuth();
+  if (!auth) return "free";
+
+  const payload = decodeJwtPayload(auth.accessToken);
+  if (!payload) return "free";
+
+  const roles = Array.isArray(payload.roles)
+    ? (payload.roles as string[])
+    : [];
+
+  if (roles.includes("uplink_unlimited")) return "uplink_unlimited";
+  if (roles.includes("uplink")) return "uplink";
+  return "free";
 }
 
 // ── Concurrency guard ────────────────────────────────────────────
