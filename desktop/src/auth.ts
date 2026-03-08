@@ -83,22 +83,22 @@ async function generateCodeChallenge(verifier: string): Promise<string> {
     .replace(/=+$/, "");
 }
 
-// ── Token exchange (direct with Logto) ───────────────────────────
+// ── Token exchange (via Go API proxy) ────────────────────────────
+// Uses the same /extension/token proxy the browser extension uses.
+// The proxy makes the Logto request server-side, avoiding the Origin
+// header validation that Logto enforces on direct client requests.
 
 async function exchangeCode(
   code: string,
   codeVerifier: string,
 ): Promise<TokenResponse> {
-  const res = await fetch(`${LOGTO_ENDPOINT}/oidc/token`, {
+  const res = await fetch(`${API_RESOURCE}/extension/token`, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "authorization_code",
-      client_id: LOGTO_APP_ID,
-      redirect_uri: REDIRECT_URI,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
       code,
+      redirect_uri: REDIRECT_URI,
       code_verifier: codeVerifier,
-      resource: API_RESOURCE,
     }),
   });
 
@@ -113,14 +113,11 @@ async function exchangeCode(
 async function refreshTokenRequest(
   refreshToken: string,
 ): Promise<TokenResponse> {
-  const res = await fetch(`${LOGTO_ENDPOINT}/oidc/token`, {
+  const res = await fetch(`${API_RESOURCE}/extension/token/refresh`, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "refresh_token",
-      client_id: LOGTO_APP_ID,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
       refresh_token: refreshToken,
-      resource: API_RESOURCE,
     }),
   });
 
