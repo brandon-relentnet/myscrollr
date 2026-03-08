@@ -31,7 +31,7 @@ const API_URL = "https://api.myscrollr.relentnet.dev";
 const POLL_INTERVALS: Record<SubscriptionTier, number> = {
   free: 60_000,
   uplink: 30_000,
-  uplink_unlimited: 30_000, // Fallback if SSE fails
+  uplink_unlimited: 30_000, // Baseline fallback; SSE CDC handles real-time
 };
 const COLLAPSED_HEIGHT = 32;
 const MIN_HEIGHT = 100;
@@ -72,7 +72,7 @@ export default function App() {
   const [collapsed, setCollapsed] = useState(() =>
     loadPref("feedCollapsed", false),
   );
-  const [activeTabs] = useState<string[]>(() =>
+  const [activeTabs, setActiveTabs] = useState<string[]>(() =>
     loadPref("activeFeedTabs", ["finance", "sports"]),
   );
 
@@ -130,6 +130,17 @@ export default function App() {
       const data = await res.json();
       setDashboard({ data: data.data });
       setStatus("connected");
+
+      // Sync active tabs from server channel config.
+      // The /dashboard response includes a `channels` array with
+      // enabled/visible flags. Derive which tabs to show from it.
+      if (Array.isArray(data.channels)) {
+        const visible = (data.channels as { channel_type: string; enabled: boolean; visible: boolean }[])
+          .filter((ch) => ch.enabled && ch.visible)
+          .map((ch) => ch.channel_type);
+        setActiveTabs(visible);
+        savePref("activeFeedTabs", visible);
+      }
     } catch {
       setStatus("disconnected");
     }
@@ -196,8 +207,7 @@ export default function App() {
           case "connected":
             setStatus("connected");
             setDeliveryMode("sse");
-            // Stop polling — SSE provides real-time data
-            stopPolling();
+            // Polling continues independently for config sync
             break;
 
           case "reconnecting":
@@ -207,27 +217,21 @@ export default function App() {
           case "disconnected":
           case "error":
             setStatus("disconnected");
-            // SSE dropped — fall back to polling while it reconnects
-            if (sseActiveRef.current) {
-              startPolling(tierRef.current);
-            }
+            setDeliveryMode("polling");
             break;
 
           case "auth-expired": {
             // Token expired — refresh and restart SSE
             sseActiveRef.current = false;
+            setDeliveryMode("polling");
             const newToken = await getValidToken();
             if (newToken) {
               sseActiveRef.current = true;
+              setDeliveryMode("sse");
               invoke("start_sse", { token: newToken }).catch(() => {
                 sseActiveRef.current = false;
                 setDeliveryMode("polling");
-                startPolling(tierRef.current);
               });
-            } else {
-              // Refresh failed — user is effectively logged out
-              setDeliveryMode("polling");
-              startPolling(tierRef.current);
             }
             break;
           }
@@ -240,19 +244,83 @@ export default function App() {
     return () => {
       unlisten?.();
     };
-  }, [startPolling, stopPolling]);
+  }, []);
 
-  // Initial data fetch + polling start
+  // ── Channel config sync via CDC ────────────────────────────────
+  // Mirrors the extension's preferences.ts: when a `user_channels`
+  // CDC record arrives via SSE, update activeTabs directly from the
+  // record fields. No server round-trip needed for tab visibility.
+  // Also triggers a dashboard refetch to load data for any newly-
+  // enabled channels (the Go API cache is invalidated by then).
+
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+
+    listen<{
+      data?: {
+        action: string;
+        record: Record<string, unknown>;
+        metadata: { table_name: string };
+      }[];
+    }>("sse-event", (event) => {
+      const records = event.payload?.data;
+      if (!Array.isArray(records)) return;
+
+      const channelRecords = records.filter(
+        (r) => r.metadata?.table_name === "user_channels",
+      );
+      if (channelRecords.length === 0) return;
+
+      // Direct tab update — instant visibility change
+      setActiveTabs((prev) => {
+        let next = [...prev];
+
+        for (const cdc of channelRecords) {
+          const type = cdc.record.channel_type as string | undefined;
+          if (!type) continue;
+
+          if (
+            cdc.action === "delete" ||
+            !cdc.record.enabled ||
+            !cdc.record.visible
+          ) {
+            // Channel removed, disabled, or hidden — drop the tab
+            next = next.filter((t) => t !== type);
+          } else if (!next.includes(type)) {
+            // Channel enabled + visible — add the tab
+            next.push(type);
+          }
+        }
+
+        savePref("activeFeedTabs", next);
+        return next;
+      });
+
+      // Refetch dashboard to get data for newly-enabled channels.
+      // Brief delay lets the Go API finish cache invalidation
+      // (the CDC event can arrive before the handler completes).
+      setTimeout(() => fetchFeed(), 500);
+    }).then((fn) => {
+      unlisten = fn;
+    });
+
+    return () => {
+      unlisten?.();
+    };
+  }, [fetchFeed]);
+
+  // Initial data fetch + delivery start
   useEffect(() => {
     const tier = authenticated ? getTier() : "free";
     tierRef.current = tier;
 
+    // Always poll — provides config sync (channel toggles, symbol
+    // changes) even when SSE handles real-time data delivery.
+    startPolling(tier);
+
+    // SSE users additionally get real-time CDC data
     if (tier === "uplink_unlimited") {
-      // SSE users: fetch once for the snapshot, then SSE takes over
-      fetchFeed();
       startSSE();
-    } else {
-      startPolling(tier);
     }
 
     return () => {
@@ -260,6 +328,25 @@ export default function App() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Window focus refetch ────────────────────────────────────────
+  // When the user switches from the browser (where they changed
+  // settings) back to the desktop window, immediately refetch the
+  // dashboard. By this point the Go API has finished processing
+  // and the Redis cache is invalidated — the response is fresh.
+
+  useEffect(() => {
+    const appWindow = getCurrentWindow();
+    const promise = appWindow.onFocusChanged(({ payload: focused }) => {
+      if (focused && authenticatedRef.current) {
+        fetchFeed();
+      }
+    });
+
+    return () => {
+      promise.then((unlisten) => unlisten());
+    };
+  }, [fetchFeed]);
 
   // ── Window dragging via header ───────────────────────────────
 
@@ -464,16 +551,14 @@ export default function App() {
       const tier = getTier();
       tierRef.current = tier;
 
-      // Stop anonymous polling
+      // Restart polling at the new tier's interval
       stopPolling();
-
-      // Fetch authenticated dashboard immediately
       await fetchFeed();
+      startPolling(tier);
 
+      // SSE users additionally get real-time CDC data
       if (tier === "uplink_unlimited") {
         await startSSE();
-      } else {
-        startPolling(tier);
       }
     }
   }, [fetchFeed, startSSE, startPolling, stopPolling]);
