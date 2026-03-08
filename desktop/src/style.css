@@ -31,10 +31,12 @@
   --font-mono: "SF Mono", "Fira Code", "Cascadia Code", monospace;
 }
 
-/* ── Desktop window overrides ─────────────────────────────────── */
+/* ── Desktop window layout ────────────────────────────────────── */
+/* FeedBar was designed as a fixed overlay on web pages. In the
+   desktop app the Tauri window IS the FeedBar, so we override its
+   positioning to fill the viewport naturally. Only the Tauri window
+   size changes — CSS always fills 100% of whatever that is. */
 
-/* Fill the Tauri window completely. Background matches FeedBar's
-   surface color so there's no visible gap during resize. */
 html,
 body,
 #root {
@@ -46,12 +48,25 @@ body,
   background: var(--color-surface);
 }
 
-/* Disable FeedBar's height transition in the desktop app.
-   The CSS height and Tauri window resize happen at different speeds —
-   the transition creates a visible gap/flash during drag-resize.
-   In the extension this is fine (no window to resize). */
-#root .fixed {
+/* Override FeedBar outer div: fill viewport, use flexbox column */
+#root > div {
+  position: relative !important;
+  top: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  right: auto !important;
+  width: 100% !important;
+  height: 100vh !important;
+  z-index: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
   transition: none !important;
+}
+
+/* Content area: fill remaining space after the 32px header */
+#root > div > .overflow-y-auto {
+  flex: 1 1 0% !important;
+  height: auto !important;
 }
 
 /* Thin scrollbars that match the dark theme */

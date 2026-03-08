@@ -14,7 +14,10 @@ import FeedBar from "~/entrypoints/scrollbar.content/FeedBar";
 // ── Constants ────────────────────────────────────────────────────
 
 const API_URL = "https://api.myscrollr.relentnet.dev";
-const POLL_INTERVAL_MS = 60_000; // 60s for anonymous polling
+const POLL_INTERVAL_MS = 60_000;
+const COLLAPSED_HEIGHT = 32;
+const MIN_HEIGHT = 100;
+const MAX_HEIGHT = 600;
 
 // ── Local storage helpers ────────────────────────────────────────
 
@@ -54,6 +57,8 @@ export default function App() {
   );
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const collapsedRef = useRef(collapsed);
+  collapsedRef.current = collapsed;
 
   // ── Fetch public feed ────────────────────────────────────────
 
@@ -77,19 +82,15 @@ export default function App() {
     };
   }, [fetchFeed]);
 
-  // ── Window dragging via Tauri JS API ─────────────────────────
-  // data-tauri-drag-region is unreliable on Wayland/webkit2gtk.
-  // Instead, listen for mousedown on the header and call startDragging().
+  // ── Window dragging via header ───────────────────────────────
+
   useEffect(() => {
     const header = document.querySelector("[data-tauri-drag-region]");
     if (!header) return;
 
     const onMouseDown = (e: Event) => {
-      const mouseEvent = e as MouseEvent;
-      // Don't drag if clicking on interactive children (buttons, tabs)
-      const target = mouseEvent.target as HTMLElement;
+      const target = (e as MouseEvent).target as HTMLElement;
       if (target.closest("button, [role='tab'], a, input, select")) return;
-
       getCurrentWindow().startDragging().catch(() => {});
     };
 
@@ -97,36 +98,94 @@ export default function App() {
     return () => header.removeEventListener("mousedown", onMouseDown);
   }, []);
 
-  // ── Window resize ────────────────────────────────────────────
-  // Resize the Tauri window to match the FeedBar height.
+  // ── Native compositor resize via drag handle ─────────────────
+  // Intercept the drag handle mousedown to use Tauri's startResizing()
+  // instead of FeedBar's built-in JS mouse tracking. This delegates
+  // resize to the compositor via startResizeDragging(), which correctly
+  // anchors the opposite edge (bottom stays fixed when dragging the
+  // top handle upward).
 
-  const handleHeightChange = useCallback((h: number) => {
-    setHeight(h);
-    invoke("resize_window", { height: h }).catch(() => {});
+  useEffect(() => {
+    const handle = document.querySelector(".cursor-row-resize");
+    if (!handle) return;
+
+    const onMouseDown = (e: Event) => {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      // Handle is at the top edge (position=bottom), so resize from North
+      const direction = position === "bottom" ? "North" : "South";
+      getCurrentWindow().startResizeDragging(direction).catch(() => {});
+    };
+
+    // Use capture phase to intercept before React's event delegation
+    handle.addEventListener("mousedown", onMouseDown, true);
+    return () => handle.removeEventListener("mousedown", onMouseDown, true);
+  }, [position]);
+
+  // ── Sync height state from native resize events ──────────────
+  // When the compositor finishes resizing, read the new window size
+  // and update our height state + persist to localStorage.
+
+  useEffect(() => {
+    const appWindow = getCurrentWindow();
+    let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const promise = appWindow.onResized((event) => {
+      // Ignore resize events while collapsed (programmatic collapse)
+      if (collapsedRef.current) return;
+
+      const scale = window.devicePixelRatio || 1;
+      const logicalHeight = Math.round(event.payload.height / scale);
+
+      // Clamp to valid range and ignore tiny/collapsed sizes
+      if (logicalHeight >= MIN_HEIGHT && logicalHeight <= MAX_HEIGHT) {
+        setHeight(logicalHeight);
+
+        // Debounce the save to avoid writing on every frame during drag
+        if (saveTimer) clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => {
+          savePref("feedHeight", logicalHeight);
+        }, 200);
+      }
+    });
+
+    return () => {
+      if (saveTimer) clearTimeout(saveTimer);
+      promise.then((unlisten) => unlisten());
+    };
   }, []);
 
-  const handleHeightCommit = useCallback((h: number) => {
-    savePref("feedHeight", h);
-    invoke("resize_window", { height: h }).catch(() => {});
-  }, []);
+  // ── Collapse / expand ────────────────────────────────────────
 
   const handleToggleCollapse = useCallback(() => {
     const next = !collapsed;
     setCollapsed(next);
     savePref("feedCollapsed", next);
-    const newHeight = next ? 32 : height;
+    const newHeight = next ? COLLAPSED_HEIGHT : height;
     invoke("resize_window", { height: newHeight }).catch(() => {});
   }, [collapsed, height]);
 
-  // Sync Tauri window size on mount
-  useEffect(() => {
-    const effectiveHeight = collapsed ? 32 : height;
-    invoke("resize_window", { height: effectiveHeight }).catch(() => {});
-  }, [collapsed, height]);
+  // ── FeedBar height callbacks ─────────────────────────────────
+  // These are still passed to FeedBar for API compatibility, but
+  // the native resize handler above drives the actual behavior.
+  // FeedBar's built-in drag logic is intercepted and never fires.
 
-  // Show the window once mounted
+  const handleHeightChange = useCallback((_h: number) => {
+    // No-op: native resize handles this
+  }, []);
+
+  const handleHeightCommit = useCallback((_h: number) => {
+    // No-op: native resize handles this
+  }, []);
+
+  // ── Initial setup ────────────────────────────────────────────
+
   useEffect(() => {
-    getCurrentWindow().show().catch(() => {});
+    const effectiveHeight = collapsed ? COLLAPSED_HEIGHT : height;
+    invoke("resize_window", { height: effectiveHeight })
+      .then(() => getCurrentWindow().show())
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleLogin = useCallback(() => {
