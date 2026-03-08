@@ -29,6 +29,10 @@ interface FeedBarProps {
   onToggleCollapse: () => void;
   onHeightChange: (height: number) => void;
   onHeightCommit: (height: number) => void;
+  /** Optional: externally controlled active tab (desktop ticker click). */
+  activeTab?: string;
+  /** Optional: called when the user switches tabs (for external state sync). */
+  onActiveTabChange?: (tab: string) => void;
 }
 
 const COLLAPSED_HEIGHT = 32;
@@ -62,12 +66,26 @@ export default function FeedBar({
   onToggleCollapse,
   onHeightChange,
   onHeightCommit,
+  activeTab: externalActiveTab,
+  onActiveTabChange,
 }: FeedBarProps) {
-  const [activeTab, setActiveTab] = useState<string>(
-    activeTabs[0] ?? "finance",
+  const [internalActiveTab, setInternalActiveTab] = useState<string>(
+    externalActiveTab ?? activeTabs[0] ?? "finance",
   );
+  const activeTab = externalActiveTab ?? internalActiveTab;
+  const setActiveTab = (tab: string) => {
+    setInternalActiveTab(tab);
+    onActiveTabChange?.(tab);
+  };
   const [isDragging, setIsDragging] = useState(false);
   const barRef = useRef<HTMLDivElement>(null);
+
+  // Sync internal state when external activeTab prop changes (e.g., ticker click)
+  useEffect(() => {
+    if (externalActiveTab && externalActiveTab !== internalActiveTab) {
+      setInternalActiveTab(externalActiveTab);
+    }
+  }, [externalActiveTab, internalActiveTab]);
 
   // Sync activeTab when activeTabs changes (e.g., user disables current tab)
   useEffect(() => {

@@ -24,7 +24,7 @@
         "label": "main",
         "title": "Scrollr",
         "width": 1920,
-        "height": 200,
+        "height": 228,
         "decorations": false,
         "alwaysOnTop": true,
         "resizable": true,

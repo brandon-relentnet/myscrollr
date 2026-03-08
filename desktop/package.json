@@ -15,6 +15,8 @@
     "@tauri-apps/plugin-http": "^2.5.7",
     "@tauri-apps/plugin-shell": "^2.0.0",
     "clsx": "^2.1.1",
+    "motion": "^12.35.1",
+    "motion-plus": "^1.5.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

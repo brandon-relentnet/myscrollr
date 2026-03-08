@@ -16,6 +16,7 @@ import type {
   DeliveryMode,
 } from "~/utils/types";
 import FeedBar from "~/entrypoints/scrollbar.content/FeedBar";
+import ScrollrTicker from "./components/ScrollrTicker";
 import {
   login as authLogin,
   logout as authLogout,
@@ -33,7 +34,9 @@ const POLL_INTERVALS: Record<SubscriptionTier, number> = {
   uplink: 30_000,
   uplink_unlimited: 30_000, // Baseline fallback; SSE CDC handles real-time
 };
-const COLLAPSED_HEIGHT = 32;
+const TICKER_HEIGHT = 28;
+const TASKBAR_HEIGHT = 32;
+const COLLAPSED_HEIGHT = TASKBAR_HEIGHT;
 const MIN_HEIGHT = 100;
 const MAX_HEIGHT = 600;
 const DEFAULT_NARROW_WIDTH = 800;
@@ -76,6 +79,16 @@ export default function App() {
     loadPref("activeFeedTabs", ["finance", "sports"]),
   );
 
+  // Ticker state
+  const [tickerCollapsed, setTickerCollapsed] = useState(() =>
+    loadPref("tickerCollapsed", false),
+  );
+
+  // Active tab — lifted so ticker clicks can switch the canvas tab
+  const [activeTab, setActiveTab] = useState<string>(() =>
+    loadPref("activeTab", "finance"),
+  );
+
   // Width state
   const [isFullWidth, setIsFullWidth] = useState(() =>
     loadPref("feedFullWidth", true),
@@ -95,6 +108,7 @@ export default function App() {
   const authenticatedRef = useRef(authenticated);
   authenticatedRef.current = authenticated;
   const maxWidthBtnRef = useRef<HTMLButtonElement | null>(null);
+  const tickerBtnRef = useRef<HTMLButtonElement | null>(null);
   const tierRef = useRef<SubscriptionTier>("free");
   const sseActiveRef = useRef(false);
 
@@ -412,18 +426,30 @@ export default function App() {
     const collapseBtn = rightGroup?.querySelector("button");
     if (!rightGroup || !collapseBtn) return;
 
-    // Create divider + button matching existing header style
-    const divider = document.createElement("span");
-    divider.className = "h-3 w-px bg-edge";
-
-    const btn = document.createElement("button");
-    btn.className =
+    // Create buttons matching existing header style
+    const btnClass =
       "text-fg-3 hover:text-accent transition-colors text-[10px] font-mono px-0.5";
-    maxWidthBtnRef.current = btn;
+    const divClass = "h-3 w-px bg-edge";
 
-    // Insert: ... | [↔] | [▼]
-    rightGroup.insertBefore(divider, collapseBtn);
-    rightGroup.insertBefore(btn, collapseBtn);
+    // Ticker toggle button
+    const tickerDiv = document.createElement("span");
+    tickerDiv.className = divClass;
+    const tickerBtn = document.createElement("button");
+    tickerBtn.className = btnClass;
+    tickerBtnRef.current = tickerBtn;
+
+    // Width toggle button
+    const widthDiv = document.createElement("span");
+    widthDiv.className = divClass;
+    const widthBtn = document.createElement("button");
+    widthBtn.className = btnClass;
+    maxWidthBtnRef.current = widthBtn;
+
+    // Insert: ... | [▦] | [↔] | [▼]
+    rightGroup.insertBefore(tickerDiv, collapseBtn);
+    rightGroup.insertBefore(tickerBtn, collapseBtn);
+    rightGroup.insertBefore(widthDiv, collapseBtn);
+    rightGroup.insertBefore(widthBtn, collapseBtn);
 
     // Double-click header = toggle width
     const onDblClick = (e: Event) => {
@@ -434,21 +460,63 @@ export default function App() {
     header.addEventListener("dblclick", onDblClick);
 
     return () => {
-      divider.remove();
-      btn.remove();
+      tickerDiv.remove();
+      tickerBtn.remove();
+      widthDiv.remove();
+      widthBtn.remove();
       maxWidthBtnRef.current = null;
+      tickerBtnRef.current = null;
       header.removeEventListener("dblclick", onDblClick);
     };
   }, [toggleFullWidth]);
 
-  // Keep the injected button text/handler in sync with state
+  // ── Collapse / expand ────────────────────────────────────────
+
+  const handleToggleCollapse = useCallback(() => {
+    const next = !collapsed;
+    setCollapsed(next);
+    savePref("feedCollapsed", next);
+    const tickerH = tickerCollapsed ? 0 : TICKER_HEIGHT;
+    const newHeight = next ? TASKBAR_HEIGHT + tickerH : height + tickerH;
+    invoke("resize_window", { height: newHeight }).catch(() => {});
+  }, [collapsed, height, tickerCollapsed]);
+
+  // ── Ticker toggle ───────────────────────────────────────────
+
+  const handleToggleTicker = useCallback(() => {
+    const next = !tickerCollapsed;
+    setTickerCollapsed(next);
+    savePref("tickerCollapsed", next);
+  }, [tickerCollapsed]);
+
+  // ── Ticker chip click → switch canvas tab ───────────────────
+
+  const handleChipClick = useCallback((channelType: string, _itemId: string | number) => {
+    setActiveTab(channelType);
+    savePref("activeTab", channelType);
+  }, []);
+
+  const handleActiveTabChange = useCallback((tab: string) => {
+    setActiveTab(tab);
+    savePref("activeTab", tab);
+  }, []);
+
+  // Keep the injected buttons' text/handlers in sync with state
   useEffect(() => {
-    const btn = maxWidthBtnRef.current;
-    if (!btn) return;
-    btn.textContent = "\u2194";
-    btn.title = isFullWidth ? "Narrow window" : "Full screen width";
-    btn.onclick = () => toggleFullWidth();
-  }, [isFullWidth, toggleFullWidth]);
+    const widthBtn = maxWidthBtnRef.current;
+    if (widthBtn) {
+      widthBtn.textContent = "\u2194";
+      widthBtn.title = isFullWidth ? "Narrow window" : "Full screen width";
+      widthBtn.onclick = () => toggleFullWidth();
+    }
+
+    const tickerBtn = tickerBtnRef.current;
+    if (tickerBtn) {
+      tickerBtn.textContent = tickerCollapsed ? "\u25A4" : "\u25A6";
+      tickerBtn.title = tickerCollapsed ? "Show ticker" : "Hide ticker";
+      tickerBtn.onclick = () => handleToggleTicker();
+    }
+  }, [isFullWidth, toggleFullWidth, tickerCollapsed, handleToggleTicker]);
 
   // ── Native compositor resize via drag handle ─────────────────
   // Intercept the drag handle mousedown to use Tauri's startResizing()
@@ -507,16 +575,6 @@ export default function App() {
     };
   }, []);
 
-  // ── Collapse / expand ────────────────────────────────────────
-
-  const handleToggleCollapse = useCallback(() => {
-    const next = !collapsed;
-    setCollapsed(next);
-    savePref("feedCollapsed", next);
-    const newHeight = next ? COLLAPSED_HEIGHT : height;
-    invoke("resize_window", { height: newHeight }).catch(() => {});
-  }, [collapsed, height]);
-
   // ── FeedBar height callbacks ─────────────────────────────────
   // These are still passed to FeedBar for API compatibility, but
   // the native resize handler above drives the actual behavior.
@@ -533,7 +591,10 @@ export default function App() {
   // ── Initial setup ────────────────────────────────────────────
 
   useEffect(() => {
-    const effectiveHeight = collapsed ? COLLAPSED_HEIGHT : height;
+    const tickerH = tickerCollapsed ? 0 : TICKER_HEIGHT;
+    const effectiveHeight = collapsed
+      ? TASKBAR_HEIGHT + tickerH
+      : height + tickerH;
     invoke("resize_window", { height: effectiveHeight })
       .then(() => getCurrentWindow().show())
       .catch(() => {});
@@ -581,21 +642,32 @@ export default function App() {
   const _behavior: FeedBehavior = "overlay";
 
   return (
-    <FeedBar
-      dashboard={dashboard}
-      connectionStatus={status}
-      deliveryMode={deliveryMode}
-      position={position}
-      height={height}
-      mode={mode}
-      collapsed={collapsed}
-      behavior={_behavior}
-      activeTabs={activeTabs}
-      authenticated={authenticated}
-      onLogin={handleLogin}
-      onToggleCollapse={handleToggleCollapse}
-      onHeightChange={handleHeightChange}
-      onHeightCommit={handleHeightCommit}
-    />
+    <div id="desktop-shell">
+      {!tickerCollapsed && (
+        <ScrollrTicker
+          dashboard={dashboard}
+          activeTabs={activeTabs}
+          onChipClick={handleChipClick}
+        />
+      )}
+      <FeedBar
+        dashboard={dashboard}
+        connectionStatus={status}
+        deliveryMode={deliveryMode}
+        position={position}
+        height={height}
+        mode={mode}
+        collapsed={collapsed}
+        behavior={_behavior}
+        activeTabs={activeTabs}
+        authenticated={authenticated}
+        activeTab={activeTab}
+        onActiveTabChange={handleActiveTabChange}
+        onLogin={handleLogin}
+        onToggleCollapse={handleToggleCollapse}
+        onHeightChange={handleHeightChange}
+        onHeightCommit={handleHeightCommit}
+      />
+    </div>
   );
 }

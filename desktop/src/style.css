@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @source "../../channels/*/extension/**/*.tsx";
 @source "../../extension/entrypoints/scrollbar.content/**/*.tsx";
+@source "./components/**/*.tsx";
 
 @theme {
   /* Surfaces — ultra-dark with a cool blue-black undertone */
@@ -26,16 +27,16 @@
   --color-down: #ef4444;
   --color-live: #ef4444;
   --color-warn: #eab308;
+  --color-info: #3b82f6;
 
   --font-sans: "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: "SF Mono", "Fira Code", "Cascadia Code", monospace;
 }
 
 /* ── Desktop window layout ────────────────────────────────────── */
-/* FeedBar was designed as a fixed overlay on web pages. In the
-   desktop app the Tauri window IS the FeedBar, so we override its
-   positioning to fill the viewport naturally. Only the Tauri window
-   size changes — CSS always fills 100% of whatever that is. */
+/* The desktop shell is a flex column that fills the viewport.
+   Top-to-bottom: Ticker → Taskbar (FeedBar header) → Canvas (FeedBar content).
+   The Tauri window size is the viewport — CSS fills 100%. */
 
 html,
 body,
@@ -48,28 +49,52 @@ body,
   background: var(--color-surface);
 }
 
-/* Override FeedBar outer div: fill viewport, use flexbox column */
-#root > div {
+/* Shell wraps Ticker + FeedBar */
+#desktop-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Override FeedBar outer div: fill remaining space, use flexbox column */
+#desktop-shell > div:last-child {
   position: relative !important;
   top: auto !important;
   bottom: auto !important;
   left: auto !important;
   right: auto !important;
   width: 100% !important;
-  height: 100vh !important;
+  height: auto !important;
+  flex: 1 1 0% !important;
   z-index: auto !important;
   display: flex !important;
   flex-direction: column !important;
   transition: none !important;
 }
 
-/* Content area: fill remaining space after the 32px header */
-#root > div > .overflow-y-auto {
+/* Canvas: fill remaining space after the 32px taskbar header */
+#desktop-shell > div:last-child > .overflow-y-auto {
   flex: 1 1 0% !important;
   height: auto !important;
 }
 
-/* Thin scrollbars that match the dark theme */
+/* ── Ticker ─────────────────────────────────────────────────────── */
+
+.ticker-container {
+  flex-shrink: 0;
+}
+
+/* Ensure ticker chips have consistent gap spacing */
+.ticker-container [data-motion-ticker] {
+  gap: 6px;
+  align-items: center;
+  height: 100%;
+}
+
+/* ── Scrollbar ──────────────────────────────────────────────────── */
+
 @utility scrollbar-thin {
   scrollbar-width: thin;
   scrollbar-color: var(--color-edge-2) transparent;
