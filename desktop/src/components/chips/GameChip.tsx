@@ -25,19 +25,19 @@ export default function GameChip({ game, onClick }: GameChipProps) {
       onClick={onClick}
       className={clsx(
         "ticker-chip group flex items-center gap-1.5",
-        "px-2.5 py-1 rounded border",
+        "px-2.5 py-1 rounded-sm border",
         "text-[11px] font-mono whitespace-nowrap",
         "transition-colors cursor-pointer",
-        "bg-surface-2/50 border-edge hover:border-edge-2"
+        "bg-secondary/[0.06] border-secondary/25 hover:border-secondary/40"
       )}
     >
-      <span className="font-semibold text-fg">
+      <span className="font-semibold text-secondary">
         {game.away_team_name.slice(0, 3).toUpperCase()}
       </span>
-      <span className="text-fg-2">{String(game.away_team_score)}</span>
+      <span className="text-secondary/60">{String(game.away_team_score)}</span>
       <span className="text-fg-4">-</span>
-      <span className="text-fg-2">{String(game.home_team_score)}</span>
-      <span className="font-semibold text-fg">
+      <span className="text-secondary/60">{String(game.home_team_score)}</span>
+      <span className="font-semibold text-secondary">
         {game.home_team_name.slice(0, 3).toUpperCase()}
       </span>
       {status && (

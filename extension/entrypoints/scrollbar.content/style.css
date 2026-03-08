@@ -2,32 +2,46 @@
 @source "../../../channels/*/extension/**/*.tsx";
 
 @theme {
-  /* Surfaces — ultra-dark with a cool blue-black undertone */
-  --color-surface: #08080d;
-  --color-surface-2: #0f0f16;
-  --color-surface-hover: #15151d;
+  /* ── Surfaces ─────────────────────────────────────────────────
+     Warm desaturated purple-black, matching the website dark mode.
+     Old palette was cool blue-black (#08080d). */
+  --color-surface: #141420;
+  --color-surface-2: #1c1c2a;
+  --color-surface-hover: #21212e;
 
-  /* Borders */
-  --color-edge: #1c1c26;
-  --color-edge-2: #282834;
+  /* ── Borders ──────────────────────────────────────────────── */
+  --color-edge: #282838;
+  --color-edge-2: #303040;
 
-  /* Primary accent — the Scrollr green */
-  --color-accent: #bfff00;
+  /* ── Primary accent — emerald green ───────────────────────── */
+  --color-accent: #34d399;
+  --color-primary: #34d399;
 
-  /* Foreground / text hierarchy */
-  --color-fg: #d4d4da;
-  --color-fg-2: #84848e;
-  --color-fg-3: #4e4e58;
-  --color-fg-4: #2e2e36;
+  /* ── Channel colors ───────────────────────────────────────── */
+  --color-secondary: #ff4757;
+  --color-info: #00d4ff;
 
-  /* Semantic */
+  /* ── Text hierarchy ───────────────────────────────────────── */
+  --color-fg: #e2e2ec;
+  --color-fg-2: #9494a0;
+  --color-fg-3: #5a5a6a;
+  --color-fg-4: #3a3a48;
+
+  /* ── Semantic ─────────────────────────────────────────────── */
   --color-up: #22c55e;
   --color-down: #ef4444;
-  --color-live: #ef4444;
-  --color-warn: #eab308;
+  --color-success: #22c55e;
+  --color-error: #ef4444;
+  --color-live: #ff4757;
+  --color-warn: #fbbf24;
+  --color-warning: #fbbf24;
+
+  /* ── Typography ───────────────────────────────────────────── */
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', 'Fira Code', Consolas, monospace;
 }
 
-/* Thin scrollbars that match the dark theme */
+/* ── Thin scrollbars ──────────────────────────────────────────── */
 @utility scrollbar-thin {
   scrollbar-width: thin;
   scrollbar-color: var(--color-edge-2) transparent;

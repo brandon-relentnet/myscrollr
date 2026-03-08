@@ -28,18 +28,18 @@ export default function TradeChip({ trade, onClick }: TradeChipProps) {
       onClick={onClick}
       className={clsx(
         "ticker-chip group flex items-center gap-1.5",
-        "px-2.5 py-1 rounded border",
+        "px-2.5 py-1 rounded-sm border",
         "text-[11px] font-mono whitespace-nowrap",
         "transition-colors cursor-pointer",
-        "bg-surface-2/50 border-edge hover:border-edge-2"
+        "bg-primary/[0.06] border-primary/25 hover:border-primary/40"
       )}
     >
-      <span className="font-semibold text-fg">{trade.symbol}</span>
-      <span className="text-fg-2">{formatPrice(trade.price)}</span>
+      <span className="font-semibold text-primary">{trade.symbol}</span>
+      <span className="text-primary/60">{formatPrice(trade.price)}</span>
       {changeStr && (
         <span
           className={clsx(
-            "font-medium",
+            "font-medium text-[10px]",
             isUp ? "text-up" : "text-down"
           )}
         >

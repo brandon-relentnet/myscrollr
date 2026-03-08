@@ -237,7 +237,7 @@ export default function FeedBar({
               </span>
               <button
                 onClick={onLogin}
-                className="text-[9px] font-bold uppercase tracking-[0.15em] px-2 py-0.5 bg-accent text-surface font-mono hover:bg-accent/90 transition-colors shrink-0 ml-2"
+                className="text-[9px] font-bold uppercase tracking-[0.15em] px-2.5 py-1 rounded-md bg-accent text-surface font-mono hover:bg-accent/90 transition-colors shrink-0 ml-2"
               >
                 Connect
               </button>

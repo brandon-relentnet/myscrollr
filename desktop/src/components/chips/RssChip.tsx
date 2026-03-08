@@ -15,17 +15,17 @@ export default function RssChip({ item, onClick }: RssChipProps) {
       onClick={onClick}
       className={clsx(
         "ticker-chip group flex items-center gap-1.5",
-        "px-2.5 py-1 rounded border",
+        "px-2.5 py-1 rounded-sm border",
         "text-[11px] whitespace-nowrap",
         "transition-colors cursor-pointer",
-        "bg-surface-2/50 border-edge hover:border-edge-2"
+        "bg-info/[0.06] border-info/25 hover:border-info/40"
       )}
     >
-      <span className="text-fg font-medium">{headline}</span>
+      <span className="text-info font-medium">{headline}</span>
       {item.source_name && (
         <>
           <span className="text-fg-4">&middot;</span>
-          <span className="text-fg-3 font-mono text-[10px]">
+          <span className="text-info/60 font-mono text-[10px]">
             {item.source_name}
           </span>
         </>

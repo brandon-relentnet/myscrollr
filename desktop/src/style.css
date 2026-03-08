@@ -1,42 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
 @import "tailwindcss";
 @source "../../channels/*/extension/**/*.tsx";
 @source "../../extension/entrypoints/scrollbar.content/**/*.tsx";
 @source "./components/**/*.tsx";
 
 @theme {
-  /* Surfaces — ultra-dark with a cool blue-black undertone */
-  --color-surface: #08080d;
-  --color-surface-2: #0f0f16;
-  --color-surface-hover: #15151d;
+  /* ── Surface palette ──────────────────────────────────────────
+     Warm desaturated purple-black matching the website dark mode.
+     Old palette was cool blue-black (#08080d). */
+  --color-surface: #141420;
+  --color-surface-2: #1c1c2a;
+  --color-surface-hover: #21212e;
 
-  /* Borders */
-  --color-edge: #1c1c26;
-  --color-edge-2: #282834;
+  /* Website base palette (for parity) */
+  --color-base-100: #141420;
+  --color-base-150: #171726;
+  --color-base-200: #1c1c2a;
+  --color-base-250: #21212e;
+  --color-base-300: #282838;
+  --color-base-350: #303040;
+  --color-base-400: #383848;
+  --color-base-content: #e2e2ec;
 
-  /* Primary accent — the Scrollr green */
-  --color-accent: #bfff00;
+  /* ── Borders ──────────────────────────────────────────────── */
+  --color-edge: #282838;
+  --color-edge-2: #303040;
 
-  /* Foreground / text hierarchy */
-  --color-fg: #d4d4da;
-  --color-fg-2: #84848e;
-  --color-fg-3: #4e4e58;
-  --color-fg-4: #2e2e36;
+  /* ── Primary accent — emerald green ───────────────────────── */
+  --color-primary: #34d399;
+  --color-accent: #34d399;
 
-  /* Semantic */
+  /* ── Channel colors ───────────────────────────────────────── */
+  --color-secondary: #ff4757;
+  --color-info: #00d4ff;
+  --color-accent-purple: #a855f7;
+
+  /* ── Text hierarchy ───────────────────────────────────────── */
+  --color-fg: #e2e2ec;
+  --color-fg-2: #9494a0;
+  --color-fg-3: #5a5a6a;
+  --color-fg-4: #3a3a48;
+
+  /* ── Semantic ─────────────────────────────────────────────── */
   --color-up: #22c55e;
   --color-down: #ef4444;
-  --color-live: #ef4444;
-  --color-warn: #eab308;
-  --color-info: #3b82f6;
+  --color-success: #22c55e;
+  --color-error: #ef4444;
+  --color-live: #ff4757;
+  --color-warn: #fbbf24;
+  --color-warning: #fbbf24;
 
-  --font-sans: "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  /* ── Typography ───────────────────────────────────────────── */
+  --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', 'Fira Code', Consolas, monospace;
+
+  /* ── Glow shadows (green-tinted, matching website) ────────── */
+  --shadow-glow-sm: 0 0 20px rgba(52, 211, 153, 0.06);
+  --shadow-glow-md: 0 0 30px rgba(52, 211, 153, 0.1);
+  --shadow-glow-lg: 0 0 50px rgba(52, 211, 153, 0.12);
+
+  /* ── Soft elevation shadows ───────────────────────────────── */
+  --shadow-soft-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --shadow-soft-md: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
-/* ── Desktop window layout ────────────────────────────────────── */
-/* The desktop shell is a flex column that fills the viewport.
-   Top-to-bottom: Ticker → Taskbar (FeedBar header) → Canvas (FeedBar content).
-   The Tauri window size is the viewport — CSS fills 100%. */
+/* ── Base styles ──────────────────────────────────────────────── */
 
 html,
 body,
@@ -48,6 +77,29 @@ body,
   overflow: hidden;
   background: var(--color-surface);
 }
+
+body {
+  font-family: var(--font-sans);
+  color: var(--color-fg);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: rgba(52, 211, 153, 0.3);
+  color: var(--color-fg);
+}
+
+*:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.5);
+}
+
+/* ── Desktop window layout ────────────────────────────────────── */
+/* The desktop shell is a flex column that fills the viewport.
+   Top-to-bottom: Ticker → Taskbar (FeedBar header) → Canvas (FeedBar content).
+   The Tauri window size is the viewport — CSS fills 100%. */
 
 /* Shell wraps Ticker + FeedBar */
 #desktop-shell {
@@ -97,5 +149,34 @@ body,
 
 @utility scrollbar-thin {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-edge-2) transparent;
+  scrollbar-color: var(--color-base-300) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-base-300);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-base-350);
+}
+
+/* ── Reduced motion ─────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
