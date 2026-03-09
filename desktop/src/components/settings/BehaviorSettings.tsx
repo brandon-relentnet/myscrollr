@@ -181,24 +181,6 @@ export default function BehaviorSettings({
           checked={taskbar.showCanvasToggle}
           onChange={(v) => setTaskbar("showCanvasToggle", v)}
         />
-        <ToggleRow
-          label="Ticker toggle"
-          description="Show the button to hide/show the ticker"
-          checked={taskbar.showTickerToggle}
-          onChange={(v) => setTaskbar("showTickerToggle", v)}
-        />
-        <ToggleRow
-          label="Width toggle"
-          description="Show the full/narrow width button"
-          checked={taskbar.showWidthToggle}
-          onChange={(v) => setTaskbar("showWidthToggle", v)}
-        />
-        <ToggleRow
-          label="Pin button"
-          description="Show the always-on-top toggle"
-          checked={taskbar.showPinButton}
-          onChange={(v) => setTaskbar("showPinButton", v)}
-        />
       </Section>
 
       {/* Quick actions */}

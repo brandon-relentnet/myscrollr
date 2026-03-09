@@ -43,9 +43,6 @@ export interface TaskbarPrefs {
   showChannelIcons: boolean;
   showConnectionIndicator: boolean;
   showCanvasToggle: boolean;
-  showTickerToggle: boolean;
-  showWidthToggle: boolean;
-  showPinButton: boolean;
   taskbarHeight: TaskbarHeight;
   pinnedActions: string[];
 }
@@ -92,11 +89,8 @@ export const DEFAULT_TASKBAR: TaskbarPrefs = {
   showChannelIcons: true,
   showConnectionIndicator: true,
   showCanvasToggle: true,
-  showTickerToggle: true,
-  showWidthToggle: true,
-  showPinButton: true,
   taskbarHeight: "default",
-  pinnedActions: [],
+  pinnedActions: ["showTicker", "width", "pinned"],
 };
 
 export const DEFAULT_PREFS: AppPreferences = {
@@ -132,7 +126,8 @@ function migrateV1(saved: Record<string, unknown>): Partial<AppPreferences> {
     result.taskbar = {
       ...DEFAULT_TASKBAR,
       ...taskbar,
-      pinnedActions: (taskbar.pinnedActions as string[]) ?? [],
+      // v1 had no pinnedActions; default to the standard set
+      pinnedActions: (taskbar.pinnedActions as string[]) ?? DEFAULT_TASKBAR.pinnedActions,
     };
   }
 
@@ -239,9 +234,10 @@ export interface PinnableAction {
 }
 
 export const PINNABLE_ACTIONS: PinnableAction[] = [
+  { id: "showTicker", label: "Ticker", icon: "TicketSlash", category: "ticker" },
+  { id: "width", label: "Width", icon: "ArrowLeftRight", category: "window" },
+  { id: "pinned", label: "Pin", icon: "Pin", category: "window" },
   { id: "theme", label: "Theme", icon: "Moon", category: "appearance" },
   { id: "tickerRows", label: "Rows", icon: "Rows3", category: "appearance" },
-  { id: "showTicker", label: "Ticker", icon: "TicketSlash", category: "ticker" },
   { id: "tickerMode", label: "Density", icon: "Rows3", category: "ticker" },
-  { id: "pinned", label: "Pin", icon: "Pin", category: "window" },
 ];

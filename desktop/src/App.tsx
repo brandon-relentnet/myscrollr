@@ -147,11 +147,8 @@ export default function App() {
   isFullWidthRef.current = isFullWidth;
   const authenticatedRef = useRef(authenticated);
   authenticatedRef.current = authenticated;
-  const maxWidthBtnRef = useRef<HTMLButtonElement | null>(null);
-  const tickerBtnRef = useRef<HTMLButtonElement | null>(null);
   const feedBtnRef = useRef<HTMLButtonElement | null>(null);
   const dashBtnRef = useRef<HTMLButtonElement | null>(null);
-  const pinBtnRef = useRef<HTMLButtonElement | null>(null);
   const menuBtnRef = useRef<HTMLButtonElement | null>(null);
   const pinnedContainerRef = useRef<HTMLElement | null>(null);
   const logoChevronRef = useRef<SVGSVGElement | null>(null);
@@ -478,7 +475,7 @@ export default function App() {
 
     // Create buttons matching existing header style
     const btnClass =
-      "text-fg-3 hover:text-accent transition-colors text-[13px] font-mono px-1 cursor-pointer";
+      "text-fg-3 hover:text-accent transition-colors text-[15px] font-mono px-1.5 cursor-pointer";
     const divClass = "h-4 w-px bg-edge";
 
     // Wrap the "scrollr" logo span in a clickable button with a chevron icon.
@@ -523,27 +520,6 @@ export default function App() {
     canvasPill.appendChild(feedBtn);
     canvasPill.appendChild(dashBtn);
 
-    // Ticker toggle button
-    const tickerDiv = document.createElement("span");
-    tickerDiv.className = divClass;
-    const tickerBtn = document.createElement("button");
-    tickerBtn.className = btnClass;
-    tickerBtnRef.current = tickerBtn;
-
-    // Width toggle button
-    const widthDiv = document.createElement("span");
-    widthDiv.className = divClass;
-    const widthBtn = document.createElement("button");
-    widthBtn.className = btnClass;
-    maxWidthBtnRef.current = widthBtn;
-
-    // Pin (always-on-top) button
-    const pinDiv = document.createElement("span");
-    pinDiv.className = divClass;
-    const pinBtn = document.createElement("button");
-    pinBtn.className = btnClass;
-    pinBtnRef.current = pinBtn;
-
     // Pinned quick-action buttons container
     const pinnedContainer = document.createElement("span");
     pinnedContainer.className = "inline-flex items-center";
@@ -561,14 +537,8 @@ export default function App() {
     menuBtn.onclick = () => setShowMenu((prev) => !prev);
     menuBtnRef.current = menuBtn;
 
-    // Insert: ... | [FEED|DASH] | [▦] | [↔] | [📌] | [pinned actions] | [⋮]
+    // Insert: ... | [FEED|DASH] | [pinned actions] | [⋮]
     rightGroup.appendChild(canvasPill);
-    rightGroup.appendChild(tickerDiv);
-    rightGroup.appendChild(tickerBtn);
-    rightGroup.appendChild(widthDiv);
-    rightGroup.appendChild(widthBtn);
-    rightGroup.appendChild(pinDiv);
-    rightGroup.appendChild(pinBtn);
     rightGroup.appendChild(pinnedContainer);
     rightGroup.appendChild(menuDiv);
     rightGroup.appendChild(menuBtn);
@@ -588,20 +558,11 @@ export default function App() {
       }
       logoBtn.remove();
       canvasPill.remove();
-      tickerDiv.remove();
-      tickerBtn.remove();
-      widthDiv.remove();
-      widthBtn.remove();
-      pinDiv.remove();
-      pinBtn.remove();
       pinnedContainer.remove();
       menuDiv.remove();
       menuBtn.remove();
       feedBtnRef.current = null;
       dashBtnRef.current = null;
-      maxWidthBtnRef.current = null;
-      tickerBtnRef.current = null;
-      pinBtnRef.current = null;
       pinnedContainerRef.current = null;
       menuBtnRef.current = null;
       logoChevronRef.current = null;
@@ -720,7 +681,9 @@ export default function App() {
   // Keep the injected buttons' text/handlers in sync with state
   useEffect(() => {
     const btnClass =
-      "text-fg-3 hover:text-accent transition-colors text-[13px] font-mono px-1 cursor-pointer";
+      "text-fg-3 hover:text-accent transition-colors text-[15px] font-mono px-1.5 cursor-pointer";
+    const btnActiveClass =
+      "text-accent transition-colors text-[15px] font-mono px-1.5 cursor-pointer";
 
     // Segmented pill styles for FEED / DASH toggle
     const segBase =
@@ -755,49 +718,10 @@ export default function App() {
       }
     }
 
-    // Helper to show/hide a button + its preceding divider
-    const setVisible = (btn: HTMLElement | null, visible: boolean) => {
-      if (!btn) return;
-      btn.style.display = visible ? "" : "none";
-      const prevSibling = btn.previousElementSibling;
-      if (prevSibling && (prevSibling as HTMLElement).classList.contains("w-px")) {
-        (prevSibling as HTMLElement).style.display = visible ? "" : "none";
-      }
-    };
-
-    const widthBtn = maxWidthBtnRef.current;
-    if (widthBtn) {
-      widthBtn.textContent = "\u2194";
-      widthBtn.title = isFullWidth ? "Narrow window" : "Full screen width";
-      widthBtn.onclick = () => toggleFullWidth();
-    }
-    setVisible(widthBtn, prefs.taskbar.showWidthToggle);
-
-    const tickerBtn = tickerBtnRef.current;
-    if (tickerBtn) {
-      tickerBtn.textContent = tickerCollapsed ? "\u25A4" : "\u25A6";
-      tickerBtn.title = tickerCollapsed ? "Show ticker" : "Hide ticker";
-      tickerBtn.onclick = () => handleToggleTicker();
-    }
-    setVisible(tickerBtn, prefs.taskbar.showTickerToggle);
-
-    const pinBtn = pinBtnRef.current;
-    if (pinBtn) {
-      pinBtn.textContent = pinned ? "\u25A3" : "\u25A2";
-      pinBtn.title = pinned ? "Unpin (disable always-on-top)" : "Pin (always-on-top)";
-      pinBtn.className = pinned
-        ? "text-accent transition-colors text-[13px] font-mono px-1 cursor-pointer"
-        : btnClass;
-      pinBtn.onclick = () => handleTogglePin();
-    }
-    setVisible(pinBtn, prefs.taskbar.showPinButton);
-
     // Menu button — highlight when settings view is active
     const menuBtn = menuBtnRef.current;
     if (menuBtn) {
-      menuBtn.className = canvasMode === "settings"
-        ? "text-accent transition-colors text-[13px] font-mono px-1 cursor-pointer"
-        : btnClass;
+      menuBtn.className = canvasMode === "settings" ? btnActiveClass : btnClass;
     }
 
     // Rotate logo chevron to reflect picker open/closed state
@@ -841,7 +765,6 @@ export default function App() {
       for (const actionId of actions) {
         const btn = document.createElement("button");
         btn.className = btnClass;
-        btn.style.fontSize = "12px";
 
         switch (actionId) {
           case "theme": {
@@ -896,8 +819,14 @@ export default function App() {
           case "pinned": {
             btn.textContent = pinned ? "\u25A3" : "\u25A2";
             btn.title = pinned ? "Unpin window" : "Pin window on top";
-            if (pinned) btn.className = "text-accent transition-colors text-[12px] font-mono px-1 cursor-pointer";
+            if (pinned) btn.className = btnActiveClass;
             btn.onclick = () => handleTogglePin();
+            break;
+          }
+          case "width": {
+            btn.textContent = "\u2194";
+            btn.title = isFullWidth ? "Narrow window" : "Full screen width";
+            btn.onclick = () => toggleFullWidth();
             break;
           }
         }
