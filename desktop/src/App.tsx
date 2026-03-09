@@ -1141,6 +1141,7 @@ export default function App() {
     <div id="desktop-shell">
       {!tickerCollapsed && prefs.ticker.showTicker && (
         <ScrollrTicker
+          key={`${prefs.ticker.tickerGap}-${prefs.ticker.tickerSpeed}-${prefs.ticker.hoverSpeed}`}
           dashboard={dashboard}
           activeTabs={activeTabs}
           onChipClick={handleChipClick}
