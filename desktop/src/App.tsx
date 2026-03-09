@@ -576,12 +576,16 @@ export default function App() {
   }, []);
 
   // ── Pin (always-on-top) toggle ────────────────────────────────
+  // Uses compositor-specific IPC (Hyprland/Sway) instead of
+  // GTK's set_keep_above which is silently ignored on Wayland.
 
   const handleTogglePin = useCallback(() => {
     const next = !pinned;
     setPinned(next);
     savePref("feedPinned", next);
-    getCurrentWindow().setAlwaysOnTop(next).catch(() => {});
+    invoke("pin_window", { pinned: next }).catch((err) => {
+      console.error("[Scrollr] Pin toggle failed:", err);
+    });
   }, [pinned]);
 
   // ── Canvas mode toggle ──────────────────────────────────────────
@@ -731,13 +735,12 @@ export default function App() {
     const effectiveHeight = collapsed
       ? TASKBAR_HEIGHT + tickerH
       : height + tickerH;
-    const appWindow = getCurrentWindow();
     invoke("resize_window", { height: effectiveHeight })
-      .then(() => appWindow.show())
+      .then(() => getCurrentWindow().show())
       .catch(() => {});
-    // Sync pinned state — tauri.conf.json defaults to alwaysOnTop: true,
-    // but the user may have unpinned in a previous session.
-    appWindow.setAlwaysOnTop(pinned).catch(() => {});
+    // Sync pinned state via compositor IPC — tauri.conf.json defaults
+    // to alwaysOnTop: true, but the user may have unpinned previously.
+    invoke("pin_window", { pinned }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

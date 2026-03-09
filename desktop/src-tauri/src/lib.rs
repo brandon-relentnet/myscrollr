@@ -119,6 +119,185 @@ fn percent_decode(input: &str) -> String {
     out
 }
 
+// ── Pin (always-on-top) via compositor IPC ───────────────────────
+//
+// Wayland compositors ignore GTK's `set_keep_above()` at runtime
+// (Tauri's `setAlwaysOnTop()` is a no-op on most Wayland compositors).
+// We detect the compositor and use its native IPC instead:
+//   Hyprland → `hyprctl dispatch pin address:0x...`
+//   Sway     → `swaymsg [title="..."] sticky enable/disable`
+//   KDE/KWin → `qdbus6` D-Bus scripting API → keepAbove
+//   Fallback → GTK set_always_on_top (works on GNOME/X11)
+
+#[tauri::command]
+fn pin_window(window: tauri::Window, pinned: bool) -> Result<(), String> {
+    // Try Hyprland first
+    if std::env::var("HYPRLAND_INSTANCE_SIGNATURE").is_ok() {
+        return pin_hyprland(&window, pinned);
+    }
+
+    // Try Sway
+    if std::env::var("SWAYSOCK").is_ok() {
+        return pin_sway(&window, pinned);
+    }
+
+    // Try KDE/KWin (qdbus6 required)
+    if is_kde() {
+        if let Some(qdbus) = find_qdbus() {
+            return pin_kwin(&window, pinned, &qdbus);
+        }
+    }
+
+    // Fallback: GTK set_always_on_top (works on GNOME, X11)
+    window
+        .set_always_on_top(pinned)
+        .map_err(|e| format!("set_always_on_top failed: {e}"))
+}
+
+/// Hyprland: `pin` is a toggle, so we query current state first.
+fn pin_hyprland(window: &tauri::Window, desired: bool) -> Result<(), String> {
+    let title = window.title().unwrap_or_default();
+
+    // Query all clients as JSON to find our window
+    let output = std::process::Command::new("hyprctl")
+        .args(["clients", "-j"])
+        .output()
+        .map_err(|e| format!("hyprctl failed: {e}"))?;
+
+    let clients: Vec<serde_json::Value> =
+        serde_json::from_slice(&output.stdout).map_err(|e| format!("parse error: {e}"))?;
+
+    for client in &clients {
+        let client_title = client["title"].as_str().unwrap_or("");
+        if client_title == title {
+            let currently_pinned = client["pinned"].as_bool().unwrap_or(false);
+            if currently_pinned != desired {
+                let addr = client["address"]
+                    .as_str()
+                    .ok_or("no address field")?;
+                std::process::Command::new("hyprctl")
+                    .args(["dispatch", "pin", &format!("address:{addr}")])
+                    .output()
+                    .map_err(|e| format!("hyprctl dispatch failed: {e}"))?;
+            }
+            return Ok(());
+        }
+    }
+
+    Err("window not found in hyprctl clients".into())
+}
+
+/// Sway: `sticky` enables/disables always-visible-on-all-workspaces.
+fn pin_sway(window: &tauri::Window, pinned: bool) -> Result<(), String> {
+    let title = window.title().unwrap_or_default();
+    let action = if pinned { "sticky enable" } else { "sticky disable" };
+
+    std::process::Command::new("swaymsg")
+        .arg(format!("[title=\"{title}\"] {action}"))
+        .output()
+        .map_err(|e| format!("swaymsg failed: {e}"))?;
+
+    Ok(())
+}
+
+/// Check if running under KDE Plasma.
+fn is_kde() -> bool {
+    std::env::var("XDG_CURRENT_DESKTOP")
+        .map(|d| d.to_uppercase().contains("KDE"))
+        .unwrap_or(false)
+}
+
+/// Find qdbus6 (Plasma 6) or qdbus (Plasma 5) binary.
+fn find_qdbus() -> Option<String> {
+    for cmd in &["qdbus6", "qdbus"] {
+        if std::process::Command::new("which")
+            .arg(cmd)
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+        {
+            return Some(cmd.to_string());
+        }
+    }
+    None
+}
+
+/// KDE/KWin: inject a temporary KWin script via D-Bus that sets keepAbove.
+fn pin_kwin(window: &tauri::Window, pinned: bool, qdbus: &str) -> Result<(), String> {
+    let title = window.title().unwrap_or_default();
+    let keep_above = if pinned { "true" } else { "false" };
+
+    let script = format!(
+        r#"var wins = workspace.windowList();
+for (var i = 0; i < wins.length; i++) {{
+    if (wins[i].caption === "{title}") {{
+        wins[i].keepAbove = {keep_above};
+    }}
+}}"#
+    );
+
+    // Write to temp file — KWin scripting API requires a file path
+    let tmp = std::env::temp_dir().join("scrollr_kwin_pin.js");
+    std::fs::write(&tmp, &script).map_err(|e| format!("write temp script: {e}"))?;
+    let tmp_path = tmp.to_str().ok_or("invalid temp path")?;
+
+    // Unload any previous instance (ignore errors — may not exist)
+    std::process::Command::new(qdbus)
+        .args([
+            "org.kde.KWin",
+            "/Scripting",
+            "org.kde.kwin.Scripting.unloadScript",
+            "scrollr_pin",
+        ])
+        .output()
+        .ok();
+
+    // Load the script → returns a numeric script ID
+    let load = std::process::Command::new(qdbus)
+        .args([
+            "org.kde.KWin",
+            "/Scripting",
+            "org.kde.kwin.Scripting.loadScript",
+            tmp_path,
+            "scrollr_pin",
+        ])
+        .output()
+        .map_err(|e| format!("{qdbus} loadScript failed: {e}"))?;
+
+    let script_id = String::from_utf8_lossy(&load.stdout).trim().to_string();
+    if script_id.is_empty() || !load.status.success() {
+        let stderr = String::from_utf8_lossy(&load.stderr);
+        std::fs::remove_file(&tmp).ok();
+        return Err(format!("loadScript failed: {stderr}"));
+    }
+
+    // Run the script
+    let run_path = format!("/Scripting/Script{script_id}");
+    std::process::Command::new(qdbus)
+        .args(["org.kde.KWin", &run_path, "org.kde.kwin.Script.run"])
+        .output()
+        .map_err(|e| format!("{qdbus} run failed: {e}"))?;
+
+    // Stop and unload — script is one-shot, clean up immediately
+    std::process::Command::new(qdbus)
+        .args(["org.kde.KWin", &run_path, "org.kde.kwin.Script.stop"])
+        .output()
+        .ok();
+
+    std::process::Command::new(qdbus)
+        .args([
+            "org.kde.KWin",
+            "/Scripting",
+            "org.kde.kwin.Scripting.unloadScript",
+            "scrollr_pin",
+        ])
+        .output()
+        .ok();
+
+    std::fs::remove_file(&tmp).ok();
+    Ok(())
+}
+
 // ── SSE commands ─────────────────────────────────────────────────
 
 const SSE_URL: &str = "https://api.myscrollr.relentnet.dev/events";
@@ -283,6 +462,7 @@ pub fn run() {
         .manage(SseHandle(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
             resize_window,
+            pin_window,
             start_auth_server,
             start_sse,
             stop_sse,
