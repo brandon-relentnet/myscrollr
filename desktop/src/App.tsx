@@ -115,6 +115,9 @@ export default function App() {
     loadPref("feedCustomWidth", DEFAULT_NARROW_WIDTH),
   );
 
+  // Pin (always-on-top) state
+  const [pinned, setPinned] = useState(() => loadPref("feedPinned", true));
+
   // Channel picker dropdown
   const [showChannelPicker, setShowChannelPicker] = useState(false);
 
@@ -132,6 +135,7 @@ export default function App() {
   const tickerBtnRef = useRef<HTMLButtonElement | null>(null);
   const feedBtnRef = useRef<HTMLButtonElement | null>(null);
   const dashBtnRef = useRef<HTMLButtonElement | null>(null);
+  const pinBtnRef = useRef<HTMLButtonElement | null>(null);
   const lenisRef = useRef<Lenis | null>(null);
   const tierRef = useRef<SubscriptionTier>("free");
   const sseActiveRef = useRef(false);
@@ -496,7 +500,14 @@ export default function App() {
     widthBtn.className = btnClass;
     maxWidthBtnRef.current = widthBtn;
 
-    // Insert: ... | [FEED|DASH] | [▦] | [↔] | [▼]
+    // Pin (always-on-top) button
+    const pinDiv = document.createElement("span");
+    pinDiv.className = divClass;
+    const pinBtn = document.createElement("button");
+    pinBtn.className = btnClass;
+    pinBtnRef.current = pinBtn;
+
+    // Insert: ... | [FEED|DASH] | [▦] | [↔] | [📌] | [▼]
     // FeedBar already has a divider before the collapse button area,
     // so canvasPill sits right after it — no extra divider needed.
     rightGroup.insertBefore(canvasPill, collapseBtn);
@@ -504,6 +515,8 @@ export default function App() {
     rightGroup.insertBefore(tickerBtn, collapseBtn);
     rightGroup.insertBefore(widthDiv, collapseBtn);
     rightGroup.insertBefore(widthBtn, collapseBtn);
+    rightGroup.insertBefore(pinDiv, collapseBtn);
+    rightGroup.insertBefore(pinBtn, collapseBtn);
 
     // Double-click header = toggle width
     const onDblClick = (e: Event) => {
@@ -520,10 +533,13 @@ export default function App() {
       tickerBtn.remove();
       widthDiv.remove();
       widthBtn.remove();
+      pinDiv.remove();
+      pinBtn.remove();
       feedBtnRef.current = null;
       dashBtnRef.current = null;
       maxWidthBtnRef.current = null;
       tickerBtnRef.current = null;
+      pinBtnRef.current = null;
       header.removeEventListener("dblclick", onDblClick);
     };
   }, [toggleFullWidth]);
@@ -558,6 +574,15 @@ export default function App() {
     setActiveTab(tab);
     savePref("activeTab", tab);
   }, []);
+
+  // ── Pin (always-on-top) toggle ────────────────────────────────
+
+  const handleTogglePin = useCallback(() => {
+    const next = !pinned;
+    setPinned(next);
+    savePref("feedPinned", next);
+    getCurrentWindow().setAlwaysOnTop(next).catch(() => {});
+  }, [pinned]);
 
   // ── Canvas mode toggle ──────────────────────────────────────────
 
@@ -617,7 +642,17 @@ export default function App() {
       tickerBtn.title = tickerCollapsed ? "Show ticker" : "Hide ticker";
       tickerBtn.onclick = () => handleToggleTicker();
     }
-  }, [isFullWidth, toggleFullWidth, tickerCollapsed, handleToggleTicker, canvasMode, handleCanvasModeChange, authenticated]);
+
+    const pinBtn = pinBtnRef.current;
+    if (pinBtn) {
+      pinBtn.textContent = pinned ? "\u25A3" : "\u25A2";
+      pinBtn.title = pinned ? "Unpin (disable always-on-top)" : "Pin (always-on-top)";
+      pinBtn.className = pinned
+        ? "text-accent transition-colors text-[10px] font-mono px-0.5"
+        : btnClass;
+      pinBtn.onclick = () => handleTogglePin();
+    }
+  }, [isFullWidth, toggleFullWidth, tickerCollapsed, handleToggleTicker, canvasMode, handleCanvasModeChange, authenticated, pinned, handleTogglePin]);
 
   // ── Native compositor resize via drag handle ─────────────────
   // Intercept the drag handle mousedown to use Tauri's startResizing()
@@ -696,9 +731,13 @@ export default function App() {
     const effectiveHeight = collapsed
       ? TASKBAR_HEIGHT + tickerH
       : height + tickerH;
+    const appWindow = getCurrentWindow();
     invoke("resize_window", { height: effectiveHeight })
-      .then(() => getCurrentWindow().show())
+      .then(() => appWindow.show())
       .catch(() => {});
+    // Sync pinned state — tauri.conf.json defaults to alwaysOnTop: true,
+    // but the user may have unpinned in a previous session.
+    appWindow.setAlwaysOnTop(pinned).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
