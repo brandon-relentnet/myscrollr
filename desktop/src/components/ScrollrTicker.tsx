@@ -102,10 +102,7 @@ export default function ScrollrTicker({
     <div className="ticker-container h-7 bg-base-150 border-b border-edge/50 flex-shrink-0 overflow-hidden relative">
       {/* Top accent line — matches the website's card accent pattern */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent z-10" />
-      <Ticker items={chips} velocity={-40} hoverFactor={0.3} gap={6} />
-      {/* Fade masks — CSS gradient replaces nonexistent fade prop */}
-      <div className="absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-base-150 to-transparent pointer-events-none z-10" />
-      <div className="absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-base-150 to-transparent pointer-events-none z-10" />
+      <Ticker items={chips} velocity={-40} hoverFactor={0.3} gap={6} fade="10%" />
     </div>
   );
 }
