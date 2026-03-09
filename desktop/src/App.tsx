@@ -29,6 +29,8 @@ import {
 import type { SubscriptionTier } from "./auth";
 import type { Channel } from "./api/client";
 import { channelsApi } from "./api/client";
+import Lenis from "lenis";
+import ChannelPicker from "./components/ChannelPicker";
 
 // ── Canvas mode type ─────────────────────────────────────────────
 
@@ -113,6 +115,9 @@ export default function App() {
     loadPref("feedCustomWidth", DEFAULT_NARROW_WIDTH),
   );
 
+  // Channel picker dropdown
+  const [showChannelPicker, setShowChannelPicker] = useState(false);
+
   // Auth state
   const [authenticated, setAuthenticated] = useState(() => checkAuth());
 
@@ -127,6 +132,7 @@ export default function App() {
   const tickerBtnRef = useRef<HTMLButtonElement | null>(null);
   const feedBtnRef = useRef<HTMLButtonElement | null>(null);
   const dashBtnRef = useRef<HTMLButtonElement | null>(null);
+  const lenisRef = useRef<Lenis | null>(null);
   const tierRef = useRef<SubscriptionTier>("free");
   const sseActiveRef = useRef(false);
 
@@ -434,24 +440,35 @@ export default function App() {
     }
   }, [customWidth]);
 
-  // ── Inject width-toggle button into FeedBar header ───────────
-  // Adds a ↔ button to the header's right-side group, matching the
-  // existing collapse button style. Also wires double-click on the
-  // header as an alternate trigger (standard desktop maximize gesture).
+  // ── Inject buttons into FeedBar header ─────────────────────────
+  // Left group: channel picker (+) button after the tab strip.
+  // Right group: FEED|DASH pill, ticker toggle, width toggle.
+  // Also wires double-click on the header as width toggle.
 
   useEffect(() => {
     const header = document.querySelector("[data-tauri-drag-region]");
     if (!header) return;
 
-    // Find the right-side group (last child div) and its collapse button
+    // Find the left-side group (first child div) and right-side group
+    const leftGroup = header.firstElementChild as HTMLElement;
     const rightGroup = header.lastElementChild as HTMLElement;
     const collapseBtn = rightGroup?.querySelector("button");
-    if (!rightGroup || !collapseBtn) return;
+    if (!leftGroup || !rightGroup || !collapseBtn) return;
 
     // Create buttons matching existing header style
     const btnClass =
       "text-fg-3 hover:text-accent transition-colors text-[10px] font-mono px-0.5";
     const divClass = "h-3 w-px bg-edge";
+
+    // Channel picker trigger — appended to left group after tabs
+    const pickerBtn = document.createElement("button");
+    pickerBtn.className =
+      "text-fg-4 hover:text-accent transition-colors text-[11px] font-mono leading-none px-0.5";
+    pickerBtn.textContent = "+";
+    pickerBtn.title = "Toggle channels";
+    pickerBtn.setAttribute("data-channel-picker-trigger", "");
+    pickerBtn.onclick = () => setShowChannelPicker((prev) => !prev);
+    leftGroup.appendChild(pickerBtn);
 
     // Canvas mode toggle: segmented pill [FEED|DASH]
     // Wrapped in a container with a subtle bg so it reads as a control
@@ -497,6 +514,7 @@ export default function App() {
     header.addEventListener("dblclick", onDblClick);
 
     return () => {
+      pickerBtn.remove();
       canvasPill.remove();
       tickerDiv.remove();
       tickerBtn.remove();
@@ -684,6 +702,47 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Smooth scrolling (Lenis) ─────────────────────────────────
+  // WebKitGTK's native smooth scrolling is broken for discrete mouse
+  // wheel events (WebKit bug #258926, open since 2023). Lenis bypasses
+  // the native scroll pipeline entirely — it intercepts wheel events,
+  // prevents default, and animates scrollTop via requestAnimationFrame
+  // with lerp interpolation.
+  //
+  // Attaches to the canvas scroll container (.overflow-y-auto) inside
+  // FeedBar. Re-initializes when collapsed state changes (container
+  // mounts/unmounts). autoRaf: true runs its own rAF loop.
+
+  useEffect(() => {
+    if (collapsed) return;
+
+    // Small delay to let React render the content container
+    const timer = setTimeout(() => {
+      const wrapper = document.querySelector(
+        "#desktop-shell .overflow-y-auto",
+      ) as HTMLElement | null;
+      if (!wrapper) return;
+
+      const lenis = new Lenis({
+        wrapper,
+        content: wrapper,
+        smoothWheel: true,
+        lerp: 0.1,
+        autoRaf: true,
+        syncTouch: false,
+      });
+
+      // Store on ref for cleanup
+      (lenisRef as React.MutableRefObject<Lenis | null>).current = lenis;
+    }, 50);
+
+    return () => {
+      clearTimeout(timer);
+      lenisRef.current?.destroy();
+      (lenisRef as React.MutableRefObject<Lenis | null>).current = null;
+    };
+  }, [collapsed]);
+
   // ── Auth handlers ─────────────────────────────────────────────
 
   const handleLogin = useCallback(async () => {
@@ -721,6 +780,33 @@ export default function App() {
     // Restart as anonymous (free tier polling)
     startPolling("free");
   }, [startPolling, stopPolling, stopSSE]);
+
+  // ── Channel picker toggle ───────────────────────────────────────
+
+  const handlePickerToggle = useCallback(
+    async (channelType: string, visible: boolean) => {
+      try {
+        await channelsApi.update(
+          channelType as Channel["channel_type"],
+          { visible },
+          () => getValidToken(),
+        );
+        // Optimistic update for instant UI feedback
+        setActiveTabs((prev) => {
+          const next = visible
+            ? [...prev, channelType]
+            : prev.filter((t) => t !== channelType);
+          savePref("activeFeedTabs", next);
+          return next;
+        });
+        // Full refetch to sync everything
+        fetchFeed();
+      } catch (err) {
+        console.error("[Scrollr] Channel toggle failed:", err);
+      }
+    },
+    [fetchFeed],
+  );
 
   // ── DashboardTab handlers ───────────────────────────────────────
 
@@ -836,6 +922,15 @@ export default function App() {
           dashboard={dashboard}
           activeTabs={activeTabs}
           onChipClick={handleChipClick}
+        />
+      )}
+      {showChannelPicker && authenticated && (
+        <ChannelPicker
+          channels={channels}
+          activeTabs={activeTabs}
+          onToggle={handlePickerToggle}
+          onClose={() => setShowChannelPicker(false)}
+          topOffset={(tickerCollapsed ? 0 : TICKER_HEIGHT) + TASKBAR_HEIGHT + 2}
         />
       )}
       <FeedBar
