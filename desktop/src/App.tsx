@@ -301,8 +301,8 @@ export default function App() {
 
   useEffect(() => {
     function onStorage(e: StorageEvent) {
-      // Auth tokens stored under scrollr:auth_*
-      if (e.key?.startsWith("scrollr:auth_") || e.key === "scrollr:token") {
+      // Auth state stored under scrollr:auth (single key with full token set)
+      if (e.key === "scrollr:auth") {
         const wasAuth = authenticatedRef.current;
         const isAuth = checkAuth();
         setAuthenticated(isAuth);
