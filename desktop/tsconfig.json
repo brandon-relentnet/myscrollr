@@ -14,10 +14,20 @@
     "skipLibCheck": true,
     "types": ["vite/client"],
     "paths": {
+      "@/api/client": ["./src/api/client.ts"],
+      "@/channels/types": ["../myscrollr.com/src/channels/types.ts"],
+      "@/channels/shared": ["../myscrollr.com/src/channels/shared.tsx"],
+      "@/*": ["../myscrollr.com/src/*"],
       "~/*": ["../extension/*"],
       "@scrollr/*": ["../channels/*"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "../channels/*/web/**/*.tsx",
+    "../myscrollr.com/src/channels/types.ts",
+    "../myscrollr.com/src/channels/shared.tsx"
+  ],
   "exclude": ["node_modules", "dist", "src-tauri"]
 }

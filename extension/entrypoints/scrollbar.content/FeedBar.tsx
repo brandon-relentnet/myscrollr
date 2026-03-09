@@ -33,6 +33,9 @@ interface FeedBarProps {
   activeTab?: string;
   /** Optional: called when the user switches tabs (for external state sync). */
   onActiveTabChange?: (tab: string) => void;
+  /** Optional: when provided, renders this content instead of the FeedTab in the canvas area.
+   *  Used by desktop app to inject DashboardTab when canvas mode is "dashboard". */
+  overrideContent?: React.ReactNode;
 }
 
 const COLLAPSED_HEIGHT = 32;
@@ -68,6 +71,7 @@ export default function FeedBar({
   onHeightCommit,
   activeTab: externalActiveTab,
   onActiveTabChange,
+  overrideContent,
 }: FeedBarProps) {
   const [internalActiveTab, setInternalActiveTab] = useState<string>(
     externalActiveTab ?? activeTabs[0] ?? "finance",
@@ -243,7 +247,9 @@ export default function FeedBar({
               </button>
             </div>
           )}
-          {FeedTabComponent ? (
+          {overrideContent ? (
+            overrideContent
+          ) : FeedTabComponent ? (
             <FeedTabComponent mode={mode} channelConfig={channelConfig} />
           ) : (
             <div className="text-center py-8 text-fg-3 text-xs font-mono">

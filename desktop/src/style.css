@@ -1,7 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
 @import "tailwindcss";
 @source "../../channels/*/extension/**/*.tsx";
+@source "../../channels/*/web/**/*.tsx";
 @source "../../extension/entrypoints/scrollbar.content/**/*.tsx";
+@source "../../myscrollr.com/src/channels/shared.tsx";
 @source "./components/**/*.tsx";
 
 @theme {
@@ -110,7 +112,11 @@ body {
   overflow: hidden;
 }
 
-/* Override FeedBar outer div: fill remaining space, use flexbox column */
+/* Override FeedBar outer div: fill remaining space, use flexbox column.
+   min-height: 0 is critical — flexbox items default to min-height: auto,
+   which prevents shrinking below content size. Without it, a tall
+   DashboardTab makes this div grow beyond the viewport, and the inner
+   scroll container never overflows. */
 #desktop-shell > div:last-child {
   position: relative !important;
   top: auto !important;
@@ -120,16 +126,21 @@ body {
   width: 100% !important;
   height: auto !important;
   flex: 1 1 0% !important;
+  min-height: 0 !important;
   z-index: auto !important;
   display: flex !important;
   flex-direction: column !important;
+  overflow: hidden !important;
   transition: none !important;
 }
 
-/* Canvas: fill remaining space after the 32px taskbar header */
+/* Canvas: fill remaining space after the 32px taskbar header.
+   min-height: 0 overrides flexbox default (auto) so the element
+   can shrink below its content size — required for overflow scroll. */
 #desktop-shell > div:last-child > .overflow-y-auto {
   flex: 1 1 0% !important;
   height: auto !important;
+  min-height: 0 !important;
 }
 
 /* ── Ticker ─────────────────────────────────────────────────────── */
@@ -168,6 +179,62 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-base-350);
+}
+
+/* ── Unlimited tier glow animations ─────────────────────────────── */
+/* Copied from myscrollr.com/src/styles.css — used by ChannelHeader
+   and InfoCard in @/channels/shared for uplink_unlimited users. */
+
+@keyframes unlimited-glow-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 8px rgba(52, 211, 153, 0.12),
+      0 0 24px rgba(52, 211, 153, 0.04),
+      inset 0 0 8px rgba(52, 211, 153, 0.02);
+  }
+  50% {
+    box-shadow:
+      0 0 14px rgba(52, 211, 153, 0.25),
+      0 0 40px rgba(52, 211, 153, 0.08),
+      inset 0 0 14px rgba(52, 211, 153, 0.04);
+  }
+}
+
+@keyframes unlimited-text-glow {
+  0%,
+  100% {
+    text-shadow: 0 0 6px rgba(52, 211, 153, 0.2);
+  }
+  50% {
+    text-shadow: 0 0 14px rgba(52, 211, 153, 0.45);
+  }
+}
+
+@keyframes unlimited-dot-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 4px rgba(52, 211, 153, 0.3),
+      0 0 10px rgba(52, 211, 153, 0.1);
+  }
+  50% {
+    box-shadow:
+      0 0 7px rgba(52, 211, 153, 0.55),
+      0 0 16px rgba(52, 211, 153, 0.2);
+  }
+}
+
+.unlimited-glow {
+  animation: unlimited-glow-pulse 3s ease-in-out infinite;
+}
+
+.unlimited-text-glow {
+  animation: unlimited-text-glow 3s ease-in-out infinite;
+}
+
+.unlimited-dot-glow {
+  animation: unlimited-dot-glow 2s ease-in-out infinite;
 }
 
 /* ── Reduced motion ─────────────────────────────────────────────── */

@@ -26,6 +26,7 @@ function resolveExternalChannels(): Plugin {
         source.startsWith(".") ||
         source.startsWith("/") ||
         source.startsWith("~/") ||
+        source.startsWith("@/") ||
         source.startsWith("@scrollr") ||
         source.startsWith("\0") ||
         importer.includes("node_modules") ||
@@ -46,9 +47,39 @@ function resolveExternalChannels(): Plugin {
 export default defineConfig({
   plugins: [resolveExternalChannels(), react(), tailwindcss()],
 
+  // Define env vars that DashboardTab components read via import.meta.env
+  define: {
+    "import.meta.env.VITE_API_URL": JSON.stringify(
+      "https://api.myscrollr.relentnet.dev",
+    ),
+  },
+
   resolve: {
     alias: [
-      // Desktop-specific overrides — checked FIRST
+      // Desktop-specific overrides — checked FIRST (order matters)
+
+      // Desktop API client — DashboardTab components import from `@/api/client`.
+      // This override ensures they get the Tauri-fetch version, not the website's.
+      {
+        find: "@/api/client",
+        replacement: path.resolve(__dirname, "src/api/client.ts"),
+      },
+      // Channel types — shared between website and desktop
+      {
+        find: "@/channels/types",
+        replacement: path.resolve(
+          __dirname,
+          "../myscrollr.com/src/channels/types.ts",
+        ),
+      },
+      // Channel shared components (ChannelHeader, InfoCard)
+      {
+        find: "@/channels/shared",
+        replacement: path.resolve(
+          __dirname,
+          "../myscrollr.com/src/channels/shared.tsx",
+        ),
+      },
       // Redirect the CDC hook to our desktop version (direct fetch, no browser.runtime)
       {
         find: "~/channels/hooks/useScrollrCDC",

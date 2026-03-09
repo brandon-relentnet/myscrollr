@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   getCurrentWindow,
   currentMonitor,
@@ -17,6 +17,8 @@ import type {
 } from "~/utils/types";
 import FeedBar from "~/entrypoints/scrollbar.content/FeedBar";
 import ScrollrTicker from "./components/ScrollrTicker";
+import { getWebChannel } from "./channels/webRegistry";
+import { getValidToken as authGetValidToken } from "./auth";
 import {
   login as authLogin,
   logout as authLogout,
@@ -25,6 +27,12 @@ import {
   getTier,
 } from "./auth";
 import type { SubscriptionTier } from "./auth";
+import type { Channel } from "./api/client";
+import { channelsApi } from "./api/client";
+
+// ── Canvas mode type ─────────────────────────────────────────────
+
+type CanvasMode = "feed" | "dashboard";
 
 // ── Constants ────────────────────────────────────────────────────
 
@@ -79,6 +87,14 @@ export default function App() {
     loadPref("activeFeedTabs", ["finance", "sports"]),
   );
 
+  // Channel config state (from dashboard response, for DashboardTab)
+  const [channels, setChannels] = useState<Channel[]>([]);
+
+  // Canvas mode: "feed" shows FeedTab, "dashboard" shows DashboardTab
+  const [canvasMode, setCanvasMode] = useState<CanvasMode>(() =>
+    loadPref("canvasMode", "feed" as CanvasMode),
+  );
+
   // Ticker state
   const [tickerCollapsed, setTickerCollapsed] = useState(() =>
     loadPref("tickerCollapsed", false),
@@ -109,6 +125,8 @@ export default function App() {
   authenticatedRef.current = authenticated;
   const maxWidthBtnRef = useRef<HTMLButtonElement | null>(null);
   const tickerBtnRef = useRef<HTMLButtonElement | null>(null);
+  const feedBtnRef = useRef<HTMLButtonElement | null>(null);
+  const dashBtnRef = useRef<HTMLButtonElement | null>(null);
   const tierRef = useRef<SubscriptionTier>("free");
   const sseActiveRef = useRef(false);
 
@@ -145,11 +163,15 @@ export default function App() {
       setDashboard({ data: data.data });
       setStatus("connected");
 
-      // Sync active tabs from server channel config.
-      // The /dashboard response includes a `channels` array with
-      // enabled/visible flags. Derive which tabs to show from it.
+      // Store full channels array for DashboardTab rendering
       if (Array.isArray(data.channels)) {
-        const visible = (data.channels as { channel_type: string; enabled: boolean; visible: boolean }[])
+        const channelList = data.channels as Channel[];
+        setChannels(channelList);
+
+        // Sync active tabs from server channel config.
+        // The /dashboard response includes a `channels` array with
+        // enabled/visible flags. Derive which tabs to show from it.
+        const visible = channelList
           .filter((ch) => ch.enabled && ch.visible)
           .map((ch) => ch.channel_type);
         setActiveTabs(visible);
@@ -431,6 +453,18 @@ export default function App() {
       "text-fg-3 hover:text-accent transition-colors text-[10px] font-mono px-0.5";
     const divClass = "h-3 w-px bg-edge";
 
+    // Canvas mode toggle: segmented pill [FEED|DASH]
+    // Wrapped in a container with a subtle bg so it reads as a control
+    const canvasPill = document.createElement("span");
+    canvasPill.className =
+      "inline-flex items-center rounded bg-surface-2 border border-edge overflow-hidden";
+    const feedBtn = document.createElement("button");
+    feedBtnRef.current = feedBtn;
+    const dashBtn = document.createElement("button");
+    dashBtnRef.current = dashBtn;
+    canvasPill.appendChild(feedBtn);
+    canvasPill.appendChild(dashBtn);
+
     // Ticker toggle button
     const tickerDiv = document.createElement("span");
     tickerDiv.className = divClass;
@@ -445,7 +479,10 @@ export default function App() {
     widthBtn.className = btnClass;
     maxWidthBtnRef.current = widthBtn;
 
-    // Insert: ... | [▦] | [↔] | [▼]
+    // Insert: ... | [FEED|DASH] | [▦] | [↔] | [▼]
+    // FeedBar already has a divider before the collapse button area,
+    // so canvasPill sits right after it — no extra divider needed.
+    rightGroup.insertBefore(canvasPill, collapseBtn);
     rightGroup.insertBefore(tickerDiv, collapseBtn);
     rightGroup.insertBefore(tickerBtn, collapseBtn);
     rightGroup.insertBefore(widthDiv, collapseBtn);
@@ -460,10 +497,13 @@ export default function App() {
     header.addEventListener("dblclick", onDblClick);
 
     return () => {
+      canvasPill.remove();
       tickerDiv.remove();
       tickerBtn.remove();
       widthDiv.remove();
       widthBtn.remove();
+      feedBtnRef.current = null;
+      dashBtnRef.current = null;
       maxWidthBtnRef.current = null;
       tickerBtnRef.current = null;
       header.removeEventListener("dblclick", onDblClick);
@@ -501,8 +541,51 @@ export default function App() {
     savePref("activeTab", tab);
   }, []);
 
+  // ── Canvas mode toggle ──────────────────────────────────────────
+
+  const handleCanvasModeChange = useCallback((mode: CanvasMode) => {
+    setCanvasMode(mode);
+    savePref("canvasMode", mode);
+  }, []);
+
   // Keep the injected buttons' text/handlers in sync with state
   useEffect(() => {
+    const btnClass =
+      "text-fg-3 hover:text-accent transition-colors text-[10px] font-mono px-0.5";
+
+    // Segmented pill styles for FEED / DASH toggle
+    const segBase =
+      "px-2 py-0.5 text-[9px] font-mono font-semibold uppercase tracking-widest transition-colors leading-none cursor-pointer";
+    const segActive = `${segBase} bg-accent/15 text-accent`;
+    const segInactive = `${segBase} text-fg-3 hover:text-fg-2`;
+
+    // Canvas mode toggle pill — only visible when authenticated
+    const feedBtn = feedBtnRef.current;
+    const dashBtn = dashBtnRef.current;
+    const canvasPill = feedBtn?.parentElement;
+
+    if (feedBtn) {
+      feedBtn.textContent = "FEED";
+      feedBtn.title = "Show live feed";
+      feedBtn.className = canvasMode === "feed" ? segActive : segInactive;
+      feedBtn.onclick = () => handleCanvasModeChange("feed");
+    }
+    if (dashBtn) {
+      dashBtn.textContent = "DASH";
+      dashBtn.title = "Show dashboard config";
+      dashBtn.className = canvasMode === "dashboard" ? segActive : segInactive;
+      dashBtn.onclick = () => handleCanvasModeChange("dashboard");
+    }
+    // Hide the whole pill + preceding divider when not authenticated
+    if (canvasPill) {
+      canvasPill.style.display = authenticated ? "" : "none";
+      // Also hide the FeedBar's existing divider right before the pill
+      const prevDiv = canvasPill.previousElementSibling;
+      if (prevDiv && (prevDiv as HTMLElement).className.includes("bg-edge")) {
+        (prevDiv as HTMLElement).style.display = authenticated ? "" : "none";
+      }
+    }
+
     const widthBtn = maxWidthBtnRef.current;
     if (widthBtn) {
       widthBtn.textContent = "\u2194";
@@ -516,7 +599,7 @@ export default function App() {
       tickerBtn.title = tickerCollapsed ? "Show ticker" : "Hide ticker";
       tickerBtn.onclick = () => handleToggleTicker();
     }
-  }, [isFullWidth, toggleFullWidth, tickerCollapsed, handleToggleTicker]);
+  }, [isFullWidth, toggleFullWidth, tickerCollapsed, handleToggleTicker, canvasMode, handleCanvasModeChange, authenticated]);
 
   // ── Native compositor resize via drag handle ─────────────────
   // Intercept the drag handle mousedown to use Tauri's startResizing()
@@ -639,6 +722,111 @@ export default function App() {
     startPolling("free");
   }, [startPolling, stopPolling, stopSSE]);
 
+  // ── DashboardTab handlers ───────────────────────────────────────
+
+  const handleToggleChannel = useCallback(async () => {
+    const ch = channels.find((c) => c.channel_type === activeTab);
+    if (!ch) return;
+
+    try {
+      await channelsApi.update(
+        ch.channel_type,
+        { visible: !ch.visible },
+        () => getValidToken(),
+      );
+      fetchFeed();
+    } catch (err) {
+      console.error("[Scrollr] Toggle channel failed:", err);
+    }
+  }, [channels, activeTab, fetchFeed]);
+
+  const handleDeleteChannel = useCallback(async () => {
+    const ch = channels.find((c) => c.channel_type === activeTab);
+    if (!ch) return;
+
+    try {
+      await channelsApi.delete(ch.channel_type, () => getValidToken());
+      setCanvasMode("feed");
+      savePref("canvasMode", "feed");
+      fetchFeed();
+    } catch (err) {
+      console.error("[Scrollr] Delete channel failed:", err);
+    }
+  }, [channels, activeTab, fetchFeed]);
+
+  const handleChannelUpdate = useCallback(
+    (updated: Channel) => {
+      setChannels((prev) =>
+        prev.map((ch) =>
+          ch.channel_type === updated.channel_type ? updated : ch,
+        ),
+      );
+      // Also refetch to sync everything
+      fetchFeed();
+    },
+    [fetchFeed],
+  );
+
+  // ── Token getter for DashboardTab props ─────────────────────────
+
+  const getToken = useCallback(async (): Promise<string | null> => {
+    return authGetValidToken();
+  }, []);
+
+  // ── Build overrideContent for DashboardTab mode ────────────────
+
+  const overrideContent = useMemo(() => {
+    if (canvasMode !== "dashboard" || !authenticated) return undefined;
+
+    const webChannel = getWebChannel(activeTab);
+    if (!webChannel) {
+      return (
+        <div className="text-center py-8 text-fg-3 text-xs font-mono">
+          No dashboard available for this channel
+        </div>
+      );
+    }
+
+    const channel = channels.find((c) => c.channel_type === activeTab);
+    if (!channel) {
+      return (
+        <div className="text-center py-8 text-fg-3 text-xs font-mono">
+          Channel not configured — switch to feed view
+        </div>
+      );
+    }
+
+    const DashboardTab = webChannel.DashboardTab;
+    const tier = getTier();
+    const isConnected = status === "connected" && deliveryMode === "sse";
+
+    return (
+      <div className="p-4">
+        <DashboardTab
+          channel={channel}
+          getToken={getToken}
+          onToggle={handleToggleChannel}
+          onDelete={handleDeleteChannel}
+          onChannelUpdate={handleChannelUpdate}
+          connected={isConnected}
+          subscriptionTier={tier}
+          hex={webChannel.hex}
+        />
+      </div>
+    );
+  }, [
+    canvasMode,
+    authenticated,
+    activeTab,
+    channels,
+    status,
+    deliveryMode,
+    getToken,
+    handleToggleChannel,
+    handleDeleteChannel,
+    handleChannelUpdate,
+  ]);
+
   const _behavior: FeedBehavior = "overlay";
 
   return (
@@ -667,6 +855,7 @@ export default function App() {
         onToggleCollapse={handleToggleCollapse}
         onHeightChange={handleHeightChange}
         onHeightCommit={handleHeightCommit}
+        overrideContent={overrideContent}
       />
     </div>
   );
