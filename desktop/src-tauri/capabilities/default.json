@@ -23,6 +23,9 @@
     "core:window:allow-current-monitor",
     "core:window:allow-primary-monitor",
     "shell:allow-open",
+    "autostart:allow-enable",
+    "autostart:allow-disable",
+    "autostart:allow-is-enabled",
     {
       "identifier": "http:default",
       "allow": [

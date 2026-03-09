@@ -270,6 +270,11 @@ body {
   font-size: 12px;
 }
 
+/* Hide channel icons when toggled off in settings */
+#desktop-shell[data-channel-icons="off"] [data-channel-id]::before {
+  display: none;
+}
+
 /* Channel tab icons via CSS mask — inherits text color automatically */
 #desktop-shell [data-channel-id]::before {
   content: '';

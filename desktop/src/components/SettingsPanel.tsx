@@ -1,40 +1,75 @@
+import { useState } from "react";
+import { clsx } from "clsx";
 import type { SubscriptionTier } from "../auth";
+import type { AppPreferences } from "../preferences";
+import { resetCategory, resetAll, savePrefs } from "../preferences";
+import GeneralSettings from "./settings/GeneralSettings";
+import TaskbarSettings from "./settings/TaskbarSettings";
+import TickerSettings from "./settings/TickerSettings";
+import WindowSettings from "./settings/WindowSettings";
+import AccountSettings from "./settings/AccountSettings";
+
+// ── Tab definitions ─────────────────────────────────────────────
+
+type SettingsTab = "general" | "taskbar" | "ticker" | "window" | "account";
+
+const TABS: { id: SettingsTab; label: string }[] = [
+  { id: "general", label: "General" },
+  { id: "taskbar", label: "Taskbar" },
+  { id: "ticker", label: "Ticker" },
+  { id: "window", label: "Window" },
+  { id: "account", label: "Account" },
+];
+
+// ── Props ───────────────────────────────────────────────────────
 
 interface SettingsPanelProps {
+  prefs: AppPreferences;
+  onPrefsChange: (prefs: AppPreferences) => void;
   authenticated: boolean;
   tier: SubscriptionTier;
-  pinned: boolean;
-  onTogglePin: () => void;
   onLogin: () => void;
   onLogout: () => void;
   onClose: () => void;
+  autostartEnabled: boolean;
+  onAutostartChange: (enabled: boolean) => void;
 }
 
-const TIER_LABELS: Record<SubscriptionTier, string> = {
-  free: "Free",
-  uplink: "Uplink",
-  uplink_unlimited: "Uplink Unlimited",
-};
+// ── Component ───────────────────────────────────────────────────
 
 export default function SettingsPanel({
+  prefs,
+  onPrefsChange,
   authenticated,
   tier,
-  pinned,
-  onTogglePin,
   onLogin,
   onLogout,
   onClose,
+  autostartEnabled,
+  onAutostartChange,
 }: SettingsPanelProps) {
-  const sectionClass = "border border-edge rounded-lg overflow-hidden";
-  const headerClass =
-    "px-4 py-2.5 border-b border-edge bg-surface-2 text-[11px] font-mono font-semibold uppercase tracking-widest text-fg-3";
-  const rowClass =
-    "flex items-center justify-between px-4 py-3 text-[12px] font-mono";
+  const [activeTab, setActiveTab] = useState<SettingsTab>("general");
+
+  // Update prefs and persist
+  const updatePrefs = (next: AppPreferences) => {
+    onPrefsChange(next);
+    savePrefs(next);
+  };
+
+  const handleResetCategory = (category: keyof AppPreferences) => {
+    const next = resetCategory(prefs, category);
+    updatePrefs(next);
+  };
+
+  const handleResetAll = () => {
+    const next = resetAll();
+    onPrefsChange(next);
+  };
 
   return (
-    <div className="dashboard-content max-w-4xl mx-auto py-6 px-6 space-y-4">
-      {/* Header with close button */}
-      <div className="flex items-center justify-between">
+    <div className="dashboard-content max-w-4xl mx-auto py-4 px-6">
+      {/* Header: title + close */}
+      <div className="flex items-center justify-between mb-4">
         <span className="text-[13px] font-mono font-semibold uppercase tracking-widest text-fg-2">
           Settings
         </span>
@@ -47,70 +82,68 @@ export default function SettingsPanel({
         </button>
       </div>
 
-      {/* Account */}
-      <div className={sectionClass}>
-        <div className={headerClass}>Account</div>
-        {authenticated ? (
-          <>
-            <div className={rowClass}>
-              <span className="text-fg-3">Plan</span>
-              <span className="text-accent font-semibold">
-                {TIER_LABELS[tier]}
-              </span>
-            </div>
-            <div className={`${rowClass} border-t border-edge`}>
-              <span className="text-fg-3">Session</span>
-              <button
-                onClick={onLogout}
-                className="text-[11px] font-mono uppercase tracking-wider px-2.5 py-1 rounded border border-edge text-fg-3 hover:text-red-400 hover:border-red-400/30 transition-colors cursor-pointer"
-              >
-                Sign out
-              </button>
-            </div>
-          </>
-        ) : (
-          <div className={rowClass}>
-            <span className="text-fg-3">Not signed in</span>
-            <button
-              onClick={onLogin}
-              className="text-[11px] font-mono font-bold uppercase tracking-wider px-2.5 py-1 rounded bg-accent text-surface hover:bg-accent/90 transition-colors cursor-pointer"
-            >
-              Sign in
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Window */}
-      <div className={sectionClass}>
-        <div className={headerClass}>Window</div>
-        <div className={rowClass}>
-          <span className="text-fg-3">Always on top</span>
+      {/* Tab navigation */}
+      <div className="flex items-center gap-1 mb-5 rounded bg-base-200 border border-edge p-0.5 overflow-x-auto">
+        {TABS.map((tab) => (
           <button
-            onClick={onTogglePin}
-            className={`text-[11px] font-mono uppercase tracking-wider px-2.5 py-1 rounded border transition-colors cursor-pointer ${
-              pinned
-                ? "border-accent/30 text-accent bg-accent/10"
-                : "border-edge text-fg-3 hover:text-fg-2"
-            }`}
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={clsx(
+              "px-3 py-1.5 text-[10px] font-mono font-semibold uppercase tracking-wider rounded transition-colors cursor-pointer leading-none whitespace-nowrap",
+              activeTab === tab.id
+                ? "bg-accent/15 text-accent"
+                : "text-fg-3 hover:text-fg-2",
+            )}
           >
-            {pinned ? "On" : "Off"}
+            {tab.label}
           </button>
-        </div>
+        ))}
       </div>
 
-      {/* About */}
-      <div className={sectionClass}>
-        <div className={headerClass}>About</div>
-        <div className={rowClass}>
-          <span className="text-fg-3">Version</span>
-          <span className="text-fg-2">0.1.0</span>
-        </div>
-        <div className={`${rowClass} border-t border-edge`}>
-          <span className="text-fg-3">Runtime</span>
-          <span className="text-fg-2">Tauri v2</span>
-        </div>
-      </div>
+      {/* Tab content */}
+      {activeTab === "general" && (
+        <GeneralSettings
+          prefs={prefs.general}
+          onChange={(general) => updatePrefs({ ...prefs, general })}
+          onReset={() => handleResetCategory("general")}
+          autostartEnabled={autostartEnabled}
+          onAutostartChange={onAutostartChange}
+        />
+      )}
+
+      {activeTab === "taskbar" && (
+        <TaskbarSettings
+          prefs={prefs.taskbar}
+          onChange={(taskbar) => updatePrefs({ ...prefs, taskbar })}
+          onReset={() => handleResetCategory("taskbar")}
+        />
+      )}
+
+      {activeTab === "ticker" && (
+        <TickerSettings
+          prefs={prefs.ticker}
+          onChange={(ticker) => updatePrefs({ ...prefs, ticker })}
+          onReset={() => handleResetCategory("ticker")}
+        />
+      )}
+
+      {activeTab === "window" && (
+        <WindowSettings
+          prefs={prefs.window}
+          onChange={(window_) => updatePrefs({ ...prefs, window: window_ })}
+          onReset={() => handleResetCategory("window")}
+        />
+      )}
+
+      {activeTab === "account" && (
+        <AccountSettings
+          authenticated={authenticated}
+          tier={tier}
+          onLogin={onLogin}
+          onLogout={onLogout}
+          onResetAll={handleResetAll}
+        />
+      )}
     </div>
   );
 }

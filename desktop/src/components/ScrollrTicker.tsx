@@ -12,6 +12,14 @@ interface ScrollrTickerProps {
   dashboard: DashboardResponse | null;
   activeTabs: string[];
   onChipClick?: (channelType: string, itemId: string | number) => void;
+  /** Scroll speed in px/sec (default 40) */
+  speed?: number;
+  /** Gap between chips in px (default 8) */
+  gap?: number;
+  /** Whether hovering slows the ticker (default true) */
+  pauseOnHover?: boolean;
+  /** Speed multiplier on hover, 0 = full pause (default 0.3) */
+  hoverSpeed?: number;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────
@@ -26,6 +34,10 @@ export default function ScrollrTicker({
   dashboard,
   activeTabs,
   onChipClick,
+  speed = 40,
+  gap = 8,
+  pauseOnHover = true,
+  hoverSpeed = 0.3,
 }: ScrollrTickerProps) {
   // Build a unified chip array from all active channels' data.
   // Each chip is a React node keyed by channel + item identity.
@@ -115,7 +127,13 @@ export default function ScrollrTicker({
     <div className="ticker-container h-11 flex items-center bg-base-150 border-b border-edge/50 flex-shrink-0 overflow-hidden relative">
       {/* Top accent line — matches the website's card accent pattern */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent z-10" />
-      <Ticker items={chips} velocity={-40} hoverFactor={0.3} gap={8} fade="10%" />
+      <Ticker
+        items={chips}
+        velocity={-speed}
+        hoverFactor={pauseOnHover ? hoverSpeed : 1}
+        gap={gap}
+        fade="10%"
+      />
     </div>
   );
 }

@@ -33,6 +33,18 @@ import Lenis from "lenis";
 import ChannelPicker from "./components/ChannelPicker";
 import AppMenu from "./components/AppMenu";
 import SettingsPanel from "./components/SettingsPanel";
+import {
+  loadPrefs,
+  savePrefs,
+  TASKBAR_HEIGHTS,
+  TICKER_GAPS,
+} from "./preferences";
+import type { AppPreferences } from "./preferences";
+import {
+  enable as enableAutostart,
+  disable as disableAutostart,
+  isEnabled as isAutostartEnabled,
+} from "@tauri-apps/plugin-autostart";
 
 // ── Canvas mode type ─────────────────────────────────────────────
 
@@ -121,6 +133,12 @@ export default function App() {
 
   // App menu dropdown
   const [showMenu, setShowMenu] = useState(false);
+
+  // Settings preferences
+  const [prefs, setPrefs] = useState<AppPreferences>(loadPrefs);
+  const [autostartOn, setAutostartOn] = useState(false);
+  const prefsRef = useRef(prefs);
+  prefsRef.current = prefs;
 
   // Auth state
   const [authenticated, setAuthenticated] = useState(() => checkAuth());
@@ -648,6 +666,36 @@ export default function App() {
     getCurrentWindow().close();
   }, []);
 
+  const handlePrefsChange = useCallback((next: AppPreferences) => {
+    setPrefs(next);
+    // Sync window prefs that have side effects
+    if (next.window.pinned !== prefsRef.current.window.pinned) {
+      setPinned(next.window.pinned);
+      savePref("feedPinned", next.window.pinned);
+      invoke("pin_window", { pinned: next.window.pinned }).catch(() => {});
+    }
+    // Sync ticker visibility
+    if (!next.ticker.showTicker !== tickerCollapsed) {
+      setTickerCollapsed(!next.ticker.showTicker);
+      savePref("tickerCollapsed", !next.ticker.showTicker);
+    }
+  }, [tickerCollapsed]);
+
+  const handleAutostartChange = useCallback((enabled: boolean) => {
+    setAutostartOn(enabled);
+    if (enabled) {
+      enableAutostart().catch((err) => {
+        console.error("[Scrollr] Enable autostart failed:", err);
+        setAutostartOn(false);
+      });
+    } else {
+      disableAutostart().catch((err) => {
+        console.error("[Scrollr] Disable autostart failed:", err);
+        setAutostartOn(true);
+      });
+    }
+  }, []);
+
   // ── Canvas mode toggle ──────────────────────────────────────────
 
   const handleCanvasModeChange = useCallback((mode: CanvasMode) => {
@@ -683,15 +731,25 @@ export default function App() {
       dashBtn.className = canvasMode === "dashboard" ? segActive : segInactive;
       dashBtn.onclick = () => handleCanvasModeChange("dashboard");
     }
-    // Hide the whole pill + preceding divider when not authenticated
+    // Hide the whole pill + preceding divider when not authenticated or toggled off
+    const showPill = authenticated && prefs.taskbar.showCanvasToggle;
     if (canvasPill) {
-      canvasPill.style.display = authenticated ? "" : "none";
-      // Also hide the FeedBar's existing divider right before the pill
+      canvasPill.style.display = showPill ? "" : "none";
       const prevDiv = canvasPill.previousElementSibling;
       if (prevDiv && (prevDiv as HTMLElement).className.includes("bg-edge")) {
-        (prevDiv as HTMLElement).style.display = authenticated ? "" : "none";
+        (prevDiv as HTMLElement).style.display = showPill ? "" : "none";
       }
     }
+
+    // Helper to show/hide a button + its preceding divider
+    const setVisible = (btn: HTMLElement | null, visible: boolean) => {
+      if (!btn) return;
+      btn.style.display = visible ? "" : "none";
+      const prevSibling = btn.previousElementSibling;
+      if (prevSibling && (prevSibling as HTMLElement).classList.contains("w-px")) {
+        (prevSibling as HTMLElement).style.display = visible ? "" : "none";
+      }
+    };
 
     const widthBtn = maxWidthBtnRef.current;
     if (widthBtn) {
@@ -699,6 +757,7 @@ export default function App() {
       widthBtn.title = isFullWidth ? "Narrow window" : "Full screen width";
       widthBtn.onclick = () => toggleFullWidth();
     }
+    setVisible(widthBtn, prefs.taskbar.showWidthToggle);
 
     const tickerBtn = tickerBtnRef.current;
     if (tickerBtn) {
@@ -706,6 +765,7 @@ export default function App() {
       tickerBtn.title = tickerCollapsed ? "Show ticker" : "Hide ticker";
       tickerBtn.onclick = () => handleToggleTicker();
     }
+    setVisible(tickerBtn, prefs.taskbar.showTickerToggle);
 
     const pinBtn = pinBtnRef.current;
     if (pinBtn) {
@@ -716,6 +776,7 @@ export default function App() {
         : btnClass;
       pinBtn.onclick = () => handleTogglePin();
     }
+    setVisible(pinBtn, prefs.taskbar.showPinButton);
 
     // Menu button — highlight when settings view is active
     const menuBtn = menuBtnRef.current;
@@ -730,7 +791,25 @@ export default function App() {
     if (chevron) {
       chevron.style.transform = showChannelPicker ? "rotate(180deg)" : "rotate(0deg)";
     }
-  }, [isFullWidth, toggleFullWidth, tickerCollapsed, handleToggleTicker, canvasMode, handleCanvasModeChange, authenticated, pinned, handleTogglePin, showChannelPicker]);
+
+    // Apply taskbar height
+    const header = document.querySelector("#desktop-shell [data-tauri-drag-region]") as HTMLElement | null;
+    if (header) {
+      header.style.height = `${TASKBAR_HEIGHTS[prefs.taskbar.taskbarHeight]}px`;
+    }
+
+    // Apply connection indicator visibility
+    const connIndicator = document.querySelector("#desktop-shell [data-tauri-drag-region] .tracking-widest")?.parentElement as HTMLElement | null;
+    if (connIndicator) {
+      connIndicator.style.display = prefs.taskbar.showConnectionIndicator ? "" : "none";
+    }
+
+    // Apply channel icon visibility via data attribute
+    const shell = document.getElementById("desktop-shell");
+    if (shell) {
+      shell.dataset.channelIcons = prefs.taskbar.showChannelIcons ? "on" : "off";
+    }
+  }, [isFullWidth, toggleFullWidth, tickerCollapsed, handleToggleTicker, canvasMode, handleCanvasModeChange, authenticated, pinned, handleTogglePin, showChannelPicker, prefs.taskbar]);
 
   // ── Native compositor resize via drag handle ─────────────────
   // Intercept the drag handle mousedown to use Tauri's startResizing()
@@ -810,6 +889,10 @@ export default function App() {
     // Sync pinned state via compositor IPC — tauri.conf.json defaults
     // to alwaysOnTop: true, but the user may have unpinned previously.
     invoke("pin_window", { pinned }).catch(() => {});
+    // Check autostart state
+    isAutostartEnabled()
+      .then((enabled) => setAutostartOn(enabled))
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -835,8 +918,8 @@ export default function App() {
       const lenis = new Lenis({
         wrapper,
         content: wrapper,
-        smoothWheel: true,
-        lerp: 0.1,
+        smoothWheel: prefsRef.current.general.smoothScroll,
+        lerp: prefsRef.current.general.scrollSmoothness,
         autoRaf: true,
         syncTouch: false,
       });
@@ -974,13 +1057,15 @@ export default function App() {
     if (canvasMode === "settings") {
       return (
         <SettingsPanel
+          prefs={prefs}
+          onPrefsChange={handlePrefsChange}
           authenticated={authenticated}
           tier={getTier()}
-          pinned={pinned}
-          onTogglePin={handleTogglePin}
           onLogin={handleLogin}
           onLogout={handleLogout}
           onClose={handleCloseSettings}
+          autostartEnabled={autostartOn}
+          onAutostartChange={handleAutostartChange}
         />
       );
     }
@@ -1035,21 +1120,28 @@ export default function App() {
     handleDeleteChannel,
     handleChannelUpdate,
     pinned,
-    handleTogglePin,
     handleLogin,
     handleLogout,
     handleCloseSettings,
+    prefs,
+    handlePrefsChange,
+    autostartOn,
+    handleAutostartChange,
   ]);
 
   const _behavior: FeedBehavior = "overlay";
 
   return (
     <div id="desktop-shell">
-      {!tickerCollapsed && (
+      {!tickerCollapsed && prefs.ticker.showTicker && (
         <ScrollrTicker
           dashboard={dashboard}
           activeTabs={activeTabs}
           onChipClick={handleChipClick}
+          speed={prefs.ticker.tickerSpeed}
+          gap={TICKER_GAPS[prefs.ticker.tickerGap]}
+          pauseOnHover={prefs.ticker.pauseOnHover}
+          hoverSpeed={prefs.ticker.hoverSpeed}
         />
       )}
       {showChannelPicker && authenticated && (
@@ -1058,7 +1150,7 @@ export default function App() {
           activeTabs={activeTabs}
           onToggle={handlePickerToggle}
           onClose={() => setShowChannelPicker(false)}
-          topOffset={(tickerCollapsed ? 0 : TICKER_HEIGHT) + TASKBAR_HEIGHT + 2}
+          topOffset={(tickerCollapsed || !prefs.ticker.showTicker ? 0 : TICKER_HEIGHT) + TASKBAR_HEIGHTS[prefs.taskbar.taskbarHeight] + 2}
         />
       )}
       {showMenu && (
@@ -1066,7 +1158,7 @@ export default function App() {
           onSettings={handleOpenSettings}
           onQuit={handleQuit}
           onClose={() => setShowMenu(false)}
-          topOffset={(tickerCollapsed ? 0 : TICKER_HEIGHT) + TASKBAR_HEIGHT + 2}
+          topOffset={(tickerCollapsed || !prefs.ticker.showTicker ? 0 : TICKER_HEIGHT) + TASKBAR_HEIGHTS[prefs.taskbar.taskbarHeight] + 2}
         />
       )}
       <FeedBar

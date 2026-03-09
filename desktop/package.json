@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-autostart": "^2.5.1",
     "@tauri-apps/plugin-http": "^2.5.7",
     "@tauri-apps/plugin-shell": "^2.0.0",
     "clsx": "^2.1.1",
