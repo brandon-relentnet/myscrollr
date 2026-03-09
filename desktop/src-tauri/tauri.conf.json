@@ -25,10 +25,10 @@
         "title": "Scrollr",
         "width": 1920,
         "height": 228,
-        "decorations": true,
+        "decorations": false,
         "alwaysOnTop": true,
         "resizable": true,
-        "skipTaskbar": false,
+        "skipTaskbar": true,
         "visible": false,
         "center": true
       },

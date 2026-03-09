@@ -503,6 +503,17 @@ fn quit_app(app: tauri::AppHandle) {
 }
 
 pub fn run() {
+    // Disable GTK client-side decorations on KDE/Wayland so KDE applies
+    // its own native server-side decorations (same size as other apps).
+    // Without this, WebKitGTK renders its own oversized CSD title bar
+    // on top of or instead of KDE's standard decorations.
+    if std::env::var("XDG_CURRENT_DESKTOP")
+        .map(|d| d.to_uppercase().contains("KDE"))
+        .unwrap_or(false)
+    {
+        std::env::set_var("GTK_CSD", "0");
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_http::init())
