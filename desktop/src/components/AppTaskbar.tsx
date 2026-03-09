@@ -9,7 +9,6 @@ import {
   Rows2,
   TicketSlash,
   TicketCheck,
-  PanelTopClose,
 } from "lucide-react";
 import type { AppPreferences, TickerRows } from "../preferences";
 import { savePrefs } from "../preferences";
@@ -21,7 +20,6 @@ interface AppTaskbarProps {
   onPrefsChange: (prefs: AppPreferences) => void;
   showTicker: boolean;
   onToggleTicker: () => void;
-  onHideTaskbar: () => void;
 }
 
 // ── Component ───────────────────────────────────────────────────
@@ -31,7 +29,6 @@ export default function AppTaskbar({
   onPrefsChange,
   showTicker,
   onToggleTicker,
-  onHideTaskbar,
 }: AppTaskbarProps) {
   const isDark =
     prefs.appearance.theme === "dark" ||
@@ -116,16 +113,7 @@ export default function AppTaskbar({
         {isPinned ? <Pin size={14} /> : <PinOff size={14} />}
       </button>
 
-      {/* Separator + hide taskbar */}
-      <span className="h-4 w-px bg-edge mx-1" />
 
-      <button
-        onClick={onHideTaskbar}
-        className={btnIdle}
-        title="Hide taskbar"
-      >
-        <PanelTopClose size={14} />
-      </button>
     </div>
   );
 }

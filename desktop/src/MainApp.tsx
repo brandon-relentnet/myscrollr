@@ -354,11 +354,6 @@ export default function MainApp() {
     savePref("showAppTicker", next);
   }
 
-  function handleHideTaskbar() {
-    setShowTaskbar(false);
-    savePref("showTaskbar", false);
-  }
-
   // ── Render ──────────────────────────────────────────────────
 
   return (
@@ -396,7 +391,6 @@ export default function MainApp() {
             onPrefsChange={handlePrefsChange}
             showTicker={showAppTicker}
             onToggleTicker={handleToggleAppTicker}
-            onHideTaskbar={handleHideTaskbar}
           />
         )}
 
