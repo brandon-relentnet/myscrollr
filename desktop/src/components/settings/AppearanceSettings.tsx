@@ -5,6 +5,7 @@ import type {
   TickerRows,
   TickerGap,
   TickerMode,
+  MixMode,
 } from "../../preferences";
 import {
   Section,
@@ -55,6 +56,12 @@ const GAP_OPTIONS: { value: TickerGap; label: string }[] = [
   { value: "tight", label: "Tight" },
   { value: "normal", label: "Normal" },
   { value: "spacious", label: "Wide" },
+];
+
+const MIX_OPTIONS: { value: MixMode; label: string }[] = [
+  { value: "grouped", label: "Grouped" },
+  { value: "weave", label: "Weave" },
+  { value: "random", label: "Random" },
 ];
 
 function speedLabel(speed: number): string {
@@ -178,11 +185,12 @@ export default function AppearanceSettings({
               options={GAP_OPTIONS}
               onChange={(v) => setTicker("tickerGap", v)}
             />
-            <ToggleRow
-              label="Shuffle"
-              description="Mix items from all channels instead of grouping them"
-              checked={ticker.shuffle}
-              onChange={(v) => setTicker("shuffle", v)}
+            <SegmentedRow
+              label="Item order"
+              description="How items from different channels are mixed"
+              value={ticker.mixMode}
+              options={MIX_OPTIONS}
+              onChange={(v) => setTicker("mixMode", v)}
             />
           </>
         )}

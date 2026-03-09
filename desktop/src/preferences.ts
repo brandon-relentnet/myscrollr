@@ -10,6 +10,7 @@ export type TickerGap = "tight" | "normal" | "spacious";
 export type TickerMode = "compact" | "comfort";
 export type DefaultView = "feed" | "dashboard" | "last";
 export type TickerRows = 1 | 2 | 3;
+export type MixMode = "grouped" | "weave" | "random";
 
 export interface AppearancePrefs {
   theme: Theme;
@@ -24,7 +25,7 @@ export interface TickerPrefs {
   hoverSpeed: number;
   tickerGap: TickerGap;
   tickerMode: TickerMode;
-  shuffle: boolean;
+  mixMode: MixMode;
 }
 
 export interface StartupPrefs {
@@ -71,7 +72,7 @@ export const DEFAULT_TICKER: TickerPrefs = {
   hoverSpeed: 0.3,
   tickerGap: "normal",
   tickerMode: "compact",
-  shuffle: false,
+  mixMode: "grouped",
 };
 
 export const DEFAULT_STARTUP: StartupPrefs = {
@@ -242,5 +243,5 @@ export const PINNABLE_ACTIONS: PinnableAction[] = [
   { id: "theme", label: "Theme", icon: "Moon", category: "appearance" },
   { id: "tickerRows", label: "Rows", icon: "Rows3", category: "appearance" },
   { id: "tickerMode", label: "Density", icon: "Rows3", category: "ticker" },
-  { id: "shuffle", label: "Shuffle", icon: "Shuffle", category: "ticker" },
+  { id: "mixMode", label: "Mix", icon: "Shuffle", category: "ticker" },
 ];

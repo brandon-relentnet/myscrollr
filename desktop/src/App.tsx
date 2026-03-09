@@ -829,12 +829,18 @@ export default function App() {
             btn.onclick = () => toggleFullWidth();
             break;
           }
-          case "shuffle": {
-            btn.textContent = "\u{1F500}";
-            btn.title = prefs.ticker.shuffle ? "Disable shuffle" : "Shuffle ticker items";
-            if (prefs.ticker.shuffle) btn.className = btnActiveClass;
+          case "mixMode": {
+            const mode = prefs.ticker.mixMode;
+            const icons = { grouped: "\u2759", weave: "\u2194", random: "\u{1F500}" } as const;
+            const labels = { grouped: "Grouped", weave: "Weave", random: "Random" } as const;
+            const cycle = { grouped: "weave", weave: "random", random: "grouped" } as const;
+            btn.textContent = icons[mode];
+            btn.title = `Mix: ${labels[mode]} (click to cycle)`;
+            if (mode !== "grouped") btn.className = btnActiveClass;
             btn.onclick = () => {
-              const updated = { ...prefsRef.current, ticker: { ...prefsRef.current.ticker, shuffle: !prefsRef.current.ticker.shuffle } };
+              const cur = prefsRef.current.ticker.mixMode;
+              const next = cycle[cur];
+              const updated = { ...prefsRef.current, ticker: { ...prefsRef.current.ticker, mixMode: next } };
               setPrefs(updated);
               savePrefs(updated);
             };
@@ -1173,7 +1179,7 @@ export default function App() {
       {!tickerCollapsed && prefs.ticker.showTicker &&
         Array.from({ length: prefs.appearance.tickerRows }, (_, i) => (
           <ScrollrTicker
-            key={`row${i}-${prefs.ticker.tickerGap}-${prefs.ticker.tickerSpeed}-${prefs.ticker.hoverSpeed}-${prefs.ticker.tickerMode}-${prefs.ticker.shuffle}-${prefs.appearance.tickerRows}`}
+            key={`row${i}-${prefs.ticker.tickerGap}-${prefs.ticker.tickerSpeed}-${prefs.ticker.hoverSpeed}-${prefs.ticker.tickerMode}-${prefs.ticker.mixMode}-${prefs.appearance.tickerRows}`}
             dashboard={dashboard}
             activeTabs={activeTabs}
             onChipClick={handleChipClick}
@@ -1181,7 +1187,7 @@ export default function App() {
             gap={TICKER_GAPS[prefs.ticker.tickerGap]}
             pauseOnHover={prefs.ticker.pauseOnHover}
             hoverSpeed={prefs.ticker.hoverSpeed}
-            shuffle={prefs.ticker.shuffle}
+            mixMode={prefs.ticker.mixMode}
             comfort={prefs.ticker.tickerMode === "comfort"}
             rowIndex={i}
             totalRows={prefs.appearance.tickerRows}

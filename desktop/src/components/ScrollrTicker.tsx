@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Ticker } from "motion-plus/react";
 import type { DashboardResponse, Trade, Game, RssItem } from "~/utils/types";
+import type { MixMode } from "../preferences";
 import TradeChip from "./chips/TradeChip";
 import GameChip from "./chips/GameChip";
 import RssChip from "./chips/RssChip";
@@ -22,8 +23,8 @@ interface ScrollrTickerProps {
   hoverSpeed?: number;
   /** Show 2-row comfort chips with extra detail */
   comfort?: boolean;
-  /** Shuffle items across channels instead of grouping by channel */
-  shuffle?: boolean;
+  /** How items from different channels are ordered */
+  mixMode?: MixMode;
   /** Which row this ticker represents (0-indexed, for multi-row splitting) */
   rowIndex?: number;
   /** Total number of ticker rows (items distributed round-robin) */
@@ -36,22 +37,27 @@ function getItemId(item: Record<string, unknown>): string | number {
   return (item.id as string | number) ?? (item.symbol as string) ?? 0;
 }
 
-/** Seeded Fisher-Yates shuffle — deterministic for the same seed so the
- *  ticker doesn't re-shuffle on every render. Seed changes when the
- *  underlying data changes (new items arrive). */
-function seededShuffle<T>(arr: T[], seed: number): T[] {
+/** Fisher-Yates shuffle using Math.random(). */
+function randomShuffle<T>(arr: T[]): T[] {
   const out = arr.slice();
-  let s = seed;
   for (let i = out.length - 1; i > 0; i--) {
-    // Simple mulberry32-style PRNG step
-    s = (s + 0x6d2b79f5) | 0;
-    let t = Math.imul(s ^ (s >>> 15), 1 | s);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    const r = ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    const j = Math.floor(r * (i + 1));
+    const j = Math.floor(Math.random() * (i + 1));
     [out[i], out[j]] = [out[j], out[i]];
   }
   return out;
+}
+
+/** Round-robin interleave across buckets:
+ *  bucket0[0], bucket1[0], bucket2[0], bucket0[1], bucket1[1], ... */
+function weave<T>(buckets: T[][]): T[] {
+  const result: T[] = [];
+  const maxLen = Math.max(...buckets.map((b) => b.length));
+  for (let i = 0; i < maxLen; i++) {
+    for (const bucket of buckets) {
+      if (i < bucket.length) result.push(bucket[i]);
+    }
+  }
+  return result;
 }
 
 // ── Component ────────────────────────────────────────────────────
@@ -64,35 +70,34 @@ export default function ScrollrTicker({
   gap = 8,
   pauseOnHover = true,
   hoverSpeed = 0.3,
-  shuffle = false,
+  mixMode = "grouped",
   comfort = false,
   rowIndex = 0,
   totalRows = 1,
 }: ScrollrTickerProps) {
-  // Build a unified chip array from all active channels' data.
+  // Build chip arrays per channel, then combine based on mixMode.
   // When totalRows > 1, items are distributed round-robin across rows.
   const chips = useMemo(() => {
     if (!dashboard?.data) return [];
 
-    const allItems: React.ReactNode[] = [];
+    const wrap = (key: string, chip: React.ReactNode) => (
+      <div key={key} className="py-1">
+        {chip}
+      </div>
+    );
+
+    const buckets: React.ReactNode[][] = [];
 
     for (const tab of activeTabs) {
       const data = dashboard.data[tab];
       if (!Array.isArray(data) || data.length === 0) continue;
 
-      // Wrap each chip in a vertical padding container so the chip
-      // (including its border) sits safely inside the Ticker's clip
-      // boundary, regardless of how motion-plus handles overflow.
-      const wrap = (key: string, chip: React.ReactNode) => (
-        <div key={key} className="py-1">
-          {chip}
-        </div>
-      );
+      const bucket: React.ReactNode[] = [];
 
       switch (tab) {
         case "finance":
           for (const trade of data as Trade[]) {
-            allItems.push(
+            bucket.push(
               wrap(`fin-${trade.symbol}`,
                 <TradeChip
                   trade={trade}
@@ -106,7 +111,7 @@ export default function ScrollrTicker({
 
         case "sports":
           for (const game of data as Game[]) {
-            allItems.push(
+            bucket.push(
               wrap(`spo-${game.id}`,
                 <GameChip
                   game={game}
@@ -120,7 +125,7 @@ export default function ScrollrTicker({
 
         case "rss":
           for (const item of data as RssItem[]) {
-            allItems.push(
+            bucket.push(
               wrap(`rss-${item.id}`,
                 <RssChip
                   item={item}
@@ -133,11 +138,10 @@ export default function ScrollrTicker({
           break;
 
         default: {
-          // Fantasy or future channels — generic chip
           const records = data as Record<string, unknown>[];
           for (const item of records) {
             const id = getItemId(item);
-            allItems.push(
+            bucket.push(
               wrap(`${tab}-${id}`,
                 <FantasyChip
                   item={item}
@@ -150,16 +154,28 @@ export default function ScrollrTicker({
           break;
         }
       }
+
+      buckets.push(bucket);
     }
 
-    // Shuffle items across channels when enabled. Seed is derived from
-    // the item count so we get a stable order until new data arrives.
-    const ordered = shuffle ? seededShuffle(allItems, allItems.length) : allItems;
+    // Combine based on mix mode
+    let allItems: React.ReactNode[];
+    switch (mixMode) {
+      case "weave":
+        allItems = weave(buckets);
+        break;
+      case "random":
+        allItems = randomShuffle(buckets.flat());
+        break;
+      default:
+        allItems = buckets.flat();
+        break;
+    }
 
     // When multiple rows, distribute items round-robin
-    if (totalRows <= 1) return ordered;
-    return ordered.filter((_, i) => i % totalRows === rowIndex);
-  }, [dashboard, activeTabs, onChipClick, comfort, shuffle, rowIndex, totalRows]);
+    if (totalRows <= 1) return allItems;
+    return allItems.filter((_, i) => i % totalRows === rowIndex);
+  }, [dashboard, activeTabs, onChipClick, comfort, mixMode, rowIndex, totalRows]);
 
   if (chips.length === 0) return null;
 
