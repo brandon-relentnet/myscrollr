@@ -6,6 +6,7 @@ import {
   isEnabled as isAutostartEnabled,
 } from "@tauri-apps/plugin-autostart";
 
+import TitleBar from "./components/TitleBar";
 import Sidebar from "./components/Sidebar";
 import type { Section, SettingsTab } from "./components/Sidebar";
 import SettingsPanel from "./components/SettingsPanel";
@@ -395,8 +396,11 @@ export default function MainApp() {
     <div
       id="app-shell"
       data-theme="dark"
-      className="flex h-screen w-screen overflow-hidden bg-surface text-fg"
+      className="flex flex-col h-screen w-screen overflow-hidden bg-surface text-fg"
     >
+      <TitleBar />
+
+      <div className="flex flex-1 min-h-0 overflow-hidden">
       <Sidebar
         active={section}
         onNavigate={handleNavigate}
@@ -553,6 +557,7 @@ export default function MainApp() {
           </div>
         )}
       </main>
+      </div>
     </div>
   );
 }

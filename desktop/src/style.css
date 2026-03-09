@@ -314,6 +314,27 @@ body {
   animation: unlimited-dot-glow 2s ease-in-out infinite;
 }
 
+/* ── Custom title bar ─────────────────────────────────────────── */
+
+.titlebar {
+  border-bottom: 1px solid var(--color-edge);
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+/* Buttons must be non-draggable so they receive clicks */
+.titlebar button {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+/* Title bar rounds top corners when window is not maximized.
+   Tauri's borderless window has no rounding by default on Linux. */
+#app-shell {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
 /* ── Desktop cursor overrides ─────────────────────────────────── */
 
 /* Every button in the app shows pointer cursor */
