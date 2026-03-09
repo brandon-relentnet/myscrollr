@@ -31,10 +31,12 @@ import type { Channel } from "./api/client";
 import { channelsApi } from "./api/client";
 import Lenis from "lenis";
 import ChannelPicker from "./components/ChannelPicker";
+import AppMenu from "./components/AppMenu";
+import SettingsPanel from "./components/SettingsPanel";
 
 // ── Canvas mode type ─────────────────────────────────────────────
 
-type CanvasMode = "feed" | "dashboard";
+type CanvasMode = "feed" | "dashboard" | "settings";
 
 // ── Constants ────────────────────────────────────────────────────
 
@@ -117,6 +119,9 @@ export default function App() {
   // Channel picker dropdown
   const [showChannelPicker, setShowChannelPicker] = useState(false);
 
+  // App menu dropdown
+  const [showMenu, setShowMenu] = useState(false);
+
   // Auth state
   const [authenticated, setAuthenticated] = useState(() => checkAuth());
 
@@ -130,6 +135,7 @@ export default function App() {
   const feedBtnRef = useRef<HTMLButtonElement | null>(null);
   const dashBtnRef = useRef<HTMLButtonElement | null>(null);
   const pinBtnRef = useRef<HTMLButtonElement | null>(null);
+  const menuBtnRef = useRef<HTMLButtonElement | null>(null);
   const logoChevronRef = useRef<SVGSVGElement | null>(null);
   const lenisRef = useRef<Lenis | null>(null);
   const tierRef = useRef<SubscriptionTier>("free");
@@ -521,7 +527,18 @@ export default function App() {
     pinBtn.className = btnClass;
     pinBtnRef.current = pinBtn;
 
-    // Insert: ... | [FEED|DASH] | [▦] | [↔] | [📌]
+    // Menu (three-dot) button
+    const menuDiv = document.createElement("span");
+    menuDiv.className = divClass;
+    const menuBtn = document.createElement("button");
+    menuBtn.className = btnClass;
+    menuBtn.textContent = "\u22EE";
+    menuBtn.title = "Menu";
+    menuBtn.setAttribute("data-app-menu-trigger", "");
+    menuBtn.onclick = () => setShowMenu((prev) => !prev);
+    menuBtnRef.current = menuBtn;
+
+    // Insert: ... | [FEED|DASH] | [▦] | [↔] | [📌] | [⋮]
     rightGroup.appendChild(canvasPill);
     rightGroup.appendChild(tickerDiv);
     rightGroup.appendChild(tickerBtn);
@@ -529,6 +546,8 @@ export default function App() {
     rightGroup.appendChild(widthBtn);
     rightGroup.appendChild(pinDiv);
     rightGroup.appendChild(pinBtn);
+    rightGroup.appendChild(menuDiv);
+    rightGroup.appendChild(menuBtn);
 
     // Double-click header = toggle width
     const onDblClick = (e: Event) => {
@@ -551,11 +570,14 @@ export default function App() {
       widthBtn.remove();
       pinDiv.remove();
       pinBtn.remove();
+      menuDiv.remove();
+      menuBtn.remove();
       feedBtnRef.current = null;
       dashBtnRef.current = null;
       maxWidthBtnRef.current = null;
       tickerBtnRef.current = null;
       pinBtnRef.current = null;
+      menuBtnRef.current = null;
       logoChevronRef.current = null;
       header.removeEventListener("dblclick", onDblClick);
     };
@@ -576,9 +598,21 @@ export default function App() {
     savePref("activeTab", channelType);
   }, []);
 
+  // Track the canvas mode before entering settings so we can restore it
+  const prevCanvasModeRef = useRef<"feed" | "dashboard">("feed");
+
   const handleActiveTabChange = useCallback((tab: string) => {
     setActiveTab(tab);
     savePref("activeTab", tab);
+    // Exit settings when a channel tab is clicked
+    setCanvasMode((prev) => {
+      if (prev === "settings") {
+        const restore = prevCanvasModeRef.current;
+        savePref("canvasMode", restore);
+        return restore;
+      }
+      return prev;
+    });
   }, []);
 
   // ── Pin (always-on-top) toggle ────────────────────────────────
@@ -593,6 +627,26 @@ export default function App() {
       console.error("[Scrollr] Pin toggle failed:", err);
     });
   }, [pinned]);
+
+  // ── Settings ─────────────────────────────────────────────────
+
+  const handleOpenSettings = useCallback(() => {
+    setCanvasMode((prev) => {
+      if (prev !== "settings") prevCanvasModeRef.current = prev as "feed" | "dashboard";
+      return "settings";
+    });
+    savePref("canvasMode", "settings");
+  }, []);
+
+  const handleCloseSettings = useCallback(() => {
+    const restore = prevCanvasModeRef.current;
+    setCanvasMode(restore);
+    savePref("canvasMode", restore);
+  }, []);
+
+  const handleQuit = useCallback(() => {
+    getCurrentWindow().close();
+  }, []);
 
   // ── Canvas mode toggle ──────────────────────────────────────────
 
@@ -661,6 +715,14 @@ export default function App() {
         ? "text-accent transition-colors text-[13px] font-mono px-1 cursor-pointer"
         : btnClass;
       pinBtn.onclick = () => handleTogglePin();
+    }
+
+    // Menu button — highlight when settings view is active
+    const menuBtn = menuBtnRef.current;
+    if (menuBtn) {
+      menuBtn.className = canvasMode === "settings"
+        ? "text-accent transition-colors text-[13px] font-mono px-1 cursor-pointer"
+        : btnClass;
     }
 
     // Rotate logo chevron to reflect picker open/closed state
@@ -906,9 +968,23 @@ export default function App() {
     return authGetValidToken();
   }, []);
 
-  // ── Build overrideContent for DashboardTab mode ────────────────
+  // ── Build overrideContent for DashboardTab / Settings mode ─────
 
   const overrideContent = useMemo(() => {
+    if (canvasMode === "settings") {
+      return (
+        <SettingsPanel
+          authenticated={authenticated}
+          tier={getTier()}
+          pinned={pinned}
+          onTogglePin={handleTogglePin}
+          onLogin={handleLogin}
+          onLogout={handleLogout}
+          onClose={handleCloseSettings}
+        />
+      );
+    }
+
     if (canvasMode !== "dashboard" || !authenticated) return undefined;
 
     const webChannel = getWebChannel(activeTab);
@@ -958,6 +1034,11 @@ export default function App() {
     handleToggleChannel,
     handleDeleteChannel,
     handleChannelUpdate,
+    pinned,
+    handleTogglePin,
+    handleLogin,
+    handleLogout,
+    handleCloseSettings,
   ]);
 
   const _behavior: FeedBehavior = "overlay";
@@ -977,6 +1058,14 @@ export default function App() {
           activeTabs={activeTabs}
           onToggle={handlePickerToggle}
           onClose={() => setShowChannelPicker(false)}
+          topOffset={(tickerCollapsed ? 0 : TICKER_HEIGHT) + TASKBAR_HEIGHT + 2}
+        />
+      )}
+      {showMenu && (
+        <AppMenu
+          onSettings={handleOpenSettings}
+          onQuit={handleQuit}
+          onClose={() => setShowMenu(false)}
           topOffset={(tickerCollapsed ? 0 : TICKER_HEIGHT) + TASKBAR_HEIGHT + 2}
         />
       )}
