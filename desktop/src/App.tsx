@@ -46,7 +46,6 @@ const POLL_INTERVALS: Record<SubscriptionTier, number> = {
 };
 const TICKER_HEIGHT = 44;
 const TASKBAR_HEIGHT = 36;
-const COLLAPSED_HEIGHT = TASKBAR_HEIGHT;
 const MIN_HEIGHT = 100;
 const MAX_HEIGHT = 600;
 const DEFAULT_NARROW_WIDTH = 800;
@@ -81,9 +80,6 @@ export default function App() {
   const [height, setHeight] = useState(() => loadPref("feedHeight", 200));
   const [mode] = useState<FeedMode>(() =>
     loadPref("feedMode", "comfort" as FeedMode),
-  );
-  const [collapsed, setCollapsed] = useState(() =>
-    loadPref("feedCollapsed", false),
   );
   const [activeTabs, setActiveTabs] = useState<string[]>(() =>
     loadPref("activeFeedTabs", ["finance", "sports"]),
@@ -125,8 +121,6 @@ export default function App() {
   const [authenticated, setAuthenticated] = useState(() => checkAuth());
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const collapsedRef = useRef(collapsed);
-  collapsedRef.current = collapsed;
   const isFullWidthRef = useRef(isFullWidth);
   isFullWidthRef.current = isFullWidth;
   const authenticatedRef = useRef(authenticated);
@@ -457,8 +451,7 @@ export default function App() {
     // Find the left-side group (first child div) and right-side group
     const leftGroup = header.firstElementChild as HTMLElement;
     const rightGroup = header.lastElementChild as HTMLElement;
-    const collapseBtn = rightGroup?.querySelector("button");
-    if (!leftGroup || !rightGroup || !collapseBtn) return;
+    if (!leftGroup || !rightGroup) return;
 
     // Create buttons matching existing header style
     const btnClass =
@@ -528,16 +521,14 @@ export default function App() {
     pinBtn.className = btnClass;
     pinBtnRef.current = pinBtn;
 
-    // Insert: ... | [FEED|DASH] | [▦] | [↔] | [📌] | [▼]
-    // FeedBar already has a divider before the collapse button area,
-    // so canvasPill sits right after it — no extra divider needed.
-    rightGroup.insertBefore(canvasPill, collapseBtn);
-    rightGroup.insertBefore(tickerDiv, collapseBtn);
-    rightGroup.insertBefore(tickerBtn, collapseBtn);
-    rightGroup.insertBefore(widthDiv, collapseBtn);
-    rightGroup.insertBefore(widthBtn, collapseBtn);
-    rightGroup.insertBefore(pinDiv, collapseBtn);
-    rightGroup.insertBefore(pinBtn, collapseBtn);
+    // Insert: ... | [FEED|DASH] | [▦] | [↔] | [📌]
+    rightGroup.appendChild(canvasPill);
+    rightGroup.appendChild(tickerDiv);
+    rightGroup.appendChild(tickerBtn);
+    rightGroup.appendChild(widthDiv);
+    rightGroup.appendChild(widthBtn);
+    rightGroup.appendChild(pinDiv);
+    rightGroup.appendChild(pinBtn);
 
     // Double-click header = toggle width
     const onDblClick = (e: Event) => {
@@ -569,17 +560,6 @@ export default function App() {
       header.removeEventListener("dblclick", onDblClick);
     };
   }, [toggleFullWidth]);
-
-  // ── Collapse / expand ────────────────────────────────────────
-
-  const handleToggleCollapse = useCallback(() => {
-    const next = !collapsed;
-    setCollapsed(next);
-    savePref("feedCollapsed", next);
-    const tickerH = tickerCollapsed ? 0 : TICKER_HEIGHT;
-    const newHeight = next ? TASKBAR_HEIGHT + tickerH : height + tickerH;
-    invoke("resize_window", { height: newHeight }).catch(() => {});
-  }, [collapsed, height, tickerCollapsed]);
 
   // ── Ticker toggle ───────────────────────────────────────────
 
@@ -723,9 +703,6 @@ export default function App() {
     let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
     const promise = appWindow.onResized((event) => {
-      // Ignore resize events while collapsed (programmatic collapse)
-      if (collapsedRef.current) return;
-
       const scale = window.devicePixelRatio || 1;
       const logicalHeight = Math.round(event.payload.height / scale);
 
@@ -764,9 +741,7 @@ export default function App() {
 
   useEffect(() => {
     const tickerH = tickerCollapsed ? 0 : TICKER_HEIGHT;
-    const effectiveHeight = collapsed
-      ? TASKBAR_HEIGHT + tickerH
-      : height + tickerH;
+    const effectiveHeight = height + tickerH;
     invoke("resize_window", { height: effectiveHeight })
       .then(() => getCurrentWindow().show())
       .catch(() => {});
@@ -788,8 +763,6 @@ export default function App() {
   // mounts/unmounts). autoRaf: true runs its own rAF loop.
 
   useEffect(() => {
-    if (collapsed) return;
-
     // Small delay to let React render the content container
     const timer = setTimeout(() => {
       const wrapper = document.querySelector(
@@ -815,7 +788,7 @@ export default function App() {
       lenisRef.current?.destroy();
       (lenisRef as React.MutableRefObject<Lenis | null>).current = null;
     };
-  }, [collapsed]);
+  }, []);
 
   // ── Auth handlers ─────────────────────────────────────────────
 
@@ -1014,14 +987,12 @@ export default function App() {
         position={position}
         height={height}
         mode={mode}
-        collapsed={collapsed}
         behavior={_behavior}
         activeTabs={activeTabs}
         authenticated={authenticated}
         activeTab={activeTab}
         onActiveTabChange={handleActiveTabChange}
         onLogin={handleLogin}
-        onToggleCollapse={handleToggleCollapse}
         onHeightChange={handleHeightChange}
         onHeightCommit={handleHeightCommit}
         overrideContent={overrideContent}
