@@ -31,7 +31,7 @@ import {
   TICKER_GAPS,
 } from "./preferences";
 import type { AppPreferences } from "./preferences";
-import type { FeedMode, DashboardResponse } from "~/utils/types";
+import type { FeedMode, DashboardResponse, DeliveryMode } from "~/utils/types";
 
 const API_URL = "https://api.myscrollr.relentnet.dev";
 
@@ -78,6 +78,11 @@ export default function MainApp() {
   // Loading state
   const [loading, setLoading] = useState(true);
   const [loggingIn, setLoggingIn] = useState(false);
+
+  // Data delivery mode (synced from ticker window)
+  const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>(
+    () => loadPref<DeliveryMode>("deliveryMode", "polling"),
+  );
 
   // Refs for stable closures
   const authenticatedRef = useRef(authenticated);
@@ -135,8 +140,8 @@ export default function MainApp() {
         : `${prefs.appearance.uiScale}%`;
   }, [prefs.appearance.uiScale]);
 
-  // Sync prefs from ticker window (StorageEvent fires when
-  // the *other* window writes to localStorage)
+  // Sync prefs + delivery mode from ticker window (StorageEvent
+  // fires when the *other* window writes to localStorage)
   useEffect(() => {
     function onStorage(e: StorageEvent) {
       if (e.key === "scrollr:settings" && e.newValue) {
@@ -145,6 +150,13 @@ export default function MainApp() {
           setPrefs(next);
         } catch {
           /* ignore malformed data */
+        }
+      }
+      if (e.key === "scrollr:deliveryMode" && e.newValue) {
+        try {
+          setDeliveryMode(JSON.parse(e.newValue) as DeliveryMode);
+        } catch {
+          /* ignore */
         }
       }
     }
@@ -360,6 +372,15 @@ export default function MainApp() {
     savePref("showAppTicker", next);
   }
 
+  function handleToggleStandaloneTicker() {
+    const next = {
+      ...prefs,
+      ticker: { ...prefs.ticker, showTicker: !prefs.ticker.showTicker },
+    };
+    setPrefs(next);
+    savePrefs(next);
+  }
+
   // ── Render ──────────────────────────────────────────────────
 
   return (
@@ -368,11 +389,16 @@ export default function MainApp() {
       data-theme="dark"
       className="flex h-screen w-screen overflow-hidden bg-surface text-fg"
     >
-      <Sidebar active={section} onNavigate={handleNavigate} />
+      <Sidebar
+        active={section}
+        onNavigate={handleNavigate}
+        tickerAlive={prefs.ticker.showTicker}
+        onToggleTicker={handleToggleStandaloneTicker}
+      />
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        {/* Ticker preview */}
-        {showAppTicker && prefs.ticker.showTicker &&
+        {/* Ticker preview (independent of standalone ticker window) */}
+        {showAppTicker &&
           Array.from({ length: prefs.appearance.tickerRows }, (_, i) => (
             <ScrollrTicker
               key={`app-row${i}-${prefs.ticker.tickerGap}-${prefs.ticker.tickerSpeed}-${prefs.ticker.hoverSpeed}-${prefs.ticker.tickerMode}-${prefs.ticker.mixMode}-${prefs.ticker.chipColors}-${prefs.appearance.tickerRows}`}
@@ -397,6 +423,8 @@ export default function MainApp() {
             onPrefsChange={handlePrefsChange}
             showTicker={showAppTicker}
             onToggleTicker={handleToggleAppTicker}
+            tickerAlive={prefs.ticker.showTicker}
+            deliveryMode={deliveryMode}
           />
         )}
 

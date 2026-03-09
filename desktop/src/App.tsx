@@ -405,6 +405,12 @@ export default function App() {
         : `${prefs.appearance.uiScale}%`;
   }, [prefs.appearance.uiScale]);
 
+  // ── Broadcast delivery mode to app window ─────────────────────
+
+  useEffect(() => {
+    savePref("deliveryMode", deliveryMode);
+  }, [deliveryMode]);
+
   // ── Initial setup ────────────────────────────────────────────
 
   useEffect(() => {

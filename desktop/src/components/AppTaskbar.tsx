@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type { AppPreferences, TickerRows } from "../preferences";
 import { savePrefs } from "../preferences";
+import type { DeliveryMode } from "~/utils/types";
 
 // ── Props ───────────────────────────────────────────────────────
 
@@ -20,6 +21,8 @@ interface AppTaskbarProps {
   onPrefsChange: (prefs: AppPreferences) => void;
   showTicker: boolean;
   onToggleTicker: () => void;
+  tickerAlive: boolean;
+  deliveryMode: DeliveryMode;
 }
 
 // ── Component ───────────────────────────────────────────────────
@@ -29,6 +32,8 @@ export default function AppTaskbar({
   onPrefsChange,
   showTicker,
   onToggleTicker,
+  tickerAlive,
+  deliveryMode,
 }: AppTaskbarProps) {
   const isDark =
     prefs.appearance.theme === "dark" ||
@@ -75,10 +80,47 @@ export default function AppTaskbar({
 
   return (
     <div className="flex items-center gap-0.5 px-3 h-8 border-b border-edge/50 bg-surface-2/50 shrink-0">
-      {/* Left: label */}
-      <span className="text-[10px] font-mono text-fg-4 uppercase tracking-widest mr-auto select-none">
-        Quick
-      </span>
+      {/* Left: status indicators */}
+      <div className="flex items-center gap-3 mr-auto select-none">
+        {/* Ticker status */}
+        <div className="flex items-center gap-1.5">
+          <div
+            className={clsx(
+              "w-1.5 h-1.5 rounded-full shrink-0 transition-all duration-500",
+              tickerAlive
+                ? "bg-accent ekg-dot"
+                : "bg-fg-4/30 scale-75",
+            )}
+          />
+          <span className={clsx(
+            "text-[10px] font-mono uppercase tracking-widest transition-colors duration-300",
+            tickerAlive ? "text-accent" : "text-fg-4",
+          )}>
+            {tickerAlive ? "Ticker" : "Off"}
+          </span>
+        </div>
+
+        {/* Separator */}
+        <div className="w-px h-3 bg-edge" />
+
+        {/* Data delivery mode */}
+        <div className="flex items-center gap-1.5">
+          <div
+            className={clsx(
+              "w-1.5 h-1.5 rounded-full shrink-0",
+              deliveryMode === "sse"
+                ? "bg-info animate-pulse"
+                : "bg-warn animate-pulse",
+            )}
+          />
+          <span className={clsx(
+            "text-[10px] font-mono uppercase tracking-widest",
+            deliveryMode === "sse" ? "text-info" : "text-warn",
+          )}>
+            {deliveryMode === "sse" ? "SSE" : "Poll"}
+          </span>
+        </div>
+      </div>
 
       {/* Actions */}
       <button
@@ -112,8 +154,6 @@ export default function AppTaskbar({
       >
         {isPinned ? <Pin size={14} /> : <PinOff size={14} />}
       </button>
-
-
     </div>
   );
 }
