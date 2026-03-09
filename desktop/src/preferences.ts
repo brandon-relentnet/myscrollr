@@ -4,27 +4,17 @@
 
 // ── Types ────────────────────────────────────────────────────────
 
+export type Theme = "light" | "dark" | "system";
 export type TaskbarHeight = "compact" | "default" | "comfortable";
 export type TickerGap = "tight" | "normal" | "spacious";
 export type TickerMode = "compact" | "comfort";
 export type DefaultView = "feed" | "dashboard" | "last";
+export type TickerRows = 1 | 2 | 3;
 
-export interface GeneralPrefs {
-  defaultView: DefaultView;
-  refreshInterval: number;
-  smoothScroll: boolean;
-  scrollSmoothness: number;
-  autostart: boolean;
-}
-
-export interface TaskbarPrefs {
-  showChannelIcons: boolean;
-  showConnectionIndicator: boolean;
-  showCanvasToggle: boolean;
-  showTickerToggle: boolean;
-  showWidthToggle: boolean;
-  showPinButton: boolean;
-  taskbarHeight: TaskbarHeight;
+export interface AppearancePrefs {
+  theme: Theme;
+  uiScale: number; // 75–150, default 100
+  tickerRows: TickerRows;
 }
 
 export interface TickerPrefs {
@@ -36,6 +26,12 @@ export interface TickerPrefs {
   tickerMode: TickerMode;
 }
 
+export interface StartupPrefs {
+  defaultView: DefaultView;
+  refreshInterval: number;
+  autostart: boolean;
+}
+
 export interface WindowPrefs {
   pinned: boolean;
   defaultWidth: "full" | "narrow";
@@ -43,31 +39,31 @@ export interface WindowPrefs {
   skipTaskbar: boolean;
 }
 
+export interface TaskbarPrefs {
+  showChannelIcons: boolean;
+  showConnectionIndicator: boolean;
+  showCanvasToggle: boolean;
+  showTickerToggle: boolean;
+  showWidthToggle: boolean;
+  showPinButton: boolean;
+  taskbarHeight: TaskbarHeight;
+  pinnedActions: string[];
+}
+
 export interface AppPreferences {
-  general: GeneralPrefs;
-  taskbar: TaskbarPrefs;
+  appearance: AppearancePrefs;
   ticker: TickerPrefs;
+  startup: StartupPrefs;
   window: WindowPrefs;
+  taskbar: TaskbarPrefs;
 }
 
 // ── Defaults ────────────────────────────────────────────────────
 
-export const DEFAULT_GENERAL: GeneralPrefs = {
-  defaultView: "last",
-  refreshInterval: 60_000,
-  smoothScroll: true,
-  scrollSmoothness: 0.1,
-  autostart: false,
-};
-
-export const DEFAULT_TASKBAR: TaskbarPrefs = {
-  showChannelIcons: true,
-  showConnectionIndicator: true,
-  showCanvasToggle: true,
-  showTickerToggle: true,
-  showWidthToggle: true,
-  showPinButton: true,
-  taskbarHeight: "default",
+export const DEFAULT_APPEARANCE: AppearancePrefs = {
+  theme: "dark",
+  uiScale: 100,
+  tickerRows: 1,
 };
 
 export const DEFAULT_TICKER: TickerPrefs = {
@@ -79,6 +75,12 @@ export const DEFAULT_TICKER: TickerPrefs = {
   tickerMode: "compact",
 };
 
+export const DEFAULT_STARTUP: StartupPrefs = {
+  defaultView: "last",
+  refreshInterval: 60_000,
+  autostart: false,
+};
+
 export const DEFAULT_WINDOW: WindowPrefs = {
   pinned: true,
   defaultWidth: "full",
@@ -86,29 +88,97 @@ export const DEFAULT_WINDOW: WindowPrefs = {
   skipTaskbar: true,
 };
 
+export const DEFAULT_TASKBAR: TaskbarPrefs = {
+  showChannelIcons: true,
+  showConnectionIndicator: true,
+  showCanvasToggle: true,
+  showTickerToggle: true,
+  showWidthToggle: true,
+  showPinButton: true,
+  taskbarHeight: "default",
+  pinnedActions: [],
+};
+
 export const DEFAULT_PREFS: AppPreferences = {
-  general: DEFAULT_GENERAL,
-  taskbar: DEFAULT_TASKBAR,
+  appearance: DEFAULT_APPEARANCE,
   ticker: DEFAULT_TICKER,
+  startup: DEFAULT_STARTUP,
   window: DEFAULT_WINDOW,
+  taskbar: DEFAULT_TASKBAR,
 };
 
 // ── Storage helpers ─────────────────────────────────────────────
 
 const PREFIX = "scrollr:settings";
 
+/** Migrate v1 prefs (general/taskbar/ticker/window) to v2 shape. */
+function migrateV1(saved: Record<string, unknown>): Partial<AppPreferences> {
+  const result: Record<string, unknown> = {};
+
+  // Old "general" → split into startup + appearance
+  const general = saved.general as Record<string, unknown> | undefined;
+  if (general) {
+    result.startup = {
+      defaultView: general.defaultView ?? DEFAULT_STARTUP.defaultView,
+      refreshInterval: general.refreshInterval ?? DEFAULT_STARTUP.refreshInterval,
+      autostart: general.autostart ?? DEFAULT_STARTUP.autostart,
+    };
+    // smoothScroll and scrollSmoothness are dropped (removed)
+  }
+
+  // Old "taskbar" → taskbar (add pinnedActions)
+  const taskbar = saved.taskbar as Record<string, unknown> | undefined;
+  if (taskbar) {
+    result.taskbar = {
+      ...DEFAULT_TASKBAR,
+      ...taskbar,
+      pinnedActions: (taskbar.pinnedActions as string[]) ?? [],
+    };
+  }
+
+  // "ticker" stays the same shape
+  if (saved.ticker) {
+    result.ticker = { ...DEFAULT_TICKER, ...(saved.ticker as Record<string, unknown>) };
+  }
+
+  // "window" stays the same shape
+  if (saved.window) {
+    result.window = { ...DEFAULT_WINDOW, ...(saved.window as Record<string, unknown>) };
+  }
+
+  // New keys — use defaults (appearance didn't exist in v1)
+  if (!result.appearance && !saved.appearance) {
+    result.appearance = { ...DEFAULT_APPEARANCE };
+  }
+
+  return result as Partial<AppPreferences>;
+}
+
 export function loadPrefs(): AppPreferences {
   try {
     const raw = localStorage.getItem(PREFIX);
     if (!raw) return { ...DEFAULT_PREFS };
-    const saved = JSON.parse(raw) as Partial<AppPreferences>;
+    const saved = JSON.parse(raw) as Record<string, unknown>;
+
+    // Detect v1 format: has "general" key but no "appearance" key
+    const isV1 = "general" in saved && !("appearance" in saved);
+    const source = isV1 ? migrateV1(saved) : (saved as Partial<AppPreferences>);
+
     // Deep merge with defaults so new keys are always present
-    return {
-      general: { ...DEFAULT_GENERAL, ...saved.general },
-      taskbar: { ...DEFAULT_TASKBAR, ...saved.taskbar },
-      ticker: { ...DEFAULT_TICKER, ...saved.ticker },
-      window: { ...DEFAULT_WINDOW, ...saved.window },
+    const merged: AppPreferences = {
+      appearance: { ...DEFAULT_APPEARANCE, ...source.appearance },
+      ticker: { ...DEFAULT_TICKER, ...source.ticker },
+      startup: { ...DEFAULT_STARTUP, ...source.startup },
+      window: { ...DEFAULT_WINDOW, ...source.window },
+      taskbar: { ...DEFAULT_TASKBAR, ...source.taskbar },
     };
+
+    // If migrated from v1, persist the new format
+    if (isV1) {
+      localStorage.setItem(PREFIX, JSON.stringify(merged));
+    }
+
+    return merged;
   } catch {
     return { ...DEFAULT_PREFS };
   }
@@ -128,11 +198,12 @@ export function resetCategory<K extends keyof AppPreferences>(
 
 /** Reset everything to defaults. */
 export function resetAll(): AppPreferences {
-  const defaults = {
-    general: { ...DEFAULT_GENERAL },
-    taskbar: { ...DEFAULT_TASKBAR },
+  const defaults: AppPreferences = {
+    appearance: { ...DEFAULT_APPEARANCE },
     ticker: { ...DEFAULT_TICKER },
+    startup: { ...DEFAULT_STARTUP },
     window: { ...DEFAULT_WINDOW },
+    taskbar: { ...DEFAULT_TASKBAR },
   };
   savePrefs(defaults);
   return defaults;
@@ -156,3 +227,21 @@ export const TICKER_HEIGHTS: Record<TickerMode, number> = {
   compact: 44,
   comfort: 64,
 };
+
+// ── Pinnable actions registry ───────────────────────────────────
+// Defines which settings can be pinned to the taskbar as quick toggles.
+
+export interface PinnableAction {
+  id: string;
+  label: string;
+  icon: string; // Lucide icon name
+  category: "appearance" | "ticker" | "window";
+}
+
+export const PINNABLE_ACTIONS: PinnableAction[] = [
+  { id: "theme", label: "Theme", icon: "Moon", category: "appearance" },
+  { id: "tickerRows", label: "Rows", icon: "Rows3", category: "appearance" },
+  { id: "showTicker", label: "Ticker", icon: "TicketSlash", category: "ticker" },
+  { id: "tickerMode", label: "Density", icon: "Rows3", category: "ticker" },
+  { id: "pinned", label: "Pin", icon: "Pin", category: "window" },
+];

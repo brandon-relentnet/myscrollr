@@ -1,5 +1,4 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
-@import "lenis/dist/lenis.css";
 @import "tailwindcss";
 @source "../../channels/*/extension/**/*.tsx";
 @source "../../channels/*/web/**/*.tsx";
@@ -68,6 +67,63 @@
   --shadow-soft-md: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
+/* ── Light theme ──────────────────────────────────────────────── */
+/* Dark is the default @theme. Light overrides via data-theme attribute.
+   Color palette matches the website's light mode. */
+
+#desktop-shell[data-theme="light"] {
+  --color-surface: #ffffff;
+  --color-surface-2: #f6f7fb;
+  --color-surface-hover: #eef0f6;
+
+  --color-base-100: #ffffff;
+  --color-base-150: #f6f7fb;
+  --color-base-200: #eef0f6;
+  --color-base-250: #e4e6ee;
+  --color-base-300: #d5d7e2;
+  --color-base-350: #c4c6d4;
+  --color-base-400: #b0b3c4;
+  --color-base-content: #1a1b2e;
+
+  --color-edge: #d5d7e2;
+  --color-edge-2: #c4c6d4;
+
+  --color-info: #00b8db;
+
+  --color-fg: #1a1b2e;
+  --color-fg-2: #4a4a5a;
+  --color-fg-3: #7a7a8a;
+  --color-fg-4: #a0a0b0;
+
+  --shadow-glow-sm: 0 0 20px rgba(52, 211, 153, 0.04);
+  --shadow-glow-md: 0 0 30px rgba(52, 211, 153, 0.06);
+  --shadow-glow-lg: 0 0 50px rgba(52, 211, 153, 0.08);
+
+  --shadow-soft-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-soft-md: 0 2px 6px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* Smooth theme transition */
+#desktop-shell.theme-transition,
+#desktop-shell.theme-transition * {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease !important;
+}
+
+/* Light theme scrollbar */
+#desktop-shell[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: var(--color-base-350);
+}
+
+#desktop-shell[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--color-base-400);
+}
+
+/* Light theme selection */
+#desktop-shell[data-theme="light"] ::selection {
+  background: rgba(52, 211, 153, 0.2);
+  color: var(--color-fg);
+}
+
 /* ── Base styles ──────────────────────────────────────────────── */
 
 html,
@@ -104,13 +160,16 @@ body {
    Top-to-bottom: Ticker → Taskbar (FeedBar header) → Canvas (FeedBar content).
    The Tauri window size is the viewport — CSS fills 100%. */
 
-/* Shell wraps Ticker + FeedBar */
+/* Shell wraps Ticker + FeedBar. Background and color are set here
+   (not on body) so the data-theme light/dark overrides take effect. */
 #desktop-shell {
   display: flex;
   flex-direction: column;
   width: 100%;
   height: 100vh;
   overflow: hidden;
+  background: var(--color-surface);
+  color: var(--color-fg);
 }
 
 /* Override FeedBar outer div: fill remaining space, use flexbox column.

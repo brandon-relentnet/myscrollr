@@ -29,7 +29,6 @@ import {
 import type { SubscriptionTier } from "./auth";
 import type { Channel } from "./api/client";
 import { channelsApi } from "./api/client";
-import Lenis from "lenis";
 import ChannelPicker from "./components/ChannelPicker";
 import AppMenu from "./components/AppMenu";
 import SettingsPanel from "./components/SettingsPanel";
@@ -154,8 +153,8 @@ export default function App() {
   const dashBtnRef = useRef<HTMLButtonElement | null>(null);
   const pinBtnRef = useRef<HTMLButtonElement | null>(null);
   const menuBtnRef = useRef<HTMLButtonElement | null>(null);
+  const pinnedContainerRef = useRef<HTMLElement | null>(null);
   const logoChevronRef = useRef<SVGSVGElement | null>(null);
-  const lenisRef = useRef<Lenis | null>(null);
   const tierRef = useRef<SubscriptionTier>("free");
   const sseActiveRef = useRef(false);
 
@@ -545,6 +544,12 @@ export default function App() {
     pinBtn.className = btnClass;
     pinBtnRef.current = pinBtn;
 
+    // Pinned quick-action buttons container
+    const pinnedContainer = document.createElement("span");
+    pinnedContainer.className = "inline-flex items-center";
+    pinnedContainer.setAttribute("data-pinned-actions", "");
+    pinnedContainerRef.current = pinnedContainer;
+
     // Menu (three-dot) button
     const menuDiv = document.createElement("span");
     menuDiv.className = divClass;
@@ -556,7 +561,7 @@ export default function App() {
     menuBtn.onclick = () => setShowMenu((prev) => !prev);
     menuBtnRef.current = menuBtn;
 
-    // Insert: ... | [FEED|DASH] | [▦] | [↔] | [📌] | [⋮]
+    // Insert: ... | [FEED|DASH] | [▦] | [↔] | [📌] | [pinned actions] | [⋮]
     rightGroup.appendChild(canvasPill);
     rightGroup.appendChild(tickerDiv);
     rightGroup.appendChild(tickerBtn);
@@ -564,6 +569,7 @@ export default function App() {
     rightGroup.appendChild(widthBtn);
     rightGroup.appendChild(pinDiv);
     rightGroup.appendChild(pinBtn);
+    rightGroup.appendChild(pinnedContainer);
     rightGroup.appendChild(menuDiv);
     rightGroup.appendChild(menuBtn);
 
@@ -588,6 +594,7 @@ export default function App() {
       widthBtn.remove();
       pinDiv.remove();
       pinBtn.remove();
+      pinnedContainer.remove();
       menuDiv.remove();
       menuBtn.remove();
       feedBtnRef.current = null;
@@ -595,6 +602,7 @@ export default function App() {
       maxWidthBtnRef.current = null;
       tickerBtnRef.current = null;
       pinBtnRef.current = null;
+      pinnedContainerRef.current = null;
       menuBtnRef.current = null;
       logoChevronRef.current = null;
       header.removeEventListener("dblclick", onDblClick);
@@ -815,7 +823,89 @@ export default function App() {
     if (shell) {
       shell.dataset.channelIcons = prefs.taskbar.showChannelIcons ? "on" : "off";
     }
-  }, [isFullWidth, toggleFullWidth, tickerCollapsed, handleToggleTicker, canvasMode, handleCanvasModeChange, authenticated, pinned, handleTogglePin, showChannelPicker, prefs.taskbar]);
+
+    // ── Pinned quick-action buttons ────────────────────────────
+    // Render inline icon buttons for each pinned action ID.
+    const pinnedEl = pinnedContainerRef.current;
+    if (pinnedEl) {
+      pinnedEl.innerHTML = "";
+      const actions = prefs.taskbar.pinnedActions;
+
+      if (actions.length > 0) {
+        // Leading divider
+        const div = document.createElement("span");
+        div.className = "h-4 w-px bg-edge mx-0.5";
+        pinnedEl.appendChild(div);
+      }
+
+      for (const actionId of actions) {
+        const btn = document.createElement("button");
+        btn.className = btnClass;
+        btn.style.fontSize = "12px";
+
+        switch (actionId) {
+          case "theme": {
+            const isDark = prefs.appearance.theme === "dark" ||
+              (prefs.appearance.theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+            btn.textContent = isDark ? "\u263E" : "\u2600";
+            btn.title = isDark ? "Switch to light mode" : "Switch to dark mode";
+            btn.onclick = () => {
+              const next = isDark ? "light" : "dark";
+              const updated = { ...prefsRef.current, appearance: { ...prefsRef.current.appearance, theme: next as "light" | "dark" } };
+              setPrefs(updated);
+              savePrefs(updated);
+            };
+            break;
+          }
+          case "tickerRows": {
+            const rows = prefs.appearance.tickerRows;
+            btn.textContent = rows === 1 ? "\u2630" : rows === 2 ? "\u2633" : "\u2637";
+            btn.title = `Ticker: ${rows} row${rows > 1 ? "s" : ""} (click to cycle)`;
+            btn.onclick = () => {
+              const nextRows = (rows % 3 + 1) as 1 | 2 | 3;
+              const updated = { ...prefsRef.current, appearance: { ...prefsRef.current.appearance, tickerRows: nextRows } };
+              setPrefs(updated);
+              savePrefs(updated);
+            };
+            break;
+          }
+          case "showTicker": {
+            btn.textContent = prefs.ticker.showTicker ? "\u25A6" : "\u25A4";
+            btn.title = prefs.ticker.showTicker ? "Hide ticker" : "Show ticker";
+            btn.onclick = () => {
+              const updated = { ...prefsRef.current, ticker: { ...prefsRef.current.ticker, showTicker: !prefsRef.current.ticker.showTicker } };
+              setPrefs(updated);
+              savePrefs(updated);
+              setTickerCollapsed(prefsRef.current.ticker.showTicker);
+              savePref("tickerCollapsed", prefsRef.current.ticker.showTicker);
+            };
+            break;
+          }
+          case "tickerMode": {
+            const isComfort = prefs.ticker.tickerMode === "comfort";
+            btn.textContent = isComfort ? "\u2261" : "\u2630";
+            btn.title = isComfort ? "Switch to compact ticker" : "Switch to comfort ticker";
+            btn.onclick = () => {
+              const nextMode = isComfort ? "compact" : "comfort";
+              const updated = { ...prefsRef.current, ticker: { ...prefsRef.current.ticker, tickerMode: nextMode as "compact" | "comfort" } };
+              setPrefs(updated);
+              savePrefs(updated);
+            };
+            break;
+          }
+          case "pinned": {
+            btn.textContent = pinned ? "\u25A3" : "\u25A2";
+            btn.title = pinned ? "Unpin window" : "Pin window on top";
+            if (pinned) btn.className = "text-accent transition-colors text-[12px] font-mono px-1 cursor-pointer";
+            btn.onclick = () => handleTogglePin();
+            break;
+          }
+        }
+
+        pinnedEl.appendChild(btn);
+      }
+    }
+  }, [isFullWidth, toggleFullWidth, tickerCollapsed, handleToggleTicker, canvasMode, handleCanvasModeChange, authenticated, pinned, handleTogglePin, showChannelPicker, prefs.taskbar, prefs.appearance, prefs.ticker]);
 
   // ── Native compositor resize via drag handle ─────────────────
   // Intercept the drag handle mousedown to use Tauri's startResizing()
@@ -887,7 +977,7 @@ export default function App() {
   // ── Initial setup ────────────────────────────────────────────
 
   useEffect(() => {
-    const tickerH = tickerCollapsed ? 0 : TICKER_HEIGHTS[prefs.ticker.tickerMode];
+    const tickerH = tickerCollapsed ? 0 : TICKER_HEIGHTS[prefs.ticker.tickerMode] * prefs.appearance.tickerRows;
     const effectiveHeight = height + tickerH;
     invoke("resize_window", { height: effectiveHeight })
       .then(() => getCurrentWindow().show())
@@ -902,44 +992,45 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Smooth scrolling (Lenis) ─────────────────────────────────
-  // WebKitGTK's native smooth scrolling is broken for discrete mouse
-  // wheel events (WebKit bug #258926, open since 2023). Lenis bypasses
-  // the native scroll pipeline entirely — it intercepts wheel events,
-  // prevents default, and animates scrollTop via requestAnimationFrame
-  // with lerp interpolation.
-  //
-  // Attaches to the canvas scroll container (.overflow-y-auto) inside
-  // FeedBar. Re-initializes when collapsed state changes (container
-  // mounts/unmounts). autoRaf: true runs its own rAF loop.
+  // ── Theme & scale application ────────────────────────────────
+  // Apply theme class and UI scale whenever appearance prefs change.
 
   useEffect(() => {
-    // Small delay to let React render the content container
-    const timer = setTimeout(() => {
-      const wrapper = document.querySelector(
-        "#desktop-shell .overflow-y-auto",
-      ) as HTMLElement | null;
-      if (!wrapper) return;
+    const shell = document.getElementById("desktop-shell");
+    if (!shell) return;
 
-      const lenis = new Lenis({
-        wrapper,
-        content: wrapper,
-        smoothWheel: prefs.general.smoothScroll,
-        lerp: prefs.general.scrollSmoothness,
-        autoRaf: true,
-        syncTouch: false,
-      });
+    // Resolve theme: "system" follows OS preference
+    let resolved: "light" | "dark" = prefs.appearance.theme === "system"
+      ? window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+      : prefs.appearance.theme;
 
-      // Store on ref for cleanup
-      (lenisRef as React.MutableRefObject<Lenis | null>).current = lenis;
-    }, 50);
+    // Add transition class for smooth theme switch
+    shell.classList.add("theme-transition");
+    shell.dataset.theme = resolved;
+    const timer = setTimeout(() => shell.classList.remove("theme-transition"), 350);
 
-    return () => {
-      clearTimeout(timer);
-      lenisRef.current?.destroy();
-      (lenisRef as React.MutableRefObject<Lenis | null>).current = null;
-    };
-  }, [prefs.general.smoothScroll, prefs.general.scrollSmoothness]);
+    // Listen for OS theme changes when set to "system"
+    if (prefs.appearance.theme === "system") {
+      const mq = window.matchMedia("(prefers-color-scheme: dark)");
+      const handler = (e: MediaQueryListEvent) => {
+        shell.dataset.theme = e.matches ? "dark" : "light";
+      };
+      mq.addEventListener("change", handler);
+      return () => {
+        clearTimeout(timer);
+        mq.removeEventListener("change", handler);
+      };
+    }
+
+    return () => clearTimeout(timer);
+  }, [prefs.appearance.theme]);
+
+  useEffect(() => {
+    const shell = document.getElementById("desktop-shell");
+    if (!shell) return;
+    // Apply UI scale via CSS zoom (simpler than transform, works with layout)
+    shell.style.zoom = prefs.appearance.uiScale === 100 ? "" : `${prefs.appearance.uiScale}%`;
+  }, [prefs.appearance.uiScale]);
 
   // ── Auth handlers ─────────────────────────────────────────────
 
@@ -1139,26 +1230,30 @@ export default function App() {
 
   return (
     <div id="desktop-shell">
-      {!tickerCollapsed && prefs.ticker.showTicker && (
-        <ScrollrTicker
-          key={`${prefs.ticker.tickerGap}-${prefs.ticker.tickerSpeed}-${prefs.ticker.hoverSpeed}-${prefs.ticker.tickerMode}`}
-          dashboard={dashboard}
-          activeTabs={activeTabs}
-          onChipClick={handleChipClick}
-          speed={prefs.ticker.tickerSpeed}
-          gap={TICKER_GAPS[prefs.ticker.tickerGap]}
-          pauseOnHover={prefs.ticker.pauseOnHover}
-          hoverSpeed={prefs.ticker.hoverSpeed}
-          comfort={prefs.ticker.tickerMode === "comfort"}
-        />
-      )}
+      {!tickerCollapsed && prefs.ticker.showTicker &&
+        Array.from({ length: prefs.appearance.tickerRows }, (_, i) => (
+          <ScrollrTicker
+            key={`row${i}-${prefs.ticker.tickerGap}-${prefs.ticker.tickerSpeed}-${prefs.ticker.hoverSpeed}-${prefs.ticker.tickerMode}-${prefs.appearance.tickerRows}`}
+            dashboard={dashboard}
+            activeTabs={activeTabs}
+            onChipClick={handleChipClick}
+            speed={prefs.ticker.tickerSpeed}
+            gap={TICKER_GAPS[prefs.ticker.tickerGap]}
+            pauseOnHover={prefs.ticker.pauseOnHover}
+            hoverSpeed={prefs.ticker.hoverSpeed}
+            comfort={prefs.ticker.tickerMode === "comfort"}
+            rowIndex={i}
+            totalRows={prefs.appearance.tickerRows}
+          />
+        ))
+      }
       {showChannelPicker && authenticated && (
         <ChannelPicker
           channels={channels}
           activeTabs={activeTabs}
           onToggle={handlePickerToggle}
           onClose={() => setShowChannelPicker(false)}
-          topOffset={(tickerCollapsed || !prefs.ticker.showTicker ? 0 : TICKER_HEIGHTS[prefs.ticker.tickerMode]) + TASKBAR_HEIGHTS[prefs.taskbar.taskbarHeight] + 2}
+          topOffset={(tickerCollapsed || !prefs.ticker.showTicker ? 0 : TICKER_HEIGHTS[prefs.ticker.tickerMode] * prefs.appearance.tickerRows) + TASKBAR_HEIGHTS[prefs.taskbar.taskbarHeight] + 2}
         />
       )}
       {showMenu && (
@@ -1166,7 +1261,7 @@ export default function App() {
           onSettings={handleOpenSettings}
           onQuit={handleQuit}
           onClose={() => setShowMenu(false)}
-          topOffset={(tickerCollapsed || !prefs.ticker.showTicker ? 0 : TICKER_HEIGHTS[prefs.ticker.tickerMode]) + TASKBAR_HEIGHTS[prefs.taskbar.taskbarHeight] + 2}
+          topOffset={(tickerCollapsed || !prefs.ticker.showTicker ? 0 : TICKER_HEIGHTS[prefs.ticker.tickerMode] * prefs.appearance.tickerRows) + TASKBAR_HEIGHTS[prefs.taskbar.taskbarHeight] + 2}
         />
       )}
       <FeedBar

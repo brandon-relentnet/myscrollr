@@ -22,6 +22,10 @@ interface ScrollrTickerProps {
   hoverSpeed?: number;
   /** Show 2-row comfort chips with extra detail */
   comfort?: boolean;
+  /** Which row this ticker represents (0-indexed, for multi-row splitting) */
+  rowIndex?: number;
+  /** Total number of ticker rows (items distributed round-robin) */
+  totalRows?: number;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────
@@ -41,13 +45,15 @@ export default function ScrollrTicker({
   pauseOnHover = true,
   hoverSpeed = 0.3,
   comfort = false,
+  rowIndex = 0,
+  totalRows = 1,
 }: ScrollrTickerProps) {
   // Build a unified chip array from all active channels' data.
-  // Each chip is a React node keyed by channel + item identity.
+  // When totalRows > 1, items are distributed round-robin across rows.
   const chips = useMemo(() => {
     if (!dashboard?.data) return [];
 
-    const items: React.ReactNode[] = [];
+    const allItems: React.ReactNode[] = [];
 
     for (const tab of activeTabs) {
       const data = dashboard.data[tab];
@@ -65,7 +71,7 @@ export default function ScrollrTicker({
       switch (tab) {
         case "finance":
           for (const trade of data as Trade[]) {
-            items.push(
+            allItems.push(
               wrap(`fin-${trade.symbol}`,
                 <TradeChip
                   trade={trade}
@@ -79,7 +85,7 @@ export default function ScrollrTicker({
 
         case "sports":
           for (const game of data as Game[]) {
-            items.push(
+            allItems.push(
               wrap(`spo-${game.id}`,
                 <GameChip
                   game={game}
@@ -93,7 +99,7 @@ export default function ScrollrTicker({
 
         case "rss":
           for (const item of data as RssItem[]) {
-            items.push(
+            allItems.push(
               wrap(`rss-${item.id}`,
                 <RssChip
                   item={item}
@@ -110,7 +116,7 @@ export default function ScrollrTicker({
           const records = data as Record<string, unknown>[];
           for (const item of records) {
             const id = getItemId(item);
-            items.push(
+            allItems.push(
               wrap(`${tab}-${id}`,
                 <FantasyChip
                   item={item}
@@ -125,8 +131,10 @@ export default function ScrollrTicker({
       }
     }
 
-    return items;
-  }, [dashboard, activeTabs, onChipClick, comfort]);
+    // When multiple rows, distribute items round-robin
+    if (totalRows <= 1) return allItems;
+    return allItems.filter((_, i) => i % totalRows === rowIndex);
+  }, [dashboard, activeTabs, onChipClick, comfort, rowIndex, totalRows]);
 
   if (chips.length === 0) return null;
 

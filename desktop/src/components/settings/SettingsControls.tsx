@@ -1,5 +1,24 @@
 import { clsx } from "clsx";
 
+// ── Section heading ─────────────────────────────────────────────
+// Open layout: just a label + thin divider. No bordered card.
+
+interface SectionProps {
+  title: string;
+  children: React.ReactNode;
+}
+
+export function Section({ title, children }: SectionProps) {
+  return (
+    <div className="mb-6 pb-5 border-b border-edge/30 last:border-b-0 last:mb-0 last:pb-0">
+      <h3 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-fg-3 mb-3 px-3">
+        {title}
+      </h3>
+      <div className="space-y-0.5">{children}</div>
+    </div>
+  );
+}
+
 // ── Toggle row ──────────────────────────────────────────────────
 
 interface ToggleRowProps {
@@ -16,28 +35,37 @@ export function ToggleRow({
   onChange,
 }: ToggleRowProps) {
   return (
-    <div className="flex items-center justify-between px-4 py-3 text-[12px] font-mono">
-      <div className="flex flex-col gap-0.5">
-        <span className="text-fg-2">{label}</span>
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg hover:bg-base-250/50 transition-colors cursor-pointer group"
+    >
+      <div className="flex flex-col gap-0.5 text-left">
+        <span className="text-[12px] text-fg-2 group-hover:text-fg leading-tight">
+          {label}
+        </span>
         {description && (
-          <span className="text-[10px] text-fg-4">{description}</span>
+          <span className="text-[10px] text-fg-4 leading-tight">
+            {description}
+          </span>
         )}
       </div>
-      <button
-        onClick={() => onChange(!checked)}
+      <div
         className={clsx(
-          "relative w-9 h-5 rounded-full transition-colors cursor-pointer shrink-0 ml-4",
+          "relative w-8 h-[18px] rounded-full transition-colors shrink-0 ml-4",
           checked ? "bg-accent" : "bg-base-350",
         )}
       >
-        <span
+        <div
           className={clsx(
-            "absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-surface transition-transform",
-            checked && "translate-x-4",
+            "absolute top-[3px] left-[3px] h-3 w-3 rounded-full transition-transform duration-200",
+            checked
+              ? "translate-x-[14px] bg-surface"
+              : "translate-x-0 bg-fg-3",
           )}
         />
-      </button>
-    </div>
+      </div>
+    </button>
   );
 }
 
@@ -59,22 +87,24 @@ export function SegmentedRow<T extends string>({
   onChange,
 }: SegmentedRowProps<T>) {
   return (
-    <div className="flex items-center justify-between px-4 py-3 text-[12px] font-mono">
+    <div className="flex items-center justify-between px-3 py-2.5 rounded-lg">
       <div className="flex flex-col gap-0.5">
-        <span className="text-fg-2">{label}</span>
+        <span className="text-[12px] text-fg-2 leading-tight">{label}</span>
         {description && (
-          <span className="text-[10px] text-fg-4">{description}</span>
+          <span className="text-[10px] text-fg-4 leading-tight">
+            {description}
+          </span>
         )}
       </div>
-      <div className="inline-flex items-center rounded bg-base-200 border border-edge overflow-hidden shrink-0 ml-4">
+      <div className="inline-flex items-center rounded-lg bg-base-200 p-0.5 shrink-0 ml-4">
         {options.map((opt) => (
           <button
             key={opt.value}
             onClick={() => onChange(opt.value)}
             className={clsx(
-              "px-2 py-1 text-[10px] font-mono font-semibold uppercase tracking-wider transition-colors cursor-pointer leading-none",
+              "px-2.5 py-1 text-[10px] font-medium rounded-md transition-all duration-200 cursor-pointer leading-none",
               value === opt.value
-                ? "bg-accent/15 text-accent"
+                ? "bg-base-300 text-fg shadow-sm"
                 : "text-fg-3 hover:text-fg-2",
             )}
           >
@@ -109,25 +139,43 @@ export function SliderRow({
   displayValue,
   onChange,
 }: SliderRowProps) {
+  const pct = ((value - min) / (max - min)) * 100;
+
   return (
-    <div className="flex items-center justify-between px-4 py-3 text-[12px] font-mono">
+    <div className="flex items-center justify-between px-3 py-2.5 rounded-lg">
       <div className="flex flex-col gap-0.5">
-        <span className="text-fg-2">{label}</span>
+        <span className="text-[12px] text-fg-2 leading-tight">{label}</span>
         {description && (
-          <span className="text-[10px] text-fg-4">{description}</span>
+          <span className="text-[10px] text-fg-4 leading-tight">
+            {description}
+          </span>
         )}
       </div>
-      <div className="flex items-center gap-2 shrink-0 ml-4">
-        <input
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
-          className="w-24 h-1 accent-accent cursor-pointer"
-        />
-        <span className="text-[10px] text-fg-3 w-10 text-right tabular-nums">
+      <div className="flex items-center gap-2.5 shrink-0 ml-4">
+        <div className="relative w-24 h-5 flex items-center">
+          {/* Track background */}
+          <div className="absolute inset-x-0 h-1 rounded-full bg-base-300" />
+          {/* Filled track */}
+          <div
+            className="absolute left-0 h-1 rounded-full bg-accent/60"
+            style={{ width: `${pct}%` }}
+          />
+          <input
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            value={value}
+            onChange={(e) => onChange(Number(e.target.value))}
+            className="absolute inset-0 w-full opacity-0 cursor-pointer"
+          />
+          {/* Thumb indicator */}
+          <div
+            className="absolute w-3 h-3 rounded-full bg-fg-2 border-2 border-surface shadow-sm pointer-events-none"
+            style={{ left: `calc(${pct}% - 6px)` }}
+          />
+        </div>
+        <span className="text-[10px] text-fg-3 w-12 text-right tabular-nums font-medium">
           {displayValue ?? value}
         </span>
       </div>
@@ -145,27 +193,9 @@ interface DisplayRowProps {
 
 export function DisplayRow({ label, value, valueClass }: DisplayRowProps) {
   return (
-    <div className="flex items-center justify-between px-4 py-3 text-[12px] font-mono">
-      <span className="text-fg-3">{label}</span>
-      <span className={valueClass ?? "text-fg-2"}>{value}</span>
-    </div>
-  );
-}
-
-// ── Section card ────────────────────────────────────────────────
-
-interface SectionProps {
-  title: string;
-  children: React.ReactNode;
-}
-
-export function Section({ title, children }: SectionProps) {
-  return (
-    <div className="border border-edge rounded-lg overflow-hidden">
-      <div className="px-4 py-2.5 border-b border-edge bg-surface-2 text-[11px] font-mono font-semibold uppercase tracking-widest text-fg-3">
-        {title}
-      </div>
-      <div className="divide-y divide-edge">{children}</div>
+    <div className="flex items-center justify-between px-3 py-2.5 rounded-lg">
+      <span className="text-[12px] text-fg-3">{label}</span>
+      <span className={valueClass ?? "text-[12px] text-fg-2"}>{value}</span>
     </div>
   );
 }
@@ -184,9 +214,50 @@ export function ResetButton({
   return (
     <button
       onClick={onClick}
-      className="text-[11px] font-mono uppercase tracking-wider px-3 py-1.5 rounded border border-edge text-fg-3 hover:text-fg-2 hover:border-fg-4 transition-colors cursor-pointer"
+      className="text-[10px] font-medium px-3 py-1.5 rounded-lg text-fg-4 hover:text-fg-2 hover:bg-base-250/50 transition-colors cursor-pointer"
     >
       {label}
     </button>
+  );
+}
+
+// ── Action row (button on the right) ────────────────────────────
+
+interface ActionRowProps {
+  label: string;
+  description?: string;
+  action: string;
+  actionClass?: string;
+  onClick: () => void;
+}
+
+export function ActionRow({
+  label,
+  description,
+  action,
+  actionClass,
+  onClick,
+}: ActionRowProps) {
+  return (
+    <div className="flex items-center justify-between px-3 py-2.5 rounded-lg">
+      <div className="flex flex-col gap-0.5">
+        <span className="text-[12px] text-fg-2 leading-tight">{label}</span>
+        {description && (
+          <span className="text-[10px] text-fg-4 leading-tight">
+            {description}
+          </span>
+        )}
+      </div>
+      <button
+        onClick={onClick}
+        className={clsx(
+          "text-[10px] font-medium px-2.5 py-1 rounded-md transition-colors cursor-pointer",
+          actionClass ??
+            "bg-base-250 text-fg-3 hover:text-fg-2 hover:bg-base-300",
+        )}
+      >
+        {action}
+      </button>
+    </div>
   );
 }
