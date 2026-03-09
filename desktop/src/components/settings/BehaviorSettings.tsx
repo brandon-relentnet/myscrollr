@@ -9,6 +9,10 @@ interface BehaviorSettingsProps {
   onResetWindow: () => void;
   autostartEnabled: boolean;
   onAutostartChange: (enabled: boolean) => void;
+  showAppTicker: boolean;
+  onToggleAppTicker: (enabled: boolean) => void;
+  showTaskbar: boolean;
+  onToggleTaskbar: (enabled: boolean) => void;
 }
 
 // ── Component ───────────────────────────────────────────────────
@@ -19,9 +23,28 @@ export default function BehaviorSettings({
   onResetWindow,
   autostartEnabled,
   onAutostartChange,
+  showAppTicker,
+  onToggleAppTicker,
+  showTaskbar,
+  onToggleTaskbar,
 }: BehaviorSettingsProps) {
   return (
     <div>
+      <Section title="App window">
+        <ToggleRow
+          label="Show ticker"
+          description="Display the scrolling ticker strip in this window"
+          checked={showAppTicker}
+          onChange={onToggleAppTicker}
+        />
+        <ToggleRow
+          label="Show taskbar"
+          description="Quick action bar below the ticker"
+          checked={showTaskbar}
+          onChange={onToggleTaskbar}
+        />
+      </Section>
+
       <Section title="Window">
         <ToggleRow
           label="Always on top"

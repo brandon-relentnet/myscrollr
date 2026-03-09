@@ -9,6 +9,8 @@ import {
 import Sidebar from "./components/Sidebar";
 import type { Section } from "./components/Sidebar";
 import SettingsPanel from "./components/SettingsPanel";
+import ScrollrTicker from "./components/ScrollrTicker";
+import AppTaskbar from "./components/AppTaskbar";
 import { getWebChannel, getAllWebChannels } from "./channels/webRegistry";
 import { getChannel } from "~/channels/registry";
 import {
@@ -26,6 +28,7 @@ import {
   savePref,
   loadPrefs,
   savePrefs,
+  TICKER_GAPS,
 } from "./preferences";
 import type { AppPreferences } from "./preferences";
 import type { FeedMode, DashboardResponse } from "~/utils/types";
@@ -63,6 +66,14 @@ export default function MainApp() {
   // Preferences
   const [prefs, setPrefs] = useState<AppPreferences>(loadPrefs);
   const [autostartOn, setAutostartOn] = useState(false);
+
+  // App window ticker + taskbar visibility
+  const [showAppTicker, setShowAppTicker] = useState(
+    () => loadPref("showAppTicker", true),
+  );
+  const [showTaskbar, setShowTaskbar] = useState(
+    () => loadPref("showTaskbar", true),
+  );
 
   // Loading state
   const [loading, setLoading] = useState(true);
@@ -325,6 +336,29 @@ export default function MainApp() {
 
   const getToken = useCallback(() => getValidToken(), []);
 
+  // ── Derived: active tabs for ticker ─────────────────────────
+
+  const activeTabs = useMemo(
+    () =>
+      channels
+        .filter((ch) => ch.enabled && ch.visible)
+        .map((ch) => ch.channel_type),
+    [channels],
+  );
+
+  // ── Ticker / taskbar toggles ────────────────────────────────
+
+  function handleToggleAppTicker() {
+    const next = !showAppTicker;
+    setShowAppTicker(next);
+    savePref("showAppTicker", next);
+  }
+
+  function handleHideTaskbar() {
+    setShowTaskbar(false);
+    savePref("showTaskbar", false);
+  }
+
   // ── Render ──────────────────────────────────────────────────
 
   return (
@@ -336,6 +370,36 @@ export default function MainApp() {
       <Sidebar active={section} onNavigate={handleNavigate} />
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Ticker preview */}
+        {showAppTicker && prefs.ticker.showTicker &&
+          Array.from({ length: prefs.appearance.tickerRows }, (_, i) => (
+            <ScrollrTicker
+              key={`app-row${i}-${prefs.ticker.tickerGap}-${prefs.ticker.tickerSpeed}-${prefs.ticker.hoverSpeed}-${prefs.ticker.tickerMode}-${prefs.ticker.mixMode}-${prefs.ticker.chipColors}-${prefs.appearance.tickerRows}`}
+              dashboard={dashboard}
+              activeTabs={activeTabs}
+              speed={prefs.ticker.tickerSpeed}
+              gap={TICKER_GAPS[prefs.ticker.tickerGap]}
+              pauseOnHover={prefs.ticker.pauseOnHover}
+              hoverSpeed={prefs.ticker.hoverSpeed}
+              mixMode={prefs.ticker.mixMode}
+              chipColorMode={prefs.ticker.chipColors}
+              comfort={prefs.ticker.tickerMode === "comfort"}
+              rowIndex={i}
+              totalRows={prefs.appearance.tickerRows}
+            />
+          ))}
+
+        {/* Taskbar */}
+        {showTaskbar && (
+          <AppTaskbar
+            prefs={prefs}
+            onPrefsChange={handlePrefsChange}
+            showTicker={showAppTicker}
+            onToggleTicker={handleToggleAppTicker}
+            onHideTaskbar={handleHideTaskbar}
+          />
+        )}
+
         {/* Header */}
         <header className="flex items-center justify-between px-6 h-14 border-b border-edge shrink-0">
           <h1 className="text-base font-semibold capitalize">{section}</h1>
@@ -411,6 +475,16 @@ export default function MainApp() {
                 onClose={() => handleNavigate("feed")}
                 autostartEnabled={autostartOn}
                 onAutostartChange={handleAutostartChange}
+                showAppTicker={showAppTicker}
+                onToggleAppTicker={(v) => {
+                  setShowAppTicker(v);
+                  savePref("showAppTicker", v);
+                }}
+                showTaskbar={showTaskbar}
+                onToggleTaskbar={(v) => {
+                  setShowTaskbar(v);
+                  savePref("showTaskbar", v);
+                }}
               />
             </div>
           )}

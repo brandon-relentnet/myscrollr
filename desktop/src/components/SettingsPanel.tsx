@@ -29,6 +29,10 @@ interface SettingsPanelProps {
   onClose: () => void;
   autostartEnabled: boolean;
   onAutostartChange: (enabled: boolean) => void;
+  showAppTicker: boolean;
+  onToggleAppTicker: (enabled: boolean) => void;
+  showTaskbar: boolean;
+  onToggleTaskbar: (enabled: boolean) => void;
 }
 
 // ── Component ───────────────────────────────────────────────────
@@ -43,6 +47,10 @@ export default function SettingsPanel({
   onClose,
   autostartEnabled,
   onAutostartChange,
+  showAppTicker,
+  onToggleAppTicker,
+  showTaskbar,
+  onToggleTaskbar,
 }: SettingsPanelProps) {
   const [active, setActive] = useState<SettingsCategory>("appearance");
 
@@ -122,6 +130,10 @@ export default function SettingsPanel({
               onResetWindow={() => handleResetCategory("window")}
               autostartEnabled={autostartEnabled}
               onAutostartChange={onAutostartChange}
+              showAppTicker={showAppTicker}
+              onToggleAppTicker={onToggleAppTicker}
+              showTaskbar={showTaskbar}
+              onToggleTaskbar={onToggleTaskbar}
             />
           )}
 
