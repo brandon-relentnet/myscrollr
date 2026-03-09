@@ -1,9 +1,12 @@
 import { clsx } from "clsx";
 import type { Game } from "~/utils/types";
+import type { ChipColorMode } from "../../preferences";
+import { getChipColors } from "./chipColors";
 
 interface GameChipProps {
   game: Game;
   comfort?: boolean;
+  colorMode?: ChipColorMode;
   onClick?: () => void;
 }
 
@@ -17,7 +20,8 @@ function shortStatus(game: Game): string {
   return "";
 }
 
-export default function GameChip({ game, comfort, onClick }: GameChipProps) {
+export default function GameChip({ game, comfort, colorMode = "channel", onClick }: GameChipProps) {
+  const c = getChipColors(colorMode, "sports");
   const live = isLive(game);
   const status = shortStatus(game);
 
@@ -29,19 +33,19 @@ export default function GameChip({ game, comfort, onClick }: GameChipProps) {
         "px-3 rounded-sm border",
         "font-mono whitespace-nowrap",
         "transition-colors cursor-pointer",
-        "bg-secondary/[0.06] border-secondary/25 hover:border-secondary/40",
+        c.bg, c.border, c.hoverBorder,
         comfort ? "flex flex-col items-start py-1.5 gap-0.5" : "flex items-center gap-2 py-1 text-[13px]",
       )}
     >
       {/* Row 1: scores */}
       <div className={clsx("flex items-center gap-2", comfort && "text-[13px]")}>
-        <span className="font-semibold text-secondary">
+        <span className={clsx("font-semibold", c.text)}>
           {game.away_team_name.slice(0, 3).toUpperCase()}
         </span>
-        <span className="text-secondary/60">{String(game.away_team_score)}</span>
+        <span className={c.textDim}>{String(game.away_team_score)}</span>
         <span className="text-fg-4">-</span>
-        <span className="text-secondary/60">{String(game.home_team_score)}</span>
-        <span className="font-semibold text-secondary">
+        <span className={c.textDim}>{String(game.home_team_score)}</span>
+        <span className={clsx("font-semibold", c.text)}>
           {game.home_team_name.slice(0, 3).toUpperCase()}
         </span>
         {!comfort && status && (
@@ -60,7 +64,7 @@ export default function GameChip({ game, comfort, onClick }: GameChipProps) {
       </div>
       {/* Row 2: league + detail (comfort only) */}
       {comfort && (
-        <div className="flex items-center gap-1.5 text-[10px] text-secondary/40">
+        <div className={clsx("flex items-center gap-1.5 text-[10px]", c.textFaint)}>
           {game.league && (
             <span className="uppercase font-semibold">{game.league}</span>
           )}

@@ -1,9 +1,12 @@
 import { clsx } from "clsx";
 import type { Trade } from "~/utils/types";
+import type { ChipColorMode } from "../../preferences";
+import { getChipColors } from "./chipColors";
 
 interface TradeChipProps {
   trade: Trade;
   comfort?: boolean;
+  colorMode?: ChipColorMode;
   onClick?: () => void;
 }
 
@@ -28,7 +31,8 @@ function formatPriceChange(change: number | string | undefined): string {
   return `${sign}$${Math.abs(num).toFixed(2)}`;
 }
 
-export default function TradeChip({ trade, comfort, onClick }: TradeChipProps) {
+export default function TradeChip({ trade, comfort, colorMode = "channel", onClick }: TradeChipProps) {
+  const c = getChipColors(colorMode, "finance");
   const isUp = trade.direction === "up";
   const changeStr = formatChange(trade.percentage_change);
 
@@ -40,14 +44,14 @@ export default function TradeChip({ trade, comfort, onClick }: TradeChipProps) {
         "px-3 rounded-sm border",
         "font-mono whitespace-nowrap",
         "transition-colors cursor-pointer",
-        "bg-primary/[0.06] border-primary/25 hover:border-primary/40",
+        c.bg, c.border, c.hoverBorder,
         comfort ? "flex flex-col items-start py-1.5 gap-0.5" : "flex items-center gap-2 py-1 text-[13px]",
       )}
     >
       {/* Row 1: symbol, price, change */}
       <div className={clsx("flex items-center gap-2", comfort && "text-[13px]")}>
-        <span className="font-semibold text-primary">{trade.symbol}</span>
-        <span className="text-primary/60">{formatPrice(trade.price)}</span>
+        <span className={clsx("font-semibold", c.text)}>{trade.symbol}</span>
+        <span className={c.textDim}>{formatPrice(trade.price)}</span>
         {changeStr && (
           <span
             className={clsx(
@@ -62,7 +66,7 @@ export default function TradeChip({ trade, comfort, onClick }: TradeChipProps) {
       </div>
       {/* Row 2: previous close + price change (comfort only) */}
       {comfort && (
-        <div className="flex items-center gap-1.5 text-[10px] text-primary/40">
+        <div className={clsx("flex items-center gap-1.5 text-[10px]", c.textFaint)}>
           {trade.previous_close != null && (
             <span>Prev {formatPrice(trade.previous_close)}</span>
           )}

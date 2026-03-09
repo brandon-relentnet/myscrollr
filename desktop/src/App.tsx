@@ -1179,7 +1179,7 @@ export default function App() {
       {!tickerCollapsed && prefs.ticker.showTicker &&
         Array.from({ length: prefs.appearance.tickerRows }, (_, i) => (
           <ScrollrTicker
-            key={`row${i}-${prefs.ticker.tickerGap}-${prefs.ticker.tickerSpeed}-${prefs.ticker.hoverSpeed}-${prefs.ticker.tickerMode}-${prefs.ticker.mixMode}-${prefs.appearance.tickerRows}`}
+            key={`row${i}-${prefs.ticker.tickerGap}-${prefs.ticker.tickerSpeed}-${prefs.ticker.hoverSpeed}-${prefs.ticker.tickerMode}-${prefs.ticker.mixMode}-${prefs.ticker.chipColors}-${prefs.appearance.tickerRows}`}
             dashboard={dashboard}
             activeTabs={activeTabs}
             onChipClick={handleChipClick}
@@ -1188,6 +1188,7 @@ export default function App() {
             pauseOnHover={prefs.ticker.pauseOnHover}
             hoverSpeed={prefs.ticker.hoverSpeed}
             mixMode={prefs.ticker.mixMode}
+            chipColorMode={prefs.ticker.chipColors}
             comfort={prefs.ticker.tickerMode === "comfort"}
             rowIndex={i}
             totalRows={prefs.appearance.tickerRows}

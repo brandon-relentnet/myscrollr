@@ -1,9 +1,12 @@
 import { clsx } from "clsx";
 import type { RssItem } from "~/utils/types";
+import type { ChipColorMode } from "../../preferences";
+import { getChipColors } from "./chipColors";
 
 interface RssChipProps {
   item: RssItem;
   comfort?: boolean;
+  colorMode?: ChipColorMode;
   onClick?: () => void;
 }
 
@@ -19,7 +22,8 @@ function timeAgo(dateStr: string | null): string {
   return `${days}d ago`;
 }
 
-export default function RssChip({ item, comfort, onClick }: RssChipProps) {
+export default function RssChip({ item, comfort, colorMode = "channel", onClick }: RssChipProps) {
+  const c = getChipColors(colorMode, "rss");
   const maxLen = comfort ? 60 : 40;
   const headline =
     item.title.length > maxLen ? item.title.slice(0, maxLen) + "\u2026" : item.title;
@@ -32,15 +36,15 @@ export default function RssChip({ item, comfort, onClick }: RssChipProps) {
         "px-3 rounded-sm border",
         "whitespace-nowrap",
         "transition-colors cursor-pointer",
-        "bg-info/[0.06] border-info/25 hover:border-info/40",
+        c.bg, c.border, c.hoverBorder,
         comfort ? "flex flex-col items-start py-1.5 gap-0.5" : "flex items-center gap-2 py-1 text-[13px]",
       )}
     >
       {/* Row 1: headline */}
-      <span className={clsx("text-info font-medium", comfort && "text-[13px]")}>{headline}</span>
+      <span className={clsx("font-medium", c.text, comfort && "text-[13px]")}>{headline}</span>
       {/* Row 2: source + time (comfort) / inline source (compact) */}
       {comfort ? (
-        <div className="flex items-center gap-1.5 text-[10px] text-info/40 font-mono">
+        <div className={clsx("flex items-center gap-1.5 text-[10px] font-mono", c.textFaint)}>
           {item.source_name && <span>{item.source_name}</span>}
           {item.published_at && (
             <>
@@ -53,7 +57,7 @@ export default function RssChip({ item, comfort, onClick }: RssChipProps) {
         item.source_name && (
           <>
             <span className="text-fg-4">&middot;</span>
-            <span className="text-info/60 font-mono text-[12px]">
+            <span className={clsx("font-mono text-[12px]", c.textDim)}>
               {item.source_name}
             </span>
           </>

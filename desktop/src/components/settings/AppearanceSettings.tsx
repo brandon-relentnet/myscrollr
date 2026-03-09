@@ -6,6 +6,7 @@ import type {
   TickerGap,
   TickerMode,
   MixMode,
+  ChipColorMode,
 } from "../../preferences";
 import {
   Section,
@@ -62,6 +63,12 @@ const MIX_OPTIONS: { value: MixMode; label: string }[] = [
   { value: "grouped", label: "Grouped" },
   { value: "weave", label: "Weave" },
   { value: "random", label: "Random" },
+];
+
+const COLOR_OPTIONS: { value: ChipColorMode; label: string }[] = [
+  { value: "channel", label: "Channel" },
+  { value: "accent", label: "Accent" },
+  { value: "muted", label: "Muted" },
 ];
 
 function speedLabel(speed: number): string {
@@ -191,6 +198,13 @@ export default function AppearanceSettings({
               value={ticker.mixMode}
               options={MIX_OPTIONS}
               onChange={(v) => setTicker("mixMode", v)}
+            />
+            <SegmentedRow
+              label="Chip colors"
+              description="Color scheme for ticker items"
+              value={ticker.chipColors}
+              options={COLOR_OPTIONS}
+              onChange={(v) => setTicker("chipColors", v)}
             />
           </>
         )}

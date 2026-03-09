@@ -1,12 +1,17 @@
 import { clsx } from "clsx";
+import type { ChipColorMode } from "../../preferences";
+import { getChipColors } from "./chipColors";
 
 interface FantasyChipProps {
   item: Record<string, unknown>;
   comfort?: boolean;
+  colorMode?: ChipColorMode;
   onClick?: () => void;
 }
 
-export default function FantasyChip({ item, comfort, onClick }: FantasyChipProps) {
+export default function FantasyChip({ item, comfort, colorMode = "channel", onClick }: FantasyChipProps) {
+  const c = getChipColors(colorMode, "fantasy");
+
   // Fantasy data shape varies — extract what's available
   const label =
     (item.player_name as string) ||
@@ -28,20 +33,20 @@ export default function FantasyChip({ item, comfort, onClick }: FantasyChipProps
         "px-3 rounded-sm border",
         "font-mono whitespace-nowrap",
         "transition-colors cursor-pointer",
-        "bg-accent-purple/[0.06] border-accent-purple/25 hover:border-accent-purple/40",
+        c.bg, c.border, c.hoverBorder,
         comfort ? "flex flex-col items-start py-1.5 gap-0.5" : "flex items-center gap-2 py-1 text-[13px]",
       )}
     >
       {/* Row 1: name + points */}
       <div className={clsx("flex items-center gap-2", comfort && "text-[13px]")}>
-        <span className="font-medium text-accent-purple">{label}</span>
+        <span className={clsx("font-medium", c.text)}>{label}</span>
         {value != null && (
-          <span className="text-accent-purple/60">{Number(value).toFixed(1)}pts</span>
+          <span className={c.textDim}>{Number(value).toFixed(1)}pts</span>
         )}
       </div>
       {/* Row 2: team + position (comfort only) */}
       {comfort && (team || position) && (
-        <div className="flex items-center gap-1.5 text-[10px] text-accent-purple/40">
+        <div className={clsx("flex items-center gap-1.5 text-[10px]", c.textFaint)}>
           {position && <span className="uppercase font-semibold">{position}</span>}
           {position && team && <span className="text-fg-4">&middot;</span>}
           {team && <span>{team}</span>}

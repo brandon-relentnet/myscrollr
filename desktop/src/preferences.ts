@@ -11,6 +11,7 @@ export type TickerMode = "compact" | "comfort";
 export type DefaultView = "feed" | "dashboard" | "last";
 export type TickerRows = 1 | 2 | 3;
 export type MixMode = "grouped" | "weave" | "random";
+export type ChipColorMode = "channel" | "accent" | "muted";
 
 export interface AppearancePrefs {
   theme: Theme;
@@ -26,6 +27,7 @@ export interface TickerPrefs {
   tickerGap: TickerGap;
   tickerMode: TickerMode;
   mixMode: MixMode;
+  chipColors: ChipColorMode;
 }
 
 export interface StartupPrefs {
@@ -73,6 +75,7 @@ export const DEFAULT_TICKER: TickerPrefs = {
   tickerGap: "normal",
   tickerMode: "compact",
   mixMode: "grouped",
+  chipColors: "channel",
 };
 
 export const DEFAULT_STARTUP: StartupPrefs = {

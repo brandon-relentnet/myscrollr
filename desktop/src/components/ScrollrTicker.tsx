@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Ticker } from "motion-plus/react";
 import type { DashboardResponse, Trade, Game, RssItem } from "~/utils/types";
-import type { MixMode } from "../preferences";
+import type { MixMode, ChipColorMode } from "../preferences";
 import TradeChip from "./chips/TradeChip";
 import GameChip from "./chips/GameChip";
 import RssChip from "./chips/RssChip";
@@ -25,6 +25,8 @@ interface ScrollrTickerProps {
   comfort?: boolean;
   /** How items from different channels are ordered */
   mixMode?: MixMode;
+  /** Chip color scheme */
+  chipColorMode?: ChipColorMode;
   /** Which row this ticker represents (0-indexed, for multi-row splitting) */
   rowIndex?: number;
   /** Total number of ticker rows (items distributed round-robin) */
@@ -71,6 +73,7 @@ export default function ScrollrTicker({
   pauseOnHover = true,
   hoverSpeed = 0.3,
   mixMode = "grouped",
+  chipColorMode = "channel",
   comfort = false,
   rowIndex = 0,
   totalRows = 1,
@@ -102,6 +105,7 @@ export default function ScrollrTicker({
                 <TradeChip
                   trade={trade}
                   comfort={comfort}
+                  colorMode={chipColorMode}
                   onClick={() => onChipClick?.("finance", trade.symbol)}
                 />
               )
@@ -116,6 +120,7 @@ export default function ScrollrTicker({
                 <GameChip
                   game={game}
                   comfort={comfort}
+                  colorMode={chipColorMode}
                   onClick={() => onChipClick?.("sports", game.id)}
                 />
               )
@@ -130,6 +135,7 @@ export default function ScrollrTicker({
                 <RssChip
                   item={item}
                   comfort={comfort}
+                  colorMode={chipColorMode}
                   onClick={() => onChipClick?.("rss", item.id)}
                 />
               )
@@ -146,6 +152,7 @@ export default function ScrollrTicker({
                 <FantasyChip
                   item={item}
                   comfort={comfort}
+                  colorMode={chipColorMode}
                   onClick={() => onChipClick?.(tab, id)}
                 />
               )
@@ -175,7 +182,7 @@ export default function ScrollrTicker({
     // When multiple rows, distribute items round-robin
     if (totalRows <= 1) return allItems;
     return allItems.filter((_, i) => i % totalRows === rowIndex);
-  }, [dashboard, activeTabs, onChipClick, comfort, mixMode, rowIndex, totalRows]);
+  }, [dashboard, activeTabs, onChipClick, comfort, mixMode, chipColorMode, rowIndex, totalRows]);
 
   if (chips.length === 0) return null;
 
