@@ -521,6 +521,17 @@ pub fn run() {
             hide_app_window,
             quit_app,
         ])
+        .on_window_event(|window, event| {
+            // Intercept close on both windows — hide instead of destroy.
+            // Only tray "Quit" or context menu "Quit" actually exits.
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let label = window.label();
+                if label == "app" || label == "ticker" {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
+        })
         .setup(|app| {
             // ── Ticker window setup ──────────────────────────────
             let ticker = app.get_webview_window("ticker").unwrap();
@@ -545,7 +556,6 @@ pub fn run() {
                 .items(&[&open, &show_ticker, &quit])
                 .build()?;
 
-            let ticker_clone = ticker.clone();
             TrayIconBuilder::new()
                 .tooltip("Scrollr")
                 .icon(app.default_window_icon().unwrap().clone())
@@ -572,19 +582,17 @@ pub fn run() {
                     }
                     _ => {}
                 })
-                .on_tray_icon_event(move |_tray, event| {
-                    // Left-click tray icon toggles ticker visibility
+                .on_tray_icon_event(move |tray, event| {
+                    // Left-click tray icon opens/focuses the app window
                     if let TrayIconEvent::Click {
                         button: MouseButton::Left,
                         button_state: MouseButtonState::Up,
                         ..
                     } = event
                     {
-                        if ticker_clone.is_visible().unwrap_or(false) {
-                            let _ = ticker_clone.hide();
-                        } else {
-                            let _ = ticker_clone.show();
-                            let _ = ticker_clone.set_focus();
+                        if let Some(w) = tray.app_handle().get_webview_window("app") {
+                            let _ = w.show();
+                            let _ = w.set_focus();
                         }
                     }
                 })
