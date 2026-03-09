@@ -478,6 +478,25 @@ fn process_sse_frame(app: &tauri::AppHandle, frame: &str) {
     }
 }
 
+// ── App window commands ──────────────────────────────────────────
+
+#[tauri::command]
+fn show_app_window(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("app") {
+        w.show().map_err(|e| format!("show failed: {e}"))?;
+        w.set_focus().map_err(|e| format!("focus failed: {e}"))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn hide_app_window(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("app") {
+        w.hide().map_err(|e| format!("hide failed: {e}"))?;
+    }
+    Ok(())
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -493,35 +512,47 @@ pub fn run() {
             start_auth_server,
             start_sse,
             stop_sse,
+            show_app_window,
+            hide_app_window,
         ])
         .setup(|app| {
-            let window = app.get_webview_window("main").unwrap();
+            // ── Ticker window setup ──────────────────────────────
+            let ticker = app.get_webview_window("ticker").unwrap();
 
-            // Allow the window to collapse to just the 32px header
-            let _ = window.set_min_size(Some(tauri::LogicalSize::new(200.0, 36.0)));
+            // Allow the ticker to collapse to just the header
+            let _ = ticker.set_min_size(Some(tauri::LogicalSize::new(200.0, 36.0)));
 
-            // Set initial window width to fill screen
-            if let Ok(Some(monitor)) = window.current_monitor() {
+            // Set initial ticker width to fill screen
+            if let Ok(Some(monitor)) = ticker.current_monitor() {
                 let scale = monitor.scale_factor();
                 let screen_width = monitor.size().width as f64 / scale;
-                let _ = window.set_size(tauri::LogicalSize::new(screen_width, 200.0));
+                let _ = ticker.set_size(tauri::LogicalSize::new(screen_width, 200.0));
             }
 
-            let _ = window.show();
+            let _ = ticker.show();
 
-            // System tray
-            let show = MenuItemBuilder::with_id("show", "Show/Hide").build(app)?;
+            // ── System tray ──────────────────────────────────────
+            let open = MenuItemBuilder::with_id("open", "Open Scrollr").build(app)?;
+            let show_ticker = MenuItemBuilder::with_id("show_ticker", "Show/Hide Ticker").build(app)?;
             let quit = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
-            let menu = MenuBuilder::new(app).items(&[&show, &quit]).build()?;
+            let menu = MenuBuilder::new(app)
+                .items(&[&open, &show_ticker, &quit])
+                .build()?;
 
-            let window_clone = window.clone();
+            let ticker_clone = ticker.clone();
             TrayIconBuilder::new()
                 .tooltip("Scrollr")
                 .icon(app.default_window_icon().unwrap().clone())
                 .menu(&menu)
                 .on_menu_event(move |app, event| match event.id().as_ref() {
-                    "show" => {
-                        if let Some(w) = app.get_webview_window("main") {
+                    "open" => {
+                        if let Some(w) = app.get_webview_window("app") {
+                            let _ = w.show();
+                            let _ = w.set_focus();
+                        }
+                    }
+                    "show_ticker" => {
+                        if let Some(w) = app.get_webview_window("ticker") {
                             if w.is_visible().unwrap_or(false) {
                                 let _ = w.hide();
                             } else {
@@ -536,17 +567,18 @@ pub fn run() {
                     _ => {}
                 })
                 .on_tray_icon_event(move |_tray, event| {
+                    // Left-click tray icon toggles ticker visibility
                     if let TrayIconEvent::Click {
                         button: MouseButton::Left,
                         button_state: MouseButtonState::Up,
                         ..
                     } = event
                     {
-                        if window_clone.is_visible().unwrap_or(false) {
-                            let _ = window_clone.hide();
+                        if ticker_clone.is_visible().unwrap_or(false) {
+                            let _ = ticker_clone.hide();
                         } else {
-                            let _ = window_clone.show();
-                            let _ = window_clone.set_focus();
+                            let _ = ticker_clone.show();
+                            let _ = ticker_clone.set_focus();
                         }
                     }
                 })

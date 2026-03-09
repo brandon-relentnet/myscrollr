@@ -71,7 +71,8 @@
 /* Dark is the default @theme. Light overrides via data-theme attribute.
    Color palette matches the website's light mode. */
 
-#desktop-shell[data-theme="light"] {
+#desktop-shell[data-theme="light"],
+#app-shell[data-theme="light"] {
   --color-surface: #ffffff;
   --color-surface-2: #f6f7fb;
   --color-surface-hover: #eef0f6;
@@ -105,21 +106,26 @@
 
 /* Smooth theme transition */
 #desktop-shell.theme-transition,
-#desktop-shell.theme-transition * {
+#desktop-shell.theme-transition *,
+#app-shell.theme-transition,
+#app-shell.theme-transition * {
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease !important;
 }
 
 /* Light theme scrollbar */
-#desktop-shell[data-theme="light"] ::-webkit-scrollbar-thumb {
+#desktop-shell[data-theme="light"] ::-webkit-scrollbar-thumb,
+#app-shell[data-theme="light"] ::-webkit-scrollbar-thumb {
   background: var(--color-base-350);
 }
 
-#desktop-shell[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+#desktop-shell[data-theme="light"] ::-webkit-scrollbar-thumb:hover,
+#app-shell[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
   background: var(--color-base-400);
 }
 
 /* Light theme selection */
-#desktop-shell[data-theme="light"] ::selection {
+#desktop-shell[data-theme="light"] ::selection,
+#app-shell[data-theme="light"] ::selection {
   background: rgba(52, 211, 153, 0.2);
   color: var(--color-fg);
 }
@@ -320,7 +326,8 @@ body {
 }
 
 /* Every button in the app shows pointer cursor */
-#desktop-shell button {
+#desktop-shell button,
+#app-shell button {
   cursor: pointer;
 }
 

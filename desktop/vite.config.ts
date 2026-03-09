@@ -111,10 +111,16 @@ export default defineConfig({
     },
   },
 
-  // Ensure Vite clears the correct output dir
+  // Multi-page build: ticker (index.html) + app window (app.html)
   build: {
     outDir: "dist",
     emptyOutDir: true,
     target: "esnext",
+    rollupOptions: {
+      input: {
+        main: resolve(projectRoot, "index.html"),
+        app: resolve(projectRoot, "app.html"),
+      },
+    },
   },
 });

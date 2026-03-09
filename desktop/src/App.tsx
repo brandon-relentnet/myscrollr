@@ -973,6 +973,39 @@ export default function App() {
     shell.style.zoom = prefs.appearance.uiScale === 100 ? "" : `${prefs.appearance.uiScale}%`;
   }, [prefs.appearance.uiScale]);
 
+  // ── Cross-window prefs sync ─────────────────────────────────
+  // StorageEvent fires only in the OTHER window, so no infinite loops.
+
+  useEffect(() => {
+    function onStorage(e: StorageEvent) {
+      if (e.key === "scrollr:settings" && e.newValue) {
+        let next: AppPreferences;
+        try {
+          next = JSON.parse(e.newValue) as AppPreferences;
+        } catch {
+          return;
+        }
+
+        const prev = prefsRef.current;
+        setPrefs(next);
+
+        // Side effects: pin toggle
+        if (next.window.pinned !== prev.window.pinned) {
+          setPinned(next.window.pinned);
+          savePref("feedPinned", next.window.pinned);
+          invoke("pin_window", { pinned: next.window.pinned }).catch(() => {});
+        }
+
+        // Side effects: ticker visibility
+        const nextCollapsed = !next.ticker.showTicker;
+        setTickerCollapsed(nextCollapsed);
+        savePref("tickerCollapsed", nextCollapsed);
+      }
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
   // ── Auth handlers ─────────────────────────────────────────────
 
   const handleLogin = useCallback(async () => {

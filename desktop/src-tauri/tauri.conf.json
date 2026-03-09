@@ -21,7 +21,7 @@
   "app": {
     "windows": [
       {
-        "label": "main",
+        "label": "ticker",
         "title": "Scrollr",
         "width": 1920,
         "height": 228,
@@ -29,6 +29,21 @@
         "alwaysOnTop": true,
         "resizable": true,
         "skipTaskbar": true,
+        "visible": false,
+        "center": true
+      },
+      {
+        "label": "app",
+        "url": "app.html",
+        "title": "Scrollr",
+        "width": 960,
+        "height": 640,
+        "minWidth": 720,
+        "minHeight": 480,
+        "decorations": true,
+        "alwaysOnTop": false,
+        "resizable": true,
+        "skipTaskbar": false,
         "visible": false,
         "center": true
       }

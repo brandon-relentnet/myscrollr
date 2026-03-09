@@ -155,6 +155,25 @@ function migrateV1(saved: Record<string, unknown>): Partial<AppPreferences> {
   return result as Partial<AppPreferences>;
 }
 
+// ── Single-key helpers ──────────────────────────────────────────
+// For ad-hoc prefs not in the structured AppPreferences object
+// (e.g. feedHeight, activeTab, canvasMode). Used by both windows.
+
+export function loadPref<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(`scrollr:${key}`);
+    return raw !== null ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+export function savePref<T>(key: string, value: T): void {
+  localStorage.setItem(`scrollr:${key}`, JSON.stringify(value));
+}
+
+// ── Structured preferences ─────────────────────────────────────
+
 export function loadPrefs(): AppPreferences {
   try {
     const raw = localStorage.getItem(PREFIX);

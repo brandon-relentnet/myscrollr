@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main-capability",
-  "description": "Capability for the main window",
-  "windows": ["main"],
+  "description": "Capabilities for all Scrollr windows",
+  "windows": ["ticker", "app"],
   "permissions": [
     "core:default",
     "core:window:default",
@@ -14,6 +14,7 @@
     "core:window:allow-hide",
     "core:window:allow-set-focus",
     "core:window:allow-center",
+    "core:window:allow-close",
     "core:window:allow-start-dragging",
     "core:window:allow-start-resize-dragging",
     "core:window:allow-outer-size",
@@ -22,6 +23,9 @@
     "core:window:allow-available-monitors",
     "core:window:allow-current-monitor",
     "core:window:allow-primary-monitor",
+    "core:event:default",
+    "core:event:allow-emit",
+    "core:event:allow-listen",
     "shell:allow-open",
     "autostart:allow-enable",
     "autostart:allow-disable",
