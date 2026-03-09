@@ -115,21 +115,11 @@ export default function SettingsPanel({
 
           {active === "behavior" && (
             <BehaviorSettings
-              startup={prefs.startup}
               window_={prefs.window}
-              taskbar={prefs.taskbar}
-              onStartupChange={(startup) =>
-                updatePrefs({ ...prefs, startup })
-              }
               onWindowChange={(window_) =>
                 updatePrefs({ ...prefs, window: window_ })
               }
-              onTaskbarChange={(taskbar) =>
-                updatePrefs({ ...prefs, taskbar })
-              }
-              onResetStartup={() => handleResetCategory("startup")}
               onResetWindow={() => handleResetCategory("window")}
-              onResetTaskbar={() => handleResetCategory("taskbar")}
               autostartEnabled={autostartEnabled}
               onAutostartChange={onAutostartChange}
             />

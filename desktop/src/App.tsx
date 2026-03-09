@@ -394,6 +394,17 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [prefs.appearance.theme]);
 
+  // ── UI scale application ───────────────────────────────────────
+
+  useEffect(() => {
+    const shell = document.getElementById("desktop-shell");
+    if (!shell) return;
+    (shell as HTMLElement).style.zoom =
+      prefs.appearance.uiScale === 100
+        ? ""
+        : `${prefs.appearance.uiScale}%`;
+  }, [prefs.appearance.uiScale]);
+
   // ── Initial setup ────────────────────────────────────────────
 
   useEffect(() => {
