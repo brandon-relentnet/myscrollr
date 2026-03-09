@@ -536,9 +536,6 @@ pub fn run() {
             // ── Ticker window setup ──────────────────────────────
             let ticker = app.get_webview_window("ticker").unwrap();
 
-            // Allow the ticker to collapse to just the header
-            let _ = ticker.set_min_size(Some(tauri::LogicalSize::new(200.0, 36.0)));
-
             // Set initial ticker width to fill screen
             if let Ok(Some(monitor)) = ticker.current_monitor() {
                 let scale = monitor.scale_factor();
