@@ -38,6 +38,7 @@ import {
   savePrefs,
   TASKBAR_HEIGHTS,
   TICKER_GAPS,
+  TICKER_HEIGHTS,
 } from "./preferences";
 import type { AppPreferences } from "./preferences";
 import {
@@ -58,7 +59,6 @@ const POLL_INTERVALS: Record<SubscriptionTier, number> = {
   uplink: 30_000,
   uplink_unlimited: 30_000, // Baseline fallback; SSE CDC handles real-time
 };
-const TICKER_HEIGHT = 44;
 const TASKBAR_HEIGHT = 36;
 const MIN_HEIGHT = 100;
 const MAX_HEIGHT = 600;
@@ -887,7 +887,7 @@ export default function App() {
   // ── Initial setup ────────────────────────────────────────────
 
   useEffect(() => {
-    const tickerH = tickerCollapsed ? 0 : TICKER_HEIGHT;
+    const tickerH = tickerCollapsed ? 0 : TICKER_HEIGHTS[prefs.ticker.tickerMode];
     const effectiveHeight = height + tickerH;
     invoke("resize_window", { height: effectiveHeight })
       .then(() => getCurrentWindow().show())
@@ -1141,7 +1141,7 @@ export default function App() {
     <div id="desktop-shell">
       {!tickerCollapsed && prefs.ticker.showTicker && (
         <ScrollrTicker
-          key={`${prefs.ticker.tickerGap}-${prefs.ticker.tickerSpeed}-${prefs.ticker.hoverSpeed}`}
+          key={`${prefs.ticker.tickerGap}-${prefs.ticker.tickerSpeed}-${prefs.ticker.hoverSpeed}-${prefs.ticker.tickerMode}`}
           dashboard={dashboard}
           activeTabs={activeTabs}
           onChipClick={handleChipClick}
@@ -1149,6 +1149,7 @@ export default function App() {
           gap={TICKER_GAPS[prefs.ticker.tickerGap]}
           pauseOnHover={prefs.ticker.pauseOnHover}
           hoverSpeed={prefs.ticker.hoverSpeed}
+          comfort={prefs.ticker.tickerMode === "comfort"}
         />
       )}
       {showChannelPicker && authenticated && (
@@ -1157,7 +1158,7 @@ export default function App() {
           activeTabs={activeTabs}
           onToggle={handlePickerToggle}
           onClose={() => setShowChannelPicker(false)}
-          topOffset={(tickerCollapsed || !prefs.ticker.showTicker ? 0 : TICKER_HEIGHT) + TASKBAR_HEIGHTS[prefs.taskbar.taskbarHeight] + 2}
+          topOffset={(tickerCollapsed || !prefs.ticker.showTicker ? 0 : TICKER_HEIGHTS[prefs.ticker.tickerMode]) + TASKBAR_HEIGHTS[prefs.taskbar.taskbarHeight] + 2}
         />
       )}
       {showMenu && (
@@ -1165,7 +1166,7 @@ export default function App() {
           onSettings={handleOpenSettings}
           onQuit={handleQuit}
           onClose={() => setShowMenu(false)}
-          topOffset={(tickerCollapsed || !prefs.ticker.showTicker ? 0 : TICKER_HEIGHT) + TASKBAR_HEIGHTS[prefs.taskbar.taskbarHeight] + 2}
+          topOffset={(tickerCollapsed || !prefs.ticker.showTicker ? 0 : TICKER_HEIGHTS[prefs.ticker.tickerMode]) + TASKBAR_HEIGHTS[prefs.taskbar.taskbarHeight] + 2}
         />
       )}
       <FeedBar

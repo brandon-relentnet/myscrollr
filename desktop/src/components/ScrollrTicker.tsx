@@ -20,6 +20,8 @@ interface ScrollrTickerProps {
   pauseOnHover?: boolean;
   /** Speed multiplier on hover, 0 = full pause (default 0.3) */
   hoverSpeed?: number;
+  /** Show 2-row comfort chips with extra detail */
+  comfort?: boolean;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────
@@ -38,6 +40,7 @@ export default function ScrollrTicker({
   gap = 8,
   pauseOnHover = true,
   hoverSpeed = 0.3,
+  comfort = false,
 }: ScrollrTickerProps) {
   // Build a unified chip array from all active channels' data.
   // Each chip is a React node keyed by channel + item identity.
@@ -66,6 +69,7 @@ export default function ScrollrTicker({
               wrap(`fin-${trade.symbol}`,
                 <TradeChip
                   trade={trade}
+                  comfort={comfort}
                   onClick={() => onChipClick?.("finance", trade.symbol)}
                 />
               )
@@ -79,6 +83,7 @@ export default function ScrollrTicker({
               wrap(`spo-${game.id}`,
                 <GameChip
                   game={game}
+                  comfort={comfort}
                   onClick={() => onChipClick?.("sports", game.id)}
                 />
               )
@@ -92,6 +97,7 @@ export default function ScrollrTicker({
               wrap(`rss-${item.id}`,
                 <RssChip
                   item={item}
+                  comfort={comfort}
                   onClick={() => onChipClick?.("rss", item.id)}
                 />
               )
@@ -108,6 +114,7 @@ export default function ScrollrTicker({
               wrap(`${tab}-${id}`,
                 <FantasyChip
                   item={item}
+                  comfort={comfort}
                   onClick={() => onChipClick?.(tab, id)}
                 />
               )
@@ -119,12 +126,12 @@ export default function ScrollrTicker({
     }
 
     return items;
-  }, [dashboard, activeTabs, onChipClick]);
+  }, [dashboard, activeTabs, onChipClick, comfort]);
 
   if (chips.length === 0) return null;
 
   return (
-    <div className="ticker-container h-11 flex items-center bg-base-150 border-b border-edge/50 flex-shrink-0 overflow-hidden relative">
+    <div className={`ticker-container ${comfort ? "h-16" : "h-11"} flex items-center bg-base-150 border-b border-edge/50 flex-shrink-0 overflow-hidden relative`}>
       {/* Top accent line — matches the website's card accent pattern */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent z-10" />
       <Ticker

@@ -6,6 +6,7 @@
 
 export type TaskbarHeight = "compact" | "default" | "comfortable";
 export type TickerGap = "tight" | "normal" | "spacious";
+export type TickerMode = "compact" | "comfort";
 export type DefaultView = "feed" | "dashboard" | "last";
 
 export interface GeneralPrefs {
@@ -32,6 +33,7 @@ export interface TickerPrefs {
   pauseOnHover: boolean;
   hoverSpeed: number;
   tickerGap: TickerGap;
+  tickerMode: TickerMode;
 }
 
 export interface WindowPrefs {
@@ -74,6 +76,7 @@ export const DEFAULT_TICKER: TickerPrefs = {
   pauseOnHover: true,
   hoverSpeed: 0.3,
   tickerGap: "normal",
+  tickerMode: "compact",
 };
 
 export const DEFAULT_WINDOW: WindowPrefs = {
@@ -147,4 +150,9 @@ export const TICKER_GAPS: Record<TickerGap, number> = {
   tight: 8,
   normal: 12,
   spacious: 20,
+};
+
+export const TICKER_HEIGHTS: Record<TickerMode, number> = {
+  compact: 44,
+  comfort: 64,
 };

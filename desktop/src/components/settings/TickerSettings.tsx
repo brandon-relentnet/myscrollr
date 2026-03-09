@@ -1,4 +1,4 @@
-import type { TickerPrefs, TickerGap } from "../../preferences";
+import type { TickerPrefs, TickerGap, TickerMode } from "../../preferences";
 import {
   Section,
   ToggleRow,
@@ -12,6 +12,11 @@ interface TickerSettingsProps {
   onChange: (prefs: TickerPrefs) => void;
   onReset: () => void;
 }
+
+const MODE_OPTIONS: { value: TickerMode; label: string }[] = [
+  { value: "compact", label: "Compact" },
+  { value: "comfort", label: "Comfort" },
+];
 
 const GAP_OPTIONS: { value: TickerGap; label: string }[] = [
   { value: "tight", label: "Tight" },
@@ -47,6 +52,15 @@ export default function TickerSettings({
           checked={prefs.showTicker}
           onChange={(v) => set("showTicker", v)}
         />
+        {prefs.showTicker && (
+          <SegmentedRow
+            label="Density"
+            description="Comfort shows extra detail in a taller 2-row chip"
+            value={prefs.tickerMode}
+            options={MODE_OPTIONS}
+            onChange={(v) => set("tickerMode", v)}
+          />
+        )}
       </Section>
 
       {prefs.showTicker && (
