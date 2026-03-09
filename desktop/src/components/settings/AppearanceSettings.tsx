@@ -178,6 +178,12 @@ export default function AppearanceSettings({
               options={GAP_OPTIONS}
               onChange={(v) => setTicker("tickerGap", v)}
             />
+            <ToggleRow
+              label="Shuffle"
+              description="Mix items from all channels instead of grouping them"
+              checked={ticker.shuffle}
+              onChange={(v) => setTicker("shuffle", v)}
+            />
           </>
         )}
       </Section>

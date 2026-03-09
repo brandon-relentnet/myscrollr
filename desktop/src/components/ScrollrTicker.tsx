@@ -22,6 +22,8 @@ interface ScrollrTickerProps {
   hoverSpeed?: number;
   /** Show 2-row comfort chips with extra detail */
   comfort?: boolean;
+  /** Shuffle items across channels instead of grouping by channel */
+  shuffle?: boolean;
   /** Which row this ticker represents (0-indexed, for multi-row splitting) */
   rowIndex?: number;
   /** Total number of ticker rows (items distributed round-robin) */
@@ -34,6 +36,24 @@ function getItemId(item: Record<string, unknown>): string | number {
   return (item.id as string | number) ?? (item.symbol as string) ?? 0;
 }
 
+/** Seeded Fisher-Yates shuffle — deterministic for the same seed so the
+ *  ticker doesn't re-shuffle on every render. Seed changes when the
+ *  underlying data changes (new items arrive). */
+function seededShuffle<T>(arr: T[], seed: number): T[] {
+  const out = arr.slice();
+  let s = seed;
+  for (let i = out.length - 1; i > 0; i--) {
+    // Simple mulberry32-style PRNG step
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    const r = ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    const j = Math.floor(r * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
 // ── Component ────────────────────────────────────────────────────
 
 export default function ScrollrTicker({
@@ -44,6 +64,7 @@ export default function ScrollrTicker({
   gap = 8,
   pauseOnHover = true,
   hoverSpeed = 0.3,
+  shuffle = false,
   comfort = false,
   rowIndex = 0,
   totalRows = 1,
@@ -131,10 +152,14 @@ export default function ScrollrTicker({
       }
     }
 
+    // Shuffle items across channels when enabled. Seed is derived from
+    // the item count so we get a stable order until new data arrives.
+    const ordered = shuffle ? seededShuffle(allItems, allItems.length) : allItems;
+
     // When multiple rows, distribute items round-robin
-    if (totalRows <= 1) return allItems;
-    return allItems.filter((_, i) => i % totalRows === rowIndex);
-  }, [dashboard, activeTabs, onChipClick, comfort, rowIndex, totalRows]);
+    if (totalRows <= 1) return ordered;
+    return ordered.filter((_, i) => i % totalRows === rowIndex);
+  }, [dashboard, activeTabs, onChipClick, comfort, shuffle, rowIndex, totalRows]);
 
   if (chips.length === 0) return null;
 
