@@ -26,6 +26,7 @@
     "core:event:default",
     "core:event:allow-emit",
     "core:event:allow-listen",
+    "core:menu:default",
     "shell:allow-open",
     "autostart:allow-enable",
     "autostart:allow-disable",

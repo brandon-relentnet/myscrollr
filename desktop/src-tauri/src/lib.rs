@@ -497,6 +497,11 @@ fn hide_app_window(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn quit_app(app: tauri::AppHandle) {
+    app.exit(0);
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -514,6 +519,7 @@ pub fn run() {
             stop_sse,
             show_app_window,
             hide_app_window,
+            quit_app,
         ])
         .setup(|app| {
             // ── Ticker window setup ──────────────────────────────

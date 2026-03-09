@@ -3,6 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { fetch } from "@tauri-apps/plugin-http";
+import { Menu, CheckMenuItem, MenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu";
 import type {
   DashboardResponse,
   DeliveryMode,
@@ -15,6 +16,7 @@ import {
 } from "./auth";
 import type { SubscriptionTier } from "./auth";
 import type { Channel } from "./api/client";
+import { channelsApi } from "./api/client";
 import {
   loadPrefs,
   savePrefs,
@@ -54,10 +56,13 @@ export default function App() {
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>("polling");
 
-  // Channel visibility
+  // Channel state
+  const [channels, setChannels] = useState<Channel[]>([]);
   const [activeTabs, setActiveTabs] = useState<string[]>(() =>
     loadPref("activeFeedTabs", ["finance", "sports"]),
   );
+  const channelsRef = useRef(channels);
+  channelsRef.current = channels;
 
   // Ticker state
   const [tickerCollapsed, setTickerCollapsed] = useState(() =>
@@ -109,9 +114,10 @@ export default function App() {
       const data = await res.json();
       setDashboard({ data: data.data });
 
-      // Sync active tabs from server channel config
+      // Sync channels and active tabs from server config
       if (Array.isArray(data.channels)) {
         const channelList = data.channels as Channel[];
+        setChannels(channelList);
         const visible = channelList
           .filter((ch) => ch.enabled && ch.visible)
           .map((ch) => ch.channel_type);
@@ -440,16 +446,122 @@ export default function App() {
     [],
   );
 
-  // ── Right-click → open app window ──────────────────────────────
+  // ── Channel quick-toggle (for context menu) ────────────────────
+
+  const handleChannelToggle = useCallback(
+    async (channelType: string, visible: boolean) => {
+      const token = await getValidToken();
+      if (!token) return;
+      try {
+        await channelsApi.update(
+          channelType,
+          { visible },
+          () => Promise.resolve(token),
+        );
+        fetchFeed();
+      } catch {
+        // Silently fail — will sync on next poll
+      }
+    },
+    [fetchFeed],
+  );
+
+  // ── Right-click → native context menu ──────────────────────────
 
   useEffect(() => {
-    function onContextMenu(e: MouseEvent) {
+    async function onContextMenu(e: MouseEvent) {
       e.preventDefault();
-      invoke("show_app_window").catch(() => {});
+
+      const items: (CheckMenuItem | MenuItem | PredefinedMenuItem)[] = [];
+      const chs = channelsRef.current;
+
+      // Channel quick toggles (only when authenticated with channels)
+      if (chs.length > 0) {
+        for (const ch of chs) {
+          const channelType = ch.channel_type;
+          const isVisible = ch.enabled && ch.visible;
+          const label =
+            channelType.charAt(0).toUpperCase() + channelType.slice(1);
+          const item = await CheckMenuItem.new({
+            text: label,
+            checked: isVisible,
+            action: () => {
+              handleChannelToggle(channelType, !isVisible);
+            },
+          });
+          items.push(item);
+        }
+        items.push(await PredefinedMenuItem.new({ item: "Separator" }));
+      }
+
+      // Open Scrollr
+      items.push(
+        await MenuItem.new({
+          text: "Open Scrollr",
+          action: () => {
+            invoke("show_app_window").catch(() => {});
+          },
+        }),
+      );
+
+      // Separator
+      items.push(await PredefinedMenuItem.new({ item: "Separator" }));
+
+      // Pin on Top
+      const isPinned = prefsRef.current.window.pinned;
+      items.push(
+        await CheckMenuItem.new({
+          text: "Pin on Top",
+          checked: isPinned,
+          action: () => {
+            const next = !isPinned;
+            setPinned(next);
+            savePref("feedPinned", next);
+            const updated = {
+              ...prefsRef.current,
+              window: { ...prefsRef.current.window, pinned: next },
+            };
+            setPrefs(updated);
+            savePrefs(updated);
+            invoke("pin_window", { pinned: next }).catch(() => {});
+          },
+        }),
+      );
+
+      // Hide Ticker
+      items.push(
+        await MenuItem.new({
+          text: "Hide Ticker",
+          action: () => {
+            setTickerCollapsed(true);
+            savePref("tickerCollapsed", true);
+            const updated = {
+              ...prefsRef.current,
+              ticker: { ...prefsRef.current.ticker, showTicker: false },
+            };
+            setPrefs(updated);
+            savePrefs(updated);
+          },
+        }),
+      );
+
+      // Separator + Quit
+      items.push(await PredefinedMenuItem.new({ item: "Separator" }));
+      items.push(
+        await MenuItem.new({
+          text: "Quit",
+          action: () => {
+            invoke("quit_app").catch(() => {});
+          },
+        }),
+      );
+
+      const menu = await Menu.new({ items });
+      await menu.popup().catch(() => {});
     }
     document.addEventListener("contextmenu", onContextMenu);
     return () => document.removeEventListener("contextmenu", onContextMenu);
-  }, []);
+  }, [handleChannelToggle]);
 
   // ── Render ─────────────────────────────────────────────────────
 
