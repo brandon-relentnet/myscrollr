@@ -137,6 +137,7 @@ export default function AppTaskbar({
         onClick={toggleTheme}
         className={btnIdle}
         title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+        aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       >
         {isDark ? <Sun size={14} /> : <Moon size={14} />}
       </button>
@@ -145,6 +146,7 @@ export default function AppTaskbar({
         onClick={onToggleTicker}
         className={clsx(showTicker ? btnActive : btnIdle)}
         title={showTicker ? "Hide ticker preview" : "Show ticker preview"}
+        aria-label={showTicker ? "Hide ticker preview" : "Show ticker preview"}
       >
         {showTicker ? <TicketCheck size={14} /> : <TicketSlash size={14} />}
       </button>
@@ -153,6 +155,7 @@ export default function AppTaskbar({
         onClick={cycleRows}
         className={btnIdle}
         title={`Ticker rows: ${rows} (click to cycle)`}
+        aria-label={`Ticker rows: ${rows}`}
       >
         {rows <= 1 ? <Rows2 size={14} /> : <Rows3 size={14} />}
       </button>
@@ -161,6 +164,7 @@ export default function AppTaskbar({
         onClick={togglePin}
         className={clsx(isPinned ? btnActive : btnIdle)}
         title={isPinned ? "Unpin from top" : "Pin on top"}
+        aria-label={isPinned ? "Unpin from top" : "Pin on top"}
       >
         {isPinned ? <Pin size={14} /> : <PinOff size={14} />}
       </button>

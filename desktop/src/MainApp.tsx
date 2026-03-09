@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { getVersion } from "@tauri-apps/api/app";
 import {
   enable as enableAutostart,
   disable as disableAutostart,
   isEnabled as isAutostartEnabled,
 } from "@tauri-apps/plugin-autostart";
 
+import clsx from "clsx";
 import TitleBar from "./components/TitleBar";
 import Sidebar from "./components/Sidebar";
 import type { Section, SettingsTab } from "./components/Sidebar";
@@ -22,7 +24,7 @@ import {
   getTier,
 } from "./auth";
 import type { SubscriptionTier } from "./auth";
-import type { Channel } from "./api/client";
+import type { Channel, ChannelType } from "./api/client";
 import { channelsApi } from "./api/client";
 import {
   loadPref,
@@ -39,6 +41,11 @@ const API_URL = "https://api.myscrollr.relentnet.dev";
 // ── Canonical channel order ─────────────────────────────────────
 
 const CHANNEL_ORDER = ["finance", "sports", "rss", "fantasy"];
+
+// ── Platform detection ──────────────────────────────────────────
+// macOS uses native window decorations (traffic lights). Linux and
+// Windows use the custom TitleBar component with JS-based drag.
+const IS_MACOS = /Mac/.test(navigator.platform);
 
 // ── App ─────────────────────────────────────────────────────────
 
@@ -63,9 +70,13 @@ export default function MainApp() {
   const [activeTab, setActiveTab] = useState(
     () => loadPref("activeTab", "finance"),
   );
-  const [feedMode] = useState<FeedMode>(
-    () => loadPref<FeedMode>("feedMode", "comfort"),
-  );
+  const feedMode = loadPref<FeedMode>("feedMode", "comfort");
+
+  // App version (read from tauri.conf.json at runtime)
+  const [appVersion, setAppVersion] = useState("0.0.0");
+  useEffect(() => {
+    getVersion().then(setAppVersion).catch(() => {});
+  }, []);
 
   // Preferences
   const [prefs, setPrefs] = useState<AppPreferences>(loadPrefs);
@@ -138,7 +149,7 @@ export default function MainApp() {
   useEffect(() => {
     const shell = document.getElementById("app-shell");
     if (!shell) return;
-    (shell as HTMLElement).style.zoom =
+    shell.style.zoom =
       prefs.appearance.uiScale === 100
         ? ""
         : `${prefs.appearance.uiScale}%`;
@@ -257,7 +268,7 @@ export default function MainApp() {
   // ── Channel handlers ────────────────────────────────────────
 
   const handleToggleChannel = useCallback(
-    async (channelType: string, visible: boolean) => {
+    async (channelType: ChannelType, visible: boolean) => {
       const token = await getValidToken();
       if (!token) return;
       try {
@@ -281,7 +292,7 @@ export default function MainApp() {
   );
 
   const handleAddChannel = useCallback(
-    async (channelType: string) => {
+    async (channelType: ChannelType) => {
       const token = await getValidToken();
       if (!token) return;
       try {
@@ -299,7 +310,7 @@ export default function MainApp() {
   );
 
   const handleDeleteChannel = useCallback(
-    async (channelType: string) => {
+    async (channelType: ChannelType) => {
       const token = await getValidToken();
       if (!token) return;
       try {
@@ -396,9 +407,12 @@ export default function MainApp() {
     <div
       id="app-shell"
       data-theme="dark"
-      className="flex flex-col h-screen w-screen overflow-hidden bg-surface text-fg"
+      className={clsx(
+        "flex flex-col h-screen w-screen overflow-hidden bg-surface text-fg",
+        !IS_MACOS && "custom-chrome",
+      )}
     >
-      <TitleBar />
+      {!IS_MACOS && <TitleBar />}
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
       <Sidebar
@@ -408,6 +422,7 @@ export default function MainApp() {
         onToggleTicker={handleToggleStandaloneTicker}
         settingsTab={settingsTab}
         onSettingsTabChange={handleSettingsTab}
+        appVersion={appVersion}
       />
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
@@ -471,6 +486,7 @@ export default function MainApp() {
                 savePref("activeTab", tab);
               }}
               onLogin={handleLogin}
+              onNavigateToChannels={() => handleNavigate("channels")}
             />
           )}
 
@@ -500,7 +516,7 @@ export default function MainApp() {
                 const ch = channels.find((c) => c.channel_type === activeTab);
                 if (ch) handleToggleChannel(ch.channel_type, !ch.visible);
               }}
-              onDelete={() => handleDeleteChannel(activeTab)}
+              onDelete={() => handleDeleteChannel(activeTab as ChannelType)}
               onChannelUpdate={handleChannelUpdate}
               onLogin={handleLogin}
             />
@@ -536,6 +552,7 @@ export default function MainApp() {
             <AccountSection
               authenticated={authenticated}
               tier={tier}
+              appVersion={appVersion}
               onLogin={handleLogin}
               onLogout={handleLogout}
             />
@@ -562,15 +579,6 @@ export default function MainApp() {
   );
 }
 
-// ── Dashboard key map (mirrors FeedBar) ──────────────────────────
-
-const DASHBOARD_KEY_MAP: Record<string, string> = {
-  finance: "finance",
-  sports: "sports",
-  rss: "rss",
-  fantasy: "fantasy",
-};
-
 // ── Feed Section ─────────────────────────────────────────────────
 
 function FeedSection({
@@ -582,6 +590,7 @@ function FeedSection({
   activeTab,
   onActiveTabChange,
   onLogin,
+  onNavigateToChannels,
 }: {
   authenticated: boolean;
   loading: boolean;
@@ -591,15 +600,13 @@ function FeedSection({
   activeTab: string;
   onActiveTabChange: (tab: string) => void;
   onLogin: () => void;
+  onNavigateToChannels: () => void;
 }) {
   const visibleChannels = channels.filter((ch) => ch.enabled && ch.visible);
 
   // Build channelConfig for the active FeedTab (same pattern as FeedBar)
   const channelConfig = useMemo(() => {
-    const dashboardKey = DASHBOARD_KEY_MAP[activeTab];
-    const initialItems = dashboardKey
-      ? (dashboard?.data?.[dashboardKey] ?? [])
-      : [];
+    const initialItems = dashboard?.data?.[activeTab] ?? [];
     return {
       __initialItems: initialItems,
       __dashboardLoaded: dashboard !== null,
@@ -649,7 +656,7 @@ function FeedSection({
         title="No active channels"
         description="Enable some channels to see live data in your feed."
         action="Go to Channels"
-        onAction={() => {}}
+        onAction={onNavigateToChannels}
       />
     );
   }
@@ -709,9 +716,9 @@ function ChannelsSection({
 }: {
   authenticated: boolean;
   channels: Channel[];
-  onToggle: (channelType: string, visible: boolean) => void;
-  onAdd: (channelType: string) => void;
-  onDelete: (channelType: string) => void;
+  onToggle: (channelType: ChannelType, visible: boolean) => void;
+  onAdd: (channelType: ChannelType) => void;
+  onDelete: (channelType: ChannelType) => void;
   onLogin: () => void;
 }) {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -817,13 +824,13 @@ function ChannelsSection({
       )}
 
       {/* Available channels to add */}
-      {allManifests.filter((m) => !addedTypes.has(m.id)).length > 0 && (
+      {allManifests.filter((m) => !addedTypes.has(m.id as ChannelType)).length > 0 && (
         <div className="space-y-2">
           <h3 className="text-xs font-semibold text-fg-3 uppercase tracking-wider">
             Available
           </h3>
           {allManifests
-            .filter((m) => !addedTypes.has(m.id))
+            .filter((m) => !addedTypes.has(m.id as ChannelType))
             .map((manifest) => (
               <div
                 key={manifest.id}
@@ -842,7 +849,7 @@ function ChannelsSection({
                   </div>
                 </div>
                 <button
-                  onClick={() => onAdd(manifest.id)}
+                  onClick={() => onAdd(manifest.id as ChannelType)}
                   className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
                 >
                   Add
@@ -967,11 +974,13 @@ function DashboardSection({
 function AccountSection({
   authenticated,
   tier,
+  appVersion,
   onLogin,
   onLogout,
 }: {
   authenticated: boolean;
   tier: SubscriptionTier;
+  appVersion: string;
   onLogin: () => void;
   onLogout: () => void;
 }) {
@@ -1041,7 +1050,7 @@ function AccountSection({
         <div className="pt-4 border-t border-edge/50">
           <div className="flex items-center justify-between text-xs text-fg-4">
             <span>Version</span>
-            <span className="font-mono">0.1.0</span>
+            <span className="font-mono">{appVersion}</span>
           </div>
           <div className="flex items-center justify-between text-xs text-fg-4 mt-1">
             <span>Runtime</span>

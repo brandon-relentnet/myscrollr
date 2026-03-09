@@ -20,6 +20,7 @@ interface SidebarProps {
   onToggleTicker: () => void;
   settingsTab: SettingsTab;
   onSettingsTabChange: (tab: SettingsTab) => void;
+  appVersion?: string;
 }
 
 const NAV_ITEMS: { id: Section; label: string; icon: typeof Activity }[] = [
@@ -46,6 +47,7 @@ export default function Sidebar({
   onToggleTicker,
   settingsTab,
   onSettingsTabChange,
+  appVersion,
 }: SidebarProps) {
   return (
     <aside className="flex flex-col w-[200px] shrink-0 border-r border-edge bg-surface-2 h-full">
@@ -170,7 +172,7 @@ export default function Sidebar({
 
       {/* Version */}
       <div className="px-4 py-3 border-t border-edge">
-        <span className="text-[10px] font-mono text-fg-4">v0.1.0</span>
+        <span className="text-[10px] font-mono text-fg-4">v{appVersion ?? "0.0.0"}</span>
       </div>
     </aside>
   );

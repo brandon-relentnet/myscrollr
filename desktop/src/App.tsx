@@ -15,9 +15,11 @@ import {
   getTier,
 } from "./auth";
 import type { SubscriptionTier } from "./auth";
-import type { Channel } from "./api/client";
+import type { Channel, ChannelType } from "./api/client";
 import { channelsApi } from "./api/client";
 import {
+  loadPref,
+  savePref,
   loadPrefs,
   savePrefs,
   TICKER_GAPS,
@@ -33,21 +35,6 @@ const POLL_INTERVALS: Record<SubscriptionTier, number> = {
   uplink: 30_000,
   uplink_unlimited: 30_000,
 };
-
-// ── Local storage helpers ────────────────────────────────────────
-
-function loadPref<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(`scrollr:${key}`);
-    return raw !== null ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function savePref<T>(key: string, value: T): void {
-  localStorage.setItem(`scrollr:${key}`, JSON.stringify(value));
-}
 
 // ── App (Ticker Window) ─────────────────────────────────────────
 
@@ -399,7 +386,7 @@ export default function App() {
   useEffect(() => {
     const shell = document.getElementById("desktop-shell");
     if (!shell) return;
-    (shell as HTMLElement).style.zoom =
+    shell.style.zoom =
       prefs.appearance.uiScale === 100
         ? ""
         : `${prefs.appearance.uiScale}%`;
@@ -466,7 +453,7 @@ export default function App() {
   // ── Channel quick-toggle (for context menu) ────────────────────
 
   const handleChannelToggle = useCallback(
-    async (channelType: string, visible: boolean) => {
+    async (channelType: ChannelType, visible: boolean) => {
       const token = await getValidToken();
       if (!token) return;
       try {

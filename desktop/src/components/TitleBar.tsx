@@ -48,6 +48,7 @@ export default function TitleBar() {
           onClick={() => appWindow.minimize()}
           className={`${btnBase} text-fg-3 hover:text-fg hover:bg-surface-hover`}
           title="Minimize"
+          aria-label="Minimize"
           onMouseDown={(e) => e.stopPropagation()}
         >
           <svg width="10" height="1" viewBox="0 0 10 1">
@@ -60,6 +61,7 @@ export default function TitleBar() {
           onClick={() => appWindow.toggleMaximize()}
           className={`${btnBase} text-fg-3 hover:text-fg hover:bg-surface-hover`}
           title={maximized ? "Restore" : "Maximize"}
+          aria-label={maximized ? "Restore" : "Maximize"}
           onMouseDown={(e) => e.stopPropagation()}
         >
           {maximized ? (
@@ -101,6 +103,7 @@ export default function TitleBar() {
           onClick={() => appWindow.close()}
           className={`${btnBase} text-fg-3 hover:text-fg hover:bg-error/80 hover:text-white`}
           title="Close"
+          aria-label="Close"
           onMouseDown={(e) => e.stopPropagation()}
         >
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none">

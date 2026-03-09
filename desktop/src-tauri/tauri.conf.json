@@ -1,6 +1,6 @@
 {
   "productName": "Scrollr",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "identifier": "com.scrollr.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -40,7 +40,7 @@
         "height": 640,
         "minWidth": 720,
         "minHeight": 480,
-        "decorations": false,
+        "decorations": true,
         "alwaysOnTop": false,
         "resizable": true,
         "skipTaskbar": false,

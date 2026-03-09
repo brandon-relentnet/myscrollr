@@ -545,6 +545,14 @@ pub fn run() {
 
             let _ = ticker.show();
 
+            // ── App window: strip native chrome on Linux/Windows ─
+            // macOS keeps native decorations (traffic lights). On
+            // other platforms we use our custom TitleBar component.
+            #[cfg(not(target_os = "macos"))]
+            if let Some(app_win) = app.get_webview_window("app") {
+                let _ = app_win.set_decorations(false);
+            }
+
             // ── System tray ──────────────────────────────────────
             let open = MenuItemBuilder::with_id("open", "Open Scrollr").build(app)?;
             let show_ticker = MenuItemBuilder::with_id("show_ticker", "Show/Hide Ticker").build(app)?;
