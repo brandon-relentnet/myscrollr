@@ -136,6 +136,7 @@ export default function App() {
   const feedBtnRef = useRef<HTMLButtonElement | null>(null);
   const dashBtnRef = useRef<HTMLButtonElement | null>(null);
   const pinBtnRef = useRef<HTMLButtonElement | null>(null);
+  const logoChevronRef = useRef<SVGSVGElement | null>(null);
   const lenisRef = useRef<Lenis | null>(null);
   const tierRef = useRef<SubscriptionTier>("free");
   const sseActiveRef = useRef(false);
@@ -464,15 +465,35 @@ export default function App() {
       "text-fg-3 hover:text-accent transition-colors text-[13px] font-mono px-1 cursor-pointer";
     const divClass = "h-4 w-px bg-edge";
 
-    // Channel picker trigger — appended to left group after tabs
-    const pickerBtn = document.createElement("button");
-    pickerBtn.className =
-      "text-fg-4 hover:text-accent transition-colors text-[14px] font-mono leading-none px-1 cursor-pointer";
-    pickerBtn.textContent = "+";
-    pickerBtn.title = "Toggle channels";
-    pickerBtn.setAttribute("data-channel-picker-trigger", "");
-    pickerBtn.onclick = () => setShowChannelPicker((prev) => !prev);
-    leftGroup.appendChild(pickerBtn);
+    // Wrap the "scrollr" logo span in a clickable button with a chevron icon.
+    // Clicking anywhere on the logo or icon toggles the channel picker.
+    const logoSpan = leftGroup.firstElementChild as HTMLElement;
+    const logoBtn = document.createElement("button");
+    logoBtn.className =
+      "flex items-center gap-1 cursor-pointer group";
+    logoBtn.title = "Toggle channels";
+    logoBtn.setAttribute("data-channel-picker-trigger", "");
+    logoBtn.onclick = () => setShowChannelPicker((prev) => !prev);
+    // Move the original span inside the button
+    leftGroup.insertBefore(logoBtn, logoSpan);
+    logoBtn.appendChild(logoSpan);
+    // Add chevron-up SVG icon (lucide ChevronUp, 14x14)
+    const chevronSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    chevronSvg.setAttribute("width", "14");
+    chevronSvg.setAttribute("height", "14");
+    chevronSvg.setAttribute("viewBox", "0 0 24 24");
+    chevronSvg.setAttribute("fill", "none");
+    chevronSvg.setAttribute("stroke", "currentColor");
+    chevronSvg.setAttribute("stroke-width", "2");
+    chevronSvg.setAttribute("stroke-linecap", "round");
+    chevronSvg.setAttribute("stroke-linejoin", "round");
+    chevronSvg.setAttribute("class", "text-fg-4 group-hover:text-accent transition-all duration-200");
+    chevronSvg.style.transform = showChannelPicker ? "rotate(180deg)" : "rotate(0deg)";
+    const chevronPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    chevronPath.setAttribute("d", "m18 15-6-6-6 6");
+    chevronSvg.appendChild(chevronPath);
+    logoBtn.appendChild(chevronSvg);
+    logoChevronRef.current = chevronSvg;
 
     // Canvas mode toggle: segmented pill [FEED|DASH]
     // Wrapped in a container with a subtle bg so it reads as a control
@@ -527,7 +548,11 @@ export default function App() {
     header.addEventListener("dblclick", onDblClick);
 
     return () => {
-      pickerBtn.remove();
+      // Restore the logo span back to the left group before removing the button
+      if (logoBtn.contains(logoSpan)) {
+        leftGroup.insertBefore(logoSpan, logoBtn);
+      }
+      logoBtn.remove();
       canvasPill.remove();
       tickerDiv.remove();
       tickerBtn.remove();
@@ -540,6 +565,7 @@ export default function App() {
       maxWidthBtnRef.current = null;
       tickerBtnRef.current = null;
       pinBtnRef.current = null;
+      logoChevronRef.current = null;
       header.removeEventListener("dblclick", onDblClick);
     };
   }, [toggleFullWidth]);
@@ -656,7 +682,13 @@ export default function App() {
         : btnClass;
       pinBtn.onclick = () => handleTogglePin();
     }
-  }, [isFullWidth, toggleFullWidth, tickerCollapsed, handleToggleTicker, canvasMode, handleCanvasModeChange, authenticated, pinned, handleTogglePin]);
+
+    // Rotate logo chevron to reflect picker open/closed state
+    const chevron = logoChevronRef.current;
+    if (chevron) {
+      chevron.style.transform = showChannelPicker ? "rotate(180deg)" : "rotate(0deg)";
+    }
+  }, [isFullWidth, toggleFullWidth, tickerCollapsed, handleToggleTicker, canvasMode, handleCanvasModeChange, authenticated, pinned, handleTogglePin, showChannelPicker]);
 
   // ── Native compositor resize via drag handle ─────────────────
   // Intercept the drag handle mousedown to use Tauri's startResizing()
