@@ -7,7 +7,7 @@ import {
 } from "@tauri-apps/plugin-autostart";
 
 import Sidebar from "./components/Sidebar";
-import type { Section } from "./components/Sidebar";
+import type { Section, SettingsTab } from "./components/Sidebar";
 import SettingsPanel from "./components/SettingsPanel";
 import ScrollrTicker from "./components/ScrollrTicker";
 import AppTaskbar from "./components/AppTaskbar";
@@ -45,6 +45,9 @@ export default function MainApp() {
   // Navigation
   const [section, setSection] = useState<Section>(
     () => loadPref<Section>("appSection", "feed"),
+  );
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>(
+    () => loadPref<SettingsTab>("settingsTab", "appearance"),
   );
 
   // Auth state
@@ -350,6 +353,11 @@ export default function MainApp() {
     savePref("appSection", next);
   }
 
+  function handleSettingsTab(tab: SettingsTab) {
+    setSettingsTab(tab);
+    savePref("settingsTab", tab);
+  }
+
   // ── Stable getToken for DashboardTab components ─────────────
 
   const getToken = useCallback(() => getValidToken(), []);
@@ -394,6 +402,8 @@ export default function MainApp() {
         onNavigate={handleNavigate}
         tickerAlive={prefs.ticker.showTicker}
         onToggleTicker={handleToggleStandaloneTicker}
+        settingsTab={settingsTab}
+        onSettingsTabChange={handleSettingsTab}
       />
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
@@ -424,6 +434,7 @@ export default function MainApp() {
             showTicker={showAppTicker}
             onToggleTicker={handleToggleAppTicker}
             tickerAlive={prefs.ticker.showTicker}
+            onToggleStandaloneTicker={handleToggleStandaloneTicker}
             deliveryMode={deliveryMode}
           />
         )}
@@ -494,13 +505,13 @@ export default function MainApp() {
           {section === "settings" && (
             <div className="p-6">
               <SettingsPanel
+                activeTab={settingsTab}
                 prefs={prefs}
                 onPrefsChange={handlePrefsChange}
                 authenticated={authenticated}
                 tier={tier}
                 onLogin={handleLogin}
                 onLogout={handleLogout}
-                onClose={() => handleNavigate("feed")}
                 autostartEnabled={autostartOn}
                 onAutostartChange={handleAutostartChange}
                 showAppTicker={showAppTicker}

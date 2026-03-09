@@ -22,6 +22,7 @@ interface AppTaskbarProps {
   showTicker: boolean;
   onToggleTicker: () => void;
   tickerAlive: boolean;
+  onToggleStandaloneTicker: () => void;
   deliveryMode: DeliveryMode;
 }
 
@@ -33,6 +34,7 @@ export default function AppTaskbar({
   showTicker,
   onToggleTicker,
   tickerAlive,
+  onToggleStandaloneTicker,
   deliveryMode,
 }: AppTaskbarProps) {
   const isDark =
@@ -82,8 +84,16 @@ export default function AppTaskbar({
     <div className="flex items-center gap-0.5 px-3 h-8 border-b border-edge/50 bg-surface-2/50 shrink-0">
       {/* Left: status indicators */}
       <div className="flex items-center gap-3 mr-auto select-none">
-        {/* Ticker status */}
+        {/* Ticker toggle + status */}
         <div className="flex items-center gap-1.5">
+          <button
+            role="switch"
+            aria-checked={tickerAlive}
+            aria-label="Toggle ticker widget"
+            className="toggle-switch shrink-0"
+            data-checked={tickerAlive}
+            onClick={onToggleStandaloneTicker}
+          />
           <div
             className={clsx(
               "w-1.5 h-1.5 rounded-full shrink-0 transition-all duration-500",
