@@ -24,9 +24,9 @@ export default function GameChip({ game, onClick }: GameChipProps) {
     <button
       onClick={onClick}
       className={clsx(
-        "ticker-chip group flex items-center gap-1.5",
-        "px-2.5 py-1 rounded-sm border",
-        "text-[11px] font-mono whitespace-nowrap",
+        "ticker-chip group flex items-center gap-2",
+        "px-3 py-1 rounded-sm border",
+        "text-[13px] font-mono whitespace-nowrap",
         "transition-colors cursor-pointer",
         "bg-secondary/[0.06] border-secondary/25 hover:border-secondary/40"
       )}
@@ -43,12 +43,12 @@ export default function GameChip({ game, onClick }: GameChipProps) {
       {status && (
         <span
           className={clsx(
-            "flex items-center gap-1 text-[9px] uppercase tracking-wider",
+            "flex items-center gap-1 text-[11px] uppercase tracking-wider",
             live ? "text-live font-semibold" : "text-fg-3"
           )}
         >
           {live && (
-            <span className="w-1 h-1 rounded-full bg-live animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-live animate-pulse" />
           )}
           {status}
         </span>

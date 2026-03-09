@@ -21,9 +21,9 @@ export default function FantasyChip({ item, onClick }: FantasyChipProps) {
     <button
       onClick={onClick}
       className={clsx(
-        "ticker-chip group flex items-center gap-1.5",
-        "px-2.5 py-1 rounded-sm border",
-        "text-[11px] font-mono whitespace-nowrap",
+        "ticker-chip group flex items-center gap-2",
+        "px-3 py-1 rounded-sm border",
+        "text-[13px] font-mono whitespace-nowrap",
         "transition-colors cursor-pointer",
         "bg-accent-purple/[0.06] border-accent-purple/25 hover:border-accent-purple/40"
       )}

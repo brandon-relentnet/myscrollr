@@ -14,9 +14,9 @@ export default function RssChip({ item, onClick }: RssChipProps) {
     <button
       onClick={onClick}
       className={clsx(
-        "ticker-chip group flex items-center gap-1.5",
-        "px-2.5 py-1 rounded-sm border",
-        "text-[11px] whitespace-nowrap",
+        "ticker-chip group flex items-center gap-2",
+        "px-3 py-1 rounded-sm border",
+        "text-[13px] whitespace-nowrap",
         "transition-colors cursor-pointer",
         "bg-info/[0.06] border-info/25 hover:border-info/40"
       )}
@@ -25,7 +25,7 @@ export default function RssChip({ item, onClick }: RssChipProps) {
       {item.source_name && (
         <>
           <span className="text-fg-4">&middot;</span>
-          <span className="text-info/60 font-mono text-[10px]">
+          <span className="text-info/60 font-mono text-[12px]">
             {item.source_name}
           </span>
         </>

@@ -152,9 +152,8 @@ body {
 
 /* Ensure ticker chips have consistent gap spacing */
 .ticker-container [data-motion-ticker] {
-  gap: 6px;
+  gap: 8px;
   align-items: center;
-  height: 100%;
 }
 
 /* ── Scrollbar ──────────────────────────────────────────────────── */
@@ -236,6 +235,62 @@ body {
 
 .unlimited-dot-glow {
   animation: unlimited-dot-glow 2s ease-in-out infinite;
+}
+
+/* ── Desktop taskbar & ticker scaling ──────────────────────────── */
+/* Shared extension components (FeedBar, FeedTabs, ConnectionIndicator)
+   use text-[9px]–[11px] for the compact browser popup. Desktop displays
+   (especially 2K+ ultrawides) need larger text and proper cursors. */
+
+/* Taskbar header: 32px → 36px, grab cursor for window drag region */
+#desktop-shell [data-tauri-drag-region] {
+  height: 36px !important;
+  cursor: grab;
+}
+
+/* Every button in the app shows pointer cursor */
+#desktop-shell button {
+  cursor: pointer;
+}
+
+/* "scrollr" logo: 10px → 13px */
+#desktop-shell [data-tauri-drag-region] > div:first-child > span:first-child {
+  font-size: 13px;
+}
+
+/* FeedTabs channel buttons: 10px → 12px */
+#desktop-shell [data-tauri-drag-region] .gap-1 > button {
+  font-size: 12px;
+}
+
+/* Header dividers: taller to fill 36px header */
+#desktop-shell [data-tauri-drag-region] .w-px {
+  height: 1rem;
+}
+
+/* Connection indicator dot: 6px → 8px */
+#desktop-shell [data-tauri-drag-region] .rounded-full {
+  width: 8px;
+  height: 8px;
+}
+
+/* Connection indicator label: 9px → 11px */
+#desktop-shell [data-tauri-drag-region] .tracking-widest {
+  font-size: 11px;
+}
+
+/* Collapse button: 10px → 13px (last button in the right group) */
+#desktop-shell [data-tauri-drag-region] > div:last-child > button:last-of-type {
+  font-size: 13px;
+}
+
+/* Sign-in banner: bump text for readability */
+#desktop-shell .border-accent\/10 span {
+  font-size: 12px;
+}
+
+#desktop-shell .border-accent\/10 button {
+  font-size: 11px;
 }
 
 /* ── Reduced motion ─────────────────────────────────────────────── */

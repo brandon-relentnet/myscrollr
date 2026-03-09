@@ -471,7 +471,7 @@ pub fn run() {
             let window = app.get_webview_window("main").unwrap();
 
             // Allow the window to collapse to just the 32px header
-            let _ = window.set_min_size(Some(tauri::LogicalSize::new(200.0, 32.0)));
+            let _ = window.set_min_size(Some(tauri::LogicalSize::new(200.0, 36.0)));
 
             // Set initial window width to fill screen
             if let Ok(Some(monitor)) = window.current_monitor() {

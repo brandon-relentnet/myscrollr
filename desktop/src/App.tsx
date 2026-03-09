@@ -44,8 +44,8 @@ const POLL_INTERVALS: Record<SubscriptionTier, number> = {
   uplink: 30_000,
   uplink_unlimited: 30_000, // Baseline fallback; SSE CDC handles real-time
 };
-const TICKER_HEIGHT = 28;
-const TASKBAR_HEIGHT = 32;
+const TICKER_HEIGHT = 44;
+const TASKBAR_HEIGHT = 36;
 const COLLAPSED_HEIGHT = TASKBAR_HEIGHT;
 const MIN_HEIGHT = 100;
 const MAX_HEIGHT = 600;
@@ -461,13 +461,13 @@ export default function App() {
 
     // Create buttons matching existing header style
     const btnClass =
-      "text-fg-3 hover:text-accent transition-colors text-[10px] font-mono px-0.5";
-    const divClass = "h-3 w-px bg-edge";
+      "text-fg-3 hover:text-accent transition-colors text-[13px] font-mono px-1 cursor-pointer";
+    const divClass = "h-4 w-px bg-edge";
 
     // Channel picker trigger — appended to left group after tabs
     const pickerBtn = document.createElement("button");
     pickerBtn.className =
-      "text-fg-4 hover:text-accent transition-colors text-[11px] font-mono leading-none px-0.5";
+      "text-fg-4 hover:text-accent transition-colors text-[14px] font-mono leading-none px-1 cursor-pointer";
     pickerBtn.textContent = "+";
     pickerBtn.title = "Toggle channels";
     pickerBtn.setAttribute("data-channel-picker-trigger", "");
@@ -598,11 +598,11 @@ export default function App() {
   // Keep the injected buttons' text/handlers in sync with state
   useEffect(() => {
     const btnClass =
-      "text-fg-3 hover:text-accent transition-colors text-[10px] font-mono px-0.5";
+      "text-fg-3 hover:text-accent transition-colors text-[13px] font-mono px-1 cursor-pointer";
 
     // Segmented pill styles for FEED / DASH toggle
     const segBase =
-      "px-2 py-0.5 text-[9px] font-mono font-semibold uppercase tracking-widest transition-colors leading-none cursor-pointer";
+      "px-2.5 py-1 text-[11px] font-mono font-semibold uppercase tracking-widest transition-colors leading-none cursor-pointer";
     const segActive = `${segBase} bg-accent/15 text-accent`;
     const segInactive = `${segBase} text-fg-3 hover:text-fg-2`;
 
@@ -652,7 +652,7 @@ export default function App() {
       pinBtn.textContent = pinned ? "\u25A3" : "\u25A2";
       pinBtn.title = pinned ? "Unpin (disable always-on-top)" : "Pin (always-on-top)";
       pinBtn.className = pinned
-        ? "text-accent transition-colors text-[10px] font-mono px-0.5"
+        ? "text-accent transition-colors text-[13px] font-mono px-1 cursor-pointer"
         : btnClass;
       pinBtn.onclick = () => handleTogglePin();
     }

@@ -38,15 +38,25 @@ export default function ScrollrTicker({
       const data = dashboard.data[tab];
       if (!Array.isArray(data) || data.length === 0) continue;
 
+      // Wrap each chip in a vertical padding container so the chip
+      // (including its border) sits safely inside the Ticker's clip
+      // boundary, regardless of how motion-plus handles overflow.
+      const wrap = (key: string, chip: React.ReactNode) => (
+        <div key={key} className="py-1">
+          {chip}
+        </div>
+      );
+
       switch (tab) {
         case "finance":
           for (const trade of data as Trade[]) {
             items.push(
-              <TradeChip
-                key={`fin-${trade.symbol}`}
-                trade={trade}
-                onClick={() => onChipClick?.("finance", trade.symbol)}
-              />
+              wrap(`fin-${trade.symbol}`,
+                <TradeChip
+                  trade={trade}
+                  onClick={() => onChipClick?.("finance", trade.symbol)}
+                />
+              )
             );
           }
           break;
@@ -54,11 +64,12 @@ export default function ScrollrTicker({
         case "sports":
           for (const game of data as Game[]) {
             items.push(
-              <GameChip
-                key={`spo-${game.id}`}
-                game={game}
-                onClick={() => onChipClick?.("sports", game.id)}
-              />
+              wrap(`spo-${game.id}`,
+                <GameChip
+                  game={game}
+                  onClick={() => onChipClick?.("sports", game.id)}
+                />
+              )
             );
           }
           break;
@@ -66,11 +77,12 @@ export default function ScrollrTicker({
         case "rss":
           for (const item of data as RssItem[]) {
             items.push(
-              <RssChip
-                key={`rss-${item.id}`}
-                item={item}
-                onClick={() => onChipClick?.("rss", item.id)}
-              />
+              wrap(`rss-${item.id}`,
+                <RssChip
+                  item={item}
+                  onClick={() => onChipClick?.("rss", item.id)}
+                />
+              )
             );
           }
           break;
@@ -81,11 +93,12 @@ export default function ScrollrTicker({
           for (const item of records) {
             const id = getItemId(item);
             items.push(
-              <FantasyChip
-                key={`${tab}-${id}`}
-                item={item}
-                onClick={() => onChipClick?.(tab, id)}
-              />
+              wrap(`${tab}-${id}`,
+                <FantasyChip
+                  item={item}
+                  onClick={() => onChipClick?.(tab, id)}
+                />
+              )
             );
           }
           break;
@@ -99,10 +112,10 @@ export default function ScrollrTicker({
   if (chips.length === 0) return null;
 
   return (
-    <div className="ticker-container h-7 bg-base-150 border-b border-edge/50 flex-shrink-0 overflow-hidden relative">
+    <div className="ticker-container h-11 flex items-center bg-base-150 border-b border-edge/50 flex-shrink-0 overflow-hidden relative">
       {/* Top accent line — matches the website's card accent pattern */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent z-10" />
-      <Ticker items={chips} velocity={-40} hoverFactor={0.3} gap={6} fade="10%" />
+      <Ticker items={chips} velocity={-40} hoverFactor={0.3} gap={8} fade="10%" />
     </div>
   );
 }

@@ -27,9 +27,9 @@ export default function TradeChip({ trade, onClick }: TradeChipProps) {
     <button
       onClick={onClick}
       className={clsx(
-        "ticker-chip group flex items-center gap-1.5",
-        "px-2.5 py-1 rounded-sm border",
-        "text-[11px] font-mono whitespace-nowrap",
+        "ticker-chip group flex items-center gap-2",
+        "px-3 py-1 rounded-sm border",
+        "text-[13px] font-mono whitespace-nowrap",
         "transition-colors cursor-pointer",
         "bg-primary/[0.06] border-primary/25 hover:border-primary/40"
       )}
@@ -39,7 +39,7 @@ export default function TradeChip({ trade, onClick }: TradeChipProps) {
       {changeStr && (
         <span
           className={clsx(
-            "font-medium text-[10px]",
+            "font-medium text-[12px]",
             isUp ? "text-up" : "text-down"
           )}
         >

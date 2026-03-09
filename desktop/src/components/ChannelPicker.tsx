@@ -71,7 +71,7 @@ export default function ChannelPicker({
       style={{ top: `${topOffset}px` }}
     >
       <div className="px-3 py-2 border-b border-edge">
-        <span className="text-[9px] font-mono font-semibold uppercase tracking-widest text-fg-3">
+        <span className="text-[10px] font-mono font-semibold uppercase tracking-widest text-fg-3">
           Channels
         </span>
       </div>
@@ -88,11 +88,11 @@ export default function ChannelPicker({
             <button
               key={ch.channel_type}
               onClick={() => onToggle(ch.channel_type, !isVisible)}
-              className="flex items-center gap-3 w-full px-3 py-1.5 text-left hover:bg-surface-hover transition-colors group"
+              className="flex items-center gap-3 w-full px-3 py-2 text-left hover:bg-surface-hover transition-colors group cursor-pointer"
             >
               {/* Color dot */}
               <span
-                className="h-2 w-2 rounded-full shrink-0 transition-opacity"
+                className="h-2.5 w-2.5 rounded-full shrink-0 transition-opacity"
                 style={{
                   background: hex,
                   opacity: isVisible ? 1 : 0.25,
@@ -100,7 +100,7 @@ export default function ChannelPicker({
               />
               {/* Channel name */}
               <span
-                className="text-[11px] font-mono uppercase tracking-wide flex-1 transition-colors"
+                className="text-[12px] font-mono uppercase tracking-wide flex-1 transition-colors"
                 style={{ color: isVisible ? hex : undefined }}
               >
                 {isVisible ? (
@@ -111,7 +111,7 @@ export default function ChannelPicker({
               </span>
               {/* Toggle indicator */}
               <span
-                className="text-[9px] font-mono uppercase tracking-wider transition-colors"
+                className="text-[10px] font-mono uppercase tracking-wider transition-colors"
                 style={{ color: isVisible ? hex : undefined }}
               >
                 {isVisible ? (
@@ -124,7 +124,7 @@ export default function ChannelPicker({
           );
         })}
         {sorted.length === 0 && (
-          <div className="px-3 py-3 text-[10px] text-fg-3 font-mono text-center">
+          <div className="px-3 py-3 text-[11px] text-fg-3 font-mono text-center">
             No channels configured
           </div>
         )}
