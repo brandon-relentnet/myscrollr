@@ -77,6 +77,7 @@ export default function MainApp() {
 
   // Loading state
   const [loading, setLoading] = useState(true);
+  const [loggingIn, setLoggingIn] = useState(false);
 
   // Refs for stable closures
   const authenticatedRef = useRef(authenticated);
@@ -215,11 +216,16 @@ export default function MainApp() {
   // ── Auth handlers ───────────────────────────────────────────
 
   const handleLogin = useCallback(async () => {
-    const result = await authLogin();
-    if (result) {
-      setAuthenticated(true);
-      setTier(getTier());
-      fetchDashboard();
+    setLoggingIn(true);
+    try {
+      const result = await authLogin();
+      if (result) {
+        setAuthenticated(true);
+        setTier(getTier());
+        fetchDashboard();
+      }
+    } finally {
+      setLoggingIn(false);
     }
   }, [fetchDashboard]);
 
@@ -364,7 +370,7 @@ export default function MainApp() {
     >
       <Sidebar active={section} onNavigate={handleNavigate} />
 
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         {/* Ticker preview */}
         {showAppTicker && prefs.ticker.showTicker &&
           Array.from({ length: prefs.appearance.tickerRows }, (_, i) => (
@@ -492,6 +498,21 @@ export default function MainApp() {
             />
           )}
         </div>
+
+        {/* Login overlay */}
+        {loggingIn && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-surface/80 backdrop-blur-sm">
+            <div className="text-center">
+              <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-sm font-medium text-fg-2">
+                Waiting for login...
+              </p>
+              <p className="text-xs text-fg-3 mt-1">
+                Complete sign-in in your browser
+              </p>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
@@ -558,8 +579,22 @@ function FeedSection({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <span className="text-sm text-fg-3 font-mono">Loading feed...</span>
+      <div className="flex flex-col gap-3 p-6">
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="flex items-center gap-3 animate-pulse">
+            <div className="w-8 h-8 rounded-lg bg-surface-2" />
+            <div className="flex-1 space-y-2">
+              <div
+                className="h-3 rounded bg-surface-2"
+                style={{ width: `${55 + (i * 17) % 35}%` }}
+              />
+              <div
+                className="h-2 rounded bg-surface-2/60"
+                style={{ width: `${30 + (i * 23) % 40}%` }}
+              />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
