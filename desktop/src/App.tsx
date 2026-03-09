@@ -607,6 +607,12 @@ export default function App() {
     const next = !tickerCollapsed;
     setTickerCollapsed(next);
     savePref("tickerCollapsed", next);
+    // Keep settings pref in sync
+    setPrefs((prev) => {
+      const updated = { ...prev, ticker: { ...prev.ticker, showTicker: !next } };
+      savePrefs(updated);
+      return updated;
+    });
   }, [tickerCollapsed]);
 
   // ── Ticker chip click → switch canvas tab ───────────────────
@@ -795,7 +801,7 @@ export default function App() {
     // Apply taskbar height
     const header = document.querySelector("#desktop-shell [data-tauri-drag-region]") as HTMLElement | null;
     if (header) {
-      header.style.height = `${TASKBAR_HEIGHTS[prefs.taskbar.taskbarHeight]}px`;
+      header.style.setProperty("height", `${TASKBAR_HEIGHTS[prefs.taskbar.taskbarHeight]}px`, "important");
     }
 
     // Apply connection indicator visibility
@@ -918,8 +924,8 @@ export default function App() {
       const lenis = new Lenis({
         wrapper,
         content: wrapper,
-        smoothWheel: prefsRef.current.general.smoothScroll,
-        lerp: prefsRef.current.general.scrollSmoothness,
+        smoothWheel: prefs.general.smoothScroll,
+        lerp: prefs.general.scrollSmoothness,
         autoRaf: true,
         syncTouch: false,
       });
@@ -933,7 +939,7 @@ export default function App() {
       lenisRef.current?.destroy();
       (lenisRef as React.MutableRefObject<Lenis | null>).current = null;
     };
-  }, []);
+  }, [prefs.general.smoothScroll, prefs.general.scrollSmoothness]);
 
   // ── Auth handlers ─────────────────────────────────────────────
 

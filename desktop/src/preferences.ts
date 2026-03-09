@@ -144,7 +144,7 @@ export const TASKBAR_HEIGHTS: Record<TaskbarHeight, number> = {
 };
 
 export const TICKER_GAPS: Record<TickerGap, number> = {
-  tight: 4,
-  normal: 8,
-  spacious: 14,
+  tight: 6,
+  normal: 10,
+  spacious: 16,
 };

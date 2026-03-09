@@ -23,9 +23,10 @@ const VIEW_OPTIONS: { value: DefaultView; label: string }[] = [
 ];
 
 const INTERVAL_OPTIONS: { value: string; label: string }[] = [
+  { value: "0", label: "SSE" },
+  { value: "10000", label: "10s" },
   { value: "30000", label: "30s" },
   { value: "60000", label: "60s" },
-  { value: "120000", label: "2m" },
 ];
 
 function smoothnessLabel(lerp: number): string {
