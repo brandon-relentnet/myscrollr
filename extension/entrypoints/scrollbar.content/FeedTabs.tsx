@@ -29,6 +29,7 @@ export default function FeedTabs({
       {tabs.map((tab) => (
         <button
           key={tab.id}
+          data-channel-id={tab.id}
           onClick={() => onTabChange(tab.id)}
           className={clsx(
             "px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider transition-colors relative",

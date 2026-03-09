@@ -253,14 +253,55 @@ body {
   cursor: pointer;
 }
 
-/* "scrollr" logo: 10px → 13px */
-#desktop-shell [data-tauri-drag-region] > div:first-child > span:first-child {
-  font-size: 13px;
+/* "scrollr" logo button: more breathing room from window edge, bigger text */
+#desktop-shell [data-tauri-drag-region] > div:first-child > button:first-child {
+  margin-left: 2px;
 }
 
-/* FeedTabs channel buttons: 10px → 12px */
-#desktop-shell [data-tauri-drag-region] .gap-1 > button {
+#desktop-shell [data-tauri-drag-region] > div:first-child > button:first-child span {
+  font-size: 14px;
+}
+
+/* FeedTabs channel buttons: 10px → 12px, flex for icon alignment */
+#desktop-shell [data-channel-id] {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   font-size: 12px;
+}
+
+/* Channel tab icons via CSS mask — inherits text color automatically */
+#desktop-shell [data-channel-id]::before {
+  content: '';
+  display: block;
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+  background: currentColor;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+#desktop-shell [data-channel-id="finance"]::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='22 7 13.5 15.5 8.5 10.5 2 17'/%3E%3Cpolyline points='16 7 22 7 22 13'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='22 7 13.5 15.5 8.5 10.5 2 17'/%3E%3Cpolyline points='16 7 22 7 22 13'/%3E%3C/svg%3E");
+}
+
+#desktop-shell [data-channel-id="sports"]::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='4' width='16' height='16' rx='2'/%3E%3Crect x='9' y='9' width='6' height='6'/%3E%3Cpath d='M15 2v2'/%3E%3Cpath d='M15 20v2'/%3E%3Cpath d='M2 15h2'/%3E%3Cpath d='M2 9h2'/%3E%3Cpath d='M20 15h2'/%3E%3Cpath d='M20 9h2'/%3E%3Cpath d='M9 2v2'/%3E%3Cpath d='M9 20v2'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='4' width='16' height='16' rx='2'/%3E%3Crect x='9' y='9' width='6' height='6'/%3E%3Cpath d='M15 2v2'/%3E%3Cpath d='M15 20v2'/%3E%3Cpath d='M2 15h2'/%3E%3Cpath d='M2 9h2'/%3E%3Cpath d='M20 15h2'/%3E%3Cpath d='M20 9h2'/%3E%3Cpath d='M9 2v2'/%3E%3Cpath d='M9 20v2'/%3E%3C/svg%3E");
+}
+
+#desktop-shell [data-channel-id="rss"]::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 11a9 9 0 0 1 9 9'/%3E%3Cpath d='M4 4a16 16 0 0 1 16 16'/%3E%3Ccircle cx='5' cy='20' r='1'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 11a9 9 0 0 1 9 9'/%3E%3Cpath d='M4 4a16 16 0 0 1 16 16'/%3E%3Ccircle cx='5' cy='20' r='1'/%3E%3C/svg%3E");
+}
+
+#desktop-shell [data-channel-id="fantasy"]::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 10h.01'/%3E%3Cpath d='M15 10h.01'/%3E%3Cpath d='M12 2a8 8 0 0 0-8 8v12l3-3 2.5 2.5L12 19l2.5 2.5L17 19l3 3V10a8 8 0 0 0-8-8z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 10h.01'/%3E%3Cpath d='M15 10h.01'/%3E%3Cpath d='M12 2a8 8 0 0 0-8 8v12l3-3 2.5 2.5L12 19l2.5 2.5L17 19l3 3V10a8 8 0 0 0-8-8z'/%3E%3C/svg%3E");
 }
 
 /* Header dividers: taller to fill 36px header */
@@ -291,6 +332,32 @@ body {
 
 #desktop-shell .border-accent\/10 button {
   font-size: 11px;
+}
+
+/* ── Dashboard content scaling ──────────────────────────────────── */
+/* DashboardTab components use compact 8–10px text designed for the
+   website layout. Desktop displays need larger text for readability.
+   The .dashboard-content class is applied by App.tsx's overrideContent. */
+
+/* Tiny labels & metadata: 8–9px → 11px */
+.dashboard-content .text-\[8px\],
+.dashboard-content .text-\[9px\] {
+  font-size: 11px !important;
+}
+
+/* Small labels: 10px → 12px */
+.dashboard-content .text-\[10px\] {
+  font-size: 12px !important;
+}
+
+/* Body text: xs (12px) → 13px */
+.dashboard-content .text-xs {
+  font-size: 13px !important;
+}
+
+/* Sub-body text: sm (14px) → 15px */
+.dashboard-content .text-sm {
+  font-size: 15px !important;
 }
 
 /* ── Reduced motion ─────────────────────────────────────────────── */

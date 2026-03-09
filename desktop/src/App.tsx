@@ -934,7 +934,7 @@ export default function App() {
     const isConnected = status === "connected" && deliveryMode === "sse";
 
     return (
-      <div className="p-4">
+      <div className="dashboard-content max-w-4xl mx-auto py-6 px-6">
         <DashboardTab
           channel={channel}
           getToken={getToken}
