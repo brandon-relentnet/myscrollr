@@ -3,8 +3,8 @@ import type { SubscriptionTier } from "../auth";
 import type { AppPreferences } from "../preferences";
 import { resetCategory, resetAll } from "../preferences";
 import type { SettingsTab } from "./Sidebar";
-import AppearanceSettings from "./settings/AppearanceSettings";
-import BehaviorSettings from "./settings/BehaviorSettings";
+import GeneralSettings from "./settings/GeneralSettings";
+import TickerSettings from "./settings/TickerSettings";
 import AccountSettings from "./settings/AccountSettings";
 
 // ── Props ───────────────────────────────────────────────────────
@@ -64,8 +64,29 @@ export default function SettingsPanel({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
         >
-          {activeTab === "appearance" && (
-            <AppearanceSettings
+          {activeTab === "general" && (
+            <GeneralSettings
+              appearance={prefs.appearance}
+              window_={prefs.window}
+              onAppearanceChange={(appearance) =>
+                onPrefsChange({ ...prefs, appearance })
+              }
+              onWindowChange={(window_) =>
+                onPrefsChange({ ...prefs, window: window_ })
+              }
+              onResetAppearance={() => handleResetCategory("appearance")}
+              onResetWindow={() => handleResetCategory("window")}
+              autostartEnabled={autostartEnabled}
+              onAutostartChange={onAutostartChange}
+              showAppTicker={showAppTicker}
+              onToggleAppTicker={onToggleAppTicker}
+              showTaskbar={showTaskbar}
+              onToggleTaskbar={onToggleTaskbar}
+            />
+          )}
+
+          {activeTab === "ticker" && (
+            <TickerSettings
               appearance={prefs.appearance}
               ticker={prefs.ticker}
               onAppearanceChange={(appearance) =>
@@ -74,22 +95,6 @@ export default function SettingsPanel({
               onTickerChange={(ticker) => onPrefsChange({ ...prefs, ticker })}
               onResetAppearance={() => handleResetCategory("appearance")}
               onResetTicker={() => handleResetCategory("ticker")}
-            />
-          )}
-
-          {activeTab === "behavior" && (
-            <BehaviorSettings
-              window_={prefs.window}
-              onWindowChange={(window_) =>
-                onPrefsChange({ ...prefs, window: window_ })
-              }
-              onResetWindow={() => handleResetCategory("window")}
-              autostartEnabled={autostartEnabled}
-              onAutostartChange={onAutostartChange}
-              showAppTicker={showAppTicker}
-              onToggleAppTicker={onToggleAppTicker}
-              showTaskbar={showTaskbar}
-              onToggleTaskbar={onToggleTaskbar}
             />
           )}
 

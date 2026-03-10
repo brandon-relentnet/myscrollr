@@ -1,1 +1,173 @@
-// Removed — settings reorganized into AppearanceSettings
+import type {
+  AppearancePrefs,
+  TickerPrefs,
+  TickerRows,
+  TickerGap,
+  TickerMode,
+  MixMode,
+  ChipColorMode,
+} from "../../preferences";
+import {
+  Section,
+  ToggleRow,
+  SegmentedRow,
+  SliderRow,
+  ResetButton,
+} from "./SettingsControls";
+
+// ── Props ───────────────────────────────────────────────────────
+
+interface TickerSettingsProps {
+  appearance: AppearancePrefs;
+  ticker: TickerPrefs;
+  onAppearanceChange: (prefs: AppearancePrefs) => void;
+  onTickerChange: (prefs: TickerPrefs) => void;
+  onResetAppearance: () => void;
+  onResetTicker: () => void;
+}
+
+// ── Options ─────────────────────────────────────────────────────
+
+const ROW_OPTIONS: { value: string; label: string }[] = [
+  { value: "1", label: "Single" },
+  { value: "2", label: "Double" },
+  { value: "3", label: "Triple" },
+];
+
+const MODE_OPTIONS: { value: TickerMode; label: string }[] = [
+  { value: "compact", label: "Compact" },
+  { value: "comfort", label: "Comfort" },
+];
+
+const GAP_OPTIONS: { value: TickerGap; label: string }[] = [
+  { value: "tight", label: "Tight" },
+  { value: "normal", label: "Normal" },
+  { value: "spacious", label: "Wide" },
+];
+
+const MIX_OPTIONS: { value: MixMode; label: string }[] = [
+  { value: "grouped", label: "Grouped" },
+  { value: "weave", label: "Weave" },
+  { value: "random", label: "Random" },
+];
+
+const COLOR_OPTIONS: { value: ChipColorMode; label: string }[] = [
+  { value: "channel", label: "Channel" },
+  { value: "accent", label: "Accent" },
+  { value: "muted", label: "Muted" },
+];
+
+function speedLabel(speed: number): string {
+  if (speed <= 20) return "Slow";
+  if (speed <= 50) return "Normal";
+  if (speed <= 80) return "Fast";
+  return "Blazing";
+}
+
+// ── Component ───────────────────────────────────────────────────
+
+export default function TickerSettings({
+  appearance,
+  ticker,
+  onAppearanceChange,
+  onTickerChange,
+  onResetAppearance,
+  onResetTicker,
+}: TickerSettingsProps) {
+  const setTicker = <K extends keyof TickerPrefs>(
+    key: K,
+    value: TickerPrefs[K],
+  ) => {
+    onTickerChange({ ...ticker, [key]: value });
+  };
+
+  return (
+    <div>
+      <Section title="Layout">
+        <ToggleRow
+          label="Show ticker"
+          description="Scrolling data strip above the taskbar"
+          checked={ticker.showTicker}
+          onChange={(v) => setTicker("showTicker", v)}
+        />
+        <SegmentedRow
+          label="Rows"
+          description="Stack multiple ticker strips for more data at a glance"
+          value={String(appearance.tickerRows)}
+          options={ROW_OPTIONS}
+          onChange={(v) => onAppearanceChange({ ...appearance, tickerRows: Number(v) as TickerRows })}
+        />
+        <SegmentedRow
+          label="Density"
+          description="Comfort shows extra detail in a taller chip"
+          value={ticker.tickerMode}
+          options={MODE_OPTIONS}
+          onChange={(v) => setTicker("tickerMode", v)}
+        />
+      </Section>
+
+      <Section title="Playback">
+        <SliderRow
+          label="Scroll speed"
+          value={ticker.tickerSpeed}
+          min={10}
+          max={100}
+          step={5}
+          displayValue={speedLabel(ticker.tickerSpeed)}
+          onChange={(v) => setTicker("tickerSpeed", v)}
+        />
+        <ToggleRow
+          label="Pause on hover"
+          description="Slow the ticker when your cursor is over it"
+          checked={ticker.pauseOnHover}
+          onChange={(v) => setTicker("pauseOnHover", v)}
+        />
+        {ticker.pauseOnHover && (
+          <SliderRow
+            label="Hover speed"
+            description="How much the ticker slows on hover"
+            value={ticker.hoverSpeed}
+            min={0}
+            max={0.8}
+            step={0.05}
+            displayValue={
+              ticker.hoverSpeed === 0
+                ? "Pause"
+                : `${Math.round(ticker.hoverSpeed * 100)}%`
+            }
+            onChange={(v) => setTicker("hoverSpeed", v)}
+          />
+        )}
+      </Section>
+
+      <Section title="Style">
+        <SegmentedRow
+          label="Gap"
+          description="Space between ticker items"
+          value={ticker.tickerGap}
+          options={GAP_OPTIONS}
+          onChange={(v) => setTicker("tickerGap", v)}
+        />
+        <SegmentedRow
+          label="Item order"
+          description="How items from different channels are mixed"
+          value={ticker.mixMode}
+          options={MIX_OPTIONS}
+          onChange={(v) => setTicker("mixMode", v)}
+        />
+        <SegmentedRow
+          label="Chip colors"
+          description="Color scheme for ticker items"
+          value={ticker.chipColors}
+          options={COLOR_OPTIONS}
+          onChange={(v) => setTicker("chipColors", v)}
+        />
+      </Section>
+
+      <div className="flex items-center gap-2 justify-end pt-2">
+        <ResetButton label="Reset layout" onClick={onResetAppearance} />
+        <ResetButton label="Reset ticker" onClick={onResetTicker} />
+      </div>
+    </div>
+  );
+}

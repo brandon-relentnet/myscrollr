@@ -64,9 +64,13 @@ export default function MainApp() {
     const valid: Section[] = ["feed", "channels", "settings"];
     return (valid as string[]).includes(saved) ? (saved as Section) : "feed";
   });
-  const [settingsTab, setSettingsTab] = useState<SettingsTab>(
-    () => loadPref<SettingsTab>("settingsTab", "appearance"),
-  );
+  // Guard: existing users may have "appearance" or "behavior" persisted from
+  // the old settings layout. Fall back to "general" for any removed tab.
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>(() => {
+    const saved = loadPref<string>("settingsTab", "general");
+    const valid: SettingsTab[] = ["general", "ticker", "account"];
+    return (valid as string[]).includes(saved) ? (saved as SettingsTab) : "general";
+  });
 
   // Auth state
   const [authenticated, setAuthenticated] = useState(() => checkAuth());

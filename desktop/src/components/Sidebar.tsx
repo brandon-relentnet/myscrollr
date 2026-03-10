@@ -3,8 +3,8 @@ import {
   Activity,
   Layers,
   Settings,
-  Palette,
   SlidersHorizontal,
+  TicketPercent,
   UserCog,
   PanelLeftClose,
   PanelLeftOpen,
@@ -13,7 +13,7 @@ import clsx from "clsx";
 import { loadPref, savePref } from "../preferences";
 
 export type Section = "feed" | "channels" | "settings";
-export type SettingsTab = "appearance" | "behavior" | "account";
+export type SettingsTab = "general" | "ticker" | "account";
 
 interface SidebarProps {
   active: Section;
@@ -30,9 +30,9 @@ const NAV_ITEMS: { id: Section; label: string; icon: typeof Activity }[] = [
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
-const SETTINGS_SUBS: { id: SettingsTab; label: string; icon: typeof Palette }[] = [
-  { id: "appearance", label: "Appearance", icon: Palette },
-  { id: "behavior", label: "Behavior", icon: SlidersHorizontal },
+const SETTINGS_SUBS: { id: SettingsTab; label: string; icon: typeof SlidersHorizontal }[] = [
+  { id: "general", label: "General", icon: SlidersHorizontal },
+  { id: "ticker", label: "Ticker", icon: TicketPercent },
   { id: "account", label: "Account", icon: UserCog },
 ];
 
