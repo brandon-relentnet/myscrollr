@@ -544,6 +544,7 @@ export default function MainApp() {
                   setShowTaskbar(v);
                   savePref("showTaskbar", v);
                 }}
+                appVersion={appVersion}
               />
             </div>
           )}

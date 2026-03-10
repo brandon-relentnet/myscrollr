@@ -52,9 +52,28 @@ jobs:
               ;;
           esac
 
+  # ── Determine the release tag (shared across all jobs) ─────────
+  resolve-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: tag
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION=$(jq -r .version desktop/src-tauri/tauri.conf.json)
+            SHORT_SHA=$(git rev-parse --short HEAD)
+            TAG="desktop-v${VERSION}-dev.${SHORT_SHA}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Release tag: $TAG"
+
   # ── Build ──────────────────────────────────────────────────────
   build:
-    needs: matrix-setup
+    needs: [matrix-setup, resolve-tag]
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.matrix-setup.outputs.matrix) }}
@@ -100,143 +119,43 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      # tauri-action builds, signs updater artifacts, creates/updates
+      # the GitHub release, and assembles latest.json across all platforms.
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         with:
           projectPath: desktop
           tauriScript: npx tauri
+          tagName: ${{ needs.resolve-tag.outputs.tag }}
+          releaseName: "Scrollr ${{ needs.resolve-tag.outputs.tag }}"
+          releaseBody: "See the [full changelog](https://github.com/brandon-relentnet/myscrollr/commits/${{ needs.resolve-tag.outputs.tag }}) for details."
+          releaseDraft: false
+          prerelease: true
 
+      # ── Fix AppImage for rolling-release distros ───────────────
+      # Bundled Ubuntu 22.04 libwayland-* are ABI-incompatible with
+      # newer Mesa on Arch, Fedora, etc. We repackage without them,
+      # then replace the release asset so direct downloads get the fix.
       - name: Fix AppImage for rolling-release distros
         if: matrix.platform == 'ubuntu-22.04'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           APPIMAGE=$(find src-tauri/target/release/bundle/appimage -name '*.AppImage' | head -1)
           if [ -n "$APPIMAGE" ]; then
             chmod +x "$APPIMAGE"
             "$APPIMAGE" --appimage-extract
-            # Bundled Ubuntu 22.04 libwayland-* are ABI-incompatible with newer
-            # Mesa on Arch, Fedora, etc., causing "Could not create default EGL
-            # display: EGL_BAD_PARAMETER". System Wayland libs always match the
-            # system GPU drivers, so these should never be bundled.
             rm -f squashfs-root/usr/lib/libwayland-*.so.*
             wget -q https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
             chmod +x appimagetool-x86_64.AppImage
             ARCH=x86_64 ./appimagetool-x86_64.AppImage --appimage-extract-and-run squashfs-root "$APPIMAGE"
             rm -rf squashfs-root appimagetool-x86_64.AppImage
+
+            # Replace the release asset with the patched AppImage
+            BASENAME=$(basename "$APPIMAGE")
+            TAG="${{ needs.resolve-tag.outputs.tag }}"
+            gh release upload "$TAG" "$APPIMAGE" --clobber --repo "$GITHUB_REPOSITORY"
           fi
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: scrollr-${{ matrix.rust_target }}
-          path: |
-            desktop/src-tauri/target/release/bundle/deb/*.deb
-            desktop/src-tauri/target/release/bundle/rpm/*.rpm
-            desktop/src-tauri/target/release/bundle/appimage/*.AppImage
-            desktop/src-tauri/target/release/bundle/nsis/*.exe
-            desktop/src-tauri/target/release/bundle/msi/*.msi
-            desktop/src-tauri/target/release/bundle/dmg/*.dmg
-          if-no-files-found: ignore
-
-  # ── Release ────────────────────────────────────────────────────
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.release)
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # full history for git log
-
-      - name: Determine release tag
-        id: tag
-        run: |
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            TAG="${GITHUB_REF#refs/tags/}"
-          else
-            VERSION=$(jq -r .version desktop/src-tauri/tauri.conf.json)
-            SHORT_SHA=$(git rev-parse --short HEAD)
-            TAG="desktop-v${VERSION}-dev.${SHORT_SHA}"
-          fi
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "Release tag: $TAG"
-
-      - name: Generate changelog
-        id: changelog
-        run: |
-          TAG="${{ steps.tag.outputs.tag }}"
-
-          # Find the previous desktop-v* tag (skip the current one)
-          PREV_TAG=$(git tag --list 'desktop-v*' --sort=-version:refname \
-            | grep -v "^${TAG}$" | head -1)
-
-          if [ -n "$PREV_TAG" ]; then
-            RANGE="${PREV_TAG}..HEAD"
-            COMPARE_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/${PREV_TAG}...${GITHUB_SHA}"
-          else
-            # First release — use full history
-            RANGE="HEAD"
-            COMPARE_URL=""
-          fi
-
-          # Collect commits that touched desktop/ or extension/ (shared components)
-          FIXES=""
-          FEATURES=""
-          OTHER=""
-
-          while IFS='|' read -r HASH SUBJECT; do
-            [ -z "$HASH" ] && continue
-            LINE="- ${SUBJECT} (\`${HASH}\`)"
-            case "$SUBJECT" in
-              fix*)     FIXES="${FIXES}${LINE}"$'\n' ;;
-              feat*)    FEATURES="${FEATURES}${LINE}"$'\n' ;;
-              *)        OTHER="${OTHER}${LINE}"$'\n' ;;
-            esac
-          done < <(git log "$RANGE" --pretty=format:"%h|%s" -- desktop/ extension/)
-
-          # Assemble the body
-          BODY="## What's Changed"$'\n\n'
-
-          if [ -n "$FEATURES" ]; then
-            BODY="${BODY}### Features"$'\n'"${FEATURES}"$'\n'
-          fi
-          if [ -n "$FIXES" ]; then
-            BODY="${BODY}### Fixes"$'\n'"${FIXES}"$'\n'
-          fi
-          if [ -n "$OTHER" ]; then
-            BODY="${BODY}### Other"$'\n'"${OTHER}"$'\n'
-          fi
-
-          if [ -z "$FEATURES" ] && [ -z "$FIXES" ] && [ -z "$OTHER" ]; then
-            BODY="${BODY}_No desktop-specific changes found._"$'\n'
-          fi
-
-          if [ -n "$COMPARE_URL" ]; then
-            BODY="${BODY}"$'\n'"**Full diff**: ${COMPARE_URL}"
-          fi
-
-          # Write to file (avoids escaping issues with multiline strings)
-          echo "$BODY" > /tmp/release-notes.md
-          cat /tmp/release-notes.md
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Flatten artifacts
-        run: |
-          mkdir -p release
-          find artifacts -type f \( -name '*.deb' -o -name '*.rpm' -o -name '*.AppImage' -o -name '*.exe' -o -name '*.msi' -o -name '*.dmg' \) -exec cp {} release/ \;
-          ls -lh release/
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.tag.outputs.tag }}
-          name: Scrollr ${{ steps.tag.outputs.tag }}
-          draft: false
-          prerelease: true
-          body_path: /tmp/release-notes.md
-          files: release/*

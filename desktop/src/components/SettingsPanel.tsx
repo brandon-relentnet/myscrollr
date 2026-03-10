@@ -22,6 +22,7 @@ interface SettingsPanelProps {
   onToggleAppTicker: (enabled: boolean) => void;
   showTaskbar: boolean;
   onToggleTaskbar: (enabled: boolean) => void;
+  appVersion: string;
 }
 
 // ── Component ───────────────────────────────────────────────────
@@ -40,6 +41,7 @@ export default function SettingsPanel({
   onToggleAppTicker,
   showTaskbar,
   onToggleTaskbar,
+  appVersion,
 }: SettingsPanelProps) {
   const updatePrefs = (next: AppPreferences) => {
     onPrefsChange(next);
@@ -94,6 +96,7 @@ export default function SettingsPanel({
           onLogin={onLogin}
           onLogout={onLogout}
           onResetAll={handleResetAll}
+          appVersion={appVersion}
         />
       )}
     </div>
