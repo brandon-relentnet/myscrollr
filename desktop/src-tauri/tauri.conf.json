@@ -31,7 +31,7 @@
     "windows": [
       {
         "label": "ticker",
-        "title": "Scrollr",
+        "title": "Scrollr Ticker",
         "width": 1920,
         "height": 228,
         "decorations": false,
