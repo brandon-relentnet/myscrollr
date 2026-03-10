@@ -13,11 +13,6 @@ on:
           - windows
           - macos
           - linux
-      release:
-        description: "Create a GitHub release"
-        required: false
-        default: true
-        type: boolean
   push:
     tags:
       - "desktop-v*"
@@ -133,7 +128,7 @@ jobs:
           releaseName: "Scrollr ${{ needs.resolve-tag.outputs.tag }}"
           releaseBody: "See the [full changelog](https://github.com/brandon-relentnet/myscrollr/commits/${{ needs.resolve-tag.outputs.tag }}) for details."
           releaseDraft: false
-          prerelease: true
+          prerelease: false
 
       # ── Fix AppImage for rolling-release distros ───────────────
       # Bundled Ubuntu 22.04 libwayland-* are ABI-incompatible with

@@ -1,9 +1,9 @@
-import { useState, useCallback } from "react";
-import { check } from "@tauri-apps/plugin-updater";
+import { useState, useCallback, useRef } from "react";
+import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import type { SubscriptionTier } from "../../auth";
 import { Section, DisplayRow, ActionRow, ResetButton } from "./SettingsControls";
-import { clsx } from "clsx";
+import clsx from "clsx";
 
 // ── Update state machine ────────────────────────────────────────
 
@@ -42,16 +42,19 @@ export default function AccountSettings({
   appVersion,
 }: AccountSettingsProps) {
   const [status, setStatus] = useState<UpdateStatus>({ step: "idle" });
+  const pendingUpdate = useRef<Update | null>(null);
 
   const handleCheckForUpdates = useCallback(async () => {
     setStatus({ step: "checking" });
     try {
       const update = await check();
       if (!update) {
+        pendingUpdate.current = null;
         setStatus({ step: "up-to-date" });
         return;
       }
 
+      pendingUpdate.current = update;
       setStatus({
         step: "available",
         version: update.version,
@@ -66,14 +69,14 @@ export default function AccountSettings({
   }, []);
 
   const handleDownloadAndInstall = useCallback(async () => {
+    const update = pendingUpdate.current;
+    if (!update) {
+      setStatus({ step: "error", message: "No update available. Try checking again." });
+      return;
+    }
+
     setStatus({ step: "downloading", downloaded: 0, total: 0 });
     try {
-      const update = await check();
-      if (!update) {
-        setStatus({ step: "up-to-date" });
-        return;
-      }
-
       await update.downloadAndInstall((event) => {
         if (event.event === "Started" && event.data.contentLength) {
           setStatus((prev) =>
@@ -87,8 +90,6 @@ export default function AccountSettings({
               ? { ...prev, downloaded: prev.downloaded + (event.data.chunkLength ?? 0) }
               : prev,
           );
-        } else if (event.event === "Finished") {
-          setStatus({ step: "ready" });
         }
       });
 
@@ -102,7 +103,14 @@ export default function AccountSettings({
   }, []);
 
   const handleRelaunch = useCallback(async () => {
-    await relaunch();
+    try {
+      await relaunch();
+    } catch (err) {
+      setStatus({
+        step: "error",
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
   }, []);
 
   return (
@@ -237,7 +245,9 @@ function UpdateRow({ status, onCheck, onDownload, onRelaunch }: UpdateRowProps) 
       );
 
     case "downloading": {
-      const pct = status.total > 0 ? Math.round((status.downloaded / status.total) * 100) : 0;
+      const pct = status.total > 0
+        ? Math.min(100, Math.round((status.downloaded / status.total) * 100))
+        : 0;
       return (
         <div className="flex flex-col gap-2 px-3 py-2.5 rounded-lg">
           <div className="flex items-center justify-between">
