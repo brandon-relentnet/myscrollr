@@ -4,9 +4,27 @@ import { useMotionValue, animate, AnimatePresence, motion } from "motion/react";
 import type { DashboardResponse, Trade, Game, RssItem } from "~/utils/types";
 import type { MixMode, ChipColorMode, TickerDirection, ScrollMode } from "../preferences";
 import TradeChip from "./chips/TradeChip";
-import GameChip from "./chips/GameChip";
+import GameChip, { isLive, isCloseGame } from "./chips/GameChip";
 import RssChip from "./chips/RssChip";
 import FantasyChip from "./chips/FantasyChip";
+
+// ── Sport engagement scoring (higher = more prominent in ticker) ─
+
+function gameEngagement(g: Game): number {
+  if (isLive(g)) return isCloseGame(g) ? 100 : 80;
+  if (g.state === "pre") {
+    const until = new Date(g.start_time).getTime() - Date.now();
+    if (until < 3_600_000) return 60;  // within 1 hour
+    if (until < 86_400_000) return 40; // within 24 hours
+    return 20;
+  }
+  if (g.state === "final") {
+    const ago = Date.now() - new Date(g.start_time).getTime();
+    if (ago < 7_200_000) return 30; // finished within 2 hours
+    return 10;
+  }
+  return 0;
+}
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -124,8 +142,10 @@ export default function ScrollrTicker({
           }
           break;
 
-        case "sports":
-          for (const game of data as Game[]) {
+        case "sports": {
+          // Sort by engagement: close live > live > starting soon > recent final > rest
+          const sorted = (data as Game[]).slice().sort((a, b) => gameEngagement(b) - gameEngagement(a));
+          for (const game of sorted) {
             bucket.push(
               wrap(`spo-${game.id}`,
                 <GameChip
@@ -138,6 +158,7 @@ export default function ScrollrTicker({
             );
           }
           break;
+        }
 
         case "rss":
           for (const item of data as RssItem[]) {

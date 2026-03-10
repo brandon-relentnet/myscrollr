@@ -680,11 +680,15 @@ function FeedSection({
   // Build channelConfig for the active FeedTab (same pattern as FeedBar)
   const channelConfig = useMemo(() => {
     const initialItems = dashboard?.data?.[activeTab] ?? [];
+    const hasChannel = channels.some(
+      (ch) => ch.channel_type === activeTab && ch.enabled,
+    );
     return {
       __initialItems: initialItems,
       __dashboardLoaded: dashboard !== null,
+      __hasConfig: hasChannel,
     };
-  }, [activeTab, dashboard]);
+  }, [activeTab, dashboard, channels]);
 
   // Look up the active channel's FeedTab component
   const channel = getChannel(activeTab);

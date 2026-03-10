@@ -13,6 +13,9 @@ interface TrackedLeague {
   category: string
   country: string
   logo_url: string
+  game_count: number
+  live_count: number
+  next_game: string | null
 }
 
 interface SportsChannelConfig {
@@ -31,6 +34,29 @@ async function fetchCatalog(): Promise<TrackedLeague[]> {
   const res = await fetch(`${API_BASE}/sports/leagues`)
   if (!res.ok) throw new Error('Failed to fetch league catalog')
   return res.json()
+}
+
+// ── League activity helpers ──────────────────────────────────────
+
+function leagueActivitySort(a: TrackedLeague, b: TrackedLeague): number {
+  // Live leagues first, then by game count desc, then alphabetical
+  if (a.live_count !== b.live_count) return b.live_count - a.live_count
+  if (a.game_count !== b.game_count) return b.game_count - a.game_count
+  return a.name.localeCompare(b.name)
+}
+
+function formatNextGame(dateStr: string | null): string | null {
+  if (!dateStr) return null
+  const d = new Date(dateStr)
+  const now = Date.now()
+  const diff = d.getTime() - now
+  if (diff <= 0) return 'Starting'
+  const h = Math.floor(diff / 3_600_000)
+  if (h < 24) {
+    const m = Math.floor((diff % 3_600_000) / 60_000)
+    return h > 0 ? `in ${h}h ${m}m` : `in ${m}m`
+  }
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
 // ── Component ───────────────────────────────────────────────────
@@ -80,8 +106,10 @@ function SportsDashboardTab({
     ...Array.from(new Set(catalog.map((l) => l.category))),
   ]
 
-  // Filter by category and search
-  const filteredCatalog = catalog.filter((l) => {
+  // Sort by activity (live first, then game count, then alpha), then filter
+  const sortedCatalog = [...catalog].sort(leagueActivitySort)
+
+  const filteredCatalog = sortedCatalog.filter((l) => {
     const matchesCategory =
       activeCategory === 'All' || l.category === activeCategory
     const matchesSearch =
@@ -90,6 +118,14 @@ function SportsDashboardTab({
       l.category.toLowerCase().includes(searchQuery.toLowerCase())
     return matchesCategory && matchesSearch
   })
+
+  // Check if all selected leagues are off-season
+  const selectedAllOffSeason =
+    leagues.length > 0 &&
+    leagues.every((name) => {
+      const entry = catalog.find((l) => l.name === name)
+      return !entry || entry.game_count === 0
+    })
 
   const updateLeagues = async (nextLeagues: string[]) => {
     setSaving(true)
@@ -259,6 +295,19 @@ function SportsDashboardTab({
                         {entry.category}
                       </span>
                     )}
+                    {entry && entry.live_count > 0 && (
+                      <span className="text-[8px] text-live font-bold ml-1.5">
+                        <span className="inline-block w-1 h-1 rounded-full bg-live animate-pulse mr-0.5 align-middle" />
+                        {entry.live_count} Live
+                      </span>
+                    )}
+                    {entry &&
+                      entry.live_count === 0 &&
+                      entry.game_count === 0 && (
+                        <span className="text-[8px] text-base-content/20 ml-1.5">
+                          Off-season
+                        </span>
+                      )}
                   </div>
                   <button
                     onClick={() => removeLeague(name)}
@@ -276,6 +325,23 @@ function SportsDashboardTab({
             <Trophy size={28} className="mx-auto text-base-content/15 mb-2" />
             <p className="text-[10px] text-base-content/25 uppercase tracking-wide">
               No leagues selected — browse the catalog below
+            </p>
+          </div>
+        )}
+
+        {/* Off-season warning */}
+        {selectedAllOffSeason && (
+          <div
+            className="flex items-center gap-2 px-3 py-2.5 rounded-lg border text-[10px]"
+            style={{
+              background: `${hex}08`,
+              borderColor: `${hex}1A`,
+            }}
+          >
+            <Trophy size={14} className="text-base-content/20 shrink-0" />
+            <p className="text-base-content/40">
+              Your selected leagues are currently off-season. No game data will
+              appear in your feed until games are scheduled.
             </p>
           </div>
         )}
@@ -427,12 +493,30 @@ function SportsDashboardTab({
                     )}
                     <div className="min-w-0">
                       <div className="text-xs font-bold">{entry.name}</div>
-                      <div className="text-[9px] text-base-content/30 truncate">
-                        {entry.country}
+                      <div className="flex items-center gap-1.5 text-[9px] text-base-content/30 truncate">
+                        <span>{entry.country}</span>
+                        {entry.live_count > 0 && (
+                          <span className="inline-flex items-center gap-0.5 text-live font-bold">
+                            <span className="w-1 h-1 rounded-full bg-live animate-pulse" />
+                            {entry.live_count} Live
+                          </span>
+                        )}
+                        {entry.live_count === 0 && entry.game_count > 0 && (
+                          <span className="text-base-content/40">
+                            {entry.game_count} games
+                          </span>
+                        )}
+                        {entry.game_count === 0 && (
+                          <span className="text-base-content/20">
+                            {formatNextGame(entry.next_game)
+                              ? `Next: ${formatNextGame(entry.next_game)}`
+                              : 'Off-season'}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
-                  <div className="shrink-0">
+                  <div className="shrink-0 flex items-center gap-2">
                     {isAdded ? (
                       <span
                         className="text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded"

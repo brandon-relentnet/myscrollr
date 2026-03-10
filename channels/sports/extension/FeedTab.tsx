@@ -49,9 +49,11 @@ export default function SportsFeedTab({ mode, channelConfig }: FeedTabProps) {
     >
       {games.length === 0 && (
         <div className="col-span-full text-center py-8 text-fg-3 text-xs font-mono">
-          {channelConfig.__dashboardLoaded && initialItems.length === 0
-            ? "No leagues selected \u2014 configure on myscrollr.com"
-            : "Waiting for game data\u2026"}
+          {!channelConfig.__dashboardLoaded
+            ? "Waiting for game data\u2026"
+            : channelConfig.__hasConfig
+              ? "No active games for your selected leagues"
+              : "No leagues selected \u2014 configure on myscrollr.com"}
         </div>
       )}
       {games.map((game) => (

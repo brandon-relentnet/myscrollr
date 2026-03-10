@@ -31,7 +31,8 @@ const (
 	SportsCacheTTL = 30 * time.Second
 
 	// SportsCatalogCacheTTL is how long the league catalog is cached.
-	SportsCatalogCacheTTL = 5 * time.Minute
+	// Reduced from 5min to 60s because game activity status changes frequently.
+	SportsCatalogCacheTTL = 60 * time.Second
 
 	// SportsLeagueSubscribersPrefix is the per-league subscriber set prefix.
 	// Keys: sports:subscribers:league:{NFL}, sports:subscribers:league:{NBA}, etc.
@@ -91,7 +92,7 @@ func (a *App) getSports(c *fiber.Ctx) error {
 }
 
 // getLeagueCatalog returns all enabled tracked leagues for the dashboard
-// league browser.
+// league browser, enriched with per-league game counts and activity status.
 func (a *App) getLeagueCatalog(c *fiber.Ctx) error {
 	var catalog []TrackedLeague
 	if GetCache(a.rdb, CacheKeySportsCatalog, &catalog) {
@@ -99,7 +100,9 @@ func (a *App) getLeagueCatalog(c *fiber.Ctx) error {
 		return c.JSON(catalog)
 	}
 
-	rows, err := a.db.Query(context.Background(),
+	ctx := context.Background()
+
+	rows, err := a.db.Query(ctx,
 		`SELECT name, COALESCE(sport_api, ''), COALESCE(category, 'Other'), COALESCE(country, ''), COALESCE(logo_url, '')
 		 FROM tracked_leagues WHERE is_enabled = true ORDER BY category, name`)
 	if err != nil {
@@ -119,6 +122,45 @@ func (a *App) getLeagueCatalog(c *fiber.Ctx) error {
 			continue
 		}
 		catalog = append(catalog, l)
+	}
+
+	// Enrich with per-league game activity counts.
+	type leagueStatus struct {
+		GameCount int
+		LiveCount int
+		NextGame  *time.Time
+	}
+	statusMap := make(map[string]leagueStatus)
+
+	statusRows, err := a.db.Query(ctx,
+		`SELECT league,
+		        COUNT(*) AS game_count,
+		        COUNT(*) FILTER (WHERE state = 'in') AS live_count,
+		        MIN(start_time) FILTER (WHERE state = 'pre') AS next_game
+		 FROM games
+		 GROUP BY league`)
+	if err != nil {
+		log.Printf("[Sports] League status query failed (non-fatal): %v", err)
+		// Continue without enrichment — the catalog is still useful.
+	} else {
+		defer statusRows.Close()
+		for statusRows.Next() {
+			var league string
+			var s leagueStatus
+			if err := statusRows.Scan(&league, &s.GameCount, &s.LiveCount, &s.NextGame); err != nil {
+				log.Printf("[Sports] League status scan error: %v", err)
+				continue
+			}
+			statusMap[league] = s
+		}
+	}
+
+	for i := range catalog {
+		if s, ok := statusMap[catalog[i].Name]; ok {
+			catalog[i].GameCount = s.GameCount
+			catalog[i].LiveCount = s.LiveCount
+			catalog[i].NextGame = s.NextGame
+		}
 	}
 
 	SetCache(a.rdb, CacheKeySportsCatalog, catalog, SportsCatalogCacheTTL)
