@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
+import { TIER_LABELS } from "../../auth";
 import type { SubscriptionTier } from "../../auth";
 import { Section, DisplayRow, ActionRow, ResetButton } from "./SettingsControls";
 import clsx from "clsx";
@@ -26,12 +27,6 @@ interface AccountSettingsProps {
   onResetAll: () => void;
   appVersion: string;
 }
-
-const TIER_LABELS: Record<SubscriptionTier, string> = {
-  free: "Free",
-  uplink: "Uplink",
-  uplink_unlimited: "Uplink Unlimited",
-};
 
 export default function AccountSettings({
   authenticated,

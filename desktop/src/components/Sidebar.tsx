@@ -171,9 +171,11 @@ export default function Sidebar({
       </nav>
 
       {/* Version */}
-      <div className="px-4 py-3 border-t border-edge">
-        <span className="text-[10px] font-mono text-fg-4">v{appVersion ?? "0.0.0"}</span>
-      </div>
+      {appVersion && (
+        <div className="px-4 py-3 border-t border-edge">
+          <span className="text-[10px] font-mono text-fg-4">v{appVersion}</span>
+        </div>
+      )}
     </aside>
   );
 }

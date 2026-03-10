@@ -151,6 +151,12 @@ function extractSub(jwt: string): string | null {
  */
 export type SubscriptionTier = "free" | "uplink" | "uplink_unlimited";
 
+export const TIER_LABELS: Record<SubscriptionTier, string> = {
+  free: "Free",
+  uplink: "Uplink",
+  uplink_unlimited: "Uplink Unlimited",
+};
+
 export function getTier(): SubscriptionTier {
   const auth = loadAuth();
   if (!auth) return "free";

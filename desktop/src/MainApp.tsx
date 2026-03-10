@@ -23,6 +23,7 @@ import {
   isAuthenticated as checkAuth,
   getTier,
 } from "./auth";
+import { TIER_LABELS } from "./auth";
 import type { SubscriptionTier } from "./auth";
 import type { Channel, ChannelType } from "./api/client";
 import { channelsApi } from "./api/client";
@@ -45,7 +46,11 @@ const CHANNEL_ORDER = ["finance", "sports", "rss", "fantasy"];
 // ── Platform detection ──────────────────────────────────────────
 // macOS uses native window decorations (traffic lights). Linux and
 // Windows use the custom TitleBar component with JS-based drag.
-const IS_MACOS = /Mac/.test(navigator.platform);
+// navigator.userAgentData is the modern replacement for the deprecated
+// navigator.platform — fall back for older WebView engines.
+const IS_MACOS =
+  (navigator as { userAgentData?: { platform?: string } }).userAgentData?.platform === "macOS" ||
+  /Mac/.test(navigator.platform);
 
 // ── App ─────────────────────────────────────────────────────────
 
@@ -70,10 +75,12 @@ export default function MainApp() {
   const [activeTab, setActiveTab] = useState(
     () => loadPref("activeTab", "finance"),
   );
-  const feedMode = loadPref<FeedMode>("feedMode", "comfort");
+  const [feedMode] = useState<FeedMode>(
+    () => loadPref<FeedMode>("feedMode", "comfort"),
+  );
 
   // App version (read from tauri.conf.json at runtime)
-  const [appVersion, setAppVersion] = useState("0.0.0");
+  const [appVersion, setAppVersion] = useState("");
   useEffect(() => {
     getVersion().then(setAppVersion).catch(() => {});
   }, []);
@@ -666,7 +673,7 @@ function FeedSection({
     <div className="flex flex-col h-full">
       {/* Channel tabs */}
       <div className="flex gap-1 px-4 py-2 border-b border-edge/50 shrink-0">
-        {visibleChannels
+        {[...visibleChannels]
           .sort((a, b) =>
             CHANNEL_ORDER.indexOf(a.channel_type) -
             CHANNEL_ORDER.indexOf(b.channel_type),
@@ -750,7 +757,7 @@ function ChannelsSection({
       {/* Active channels */}
       {channels.length > 0 && (
         <div className="space-y-2">
-          {channels
+          {[...channels]
             .sort((a, b) =>
               CHANNEL_ORDER.indexOf(a.channel_type) -
               CHANNEL_ORDER.indexOf(b.channel_type),
@@ -922,7 +929,7 @@ function DashboardSection({
     <div className="flex flex-col h-full">
       {/* Channel tabs */}
       <div className="flex gap-1 px-4 py-2 border-b border-edge/50 shrink-0">
-        {channels
+        {[...channels]
           .sort((a, b) =>
             CHANNEL_ORDER.indexOf(a.channel_type) -
             CHANNEL_ORDER.indexOf(b.channel_type),
@@ -985,12 +992,6 @@ function AccountSection({
   onLogin: () => void;
   onLogout: () => void;
 }) {
-  const tierLabels: Record<SubscriptionTier, string> = {
-    free: "Free",
-    uplink: "Uplink",
-    uplink_unlimited: "Uplink Unlimited",
-  };
-
   return (
     <div className="p-6 max-w-md mx-auto space-y-6">
       <div>
@@ -1007,7 +1008,7 @@ function AccountSection({
               <div>
                 <p className="text-xs text-fg-3">Plan</p>
                 <p className="text-sm font-semibold text-accent">
-                  {tierLabels[tier]}
+                  {TIER_LABELS[tier]}
                 </p>
               </div>
             </div>
@@ -1051,7 +1052,7 @@ function AccountSection({
         <div className="pt-4 border-t border-edge/50">
           <div className="flex items-center justify-between text-xs text-fg-4">
             <span>Version</span>
-            <span className="font-mono">{appVersion}</span>
+            <span className="font-mono">{appVersion ? `v${appVersion}` : ""}</span>
           </div>
           <div className="flex items-center justify-between text-xs text-fg-4 mt-1">
             <span>Runtime</span>
