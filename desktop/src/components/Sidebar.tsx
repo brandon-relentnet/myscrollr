@@ -2,9 +2,7 @@ import { useState } from "react";
 import {
   Activity,
   Layers,
-  LayoutGrid,
   Settings,
-  User,
   Palette,
   SlidersHorizontal,
   UserCog,
@@ -14,7 +12,7 @@ import {
 import clsx from "clsx";
 import { loadPref, savePref } from "../preferences";
 
-export type Section = "feed" | "channels" | "dashboard" | "settings" | "account";
+export type Section = "feed" | "channels" | "settings";
 export type SettingsTab = "appearance" | "behavior" | "account";
 
 interface SidebarProps {
@@ -29,9 +27,7 @@ interface SidebarProps {
 const NAV_ITEMS: { id: Section; label: string; icon: typeof Activity }[] = [
   { id: "feed", label: "Feed", icon: Activity },
   { id: "channels", label: "Channels", icon: Layers },
-  { id: "dashboard", label: "Dashboard", icon: LayoutGrid },
   { id: "settings", label: "Settings", icon: Settings },
-  { id: "account", label: "Account", icon: User },
 ];
 
 const SETTINGS_SUBS: { id: SettingsTab; label: string; icon: typeof Palette }[] = [

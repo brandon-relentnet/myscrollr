@@ -23,7 +23,7 @@ import {
   isAuthenticated as checkAuth,
   getTier,
 } from "./auth";
-import { TIER_LABELS } from "./auth";
+
 import type { SubscriptionTier } from "./auth";
 import type { Channel, ChannelType } from "./api/client";
 import { channelsApi } from "./api/client";
@@ -57,9 +57,13 @@ const IS_MACOS =
 
 export default function MainApp() {
   // Navigation
-  const [section, setSection] = useState<Section>(
-    () => loadPref<Section>("appSection", "feed"),
-  );
+  // Guard: existing users may have "dashboard" or "account" persisted from
+  // the old 5-tab layout. Fall back to "feed" for any removed section.
+  const [section, setSection] = useState<Section>(() => {
+    const saved = loadPref<string>("appSection", "feed");
+    const valid: Section[] = ["feed", "channels", "settings"];
+    return (valid as string[]).includes(saved) ? (saved as Section) : "feed";
+  });
   const [settingsTab, setSettingsTab] = useState<SettingsTab>(
     () => loadPref<SettingsTab>("settingsTab", "appearance"),
   );
@@ -262,15 +266,15 @@ export default function MainApp() {
   }, []);
 
   // ── Keyboard shortcuts ──────────────────────────────────────
-  // Cmd/Ctrl+1-5: navigate sections. Escape: dismiss overlays.
+  // Cmd/Ctrl+1-3: navigate sections. Escape: dismiss overlays.
 
   useEffect(() => {
-    const SECTION_MAP: Section[] = ["feed", "channels", "dashboard", "settings", "account"];
+    const SECTION_MAP: Section[] = ["feed", "channels", "settings"];
     function onKeyDown(e: KeyboardEvent) {
       const mod = IS_MACOS ? e.metaKey : e.ctrlKey;
 
-      // Cmd/Ctrl + 1-5 → navigate sections
-      if (mod && e.key >= "1" && e.key <= "5") {
+      // Cmd/Ctrl + 1-3 → navigate sections
+      if (mod && e.key >= "1" && e.key <= "3") {
         e.preventDefault();
         const idx = Number(e.key) - 1;
         handleNavigate(SECTION_MAP[idx]);
@@ -501,7 +505,7 @@ export default function MainApp() {
         {/* Header */}
         <header className="flex items-center justify-between px-6 h-14 border-b border-edge shrink-0">
           <h1 className="text-base font-semibold capitalize">{section}</h1>
-          {!authenticated && section !== "account" && (
+          {!authenticated && (
             <button
               onClick={handleLogin}
               className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
@@ -559,17 +563,6 @@ export default function MainApp() {
             <ChannelsSection
               authenticated={authenticated}
               channels={channels}
-              onToggle={handleToggleChannel}
-              onAdd={handleAddChannel}
-              onDelete={handleDeleteChannel}
-              onLogin={handleLogin}
-            />
-          )}
-
-          {section === "dashboard" && (
-            <DashboardSection
-              authenticated={authenticated}
-              channels={channels}
               activeTab={activeTab}
               onActiveTabChange={(tab) => {
                 setActiveTab(tab);
@@ -582,6 +575,7 @@ export default function MainApp() {
                 const ch = channels.find((c) => c.channel_type === activeTab);
                 if (ch) handleToggleChannel(ch.channel_type, !ch.visible);
               }}
+              onAdd={handleAddChannel}
               onDelete={() => handleDeleteChannel(activeTab as ChannelType)}
               onChannelUpdate={handleChannelUpdate}
               onLogin={handleLogin}
@@ -615,15 +609,7 @@ export default function MainApp() {
             </div>
           )}
 
-          {section === "account" && (
-            <AccountSection
-              authenticated={authenticated}
-              tier={tier}
-              appVersion={appVersion}
-              onLogin={handleLogin}
-              onLogout={handleLogout}
-            />
-          )}
+
         </div>
 
         {/* Login overlay */}
@@ -798,173 +784,10 @@ function FeedSection({
 }
 
 // ── Channels Section ─────────────────────────────────────────────
+// Merged view: channel tabs + DashboardTab config + "+" add button.
+// Toggle/delete handled by ChannelHeader inside each DashboardTab.
 
 function ChannelsSection({
-  authenticated,
-  channels,
-  onToggle,
-  onAdd,
-  onDelete,
-  onLogin,
-}: {
-  authenticated: boolean;
-  channels: Channel[];
-  onToggle: (channelType: ChannelType, visible: boolean) => void;
-  onAdd: (channelType: ChannelType) => void;
-  onDelete: (channelType: ChannelType) => void;
-  onLogin: () => void;
-}) {
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-  const allManifests = getAllWebChannels();
-
-  if (!authenticated) {
-    return (
-      <EmptyState
-        title="Sign in to manage channels"
-        description="Connect your account to add and configure data channels."
-        action="Sign in"
-        onAction={onLogin}
-      />
-    );
-  }
-
-  const addedTypes = new Set(channels.map((ch) => ch.channel_type));
-
-  return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
-      <div>
-        <h2 className="text-base font-semibold text-fg">Your Channels</h2>
-        <p className="text-xs text-fg-3 mt-1">
-          Toggle channels on and off, or add new data sources.
-        </p>
-      </div>
-
-      {/* Active channels */}
-      {channels.length > 0 && (
-        <div className="space-y-2">
-          {[...channels]
-            .sort((a, b) =>
-              CHANNEL_ORDER.indexOf(a.channel_type) -
-              CHANNEL_ORDER.indexOf(b.channel_type),
-            )
-            .map((ch) => {
-              const manifest = getWebChannel(ch.channel_type);
-              return (
-                <div
-                  key={ch.channel_type}
-                  className="flex items-center justify-between p-4 rounded-xl bg-surface-2 border border-edge"
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-3 h-3 rounded-full shrink-0"
-                      style={{ background: manifest?.hex ?? "#34d399" }}
-                    />
-                    <div>
-                      <p className="text-sm font-medium text-fg">
-                        {manifest?.name ?? ch.channel_type}
-                      </p>
-                      <p className="text-xs text-fg-3">
-                        {manifest?.description ?? "Data channel"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {/* Toggle visibility */}
-                    <button
-                      onClick={() => onToggle(ch.channel_type, !ch.visible)}
-                      className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                        ch.visible
-                          ? "bg-accent/10 text-accent"
-                          : "bg-surface-hover text-fg-3"
-                      }`}
-                    >
-                      {ch.visible ? "Active" : "Hidden"}
-                    </button>
-
-                    {/* Delete */}
-                    {confirmDelete === ch.channel_type ? (
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => {
-                            onDelete(ch.channel_type);
-                            setConfirmDelete(null);
-                          }}
-                          className="px-2 py-1 rounded-lg text-xs font-medium bg-error/10 text-error hover:bg-error/20 transition-colors"
-                        >
-                          Confirm
-                        </button>
-                        <button
-                          onClick={() => setConfirmDelete(null)}
-                          className="px-2 py-1 rounded-lg text-xs font-medium text-fg-3 hover:text-fg-2"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setConfirmDelete(ch.channel_type)}
-                        className="px-2 py-1 rounded-lg text-xs font-medium text-fg-4 hover:text-error hover:bg-error/5 transition-colors"
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-        </div>
-      )}
-
-      {/* Available channels to add */}
-      {allManifests.filter((m) => !addedTypes.has(m.id as ChannelType)).length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-xs font-semibold text-fg-3 uppercase tracking-wider">
-            Available
-          </h3>
-          {allManifests
-            .filter((m) => !addedTypes.has(m.id as ChannelType))
-            .map((manifest) => (
-              <div
-                key={manifest.id}
-                className="flex items-center justify-between p-4 rounded-xl bg-surface-2/50 border border-edge/50"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-3 h-3 rounded-full shrink-0 opacity-40"
-                    style={{ background: manifest.hex }}
-                  />
-                  <div>
-                    <p className="text-sm font-medium text-fg-2">
-                      {manifest.name}
-                    </p>
-                    <p className="text-xs text-fg-3">{manifest.description}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => onAdd(manifest.id as ChannelType)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
-                >
-                  Add
-                </button>
-              </div>
-            ))}
-        </div>
-      )}
-
-      {channels.length === 0 && (
-        <EmptyState
-          title="No channels yet"
-          description="Add your first channel to start receiving live data."
-        />
-      )}
-    </div>
-  );
-}
-
-// ── Dashboard Section ────────────────────────────────────────────
-
-function DashboardSection({
   authenticated,
   channels,
   activeTab,
@@ -973,6 +796,7 @@ function DashboardSection({
   tier,
   deliveryMode,
   onToggle,
+  onAdd,
   onDelete,
   onChannelUpdate,
   onLogin,
@@ -985,15 +809,18 @@ function DashboardSection({
   tier: SubscriptionTier;
   deliveryMode: DeliveryMode;
   onToggle: () => void;
+  onAdd: (channelType: ChannelType) => void;
   onDelete: () => void;
   onChannelUpdate: (updated: Channel) => void;
   onLogin: () => void;
 }) {
+  const [showAddMenu, setShowAddMenu] = useState(false);
+
   if (!authenticated) {
     return (
       <EmptyState
-        title="Sign in to configure channels"
-        description="Connect your account to customize your data sources."
+        title="Sign in to manage channels"
+        description="Connect your account to add and configure data channels."
         action="Sign in"
         onAction={onLogin}
       />
@@ -1001,21 +828,64 @@ function DashboardSection({
   }
 
   if (channels.length === 0) {
+    const allManifests = getAllWebChannels();
     return (
-      <EmptyState
-        title="No channels configured"
-        description="Add channels first, then configure them here."
-      />
+      <div className="p-6 max-w-2xl mx-auto space-y-6">
+        <EmptyState
+          title="No channels yet"
+          description="Add your first channel to start receiving live data."
+        />
+        {allManifests.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-xs font-semibold text-fg-3 uppercase tracking-wider text-center">
+              Available channels
+            </h3>
+            <div className="grid gap-2">
+              {allManifests.map((manifest) => (
+                <div
+                  key={manifest.id}
+                  className="flex items-center justify-between p-4 rounded-xl bg-surface-2/50 border border-edge/50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-3 h-3 rounded-full shrink-0"
+                      style={{ background: manifest.hex }}
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-fg-2">
+                        {manifest.name}
+                      </p>
+                      <p className="text-xs text-fg-3">{manifest.description}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => onAdd(manifest.id as ChannelType)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     );
   }
+
+  const addedTypes = new Set(channels.map((ch) => ch.channel_type));
+  const allManifests = getAllWebChannels();
+  const availableChannels = allManifests.filter(
+    (m) => !addedTypes.has(m.id as ChannelType),
+  );
 
   const channel = channels.find((c) => c.channel_type === activeTab);
   const webChannel = getWebChannel(activeTab);
 
   return (
     <div className="flex flex-col h-full">
-      {/* Channel tabs */}
-      <div role="tablist" aria-label="Dashboard channels" className="flex gap-1 px-4 py-2 border-b border-edge/50 shrink-0">
+      {/* Channel tabs + add button */}
+      <div role="tablist" aria-label="Channel configuration" className="flex items-center gap-1 px-4 py-2 border-b border-edge/50 shrink-0">
         {[...channels]
           .sort((a, b) =>
             CHANNEL_ORDER.indexOf(a.channel_type) -
@@ -1041,6 +911,53 @@ function DashboardSection({
               </button>
             );
           })}
+
+        {/* Add channel button */}
+        {availableChannels.length > 0 && (
+          <div className="relative ml-1">
+            <button
+              onClick={() => setShowAddMenu((v) => !v)}
+              className="flex items-center justify-center w-7 h-7 rounded-lg text-fg-4 hover:text-fg-2 hover:bg-surface-hover transition-colors"
+              title="Add channel"
+              aria-label="Add channel"
+            >
+              <span className="text-base leading-none">+</span>
+            </button>
+
+            {/* Dropdown */}
+            {showAddMenu && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setShowAddMenu(false)}
+                />
+                <div className="absolute top-full left-0 mt-1 z-50 min-w-[200px] rounded-xl bg-surface-2 border border-edge shadow-lg overflow-hidden">
+                  {availableChannels.map((manifest) => (
+                    <button
+                      key={manifest.id}
+                      onClick={() => {
+                        onAdd(manifest.id as ChannelType);
+                        setShowAddMenu(false);
+                      }}
+                      className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-surface-hover transition-colors"
+                    >
+                      <div
+                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ background: manifest.hex }}
+                      />
+                      <div>
+                        <p className="text-xs font-medium text-fg-2">
+                          {manifest.name}
+                        </p>
+                        <p className="text-[11px] text-fg-4">{manifest.description}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* DashboardTab content */}
@@ -1059,97 +976,10 @@ function DashboardSection({
         ) : (
           <div className="flex items-center justify-center h-full">
             <p className="text-sm text-fg-3 font-mono">
-              No dashboard available for this channel
+              Select a channel to configure
             </p>
           </div>
         )}
-      </div>
-    </div>
-  );
-}
-
-// ── Account Section ──────────────────────────────────────────────
-
-function AccountSection({
-  authenticated,
-  tier,
-  appVersion,
-  onLogin,
-  onLogout,
-}: {
-  authenticated: boolean;
-  tier: SubscriptionTier;
-  appVersion: string;
-  onLogin: () => void;
-  onLogout: () => void;
-}) {
-  return (
-    <div className="p-6 max-w-md mx-auto space-y-6">
-      <div>
-        <h2 className="text-base font-semibold text-fg">Account</h2>
-        <p className="text-xs text-fg-3 mt-1">
-          Manage your Scrollr account and subscription.
-        </p>
-      </div>
-
-      <div className="space-y-3">
-        {authenticated ? (
-          <>
-            <div className="flex items-center justify-between p-4 rounded-xl bg-surface-2 border border-edge">
-              <div>
-                <p className="text-xs text-fg-3">Plan</p>
-                <p className="text-sm font-semibold text-accent">
-                  {TIER_LABELS[tier]}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between p-4 rounded-xl bg-surface-2 border border-edge">
-              <div>
-                <p className="text-xs text-fg-3">Session</p>
-                <p className="text-sm text-fg-2">Signed in</p>
-              </div>
-              <button
-                onClick={onLogout}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium text-error/80 hover:text-error hover:bg-error/5 transition-colors"
-              >
-                Sign out
-              </button>
-            </div>
-          </>
-        ) : (
-          <div className="flex flex-col items-center gap-4 py-8">
-            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-              <span className="text-accent text-lg font-bold">S</span>
-            </div>
-            <div className="text-center">
-              <p className="text-sm font-medium text-fg">
-                Sign in to Scrollr
-              </p>
-              <p className="text-xs text-fg-3 mt-1">
-                Unlock personalized channels, dashboard access, and real-time data.
-              </p>
-            </div>
-            <button
-              onClick={onLogin}
-              className="px-6 py-2.5 rounded-xl text-sm font-semibold bg-accent text-surface hover:brightness-110 transition-all"
-            >
-              Sign in
-            </button>
-          </div>
-        )}
-
-        {/* Version info */}
-        <div className="pt-4 border-t border-edge/50">
-          <div className="flex items-center justify-between text-xs text-fg-4">
-            <span>Version</span>
-            <span className="font-mono">{appVersion ? `v${appVersion}` : ""}</span>
-          </div>
-          <div className="flex items-center justify-between text-xs text-fg-4 mt-1">
-            <span>Runtime</span>
-            <span className="font-mono">Tauri v2</span>
-          </div>
-        </div>
       </div>
     </div>
   );
