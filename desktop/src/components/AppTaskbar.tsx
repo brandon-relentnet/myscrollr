@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import clsx from "clsx";
 import {
@@ -25,6 +26,214 @@ interface AppTaskbarProps {
   tickerAlive: boolean;
   onToggleStandaloneTicker: () => void;
   deliveryMode: DeliveryMode;
+  /** Navigate to a widget's full feed view */
+  onNavigateToWidget?: (widgetId: string) => void;
+}
+
+// ── Mini widget chip storage keys ───────────────────────────────
+
+const TIMER_STORAGE_KEY = "scrollr:widget:timer:state";
+const WEATHER_STORAGE_KEY = "scrollr:widget:weather:cities";
+const WEATHER_UNIT_KEY = "scrollr:widget:weather:unit";
+
+// ── Mini Clock Chip ─────────────────────────────────────────────
+
+function MiniClockChip({ onClick }: { onClick: () => void }) {
+  const [time, setTime] = useState(() => formatTime());
+
+  useEffect(() => {
+    const id = setInterval(() => setTime(formatTime()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <button
+      onClick={onClick}
+      title="World Clock"
+      className="flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-mono tabular-nums hover:bg-surface-hover transition-colors cursor-pointer shrink-0"
+    >
+      <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--color-widget-clock)" }} />
+      <span className="text-fg-2">{time}</span>
+    </button>
+  );
+}
+
+function formatTime(): string {
+  const d = new Date();
+  const h = d.getHours();
+  const m = String(d.getMinutes()).padStart(2, "0");
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+  return `${h12}:${m} ${ampm}`;
+}
+
+// ── Mini Timer Chip ─────────────────────────────────────────────
+
+interface TimerState {
+  mode: "pomodoro" | "countdown" | "stopwatch";
+  startedAt: number | null;
+  bankedMs: number;
+  targetSecs: number;
+}
+
+function MiniTimerChip({ onClick }: { onClick: () => void }) {
+  const [display, setDisplay] = useState<string | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+
+  useEffect(() => {
+    function update() {
+      try {
+        const raw = localStorage.getItem(TIMER_STORAGE_KEY);
+        if (!raw) { setDisplay(null); return; }
+        const state = JSON.parse(raw) as TimerState;
+        const running = state.startedAt !== null;
+        setIsRunning(running);
+
+        if (!running && state.bankedMs === 0) {
+          setDisplay(null);
+          return;
+        }
+
+        const elapsedMs = running
+          ? state.bankedMs + (Date.now() - state.startedAt!)
+          : state.bankedMs;
+
+        if (state.mode === "stopwatch") {
+          const totalSecs = Math.floor(elapsedMs / 1000);
+          setDisplay(fmtShort(totalSecs));
+        } else {
+          const remainMs = Math.max(0, state.targetSecs * 1000 - elapsedMs);
+          const remainSecs = Math.ceil(remainMs / 1000);
+          setDisplay(fmtShort(remainSecs));
+        }
+      } catch {
+        setDisplay(null);
+      }
+    }
+
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  if (display === null) return null;
+
+  return (
+    <button
+      onClick={onClick}
+      title="Timer"
+      className="flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-mono tabular-nums hover:bg-surface-hover transition-colors cursor-pointer shrink-0"
+    >
+      <div
+        className={clsx(
+          "w-1.5 h-1.5 rounded-full shrink-0",
+          isRunning && "motion-safe:animate-pulse",
+        )}
+        style={{ background: "var(--color-widget-timer)" }}
+      />
+      <span className={clsx("text-fg-2", isRunning && "text-[var(--color-widget-timer)]")}>
+        {display}
+      </span>
+    </button>
+  );
+}
+
+function fmtShort(totalSecs: number): string {
+  const m = Math.floor(totalSecs / 60);
+  const s = totalSecs % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+// ── Mini Weather Chip ───────────────────────────────────────────
+
+interface SavedCity {
+  location: { name: string };
+  weather: { temperature: number } | null;
+}
+
+function MiniWeatherChip({ onClick }: { onClick: () => void }) {
+  const [display, setDisplay] = useState<string | null>(null);
+
+  useEffect(() => {
+    function update() {
+      try {
+        const raw = localStorage.getItem(WEATHER_STORAGE_KEY);
+        if (!raw) { setDisplay(null); return; }
+        const cities = JSON.parse(raw) as SavedCity[];
+        const first = cities?.[0];
+        if (!first?.weather) { setDisplay(null); return; }
+
+        const unitRaw = localStorage.getItem(WEATHER_UNIT_KEY);
+        const unit = unitRaw === "celsius" ? "celsius" : "fahrenheit";
+        const tempC = first.weather.temperature;
+        const temp = unit === "fahrenheit" ? (tempC * 9) / 5 + 32 : tempC;
+
+        setDisplay(`${Math.round(temp)}\u00B0`);
+      } catch {
+        setDisplay(null);
+      }
+    }
+
+    update();
+    // Weather data changes infrequently; check every 30s
+    const id = setInterval(update, 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  if (display === null) return null;
+
+  return (
+    <button
+      onClick={onClick}
+      title="Weather"
+      className="flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-mono tabular-nums hover:bg-surface-hover transition-colors cursor-pointer shrink-0"
+    >
+      <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--color-widget-weather)" }} />
+      <span className="text-fg-2">{display}</span>
+    </button>
+  );
+}
+
+// ── Mini System Monitor Chip ────────────────────────────────────
+
+function MiniSysmonChip({ onClick }: { onClick: () => void }) {
+  const [cpuPct, setCpuPct] = useState<number | null>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+
+    async function poll() {
+      try {
+        const info = await invoke<{ cpuUsage: number }>("get_system_info");
+        if (mountedRef.current) setCpuPct(Math.round(info.cpuUsage));
+      } catch {
+        if (mountedRef.current) setCpuPct(null);
+      }
+    }
+
+    poll();
+    const id = setInterval(poll, 3000);
+    return () => {
+      mountedRef.current = false;
+      clearInterval(id);
+    };
+  }, []);
+
+  if (cpuPct === null) return null;
+
+  return (
+    <button
+      onClick={onClick}
+      title="System Monitor"
+      className="flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-mono tabular-nums hover:bg-surface-hover transition-colors cursor-pointer shrink-0"
+    >
+      <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--color-widget-sysmon)" }} />
+      <span className={clsx("text-fg-2", cpuPct > 80 && "text-error")}>
+        {cpuPct}%
+      </span>
+    </button>
+  );
 }
 
 // ── Component ───────────────────────────────────────────────────
@@ -37,12 +246,22 @@ export default function AppTaskbar({
   tickerAlive,
   onToggleStandaloneTicker,
   deliveryMode,
+  onNavigateToWidget,
 }: AppTaskbarProps) {
   const isDark = resolveTheme(prefs.appearance.theme) === "dark";
 
   const isPinned = prefs.window.pinned;
   const rows = prefs.appearance.tickerRows;
   const taskbarH = TASKBAR_HEIGHTS[prefs.taskbar.taskbarHeight];
+
+  const enabledWidgets = prefs.widgets.enabledWidgets;
+  const hasClock = enabledWidgets.includes("clock");
+  const hasTimer = enabledWidgets.includes("timer");
+  const hasWeather = enabledWidgets.includes("weather");
+  const hasSysmon = enabledWidgets.includes("sysmon");
+  const hasAnyChip = hasClock || hasTimer || hasWeather || hasSysmon;
+
+  const nav = (id: string) => onNavigateToWidget?.(id);
 
   const RowIcon = rows === 1 ? Rows2 : rows === 2 ? Rows3 : Rows4;
 
@@ -86,7 +305,7 @@ export default function AppTaskbar({
       style={{ height: `${taskbarH}px` }}
     >
       {/* Left: status indicators */}
-      <div className="flex items-center gap-3 mr-auto select-none">
+      <div className="flex items-center gap-3 select-none shrink-0">
         {/* Ticker toggle + status */}
         <div className="flex items-center gap-1.5">
           <button
@@ -135,45 +354,64 @@ export default function AppTaskbar({
         </div>
       </div>
 
-      {/* Actions */}
-      <button
-        onClick={toggleTheme}
-        className={btnIdle}
-        title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-        aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      >
-        {isDark ? <Sun size={14} /> : <Moon size={14} />}
-      </button>
+      {/* Center: mini widget chips */}
+      {hasAnyChip && (
+        <>
+          <div className="w-px h-3 bg-edge mx-1.5 shrink-0" />
+          <div className="flex items-center gap-0.5 flex-1 min-w-0 overflow-hidden">
+            {hasClock && <MiniClockChip onClick={() => nav("clock")} />}
+            {hasTimer && <MiniTimerChip onClick={() => nav("timer")} />}
+            {hasWeather && <MiniWeatherChip onClick={() => nav("weather")} />}
+            {hasSysmon && <MiniSysmonChip onClick={() => nav("sysmon")} />}
+          </div>
+          <div className="w-px h-3 bg-edge mx-1.5 shrink-0" />
+        </>
+      )}
 
-      <button
-        onClick={onToggleTicker}
-        className={clsx(showTicker ? btnActive : btnIdle)}
-        title={showTicker ? "Hide ticker preview" : "Show ticker preview"}
-        aria-label={showTicker ? "Hide ticker preview" : "Show ticker preview"}
-      >
-        {showTicker ? <TicketCheck size={14} /> : <TicketSlash size={14} />}
-      </button>
+      {/* Spacer when no chips */}
+      {!hasAnyChip && <div className="flex-1" />}
 
-      <button
-        onClick={cycleRows}
-        className={clsx(btnIdle, "relative")}
-        title={`Ticker rows: ${rows} (click to cycle)`}
-        aria-label={`Ticker rows: ${rows}`}
-      >
-        <RowIcon size={14} />
-        <span className="absolute -top-0.5 -right-0.5 min-w-[12px] h-3 flex items-center justify-center rounded-full bg-accent/20 text-accent text-[8px] font-bold leading-none">
-          {rows}
-        </span>
-      </button>
+      {/* Right: actions */}
+      <div className="flex items-center gap-0.5 shrink-0">
+        <button
+          onClick={toggleTheme}
+          className={btnIdle}
+          title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+          aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+        >
+          {isDark ? <Sun size={14} /> : <Moon size={14} />}
+        </button>
 
-      <button
-        onClick={togglePin}
-        className={clsx(isPinned ? btnActive : btnIdle)}
-        title={isPinned ? "Unpin from top" : "Pin on top"}
-        aria-label={isPinned ? "Unpin from top" : "Pin on top"}
-      >
-        {isPinned ? <Pin size={14} /> : <PinOff size={14} />}
-      </button>
+        <button
+          onClick={onToggleTicker}
+          className={clsx(showTicker ? btnActive : btnIdle)}
+          title={showTicker ? "Hide ticker preview" : "Show ticker preview"}
+          aria-label={showTicker ? "Hide ticker preview" : "Show ticker preview"}
+        >
+          {showTicker ? <TicketCheck size={14} /> : <TicketSlash size={14} />}
+        </button>
+
+        <button
+          onClick={cycleRows}
+          className={clsx(btnIdle, "relative")}
+          title={`Ticker rows: ${rows} (click to cycle)`}
+          aria-label={`Ticker rows: ${rows}`}
+        >
+          <RowIcon size={14} />
+          <span className="absolute -top-0.5 -right-0.5 min-w-[12px] h-3 flex items-center justify-center rounded-full bg-accent/20 text-accent text-[8px] font-bold leading-none">
+            {rows}
+          </span>
+        </button>
+
+        <button
+          onClick={togglePin}
+          className={clsx(isPinned ? btnActive : btnIdle)}
+          title={isPinned ? "Unpin from top" : "Pin on top"}
+          aria-label={isPinned ? "Unpin from top" : "Pin on top"}
+        >
+          {isPinned ? <Pin size={14} /> : <PinOff size={14} />}
+        </button>
+      </div>
     </div>
   );
 }

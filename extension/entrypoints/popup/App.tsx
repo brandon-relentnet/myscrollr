@@ -12,9 +12,11 @@ import {
   feedPosition as feedPositionStorage,
   feedMode as feedModeStorage,
   feedBehavior as feedBehaviorStorage,
+  activeWidgetTabs as activeWidgetTabsStorage,
   authToken,
   authTokenExpiry,
 } from '~/utils/storage';
+import { getAllWidgets } from '~/widgets/registry';
 import { API_URL, FRONTEND_URL } from '~/utils/constants';
 
 const STATUS_CONFIG = {
@@ -30,6 +32,7 @@ export default function App() {
   const [mode, setMode] = useState<FeedMode>('comfort');
   const [behavior, setBehavior] = useState<FeedBehavior>('overlay');
   const [authenticated, setAuthenticated] = useState(false);
+  const [activeWidgets, setActiveWidgets] = useState<string[]>([]);
 
   // Load state on mount
   useEffect(() => {
@@ -48,6 +51,7 @@ export default function App() {
     feedPositionStorage.getValue().then(setPosition).catch(() => {});
     feedModeStorage.getValue().then(setMode).catch(() => {});
     feedBehaviorStorage.getValue().then(setBehavior).catch(() => {});
+    activeWidgetTabsStorage.getValue().then(setActiveWidgets).catch(() => {});
   }, []);
 
   // Listen for live broadcasts from background
@@ -115,6 +119,14 @@ export default function App() {
     setBehavior(val);
     await feedBehaviorStorage.setValue(val);
     syncPreferenceToServer('feed_behavior', val);
+  };
+
+  const toggleWidget = async (widgetId: string) => {
+    const next = activeWidgets.includes(widgetId)
+      ? activeWidgets.filter((id) => id !== widgetId)
+      : [...activeWidgets, widgetId];
+    setActiveWidgets(next);
+    await activeWidgetTabsStorage.setValue(next);
   };
 
   const openSettings = () => {
@@ -204,6 +216,53 @@ export default function App() {
           </select>
         </div>
       </div>
+
+      {/* Widgets */}
+      {getAllWidgets().length > 0 && (
+        <div className="px-4 py-3 border-t border-edge space-y-2">
+          <span className="text-[11px] font-mono text-fg-2 uppercase tracking-wider">Widgets</span>
+          <div className="space-y-1">
+            {getAllWidgets()
+              .filter((w) => !w.desktopOnly)
+              .map((widget) => {
+                const isActive = activeWidgets.includes(widget.id);
+                return (
+                  <button
+                    key={widget.id}
+                    onClick={() => toggleWidget(widget.id)}
+                    className="flex items-center justify-between w-full py-1 group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="w-1.5 h-1.5 rounded-full shrink-0 transition-opacity"
+                        style={{
+                          background: widget.hex,
+                          opacity: isActive ? 1 : 0.3,
+                        }}
+                      />
+                      <span
+                        className={clsx(
+                          'text-[11px] font-mono transition-colors',
+                          isActive ? 'text-fg' : 'text-fg-3',
+                        )}
+                      >
+                        {widget.name}
+                      </span>
+                    </div>
+                    <span
+                      className={clsx(
+                        'text-[9px] font-mono uppercase tracking-wider transition-colors',
+                        isActive ? 'text-fg-2' : 'text-fg-4',
+                      )}
+                    >
+                      {isActive ? 'on' : 'off'}
+                    </span>
+                  </button>
+                );
+              })}
+          </div>
+        </div>
+      )}
 
       {/* Auth */}
       <div className="px-4 py-3 border-t border-edge">

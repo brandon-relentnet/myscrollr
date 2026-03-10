@@ -56,6 +56,8 @@ export default defineConfig({
     host_permissions: [
       "https://api.myscrollr.relentnet.dev/*",
       "https://auth.myscrollr.relentnet.dev/*",
+      "https://api.open-meteo.com/*",
+      "https://geocoding-api.open-meteo.com/*",
     ],
     browser_specific_settings: {
       gecko: {

@@ -62,6 +62,13 @@ export const activeFeedTabs = storage.defineItem<string[]>(
   { fallback: ['finance', 'sports'], version: 1 },
 );
 
+/** Active widget IDs — managed separately from channels so CDC/API
+ *  sync never overwrites widget selections. */
+export const activeWidgetTabs = storage.defineItem<string[]>(
+  'local:activeWidgetTabs',
+  { fallback: [], version: 1 },
+);
+
 // ── User identity ────────────────────────────────────────────────
 
 /** Logto user ID (sub claim), used to filter CDC records. */

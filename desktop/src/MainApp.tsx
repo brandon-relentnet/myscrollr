@@ -10,12 +10,13 @@ import {
 import clsx from "clsx";
 import TitleBar from "./components/TitleBar";
 import Sidebar from "./components/Sidebar";
-import type { Section, SettingsTab } from "./components/Sidebar";
+import type { SettingsTab } from "./components/Sidebar";
 import SettingsPanel from "./components/SettingsPanel";
 import ScrollrTicker from "./components/ScrollrTicker";
 import AppTaskbar from "./components/AppTaskbar";
 import { getWebChannel, getAllWebChannels } from "./channels/webRegistry";
 import { getChannel } from "~/channels/registry";
+import { getWidget, getAllWidgets } from "./widgets/registry";
 import {
   login as authLogin,
   logout as authLogout,
@@ -53,19 +54,44 @@ const IS_MACOS =
   (navigator as { userAgentData?: { platform?: string } }).userAgentData?.platform === "macOS" ||
   /Mac/.test(navigator.platform);
 
+// ── Helpers ─────────────────────────────────────────────────────
+
+/** Resolve a human-readable name for the active item. */
+function getActiveItemName(
+  activeItem: string,
+  channels: Channel[],
+  allChannelManifests: ReturnType<typeof getAllWebChannels>,
+): string {
+  if (activeItem === "settings") return "Settings";
+
+  // Channel?
+  const chManifest = allChannelManifests.find((m) => m.id === activeItem);
+  if (chManifest) return chManifest.name;
+
+  // Widget?
+  const widget = getWidget(activeItem);
+  if (widget) return widget.name;
+
+  return activeItem;
+}
+
 // ── App ─────────────────────────────────────────────────────────
 
 export default function MainApp() {
-  // Navigation
-  // Guard: existing users may have "dashboard" or "account" persisted from
-  // the old 5-tab layout. Fall back to "feed" for any removed section.
-  const [section, setSection] = useState<Section>(() => {
-    const saved = loadPref<string>("appSection", "feed");
-    const valid: Section[] = ["feed", "channels", "settings"];
-    return (valid as string[]).includes(saved) ? (saved as Section) : "feed";
+  // ── Navigation ──────────────────────────────────────────────
+  // activeItem: channel ID, widget ID, or "settings"
+  // configuring: when true and activeItem is a channel, show DashboardTab
+  const [activeItem, setActiveItem] = useState<string>(() => {
+    const saved = loadPref<string>("activeItem", "");
+    // Migration: old values "feed" / "channels" / "dashboard" / "account"
+    // no longer valid — will be resolved after channels load
+    if (!saved || saved === "feed" || saved === "channels" || saved === "dashboard" || saved === "account") {
+      return ""; // Empty = resolve after data loads
+    }
+    return saved;
   });
-  // Guard: existing users may have "appearance" or "behavior" persisted from
-  // the old settings layout. Fall back to "general" for any removed tab.
+  const [configuring, setConfiguring] = useState(false);
+
   const [settingsTab, setSettingsTab] = useState<SettingsTab>(() => {
     const saved = loadPref<string>("settingsTab", "general");
     const valid: SettingsTab[] = ["general", "ticker", "account"];
@@ -81,9 +107,6 @@ export default function MainApp() {
   // Channel data
   const [channels, setChannels] = useState<Channel[]>([]);
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
-  const [activeTab, setActiveTab] = useState(
-    () => loadPref("activeTab", "finance"),
-  );
 
   // App version (read from tauri.conf.json at runtime)
   const [appVersion, setAppVersion] = useState("");
@@ -119,8 +142,55 @@ export default function MainApp() {
   authenticatedRef.current = authenticated;
   const lastFetchRef = useRef(0);
 
+  // ── Derived data ──────────────────────────────────────────────
+
+  const allChannelManifests = useMemo(() => getAllWebChannels(), []);
+  const allWidgets = useMemo(() => getAllWidgets(), []);
+
+  const sortedChannels = useMemo(
+    () =>
+      [...channels]
+        .filter((ch) => ch.enabled && ch.visible)
+        .sort(
+          (a, b) =>
+            CHANNEL_ORDER.indexOf(a.channel_type) -
+            CHANNEL_ORDER.indexOf(b.channel_type),
+        ),
+    [channels],
+  );
+
+  const enabledWidgets = prefs.widgets.enabledWidgets;
+
+  // ── Resolve empty activeItem after data loads ─────────────────
+  // If activeItem is empty (first launch or migrated from old layout),
+  // pick the first available source.
+
+  useEffect(() => {
+    if (activeItem !== "" || loading) return;
+
+    const firstChannel = sortedChannels[0]?.channel_type;
+    const firstWidget = enabledWidgets[0];
+    const fallback = firstChannel ?? firstWidget ?? "settings";
+
+    setActiveItem(fallback);
+    savePref("activeItem", fallback);
+  }, [activeItem, loading, sortedChannels, enabledWidgets]);
+
+  // ── Active item identity ──────────────────────────────────────
+
+  const isChannelActive = channels.some(
+    (ch) => ch.channel_type === activeItem && ch.enabled,
+  );
+  const activeWidget = getWidget(activeItem);
+  const isWidgetActive = !!activeWidget && enabledWidgets.includes(activeItem);
+  const isSettingsActive = activeItem === "settings";
+
+  const activeItemName = useMemo(
+    () => getActiveItemName(activeItem, channels, allChannelManifests),
+    [activeItem, channels, allChannelManifests],
+  );
+
   // ── Theme & scale application ────────────────────────────────
-  // Apply theme to the DOM and broadcast for cross-window sync.
 
   useEffect(() => {
     const shell = document.getElementById("app-shell");
@@ -259,9 +329,20 @@ export default function MainApp() {
 
   // ── Navigation ──────────────────────────────────────────────
 
-  const handleNavigate = useCallback((next: Section) => {
-    setSection(next);
-    savePref("appSection", next);
+  const handleSelectItem = useCallback((id: string) => {
+    setActiveItem(id);
+    setConfiguring(false);
+    savePref("activeItem", id);
+  }, []);
+
+  const handleConfigureChannel = useCallback((channelType: string) => {
+    setActiveItem(channelType);
+    setConfiguring(true);
+    savePref("activeItem", channelType);
+  }, []);
+
+  const handleBackToFeed = useCallback(() => {
+    setConfiguring(false);
   }, []);
 
   const handleSettingsTab = useCallback((tab: SettingsTab) => {
@@ -270,22 +351,11 @@ export default function MainApp() {
   }, []);
 
   // ── Keyboard shortcuts ──────────────────────────────────────
-  // Cmd/Ctrl+1-3: navigate sections. Escape: dismiss overlays.
+  // Escape: dismiss overlays, exit configure mode.
 
   useEffect(() => {
-    const SECTION_MAP: Section[] = ["feed", "channels", "settings"];
     function onKeyDown(e: KeyboardEvent) {
-      const mod = IS_MACOS ? e.metaKey : e.ctrlKey;
-
-      // Cmd/Ctrl + 1-3 → navigate sections
-      if (mod && e.key >= "1" && e.key <= "3") {
-        e.preventDefault();
-        const idx = Number(e.key) - 1;
-        handleNavigate(SECTION_MAP[idx]);
-        return;
-      }
-
-      // Escape → dismiss login overlay or session banner
+      // Escape → dismiss login overlay, session banner, or exit configure mode
       if (e.key === "Escape") {
         if (loggingIn) {
           setLoggingIn(false);
@@ -295,11 +365,15 @@ export default function MainApp() {
           setSessionExpired(false);
           return;
         }
+        if (configuring) {
+          setConfiguring(false);
+          return;
+        }
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [loggingIn, sessionExpired, handleNavigate]);
+  }, [loggingIn, sessionExpired, configuring]);
 
   // ── Auth handlers ───────────────────────────────────────────
 
@@ -363,6 +437,10 @@ export default function MainApp() {
           () => Promise.resolve(token),
         );
         setChannels((prev) => [...prev, created]);
+        // Navigate to the new channel
+        setActiveItem(channelType);
+        setConfiguring(false);
+        savePref("activeItem", channelType);
       } catch (err) {
         console.error("[Scrollr] Channel add failed:", err);
       }
@@ -376,31 +454,76 @@ export default function MainApp() {
       if (!token) return;
       try {
         await channelsApi.delete(channelType, () => Promise.resolve(token));
-        setChannels((prev) =>
-          prev.filter((ch) => ch.channel_type !== channelType),
-        );
-        // Switch to first remaining channel
         setChannels((prev) => {
-          if (prev.length > 0 && prev[0].channel_type !== activeTab) {
-            setActiveTab(prev[0].channel_type);
+          const remaining = prev.filter(
+            (ch) => ch.channel_type !== channelType,
+          );
+          // Navigate to first remaining source
+          if (activeItem === channelType) {
+            const firstCh = remaining.find((ch) => ch.enabled && ch.visible);
+            const fallback =
+              firstCh?.channel_type ??
+              enabledWidgets[0] ??
+              "settings";
+            setActiveItem(fallback);
+            setConfiguring(false);
+            savePref("activeItem", fallback);
           }
-          return prev;
+          return remaining;
         });
       } catch (err) {
         console.error("[Scrollr] Channel delete failed:", err);
       }
     },
-    [activeTab],
+    [activeItem, enabledWidgets],
   );
 
-  const handleChannelUpdate = useCallback((updated: Channel) => {
-    setChannels((prev) =>
-      prev.map((ch) =>
-        ch.channel_type === updated.channel_type ? updated : ch,
-      ),
-    );
-    fetchDashboard();
-  }, [fetchDashboard]);
+  const handleChannelUpdate = useCallback(
+    (updated: Channel) => {
+      setChannels((prev) =>
+        prev.map((ch) =>
+          ch.channel_type === updated.channel_type ? updated : ch,
+        ),
+      );
+      fetchDashboard();
+    },
+    [fetchDashboard],
+  );
+
+  // ── Widget toggle handler ───────────────────────────────────
+
+  const handleToggleWidget = useCallback(
+    (widgetId: string) => {
+      const isEnabled = enabledWidgets.includes(widgetId);
+      const nextEnabled = isEnabled
+        ? enabledWidgets.filter((id) => id !== widgetId)
+        : [...enabledWidgets, widgetId];
+
+      const next: AppPreferences = {
+        ...prefs,
+        widgets: { ...prefs.widgets, enabledWidgets: nextEnabled },
+      };
+      setPrefs(next);
+      savePrefs(next);
+
+      // If enabling, navigate to the widget
+      if (!isEnabled) {
+        setActiveItem(widgetId);
+        setConfiguring(false);
+        savePref("activeItem", widgetId);
+      }
+      // If disabling the active widget, navigate away
+      if (isEnabled && activeItem === widgetId) {
+        const firstCh = sortedChannels[0]?.channel_type;
+        const firstWidget = nextEnabled[0];
+        const fallback = firstCh ?? firstWidget ?? "settings";
+        setActiveItem(fallback);
+        setConfiguring(false);
+        savePref("activeItem", fallback);
+      }
+    },
+    [prefs, enabledWidgets, activeItem, sortedChannels],
+  );
 
   // ── Settings handlers ───────────────────────────────────────
 
@@ -423,14 +546,16 @@ export default function MainApp() {
 
   const getToken = useCallback(() => getValidToken(), []);
 
-  // ── Derived: active tabs for ticker ─────────────────────────
+  // ── Derived: active tabs for ticker (channels + enabled widgets) ──
 
   const activeTabs = useMemo(
-    () =>
-      channels
+    () => [
+      ...channels
         .filter((ch) => ch.enabled && ch.visible)
         .map((ch) => ch.channel_type),
-    [channels],
+      ...prefs.widgets.enabledWidgets,
+    ],
+    [channels, prefs.widgets.enabledWidgets],
   );
 
   // ── Ticker / taskbar toggles ────────────────────────────────
@@ -450,6 +575,178 @@ export default function MainApp() {
     savePrefs(next);
   }
 
+  // ── Content rendering helpers ────────────────────────────────
+
+  function renderContent() {
+    // Settings
+    if (isSettingsActive) {
+      return (
+        <div className="p-6">
+          <SettingsPanel
+            activeTab={settingsTab}
+            prefs={prefs}
+            onPrefsChange={handlePrefsChange}
+            authenticated={authenticated}
+            tier={tier}
+            onLogin={handleLogin}
+            onLogout={handleLogout}
+            autostartEnabled={autostartOn}
+            onAutostartChange={handleAutostartChange}
+            showAppTicker={showAppTicker}
+            onToggleAppTicker={(v) => {
+              setShowAppTicker(v);
+              savePref("showAppTicker", v);
+            }}
+            showTaskbar={showTaskbar}
+            onToggleTaskbar={(v) => {
+              setShowTaskbar(v);
+              savePref("showTaskbar", v);
+            }}
+            appVersion={appVersion}
+          />
+        </div>
+      );
+    }
+
+    // Not authenticated — prompt sign in
+    if (!authenticated && isChannelActive) {
+      return (
+        <EmptyState
+          title="Sign in to view your feed"
+          description="Connect your account to see live data from your channels."
+          action="Sign in"
+          onAction={handleLogin}
+        />
+      );
+    }
+
+    // Loading
+    if (loading && !isWidgetActive) {
+      return (
+        <div className="flex flex-col gap-3 p-6">
+          {Array.from({ length: 6 }, (_, i) => (
+            <div key={i} className="flex items-center gap-3 motion-safe:animate-pulse">
+              <div className="w-8 h-8 rounded-lg bg-surface-2" />
+              <div className="flex-1 space-y-2">
+                <div
+                  className="h-3 rounded bg-surface-2"
+                  style={{ width: `${55 + (i * 17) % 35}%` }}
+                />
+                <div
+                  className="h-2 rounded bg-surface-2/60"
+                  style={{ width: `${30 + (i * 23) % 40}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // Fetch error (only for channel content)
+    if (fetchError && isChannelActive) {
+      return <ErrorState message={fetchError} onRetry={fetchDashboard} />;
+    }
+
+    // Channel — configure mode (DashboardTab)
+    if (isChannelActive && configuring) {
+      const channel = channels.find((c) => c.channel_type === activeItem);
+      const webChannel = getWebChannel(activeItem);
+
+      if (channel && webChannel) {
+        return (
+          <div className="flex-1 overflow-y-auto p-4 scrollbar-thin dashboard-content">
+            <webChannel.DashboardTab
+              channel={channel}
+              getToken={getToken}
+              onToggle={() =>
+                handleToggleChannel(channel.channel_type, !channel.visible)
+              }
+              onDelete={() =>
+                handleDeleteChannel(activeItem as ChannelType)
+              }
+              onChannelUpdate={handleChannelUpdate}
+              connected={deliveryMode === "sse"}
+              subscriptionTier={tier}
+              hex={webChannel.hex}
+            />
+          </div>
+        );
+      }
+
+      return (
+        <EmptyState
+          title="Configuration unavailable"
+          description="This channel does not have a configuration panel."
+        />
+      );
+    }
+
+    // Channel — feed mode
+    if (isChannelActive) {
+      const channelModule = getChannel(activeItem);
+      const FeedTabComponent = channelModule?.FeedTab;
+
+      if (!FeedTabComponent) {
+        return (
+          <EmptyState
+            title="No feed available"
+            description="This channel doesn't have a feed view yet."
+          />
+        );
+      }
+
+      const initialItems = dashboard?.data?.[activeItem] ?? [];
+      const hasChannel = channels.some(
+        (ch) => ch.channel_type === activeItem && ch.enabled,
+      );
+      const channelConfig = {
+        __initialItems: initialItems,
+        __dashboardLoaded: dashboard !== null,
+        __hasConfig: hasChannel,
+      };
+
+      return <FeedTabComponent mode="comfort" channelConfig={channelConfig} />;
+    }
+
+    // Widget
+    if (isWidgetActive && activeWidget) {
+      const channelConfig = {
+        __initialItems: [],
+        __dashboardLoaded: true,
+      };
+      return <activeWidget.FeedTab mode="comfort" channelConfig={channelConfig} />;
+    }
+
+    // Empty state — no sources at all
+    if (sortedChannels.length === 0 && enabledWidgets.length === 0) {
+      if (!authenticated) {
+        return (
+          <EmptyState
+            title="Welcome to Scrollr"
+            description="Sign in to add channels, or enable a widget from the sidebar to get started."
+            action="Sign in"
+            onAction={handleLogin}
+          />
+        );
+      }
+      return (
+        <EmptyState
+          title="No sources yet"
+          description="Add a channel or enable a widget from the sidebar to get started."
+        />
+      );
+    }
+
+    // Fallback
+    return (
+      <EmptyState
+        title="Select a source"
+        description="Choose a channel or widget from the sidebar."
+      />
+    );
+  }
+
   // ── Render ──────────────────────────────────────────────────
 
   return (
@@ -465,12 +762,20 @@ export default function MainApp() {
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
       <Sidebar
-        active={section}
-        onNavigate={handleNavigate}
+        channels={channels}
+        allChannelManifests={allChannelManifests}
+        allWidgets={allWidgets}
+        enabledWidgets={enabledWidgets}
+        activeItem={activeItem}
+        configuring={configuring}
         tickerAlive={prefs.ticker.showTicker}
-        settingsTab={settingsTab}
-        onSettingsTabChange={handleSettingsTab}
+        authenticated={authenticated}
         appVersion={appVersion}
+        onSelectItem={handleSelectItem}
+        onConfigureChannel={handleConfigureChannel}
+        onAddChannel={handleAddChannel}
+        onToggleWidget={handleToggleWidget}
+        onLogin={handleLogin}
       />
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
@@ -506,20 +811,65 @@ export default function MainApp() {
             tickerAlive={prefs.ticker.showTicker}
             onToggleStandaloneTicker={handleToggleStandaloneTicker}
             deliveryMode={deliveryMode}
+            onNavigateToWidget={handleSelectItem}
           />
         )}
 
         {/* Header */}
         <header className="flex items-center justify-between px-6 h-14 border-b border-edge shrink-0">
-          <h1 className="text-base font-semibold capitalize">{section}</h1>
-          {!authenticated && (
-            <button
-              onClick={handleLogin}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
-            >
-              Sign in
-            </button>
-          )}
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Back arrow when configuring a channel */}
+            {configuring && isChannelActive && (
+              <button
+                onClick={handleBackToFeed}
+                className="flex items-center gap-1.5 text-xs font-medium text-fg-3 hover:text-fg-2 transition-colors shrink-0"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Feed
+              </button>
+            )}
+            <h1 className="text-base font-semibold truncate">
+              {activeItemName}
+              {configuring && isChannelActive && (
+                <span className="text-fg-3 font-normal ml-2 text-sm">
+                  Configuration
+                </span>
+              )}
+            </h1>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Settings tab switcher — only when viewing settings */}
+            {isSettingsActive && (
+              <div className="flex gap-1">
+                {(["general", "ticker", "account"] as SettingsTab[]).map(
+                  (tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => handleSettingsTab(tab)}
+                      className={clsx(
+                        "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors capitalize",
+                        settingsTab === tab
+                          ? "bg-accent/10 text-accent"
+                          : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
+                      )}
+                    >
+                      {tab}
+                    </button>
+                  ),
+                )}
+              </div>
+            )}
+            {!authenticated && !isSettingsActive && (
+              <button
+                onClick={handleLogin}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+              >
+                Sign in
+              </button>
+            )}
+          </div>
         </header>
 
         {/* Session expired banner */}
@@ -548,75 +898,7 @@ export default function MainApp() {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto scrollbar-thin">
-          {section === "feed" && (
-            <FeedSection
-              authenticated={authenticated}
-              loading={loading}
-              fetchError={fetchError}
-              channels={channels}
-              dashboard={dashboard}
-              activeTab={activeTab}
-              onActiveTabChange={(tab) => {
-                setActiveTab(tab);
-                savePref("activeTab", tab);
-              }}
-              onRetry={fetchDashboard}
-              onLogin={handleLogin}
-              onNavigateToChannels={() => handleNavigate("channels")}
-            />
-          )}
-
-          {section === "channels" && (
-            <ChannelsSection
-              authenticated={authenticated}
-              channels={channels}
-              activeTab={activeTab}
-              onActiveTabChange={(tab) => {
-                setActiveTab(tab);
-                savePref("activeTab", tab);
-              }}
-              getToken={getToken}
-              tier={tier}
-              deliveryMode={deliveryMode}
-              onToggle={() => {
-                const ch = channels.find((c) => c.channel_type === activeTab);
-                if (ch) handleToggleChannel(ch.channel_type, !ch.visible);
-              }}
-              onAdd={handleAddChannel}
-              onDelete={() => handleDeleteChannel(activeTab as ChannelType)}
-              onChannelUpdate={handleChannelUpdate}
-              onLogin={handleLogin}
-            />
-          )}
-
-          {section === "settings" && (
-            <div className="p-6">
-              <SettingsPanel
-                activeTab={settingsTab}
-                prefs={prefs}
-                onPrefsChange={handlePrefsChange}
-                authenticated={authenticated}
-                tier={tier}
-                onLogin={handleLogin}
-                onLogout={handleLogout}
-                autostartEnabled={autostartOn}
-                onAutostartChange={handleAutostartChange}
-                showAppTicker={showAppTicker}
-                onToggleAppTicker={(v) => {
-                  setShowAppTicker(v);
-                  savePref("showAppTicker", v);
-                }}
-                showTaskbar={showTaskbar}
-                onToggleTaskbar={(v) => {
-                  setShowTaskbar(v);
-                  savePref("showTaskbar", v);
-                }}
-                appVersion={appVersion}
-              />
-            </div>
-          )}
-
-
+          {renderContent()}
         </div>
 
         {/* Login overlay */}
@@ -645,352 +927,6 @@ export default function MainApp() {
           </div>
         )}
       </main>
-      </div>
-    </div>
-  );
-}
-
-// ── Feed Section ─────────────────────────────────────────────────
-
-function FeedSection({
-  authenticated,
-  loading,
-  fetchError,
-  channels,
-  dashboard,
-  activeTab,
-  onActiveTabChange,
-  onRetry,
-  onLogin,
-  onNavigateToChannels,
-}: {
-  authenticated: boolean;
-  loading: boolean;
-  fetchError: string | null;
-  channels: Channel[];
-  dashboard: DashboardResponse | null;
-  activeTab: string;
-  onActiveTabChange: (tab: string) => void;
-  onRetry: () => void;
-  onLogin: () => void;
-  onNavigateToChannels: () => void;
-}) {
-  const visibleChannels = channels.filter((ch) => ch.enabled && ch.visible);
-
-  // Build channelConfig for the active FeedTab (same pattern as FeedBar)
-  const channelConfig = useMemo(() => {
-    const initialItems = dashboard?.data?.[activeTab] ?? [];
-    const hasChannel = channels.some(
-      (ch) => ch.channel_type === activeTab && ch.enabled,
-    );
-    return {
-      __initialItems: initialItems,
-      __dashboardLoaded: dashboard !== null,
-      __hasConfig: hasChannel,
-    };
-  }, [activeTab, dashboard, channels]);
-
-  // Look up the active channel's FeedTab component
-  const channel = getChannel(activeTab);
-  const FeedTabComponent = channel?.FeedTab ?? null;
-
-  if (!authenticated) {
-    return (
-      <EmptyState
-        title="Sign in to view your feed"
-        description="Connect your account to see live data from your channels."
-        action="Sign in"
-        onAction={onLogin}
-      />
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="flex flex-col gap-3 p-6">
-        {Array.from({ length: 6 }, (_, i) => (
-          <div key={i} className="flex items-center gap-3 motion-safe:animate-pulse">
-            <div className="w-8 h-8 rounded-lg bg-surface-2" />
-            <div className="flex-1 space-y-2">
-              <div
-                className="h-3 rounded bg-surface-2"
-                style={{ width: `${55 + (i * 17) % 35}%` }}
-              />
-              <div
-                className="h-2 rounded bg-surface-2/60"
-                style={{ width: `${30 + (i * 23) % 40}%` }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (fetchError) {
-    return (
-      <ErrorState
-        message={fetchError}
-        onRetry={onRetry}
-      />
-    );
-  }
-
-  if (visibleChannels.length === 0) {
-    return (
-      <EmptyState
-        title="No active channels"
-        description="Enable some channels to see live data in your feed."
-        action="Go to Channels"
-        onAction={onNavigateToChannels}
-      />
-    );
-  }
-
-  return (
-    <div className="flex flex-col h-full">
-      {/* Channel tabs */}
-      <div role="tablist" aria-label="Feed channels" className="flex gap-1 px-4 py-2 border-b border-edge/50 shrink-0">
-        {[...visibleChannels]
-          .sort((a, b) =>
-            CHANNEL_ORDER.indexOf(a.channel_type) -
-            CHANNEL_ORDER.indexOf(b.channel_type),
-          )
-          .map((ch) => {
-            const manifest = getChannel(ch.channel_type);
-            const selected = activeTab === ch.channel_type;
-            return (
-              <button
-                key={ch.channel_type}
-                role="tab"
-                aria-selected={selected}
-                onClick={() => onActiveTabChange(ch.channel_type)}
-                className={clsx(
-                  "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
-                  selected
-                    ? "bg-accent/10 text-accent"
-                    : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
-                )}
-              >
-                {manifest?.tabLabel ?? ch.channel_type}
-              </button>
-            );
-          })}
-      </div>
-
-      {/* Feed content */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin">
-        {FeedTabComponent ? (
-          <FeedTabComponent mode="comfort" channelConfig={channelConfig} />
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-sm text-fg-3 font-mono">
-              No feed available for this channel
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Channels Section ─────────────────────────────────────────────
-// Merged view: channel tabs + DashboardTab config + "+" add button.
-// Toggle/delete handled by ChannelHeader inside each DashboardTab.
-
-function ChannelsSection({
-  authenticated,
-  channels,
-  activeTab,
-  onActiveTabChange,
-  getToken,
-  tier,
-  deliveryMode,
-  onToggle,
-  onAdd,
-  onDelete,
-  onChannelUpdate,
-  onLogin,
-}: {
-  authenticated: boolean;
-  channels: Channel[];
-  activeTab: string;
-  onActiveTabChange: (tab: string) => void;
-  getToken: () => Promise<string | null>;
-  tier: SubscriptionTier;
-  deliveryMode: DeliveryMode;
-  onToggle: () => void;
-  onAdd: (channelType: ChannelType) => void;
-  onDelete: () => void;
-  onChannelUpdate: (updated: Channel) => void;
-  onLogin: () => void;
-}) {
-  const [showAddMenu, setShowAddMenu] = useState(false);
-
-  if (!authenticated) {
-    return (
-      <EmptyState
-        title="Sign in to manage channels"
-        description="Connect your account to add and configure data channels."
-        action="Sign in"
-        onAction={onLogin}
-      />
-    );
-  }
-
-  if (channels.length === 0) {
-    const allManifests = getAllWebChannels();
-    return (
-      <div className="p-6 max-w-2xl mx-auto space-y-6">
-        <EmptyState
-          title="No channels yet"
-          description="Add your first channel to start receiving live data."
-        />
-        {allManifests.length > 0 && (
-          <div className="space-y-2">
-            <h3 className="text-xs font-semibold text-fg-3 uppercase tracking-wider text-center">
-              Available channels
-            </h3>
-            <div className="grid gap-2">
-              {allManifests.map((manifest) => (
-                <div
-                  key={manifest.id}
-                  className="flex items-center justify-between p-4 rounded-xl bg-surface-2/50 border border-edge/50"
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-3 h-3 rounded-full shrink-0"
-                      style={{ background: manifest.hex }}
-                    />
-                    <div>
-                      <p className="text-sm font-medium text-fg-2">
-                        {manifest.name}
-                      </p>
-                      <p className="text-xs text-fg-3">{manifest.description}</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => onAdd(manifest.id as ChannelType)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
-                  >
-                    Add
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  const addedTypes = new Set(channels.map((ch) => ch.channel_type));
-  const allManifests = getAllWebChannels();
-  const availableChannels = allManifests.filter(
-    (m) => !addedTypes.has(m.id as ChannelType),
-  );
-
-  const channel = channels.find((c) => c.channel_type === activeTab);
-  const webChannel = getWebChannel(activeTab);
-
-  return (
-    <div className="flex flex-col h-full">
-      {/* Channel tabs + add button */}
-      <div role="tablist" aria-label="Channel configuration" className="flex items-center gap-1 px-4 py-2 border-b border-edge/50 shrink-0">
-        {[...channels]
-          .sort((a, b) =>
-            CHANNEL_ORDER.indexOf(a.channel_type) -
-            CHANNEL_ORDER.indexOf(b.channel_type),
-          )
-          .map((ch) => {
-            const manifest = getWebChannel(ch.channel_type);
-            const selected = activeTab === ch.channel_type;
-            return (
-              <button
-                key={ch.channel_type}
-                role="tab"
-                aria-selected={selected}
-                onClick={() => onActiveTabChange(ch.channel_type)}
-                className={clsx(
-                  "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
-                  selected
-                    ? "bg-accent/10 text-accent"
-                    : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
-                )}
-              >
-                {manifest?.tabLabel ?? ch.channel_type}
-              </button>
-            );
-          })}
-
-        {/* Add channel button */}
-        {availableChannels.length > 0 && (
-          <div className="relative ml-1">
-            <button
-              onClick={() => setShowAddMenu((v) => !v)}
-              className="flex items-center justify-center w-7 h-7 rounded-lg text-fg-4 hover:text-fg-2 hover:bg-surface-hover transition-colors"
-              title="Add channel"
-              aria-label="Add channel"
-            >
-              <span className="text-base leading-none">+</span>
-            </button>
-
-            {/* Dropdown */}
-            {showAddMenu && (
-              <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setShowAddMenu(false)}
-                />
-                <div className="absolute top-full left-0 mt-1 z-50 min-w-[200px] rounded-xl bg-surface-2 border border-edge shadow-lg overflow-hidden">
-                  {availableChannels.map((manifest) => (
-                    <button
-                      key={manifest.id}
-                      onClick={() => {
-                        onAdd(manifest.id as ChannelType);
-                        setShowAddMenu(false);
-                      }}
-                      className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-surface-hover transition-colors"
-                    >
-                      <div
-                        className="w-2.5 h-2.5 rounded-full shrink-0"
-                        style={{ background: manifest.hex }}
-                      />
-                      <div>
-                        <p className="text-xs font-medium text-fg-2">
-                          {manifest.name}
-                        </p>
-                        <p className="text-[11px] text-fg-4">{manifest.description}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* DashboardTab content */}
-      <div className="flex-1 overflow-y-auto p-4 scrollbar-thin dashboard-content">
-        {channel && webChannel ? (
-          <webChannel.DashboardTab
-            channel={channel}
-            getToken={getToken}
-            onToggle={onToggle}
-            onDelete={onDelete}
-            onChannelUpdate={onChannelUpdate}
-            connected={deliveryMode === "sse"}
-            subscriptionTier={tier}
-            hex={webChannel.hex}
-          />
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-sm text-fg-3 font-mono">
-              Select a channel to configure
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );

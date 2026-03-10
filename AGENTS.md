@@ -4,55 +4,46 @@ Operational guide for AI coding agents working in this repository.
 
 ## Project Overview
 
-MyScrollr — platform aggregating financial market data, sports scores, RSS feeds, and Yahoo Fantasy Sports. React frontend, browser extension, Tauri desktop app, Go gateway API, and independent channel services. Infrastructure: PostgreSQL, Redis, Logto (auth), Sequin (CDC), Stripe (billing). Deployed on Coolify.
+MyScrollr aggregates financial market data, sports scores, RSS feeds, and Yahoo Fantasy Sports. React frontend, browser extension, Tauri desktop app, Go gateway API, and independent channel services. Infrastructure: PostgreSQL, Redis, Logto (auth), Sequin (CDC), Stripe (billing). Deployed on Coolify.
 
 ## Repository Layout
 
-Monorepo with independently deployable components:
+Monorepo -- each component is independently deployable with its own dependencies:
 
-- `api/` — Core gateway API (Go 1.21, Fiber v2, sub-package `core/`)
-- `myscrollr.com/` — Frontend (React 19, Vite 7, TanStack Router, Tailwind v4)
-- `extension/` — Browser extension (WXT v0.20, React 19, Tailwind v4)
-- `desktop/` — Tauri v2 desktop app (React 19, Vite 7, Tailwind v4, Rust backend)
-- `channels/{finance,sports,rss}/api/` — Channel Go APIs (flat `main` package, independent modules)
-- `channels/{finance,sports,rss}/service/` — Rust ingestion services (independent crates, edition 2024)
-- `channels/fantasy/api/` — Fantasy Go API (Yahoo OAuth2, Go-native sync in `sync.go`)
-- `channels/*/web/` — Dashboard tab components (single `DashboardTab.tsx` each, no own `package.json`)
-- `channels/*/extension/` — Feed tab components (`FeedTab.tsx` + item components, no own `package.json`)
+- `api/` -- Core gateway API (Go 1.21, Fiber v2, sub-package `core/`)
+- `myscrollr.com/` -- Frontend (React 19, Vite 7, TanStack Router, Tailwind v4)
+- `extension/` -- Browser extension (WXT v0.20, React 19, Tailwind v4)
+- `desktop/` -- Tauri v2 desktop app (React 19, Vite 7, Tailwind v4, Rust backend)
+- `channels/{finance,sports,rss}/api/` -- Channel Go APIs (flat `main` package, independent modules)
+- `channels/{finance,sports,rss}/service/` -- Rust ingestion services (independent crates, edition 2024)
+- `channels/fantasy/api/` -- Fantasy Go API (Yahoo OAuth2, Go-native sync)
+- `channels/*/web/` -- Dashboard tab components (single `DashboardTab.tsx`, no own `package.json`)
+- `channels/*/extension/` -- Feed tab components (`FeedTab.tsx` + item components, no own `package.json`)
 
-## Build & Run Commands
+## Build, Lint, Test Commands
 
 ### Frontend (`myscrollr.com/`)
 
-```sh
-npm run dev          # Vite dev server on port 3000
-npm run build        # vite build && tsc
-npm run check        # prettier --write . && eslint --fix (use before committing)
-npm run lint         # eslint only
-npm run format       # prettier only
-```
+- `npm run dev` -- Vite dev server on port 3000
+- `npm run build` -- `vite build && tsc`
+- `npm run check` -- `prettier --write . && eslint --fix` (run before committing)
+- `npm run lint` -- eslint only
+- `npm run format` -- prettier only
 
 ### Extension (`extension/`)
 
-```sh
-npm run dev          # Dev mode (Chrome)
-npm run dev:firefox  # Dev mode (Firefox)
-npm run dev:edge     # Dev mode (Edge)
-npm run build        # Build Chrome MV3
-npm run build:firefox / build:edge / build:safari
-npm run compile      # tsc --noEmit (type-check only)
-npm run zip          # Package for store submission
-```
+- `npm run dev` / `dev:firefox` / `dev:edge` -- dev mode per browser
+- `npm run build` / `build:firefox` / `build:edge` / `build:safari` -- production build per browser
+- `npm run compile` -- `tsc --noEmit` (type-check only)
+- `npm run zip` -- package for store submission
 
 ### Desktop (`desktop/`)
 
-```sh
-npm run dev          # Vite frontend only on port 5174
-npm run tauri:dev    # Full Tauri dev (Vite + Rust backend)
-npm run tauri:build  # Production build (native binary)
-```
+- `npm run dev` -- Vite frontend only on port 5174
+- `npm run tauri:dev` -- full Tauri dev (Vite + Rust backend)
+- `npm run tauri:build` -- production build (native binary)
 
-Note: Desktop depends on extension types. Run `npm ci` in `extension/` first to generate `.wxt/tsconfig.json`.
+Note: Desktop depends on extension types. Run `npm ci` in `extension/` first.
 
 ### Go APIs (`api/` and `channels/{name}/api/`)
 
@@ -64,97 +55,80 @@ go build -o {name}_api && ./{name}_api     # finance=8081, sports=8082, rss=8083
 ### Rust Services (`channels/{finance,sports,rss}/service/`)
 
 ```sh
-cargo build --release && cargo run         # finance=3001, sports=3002, rss=3004
+cargo build --release && cargo run   # finance=3001, sports=3002, rss=3004
 ```
 
 ### Tests
 
 No test infrastructure exists yet. When adding tests:
 
-- **Frontend/Extension/Desktop**: Vitest. All: `npx vitest run`. Single file: `npx vitest run path/to/file.test.ts`. Single test: `npx vitest run -t "test name"`
-- **Go**: `go test ./...`. Single test: `go test -run TestName ./path/to/pkg`
-- **Rust**: `cargo test`. Single test: `cargo test test_name`
+- **TypeScript** (Vitest): All: `npx vitest run`. Single file: `npx vitest run path/to/file.test.ts`. Single test: `npx vitest run -t "test name"`.
+- **Go**: All: `go test ./...`. Single test: `go test -run TestName ./path/to/pkg`.
+- **Rust**: All: `cargo test`. Single test: `cargo test test_name`.
 
-## Code Style -- TypeScript (Frontend: `myscrollr.com/`)
+## Code Style -- TypeScript
 
-**Formatting**: Prettier -- no semicolons, single quotes, trailing commas. ESLint via `@tanstack/eslint-config` flat config.
+Three TS sub-projects with different conventions:
 
-**TypeScript**: Strict mode, target ES2022, `verbatimModuleSyntax: true` -- always use `import type` for type-only imports. `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch`, `noUncheckedSideEffectImports` enabled.
+| | Frontend (`myscrollr.com/`) | Extension (`extension/`) | Desktop (`desktop/`) |
+|---|---|---|---|
+| Semicolons | No | Yes | Yes |
+| Quotes | Single | Double | Double |
+| Formatter | Prettier | None | None |
+| `noUnusedLocals` | Yes | Inherited from WXT | No |
+| Conditional classes | -- | `clsx` | `clsx` |
+| Path `@/` | `./src/` | -- | `../myscrollr.com/src/` |
+| Path `~/` | -- | srcDir (WXT) | `../extension/` |
+| Path `@scrollr/` | `../channels/` | `../channels/` | `../channels/` |
 
-**Tailwind v4**: Zero-config via `@tailwindcss/vite` plugin. No `tailwind.config.*` or `postcss.config.*`. Configuration happens in CSS.
+**Shared rules across all three:**
 
-**Path aliases**: `@/` -> `./src/`, `@scrollr/` -> `../channels/`. Configured in both `tsconfig.json` and `vite.config.ts`.
+- Strict mode. Target ES2022. `verbatimModuleSyntax: true` -- always use `import type` for type-only imports.
+- Function components with named exports. Hooks as named function exports (`export function useX()`).
+- No barrel files. Channel discovery via `import.meta.glob` -- never manually register channels.
+- Never edit `src/routeTree.gen.ts` (auto-generated by TanStack Router).
 
-**Imports**: Named exports only. No barrel files. No default exports (except route modules). Channel discovery via `import.meta.glob` -- never manually register channels. Never edit `src/routeTree.gen.ts` (auto-generated).
+**Frontend-specific**: Named exports only. No default exports except route modules (`export const Route = createFileRoute(...)`). ESLint via `@tanstack/eslint-config` flat config. Tailwind v4 zero-config via `@tailwindcss/vite` -- no `tailwind.config.*`.
 
-**Components**: Function components with named exports. Routes use TanStack Router file-based convention (`export const Route = createFileRoute(...)`). Hooks are named function exports (`export function useRealtime(...)`).
+**Extension-specific**: WXT entrypoints in `entrypoints/` via `defineBackground()`, `defineContentScript()`. Runtime code inside the define callback -- never at module top level. Content script UI uses Shadow Root. Feed tab components use default export.
 
-**External channels**: Custom Vite plugin `resolveExternalChannels` resolves bare imports from `channels/*/web/` to `myscrollr.com/node_modules`. Never duplicate dependencies in channel web dirs.
-
-## Code Style -- TypeScript (Extension: `extension/`)
-
-**Formatting**: Semicolons, double quotes (no Prettier configured). Uses `clsx` for conditional classes.
-
-**Path aliases**: `~/` -> srcDir (WXT default), `@scrollr/` -> `../channels/`.
-
-**WXT conventions**: Entrypoints in `entrypoints/` with `defineBackground()`, `defineContentScript()`, etc. Runtime code inside the main function or define callback -- never at module top level. Content script UI uses Shadow Root (`createShadowRootUi`). PostCSS (inline in `wxt.config.ts`) converts `rem` to `px` via `postcss-rem-to-responsive-pixel`.
-
-**Exports**: Feed tab components use default export (`export default function FinanceFeedTab`). Manifest objects are named exports (`export const financeChannel: ChannelManifest`).
-
-## Code Style -- TypeScript (Desktop: `desktop/`)
-
-**Formatting**: Semicolons, double quotes (same as extension, no Prettier). Uses `clsx`.
-
-**TypeScript**: Strict mode but `noUnusedLocals` and `noUnusedParameters` are **disabled** (relaxed vs frontend).
-
-**Path aliases**: `@/` -> `myscrollr.com/src/` (shared components), `~/` -> `extension/` (reused extension components), `@scrollr/` -> `channels/`. Desktop overrides `@/api/client` (Tauri fetch) and `~/channels/hooks/useScrollrCDC` (direct fetch vs browser.runtime).
-
-**Tauri Rust** (`desktop/src-tauri/`): Edition 2021 (not 2024). Uses `tauri::command` for IPC. Error handling via `Result<(), String>` and `map_err` (no `anyhow`). SSE streaming via `tokio` + `reqwest`, events emitted to webview.
+**Desktop-specific**: Reuses frontend components via `@/` and extension components via `~/`. Overrides `@/api/client` (Tauri fetch) and `~/channels/hooks/useScrollrCDC`. Tauri Rust (`src-tauri/`): edition 2021, `tauri::command` for IPC, `Result<(), String>` + `map_err` error handling.
 
 ## Code Style -- Go
 
-**Formatting**: `gofmt`. No custom linter config.
-
-**Module isolation**: Each Go API is fully independent. No shared packages between channels or core. Code duplication is intentional -- do not extract shared libraries.
-
-**Core vs channels**: Core API uses a `core/` sub-package with package-level vars (`DBPool`, `Rdb`) and a `Server` struct. Channel APIs use flat `main` package with an `App` struct holding deps (`db *pgxpool.Pool`, `rdb *redis.Client`).
-
-**Naming**: PascalCase exports, camelCase unexported, short receiver names (`s *Server`, `a *App`), snake_case JSON tags (`json:"channel_type"`), constants grouped with `// =====` banner comments.
-
-**Error handling**: `if err != nil` returns. `log.Printf` for non-fatal, `log.Fatalf` for startup failures. Wrap with `fmt.Errorf("context: %w", err)`. HTTP errors return `ErrorResponse` struct.
-
-**Logging**: Bracketed category prefixes (`log.Printf("[Auth] message: %v", err)`).
-
-**Registration**: Channels self-register in Redis with 30s TTL, 20s heartbeat. Deregister on shutdown via `rdb.Del`.
+- `gofmt` formatting. No custom linter.
+- **Module isolation is absolute.** Each Go API has its own `go.mod`. No shared packages. Code duplication between channels is intentional -- do not extract shared libraries.
+- Core API: `core/` sub-package, package-level vars (`DBPool`, `Rdb`), `Server` struct.
+- Channel APIs: flat `main` package, `App` struct holding deps (`db *pgxpool.Pool`, `rdb *redis.Client`).
+- Naming: PascalCase exports, camelCase unexported, short receivers (`s *Server`, `a *App`), `snake_case` JSON tags.
+- Error handling: `if err != nil` returns. `fmt.Errorf("context: %w", err)` for wrapping. `log.Printf` non-fatal, `log.Fatalf` startup failures. HTTP errors via `ErrorResponse` struct.
+- Logging: bracketed prefixes (`log.Printf("[Auth] message: %v", err)`).
+- Registration: channels self-register in Redis with 30s TTL, 20s heartbeat.
 
 ## Code Style -- Rust (Ingestion Services)
 
-**Edition**: 2024. Default `rustfmt` formatting.
-
-**Error handling**: `anyhow` exclusively (`anyhow::{Context, Result}`). No custom error types. Use `.context("message")?`. Avoid `unwrap()` and `panic!` except for truly unrecoverable init failures.
-
-**Async**: Tokio (full features), HTTP via Axum, database via SQLx (Postgres). Each feed/poll task spawned with `tokio::spawn`. Coordinated shutdown via `tokio_util::sync::CancellationToken`.
-
-**Logging**: `log` crate macros (`info!`, `error!`, `warn!`). Custom async file logger (`log.rs`) writes to `./logs/`.
-
-**Known duplication**: `database.rs` and `log.rs` are copy-pasted across all 3 Rust services. Do not extract a shared crate.
+- Edition 2024. Default `rustfmt`.
+- Error handling: `anyhow` exclusively (`anyhow::{Context, Result}`). No custom error types. Use `.context("msg")?`. Avoid `unwrap()`/`panic!` except truly unrecoverable init failures.
+- Async: Tokio (full features), Axum HTTP, SQLx Postgres. Tasks via `tokio::spawn`. Shutdown via `CancellationToken`.
+- Logging: `log` crate macros. Custom async file logger (`log.rs`) writes to `./logs/`.
+- `database.rs` and `log.rs` are copy-pasted across services. Do not extract a shared crate.
 
 ## Architecture Rules
 
 1. **Core API has zero channel-specific code.** Discovers channels via Redis, proxies routes dynamically.
-2. **Channel isolation is absolute.** Each channel owns its Go API, ingestion service, frontend/extension components, configs, and Docker Compose.
-3. **HTTP-only contract.** No shared Go interfaces or types. Core calls `POST /internal/cdc`, channel returns `{ "users": [...] }`.
+2. **Channel isolation is absolute.** Each channel owns its Go API, ingestion service, UI components, configs, and Docker Compose.
+3. **HTTP-only contract.** No shared Go interfaces or types. Core calls `POST /internal/cdc`, channels return `{ "users": [...] }`.
 4. **Route proxying**: Core proxies `/{name}/*` to channel APIs with `X-User-Sub` header. Channels never validate JWTs.
-5. **Convention-based UI discovery**: Frontend, extension, and desktop use `import.meta.glob` to discover channel components at build time.
-6. **Topic-based CDC PubSub**: Core hub dispatches CDC events via Redis topic-based PubSub (O(1) per event). Clients subscribe to topic channels matching their preferences.
-7. **No migration framework.** Tables created programmatically via `CREATE TABLE IF NOT EXISTS` on service startup.
+5. **Convention-based UI discovery**: `import.meta.glob` discovers channel components at build time.
+6. **Topic-based CDC PubSub**: Core dispatches CDC events via Redis topic-based PubSub (O(1) per event).
+7. **No migration framework.** Tables created via `CREATE TABLE IF NOT EXISTS` on service startup.
 
 ## Git Workflow
 
-Branch off `staging`: `git checkout -b <prefix>/short-description`. PR back into `staging`. Squash merge. Commit trivial one-off fixes directly to `staging`.
+Branch off `staging`: `git checkout -b <prefix>/short-description`. PR back into `staging`. Squash merge. Trivial fixes commit directly to `staging`.
 
-**Branch prefixes**: `feature/`, `fix/`, `refactor/`, `chore/`.
+Prefixes: `feature/`, `fix/`, `refactor/`, `chore/`.
 
 ## Environment
 
-Copy `.env.example` to `.env` (uses `{{ environment.* }}` Coolify template syntax). Frontend env in `myscrollr.com/.env` (`VITE_API_URL`). Never commit `.env` files.
+Copy `.env.example` to `.env` (Coolify template syntax). Frontend env in `myscrollr.com/.env` (`VITE_API_URL`). Never commit `.env` files.

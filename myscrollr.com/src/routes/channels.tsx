@@ -7,7 +7,10 @@ import {
   ArrowUpRight,
   BookOpen,
   Check,
+  Clock,
+  Cloud,
   Code2,
+  Cpu,
   Ghost,
   Lightbulb,
   Lock,
@@ -17,6 +20,7 @@ import {
   Plus,
   Puzzle,
   Rss,
+  Timer,
   TrendingUp,
   Trophy,
   Tv,
@@ -157,6 +161,61 @@ const COMING_SOON: ComingSoonChannel[] = [
   },
 ]
 
+// ── Widget Definitions ─────────────────────────────────────────
+
+interface WidgetDef {
+  id: string
+  name: string
+  description: string
+  detail: string
+  Icon: ComponentType<{ size?: number; className?: string }>
+  hex: string
+  platforms: string
+}
+
+const WIDGETS: WidgetDef[] = [
+  {
+    id: 'clock',
+    name: 'World Clock',
+    description: 'Multiple timezone display',
+    detail:
+      'Track time across 18 cities worldwide. Auto-detects your local timezone with add/remove city management.',
+    Icon: Clock,
+    hex: '#6366f1',
+    platforms: 'Extension & Desktop',
+  },
+  {
+    id: 'timer',
+    name: 'Timer',
+    description: 'Pomodoro, countdown & stopwatch',
+    detail:
+      'Three modes in one widget. Pomodoro with session tracking, countdown presets from 1-60 minutes, and a simple stopwatch. Keyboard shortcuts included.',
+    Icon: Timer,
+    hex: '#f59e0b',
+    platforms: 'Extension & Desktop',
+  },
+  {
+    id: 'weather',
+    name: 'Weather',
+    description: 'Current conditions for your cities',
+    detail:
+      'Search and add any city worldwide. Shows temperature, feels-like, humidity, wind, and conditions. Auto-refreshes every 10 minutes. No API key needed.',
+    Icon: Cloud,
+    hex: '#0ea5e9',
+    platforms: 'Extension & Desktop',
+  },
+  {
+    id: 'sysmon',
+    name: 'System Monitor',
+    description: 'CPU, memory & system stats',
+    detail:
+      'Real-time CPU and memory usage with visual progress bars. Shows system info, swap usage, and uptime. Polls every 2 seconds.',
+    Icon: Cpu,
+    hex: '#06b6d4',
+    platforms: 'Desktop only',
+  },
+]
+
 // ── Page Component ─────────────────────────────────────────────
 
 function ChannelsPage() {
@@ -240,8 +299,8 @@ function ChannelsPage() {
           >
             <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/8 text-primary text-[10px] font-bold rounded-lg border border-primary/15 uppercase tracking-wide">
               <Puzzle size={12} />
-              {CHANNELS.length} available &middot; {COMING_SOON.length} coming
-              soon
+              {CHANNELS.length} channels &middot; {WIDGETS.length} widgets
+              &middot; {COMING_SOON.length} coming soon
             </span>
           </motion.div>
 
@@ -312,6 +371,50 @@ function ChannelsPage() {
                   isAuthenticated={isAuthenticated}
                   recommended={channel.recommended}
                 />
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── WIDGETS ─────────────────────────────────────────── */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-base-200/10 to-transparent pointer-events-none" />
+
+        <div className="container relative z-10">
+          <motion.div
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.7, ease: EASE }}
+            className="text-center mb-12 sm:mb-16"
+          >
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
+              Built-in{' '}
+              <span className="text-gradient-primary">Widgets</span>
+            </h2>
+            <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
+              Lightweight utilities that live alongside your feed — no account
+              required
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+            {WIDGETS.map((widget, i) => (
+              <motion.div
+                key={widget.id}
+                style={{ opacity: 0 }}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{
+                  delay: i * 0.1,
+                  duration: 0.6,
+                  ease: EASE,
+                }}
+              >
+                <WidgetCard widget={widget} />
               </motion.div>
             ))}
           </div>
@@ -615,6 +718,93 @@ function ChannelCard({
       <channel.Watermark
         size={100}
         strokeWidth={0.4}
+        className="absolute -bottom-3 -right-3 text-base-content/[0.025] pointer-events-none"
+      />
+    </div>
+  )
+}
+
+// ── Widget Card ────────────────────────────────────────────────
+
+function WidgetCard({ widget }: { widget: WidgetDef }) {
+  const { hex } = widget
+
+  return (
+    <div className="group relative bg-base-200/40 border border-base-300/25 rounded-xl p-6 overflow-hidden hover:border-base-300/50 transition-colors h-full flex flex-col">
+      {/* Accent top line */}
+      <div
+        className="absolute top-0 left-0 right-0 h-px"
+        style={{
+          background: `linear-gradient(90deg, transparent, ${hex} 50%, transparent)`,
+        }}
+      />
+
+      {/* Corner dot grid */}
+      <div
+        className="absolute top-0 right-0 w-20 h-20 opacity-[0.04] text-base-content"
+        style={{
+          backgroundImage:
+            'radial-gradient(circle, currentColor 1px, transparent 1px)',
+          backgroundSize: '8px 8px',
+        }}
+      />
+
+      {/* Ambient glow */}
+      <div
+        className="absolute -top-10 -right-10 w-32 h-32 rounded-full pointer-events-none blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+        style={{ background: `${hex}10` }}
+      />
+
+      <div className="relative z-10 flex flex-col flex-1">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-4">
+          <div
+            className="w-11 h-11 rounded-xl flex items-center justify-center"
+            style={{
+              background: `${hex}15`,
+              boxShadow: `0 0 20px ${hex}15, 0 0 0 1px ${hex}20`,
+            }}
+          >
+            <widget.Icon size={20} className="text-base-content/80" />
+          </div>
+
+          <span
+            className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide rounded-full border"
+            style={{
+              color: `${hex}99`,
+              background: `${hex}08`,
+              borderColor: `${hex}20`,
+            }}
+          >
+            {widget.platforms}
+          </span>
+        </div>
+
+        {/* Content */}
+        <h3 className="text-sm font-bold text-base-content mb-1">
+          {widget.name}
+        </h3>
+        <p
+          className="text-[10px] mb-3 font-medium"
+          style={{ color: `${hex}90` }}
+        >
+          {widget.description}
+        </p>
+        <p className="text-xs text-base-content/40 leading-relaxed">
+          {widget.detail}
+        </p>
+
+        {/* Footer info — no action button, widgets are built-in */}
+        <div className="mt-auto pt-5">
+          <span className="text-[10px] font-medium text-base-content/30">
+            Built-in — no setup required
+          </span>
+        </div>
+      </div>
+
+      {/* Watermark icon */}
+      <widget.Icon
+        size={100}
         className="absolute -bottom-3 -right-3 text-base-content/[0.025] pointer-events-none"
       />
     </div>

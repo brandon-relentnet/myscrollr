@@ -1,5 +1,6 @@
 import { clsx } from "clsx";
 import { getChannel, sortTabOrder } from "~/channels/registry";
+import { getWidget, sortWidgetOrder } from "~/widgets/registry";
 
 interface FeedTabsProps {
   activeTab: string;
@@ -13,11 +14,14 @@ export default function FeedTabs({
   onTabChange,
   availableTabs,
 }: FeedTabsProps) {
-  // Sort into canonical order and resolve labels from the registry
-  const sorted = sortTabOrder(availableTabs);
+  // Split IDs into channels and widgets, sort each independently,
+  // then concatenate so widgets always appear after channels.
+  const channelIds = availableTabs.filter((id) => getChannel(id));
+  const widgetIds = availableTabs.filter((id) => !getChannel(id) && getWidget(id));
+  const sorted = [...sortTabOrder(channelIds), ...sortWidgetOrder(widgetIds)];
   const tabs = sorted
     .map((id) => {
-      const manifest = getChannel(id);
+      const manifest = getChannel(id) ?? getWidget(id);
       return manifest ? { id: manifest.id, label: manifest.tabLabel } : null;
     })
     .filter(Boolean) as { id: string; label: string }[];

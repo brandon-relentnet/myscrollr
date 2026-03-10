@@ -16,6 +16,7 @@ import {
   feedCollapsed as feedCollapsedStorage,
   feedBehavior as feedBehaviorStorage,
   activeFeedTabs as activeFeedTabsStorage,
+  activeWidgetTabs as activeWidgetTabsStorage,
   deliveryMode as deliveryModeStorage,
 } from '~/utils/storage';
 import type { ContentScriptContext } from '#imports';
@@ -39,7 +40,8 @@ export default function App({ ctx }: AppProps) {
   const [mode, setMode] = useState<FeedMode>('comfort');
   const [collapsed, setCollapsed] = useState(false);
   const [behavior, setBehavior] = useState<FeedBehavior>('overlay');
-  const [activeTabs, setActiveTabs] = useState<string[]>(['finance', 'sports']);
+  const [channelTabs, setChannelTabs] = useState<string[]>(['finance', 'sports']);
+  const [widgetTabs, setWidgetTabs] = useState<string[]>([]);
 
   // ── Load initial state from background + storage ─────────────
   useEffect(() => {
@@ -69,7 +71,8 @@ export default function App({ ctx }: AppProps) {
     feedModeStorage.getValue().then(setMode).catch(() => {});
     feedCollapsedStorage.getValue().then(setCollapsed).catch(() => {});
     feedBehaviorStorage.getValue().then(setBehavior).catch(() => {});
-    activeFeedTabsStorage.getValue().then((v) => setActiveTabs(v as string[])).catch(() => {});
+    activeFeedTabsStorage.getValue().then((v) => setChannelTabs(v as string[])).catch(() => {});
+    activeWidgetTabsStorage.getValue().then((v) => setWidgetTabs(v as string[])).catch(() => {});
     deliveryModeStorage.getValue().then(setDeliveryMode).catch(() => {});
   }, [ctx]);
 
@@ -124,7 +127,8 @@ export default function App({ ctx }: AppProps) {
       feedModeStorage.watch((v) => setMode(v)),
       feedCollapsedStorage.watch((v) => setCollapsed(v)),
       feedBehaviorStorage.watch((v) => setBehavior(v)),
-      activeFeedTabsStorage.watch((v) => setActiveTabs(v as string[])),
+      activeFeedTabsStorage.watch((v) => setChannelTabs(v as string[])),
+      activeWidgetTabsStorage.watch((v) => setWidgetTabs(v as string[])),
       deliveryModeStorage.watch((v) => setDeliveryMode(v)),
     ];
 
@@ -164,6 +168,9 @@ export default function App({ ctx }: AppProps) {
 
   // Hide the feed bar when globally disabled
   if (!enabled) return null;
+
+  // Merge channel + widget tabs for display (channels first, then widgets)
+  const activeTabs = [...channelTabs, ...widgetTabs];
 
   return (
     <FeedBar

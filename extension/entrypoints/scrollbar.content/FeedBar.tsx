@@ -9,6 +9,7 @@ import type {
   DeliveryMode,
 } from "~/utils/types";
 import { getChannel } from "~/channels/registry";
+import { getWidget } from "~/widgets/registry";
 import FeedTabs from "./FeedTabs";
 import ConnectionIndicator from "./ConnectionIndicator";
 
@@ -112,9 +113,10 @@ export default function FeedBar({
     };
   }, [activeTab, dashboard]);
 
-  // Look up the active channel's FeedTab component
+  // Look up the active channel or widget's FeedTab component
   const channel = getChannel(activeTab);
-  const FeedTabComponent = channel?.FeedTab ?? null;
+  const widget = !channel ? getWidget(activeTab) : undefined;
+  const FeedTabComponent = channel?.FeedTab ?? widget?.FeedTab ?? null;
 
   // ── Drag resize ────────────────────────────────────────────────
   const handleDragStart = useCallback(

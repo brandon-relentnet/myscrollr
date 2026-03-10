@@ -58,13 +58,55 @@ const MUTED: ChipColors = {
   textFaint: "text-fg-4",
 };
 
-// ── Channel → color mapping ─────────────────────────────────────
+// ── Widget color palettes ───────────────────────────────────────
+
+const WIDGET_CLOCK: ChipColors = {
+  bg: "bg-widget-clock/[0.06]",
+  border: "border-widget-clock/25",
+  hoverBorder: "hover:border-widget-clock/40",
+  text: "text-widget-clock",
+  textDim: "text-widget-clock/60",
+  textFaint: "text-widget-clock/40",
+};
+
+const WIDGET_TIMER: ChipColors = {
+  bg: "bg-widget-timer/[0.06]",
+  border: "border-widget-timer/25",
+  hoverBorder: "hover:border-widget-timer/40",
+  text: "text-widget-timer",
+  textDim: "text-widget-timer/60",
+  textFaint: "text-widget-timer/40",
+};
+
+const WIDGET_WEATHER: ChipColors = {
+  bg: "bg-widget-weather/[0.06]",
+  border: "border-widget-weather/25",
+  hoverBorder: "hover:border-widget-weather/40",
+  text: "text-widget-weather",
+  textDim: "text-widget-weather/60",
+  textFaint: "text-widget-weather/40",
+};
+
+const WIDGET_SYSMON: ChipColors = {
+  bg: "bg-widget-sysmon/[0.06]",
+  border: "border-widget-sysmon/25",
+  hoverBorder: "hover:border-widget-sysmon/40",
+  text: "text-widget-sysmon",
+  textDim: "text-widget-sysmon/60",
+  textFaint: "text-widget-sysmon/40",
+};
+
+// ── Channel + widget → color mapping ────────────────────────────
 
 const CHANNEL_MAP: Record<string, ChipColors> = {
   finance: PRIMARY,
   sports: SECONDARY,
   rss: INFO,
   fantasy: PURPLE,
+  clock: WIDGET_CLOCK,
+  timer: WIDGET_TIMER,
+  weather: WIDGET_WEATHER,
+  sysmon: WIDGET_SYSMON,
 };
 
 // ── Resolver ────────────────────────────────────────────────────

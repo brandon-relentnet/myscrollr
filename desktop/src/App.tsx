@@ -28,6 +28,7 @@ import {
   TICKER_HEIGHTS,
 } from "./preferences";
 import type { AppPreferences, TickerPosition } from "./preferences";
+import { getAllWidgets, getWidget } from "./widgets/registry";
 
 // ── Constants ────────────────────────────────────────────────────
 
@@ -50,7 +51,7 @@ export default function App() {
 
   // Channel state
   const [channels, setChannels] = useState<Channel[]>([]);
-  const [activeTabs, setActiveTabs] = useState<string[]>(() =>
+  const [channelTabs, setChannelTabs] = useState<string[]>(() =>
     loadPref("activeFeedTabs", ["finance", "sports"]),
   );
   const channelsRef = useRef(channels);
@@ -121,7 +122,7 @@ export default function App() {
         const visible = channelList
           .filter((ch) => ch.enabled && ch.visible)
           .map((ch) => ch.channel_type);
-        setActiveTabs(visible);
+        setChannelTabs(visible);
         savePref("activeFeedTabs", visible);
       }
     } catch {
@@ -230,7 +231,7 @@ export default function App() {
       );
       if (channelRecords.length === 0) return;
 
-      setActiveTabs((prev) => {
+      setChannelTabs((prev) => {
         let next = [...prev];
 
         for (const cdc of channelRecords) {
@@ -465,8 +466,7 @@ export default function App() {
 
   const handleChipClick = useCallback(
     (channelType: string, _itemId: string | number) => {
-      savePref("activeTab", channelType);
-      savePref("appSection", "feed");
+      savePref("activeItem", channelType);
       invoke("show_app_window").catch(() => {});
     },
     [],
@@ -492,6 +492,26 @@ export default function App() {
     [fetchFeed],
   );
 
+  // ── Widget quick-toggle (for context menu) ─────────────────────
+
+  const handleWidgetToggle = useCallback(
+    (widgetId: string) => {
+      setPrefs((prev) => {
+        const enabled = prev.widgets.enabledWidgets;
+        const next = enabled.includes(widgetId)
+          ? enabled.filter((id) => id !== widgetId)
+          : [...enabled, widgetId];
+        const updated = {
+          ...prev,
+          widgets: { ...prev.widgets, enabledWidgets: next },
+        };
+        savePrefs(updated);
+        return updated;
+      });
+    },
+    [],
+  );
+
   // ── Ticker position toggle ─────────────────────────────────────
 
   const handleTogglePosition = useCallback(() => {
@@ -507,6 +527,19 @@ export default function App() {
     const h = TICKER_HEIGHTS[updated.ticker.tickerMode] * updated.appearance.tickerRows;
     invoke("position_ticker", { position: next, height: h }).catch(() => {});
   }, [tickerPosition]);
+
+  // ── Hide ticker from toolbar ───────────────────────────────────
+
+  const handleHideTicker = useCallback(() => {
+    setTickerCollapsed(true);
+    savePref("tickerCollapsed", true);
+    const updated = {
+      ...prefsRef.current,
+      ticker: { ...prefsRef.current.ticker, showTicker: false },
+    };
+    setPrefs(updated);
+    savePrefs(updated);
+  }, []);
 
   // ── Right-click → native context menu ──────────────────────────
 
@@ -529,6 +562,23 @@ export default function App() {
             checked: isVisible,
             action: () => {
               handleChannelToggle(channelType, !isVisible);
+            },
+          });
+          items.push(item);
+        }
+        items.push(await PredefinedMenuItem.new({ item: "Separator" }));
+      }
+
+      // Widget quick toggles
+      const allWidgets = getAllWidgets();
+      if (allWidgets.length > 0) {
+        for (const widget of allWidgets) {
+          const isEnabled = prefsRef.current.widgets.enabledWidgets.includes(widget.id);
+          const item = await CheckMenuItem.new({
+            text: widget.name,
+            checked: isEnabled,
+            action: () => {
+              handleWidgetToggle(widget.id);
             },
           });
           items.push(item);
@@ -603,7 +653,10 @@ export default function App() {
     }
     document.addEventListener("contextmenu", onContextMenu);
     return () => document.removeEventListener("contextmenu", onContextMenu);
-  }, [handleChannelToggle]);
+  }, [handleChannelToggle, handleWidgetToggle]);
+
+  // ── Merge channel + widget tabs ──────────────────────────────
+  const activeTabs = [...channelTabs, ...prefs.widgets.enabledWidgets];
 
   // ── Render ─────────────────────────────────────────────────────
 
@@ -621,6 +674,7 @@ export default function App() {
             position={tickerPosition}
             hovered={hovered}
             onTogglePosition={handleTogglePosition}
+            onHideTicker={handleHideTicker}
           />
           {Array.from({ length: prefs.appearance.tickerRows }, (_, i) => (
             <ScrollrTicker

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @source "../../../channels/*/extension/**/*.tsx";
+@source "../../widgets/**/*.tsx";
 
 @theme {
   /* ── Surfaces ─────────────────────────────────────────────────
@@ -20,6 +21,12 @@
   /* ── Channel colors ───────────────────────────────────────── */
   --color-secondary: #ff4757;
   --color-info: #00d4ff;
+
+  /* ── Widget colors ────────────────────────────────────────── */
+  --color-widget-clock: #6366f1;
+  --color-widget-timer: #f59e0b;
+  --color-widget-weather: #0ea5e9;
+  --color-widget-sysmon: #06b6d4;
 
   /* ── Text hierarchy ───────────────────────────────────────── */
   --color-fg: #e2e2ec;

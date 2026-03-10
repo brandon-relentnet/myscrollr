@@ -59,12 +59,22 @@ export interface TaskbarPrefs {
   pinnedActions: string[];
 }
 
+export interface WidgetPrefs {
+  /** Widget IDs that are enabled (shown in feed tabs and ticker). */
+  enabledWidgets: string[];
+  /** Per-widget settings — each key is a widget ID. */
+  clock: { timezones: string[] };
+  timer: { defaultMode: "pomodoro" | "countdown" | "stopwatch" };
+  weather: { apiKey: string; location: string; units: "metric" | "imperial" };
+}
+
 export interface AppPreferences {
   appearance: AppearancePrefs;
   ticker: TickerPrefs;
   startup: StartupPrefs;
   window: WindowPrefs;
   taskbar: TaskbarPrefs;
+  widgets: WidgetPrefs;
 }
 
 // ── Defaults ────────────────────────────────────────────────────
@@ -111,12 +121,20 @@ export const DEFAULT_TASKBAR: TaskbarPrefs = {
   pinnedActions: ["showTicker", "width", "pinned"],
 };
 
+export const DEFAULT_WIDGETS: WidgetPrefs = {
+  enabledWidgets: [],
+  clock: { timezones: ["America/New_York", "Europe/London", "Asia/Tokyo"] },
+  timer: { defaultMode: "pomodoro" },
+  weather: { apiKey: "", location: "", units: "imperial" },
+};
+
 export const DEFAULT_PREFS: AppPreferences = {
   appearance: DEFAULT_APPEARANCE,
   ticker: DEFAULT_TICKER,
   startup: DEFAULT_STARTUP,
   window: DEFAULT_WINDOW,
   taskbar: DEFAULT_TASKBAR,
+  widgets: DEFAULT_WIDGETS,
 };
 
 // ── Storage helpers ─────────────────────────────────────────────
@@ -203,6 +221,7 @@ export function loadPrefs(): AppPreferences {
       startup: { ...DEFAULT_STARTUP, ...source.startup },
       window: { ...DEFAULT_WINDOW, ...source.window },
       taskbar: { ...DEFAULT_TASKBAR, ...source.taskbar },
+      widgets: { ...DEFAULT_WIDGETS, ...source.widgets },
     };
 
     // If migrated from v1, persist the new format
@@ -236,6 +255,7 @@ export function resetAll(): AppPreferences {
     startup: { ...DEFAULT_STARTUP },
     window: { ...DEFAULT_WINDOW },
     taskbar: { ...DEFAULT_TASKBAR },
+    widgets: { ...DEFAULT_WIDGETS },
   };
   savePrefs(defaults);
   return defaults;

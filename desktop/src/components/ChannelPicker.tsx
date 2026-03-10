@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { getWebChannel } from "../channels/webRegistry";
 import { getChannel as getExtChannel } from "~/channels/registry";
+import { getAllWidgets } from "../widgets/registry";
 import type { Channel } from "../api/client";
 
 /** Canonical display order */
@@ -20,6 +21,10 @@ interface ChannelPickerProps {
   channels: Channel[];
   activeTabs: string[];
   onToggle: (channelType: string, visible: boolean) => void;
+  /** Widget IDs that are currently enabled. */
+  enabledWidgets: string[];
+  /** Called when a widget is toggled on/off. */
+  onWidgetToggle: (widgetId: string) => void;
   onClose: () => void;
   /** Offset from top of viewport to position below the taskbar header */
   topOffset: number;
@@ -29,6 +34,8 @@ export default function ChannelPicker({
   channels,
   activeTabs,
   onToggle,
+  enabledWidgets,
+  onWidgetToggle,
   onClose,
   topOffset,
 }: ChannelPickerProps) {
@@ -129,6 +136,57 @@ export default function ChannelPicker({
           </div>
         )}
       </div>
+
+      {/* Widgets section */}
+      {getAllWidgets().length > 0 && (
+        <>
+          <div className="px-3 py-2 border-t border-edge">
+            <span className="text-[10px] font-mono font-semibold uppercase tracking-widest text-fg-3">
+              Widgets
+            </span>
+          </div>
+          <div className="py-1">
+            {getAllWidgets().map((widget) => {
+              const isEnabled = enabledWidgets.includes(widget.id);
+              return (
+                <button
+                  key={widget.id}
+                  onClick={() => onWidgetToggle(widget.id)}
+                  className="flex items-center gap-3 w-full px-3 py-2 text-left hover:bg-surface-hover transition-colors group cursor-pointer"
+                >
+                  <span
+                    className="h-2.5 w-2.5 rounded-full shrink-0 transition-opacity"
+                    style={{
+                      background: widget.hex,
+                      opacity: isEnabled ? 1 : 0.25,
+                    }}
+                  />
+                  <span
+                    className="text-[12px] font-mono uppercase tracking-wide flex-1 transition-colors"
+                    style={{ color: isEnabled ? widget.hex : undefined }}
+                  >
+                    {isEnabled ? (
+                      widget.name
+                    ) : (
+                      <span className="text-fg-3">{widget.name}</span>
+                    )}
+                  </span>
+                  <span
+                    className="text-[10px] font-mono uppercase tracking-wider transition-colors"
+                    style={{ color: isEnabled ? widget.hex : undefined }}
+                  >
+                    {isEnabled ? (
+                      "on"
+                    ) : (
+                      <span className="text-fg-4">off</span>
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }

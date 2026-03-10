@@ -15,6 +15,53 @@ struct SseHandle(Mutex<Option<watch::Sender<bool>>>);
 #[derive(Clone)]
 struct AuthServerRunning(std::sync::Arc<Mutex<bool>>);
 
+// ── System monitor state ─────────────────────────────────────────
+
+/// Persistent `sysinfo::System` instance — refreshed on each poll,
+/// created once at startup to amortise the initial scan cost.
+struct SysInfoState(Mutex<sysinfo::System>);
+
+/// Return a snapshot of CPU, memory, and system metadata.
+/// The managed `SysInfoState` is refreshed in-place on each call
+/// (only CPU + memory, not the full process list).
+#[tauri::command]
+fn get_system_info(state: tauri::State<SysInfoState>) -> Result<serde_json::Value, String> {
+    let mut sys = state.0.lock().map_err(|e| format!("lock failed: {e}"))?;
+
+    sys.refresh_cpu_usage();
+    sys.refresh_memory();
+
+    let cpu_usage = if sys.cpus().is_empty() {
+        0.0
+    } else {
+        let total: f32 = sys.cpus().iter().map(|c| c.cpu_usage()).sum();
+        (total / sys.cpus().len() as f32) as f64
+    };
+
+    let cpu_name = sys
+        .cpus()
+        .first()
+        .map(|c| c.brand().to_string())
+        .unwrap_or_default();
+
+    Ok(serde_json::json!({
+        "cpuName": cpu_name,
+        "cpuCores": sys.cpus().len(),
+        "cpuUsage": cpu_usage,
+        "memTotal": sys.total_memory(),
+        "memUsed": sys.used_memory(),
+        "swapTotal": sys.total_swap(),
+        "swapUsed": sys.used_swap(),
+        "osName": format!(
+            "{} {}",
+            sysinfo::System::name().unwrap_or_default(),
+            sysinfo::System::os_version().unwrap_or_default(),
+        ),
+        "hostname": sysinfo::System::host_name().unwrap_or_default(),
+        "uptime": sysinfo::System::uptime(),
+    }))
+}
+
 /// Resize the window height, preserving current width.
 /// The `anchor` parameter controls which edge stays fixed:
 ///   - `"top"`: top edge stays fixed, height extends downward (no reposition)
@@ -777,6 +824,7 @@ pub fn run() {
     builder
         .manage(SseHandle(Mutex::new(None)))
         .manage(AuthServerRunning(std::sync::Arc::new(Mutex::new(false))))
+        .manage(SysInfoState(Mutex::new(sysinfo::System::new_all())))
         .invoke_handler(tauri::generate_handler![
             resize_window,
             position_ticker,
@@ -787,6 +835,7 @@ pub fn run() {
             show_app_window,
             hide_app_window,
             quit_app,
+            get_system_info,
         ])
         .on_window_event(|window, event| {
             // Intercept close on both windows — hide instead of destroy.
