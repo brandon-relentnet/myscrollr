@@ -11,7 +11,7 @@ interface SectionProps {
 export function Section({ title, children }: SectionProps) {
   return (
     <div className="mb-6 pb-5 border-b border-edge/30 last:border-b-0 last:mb-0 last:pb-0">
-      <h3 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-fg-3 mb-3 px-3">
+      <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-fg-3 mb-3 px-3">
         {title}
       </h3>
       <div className="space-y-0.5">{children}</div>
@@ -37,6 +37,8 @@ export function ToggleRow({
   return (
     <button
       type="button"
+      role="switch"
+      aria-checked={checked}
       onClick={() => onChange(!checked)}
       className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg hover:bg-base-250/50 transition-colors cursor-pointer group"
     >
@@ -45,7 +47,7 @@ export function ToggleRow({
           {label}
         </span>
         {description && (
-          <span className="text-[10px] text-fg-4 leading-tight">
+          <span className="text-[11px] text-fg-4 leading-tight">
             {description}
           </span>
         )}
@@ -91,18 +93,24 @@ export function SegmentedRow<T extends string>({
       <div className="flex flex-col gap-0.5">
         <span className="text-[12px] text-fg-2 leading-tight">{label}</span>
         {description && (
-          <span className="text-[10px] text-fg-4 leading-tight">
+          <span className="text-[11px] text-fg-4 leading-tight">
             {description}
           </span>
         )}
       </div>
-      <div className="inline-flex items-center rounded-lg bg-base-200 p-0.5 shrink-0 ml-4">
+      <div
+        role="radiogroup"
+        aria-label={label}
+        className="inline-flex items-center rounded-lg bg-base-200 p-0.5 shrink-0 ml-4"
+      >
         {options.map((opt) => (
           <button
             key={opt.value}
+            role="radio"
+            aria-checked={value === opt.value}
             onClick={() => onChange(opt.value)}
             className={clsx(
-              "px-2.5 py-1 text-[10px] font-medium rounded-md transition-all duration-200 cursor-pointer leading-none",
+              "px-2.5 py-1 text-[11px] font-medium rounded-md transition-all duration-200 cursor-pointer leading-none",
               value === opt.value
                 ? "bg-base-300 text-fg shadow-sm"
                 : "text-fg-3 hover:text-fg-2",
@@ -146,7 +154,7 @@ export function SliderRow({
       <div className="flex flex-col gap-0.5">
         <span className="text-[12px] text-fg-2 leading-tight">{label}</span>
         {description && (
-          <span className="text-[10px] text-fg-4 leading-tight">
+          <span className="text-[11px] text-fg-4 leading-tight">
             {description}
           </span>
         )}
@@ -162,6 +170,7 @@ export function SliderRow({
           />
           <input
             type="range"
+            aria-label={label}
             min={min}
             max={max}
             step={step}
@@ -175,7 +184,7 @@ export function SliderRow({
             style={{ left: `calc(${pct}% - 6px)` }}
           />
         </div>
-        <span className="text-[10px] text-fg-3 w-12 text-right tabular-nums font-medium">
+        <span className="text-[11px] text-fg-3 w-12 text-right tabular-nums font-medium">
           {displayValue ?? value}
         </span>
       </div>
@@ -214,7 +223,7 @@ export function ResetButton({
   return (
     <button
       onClick={onClick}
-      className="text-[10px] font-medium px-3 py-1.5 rounded-lg text-fg-4 hover:text-fg-2 hover:bg-base-250/50 transition-colors cursor-pointer"
+      className="text-[11px] font-medium px-3 py-1.5 rounded-lg text-fg-4 hover:text-fg-2 hover:bg-base-250/50 transition-colors cursor-pointer"
     >
       {label}
     </button>
@@ -243,7 +252,7 @@ export function ActionRow({
       <div className="flex flex-col gap-0.5">
         <span className="text-[12px] text-fg-2 leading-tight">{label}</span>
         {description && (
-          <span className="text-[10px] text-fg-4 leading-tight">
+          <span className="text-[11px] text-fg-4 leading-tight">
             {description}
           </span>
         )}
@@ -251,7 +260,7 @@ export function ActionRow({
       <button
         onClick={onClick}
         className={clsx(
-          "text-[10px] font-medium px-2.5 py-1 rounded-md transition-colors cursor-pointer",
+          "text-[11px] font-medium px-2.5 py-1 rounded-md transition-colors cursor-pointer",
           actionClass ??
             "bg-base-250 text-fg-3 hover:text-fg-2 hover:bg-base-300",
         )}

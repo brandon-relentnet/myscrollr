@@ -325,6 +325,21 @@ export function getAuth(): AuthState | null {
 }
 
 /**
+ * Extract user identity (email/name) from the stored access token JWT.
+ * Returns null fields if no auth or claims not present.
+ */
+export function getUserIdentity(): { email: string | null; name: string | null } {
+  const auth = loadAuth();
+  if (!auth) return { email: null, name: null };
+  const payload = decodeJwtPayload(auth.accessToken);
+  if (!payload) return { email: null, name: null };
+  return {
+    email: (payload.email as string) ?? null,
+    name: (payload.name as string) ?? null,
+  };
+}
+
+/**
  * Clear all auth state (logout).
  */
 export function logout(): void {

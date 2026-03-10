@@ -5,13 +5,14 @@ import {
   Moon,
   Pin,
   PinOff,
-  Rows3,
   Rows2,
+  Rows3,
+  Rows4,
   TicketSlash,
   TicketCheck,
 } from "lucide-react";
 import type { AppPreferences, TickerRows } from "../preferences";
-import { savePrefs } from "../preferences";
+import { TASKBAR_HEIGHTS, resolveTheme } from "../preferences";
 import type { DeliveryMode } from "~/utils/types";
 
 // ── Props ───────────────────────────────────────────────────────
@@ -37,17 +38,16 @@ export default function AppTaskbar({
   onToggleStandaloneTicker,
   deliveryMode,
 }: AppTaskbarProps) {
-  const isDark =
-    prefs.appearance.theme === "dark" ||
-    (prefs.appearance.theme === "system" &&
-      window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const isDark = resolveTheme(prefs.appearance.theme) === "dark";
 
   const isPinned = prefs.window.pinned;
   const rows = prefs.appearance.tickerRows;
+  const taskbarH = TASKBAR_HEIGHTS[prefs.taskbar.taskbarHeight];
+
+  const RowIcon = rows === 1 ? Rows2 : rows === 2 ? Rows3 : Rows4;
 
   function update(next: AppPreferences) {
     onPrefsChange(next);
-    savePrefs(next);
   }
 
   function toggleTheme() {
@@ -81,7 +81,10 @@ export default function AppTaskbar({
   const btnActive = `${btnBase} text-accent hover:text-accent hover:bg-accent/10`;
 
   return (
-    <div className="flex items-center gap-0.5 px-3 h-8 border-b border-edge/50 bg-surface-2/50 shrink-0">
+    <div
+      className="flex items-center gap-0.5 px-3 border-b border-edge/50 bg-surface-2/50 shrink-0"
+      style={{ height: `${taskbarH}px` }}
+    >
       {/* Left: status indicators */}
       <div className="flex items-center gap-3 mr-auto select-none">
         {/* Ticker toggle + status */}
@@ -103,7 +106,7 @@ export default function AppTaskbar({
             )}
           />
           <span className={clsx(
-            "text-[10px] font-mono uppercase tracking-widest transition-colors duration-300",
+            "text-[11px] font-mono uppercase tracking-widest transition-colors duration-300",
             tickerAlive ? "text-accent" : "text-fg-4",
           )}>
             {tickerAlive ? "Ticker" : "Off"}
@@ -119,12 +122,12 @@ export default function AppTaskbar({
             className={clsx(
               "w-1.5 h-1.5 rounded-full shrink-0",
               deliveryMode === "sse"
-                ? "bg-info animate-pulse"
-                : "bg-warn animate-pulse",
+                ? "bg-info motion-safe:animate-pulse"
+                : "bg-warn motion-safe:animate-pulse",
             )}
           />
           <span className={clsx(
-            "text-[10px] font-mono uppercase tracking-widest",
+            "text-[11px] font-mono uppercase tracking-widest",
             deliveryMode === "sse" ? "text-info" : "text-warn",
           )}>
             {deliveryMode === "sse" ? "SSE" : "Poll"}
@@ -153,11 +156,14 @@ export default function AppTaskbar({
 
       <button
         onClick={cycleRows}
-        className={btnIdle}
+        className={clsx(btnIdle, "relative")}
         title={`Ticker rows: ${rows} (click to cycle)`}
         aria-label={`Ticker rows: ${rows}`}
       >
-        {rows <= 1 ? <Rows2 size={14} /> : <Rows3 size={14} />}
+        <RowIcon size={14} />
+        <span className="absolute -top-0.5 -right-0.5 min-w-[12px] h-3 flex items-center justify-center rounded-full bg-accent/20 text-accent text-[8px] font-bold leading-none">
+          {rows}
+        </span>
       </button>
 
       <button

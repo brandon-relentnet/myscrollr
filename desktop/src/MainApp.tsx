@@ -32,10 +32,11 @@ import {
   savePref,
   loadPrefs,
   savePrefs,
+  resolveTheme,
   TICKER_GAPS,
 } from "./preferences";
 import type { AppPreferences } from "./preferences";
-import type { FeedMode, DashboardResponse, DeliveryMode } from "~/utils/types";
+import type { DashboardResponse, DeliveryMode } from "~/utils/types";
 
 const API_URL = "https://api.myscrollr.relentnet.dev";
 
@@ -75,9 +76,6 @@ export default function MainApp() {
   const [activeTab, setActiveTab] = useState(
     () => loadPref("activeTab", "finance"),
   );
-  const [feedMode] = useState<FeedMode>(
-    () => loadPref<FeedMode>("feedMode", "comfort"),
-  );
 
   // App version (read from tauri.conf.json at runtime)
   const [appVersion, setAppVersion] = useState("");
@@ -97,9 +95,11 @@ export default function MainApp() {
     () => loadPref("showTaskbar", true),
   );
 
-  // Loading state
+  // Loading / error / notification state
   const [loading, setLoading] = useState(true);
   const [loggingIn, setLoggingIn] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   // Data delivery mode (synced from ticker window)
   const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>(
@@ -109,6 +109,7 @@ export default function MainApp() {
   // Refs for stable closures
   const authenticatedRef = useRef(authenticated);
   authenticatedRef.current = authenticated;
+  const lastFetchRef = useRef(0);
 
   // ── Theme & scale application ────────────────────────────────
   // Apply theme to the DOM and broadcast for cross-window sync.
@@ -117,13 +118,7 @@ export default function MainApp() {
     const shell = document.getElementById("app-shell");
     if (!shell) return;
 
-    // Resolve theme: "system" follows OS preference
-    const resolved: "light" | "dark" =
-      prefs.appearance.theme === "system"
-        ? window.matchMedia("(prefers-color-scheme: dark)").matches
-          ? "dark"
-          : "light"
-        : prefs.appearance.theme as "light" | "dark";
+    const resolved = resolveTheme(prefs.appearance.theme);
 
     shell.classList.add("theme-transition");
     shell.dataset.theme = resolved;
@@ -189,7 +184,9 @@ export default function MainApp() {
   // ── Data fetching ───────────────────────────────────────────
 
   const fetchDashboard = useCallback(async () => {
+    lastFetchRef.current = Date.now();
     try {
+      setFetchError(null);
       const isAuth = authenticatedRef.current;
       let url = `${API_URL}/public/feed`;
       const headers: Record<string, string> = {};
@@ -207,6 +204,7 @@ export default function MainApp() {
         // Token expired, fall back to anonymous
         setAuthenticated(false);
         setTier("free");
+        setSessionExpired(true);
         const anonRes = await fetch(`${API_URL}/public/feed`);
         if (anonRes.ok) {
           const data = await anonRes.json();
@@ -220,9 +218,12 @@ export default function MainApp() {
         const data = await res.json();
         setDashboard({ data: data.data });
         if (data.channels) setChannels(data.channels);
+      } else {
+        setFetchError(`Server returned ${res.status}`);
       }
     } catch (err) {
       console.error("[Scrollr] Dashboard fetch failed:", err);
+      setFetchError(err instanceof Error ? err.message : "Network error");
     } finally {
       setLoading(false);
     }
@@ -233,9 +234,10 @@ export default function MainApp() {
     fetchDashboard();
   }, [fetchDashboard, authenticated]);
 
-  // Re-fetch when window gains focus
+  // Re-fetch when window gains focus (throttled to 10s minimum gap)
   useEffect(() => {
     function onFocus() {
+      if (Date.now() - lastFetchRef.current < 10_000) return;
       fetchDashboard();
     }
     window.addEventListener("focus", onFocus);
@@ -246,6 +248,50 @@ export default function MainApp() {
   useEffect(() => {
     isAutostartEnabled().then(setAutostartOn).catch(() => {});
   }, []);
+
+  // ── Navigation ──────────────────────────────────────────────
+
+  const handleNavigate = useCallback((next: Section) => {
+    setSection(next);
+    savePref("appSection", next);
+  }, []);
+
+  const handleSettingsTab = useCallback((tab: SettingsTab) => {
+    setSettingsTab(tab);
+    savePref("settingsTab", tab);
+  }, []);
+
+  // ── Keyboard shortcuts ──────────────────────────────────────
+  // Cmd/Ctrl+1-5: navigate sections. Escape: dismiss overlays.
+
+  useEffect(() => {
+    const SECTION_MAP: Section[] = ["feed", "channels", "dashboard", "settings", "account"];
+    function onKeyDown(e: KeyboardEvent) {
+      const mod = IS_MACOS ? e.metaKey : e.ctrlKey;
+
+      // Cmd/Ctrl + 1-5 → navigate sections
+      if (mod && e.key >= "1" && e.key <= "5") {
+        e.preventDefault();
+        const idx = Number(e.key) - 1;
+        handleNavigate(SECTION_MAP[idx]);
+        return;
+      }
+
+      // Escape → dismiss login overlay or session banner
+      if (e.key === "Escape") {
+        if (loggingIn) {
+          setLoggingIn(false);
+          return;
+        }
+        if (sessionExpired) {
+          setSessionExpired(false);
+          return;
+        }
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [loggingIn, sessionExpired, handleNavigate]);
 
   // ── Auth handlers ───────────────────────────────────────────
 
@@ -365,18 +411,6 @@ export default function MainApp() {
     }
   }, []);
 
-  // ── Navigation ──────────────────────────────────────────────
-
-  function handleNavigate(next: Section) {
-    setSection(next);
-    savePref("appSection", next);
-  }
-
-  function handleSettingsTab(tab: SettingsTab) {
-    setSettingsTab(tab);
-    savePref("settingsTab", tab);
-  }
-
   // ── Stable getToken for DashboardTab components ─────────────
 
   const getToken = useCallback(() => getValidToken(), []);
@@ -426,7 +460,6 @@ export default function MainApp() {
         active={section}
         onNavigate={handleNavigate}
         tickerAlive={prefs.ticker.showTicker}
-        onToggleTicker={handleToggleStandaloneTicker}
         settingsTab={settingsTab}
         onSettingsTabChange={handleSettingsTab}
         appVersion={appVersion}
@@ -478,20 +511,45 @@ export default function MainApp() {
           )}
         </header>
 
+        {/* Session expired banner */}
+        {sessionExpired && (
+          <div className="flex items-center justify-between px-4 py-2 bg-warn/10 border-b border-warn/20 shrink-0">
+            <span className="text-xs text-warn">
+              Your session has expired. Sign in again to access your channels.
+            </span>
+            <div className="flex items-center gap-2 shrink-0 ml-4">
+              <button
+                onClick={handleLogin}
+                className="text-xs font-medium text-warn hover:text-fg transition-colors"
+              >
+                Sign in
+              </button>
+              <button
+                onClick={() => setSessionExpired(false)}
+                className="text-xs text-fg-4 hover:text-fg-3 transition-colors"
+                aria-label="Dismiss"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Content */}
         <div className="flex-1 overflow-y-auto scrollbar-thin">
           {section === "feed" && (
             <FeedSection
               authenticated={authenticated}
               loading={loading}
+              fetchError={fetchError}
               channels={channels}
               dashboard={dashboard}
-              feedMode={feedMode}
               activeTab={activeTab}
               onActiveTabChange={(tab) => {
                 setActiveTab(tab);
                 savePref("activeTab", tab);
               }}
+              onRetry={fetchDashboard}
               onLogin={handleLogin}
               onNavigateToChannels={() => handleNavigate("channels")}
             />
@@ -519,6 +577,7 @@ export default function MainApp() {
               }}
               getToken={getToken}
               tier={tier}
+              deliveryMode={deliveryMode}
               onToggle={() => {
                 const ch = channels.find((c) => c.channel_type === activeTab);
                 if (ch) handleToggleChannel(ch.channel_type, !ch.visible);
@@ -569,7 +628,12 @@ export default function MainApp() {
 
         {/* Login overlay */}
         {loggingIn && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center bg-surface/80 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Signing in"
+            className="absolute inset-0 z-50 flex items-center justify-center bg-surface/80 backdrop-blur-sm"
+          >
             <div className="text-center">
               <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto mb-3" />
               <p className="text-sm font-medium text-fg-2">
@@ -578,6 +642,12 @@ export default function MainApp() {
               <p className="text-xs text-fg-3 mt-1">
                 Complete sign-in in your browser
               </p>
+              <button
+                onClick={() => setLoggingIn(false)}
+                className="mt-4 px-4 py-1.5 rounded-lg text-xs font-medium text-fg-3 hover:text-fg-2 hover:bg-surface-hover transition-colors"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         )}
@@ -592,21 +662,23 @@ export default function MainApp() {
 function FeedSection({
   authenticated,
   loading,
+  fetchError,
   channels,
   dashboard,
-  feedMode,
   activeTab,
   onActiveTabChange,
+  onRetry,
   onLogin,
   onNavigateToChannels,
 }: {
   authenticated: boolean;
   loading: boolean;
+  fetchError: string | null;
   channels: Channel[];
   dashboard: DashboardResponse | null;
-  feedMode: FeedMode;
   activeTab: string;
   onActiveTabChange: (tab: string) => void;
+  onRetry: () => void;
   onLogin: () => void;
   onNavigateToChannels: () => void;
 }) {
@@ -640,7 +712,7 @@ function FeedSection({
     return (
       <div className="flex flex-col gap-3 p-6">
         {Array.from({ length: 6 }, (_, i) => (
-          <div key={i} className="flex items-center gap-3 animate-pulse">
+          <div key={i} className="flex items-center gap-3 motion-safe:animate-pulse">
             <div className="w-8 h-8 rounded-lg bg-surface-2" />
             <div className="flex-1 space-y-2">
               <div
@@ -658,6 +730,15 @@ function FeedSection({
     );
   }
 
+  if (fetchError) {
+    return (
+      <ErrorState
+        message={fetchError}
+        onRetry={onRetry}
+      />
+    );
+  }
+
   if (visibleChannels.length === 0) {
     return (
       <EmptyState
@@ -672,7 +753,7 @@ function FeedSection({
   return (
     <div className="flex flex-col h-full">
       {/* Channel tabs */}
-      <div className="flex gap-1 px-4 py-2 border-b border-edge/50 shrink-0">
+      <div role="tablist" aria-label="Feed channels" className="flex gap-1 px-4 py-2 border-b border-edge/50 shrink-0">
         {[...visibleChannels]
           .sort((a, b) =>
             CHANNEL_ORDER.indexOf(a.channel_type) -
@@ -680,15 +761,19 @@ function FeedSection({
           )
           .map((ch) => {
             const manifest = getChannel(ch.channel_type);
+            const selected = activeTab === ch.channel_type;
             return (
               <button
                 key={ch.channel_type}
+                role="tab"
+                aria-selected={selected}
                 onClick={() => onActiveTabChange(ch.channel_type)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  activeTab === ch.channel_type
+                className={clsx(
+                  "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                  selected
                     ? "bg-accent/10 text-accent"
-                    : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover"
-                }`}
+                    : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
+                )}
               >
                 {manifest?.tabLabel ?? ch.channel_type}
               </button>
@@ -699,7 +784,7 @@ function FeedSection({
       {/* Feed content */}
       <div className="flex-1 overflow-y-auto scrollbar-thin">
         {FeedTabComponent ? (
-          <FeedTabComponent mode={feedMode} channelConfig={channelConfig} />
+          <FeedTabComponent mode="comfort" channelConfig={channelConfig} />
         ) : (
           <div className="flex items-center justify-center h-full">
             <p className="text-sm text-fg-3 font-mono">
@@ -886,6 +971,7 @@ function DashboardSection({
   onActiveTabChange,
   getToken,
   tier,
+  deliveryMode,
   onToggle,
   onDelete,
   onChannelUpdate,
@@ -897,6 +983,7 @@ function DashboardSection({
   onActiveTabChange: (tab: string) => void;
   getToken: () => Promise<string | null>;
   tier: SubscriptionTier;
+  deliveryMode: DeliveryMode;
   onToggle: () => void;
   onDelete: () => void;
   onChannelUpdate: (updated: Channel) => void;
@@ -928,7 +1015,7 @@ function DashboardSection({
   return (
     <div className="flex flex-col h-full">
       {/* Channel tabs */}
-      <div className="flex gap-1 px-4 py-2 border-b border-edge/50 shrink-0">
+      <div role="tablist" aria-label="Dashboard channels" className="flex gap-1 px-4 py-2 border-b border-edge/50 shrink-0">
         {[...channels]
           .sort((a, b) =>
             CHANNEL_ORDER.indexOf(a.channel_type) -
@@ -936,15 +1023,19 @@ function DashboardSection({
           )
           .map((ch) => {
             const manifest = getWebChannel(ch.channel_type);
+            const selected = activeTab === ch.channel_type;
             return (
               <button
                 key={ch.channel_type}
+                role="tab"
+                aria-selected={selected}
                 onClick={() => onActiveTabChange(ch.channel_type)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  activeTab === ch.channel_type
+                className={clsx(
+                  "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                  selected
                     ? "bg-accent/10 text-accent"
-                    : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover"
-                }`}
+                    : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
+                )}
               >
                 {manifest?.tabLabel ?? ch.channel_type}
               </button>
@@ -961,7 +1052,7 @@ function DashboardSection({
             onToggle={onToggle}
             onDelete={onDelete}
             onChannelUpdate={onChannelUpdate}
-            connected={false}
+            connected={deliveryMode === "sse"}
             subscriptionTier={tier}
             hex={webChannel.hex}
           />
@@ -1060,6 +1151,32 @@ function AccountSection({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Shared error state ───────────────────────────────────────────
+
+function ErrorState({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto gap-3 p-6">
+      <div className="w-10 h-10 rounded-xl bg-error/10 flex items-center justify-center mb-1">
+        <span className="text-error text-lg font-bold">!</span>
+      </div>
+      <h2 className="text-base font-semibold text-fg">Something went wrong</h2>
+      <p className="text-sm text-fg-3 leading-relaxed">{message}</p>
+      <button
+        onClick={onRetry}
+        className="mt-2 px-4 py-2 rounded-xl text-sm font-medium bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+      >
+        Try again
+      </button>
     </div>
   );
 }

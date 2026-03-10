@@ -23,6 +23,7 @@ import {
   savePref,
   loadPrefs,
   savePrefs,
+  resolveTheme,
   TICKER_GAPS,
   TICKER_HEIGHTS,
 } from "./preferences";
@@ -349,7 +350,8 @@ export default function App() {
         if (next.window.tickerPosition !== prev.window.tickerPosition) {
           setTickerPosition(next.window.tickerPosition);
           savePref("tickerPosition", next.window.tickerPosition);
-          invoke("position_ticker", { position: next.window.tickerPosition }).catch(() => {});
+          const h = TICKER_HEIGHTS[next.ticker.tickerMode] * next.appearance.tickerRows;
+          invoke("position_ticker", { position: next.window.tickerPosition, height: h }).catch(() => {});
         }
 
         // Side effects: ticker visibility
@@ -368,12 +370,7 @@ export default function App() {
     const shell = document.getElementById("desktop-shell");
     if (!shell) return;
 
-    const resolved: "light" | "dark" =
-      prefs.appearance.theme === "system"
-        ? window.matchMedia("(prefers-color-scheme: dark)").matches
-          ? "dark"
-          : "light"
-        : prefs.appearance.theme as "light" | "dark";
+    const resolved = resolveTheme(prefs.appearance.theme);
 
     shell.classList.add("theme-transition");
     shell.dataset.theme = resolved;
@@ -421,8 +418,8 @@ export default function App() {
       ? 0
       : TICKER_HEIGHTS[prefs.ticker.tickerMode] * prefs.appearance.tickerRows;
     if (tickerH > 0) {
-      invoke("resize_window", { height: tickerH, anchor: tickerPosition })
-        .then(() => invoke("position_ticker", { position: tickerPosition }))
+      // position_ticker sets size + position atomically via compositor
+      invoke("position_ticker", { position: tickerPosition, height: tickerH })
         .then(() => getCurrentWindow().show())
         .catch(() => {});
     }
@@ -431,13 +428,17 @@ export default function App() {
   }, []);
 
   // ── Resize ticker when row/mode prefs change ───────────────────
+  // position_ticker sets the full geometry (x, y, width, height)
+  // atomically via compositor-specific commands. This avoids the
+  // race condition where set_size() hasn't propagated before the
+  // position calculation reads the old height.
 
   useEffect(() => {
     const tickerH = tickerCollapsed
       ? 0
       : TICKER_HEIGHTS[prefs.ticker.tickerMode] * prefs.appearance.tickerRows;
     if (tickerH > 0) {
-      invoke("resize_window", { height: tickerH, anchor: tickerPosition }).catch(() => {});
+      invoke("position_ticker", { position: tickerPosition, height: tickerH }).catch(() => {});
     }
   }, [
     prefs.ticker.tickerMode,
@@ -500,7 +501,8 @@ export default function App() {
     };
     setPrefs(updated);
     savePrefs(updated);
-    invoke("position_ticker", { position: next }).catch(() => {});
+    const h = TICKER_HEIGHTS[updated.ticker.tickerMode] * updated.appearance.tickerRows;
+    invoke("position_ticker", { position: next, height: h }).catch(() => {});
   }, [tickerPosition]);
 
   // ── Right-click → native context menu ──────────────────────────

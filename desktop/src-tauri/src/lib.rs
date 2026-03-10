@@ -154,7 +154,11 @@ fn percent_decode(input: &str) -> String {
 ///   KDE/KWin → `qdbus6` D-Bus scripting API → frameGeometry
 ///   Fallback → GTK set_size + set_position (works on macOS/Windows/X11)
 #[tauri::command]
-fn position_ticker(window: tauri::Window, position: String) -> Result<(), String> {
+fn position_ticker(
+    window: tauri::Window,
+    position: String,
+    height: Option<f64>,
+) -> Result<(), String> {
     let monitor = window
         .current_monitor()
         .map_err(|e| format!("monitor query failed: {e}"))?
@@ -166,10 +170,18 @@ fn position_ticker(window: tauri::Window, position: String) -> Result<(), String
     let monitor_x = monitor.position().x as f64 / scale;
     let monitor_y = monitor.position().y as f64 / scale;
 
-    let size = window
-        .outer_size()
-        .map_err(|e| format!("outer_size failed: {e}"))?;
-    let win_height = size.height as f64 / scale;
+    // Use explicit height if provided; otherwise read from window.
+    // On Wayland, a preceding set_size() may not have propagated yet,
+    // so callers should always pass the desired height.
+    let win_height = match height {
+        Some(h) => h,
+        None => {
+            let size = window
+                .outer_size()
+                .map_err(|e| format!("outer_size failed: {e}"))?;
+            size.height as f64 / scale
+        }
+    };
 
     let new_y = if position == "top" {
         monitor_y
@@ -177,16 +189,17 @@ fn position_ticker(window: tauri::Window, position: String) -> Result<(), String
         monitor_y + screen_height - win_height
     };
 
-    // Wayland compositors ignore GTK set_position/set_size — use native IPC
+    // Wayland compositors ignore GTK set_position/set_size — use native IPC.
+    // Pass height so compositor sets full geometry atomically.
     if std::env::var("HYPRLAND_INSTANCE_SIGNATURE").is_ok() {
-        return position_hyprland(&window, monitor_x, new_y, screen_width);
+        return position_hyprland(&window, monitor_x, new_y, screen_width, win_height);
     }
     if std::env::var("SWAYSOCK").is_ok() {
-        return position_sway(&window, monitor_x, new_y, screen_width);
+        return position_sway(&window, monitor_x, new_y, screen_width, win_height);
     }
     if is_kde() {
         if let Some(qdbus) = find_qdbus() {
-            return position_kwin(&window, monitor_x, new_y, screen_width, &qdbus);
+            return position_kwin(&window, monitor_x, new_y, screen_width, win_height, &qdbus);
         }
     }
 
@@ -204,6 +217,7 @@ fn position_hyprland(
     x: f64,
     y: f64,
     width: f64,
+    height: f64,
 ) -> Result<(), String> {
     let title = window.title().unwrap_or_default();
 
@@ -218,18 +232,13 @@ fn position_hyprland(
     for client in &clients {
         if client["title"].as_str().unwrap_or("") == title {
             let addr = client["address"].as_str().ok_or("no address field")?;
-            let current_h = client["size"]
-                .as_array()
-                .and_then(|a| a.get(1))
-                .and_then(|v| v.as_i64())
-                .unwrap_or(44);
 
-            // Resize to full monitor width, keeping current height
+            // Resize to full monitor width + desired height
             std::process::Command::new("hyprctl")
                 .args([
                     "dispatch",
                     "resizewindowpixel",
-                    &format!("exact {} {},address:{addr}", width as i32, current_h),
+                    &format!("exact {} {},address:{addr}", width as i32, height as i32),
                 ])
                 .output()
                 .map_err(|e| format!("hyprctl resize failed: {e}"))?;
@@ -257,13 +266,14 @@ fn position_sway(
     x: f64,
     y: f64,
     width: f64,
+    height: f64,
 ) -> Result<(), String> {
     let title = window.title().unwrap_or_default();
 
     std::process::Command::new("swaymsg")
         .arg(format!(
-            "[title=\"{title}\"] move absolute position {} {}, resize set {} 0",
-            x as i32, y as i32, width as i32,
+            "[title=\"{title}\"] move absolute position {} {}, resize set {} {}",
+            x as i32, y as i32, width as i32, height as i32,
         ))
         .output()
         .map_err(|e| format!("swaymsg failed: {e}"))?;
@@ -277,19 +287,20 @@ fn position_kwin(
     x: f64,
     y: f64,
     width: f64,
+    height: f64,
     qdbus: &str,
 ) -> Result<(), String> {
     let title = window.title().unwrap_or_default();
     let x_int = x as i32;
     let y_int = y as i32;
     let w_int = width as i32;
+    let h_int = height as i32;
 
     let script = format!(
         r#"var wins = workspace.windowList();
 for (var i = 0; i < wins.length; i++) {{
     if (wins[i].caption === "{title}") {{
-        var g = wins[i].frameGeometry;
-        wins[i].frameGeometry = {{x: {x_int}, y: {y_int}, width: {w_int}, height: g.height}};
+        wins[i].frameGeometry = {{x: {x_int}, y: {y_int}, width: {w_int}, height: {h_int}}};
     }}
 }}"#
     );

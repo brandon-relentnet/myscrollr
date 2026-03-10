@@ -233,6 +233,19 @@ export function resetAll(): AppPreferences {
   return defaults;
 }
 
+// ── Theme resolution ────────────────────────────────────────
+
+/** Resolve the effective theme from a Theme preference value.
+ *  "system" follows the OS preference; otherwise returns as-is. */
+export function resolveTheme(theme: Theme): "light" | "dark" {
+  if (theme === "system") {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  }
+  return theme;
+}
+
 // ── Derived values ──────────────────────────────────────────────
 
 export const TASKBAR_HEIGHTS: Record<TaskbarHeight, number> = {

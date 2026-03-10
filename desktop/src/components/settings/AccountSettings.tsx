@@ -1,9 +1,10 @@
 import { useState, useCallback, useRef } from "react";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
-import { TIER_LABELS } from "../../auth";
+import { TIER_LABELS, getUserIdentity } from "../../auth";
 import type { SubscriptionTier } from "../../auth";
 import { Section, DisplayRow, ActionRow, ResetButton } from "./SettingsControls";
+import ConfirmDialog from "../ConfirmDialog";
 import clsx from "clsx";
 
 // ── Update state machine ────────────────────────────────────────
@@ -38,6 +39,9 @@ export default function AccountSettings({
 }: AccountSettingsProps) {
   const [status, setStatus] = useState<UpdateStatus>({ step: "idle" });
   const pendingUpdate = useRef<Update | null>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const identity = authenticated ? getUserIdentity() : null;
+  const userLabel = identity?.email ?? identity?.name ?? null;
 
   const handleCheckForUpdates = useCallback(async () => {
     setStatus({ step: "checking" });
@@ -113,6 +117,13 @@ export default function AccountSettings({
       <Section title="Account">
         {authenticated ? (
           <>
+            {userLabel && (
+              <DisplayRow
+                label="Signed in as"
+                value={userLabel}
+                valueClass="text-[12px] text-fg-2 truncate max-w-[180px]"
+              />
+            )}
             <DisplayRow
               label="Plan"
               value={TIER_LABELS[tier]}
@@ -136,7 +147,7 @@ export default function AccountSettings({
       </Section>
 
       <Section title="About">
-        <DisplayRow label="Version" value={`v${appVersion}`} />
+        <DisplayRow label="Version" value={appVersion ? `v${appVersion}` : "\u2014"} />
         <DisplayRow label="Runtime" value="Tauri v2" />
       </Section>
 
@@ -155,13 +166,26 @@ export default function AccountSettings({
             <span className="text-[12px] text-fg-2 leading-tight">
               Reset all settings
             </span>
-            <span className="text-[10px] text-fg-4 leading-tight">
+            <span className="text-[11px] text-fg-4 leading-tight">
               Restore every setting to its factory default
             </span>
           </div>
-          <ResetButton label="Reset everything" onClick={onResetAll} />
+          <ResetButton label="Reset everything" onClick={() => setConfirmReset(true)} />
         </div>
       </Section>
+
+      <ConfirmDialog
+        open={confirmReset}
+        title="Reset all settings?"
+        description="This will restore every setting to its factory default. Your account and channels will not be affected."
+        confirmLabel="Reset everything"
+        destructive
+        onConfirm={() => {
+          setConfirmReset(false);
+          onResetAll();
+        }}
+        onCancel={() => setConfirmReset(false)}
+      />
     </div>
   );
 }
@@ -183,7 +207,7 @@ function UpdateRow({ status, onCheck, onDownload, onRelaunch }: UpdateRowProps) 
           <span className="text-[12px] text-fg-3">Check for new versions</span>
           <button
             onClick={onCheck}
-            className="text-[10px] font-medium px-2.5 py-1 rounded-md bg-base-250 text-fg-3 hover:text-fg-2 hover:bg-base-300 transition-colors cursor-pointer"
+            className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-base-250 text-fg-3 hover:text-fg-2 hover:bg-base-300 transition-colors cursor-pointer"
           >
             Check for updates
           </button>
@@ -208,7 +232,7 @@ function UpdateRow({ status, onCheck, onDownload, onRelaunch }: UpdateRowProps) 
           </div>
           <button
             onClick={onCheck}
-            className="text-[10px] font-medium px-2.5 py-1 rounded-md text-fg-4 hover:text-fg-2 hover:bg-base-250/50 transition-colors cursor-pointer"
+            className="text-[11px] font-medium px-2.5 py-1 rounded-md text-fg-4 hover:text-fg-2 hover:bg-base-250/50 transition-colors cursor-pointer"
           >
             Check again
           </button>
@@ -223,19 +247,21 @@ function UpdateRow({ status, onCheck, onDownload, onRelaunch }: UpdateRowProps) 
               <span className="text-[12px] text-fg-2 leading-tight">
                 Update available: <span className="text-accent font-semibold">v{status.version}</span>
               </span>
-              {status.body && (
-                <span className="text-[10px] text-fg-4 leading-tight line-clamp-2">
-                  {status.body}
-                </span>
-              )}
             </div>
             <button
               onClick={onDownload}
-              className="text-[10px] font-semibold px-2.5 py-1 rounded-md bg-accent text-surface hover:bg-accent/90 transition-colors cursor-pointer shrink-0 ml-4"
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-accent text-surface hover:bg-accent/90 transition-colors cursor-pointer shrink-0 ml-4"
             >
               Download & install
             </button>
           </div>
+          {status.body && (
+            <div className="max-h-32 overflow-y-auto scrollbar-thin rounded-md bg-base-200/50 px-2.5 py-2">
+              <p className="text-[11px] text-fg-4 leading-relaxed whitespace-pre-wrap">
+                {status.body}
+              </p>
+            </div>
+          )}
         </div>
       );
 
@@ -249,15 +275,22 @@ function UpdateRow({ status, onCheck, onDownload, onRelaunch }: UpdateRowProps) 
             <span className="text-[12px] text-fg-3 leading-tight">
               Downloading update...
             </span>
-            <span className="text-[10px] text-fg-4 tabular-nums">
+            <span className="text-[11px] text-fg-4 tabular-nums">
               {status.total > 0 ? `${pct}%` : "..."}
             </span>
           </div>
-          <div className="w-full h-1 rounded-full bg-base-300 overflow-hidden">
+          <div
+            role="progressbar"
+            aria-valuenow={pct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Download progress"
+            className="w-full h-1 rounded-full bg-base-300 overflow-hidden"
+          >
             <div
               className={clsx(
                 "h-full rounded-full transition-all duration-300",
-                status.total > 0 ? "bg-accent" : "bg-accent/50 animate-pulse",
+                status.total > 0 ? "bg-accent" : "bg-accent/50 motion-safe:animate-pulse",
               )}
               style={{ width: status.total > 0 ? `${pct}%` : "30%" }}
             />
@@ -273,13 +306,13 @@ function UpdateRow({ status, onCheck, onDownload, onRelaunch }: UpdateRowProps) 
             <span className="text-[12px] text-accent leading-tight">
               Update installed
             </span>
-            <span className="text-[10px] text-fg-4 leading-tight">
+            <span className="text-[11px] text-fg-4 leading-tight">
               Restart to apply the update
             </span>
           </div>
           <button
             onClick={onRelaunch}
-            className="text-[10px] font-semibold px-2.5 py-1 rounded-md bg-accent text-surface hover:bg-accent/90 transition-colors cursor-pointer"
+            className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-accent text-surface hover:bg-accent/90 transition-colors cursor-pointer"
           >
             Restart now
           </button>
@@ -293,13 +326,13 @@ function UpdateRow({ status, onCheck, onDownload, onRelaunch }: UpdateRowProps) 
             <span className="text-[12px] text-error leading-tight">
               Update check failed
             </span>
-            <span className="text-[10px] text-fg-4 leading-tight line-clamp-1">
+            <span className="text-[11px] text-fg-4 leading-tight line-clamp-1">
               {status.message}
             </span>
           </div>
           <button
             onClick={onCheck}
-            className="text-[10px] font-medium px-2.5 py-1 rounded-md text-fg-4 hover:text-fg-2 hover:bg-base-250/50 transition-colors cursor-pointer"
+            className="text-[11px] font-medium px-2.5 py-1 rounded-md text-fg-4 hover:text-fg-2 hover:bg-base-250/50 transition-colors cursor-pointer"
           >
             Retry
           </button>

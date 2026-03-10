@@ -52,6 +52,7 @@ function randomShuffle<T>(arr: T[]): T[] {
 /** Round-robin interleave across buckets:
  *  bucket0[0], bucket1[0], bucket2[0], bucket0[1], bucket1[1], ... */
 function weave<T>(buckets: T[][]): T[] {
+  if (buckets.length === 0) return [];
   const result: T[] = [];
   const maxLen = Math.max(...buckets.map((b) => b.length));
   for (let i = 0; i < maxLen; i++) {
