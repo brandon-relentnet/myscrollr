@@ -6,6 +6,8 @@ import type {
   TickerMode,
   MixMode,
   ChipColorMode,
+  TickerDirection,
+  ScrollMode,
 } from "../../preferences";
 import {
   Section,
@@ -57,10 +59,22 @@ const COLOR_OPTIONS: { value: ChipColorMode; label: string }[] = [
   { value: "muted", label: "Muted" },
 ];
 
+const DIRECTION_OPTIONS: { value: TickerDirection; label: string }[] = [
+  { value: "left", label: "Left" },
+  { value: "right", label: "Right" },
+];
+
+const SCROLL_MODE_OPTIONS: { value: ScrollMode; label: string }[] = [
+  { value: "continuous", label: "Continuous" },
+  { value: "step", label: "Step" },
+  { value: "flip", label: "Flip" },
+];
+
 function speedLabel(speed: number): string {
-  if (speed <= 20) return "Slow";
-  if (speed <= 50) return "Normal";
-  if (speed <= 80) return "Fast";
+  if (speed <= 15) return "Crawl";
+  if (speed <= 30) return "Slow";
+  if (speed <= 60) return "Normal";
+  if (speed <= 100) return "Fast";
   return "Blazing";
 }
 
@@ -107,28 +121,60 @@ export default function TickerSettings({
       </Section>
 
       <Section title="Playback">
+        <SegmentedRow
+          label="Scroll mode"
+          description="How items move through the ticker"
+          value={ticker.scrollMode}
+          options={SCROLL_MODE_OPTIONS}
+          onChange={(v) => setTicker("scrollMode", v)}
+        />
         <SliderRow
-          label="Scroll speed"
+          label="Speed"
           value={ticker.tickerSpeed}
-          min={10}
-          max={100}
+          min={5}
+          max={150}
           step={5}
           displayValue={speedLabel(ticker.tickerSpeed)}
           onChange={(v) => setTicker("tickerSpeed", v)}
         />
+        {ticker.scrollMode !== "flip" && (
+          <SegmentedRow
+            label="Direction"
+            description="Which way the ticker scrolls"
+            value={ticker.tickerDirection}
+            options={DIRECTION_OPTIONS}
+            onChange={(v) => setTicker("tickerDirection", v)}
+          />
+        )}
+        {ticker.scrollMode !== "continuous" && (
+          <SliderRow
+            label="Pause"
+            description="How long to wait between transitions"
+            value={ticker.stepPause}
+            min={1}
+            max={10}
+            step={0.5}
+            displayValue={`${ticker.stepPause}s`}
+            onChange={(v) => setTicker("stepPause", v)}
+          />
+        )}
         <ToggleRow
           label="Pause on hover"
-          description="Slow the ticker when your cursor is over it"
+          description={
+            ticker.scrollMode === "continuous"
+              ? "Slow the ticker when your cursor is over it"
+              : "Pause transitions when your cursor is over the ticker"
+          }
           checked={ticker.pauseOnHover}
           onChange={(v) => setTicker("pauseOnHover", v)}
         />
-        {ticker.pauseOnHover && (
+        {ticker.scrollMode === "continuous" && ticker.pauseOnHover && (
           <SliderRow
             label="Hover speed"
             description="How much the ticker slows on hover"
             value={ticker.hoverSpeed}
             min={0}
-            max={0.8}
+            max={1}
             step={0.05}
             displayValue={
               ticker.hoverSpeed === 0

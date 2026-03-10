@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef, useState, useCallback } from "react";
 import { Ticker } from "motion-plus/react";
+import { useMotionValue, animate, AnimatePresence, motion } from "motion/react";
 import type { DashboardResponse, Trade, Game, RssItem } from "~/utils/types";
-import type { MixMode, ChipColorMode } from "../preferences";
+import type { MixMode, ChipColorMode, TickerDirection, ScrollMode } from "../preferences";
 import TradeChip from "./chips/TradeChip";
 import GameChip from "./chips/GameChip";
 import RssChip from "./chips/RssChip";
@@ -31,6 +32,12 @@ interface ScrollrTickerProps {
   rowIndex?: number;
   /** Total number of ticker rows (items distributed round-robin) */
   totalRows?: number;
+  /** Scroll direction: left (default) or right */
+  direction?: TickerDirection;
+  /** Scroll mode: continuous, step, or flip */
+  scrollMode?: ScrollMode;
+  /** Seconds to pause between transitions in step/flip modes (default 2) */
+  stepPause?: number;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────
@@ -69,7 +76,7 @@ export default function ScrollrTicker({
   dashboard,
   activeTabs,
   onChipClick,
-  speed = 40,
+  speed = 25,
   gap = 8,
   pauseOnHover = true,
   hoverSpeed = 0.3,
@@ -78,6 +85,9 @@ export default function ScrollrTicker({
   comfort = false,
   rowIndex = 0,
   totalRows = 1,
+  direction = "left",
+  scrollMode = "continuous",
+  stepPause = 5,
 }: ScrollrTickerProps) {
   // Build chip arrays per channel, then combine based on mixMode.
   // When totalRows > 1, items are distributed round-robin across rows.
@@ -185,20 +195,177 @@ export default function ScrollrTicker({
     return allItems.filter((_, i) => i % totalRows === rowIndex);
   }, [dashboard, activeTabs, onChipClick, comfort, mixMode, chipColorMode, rowIndex, totalRows]);
 
+  // ── Shared refs ─────────────────────────────────────────────────
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isHoveredRef = useRef(false);
+
+  // ── Step mode: external offset driven by async animate loop ──
+  const offset = useMotionValue(0);
+  const stepLoopRef = useRef(false);
+
+  const transitionDuration = speedToTransitionDuration(speed);
+
+  // Measure the width of the first ticker item + gap to determine step size.
+  // Queries .ticker-item inside containerRef — works because <Ticker> renders
+  // its items as descendants of our wrapper div. Only called once per step
+  // cycle (~5s apart), not in a tight loop, so the layout read is safe.
+  const measureStepSize = useCallback((): number => {
+    const container = containerRef.current;
+    if (!container) return 200; // fallback
+    const firstItem = container.querySelector(".ticker-item") as HTMLElement | null;
+    if (!firstItem) return 200;
+    return firstItem.offsetWidth + gap;
+  }, [gap]);
+
+  // Step loop: animate offset by one item width, pause, repeat
+  useEffect(() => {
+    if (scrollMode !== "step" || chips.length === 0) return;
+
+    stepLoopRef.current = true;
+    let cancelled = false;
+
+    async function stepLoop() {
+      // Small delay to let DOM render and measure
+      await sleep(500);
+
+      while (!cancelled && stepLoopRef.current) {
+        // Skip advancing while hovered and pauseOnHover is enabled
+        if (pauseOnHover && isHoveredRef.current) {
+          await sleep(100);
+          continue;
+        }
+
+        const stepSize = measureStepSize();
+        const sign = direction === "right" ? 1 : -1;
+        const current = offset.get();
+        const target = current + sign * stepSize;
+
+        // Animate one step — duration derived from unified speed slider
+        await animate(offset, target, {
+          duration: transitionDuration,
+          ease: [0.25, 0.1, 0.25, 1],
+        });
+
+        if (cancelled) break;
+
+        // Pause between steps
+        await sleep(stepPause * 1000);
+      }
+    }
+
+    stepLoop();
+
+    return () => {
+      cancelled = true;
+      stepLoopRef.current = false;
+    };
+  }, [scrollMode, direction, stepPause, pauseOnHover, speed, chips.length, measureStepSize, offset, transitionDuration]);
+
+  // ── Flip mode: paginated vertical slide ───────────────────────
+  const [flipPage, setFlipPage] = useState(0);
+
+  // Estimate how many chips fit visually, then rotate the array
+  const visibleCount = useMemo(() => {
+    const containerWidth = containerRef.current?.clientWidth ?? 1200;
+    const avgChipWidth = comfort ? 180 : 120;
+    return Math.max(1, Math.floor(containerWidth / (avgChipWidth + gap)));
+  }, [comfort, gap, chips.length]); // re-estimate when chip count changes
+
+  const flipChips = useMemo(() => {
+    if (chips.length === 0) return [];
+    const shift = (flipPage * visibleCount) % chips.length;
+    return [...chips.slice(shift), ...chips.slice(0, shift)];
+  }, [chips, flipPage, visibleCount]);
+
+  // Flip timer: cycle pages on stepPause interval.
+  // Also resets flipPage when chips change (chips.length in deps triggers
+  // cleanup → fresh start) avoiding a separate effect with ordering concerns.
+  useEffect(() => {
+    if (scrollMode !== "flip" || chips.length === 0) return;
+
+    setFlipPage(0);
+
+    const timer = setInterval(() => {
+      if (pauseOnHover && isHoveredRef.current) return;
+      setFlipPage((p) => p + 1);
+    }, stepPause * 1000);
+
+    return () => clearInterval(timer);
+  }, [scrollMode, stepPause, pauseOnHover, chips.length]);
+
+  // ── Render ────────────────────────────────────────────────────
   if (chips.length === 0) return null;
 
+  const containerClass = `ticker-container ${comfort ? "h-16" : "h-11"} flex items-center bg-base-150 border-b border-edge/50 flex-shrink-0 relative w-full overflow-hidden`;
+  const accentLine = (
+    <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent z-10" />
+  );
+
+  // ── Flip mode: AnimatePresence with vertical slide ────────────
+  // Direction prop is intentionally ignored — flip always slides
+  // vertically (current row up, new row in from below). The Direction
+  // control is hidden in settings when flip mode is selected.
+  if (scrollMode === "flip") {
+    return (
+      <div
+        ref={containerRef}
+        className={containerClass}
+        onMouseEnter={() => { isHoveredRef.current = true; }}
+        onMouseLeave={() => { isHoveredRef.current = false; }}
+      >
+        {accentLine}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={flipPage}
+            initial={{ y: "100%", opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: "-100%", opacity: 0 }}
+            transition={{ duration: transitionDuration, ease: [0.25, 0.1, 0.25, 1] }}
+            className="flex items-center h-full w-full"
+            style={{ gap }}
+          >
+            {flipChips}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    );
+  }
+
+  // ── Continuous / Step mode: motion-plus Ticker ────────────────
+  const velocity = direction === "right" ? speed : -speed;
+  const isStepMode = scrollMode === "step";
+
   return (
-    <div className={`ticker-container ${comfort ? "h-16" : "h-11"} flex items-center bg-base-150 border-b border-edge/50 flex-shrink-0 relative w-full overflow-hidden`}>
-      {/* Top accent line — matches the website's card accent pattern */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent z-10" />
+    <div
+      ref={containerRef}
+      className={containerClass}
+      onMouseEnter={() => { isHoveredRef.current = true; }}
+      onMouseLeave={() => { isHoveredRef.current = false; }}
+    >
+      {accentLine}
       <Ticker
         items={chips}
-        velocity={-speed}
-        hoverFactor={pauseOnHover ? hoverSpeed : 1}
+        velocity={isStepMode ? 0 : velocity}
+        offset={isStepMode ? offset : undefined}
+        hoverFactor={isStepMode ? 1 : (pauseOnHover ? hoverSpeed : 1)}
         gap={gap}
         fade={40}
         style={{ width: "100%", minWidth: 0, maxWidth: "100%" }}
       />
     </div>
   );
+}
+
+// ── Helpers (module-level) ───────────────────────────────────────
+
+/** Promise-based sleep helper. */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Map speed slider (5–150) to transition duration for step/flip modes.
+ *  speed 5 → ~1.2s (crawl), speed 25 → ~0.9s (default),
+ *  speed 60 → ~0.55s, speed 150 → ~0.15s (blazing). */
+function speedToTransitionDuration(speed: number): number {
+  return Math.max(0.15, 1.2 - (speed - 5) * 0.0072);
 }

@@ -478,7 +478,7 @@ export default function MainApp() {
         {showAppTicker &&
           Array.from({ length: prefs.appearance.tickerRows }, (_, i) => (
             <ScrollrTicker
-              key={`app-row${i}-${prefs.ticker.tickerGap}-${prefs.ticker.tickerSpeed}-${prefs.ticker.hoverSpeed}-${prefs.ticker.tickerMode}-${prefs.ticker.mixMode}-${prefs.ticker.chipColors}-${prefs.appearance.tickerRows}`}
+              key={`app-row${i}-${prefs.ticker.tickerGap}-${prefs.ticker.tickerSpeed}-${prefs.ticker.hoverSpeed}-${prefs.ticker.tickerMode}-${prefs.ticker.mixMode}-${prefs.ticker.chipColors}-${prefs.ticker.tickerDirection}-${prefs.ticker.scrollMode}-${prefs.ticker.stepPause}-${prefs.appearance.tickerRows}`}
               dashboard={dashboard}
               activeTabs={activeTabs}
               speed={prefs.ticker.tickerSpeed}
@@ -490,6 +490,9 @@ export default function MainApp() {
               comfort={prefs.ticker.tickerMode === "comfort"}
               rowIndex={i}
               totalRows={prefs.appearance.tickerRows}
+              direction={prefs.ticker.tickerDirection}
+              scrollMode={prefs.ticker.scrollMode}
+              stepPause={prefs.ticker.stepPause}
             />
           ))}
 

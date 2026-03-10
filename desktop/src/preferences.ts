@@ -12,6 +12,8 @@ export type DefaultView = "feed" | "dashboard" | "last";
 export type TickerRows = 1 | 2 | 3;
 export type MixMode = "grouped" | "weave" | "random";
 export type ChipColorMode = "channel" | "accent" | "muted";
+export type TickerDirection = "left" | "right";
+export type ScrollMode = "continuous" | "step" | "flip";
 
 export interface AppearancePrefs {
   theme: Theme;
@@ -28,6 +30,9 @@ export interface TickerPrefs {
   tickerMode: TickerMode;
   mixMode: MixMode;
   chipColors: ChipColorMode;
+  tickerDirection: TickerDirection;
+  scrollMode: ScrollMode;
+  stepPause: number; // seconds between transitions (1–10)
 }
 
 export interface StartupPrefs {
@@ -72,13 +77,16 @@ export const DEFAULT_APPEARANCE: AppearancePrefs = {
 
 export const DEFAULT_TICKER: TickerPrefs = {
   showTicker: true,
-  tickerSpeed: 40,
+  tickerSpeed: 25,
   pauseOnHover: true,
   hoverSpeed: 0.3,
   tickerGap: "normal",
   tickerMode: "compact",
   mixMode: "grouped",
   chipColors: "channel",
+  tickerDirection: "left",
+  scrollMode: "continuous",
+  stepPause: 5,
 };
 
 export const DEFAULT_STARTUP: StartupPrefs = {
