@@ -12,15 +12,14 @@ use tokio::sync::watch;
 struct SseHandle(Mutex<Option<watch::Sender<bool>>>);
 
 /// Resize the window height, preserving current width.
-/// Anchors the bottom edge: when height changes, the top edge moves
-/// while the bottom stays fixed (natural for a bottom-docked window).
+/// The `anchor` parameter controls which edge stays fixed:
+///   - `"top"`: top edge stays fixed, height extends downward (no reposition)
+///   - `"bottom"` (or any other value): bottom edge stays fixed, top moves
 ///
 /// Reads current geometry once up-front, then applies size + position
-/// in a single pass to minimise visual tearing. Size is applied first
-/// so the brief intermediate state extends *downward* (usually off-screen
-/// for a bottom-docked window), then position corrects upward.
+/// in a single pass to minimise visual tearing.
 #[tauri::command]
-fn resize_window(window: tauri::Window, height: f64) {
+fn resize_window(window: tauri::Window, height: f64, anchor: Option<String>) {
     let (size, pos) = match (window.outer_size(), window.outer_position()) {
         (Ok(s), Ok(p)) => (s, p),
         _ => return,
@@ -34,15 +33,18 @@ fn resize_window(window: tauri::Window, height: f64) {
         return; // no meaningful change
     }
 
-    // 1. Resize first — window briefly extends downward
+    // 1. Resize — window extends downward from current position
     let _ = window.set_size(tauri::LogicalSize::new(current_width, height));
 
-    // 2. Shift upward so bottom edge returns to its original position
-    let current_y = pos.y as f64 / scale;
-    let _ = window.set_position(tauri::LogicalPosition::new(
-        pos.x as f64 / scale,
-        current_y - delta,
-    ));
+    // 2. If bottom-anchored, shift upward so bottom edge stays fixed
+    let is_top = anchor.as_deref() == Some("top");
+    if !is_top {
+        let current_y = pos.y as f64 / scale;
+        let _ = window.set_position(tauri::LogicalPosition::new(
+            pos.x as f64 / scale,
+            current_y - delta,
+        ));
+    }
 }
 
 /// Start a temporary HTTP server on 127.0.0.1:19284 to receive the OAuth
@@ -140,6 +142,217 @@ fn percent_decode(input: &str) -> String {
         }
     }
     out
+}
+
+/// Snap the ticker window to a screen edge and stretch it to full monitor width.
+/// Sets x = monitor left edge, width = monitor width, y = top or bottom edge.
+///
+/// Like `pin_window`, Wayland compositors ignore GTK's `set_position()` and
+/// may ignore `set_size()`. We detect the compositor and use native IPC:
+///   Hyprland → `hyprctl dispatch movewindowpixel` + `resizewindowpixel`
+///   Sway     → `swaymsg move absolute position` + `resize set`
+///   KDE/KWin → `qdbus6` D-Bus scripting API → frameGeometry
+///   Fallback → GTK set_size + set_position (works on macOS/Windows/X11)
+#[tauri::command]
+fn position_ticker(window: tauri::Window, position: String) -> Result<(), String> {
+    let monitor = window
+        .current_monitor()
+        .map_err(|e| format!("monitor query failed: {e}"))?
+        .ok_or("no monitor found")?;
+
+    let scale = monitor.scale_factor();
+    let screen_width = monitor.size().width as f64 / scale;
+    let screen_height = monitor.size().height as f64 / scale;
+    let monitor_x = monitor.position().x as f64 / scale;
+    let monitor_y = monitor.position().y as f64 / scale;
+
+    let size = window
+        .outer_size()
+        .map_err(|e| format!("outer_size failed: {e}"))?;
+    let win_height = size.height as f64 / scale;
+
+    let new_y = if position == "top" {
+        monitor_y
+    } else {
+        monitor_y + screen_height - win_height
+    };
+
+    // Wayland compositors ignore GTK set_position/set_size — use native IPC
+    if std::env::var("HYPRLAND_INSTANCE_SIGNATURE").is_ok() {
+        return position_hyprland(&window, monitor_x, new_y, screen_width);
+    }
+    if std::env::var("SWAYSOCK").is_ok() {
+        return position_sway(&window, monitor_x, new_y, screen_width);
+    }
+    if is_kde() {
+        if let Some(qdbus) = find_qdbus() {
+            return position_kwin(&window, monitor_x, new_y, screen_width, &qdbus);
+        }
+    }
+
+    // Fallback: GTK (macOS, Windows, X11, GNOME)
+    let _ = window.set_size(tauri::LogicalSize::new(screen_width, win_height));
+    window
+        .set_position(tauri::LogicalPosition::new(monitor_x, new_y))
+        .map_err(|e| format!("set_position failed: {e}"))?;
+    Ok(())
+}
+
+/// Hyprland: move + resize via `hyprctl dispatch`.
+fn position_hyprland(
+    window: &tauri::Window,
+    x: f64,
+    y: f64,
+    width: f64,
+) -> Result<(), String> {
+    let title = window.title().unwrap_or_default();
+
+    let output = std::process::Command::new("hyprctl")
+        .args(["clients", "-j"])
+        .output()
+        .map_err(|e| format!("hyprctl failed: {e}"))?;
+
+    let clients: Vec<serde_json::Value> =
+        serde_json::from_slice(&output.stdout).map_err(|e| format!("parse error: {e}"))?;
+
+    for client in &clients {
+        if client["title"].as_str().unwrap_or("") == title {
+            let addr = client["address"].as_str().ok_or("no address field")?;
+            let current_h = client["size"]
+                .as_array()
+                .and_then(|a| a.get(1))
+                .and_then(|v| v.as_i64())
+                .unwrap_or(44);
+
+            // Resize to full monitor width, keeping current height
+            std::process::Command::new("hyprctl")
+                .args([
+                    "dispatch",
+                    "resizewindowpixel",
+                    &format!("exact {} {},address:{addr}", width as i32, current_h),
+                ])
+                .output()
+                .map_err(|e| format!("hyprctl resize failed: {e}"))?;
+
+            // Move to target position
+            std::process::Command::new("hyprctl")
+                .args([
+                    "dispatch",
+                    "movewindowpixel",
+                    &format!("exact {} {},address:{addr}", x as i32, y as i32),
+                ])
+                .output()
+                .map_err(|e| format!("hyprctl move failed: {e}"))?;
+
+            return Ok(());
+        }
+    }
+
+    Err("window not found in hyprctl clients".into())
+}
+
+/// Sway: `move absolute position` + `resize set` for floating windows.
+fn position_sway(
+    window: &tauri::Window,
+    x: f64,
+    y: f64,
+    width: f64,
+) -> Result<(), String> {
+    let title = window.title().unwrap_or_default();
+
+    std::process::Command::new("swaymsg")
+        .arg(format!(
+            "[title=\"{title}\"] move absolute position {} {}, resize set {} 0",
+            x as i32, y as i32, width as i32,
+        ))
+        .output()
+        .map_err(|e| format!("swaymsg failed: {e}"))?;
+
+    Ok(())
+}
+
+/// KDE/KWin: inject a KWin script that sets the full `frameGeometry` via D-Bus.
+fn position_kwin(
+    window: &tauri::Window,
+    x: f64,
+    y: f64,
+    width: f64,
+    qdbus: &str,
+) -> Result<(), String> {
+    let title = window.title().unwrap_or_default();
+    let x_int = x as i32;
+    let y_int = y as i32;
+    let w_int = width as i32;
+
+    let script = format!(
+        r#"var wins = workspace.windowList();
+for (var i = 0; i < wins.length; i++) {{
+    if (wins[i].caption === "{title}") {{
+        var g = wins[i].frameGeometry;
+        wins[i].frameGeometry = {{x: {x_int}, y: {y_int}, width: {w_int}, height: g.height}};
+    }}
+}}"#
+    );
+
+    let tmp = std::env::temp_dir().join("scrollr_kwin_pos.js");
+    std::fs::write(&tmp, &script).map_err(|e| format!("write temp script: {e}"))?;
+    let tmp_path = tmp.to_str().ok_or("invalid temp path")?;
+
+    // Unload any previous instance (ignore errors — may not exist)
+    std::process::Command::new(qdbus)
+        .args([
+            "org.kde.KWin",
+            "/Scripting",
+            "org.kde.kwin.Scripting.unloadScript",
+            "scrollr_pos",
+        ])
+        .output()
+        .ok();
+
+    // Load the script → returns a numeric script ID
+    let load = std::process::Command::new(qdbus)
+        .args([
+            "org.kde.KWin",
+            "/Scripting",
+            "org.kde.kwin.Scripting.loadScript",
+            tmp_path,
+            "scrollr_pos",
+        ])
+        .output()
+        .map_err(|e| format!("{qdbus} loadScript failed: {e}"))?;
+
+    let script_id = String::from_utf8_lossy(&load.stdout).trim().to_string();
+    if script_id.is_empty() || !load.status.success() {
+        let stderr = String::from_utf8_lossy(&load.stderr);
+        std::fs::remove_file(&tmp).ok();
+        return Err(format!("loadScript failed: {stderr}"));
+    }
+
+    // Run the script
+    let run_path = format!("/Scripting/Script{script_id}");
+    std::process::Command::new(qdbus)
+        .args(["org.kde.KWin", &run_path, "org.kde.kwin.Script.run"])
+        .output()
+        .map_err(|e| format!("{qdbus} run failed: {e}"))?;
+
+    // Stop and unload — script is one-shot, clean up immediately
+    std::process::Command::new(qdbus)
+        .args(["org.kde.KWin", &run_path, "org.kde.kwin.Script.stop"])
+        .output()
+        .ok();
+
+    std::process::Command::new(qdbus)
+        .args([
+            "org.kde.KWin",
+            "/Scripting",
+            "org.kde.kwin.Scripting.unloadScript",
+            "scrollr_pos",
+        ])
+        .output()
+        .ok();
+
+    std::fs::remove_file(&tmp).ok();
+    Ok(())
 }
 
 // ── Pin (always-on-top) via compositor IPC ───────────────────────
@@ -515,6 +728,7 @@ pub fn run() {
         .manage(SseHandle(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
             resize_window,
+            position_ticker,
             pin_window,
             start_auth_server,
             start_sse,

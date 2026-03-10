@@ -36,11 +36,14 @@ export interface StartupPrefs {
   autostart: boolean;
 }
 
+export type TickerPosition = "top" | "bottom";
+
 export interface WindowPrefs {
   pinned: boolean;
   defaultWidth: "full" | "narrow";
   narrowWidth: number;
   skipTaskbar: boolean;
+  tickerPosition: TickerPosition;
 }
 
 export interface TaskbarPrefs {
@@ -89,6 +92,7 @@ export const DEFAULT_WINDOW: WindowPrefs = {
   defaultWidth: "full",
   narrowWidth: 800,
   skipTaskbar: true,
+  tickerPosition: "top",
 };
 
 export const DEFAULT_TASKBAR: TaskbarPrefs = {

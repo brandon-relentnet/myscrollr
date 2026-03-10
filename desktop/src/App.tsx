@@ -9,6 +9,7 @@ import type {
   DeliveryMode,
 } from "~/utils/types";
 import ScrollrTicker from "./components/ScrollrTicker";
+import TickerToolbar from "./components/TickerToolbar";
 import {
   getValidToken,
   isAuthenticated as checkAuth,
@@ -25,7 +26,7 @@ import {
   TICKER_GAPS,
   TICKER_HEIGHTS,
 } from "./preferences";
-import type { AppPreferences } from "./preferences";
+import type { AppPreferences, TickerPosition } from "./preferences";
 
 // ── Constants ────────────────────────────────────────────────────
 
@@ -58,6 +59,14 @@ export default function App() {
 
   // Pin (always-on-top) state
   const [pinned, setPinned] = useState(() => loadPref("feedPinned", true));
+
+  // Ticker position state (top/bottom of screen)
+  const [tickerPosition, setTickerPosition] = useState<TickerPosition>(() =>
+    loadPref("tickerPosition", "top"),
+  );
+
+  // Hover state for toolbar visibility
+  const [hovered, setHovered] = useState(false);
 
   // Settings preferences
   const [prefs, setPrefs] = useState<AppPreferences>(loadPrefs);
@@ -336,6 +345,13 @@ export default function App() {
           invoke("pin_window", { pinned: next.window.pinned }).catch(() => {});
         }
 
+        // Side effects: ticker position
+        if (next.window.tickerPosition !== prev.window.tickerPosition) {
+          setTickerPosition(next.window.tickerPosition);
+          savePref("tickerPosition", next.window.tickerPosition);
+          invoke("position_ticker", { position: next.window.tickerPosition }).catch(() => {});
+        }
+
         // Side effects: ticker visibility
         const nextCollapsed = !next.ticker.showTicker;
         setTickerCollapsed(nextCollapsed);
@@ -405,7 +421,8 @@ export default function App() {
       ? 0
       : TICKER_HEIGHTS[prefs.ticker.tickerMode] * prefs.appearance.tickerRows;
     if (tickerH > 0) {
-      invoke("resize_window", { height: tickerH })
+      invoke("resize_window", { height: tickerH, anchor: tickerPosition })
+        .then(() => invoke("position_ticker", { position: tickerPosition }))
         .then(() => getCurrentWindow().show())
         .catch(() => {});
     }
@@ -420,12 +437,13 @@ export default function App() {
       ? 0
       : TICKER_HEIGHTS[prefs.ticker.tickerMode] * prefs.appearance.tickerRows;
     if (tickerH > 0) {
-      invoke("resize_window", { height: tickerH }).catch(() => {});
+      invoke("resize_window", { height: tickerH, anchor: tickerPosition }).catch(() => {});
     }
   }, [
     prefs.ticker.tickerMode,
     prefs.appearance.tickerRows,
     tickerCollapsed,
+    tickerPosition,
   ]);
 
   // ── Show/hide ticker window based on visibility ────────────────
@@ -469,6 +487,21 @@ export default function App() {
     },
     [fetchFeed],
   );
+
+  // ── Ticker position toggle ─────────────────────────────────────
+
+  const handleTogglePosition = useCallback(() => {
+    const next: TickerPosition = tickerPosition === "top" ? "bottom" : "top";
+    setTickerPosition(next);
+    savePref("tickerPosition", next);
+    const updated = {
+      ...prefsRef.current,
+      window: { ...prefsRef.current.window, tickerPosition: next },
+    };
+    setPrefs(updated);
+    savePrefs(updated);
+    invoke("position_ticker", { position: next }).catch(() => {});
+  }, [tickerPosition]);
 
   // ── Right-click → native context menu ──────────────────────────
 
@@ -572,25 +605,37 @@ export default function App() {
   const showTicker = !tickerCollapsed && prefs.ticker.showTicker;
 
   return (
-    <div id="desktop-shell">
-      {showTicker &&
-        Array.from({ length: prefs.appearance.tickerRows }, (_, i) => (
-          <ScrollrTicker
-            key={`row${i}-${prefs.ticker.tickerGap}-${prefs.ticker.tickerSpeed}-${prefs.ticker.hoverSpeed}-${prefs.ticker.tickerMode}-${prefs.ticker.mixMode}-${prefs.ticker.chipColors}-${prefs.appearance.tickerRows}`}
-            dashboard={dashboard}
-            activeTabs={activeTabs}
-            onChipClick={handleChipClick}
-            speed={prefs.ticker.tickerSpeed}
-            gap={TICKER_GAPS[prefs.ticker.tickerGap]}
-            pauseOnHover={prefs.ticker.pauseOnHover}
-            hoverSpeed={prefs.ticker.hoverSpeed}
-            mixMode={prefs.ticker.mixMode}
-            chipColorMode={prefs.ticker.chipColors}
-            comfort={prefs.ticker.tickerMode === "comfort"}
-            rowIndex={i}
-            totalRows={prefs.appearance.tickerRows}
+    <div
+      id="desktop-shell"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {showTicker && (
+        <>
+          <TickerToolbar
+            position={tickerPosition}
+            hovered={hovered}
+            onTogglePosition={handleTogglePosition}
           />
-        ))}
+          {Array.from({ length: prefs.appearance.tickerRows }, (_, i) => (
+            <ScrollrTicker
+              key={`row${i}-${prefs.ticker.tickerGap}-${prefs.ticker.tickerSpeed}-${prefs.ticker.hoverSpeed}-${prefs.ticker.tickerMode}-${prefs.ticker.mixMode}-${prefs.ticker.chipColors}-${prefs.appearance.tickerRows}`}
+              dashboard={dashboard}
+              activeTabs={activeTabs}
+              onChipClick={handleChipClick}
+              speed={prefs.ticker.tickerSpeed}
+              gap={TICKER_GAPS[prefs.ticker.tickerGap]}
+              pauseOnHover={prefs.ticker.pauseOnHover}
+              hoverSpeed={prefs.ticker.hoverSpeed}
+              mixMode={prefs.ticker.mixMode}
+              chipColorMode={prefs.ticker.chipColors}
+              comfort={prefs.ticker.tickerMode === "comfort"}
+              rowIndex={i}
+              totalRows={prefs.appearance.tickerRows}
+            />
+          ))}
+        </>
+      )}
     </div>
   );
 }

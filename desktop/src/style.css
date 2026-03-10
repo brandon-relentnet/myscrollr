@@ -169,6 +169,7 @@ body {
 /* Shell wraps Ticker + FeedBar. Background and color are set here
    (not on body) so the data-theme light/dark overrides take effect. */
 #desktop-shell {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;
