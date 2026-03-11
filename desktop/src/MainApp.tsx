@@ -82,7 +82,9 @@ function getActiveItemName(
 export default function MainApp() {
   // ── Navigation ──────────────────────────────────────────────
   // activeItem: channel ID, widget ID, or "settings"
-  // configuring: when true and activeItem is a channel, show DashboardTab
+  // sourceTab: which tab is active for channels/widgets
+  type SourceTab = "feed" | "info" | "configuration";
+
   const [activeItem, setActiveItem] = useState<string>(() => {
     const saved = loadPref<string>("activeItem", "");
     // Migration: old values "feed" / "channels" / "dashboard" / "account"
@@ -92,7 +94,8 @@ export default function MainApp() {
     }
     return saved;
   });
-  const [configuring, setConfiguring] = useState(false);
+  const [sourceTab, setSourceTab] = useState<SourceTab>("feed");
+  const configuring = sourceTab === "configuration";
 
   const [settingsTab, setSettingsTab] = useState<SettingsTab>(() => {
     const saved = loadPref<string>("settingsTab", "general");
@@ -353,24 +356,19 @@ export default function MainApp() {
 
   const handleSelectItem = useCallback((id: string) => {
     setActiveItem(id);
-    setConfiguring(false);
     savePref("activeItem", id);
   }, []);
 
   const handleConfigureChannel = useCallback((channelType: string) => {
     setActiveItem(channelType);
-    setConfiguring(true);
+    setSourceTab("configuration");
     savePref("activeItem", channelType);
   }, []);
 
   const handleConfigureWidget = useCallback((widgetId: string) => {
     setActiveItem(widgetId);
-    setConfiguring(true);
+    setSourceTab("configuration");
     savePref("activeItem", widgetId);
-  }, []);
-
-  const handleBackToFeed = useCallback(() => {
-    setConfiguring(false);
   }, []);
 
   const handleSettingsTab = useCallback((tab: SettingsTab) => {
@@ -393,8 +391,8 @@ export default function MainApp() {
           setSessionExpired(false);
           return;
         }
-        if (configuring) {
-          setConfiguring(false);
+        if (sourceTab !== "feed") {
+          setSourceTab("feed");
           return;
         }
       }
@@ -467,7 +465,7 @@ export default function MainApp() {
         setChannels((prev) => [...prev, created]);
         // Navigate to the new channel
         setActiveItem(channelType);
-        setConfiguring(false);
+        setSourceTab("feed");
         savePref("activeItem", channelType);
       } catch (err) {
         console.error("[Scrollr] Channel add failed:", err);
@@ -494,7 +492,7 @@ export default function MainApp() {
               enabledWidgets[0] ??
               "settings";
             setActiveItem(fallback);
-            setConfiguring(false);
+            setSourceTab("feed");
             savePref("activeItem", fallback);
           }
           return remaining;
@@ -537,7 +535,7 @@ export default function MainApp() {
       // If enabling, navigate to the widget
       if (!isEnabled) {
         setActiveItem(widgetId);
-        setConfiguring(false);
+        setSourceTab("feed");
         savePref("activeItem", widgetId);
       }
       // If disabling the active widget, navigate away
@@ -546,7 +544,7 @@ export default function MainApp() {
         const firstWidget = nextEnabled[0];
         const fallback = firstCh ?? firstWidget ?? "settings";
         setActiveItem(fallback);
-        setConfiguring(false);
+        setSourceTab("feed");
         savePref("activeItem", fallback);
       }
     },
@@ -699,6 +697,73 @@ export default function MainApp() {
     // Fetch error (only for channel content)
     if (fetchError && isChannelActive) {
       return <ErrorState message={fetchError} onRetry={fetchDashboard} />;
+    }
+
+    // Info tab — channels and widgets
+    if (sourceTab === "info" && (isChannelActive || isWidgetActive)) {
+      const manifest = isChannelActive
+        ? allChannelManifests.find((m) => m.id === activeItem)
+        : activeWidget;
+      const info = manifest?.info;
+      const Icon = manifest && "icon" in manifest ? manifest.icon : null;
+      const hex = manifest?.hex ?? "var(--color-fg-3)";
+
+      return (
+        <div className="p-6 max-w-xl">
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-6">
+            {Icon && (
+              <span
+                className="flex items-center justify-center w-10 h-10 rounded-xl"
+                style={{ backgroundColor: `${hex}15`, color: hex }}
+              >
+                <Icon size={20} />
+              </span>
+            )}
+            <div>
+              <h2 className="text-lg font-semibold">{manifest?.name}</h2>
+              <p className="text-sm text-fg-3">
+                {"description" in (manifest ?? {})
+                  ? (manifest as { description: string }).description
+                  : ""}
+              </p>
+            </div>
+          </div>
+
+          {/* About */}
+          {info && (
+            <div className="space-y-4">
+              <section>
+                <h3 className="text-xs font-mono font-bold text-fg-3 uppercase tracking-wider mb-2">
+                  About
+                </h3>
+                <p className="text-sm text-fg-2 leading-relaxed">
+                  {info.about}
+                </p>
+              </section>
+
+              <section>
+                <h3 className="text-xs font-mono font-bold text-fg-3 uppercase tracking-wider mb-2">
+                  How to use
+                </h3>
+                <ul className="space-y-2">
+                  {info.usage.map((step, i) => (
+                    <li key={i} className="flex gap-2.5 text-sm text-fg-2">
+                      <span
+                        className="flex items-center justify-center w-5 h-5 rounded-md text-[10px] font-bold shrink-0 mt-0.5"
+                        style={{ backgroundColor: `${hex}15`, color: hex }}
+                      >
+                        {i + 1}
+                      </span>
+                      <span className="leading-relaxed">{step}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </div>
+          )}
+        </div>
+      );
     }
 
     // Channel — configure mode (DashboardTab)
@@ -896,26 +961,20 @@ export default function MainApp() {
             {/* Feed / Configuration tabs — channels and widgets */}
             {(isChannelActive || isWidgetActive) && (
               <div className="flex gap-1">
-                {(["feed", "configuration"] as const).map((tab) => {
-                  const isActive =
-                    tab === "feed" ? !configuring : configuring;
-                  return (
-                    <button
-                      key={tab}
-                      onClick={() =>
-                        setConfiguring(tab === "configuration")
-                      }
-                      className={clsx(
-                        "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors capitalize",
-                        isActive
-                          ? "bg-accent/10 text-accent"
-                          : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
-                      )}
-                    >
-                      {tab}
-                    </button>
-                  );
-                })}
+                {(["feed", "info", "configuration"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setSourceTab(tab)}
+                    className={clsx(
+                      "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors capitalize",
+                      sourceTab === tab
+                        ? "bg-accent/10 text-accent"
+                        : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
+                    )}
+                  >
+                    {tab}
+                  </button>
+                ))}
               </div>
             )}
             {/* Settings tab switcher */}

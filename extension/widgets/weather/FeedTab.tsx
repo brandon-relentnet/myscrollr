@@ -706,8 +706,19 @@ export const weatherWidget: WidgetManifest = {
   id: "weather",
   name: "Weather",
   tabLabel: "Weather",
+  description: "Current conditions for your locations",
   hex: "#0ea5e9",
   icon: CloudSun,
+  info: {
+    about:
+      "The Weather widget shows current weather conditions for one or more locations on your ticker. Data is fetched from the Open-Meteo API with no API key required.",
+    usage: [
+      "Search for a city in the feed view to add it to your weather locations.",
+      "Each location appears as a ticker chip with temperature, conditions, and an icon.",
+      "Add multiple cities to track weather across different locations.",
+      "Exclude specific cities from the ticker in the Configuration tab.",
+    ],
+  },
   FeedTab: WeatherFeedTab,
 };
 

@@ -540,5 +540,15 @@ export const financeChannel: ChannelManifest = {
   description: "Real-time market data via TwelveData",
   hex: HEX,
   icon: TrendingUp,
+  info: {
+    about:
+      "The Finance channel streams real-time stock quotes, price changes, and market data directly to your ticker. Powered by TwelveData, it covers stocks, ETFs, forex pairs, and crypto across major global exchanges.",
+    usage: [
+      "Add ticker symbols (e.g. AAPL, TSLA, BTC/USD) in the Configuration tab to start tracking them.",
+      "Prices update in real time and appear as scrolling chips on the ticker.",
+      "Each chip shows the symbol, current price, and percentage change with color-coded gains/losses.",
+      "Remove symbols you no longer want to track from the Configuration tab.",
+    ],
+  },
   DashboardTab: FinanceDashboardTab,
 };

@@ -575,5 +575,15 @@ export const sportsChannel: ChannelManifest = {
   description: 'Live scores via api-sports.io',
   hex: HEX,
   icon: Trophy,
+  info: {
+    about:
+      'The Sports channel delivers live scores and game updates straight to your ticker. Powered by api-sports.io, it covers major leagues including NFL, NBA, MLB, NHL, MLS, and international soccer.',
+    usage: [
+      'Select the leagues you want to follow in the Configuration tab.',
+      'Live games appear as ticker chips showing teams, scores, and game status (live, final, scheduled).',
+      'Scores update automatically as games progress — no manual refresh needed.',
+      'Toggle leagues on or off at any time to customize your feed.',
+    ],
+  },
   DashboardTab: SportsDashboardTab,
 }

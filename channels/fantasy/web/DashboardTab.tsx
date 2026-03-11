@@ -1744,5 +1744,15 @@ export const fantasyChannel: ChannelManifest = {
   description: 'Yahoo Fantasy Sports',
   hex: HEX,
   icon: Ghost,
+  info: {
+    about:
+      'The Fantasy channel connects to your Yahoo Fantasy Sports account and surfaces league activity on your ticker. See matchup scores, player updates, and standings across all your active leagues.',
+    usage: [
+      'Connect your Yahoo account in the Configuration tab to authorize access.',
+      'Your active leagues and matchups automatically appear on the ticker.',
+      'Ticker chips show matchup scores, opponent names, and win/loss records.',
+      'Disconnect or reconnect your Yahoo account at any time from the Configuration tab.',
+    ],
+  },
   DashboardTab: FantasyDashboardTab,
 }

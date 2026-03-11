@@ -513,5 +513,15 @@ export const rssChannel: ChannelManifest = {
   description: "Custom news streams",
   hex: HEX,
   icon: Rss,
+  info: {
+    about:
+      "The RSS channel lets you subscribe to any RSS or Atom feed and stream headlines directly to your ticker. Follow news sites, blogs, release notes, or any content source that publishes a feed.",
+    usage: [
+      "Add feed URLs in the Configuration tab to start subscribing.",
+      "Headlines appear as ticker chips with the article title and source name.",
+      "Click a chip to open the full article in your browser.",
+      "Remove feeds you no longer want from the Configuration tab.",
+    ],
+  },
   DashboardTab: RssDashboardTab,
 };

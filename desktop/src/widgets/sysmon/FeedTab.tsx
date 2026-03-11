@@ -393,8 +393,19 @@ export const sysmonWidget: WidgetManifest = {
   id: "sysmon",
   name: "System Monitor",
   tabLabel: "System",
+  description: "Live CPU, memory, and GPU stats",
   hex: "#06b6d4",
   icon: Activity,
+  info: {
+    about:
+      "The System Monitor widget displays live hardware metrics on your ticker, including CPU usage, memory consumption, and GPU stats. Available on the desktop app only.",
+    usage: [
+      "CPU, memory, and GPU usage appear as a consolidated chip on the ticker.",
+      "Toggle individual metrics (CPU, memory, GPU, GPU power) in the Configuration tab.",
+      "The feed view shows detailed real-time stats including temperatures and per-component breakdowns.",
+      "Pin the system monitor chip to keep it stationary on one side of the ticker.",
+    ],
+  },
   desktopOnly: true,
   FeedTab: SysmonFeedTab,
 };

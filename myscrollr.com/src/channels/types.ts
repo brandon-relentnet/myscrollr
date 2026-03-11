@@ -15,6 +15,14 @@ export interface DashboardTabProps {
   hex: string
 }
 
+/** Structured info content for the Info tab */
+export interface SourceInfo {
+  /** What this source is and what it does */
+  about: string
+  /** How to use it (rendered as bullet points) */
+  usage: string[]
+}
+
 /** Manifest describing a single channel */
 export interface ChannelManifest {
   /** Unique channel identifier (matches channel_type) */
@@ -29,6 +37,8 @@ export interface ChannelManifest {
   hex: string
   /** Lucide icon component rendered at size 14 for sidebar, 20 for header */
   icon: React.ComponentType<{ size?: number; className?: string }>
+  /** Info tab content — what this channel is and how to use it */
+  info: SourceInfo
   /** Dashboard configuration panel component */
   DashboardTab: React.ComponentType<DashboardTabProps>
 }

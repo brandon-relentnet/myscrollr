@@ -630,8 +630,19 @@ export const clockWidget: WidgetManifest = {
   id: "clock",
   name: "Clock",
   tabLabel: "Clock",
+  description: "Local time, world clocks, and timers",
   hex: "#6366f1",
   icon: Clock,
+  info: {
+    about:
+      "The Clock widget displays your local time on the ticker and provides world clocks for tracking multiple time zones. It also includes a countdown and stopwatch timer.",
+    usage: [
+      "Your local time appears on the ticker by default.",
+      "Enable world clocks in the Configuration tab to add additional time zones.",
+      "Use the timer tab in the feed view to set countdowns or run a stopwatch.",
+      "Exclude specific time zones from the ticker in the Configuration tab.",
+    ],
+  },
   FeedTab: ClockFeedTab,
 };
 
