@@ -1,43 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import type { FeedTabProps } from "~/channels/types";
 import type { WidgetManifest } from "~/widgets/types";
+import { useSysmonData } from "../../hooks/useSysmonData";
+import type { SystemInfo } from "../../hooks/useSysmonData";
 
 // ── Types ───────────────────────────────────────────────────────
 
-interface ComponentTemp {
-  label: string;
-  temp: number;
-  max: number;
-  critical: number | null;
-}
-
-interface NetworkInfo {
-  name: string;
-  rxBytes: number;
-  txBytes: number;
-}
-
-interface SystemInfo {
-  cpuName: string;
-  cpuCores: number;
-  cpuUsage: number;
-  cpuFreqMhz: number | null;
-  gpuName: string | null;
-  gpuUsage: number | null;
-  gpuVramTotal: number | null;
-  gpuVramUsed: number | null;
-  gpuPowerWatts: number | null;
-  gpuPowerCapWatts: number | null;
-  gpuClockMhz: number | null;
-  memTotal: number;
-  memUsed: number;
-  osName: string;
-  hostname: string;
-  uptime: number;
-  components: ComponentTemp[];
-  network: NetworkInfo[];
-}
+type ComponentTemp = SystemInfo["components"][number];
 
 interface TempReading {
   temp: number;
@@ -150,45 +118,7 @@ function DetailLine({ items }: { items: (string | null | undefined)[] }) {
 
 function SysmonFeedTab({ mode: feedMode }: FeedTabProps) {
   const compact = feedMode === "compact";
-  const [info, setInfo] = useState<SystemInfo | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const poll = useCallback(async () => {
-    try {
-      const data = await invoke<SystemInfo>("get_system_info");
-      setInfo(data);
-      setError(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      await poll();
-      if (!cancelled) {
-        intervalRef.current = setInterval(poll, POLL_INTERVAL);
-      }
-    })();
-    return () => {
-      cancelled = true;
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [poll]);
-
-  // ── Error state ─────────────────────────────────────────────
-  if (error && !info) {
-    return (
-      <div className="p-4 flex flex-col items-center justify-center gap-2">
-        <span className="text-xs font-mono text-error">{error}</span>
-        <span className="text-xs font-mono text-fg-3">
-          System monitor requires the desktop app
-        </span>
-      </div>
-    );
-  }
+  const info = useSysmonData(POLL_INTERVAL);
 
   // ── Loading state ───────────────────────────────────────────
   if (!info) {

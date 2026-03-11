@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import clsx from "clsx";
+import { useSysmonData } from "../hooks/useSysmonData";
 import {
   Sun,
   Moon,
@@ -207,62 +208,30 @@ function MiniWeatherChip({ onClick, taskbarCity }: { onClick: () => void; taskba
 
 // ── Mini System Monitor Chip ────────────────────────────────────
 
-interface SysInfo {
-  cpuUsage: number;
-  memTotal: number;
-  memUsed: number;
-  gpuUsage: number | null;
-}
-
 type SysMetric = "cpu" | "memory" | "gpu";
 
 function MiniSysmonChip({ onClick, metric = "cpu" }: { onClick: () => void; metric?: SysMetric }) {
-  const [display, setDisplay] = useState<string | null>(null);
-  const [hot, setHot] = useState(false);
-  const mountedRef = useRef(true);
+  const info = useSysmonData(3000);
 
-  useEffect(() => {
-    mountedRef.current = true;
-
-    async function poll() {
-      try {
-        const info = await invoke<SysInfo>("get_system_info");
-        if (!mountedRef.current) return;
-
-        let pct: number | null = null;
-        switch (metric) {
-          case "cpu":
-            pct = Math.round(info.cpuUsage);
-            break;
-          case "memory":
-            pct = info.memTotal > 0 ? Math.round((info.memUsed / info.memTotal) * 100) : null;
-            break;
-          case "gpu":
-            pct = info.gpuUsage != null ? Math.round(info.gpuUsage) : null;
-            break;
-        }
-
-        if (pct != null) {
-          setDisplay(`${pct}%`);
-          setHot(pct > 80);
-        } else {
-          setDisplay(null);
-        }
-      } catch {
-        if (mountedRef.current) setDisplay(null);
-      }
+  let pct: number | null = null;
+  if (info) {
+    switch (metric) {
+      case "cpu":
+        pct = Math.round(info.cpuUsage);
+        break;
+      case "memory":
+        pct = info.memTotal > 0 ? Math.round((info.memUsed / info.memTotal) * 100) : null;
+        break;
+      case "gpu":
+        pct = info.gpuUsage != null ? Math.round(info.gpuUsage) : null;
+        break;
     }
+  }
 
-    poll();
-    const id = setInterval(poll, 3000);
-    return () => {
-      mountedRef.current = false;
-      clearInterval(id);
-    };
-  }, [metric]);
+  if (pct == null) return null;
 
-  if (display === null) return null;
-
+  const display = `${pct}%`;
+  const hot = pct > 80;
   const labels: Record<SysMetric, string> = { cpu: "System Monitor", memory: "Memory", gpu: "GPU" };
 
   return (

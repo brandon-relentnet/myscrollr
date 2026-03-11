@@ -1,4 +1,4 @@
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -13,35 +13,54 @@ struct SseHandle(Mutex<Option<watch::Sender<bool>>>);
 
 /// Tracks whether the OAuth callback server is already running.
 #[derive(Clone)]
-struct AuthServerRunning(std::sync::Arc<Mutex<bool>>);
+struct AuthServerRunning(Arc<Mutex<bool>>);
 
 // ── System monitor state ─────────────────────────────────────────
 
-/// Persistent system info instances — refreshed on each poll,
-/// created once at startup to amortise the initial scan cost.
-struct SysInfoState {
-    sys: Mutex<sysinfo::System>,
-    components: Mutex<sysinfo::Components>,
-    networks: Mutex<sysinfo::Networks>,
+/// Data that never changes between polls — cached on first call.
+#[derive(Clone)]
+struct StaticSystemInfo {
+    cpu_name: String,
+    cpu_cores: usize,
+    os_name: String,
+    hostname: String,
+    gpu_name: Option<String>,
+    gpu_vram_total: Option<u64>,
+    /// Resolved GPU sysfs device path (AMD), if any.
+    gpu_sysfs_device: Option<std::path::PathBuf>,
+    /// Whether nvidia-smi is available (checked once).
+    has_nvidia_smi: bool,
 }
 
-/// Collected GPU snapshot from sysfs / nvidia-smi.
+/// Dynamic GPU values read each poll.
 #[derive(Default)]
-struct GpuInfo {
-    name: Option<String>,
+struct GpuDynamic {
     usage: Option<f64>,
-    vram_total: Option<u64>,
     vram_used: Option<u64>,
     power_watts: Option<f64>,
     power_cap_watts: Option<f64>,
     clock_mhz: Option<u64>,
 }
 
-/// Read GPU name, utilization, VRAM, power, and clock.
-/// Picks the discrete GPU over an idle iGPU (highest gpu_busy_percent).
-fn read_gpu_info() -> GpuInfo {
-    let mut best: Option<(std::path::PathBuf, f64)> = None;
+/// Persistent system info instances — refreshed on each poll.
+/// Wrapped in Arc so it can be sent into `spawn_blocking`.
+struct SysInfoInner {
+    sys: Mutex<sysinfo::System>,
+    components: Mutex<sysinfo::Components>,
+    networks: Mutex<sysinfo::Networks>,
+    /// Populated on first poll, then reused.
+    static_info: Mutex<Option<StaticSystemInfo>>,
+}
 
+#[derive(Clone)]
+struct SysInfoState(Arc<SysInfoInner>);
+
+/// Probe GPU once: find the sysfs device path, resolve the name and
+/// VRAM total, and check whether nvidia-smi is available.  Called only
+/// on the first poll; the results are cached in `StaticSystemInfo`.
+fn probe_gpu_static() -> (Option<std::path::PathBuf>, Option<String>, Option<u64>, bool) {
+    // Try AMD/Intel sysfs first
+    let mut best: Option<(std::path::PathBuf, f64)> = None;
     if let Ok(entries) = std::fs::read_dir("/sys/class/drm") {
         for entry in entries.flatten() {
             let fname = entry.file_name();
@@ -58,59 +77,73 @@ fn read_gpu_info() -> GpuInfo {
         }
     }
 
-    if let Some((dev, usage)) = best {
+    if let Some((dev, _)) = best {
         let name = std::fs::read_to_string(dev.join("product_name"))
             .ok()
             .map(|v| v.trim().to_string())
             .filter(|v| !v.is_empty())
             .or_else(|| gpu_name_from_lspci(&dev));
-
         let vram_total = read_sysfs_u64(&dev, "mem_info_vram_total");
-        let vram_used = read_sysfs_u64(&dev, "mem_info_vram_used");
-
-        // Power: hwmon exposes power1_average / power1_cap in microwatts
-        let (power_watts, power_cap_watts) = read_gpu_power(&dev);
-
-        // Clock: parse pp_dpm_sclk for the active state (marked with *)
-        let clock_mhz = read_gpu_clock(&dev);
-
-        return GpuInfo {
-            name,
-            usage: Some(usage),
-            vram_total,
-            vram_used,
-            power_watts,
-            power_cap_watts,
-            clock_mhz,
-        };
+        return (Some(dev), name, vram_total, false);
     }
 
-    // Fallback: nvidia-smi — query everything in one call
+    // Fallback: try nvidia-smi once for static values
+    let has_nvidia_smi = std::process::Command::new("nvidia-smi")
+        .args(["--query-gpu=name,memory.total", "--format=csv,noheader,nounits"])
+        .output()
+        .is_ok_and(|o| o.status.success());
+
+    if has_nvidia_smi {
+        if let Ok(out) = std::process::Command::new("nvidia-smi")
+            .args(["--query-gpu=name,memory.total", "--format=csv,noheader,nounits"])
+            .output()
+        {
+            if out.status.success() {
+                let line = String::from_utf8_lossy(&out.stdout);
+                let f: Vec<&str> = line.trim().splitn(2, ", ").collect();
+                let name = f.first().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+                let vram = f.get(1).and_then(|s| s.trim().parse::<u64>().ok()).map(|m| m * 1024 * 1024);
+                return (None, name, vram, true);
+            }
+        }
+    }
+
+    (None, None, None, false)
+}
+
+/// Read dynamic GPU values from sysfs (AMD/Intel).
+fn read_gpu_dynamic_sysfs(dev: &std::path::Path) -> GpuDynamic {
+    GpuDynamic {
+        usage: read_sysfs_f64(dev, "gpu_busy_percent"),
+        vram_used: read_sysfs_u64(dev, "mem_info_vram_used"),
+        power_watts: read_gpu_power(dev).0,
+        power_cap_watts: read_gpu_power(dev).1,
+        clock_mhz: read_gpu_clock(dev),
+    }
+}
+
+/// Read dynamic GPU values from nvidia-smi.
+fn read_gpu_dynamic_nvidia() -> GpuDynamic {
     if let Ok(out) = std::process::Command::new("nvidia-smi")
         .args([
-            "--query-gpu=name,utilization.gpu,memory.total,memory.used,power.draw,power.limit,clocks.current.graphics",
+            "--query-gpu=utilization.gpu,memory.used,power.draw,power.limit,clocks.current.graphics",
             "--format=csv,noheader,nounits",
         ])
         .output()
     {
         if out.status.success() {
             let line = String::from_utf8_lossy(&out.stdout);
-            let f: Vec<&str> = line.trim().lines().next().unwrap_or("").splitn(7, ", ").collect();
-            return GpuInfo {
-                name: f.first().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()),
-                usage: f.get(1).and_then(|s| s.trim().parse().ok()),
-                // nvidia-smi reports MiB
-                vram_total: f.get(2).and_then(|s| s.trim().parse::<u64>().ok()).map(|m| m * 1024 * 1024),
-                vram_used: f.get(3).and_then(|s| s.trim().parse::<u64>().ok()).map(|m| m * 1024 * 1024),
-                // nvidia-smi reports watts directly
-                power_watts: f.get(4).and_then(|s| s.trim().parse().ok()),
-                power_cap_watts: f.get(5).and_then(|s| s.trim().parse().ok()),
-                clock_mhz: f.get(6).and_then(|s| s.trim().parse().ok()),
+            let f: Vec<&str> = line.trim().splitn(5, ", ").collect();
+            return GpuDynamic {
+                usage: f.first().and_then(|s| s.trim().parse().ok()),
+                vram_used: f.get(1).and_then(|s| s.trim().parse::<u64>().ok()).map(|m| m * 1024 * 1024),
+                power_watts: f.get(2).and_then(|s| s.trim().parse().ok()),
+                power_cap_watts: f.get(3).and_then(|s| s.trim().parse().ok()),
+                clock_mhz: f.get(4).and_then(|s| s.trim().parse().ok()),
             };
         }
     }
-
-    GpuInfo::default()
+    GpuDynamic::default()
 }
 
 /// Read GPU power from hwmon (microwatts → watts).
@@ -225,33 +258,76 @@ fn extract_lspci_field(text: &str, key: &str) -> Option<String> {
         .filter(|v| !v.is_empty())
 }
 
-/// Return a snapshot of CPU, memory, GPU, temperatures, network, and system metadata.
-/// Refreshed in-place on each call (CPU + memory + components + networks).
+/// Return a snapshot of CPU, memory, GPU, temperatures, network, and
+/// system metadata.  Static values (names, totals, OS info) are cached
+/// on first call.  Runs on a blocking thread to keep the IPC loop free.
 #[tauri::command]
-fn get_system_info(state: tauri::State<SysInfoState>) -> Result<serde_json::Value, String> {
-    let mut sys = state.sys.lock().map_err(|e| format!("lock failed: {e}"))?;
-    let mut components = state.components.lock().map_err(|e| format!("lock failed: {e}"))?;
-    let mut networks = state.networks.lock().map_err(|e| format!("lock failed: {e}"))?;
+async fn get_system_info(
+    state: tauri::State<'_, SysInfoState>,
+) -> Result<serde_json::Value, String> {
+    let inner = state.0.clone();
+    tokio::task::spawn_blocking(move || get_system_info_blocking(&inner))
+        .await
+        .map_err(|e| format!("spawn_blocking: {e}"))?
+}
+
+/// All the actual work — runs inside `spawn_blocking`.
+fn get_system_info_blocking(inner: &SysInfoInner) -> Result<serde_json::Value, String> {
+    let mut sys = inner.sys.lock().map_err(|e| format!("lock: {e}"))?;
+    let mut components = inner.components.lock().map_err(|e| format!("lock: {e}"))?;
+    let mut networks = inner.networks.lock().map_err(|e| format!("lock: {e}"))?;
 
     sys.refresh_cpu_usage();
     sys.refresh_memory();
     components.refresh(false);
     networks.refresh(false);
 
-    let cpu_usage = if sys.cpus().is_empty() {
+    // ── Static info (cached after first poll) ────────────────────
+    let mut static_guard = inner.static_info.lock().map_err(|e| format!("lock: {e}"))?;
+    let cached = static_guard.get_or_insert_with(|| {
+        let cpu_name = sys.cpus().first().map(|c| c.brand().to_string()).unwrap_or_default();
+        let cpu_cores = sys.cpus().len();
+        let os_name = format!(
+            "{} {}",
+            sysinfo::System::name().unwrap_or_default(),
+            sysinfo::System::os_version().unwrap_or_default(),
+        );
+        let hostname = sysinfo::System::host_name().unwrap_or_default();
+        let (gpu_sysfs_device, gpu_name, gpu_vram_total, has_nvidia_smi) = probe_gpu_static();
+
+        StaticSystemInfo {
+            cpu_name,
+            cpu_cores,
+            os_name,
+            hostname,
+            gpu_name,
+            gpu_vram_total,
+            gpu_sysfs_device,
+            has_nvidia_smi,
+        }
+    });
+    let st = cached.clone();
+    drop(static_guard);
+
+    // ── Dynamic CPU ──────────────────────────────────────────────
+    let cpu_usage = if st.cpu_cores == 0 {
         0.0
     } else {
         let total: f32 = sys.cpus().iter().map(|c| c.cpu_usage()).sum();
-        (total / sys.cpus().len() as f32) as f64
+        (total / st.cpu_cores as f32) as f64
+    };
+    let cpu_freq_mhz = read_cpu_freq_mhz();
+
+    // ── Dynamic GPU ──────────────────────────────────────────────
+    let gpu = if let Some(ref dev) = st.gpu_sysfs_device {
+        read_gpu_dynamic_sysfs(dev)
+    } else if st.has_nvidia_smi {
+        read_gpu_dynamic_nvidia()
+    } else {
+        GpuDynamic::default()
     };
 
-    let cpu_name = sys
-        .cpus()
-        .first()
-        .map(|c| c.brand().to_string())
-        .unwrap_or_default();
-
-    // Component temperatures — skip sensors with no reading or reporting 0.
+    // ── Temperatures ─────────────────────────────────────────────
     let comp_info: Vec<serde_json::Value> = components
         .iter()
         .filter(|c| c.temperature().is_some_and(|t| t > 0.0))
@@ -265,14 +341,15 @@ fn get_system_info(state: tauri::State<SysInfoState>) -> Result<serde_json::Valu
         })
         .collect();
 
-    // Network info — bytes received/transmitted since last refresh (delta).
-    // Skip loopback, Docker/VM bridges, and zero-traffic interfaces.
+    // ── Memory (read before dropping sys lock) ─────────────────
+    let mem_total = sys.total_memory();
+    let mem_used = sys.used_memory();
+
+    // ── Network ──────────────────────────────────────────────────
     let net_info: Vec<serde_json::Value> = networks
         .iter()
         .filter(|(name, data)| {
-            // Skip loopback
             if name.starts_with("lo") { return false; }
-            // Skip Docker/VM/container interfaces
             if name.starts_with("docker")
                 || name.starts_with("veth")
                 || name.starts_with("br-")
@@ -280,7 +357,6 @@ fn get_system_info(state: tauri::State<SysInfoState>) -> Result<serde_json::Valu
             {
                 return false;
             }
-            // Must have some traffic
             data.received() > 0 || data.transmitted() > 0
                 || data.total_received() > 0
         })
@@ -293,29 +369,22 @@ fn get_system_info(state: tauri::State<SysInfoState>) -> Result<serde_json::Valu
         })
         .collect();
 
-    let gpu = read_gpu_info();
-    let cpu_freq_mhz = read_cpu_freq_mhz();
-
     Ok(serde_json::json!({
-        "cpuName": cpu_name,
-        "cpuCores": sys.cpus().len(),
+        "cpuName": st.cpu_name,
+        "cpuCores": st.cpu_cores,
         "cpuUsage": cpu_usage,
         "cpuFreqMhz": cpu_freq_mhz,
-        "gpuName": gpu.name,
+        "gpuName": st.gpu_name,
         "gpuUsage": gpu.usage,
-        "gpuVramTotal": gpu.vram_total,
+        "gpuVramTotal": st.gpu_vram_total,
         "gpuVramUsed": gpu.vram_used,
         "gpuPowerWatts": gpu.power_watts,
         "gpuPowerCapWatts": gpu.power_cap_watts,
         "gpuClockMhz": gpu.clock_mhz,
-        "memTotal": sys.total_memory(),
-        "memUsed": sys.used_memory(),
-        "osName": format!(
-            "{} {}",
-            sysinfo::System::name().unwrap_or_default(),
-            sysinfo::System::os_version().unwrap_or_default(),
-        ),
-        "hostname": sysinfo::System::host_name().unwrap_or_default(),
+        "memTotal": mem_total,
+        "memUsed": mem_used,
+        "osName": st.os_name,
+        "hostname": st.hostname,
         "uptime": sysinfo::System::uptime(),
         "components": comp_info,
         "network": net_info,
@@ -1066,7 +1135,8 @@ fn quit_app(app: tauri::AppHandle) {
 }
 
 pub fn run() {
-    let builder = tauri::Builder::default()
+    #[allow(unused_mut)]
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_autostart::init(
@@ -1083,12 +1153,13 @@ pub fn run() {
 
     builder
         .manage(SseHandle(Mutex::new(None)))
-        .manage(AuthServerRunning(std::sync::Arc::new(Mutex::new(false))))
-        .manage(SysInfoState {
-            sys: Mutex::new(sysinfo::System::new_all()),
+        .manage(AuthServerRunning(Arc::new(Mutex::new(false))))
+        .manage(SysInfoState(Arc::new(SysInfoInner {
+            sys: Mutex::new(sysinfo::System::new()),
             components: Mutex::new(sysinfo::Components::new_with_refreshed_list()),
             networks: Mutex::new(sysinfo::Networks::new_with_refreshed_list()),
-        })
+            static_info: Mutex::new(None),
+        })))
         .invoke_handler(tauri::generate_handler![
             resize_window,
             position_ticker,

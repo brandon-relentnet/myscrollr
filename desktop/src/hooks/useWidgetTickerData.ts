@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import type { WidgetPrefs } from "../preferences";
 import type { ClockChipData } from "../components/chips/ClockTickerChip";
 import type { WeatherChipData } from "../components/chips/WeatherTickerChip";
 import type { SysmonChipData } from "../components/chips/SysmonTickerChip";
+import { fetchSysmonData } from "./useSysmonData";
+import type { SystemInfo } from "./useSysmonData";
 
 // ── localStorage keys (shared with widget FeedTabs) ─────────────
 const LS_TIMEZONES = "scrollr:widget:clock:timezones";
@@ -33,27 +34,6 @@ interface SavedCity {
     wind_direction?: number;
   };
   lastFetched?: number;
-}
-
-interface SystemInfo {
-  cpuName: string;
-  cpuCores: number;
-  cpuUsage: number;
-  cpuFreqMhz: number | null;
-  gpuName: string | null;
-  gpuUsage: number | null;
-  gpuVramTotal: number | null;
-  gpuVramUsed: number | null;
-  gpuPowerWatts: number | null;
-  gpuPowerCapWatts: number | null;
-  gpuClockMhz: number | null;
-  memTotal: number;
-  memUsed: number;
-  osName: string;
-  hostname: string;
-  uptime: number;
-  components: { label: string; temp: number; max: number; critical: number | null }[];
-  network: { name: string; rxBytes: number; txBytes: number }[];
 }
 
 // ── Result type ─────────────────────────────────────────────────
@@ -403,14 +383,14 @@ export function useWidgetTickerData(
     const sysmonMs = (widgetPrefs.sysmon.refreshInterval || 2) * 1000;
     const sysmonInterval = hasSysmon ? setInterval(async () => {
       try {
-        sysInfoRef.current = await invoke<SystemInfo>("get_system_info");
+        sysInfoRef.current = await fetchSysmonData();
         setData((prev) => ({ ...prev, sysmon: buildSysmonChips() }));
       } catch { /* ignore IPC failures */ }
     }, sysmonMs) : null;
 
     // Initial fetch for sysmon
     if (hasSysmon) {
-      invoke<SystemInfo>("get_system_info")
+      fetchSysmonData()
         .then((info) => { sysInfoRef.current = info; })
         .catch(() => {})
         .finally(refresh);
