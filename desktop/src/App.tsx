@@ -7,7 +7,7 @@ import { Menu, CheckMenuItem, MenuItem, PredefinedMenuItem } from "@tauri-apps/a
 import type {
   DashboardResponse,
   DeliveryMode,
-} from "~/utils/types";
+} from "./types";
 import ScrollrTicker from "./components/ScrollrTicker";
 import TickerToolbar from "./components/TickerToolbar";
 import {

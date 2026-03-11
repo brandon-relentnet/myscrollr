@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import type { AppPreferences, TickerRows } from "../preferences";
 import { TASKBAR_HEIGHTS, resolveTheme } from "../preferences";
-import type { DeliveryMode } from "~/utils/types";
+import type { DeliveryMode } from "../types";
 
 // ── Props ───────────────────────────────────────────────────────
 

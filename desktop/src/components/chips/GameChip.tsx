@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { clsx } from "clsx";
-import type { Game } from "~/utils/types";
+import type { Game } from "../../types";
 import type { ChipColorMode } from "../../preferences";
 import { getChipColors } from "./chipColors";
 

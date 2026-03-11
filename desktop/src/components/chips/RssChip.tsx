@@ -1,5 +1,5 @@
 import { clsx } from "clsx";
-import type { RssItem } from "~/utils/types";
+import type { RssItem } from "../../types";
 import type { ChipColorMode } from "../../preferences";
 import { getChipColors } from "./chipColors";
 

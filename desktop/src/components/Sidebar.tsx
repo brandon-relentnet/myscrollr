@@ -2,8 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Settings, PanelLeftClose, PanelLeftOpen, Plus } from "lucide-react";
 import clsx from "clsx";
 import type { Channel, ChannelType } from "../api/client";
-import type { ChannelManifest } from "@/channels/types";
-import type { WidgetManifest } from "~/widgets/types";
+import type { ChannelManifest, WidgetManifest } from "../types";
 import { loadPref, savePref } from "../preferences";
 
 // ── Types ───────────────────────────────────────────────────────

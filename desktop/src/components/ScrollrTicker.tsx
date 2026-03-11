@@ -2,7 +2,7 @@ import { useMemo, useEffect, useRef, useState, useCallback } from "react";
 import clsx from "clsx";
 import { Ticker } from "motion-plus/react";
 import { useMotionValue, animate, AnimatePresence, motion } from "motion/react";
-import type { DashboardResponse, Trade, Game, RssItem } from "~/utils/types";
+import type { DashboardResponse, Trade, Game, RssItem } from "../types";
 import type { MixMode, ChipColorMode, TickerDirection, ScrollMode, WidgetPinConfig } from "../preferences";
 import TradeChip from "./chips/TradeChip";
 import GameChip, { isLive, isCloseGame } from "./chips/GameChip";

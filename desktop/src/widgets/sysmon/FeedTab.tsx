@@ -1,6 +1,5 @@
 import { Activity } from "lucide-react";
-import type { FeedTabProps } from "~/channels/types";
-import type { WidgetManifest } from "~/widgets/types";
+import type { FeedTabProps, WidgetManifest } from "../../types";
 import { useSysmonData } from "../../hooks/useSysmonData";
 import type { SystemInfo } from "../../hooks/useSysmonData";
 

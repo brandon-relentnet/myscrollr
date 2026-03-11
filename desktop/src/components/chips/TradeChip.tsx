@@ -1,5 +1,5 @@
 import { clsx } from "clsx";
-import type { Trade } from "~/utils/types";
+import type { Trade } from "../../types";
 import type { ChipColorMode } from "../../preferences";
 import { getChipColors } from "./chipColors";
 
