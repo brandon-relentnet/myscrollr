@@ -1,6 +1,6 @@
 [package]
 name = "scrollr-desktop"
-version = "0.5.3"
+version = "0.7.8"
 edition = "2021"
 
 [lib]
@@ -23,7 +23,13 @@ tauri-plugin-autostart = "2.5.1"
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
 tauri-plugin-mcp-bridge = "0.9"
+tauri-plugin-store = "2"
+tauri-plugin-single-instance = "2"
+tauri-plugin-log = "2"
+log = "0.4"
 sysinfo = "0.33"
 
 [profile.release]
-lto = "thin"
+lto = true
+strip = true
+codegen-units = 1

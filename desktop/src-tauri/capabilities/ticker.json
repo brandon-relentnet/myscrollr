@@ -19,7 +19,8 @@
     "core:event:allow-emit",
     "core:event:allow-listen",
     "core:menu:default",
-    "mcp-bridge:default",
+    "store:default",
+    "log:default",
     {
       "identifier": "http:default",
       "allow": [

@@ -36,7 +36,8 @@
     "autostart:allow-is-enabled",
     "updater:default",
     "process:allow-restart",
-    "mcp-bridge:default",
+    "store:default",
+    "log:default",
     {
       "identifier": "http:default",
       "allow": [

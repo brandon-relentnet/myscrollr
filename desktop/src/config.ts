@@ -1,16 +1,17 @@
 /**
  * Centralized configuration for the desktop app.
  *
- * All API endpoints, auth settings, and app-wide constants live here.
- * Desktop builds don't use Vite env vars (no VITE_ prefix), so these
- * are compile-time constants. Swap values via this single file when
- * targeting a different environment.
+ * API endpoints are configurable via VITE_API_URL env var (set in
+ * .env or passed at build time). Auth and app-wide constants are
+ * compile-time values — swap via this file when targeting a
+ * different environment.
  */
 
 // ── API ─────────────────────────────────────────────────────────
 
-export const API_BASE = "https://api.myscrollr.relentnet.dev";
-export const API_HOST = "api.myscrollr.relentnet.dev";
+const DEFAULT_API = "https://api.myscrollr.relentnet.dev";
+export const API_BASE = import.meta.env.VITE_API_URL ?? DEFAULT_API;
+export const API_HOST = new URL(API_BASE).host;
 
 // ── Auth (Logto PKCE) ───────────────────────────────────────────
 

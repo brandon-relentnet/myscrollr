@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
@@ -45,7 +46,17 @@ function resolveExternalChannels(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [resolveExternalChannels(), react(), tailwindcss()],
+  plugins: [
+    resolveExternalChannels(),
+    tanstackRouter({
+      target: "react",
+      routesDirectory: "./src/routes",
+      generatedRouteTree: "./src/routeTree.gen.ts",
+      autoCodeSplitting: true,
+    }),
+    react(),
+    tailwindcss(),
+  ],
 
   // Define env vars that DashboardTab components read via import.meta.env
   define: {
