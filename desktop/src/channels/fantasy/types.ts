@@ -2,7 +2,7 @@
  * Fantasy channel types — mirrors the Go API's MyLeaguesResponse shape.
  */
 
-export interface MatchupTeam {
+interface MatchupTeam {
   team_key: string;
   name: string;
   points: number;
@@ -36,7 +36,7 @@ export interface StandingsEntry {
   team_logo: string;
 }
 
-export interface RosterPlayer {
+interface RosterPlayer {
   player_key: string;
   name: { full: string; first: string; last: string };
   display_position: string;
@@ -49,7 +49,7 @@ export interface RosterPlayer {
   image_url: string;
 }
 
-export interface RosterEntry {
+interface RosterEntry {
   team_key: string;
   data: {
     team_key: string;
@@ -58,7 +58,7 @@ export interface RosterEntry {
   };
 }
 
-export interface LeagueData {
+interface LeagueData {
   num_teams: number;
   is_finished: boolean;
   current_week: number;

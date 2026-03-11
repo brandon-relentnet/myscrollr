@@ -18,7 +18,7 @@ const modules = import.meta.glob<Record<string, ChannelManifest>>(
 const channels = new Map<string, ChannelManifest>();
 
 /** Canonical display order for channel tabs. */
-export const CHANNEL_ORDER = ["finance", "sports", "fantasy", "rss"] as const;
+const CHANNEL_ORDER = ["finance", "sports", "fantasy", "rss"] as const;
 
 // Auto-register all discovered channels.
 for (const [, mod] of Object.entries(modules)) {

@@ -71,13 +71,6 @@ function usageColorClass(pct: number): string {
   return "text-red-400";
 }
 
-function tempColor(temp: number, critical: number | null): string {
-  if (critical && temp >= critical * 0.9) return "#f87171";
-  if (temp >= 80) return "#f87171";
-  if (temp >= 60) return "#fbbf24";
-  return "#34d399";
-}
-
 function tempColorClass(temp: number, critical: number | null): string {
   if (critical && temp >= critical * 0.9) return "text-red-400";
   if (temp >= 80) return "text-red-400";

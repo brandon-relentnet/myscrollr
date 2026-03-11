@@ -34,7 +34,7 @@ interface TokenResponse {
   token_type: string;
 }
 
-export interface AuthState {
+interface AuthState {
   accessToken: string;
   refreshToken: string | null;
   expiresAt: number;

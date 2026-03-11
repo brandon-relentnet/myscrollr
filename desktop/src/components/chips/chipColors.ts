@@ -4,7 +4,7 @@ import type { ChipColorMode } from "../../preferences";
 // Each set maps to the Tailwind classes a chip uses for bg, border,
 // hover, and text at various opacities.
 
-export interface ChipColors {
+interface ChipColors {
   bg: string;
   border: string;
   hoverBorder: string;

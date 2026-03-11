@@ -5,10 +5,10 @@
 // ── Types ────────────────────────────────────────────────────────
 
 export type Theme = "light" | "dark" | "system";
-export type TaskbarHeight = "compact" | "default" | "comfortable";
+type TaskbarHeight = "compact" | "default" | "comfortable";
 export type TickerGap = "tight" | "normal" | "spacious";
 export type TickerMode = "compact" | "comfort";
-export type DefaultView = "feed" | "dashboard" | "last";
+type DefaultView = "feed" | "dashboard" | "last";
 export type TickerRows = 1 | 2 | 3;
 export type MixMode = "grouped" | "weave" | "random";
 export type ChipColorMode = "channel" | "accent" | "muted";
@@ -36,7 +36,7 @@ export interface TickerPrefs {
   stepPause: number; // seconds between transitions (1–10)
 }
 
-export interface StartupPrefs {
+interface StartupPrefs {
   defaultView: DefaultView;
   refreshInterval: number;
   autostart: boolean;
@@ -52,7 +52,7 @@ export interface WindowPrefs {
   tickerPosition: TickerPosition;
 }
 
-export interface TaskbarPrefs {
+interface TaskbarPrefs {
   showChannelIcons: boolean;
   showConnectionIndicator: boolean;
   showCanvasToggle: boolean;
@@ -139,13 +139,13 @@ export interface AppPreferences {
 
 // ── Defaults ────────────────────────────────────────────────────
 
-export const DEFAULT_APPEARANCE: AppearancePrefs = {
+const DEFAULT_APPEARANCE: AppearancePrefs = {
   theme: "dark",
   uiScale: 100,
   tickerRows: 1,
 };
 
-export const DEFAULT_TICKER: TickerPrefs = {
+const DEFAULT_TICKER: TickerPrefs = {
   showTicker: true,
   tickerSpeed: 25,
   pauseOnHover: true,
@@ -159,13 +159,13 @@ export const DEFAULT_TICKER: TickerPrefs = {
   stepPause: 5,
 };
 
-export const DEFAULT_STARTUP: StartupPrefs = {
+const DEFAULT_STARTUP: StartupPrefs = {
   defaultView: "last",
   refreshInterval: 60_000,
   autostart: false,
 };
 
-export const DEFAULT_WINDOW: WindowPrefs = {
+const DEFAULT_WINDOW: WindowPrefs = {
   pinned: true,
   defaultWidth: "full",
   narrowWidth: 800,
@@ -173,7 +173,7 @@ export const DEFAULT_WINDOW: WindowPrefs = {
   tickerPosition: "top",
 };
 
-export const DEFAULT_TASKBAR: TaskbarPrefs = {
+const DEFAULT_TASKBAR: TaskbarPrefs = {
   showChannelIcons: true,
   showConnectionIndicator: true,
   showCanvasToggle: true,
@@ -206,7 +206,7 @@ export const DEFAULT_SYSMON_TICKER: SysmonTickerConfig = {
   gpuPower: false,
 };
 
-export const DEFAULT_WIDGETS: WidgetPrefs = {
+const DEFAULT_WIDGETS: WidgetPrefs = {
   enabledWidgets: [],
   widgetsOnTicker: [],
   pinnedWidgets: {},
@@ -226,7 +226,7 @@ export const DEFAULT_WIDGETS: WidgetPrefs = {
   },
 };
 
-export const DEFAULT_PREFS: AppPreferences = {
+const DEFAULT_PREFS: AppPreferences = {
   appearance: DEFAULT_APPEARANCE,
   ticker: DEFAULT_TICKER,
   startup: DEFAULT_STARTUP,

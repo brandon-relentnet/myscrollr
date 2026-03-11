@@ -28,7 +28,7 @@ import {
   TICKER_HEIGHTS,
 } from "./preferences";
 import type { AppPreferences, TickerPosition } from "./preferences";
-import { getAllWidgets, getWidget } from "./widgets/registry";
+import { getAllWidgets } from "./widgets/registry";
 import { useWidgetTickerData } from "./hooks/useWidgetTickerData";
 
 // ── Constants ────────────────────────────────────────────────────

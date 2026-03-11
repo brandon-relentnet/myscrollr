@@ -52,7 +52,6 @@ struct SysInfoInner {
     static_info: Mutex<Option<StaticSystemInfo>>,
 }
 
-#[derive(Clone)]
 struct SysInfoState(Arc<SysInfoInner>);
 
 /// Probe GPU once: find the sysfs device path, resolve the name and
@@ -387,44 +386,6 @@ fn get_system_info_blocking(inner: &SysInfoInner) -> Result<serde_json::Value, S
 
 /// Resize the window height, preserving current width.
 /// The `anchor` parameter controls which edge stays fixed:
-///   - `"top"`: top edge stays fixed, height extends downward (no reposition)
-///   - `"bottom"` (or any other value): bottom edge stays fixed, top moves
-///
-/// Reads current geometry once up-front, then applies size + position
-/// in a single pass to minimise visual tearing.
-#[tauri::command]
-fn resize_window(window: tauri::Window, height: f64, anchor: Option<String>) {
-    if !height.is_finite() || height < 1.0 || height > 10_000.0 {
-        return;
-    }
-
-    let (size, pos) = match (window.outer_size(), window.outer_position()) {
-        (Ok(s), Ok(p)) => (s, p),
-        _ => return,
-    };
-    let scale = window.scale_factor().unwrap_or(1.0);
-    let current_width = size.width as f64 / scale;
-    let current_height = size.height as f64 / scale;
-    let delta = height - current_height;
-
-    if delta.abs() < 0.5 {
-        return; // no meaningful change
-    }
-
-    // 1. Resize — window extends downward from current position
-    let _ = window.set_size(tauri::LogicalSize::new(current_width, height));
-
-    // 2. If bottom-anchored, shift upward so bottom edge stays fixed
-    let is_top = anchor.as_deref() == Some("top");
-    if !is_top {
-        let current_y = pos.y as f64 / scale;
-        let _ = window.set_position(tauri::LogicalPosition::new(
-            pos.x as f64 / scale,
-            current_y - delta,
-        ));
-    }
-}
-
 /// Start a temporary HTTP server on 127.0.0.1:19284 to receive the OAuth
 /// callback from the system browser. Returns immediately — the server runs
 /// in a background thread and emits an `auth-callback` event when the
@@ -1062,14 +1023,6 @@ fn show_app_window(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn hide_app_window(app: tauri::AppHandle) -> Result<(), String> {
-    if let Some(w) = app.get_webview_window("main") {
-        w.hide().map_err(|e| format!("hide failed: {e}"))?;
-    }
-    Ok(())
-}
-
-#[tauri::command]
 fn quit_app(app: tauri::AppHandle) {
     app.exit(0);
 }
@@ -1131,14 +1084,12 @@ pub fn run() {
             static_info: Mutex::new(None),
         })))
         .invoke_handler(tauri::generate_handler![
-            resize_window,
             position_ticker,
             pin_window,
             start_auth_server,
             start_sse,
             stop_sse,
             show_app_window,
-            hide_app_window,
             quit_app,
             get_system_info,
         ])

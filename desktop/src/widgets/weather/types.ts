@@ -11,7 +11,7 @@ export interface WeatherLocation {
   admin1?: string;
 }
 
-export interface CurrentWeather {
+interface CurrentWeather {
   temperature: number;
   feelsLike: number;
   humidity: number;
