@@ -1135,6 +1135,19 @@ fn quit_app(app: tauri::AppHandle) {
 }
 
 pub fn run() {
+    // Windows: claim the main thread for STA (Single-Threaded Apartment)
+    // mode before any plugin can initialize COM in MTA mode. Plugins like
+    // tauri-plugin-http (via native-tls/WinHTTP) and tauri-plugin-mcp-bridge
+    // (via WebSocket server) can trigger MTA initialization, which conflicts
+    // with tao's OleInitialize requirement for drag-and-drop support.
+    #[cfg(target_os = "windows")]
+    {
+        use windows_sys::Win32::System::Com::{CoInitializeEx, COINIT_APARTMENTTHREADED};
+        unsafe {
+            CoInitializeEx(std::ptr::null(), COINIT_APARTMENTTHREADED);
+        }
+    }
+
     #[allow(unused_mut)]
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -1161,7 +1174,9 @@ pub fn run() {
             }
         }));
 
-    #[cfg(debug_assertions)]
+    // MCP bridge is dev-only and excluded on Windows — its WebSocket
+    // server is architecturally incompatible with Windows COM threading.
+    #[cfg(all(debug_assertions, not(target_os = "windows")))]
     {
         builder = builder.plugin(tauri_plugin_mcp_bridge::init());
     }
@@ -1200,16 +1215,18 @@ pub fn run() {
         })
         .setup(|app| {
             // ── Ticker window setup ──────────────────────────────
-            let ticker = app.get_webview_window("ticker").unwrap();
+            if let Some(ticker) = app.get_webview_window("ticker") {
+                // Set initial ticker width to fill screen
+                if let Ok(Some(monitor)) = ticker.current_monitor() {
+                    let scale = monitor.scale_factor();
+                    let screen_width = monitor.size().width as f64 / scale;
+                    let _ = ticker.set_size(tauri::LogicalSize::new(screen_width, 200.0));
+                }
 
-            // Set initial ticker width to fill screen
-            if let Ok(Some(monitor)) = ticker.current_monitor() {
-                let scale = monitor.scale_factor();
-                let screen_width = monitor.size().width as f64 / scale;
-                let _ = ticker.set_size(tauri::LogicalSize::new(screen_width, 200.0));
+                let _ = ticker.show();
+            } else {
+                log::error!("Failed to create ticker window — continuing without it");
             }
-
-            let _ = ticker.show();
 
             // ── App window: strip native chrome on Linux/Windows ─
             // macOS keeps native decorations (traffic lights). On

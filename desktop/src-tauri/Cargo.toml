@@ -29,7 +29,10 @@ tauri-plugin-log = "2"
 log = "0.4"
 sysinfo = "0.33"
 
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_System_Com"] }
+
 [profile.release]
 lto = true
-strip = true
+strip = "debuginfo"
 codegen-units = 1
