@@ -517,13 +517,13 @@ export default function App() {
   const handleWidgetToggle = useCallback(
     (widgetId: string) => {
       setPrefs((prev) => {
-        const enabled = prev.widgets.enabledWidgets;
-        const next = enabled.includes(widgetId)
-          ? enabled.filter((id) => id !== widgetId)
-          : [...enabled, widgetId];
+        const onTicker = prev.widgets.widgetsOnTicker;
+        const next = onTicker.includes(widgetId)
+          ? onTicker.filter((id) => id !== widgetId)
+          : [...onTicker, widgetId];
         const updated = {
           ...prev,
-          widgets: { ...prev.widgets, enabledWidgets: next },
+          widgets: { ...prev.widgets, widgetsOnTicker: next },
         };
         savePrefs(updated);
         return updated;
@@ -615,7 +615,7 @@ export default function App() {
       const allWidgets = getAllWidgets();
       if (allWidgets.length > 0) {
         for (const widget of allWidgets) {
-          const isEnabled = prefsRef.current.widgets.enabledWidgets.includes(widget.id);
+          const isEnabled = prefsRef.current.widgets.widgetsOnTicker.includes(widget.id);
           const item = await CheckMenuItem.new({
             text: widget.name,
             checked: isEnabled,
@@ -698,7 +698,7 @@ export default function App() {
   }, [handleChannelToggle, handleWidgetToggle]);
 
   // ── Merge channel + widget tabs ──────────────────────────────
-  const activeTabs = [...channelTabs, ...prefs.widgets.enabledWidgets];
+  const activeTabs = [...channelTabs, ...prefs.widgets.widgetsOnTicker];
 
   // ── Widget ticker data (local polling for clock/weather/sysmon) ──
   const widgetData = useWidgetTickerData(prefs.widgets);

@@ -193,7 +193,7 @@ export function useWidgetTickerData(
 ): WidgetTickerData {
   const [data, setData] = useState<WidgetTickerData>(EMPTY);
   const sysInfoRef = useRef<SystemInfo | null>(null);
-  const enabledSet = new Set(widgetPrefs.enabledWidgets);
+  const enabledSet = new Set(widgetPrefs.widgetsOnTicker);
 
   // ── Build clock + timer chips ─────────────────────────────────
   const buildClockChips = useCallback((): ClockChipData[] => {
@@ -246,7 +246,7 @@ export function useWidgetTickerData(
 
     return chips;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [widgetPrefs.clock, widgetPrefs.enabledWidgets]);
+  }, [widgetPrefs.clock, widgetPrefs.widgetsOnTicker]);
 
   // ── Build weather chips ───────────────────────────────────────
   const buildWeatherChips = useCallback((): WeatherChipData[] => {
@@ -281,7 +281,7 @@ export function useWidgetTickerData(
 
     return chips;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [widgetPrefs.weather, widgetPrefs.enabledWidgets]);
+  }, [widgetPrefs.weather, widgetPrefs.widgetsOnTicker]);
 
   // ── Build sysmon chips ────────────────────────────────────────
   const buildSysmonChips = useCallback((): SysmonChipData[] => {
@@ -346,7 +346,7 @@ export function useWidgetTickerData(
 
     return chips;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [widgetPrefs.sysmon, widgetPrefs.enabledWidgets]);
+  }, [widgetPrefs.sysmon, widgetPrefs.widgetsOnTicker]);
 
   // ── Polling intervals ─────────────────────────────────────────
 
@@ -405,7 +405,7 @@ export function useWidgetTickerData(
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    widgetPrefs.enabledWidgets.join(","),
+    widgetPrefs.widgetsOnTicker.join(","),
     widgetPrefs.sysmon.refreshInterval,
     buildClockChips,
     buildWeatherChips,

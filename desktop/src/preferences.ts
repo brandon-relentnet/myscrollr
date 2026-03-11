@@ -116,8 +116,10 @@ export interface WidgetPinConfig {
 }
 
 export interface WidgetPrefs {
-  /** Widget IDs that are enabled (shown in feed tabs and ticker). */
+  /** Widget IDs that are enabled (shown in sidebar and feed tabs). */
   enabledWidgets: string[];
+  /** Widget IDs whose data appears on the ticker. Subset of enabledWidgets. */
+  widgetsOnTicker: string[];
   /** Per-widget pin state: removes the chip from the scrolling ticker and
    *  places it as a static element on the chosen side. Keyed by widget ID. */
   pinnedWidgets: Record<string, WidgetPinConfig>;
@@ -206,6 +208,7 @@ export const DEFAULT_SYSMON_TICKER: SysmonTickerConfig = {
 
 export const DEFAULT_WIDGETS: WidgetPrefs = {
   enabledWidgets: [],
+  widgetsOnTicker: [],
   pinnedWidgets: {},
   clock: {
     ticker: { ...DEFAULT_CLOCK_TICKER },
@@ -312,8 +315,12 @@ function mergeWidgetPrefs(saved?: Partial<WidgetPrefs>): WidgetPrefs {
   const wth = obj(saved.weather);
   const sys = obj(saved.sysmon);
 
+  const enabledWidgets = Array.isArray(saved.enabledWidgets) ? saved.enabledWidgets : DEFAULT_WIDGETS.enabledWidgets;
+
   return {
-    enabledWidgets: Array.isArray(saved.enabledWidgets) ? saved.enabledWidgets : DEFAULT_WIDGETS.enabledWidgets,
+    enabledWidgets,
+    // Migration: if widgetsOnTicker doesn't exist, default to enabledWidgets
+    widgetsOnTicker: Array.isArray(saved.widgetsOnTicker) ? saved.widgetsOnTicker : enabledWidgets,
     pinnedWidgets: (saved.pinnedWidgets != null && typeof saved.pinnedWidgets === "object" && !Array.isArray(saved.pinnedWidgets))
       ? saved.pinnedWidgets as Record<string, WidgetPinConfig>
       : {},

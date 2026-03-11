@@ -8,6 +8,8 @@ import {
 } from "@tauri-apps/plugin-autostart";
 
 import clsx from "clsx";
+import { Trash2 } from "lucide-react";
+import { motion } from "motion/react";
 import TitleBar from "./components/TitleBar";
 import Sidebar from "./components/Sidebar";
 import type { SettingsTab } from "./components/Sidebar";
@@ -96,6 +98,8 @@ export default function MainApp() {
   });
   const [sourceTab, setSourceTab] = useState<SourceTab>("feed");
   const configuring = sourceTab === "configuration";
+  const [deleteArmed, setDeleteArmed] = useState(false);
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [settingsTab, setSettingsTab] = useState<SettingsTab>(() => {
     const saved = loadPref<string>("settingsTab", "general");
@@ -356,6 +360,8 @@ export default function MainApp() {
 
   const handleSelectItem = useCallback((id: string) => {
     setActiveItem(id);
+    setDeleteArmed(false);
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
     savePref("activeItem", id);
   }, []);
 
@@ -435,13 +441,13 @@ export default function MainApp() {
       try {
         await channelsApi.update(
           channelType,
-          { enabled: visible, visible },
+          { enabled: true, visible },
           () => Promise.resolve(token),
         );
         setChannels((prev) =>
           prev.map((ch) =>
             ch.channel_type === channelType
-              ? { ...ch, enabled: visible, visible }
+              ? { ...ch, enabled: true, visible }
               : ch,
           ),
         );
@@ -516,18 +522,40 @@ export default function MainApp() {
     [fetchDashboard],
   );
 
-  // ── Widget toggle handler ───────────────────────────────────
+  // ── Widget handlers ─────────────────────────────────────────
 
+  /** Toggle widget on/off the ticker (keep it in sidebar). */
+  const handleToggleWidgetTicker = useCallback(
+    (widgetId: string) => {
+      const onTicker = prefs.widgets.widgetsOnTicker;
+      const nextOnTicker = onTicker.includes(widgetId)
+        ? onTicker.filter((id) => id !== widgetId)
+        : [...onTicker, widgetId];
+
+      const next: AppPreferences = {
+        ...prefs,
+        widgets: { ...prefs.widgets, widgetsOnTicker: nextOnTicker },
+      };
+      setPrefs(next);
+      savePrefs(next);
+    },
+    [prefs],
+  );
+
+  /** Remove widget from sidebar entirely (also removes from ticker). */
   const handleToggleWidget = useCallback(
     (widgetId: string) => {
       const isEnabled = enabledWidgets.includes(widgetId);
       const nextEnabled = isEnabled
         ? enabledWidgets.filter((id) => id !== widgetId)
         : [...enabledWidgets, widgetId];
+      const nextOnTicker = isEnabled
+        ? prefs.widgets.widgetsOnTicker.filter((id) => id !== widgetId)
+        : [...prefs.widgets.widgetsOnTicker, widgetId];
 
       const next: AppPreferences = {
         ...prefs,
-        widgets: { ...prefs.widgets, enabledWidgets: nextEnabled },
+        widgets: { ...prefs.widgets, enabledWidgets: nextEnabled, widgetsOnTicker: nextOnTicker },
       };
       setPrefs(next);
       savePrefs(next);
@@ -579,9 +607,9 @@ export default function MainApp() {
       ...channels
         .filter((ch) => ch.enabled && ch.visible)
         .map((ch) => ch.channel_type),
-      ...prefs.widgets.enabledWidgets,
+      ...prefs.widgets.widgetsOnTicker,
     ],
-    [channels, prefs.widgets.enabledWidgets],
+    [channels, prefs.widgets.widgetsOnTicker],
   );
 
   // ── Widget ticker data (local polling for clock/weather/sysmon) ──
@@ -956,9 +984,61 @@ export default function MainApp() {
             <h1 className="text-base font-semibold truncate">
               {activeItemName}
             </h1>
+
+            {/* Channel ticker toggle — compact switch only */}
+            {isChannelActive && (() => {
+              const ch = channels.find((c) => c.channel_type === activeItem);
+              const manifest = allChannelManifests.find((m) => m.id === activeItem);
+              const active = ch?.visible ?? false;
+              const hex = manifest?.hex ?? "var(--color-fg-3)";
+              return (
+                <button
+                  onClick={() => handleToggleChannel(activeItem as ChannelType, !active)}
+                  className="shrink-0"
+                  title={active ? "On Ticker" : "Off Ticker"}
+                >
+                  <span
+                    className="block h-4 w-7 rounded-full relative transition-colors"
+                    style={{ background: active ? hex : undefined }}
+                  >
+                    {!active && <span className="absolute inset-0 rounded-full bg-fg-4/25" />}
+                    <motion.span
+                      className="absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white"
+                      animate={{ x: active ? 12 : 0 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    />
+                  </span>
+                </button>
+              );
+            })()}
+
+            {/* Widget ticker toggle — compact switch only */}
+            {isWidgetActive && (() => {
+              const active = prefs.widgets.widgetsOnTicker.includes(activeItem);
+              const hex = activeWidget?.hex ?? "var(--color-fg-3)";
+              return (
+                <button
+                  onClick={() => handleToggleWidgetTicker(activeItem)}
+                  className="shrink-0"
+                  title={active ? "On Ticker" : "Off Ticker"}
+                >
+                  <span
+                    className="block h-4 w-7 rounded-full relative transition-colors"
+                    style={{ background: active ? hex : undefined }}
+                  >
+                    {!active && <span className="absolute inset-0 rounded-full bg-fg-4/25" />}
+                    <motion.span
+                      className="absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white"
+                      animate={{ x: active ? 12 : 0 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    />
+                  </span>
+                </button>
+              );
+            })()}
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {/* Feed / Configuration tabs — channels and widgets */}
+            {/* Feed / Info / Configuration tabs — channels and widgets */}
             {(isChannelActive || isWidgetActive) && (
               <div className="flex gap-1">
                 {(["feed", "info", "configuration"] as const).map((tab) => (
@@ -1004,6 +1084,45 @@ export default function MainApp() {
                 className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
               >
                 Sign in
+              </button>
+            )}
+
+            {/* Delete — double-tap: first click arms (red), second click confirms */}
+            {(isChannelActive || isWidgetActive) && (
+              <button
+                onClick={() => {
+                  if (deleteArmed) {
+                    // Second click — execute
+                    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+                    if (isChannelActive) {
+                      handleDeleteChannel(activeItem as ChannelType);
+                    } else {
+                      handleToggleWidget(activeItem);
+                    }
+                    setDeleteArmed(false);
+                  } else {
+                    // First click — arm with 3s timeout
+                    setDeleteArmed(true);
+                    deleteTimerRef.current = setTimeout(() => {
+                      setDeleteArmed(false);
+                    }, 3000);
+                  }
+                }}
+                className={clsx(
+                  "p-2 rounded-lg transition-colors",
+                  deleteArmed
+                    ? "text-red-500 bg-red-500/10"
+                    : "text-fg-4/40 hover:text-red-500",
+                )}
+                title={
+                  deleteArmed
+                    ? "Click again to remove"
+                    : isChannelActive
+                      ? "Remove channel"
+                      : "Remove widget"
+                }
+              >
+                <Trash2 size={14} />
               </button>
             )}
           </div>
