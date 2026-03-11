@@ -83,9 +83,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: |
-            desktop/package-lock.json
-            extension/package-lock.json
+          cache-dependency-path: desktop/package-lock.json
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -97,10 +95,6 @@ jobs:
         with:
           workspaces: "desktop/src-tauri -> target"
           cache-on-failure: "true"
-
-      - name: Prepare extension (generates .wxt/tsconfig.json needed by shared components)
-        run: npm ci
-        working-directory: extension
 
       - name: Install frontend dependencies
         run: npm ci
