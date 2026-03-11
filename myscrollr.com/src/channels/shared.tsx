@@ -41,8 +41,8 @@ export function ChannelHeader({
   connected?: boolean
   subscriptionTier?: string
   hex: string
-  onToggle: () => void
-  onDelete: () => void
+  onToggle?: () => void
+  onDelete?: () => void
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const active = channel.visible
@@ -136,65 +136,71 @@ export function ChannelHeader({
         )}
       </div>
 
-      {/* Toggle + Delete */}
-      <div className="flex flex-wrap gap-3">
-        <button
-          onClick={onToggle}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-colors ${
-            !active
-              ? 'bg-base-200/40 border-base-300/25 text-base-content/40'
-              : ''
-          }`}
-          style={
-            active
-              ? {
-                  background: `${hex}14`,
-                  borderColor: `${hex}33`,
-                  color: hex,
-                }
-              : undefined
-          }
-        >
-          {active ? <Eye size={12} /> : <EyeOff size={12} />}
-          <span className="text-[10px] font-bold uppercase tracking-widest">
-            {active ? 'On Ticker' : 'Off'}
-          </span>
-          <ToggleSwitch active={active} hex={hex} />
-        </button>
-
-        <div className="ml-auto">
-          {confirmDelete ? (
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-base-content/40 uppercase">
-                Remove?
-              </span>
-              <button
-                onClick={() => {
-                  onDelete()
-                  setConfirmDelete(false)
-                }}
-                className="px-3 py-2 rounded-lg border border-error/30 text-error text-[10px] font-bold uppercase tracking-widest hover:bg-error/10 transition-colors"
-              >
-                Confirm
-              </button>
-              <button
-                onClick={() => setConfirmDelete(false)}
-                className="p-2 rounded-lg border border-base-300/25 text-base-content/30 hover:text-base-content/50 transition-colors"
-              >
-                <X size={12} />
-              </button>
-            </div>
-          ) : (
+      {/* Toggle + Delete — hidden when callbacks are omitted (e.g. desktop) */}
+      {(onToggle || onDelete) && (
+        <div className="flex flex-wrap gap-3">
+          {onToggle && (
             <button
-              onClick={() => setConfirmDelete(true)}
-              className="p-2.5 rounded-lg border border-base-300/25 text-base-content/20 hover:text-error hover:border-error/30 transition-colors"
-              title="Remove channel"
+              onClick={onToggle}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-colors ${
+                !active
+                  ? 'bg-base-200/40 border-base-300/25 text-base-content/40'
+                  : ''
+              }`}
+              style={
+                active
+                  ? {
+                      background: `${hex}14`,
+                      borderColor: `${hex}33`,
+                      color: hex,
+                    }
+                  : undefined
+              }
             >
-              <Trash2 size={14} />
+              {active ? <Eye size={12} /> : <EyeOff size={12} />}
+              <span className="text-[10px] font-bold uppercase tracking-widest">
+                {active ? 'On Ticker' : 'Off'}
+              </span>
+              <ToggleSwitch active={active} hex={hex} />
             </button>
           )}
+
+          {onDelete && (
+            <div className="ml-auto">
+              {confirmDelete ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-base-content/40 uppercase">
+                    Remove?
+                  </span>
+                  <button
+                    onClick={() => {
+                      onDelete()
+                      setConfirmDelete(false)
+                    }}
+                    className="px-3 py-2 rounded-lg border border-error/30 text-error text-[10px] font-bold uppercase tracking-widest hover:bg-error/10 transition-colors"
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete(false)}
+                    className="p-2 rounded-lg border border-base-300/25 text-base-content/30 hover:text-base-content/50 transition-colors"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="p-2.5 rounded-lg border border-base-300/25 text-base-content/20 hover:text-error hover:border-error/30 transition-colors"
+                  title="Remove channel"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </div>
+          )}
         </div>
-      </div>
+      )}
     </div>
   )
 }

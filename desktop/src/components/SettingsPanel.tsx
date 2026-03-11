@@ -55,7 +55,7 @@ export default function SettingsPanel({
   };
 
   return (
-    <div className="dashboard-content w-full max-w-2xl mx-auto relative">
+    <div className="w-full max-w-2xl mx-auto relative">
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTab}

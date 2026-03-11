@@ -20,6 +20,7 @@ import { getWebChannel, getAllWebChannels } from "./channels/webRegistry";
 import { getChannel } from "~/channels/registry";
 import { getWidget, getAllWidgets } from "./widgets/registry";
 import WidgetConfigPanel from "./widgets/WidgetConfigPanel";
+import ChannelConfigPanel from "./channels/ChannelConfigPanel";
 import { useWidgetTickerData } from "./hooks/useWidgetTickerData";
 import {
   login as authLogin,
@@ -794,27 +795,22 @@ export default function MainApp() {
       );
     }
 
-    // Channel — configure mode (DashboardTab)
+    // Channel — configure mode (desktop-native ConfigPanel)
     if (isChannelActive && configuring) {
       const channel = channels.find((c) => c.channel_type === activeItem);
       const webChannel = getWebChannel(activeItem);
 
-      if (channel && webChannel) {
+      if (channel) {
         return (
-          <div className="flex-1 overflow-y-auto p-4 scrollbar-thin dashboard-content">
-            <webChannel.DashboardTab
+          <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">
+            <ChannelConfigPanel
+              channelType={activeItem}
               channel={channel}
               getToken={getToken}
-              onToggle={() =>
-                handleToggleChannel(channel.channel_type, !channel.visible)
-              }
-              onDelete={() =>
-                handleDeleteChannel(activeItem as ChannelType)
-              }
               onChannelUpdate={handleChannelUpdate}
-              connected={deliveryMode === "sse"}
               subscriptionTier={tier}
-              hex={webChannel.hex}
+              connected={deliveryMode === "sse"}
+              hex={webChannel?.hex ?? "var(--color-accent)"}
             />
           </div>
         );
@@ -858,7 +854,7 @@ export default function MainApp() {
     // Widget — configure mode
     if (isWidgetActive && configuring) {
       return (
-        <div className="flex-1 overflow-y-auto p-4 scrollbar-thin dashboard-content">
+        <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">
           <WidgetConfigPanel
             widgetId={activeItem}
             prefs={prefs}

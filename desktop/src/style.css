@@ -360,32 +360,6 @@ body {
   cursor: pointer;
 }
 
-/* ── Dashboard content scaling ──────────────────────────────────── */
-/* DashboardTab components use compact 8–10px text designed for the
-   website layout. Desktop displays need larger text for readability.
-   The .dashboard-content class is applied by App.tsx's overrideContent. */
-
-/* Tiny labels & metadata: 8–9px → 11px */
-.dashboard-content .text-\[8px\],
-.dashboard-content .text-\[9px\] {
-  font-size: 11px !important;
-}
-
-/* Small labels: 10px → 12px */
-.dashboard-content .text-\[10px\] {
-  font-size: 12px !important;
-}
-
-/* Body text: xs (12px) → 13px */
-.dashboard-content .text-xs {
-  font-size: 13px !important;
-}
-
-/* Sub-body text: sm (14px) → 15px */
-.dashboard-content .text-sm {
-  font-size: 15px !important;
-}
-
 /* ── EKG animated trace ──────────────────────────────────────────
    A bright segment sweeps along the heartbeat path like a real
    cardiac monitor. Uses pathLength normalisation + stroke-dashoffset.

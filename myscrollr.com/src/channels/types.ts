@@ -4,8 +4,10 @@ import type { Channel } from '@/api/client'
 export interface DashboardTabProps {
   channel: Channel
   getToken: () => Promise<string | null>
-  onToggle: () => void
-  onDelete: () => void
+  /** Toggle channel on/off ticker. Omit to hide the toggle control. */
+  onToggle?: () => void
+  /** Delete channel. Omit to hide the delete control. */
+  onDelete?: () => void
   onChannelUpdate: (updated: Channel) => void
   /** SSE connection status */
   connected: boolean
