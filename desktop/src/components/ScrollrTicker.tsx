@@ -1,12 +1,17 @@
 import { useMemo, useEffect, useRef, useState, useCallback } from "react";
+import clsx from "clsx";
 import { Ticker } from "motion-plus/react";
 import { useMotionValue, animate, AnimatePresence, motion } from "motion/react";
 import type { DashboardResponse, Trade, Game, RssItem } from "~/utils/types";
-import type { MixMode, ChipColorMode, TickerDirection, ScrollMode } from "../preferences";
+import type { MixMode, ChipColorMode, TickerDirection, ScrollMode, WidgetPinConfig } from "../preferences";
 import TradeChip from "./chips/TradeChip";
 import GameChip, { isLive, isCloseGame } from "./chips/GameChip";
 import RssChip from "./chips/RssChip";
 import FantasyChip from "./chips/FantasyChip";
+import ClockConsolidatedChip from "./chips/ClockConsolidatedChip";
+import WeatherConsolidatedChip from "./chips/WeatherConsolidatedChip";
+import SysmonConsolidatedChip from "./chips/SysmonConsolidatedChip";
+import type { WidgetTickerData } from "../hooks/useWidgetTickerData";
 
 // ── Sport engagement scoring (higher = more prominent in ticker) ─
 
@@ -31,7 +36,13 @@ function gameEngagement(g: Game): number {
 interface ScrollrTickerProps {
   dashboard: DashboardResponse | null;
   activeTabs: string[];
+  /** Pre-built widget chip data (clock, weather, sysmon). */
+  widgetData?: WidgetTickerData;
   onChipClick?: (channelType: string, itemId: string | number) => void;
+  /** Toggle pin state for a widget (hover pin icon). */
+  onTogglePin?: (widgetId: string) => void;
+  /** Which widgets are pinned (excluded from scrolling ticker). */
+  pinnedWidgets?: Record<string, WidgetPinConfig>;
   /** Scroll speed in px/sec (default 40) */
   speed?: number;
   /** Gap between chips in px (default 8) */
@@ -93,7 +104,10 @@ function weave<T>(buckets: T[][]): T[] {
 export default function ScrollrTicker({
   dashboard,
   activeTabs,
+  widgetData,
   onChipClick,
+  onTogglePin,
+  pinnedWidgets = {},
   speed = 25,
   gap = 8,
   pauseOnHover = true,
@@ -107,11 +121,9 @@ export default function ScrollrTicker({
   scrollMode = "continuous",
   stepPause = 5,
 }: ScrollrTickerProps) {
-  // Build chip arrays per channel, then combine based on mixMode.
+  // Build chip arrays per channel/widget, then combine based on mixMode.
   // When totalRows > 1, items are distributed round-robin across rows.
   const chips = useMemo(() => {
-    if (!dashboard?.data) return [];
-
     const wrap = (key: string, chip: React.ReactNode) => (
       <div key={key} className="py-1">
         {chip}
@@ -121,10 +133,66 @@ export default function ScrollrTicker({
     const buckets: React.ReactNode[][] = [];
 
     for (const tab of activeTabs) {
-      const data = dashboard.data[tab];
-      if (!Array.isArray(data) || data.length === 0) continue;
-
       const bucket: React.ReactNode[] = [];
+
+      // ── Widget tabs: consolidated chips (skip if pinned) ────────
+      if (tab === "clock" && widgetData?.clock.length) {
+        if (!pinnedWidgets.clock) {
+          bucket.push(
+            wrap("clk-consolidated",
+              <ClockConsolidatedChip
+                items={widgetData.clock}
+                comfort={comfort}
+                colorMode={chipColorMode}
+                onTogglePin={onTogglePin ? () => onTogglePin("clock") : undefined}
+                onClick={() => onChipClick?.("clock", "clock")}
+              />
+            )
+          );
+          buckets.push(bucket);
+        }
+        continue;
+      }
+
+      if (tab === "weather" && widgetData?.weather.length) {
+        if (!pinnedWidgets.weather) {
+          bucket.push(
+            wrap("wth-consolidated",
+              <WeatherConsolidatedChip
+                items={widgetData.weather}
+                comfort={comfort}
+                colorMode={chipColorMode}
+                onTogglePin={onTogglePin ? () => onTogglePin("weather") : undefined}
+                onClick={() => onChipClick?.("weather", "weather")}
+              />
+            )
+          );
+          buckets.push(bucket);
+        }
+        continue;
+      }
+
+      if (tab === "sysmon" && widgetData?.sysmon.length) {
+        if (!pinnedWidgets.sysmon) {
+          bucket.push(
+            wrap("sys-consolidated",
+              <SysmonConsolidatedChip
+                items={widgetData.sysmon}
+                comfort={comfort}
+                colorMode={chipColorMode}
+                onTogglePin={onTogglePin ? () => onTogglePin("sysmon") : undefined}
+                onClick={() => onChipClick?.("sysmon", "sysmon")}
+              />
+            )
+          );
+          buckets.push(bucket);
+        }
+        continue;
+      }
+
+      // ── Channel tabs: use dashboard.data ──────────────────────
+      const data = dashboard?.data?.[tab];
+      if (!Array.isArray(data) || data.length === 0) continue;
 
       switch (tab) {
         case "finance":
@@ -214,7 +282,7 @@ export default function ScrollrTicker({
     // When multiple rows, distribute items round-robin
     if (totalRows <= 1) return allItems;
     return allItems.filter((_, i) => i % totalRows === rowIndex);
-  }, [dashboard, activeTabs, onChipClick, comfort, mixMode, chipColorMode, rowIndex, totalRows]);
+  }, [dashboard, activeTabs, widgetData, onChipClick, onTogglePin, pinnedWidgets, comfort, mixMode, chipColorMode, rowIndex, totalRows]);
 
   // ── Shared refs ─────────────────────────────────────────────────
   const containerRef = useRef<HTMLDivElement>(null);
@@ -314,18 +382,85 @@ export default function ScrollrTicker({
     return () => clearInterval(timer);
   }, [scrollMode, stepPause, pauseOnHover, chips.length]);
 
+  // ── Build pinned chip arrays (rendered inside this row) ─────────
+
+  const pinnedLeft: React.ReactNode[] = [];
+  const pinnedRight: React.ReactNode[] = [];
+
+  for (const tab of activeTabs) {
+    const pin = pinnedWidgets[tab];
+    if (!pin) continue;
+    const target = pin.side === "left" ? pinnedLeft : pinnedRight;
+
+    if (tab === "clock" && widgetData?.clock.length) {
+      target.push(
+        <ClockConsolidatedChip
+          key="pinned-clock"
+          items={widgetData.clock}
+          comfort={comfort}
+          colorMode={chipColorMode}
+          pinned
+          onTogglePin={onTogglePin ? () => onTogglePin("clock") : undefined}
+          onClick={() => onChipClick?.("clock", "clock")}
+        />
+      );
+    }
+    if (tab === "weather" && widgetData?.weather.length) {
+      target.push(
+        <WeatherConsolidatedChip
+          key="pinned-weather"
+          items={widgetData.weather}
+          comfort={comfort}
+          colorMode={chipColorMode}
+          pinned
+          onTogglePin={onTogglePin ? () => onTogglePin("weather") : undefined}
+          onClick={() => onChipClick?.("weather", "weather")}
+        />
+      );
+    }
+    if (tab === "sysmon" && widgetData?.sysmon.length) {
+      target.push(
+        <SysmonConsolidatedChip
+          key="pinned-sysmon"
+          items={widgetData.sysmon}
+          comfort={comfort}
+          colorMode={chipColorMode}
+          pinned
+          onTogglePin={onTogglePin ? () => onTogglePin("sysmon") : undefined}
+          onClick={() => onChipClick?.("sysmon", "sysmon")}
+        />
+      );
+    }
+  }
+
   // ── Render ────────────────────────────────────────────────────
-  if (chips.length === 0) return null;
+  const hasPinnedLeft = pinnedLeft.length > 0;
+  const hasPinnedRight = pinnedRight.length > 0;
+  const hasScrollingChips = chips.length > 0;
+
+  // Nothing to show at all
+  if (!hasScrollingChips && !hasPinnedLeft && !hasPinnedRight) return null;
 
   const containerClass = `ticker-container ${comfort ? "h-16" : "h-11"} flex items-center bg-base-150 border-b border-edge/50 flex-shrink-0 relative w-full overflow-hidden`;
   const accentLine = (
     <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent z-10" />
   );
 
+  const pinnedZone = (side: "left" | "right", items: React.ReactNode[]) =>
+    items.length > 0 ? (
+      <div
+        className={clsx(
+          "ticker-pinned-zone flex items-center shrink-0 h-full z-10 px-2 bg-base-150",
+          side === "left" ? "border-r" : "border-l",
+          "border-edge/30",
+        )}
+        style={{ gap }}
+      >
+        {items}
+      </div>
+    ) : null;
+
   // ── Flip mode: AnimatePresence with vertical slide ────────────
-  // Direction prop is intentionally ignored — flip always slides
-  // vertically (current row up, new row in from below). The Direction
-  // control is hidden in settings when flip mode is selected.
   if (scrollMode === "flip") {
     return (
       <div
@@ -335,19 +470,23 @@ export default function ScrollrTicker({
         onMouseLeave={() => { isHoveredRef.current = false; }}
       >
         {accentLine}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={flipPage}
-            initial={{ y: "100%", opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: "-100%", opacity: 0 }}
-            transition={{ duration: transitionDuration, ease: [0.25, 0.1, 0.25, 1] }}
-            className="flex items-center h-full w-full"
-            style={{ gap }}
-          >
-            {flipChips}
-          </motion.div>
-        </AnimatePresence>
+        {pinnedZone("left", pinnedLeft)}
+        <div className="ticker-scroll-wrapper">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={flipPage}
+              initial={{ y: "100%", opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: "-100%", opacity: 0 }}
+              transition={{ duration: transitionDuration, ease: [0.25, 0.1, 0.25, 1] }}
+              className="flex items-center h-full"
+              style={{ gap }}
+            >
+              {flipChips}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+        {pinnedZone("right", pinnedRight)}
       </div>
     );
   }
@@ -364,15 +503,18 @@ export default function ScrollrTicker({
       onMouseLeave={() => { isHoveredRef.current = false; }}
     >
       {accentLine}
-      <Ticker
-        items={chips}
-        velocity={isStepMode ? 0 : velocity}
-        offset={isStepMode ? offset : undefined}
-        hoverFactor={isStepMode ? 1 : (pauseOnHover ? hoverSpeed : 1)}
-        gap={gap}
-        fade={40}
-        style={{ width: "100%", minWidth: 0, maxWidth: "100%" }}
-      />
+      {pinnedZone("left", pinnedLeft)}
+      <div className="ticker-scroll-wrapper">
+        <Ticker
+          items={chips}
+          velocity={isStepMode ? 0 : velocity}
+          offset={isStepMode ? offset : undefined}
+          hoverFactor={isStepMode ? 1 : (pauseOnHover ? hoverSpeed : 1)}
+          gap={gap}
+          fade={hasPinnedLeft || hasPinnedRight ? 20 : 40}
+        />
+      </div>
+      {pinnedZone("right", pinnedRight)}
     </div>
   );
 }

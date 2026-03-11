@@ -29,6 +29,7 @@ import {
 } from "./preferences";
 import type { AppPreferences, TickerPosition } from "./preferences";
 import { getAllWidgets, getWidget } from "./widgets/registry";
+import { useWidgetTickerData } from "./hooks/useWidgetTickerData";
 
 // ── Constants ────────────────────────────────────────────────────
 
@@ -91,23 +92,31 @@ export default function App() {
 
   const fetchFeed = useCallback(async () => {
     try {
+      // Always attempt to get a valid token — handles silent refresh
+      // even when the access token has expired but a refresh token exists.
+      const token = await getValidToken();
       let res: Response;
 
-      if (authenticatedRef.current) {
-        const token = await getValidToken();
-        if (!token) {
+      if (token) {
+        // Sync auth state (covers silent refresh from expired state)
+        if (!authenticatedRef.current) {
+          setAuthenticated(true);
+          const currentTier = getTier();
+          tierRef.current = currentTier;
+        }
+        res = await fetch(`${API_URL}/dashboard`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.status === 401) {
           setAuthenticated(false);
+          tierRef.current = "free";
           res = await fetch(`${API_URL}/public/feed`);
-        } else {
-          res = await fetch(`${API_URL}/dashboard`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (res.status === 401) {
-            setAuthenticated(false);
-            res = await fetch(`${API_URL}/public/feed`);
-          }
         }
       } else {
+        if (authenticatedRef.current) {
+          setAuthenticated(false);
+          tierRef.current = "free";
+        }
         res = await fetch(`${API_URL}/public/feed`);
       }
 
@@ -266,14 +275,25 @@ export default function App() {
   // ── Initial data fetch + delivery start ────────────────────────
 
   useEffect(() => {
-    const tier = authenticated ? getTier() : "free";
-    tierRef.current = tier;
+    async function init() {
+      // Attempt silent token refresh to determine the real tier,
+      // even if checkAuth() returned false due to an expired access token.
+      const token = await getValidToken();
+      const tier = token ? getTier() : "free";
+      tierRef.current = tier;
 
-    startPolling(tier);
+      if (token && !authenticatedRef.current) {
+        setAuthenticated(true);
+      }
 
-    if (tier === "uplink_unlimited") {
-      startSSE();
+      startPolling(tier);
+
+      if (tier === "uplink_unlimited") {
+        startSSE();
+      }
     }
+
+    init();
 
     return () => {
       stopPolling();
@@ -512,6 +532,28 @@ export default function App() {
     [],
   );
 
+  // ── Widget pin toggle (hover icon on consolidated chip) ─────────
+
+  const handleTogglePin = useCallback(
+    (widgetId: string) => {
+      setPrefs((prev) => {
+        const pinned = { ...prev.widgets.pinnedWidgets };
+        if (pinned[widgetId]) {
+          delete pinned[widgetId];
+        } else {
+          pinned[widgetId] = { side: "left" };
+        }
+        const updated = {
+          ...prev,
+          widgets: { ...prev.widgets, pinnedWidgets: pinned },
+        };
+        savePrefs(updated);
+        return updated;
+      });
+    },
+    [],
+  );
+
   // ── Ticker position toggle ─────────────────────────────────────
 
   const handleTogglePosition = useCallback(() => {
@@ -658,6 +700,9 @@ export default function App() {
   // ── Merge channel + widget tabs ──────────────────────────────
   const activeTabs = [...channelTabs, ...prefs.widgets.enabledWidgets];
 
+  // ── Widget ticker data (local polling for clock/weather/sysmon) ──
+  const widgetData = useWidgetTickerData(prefs.widgets);
+
   // ── Render ─────────────────────────────────────────────────────
 
   const showTicker = !tickerCollapsed && prefs.ticker.showTicker;
@@ -681,7 +726,10 @@ export default function App() {
               key={`row${i}-${prefs.ticker.tickerGap}-${prefs.ticker.tickerSpeed}-${prefs.ticker.hoverSpeed}-${prefs.ticker.tickerMode}-${prefs.ticker.mixMode}-${prefs.ticker.chipColors}-${prefs.ticker.tickerDirection}-${prefs.ticker.scrollMode}-${prefs.ticker.stepPause}-${prefs.appearance.tickerRows}`}
               dashboard={dashboard}
               activeTabs={activeTabs}
+              widgetData={widgetData}
               onChipClick={handleChipClick}
+              onTogglePin={handleTogglePin}
+              pinnedWidgets={prefs.widgets.pinnedWidgets}
               speed={prefs.ticker.tickerSpeed}
               gap={TICKER_GAPS[prefs.ticker.tickerGap]}
               pauseOnHover={prefs.ticker.pauseOnHover}

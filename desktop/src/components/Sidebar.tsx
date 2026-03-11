@@ -37,6 +37,8 @@ interface SidebarProps {
   onAddChannel: (channelType: ChannelType) => void;
   /** Toggle a widget on/off */
   onToggleWidget: (widgetId: string) => void;
+  /** Enter configure mode for a widget */
+  onConfigureWidget: (widgetId: string) => void;
   /** Trigger sign-in flow */
   onLogin: () => void;
 }
@@ -57,6 +59,57 @@ interface PopoverAnchor {
   y: number;
 }
 
+// ── EKG Logo (must be top-level to avoid remount on parent re-render) ──
+
+function EkgLogo({ idPrefix, alive }: { idPrefix: string; alive: boolean }) {
+  return (
+    <svg viewBox="0 0 32 16" fill="none" aria-hidden="true" className="w-10 h-6 shrink-0">
+      <defs>
+        <linearGradient id={`${idPrefix}-grad`} x1="0" y1="0" x2="32" y2="0" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#34d399" />
+          <stop offset="33%" stopColor="#ff4757" />
+          <stop offset="66%" stopColor="#00d4ff" />
+          <stop offset="100%" stopColor="#a855f7" />
+        </linearGradient>
+        <linearGradient id={`${idPrefix}-dim`} x1="0" y1="0" x2="32" y2="0" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#34d399" stopOpacity="0.15" />
+          <stop offset="33%" stopColor="#ff4757" stopOpacity="0.15" />
+          <stop offset="66%" stopColor="#00d4ff" stopOpacity="0.15" />
+          <stop offset="100%" stopColor="#a855f7" stopOpacity="0.15" />
+        </linearGradient>
+        <filter id={`${idPrefix}-glow`}>
+          <feGaussianBlur stdDeviation="1.5" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+      <path
+        d={EKG_PATH}
+        stroke={alive ? `url(#${idPrefix}-dim)` : "var(--color-fg-4)"}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={clsx(!alive && "opacity-20")}
+      />
+      {alive && (
+        <path
+          d={EKG_PATH}
+          stroke={`url(#${idPrefix}-grad)`}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          pathLength={100}
+          strokeDasharray="20 80"
+          className="ekg-trace"
+          filter={`url(#${idPrefix}-glow)`}
+        />
+      )}
+    </svg>
+  );
+}
+
 // ── Component ───────────────────────────────────────────────────
 
 export default function Sidebar({
@@ -73,6 +126,7 @@ export default function Sidebar({
   onConfigureChannel,
   onAddChannel,
   onToggleWidget,
+  onConfigureWidget,
   onLogin,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(
@@ -180,57 +234,6 @@ export default function Sidebar({
   const firstSource =
     sortedChannels[0]?.channel_type ?? sortedEnabledWidgets[0]?.id;
 
-  // ── Shared EKG SVG ──────────────────────────────────────────
-
-  function EkgLogo({ idPrefix }: { idPrefix: string }) {
-    return (
-      <svg viewBox="0 0 32 16" fill="none" aria-hidden="true" className="w-10 h-6 shrink-0">
-        <defs>
-          <linearGradient id={`${idPrefix}-grad`} x1="0" y1="0" x2="32" y2="0" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#34d399" />
-            <stop offset="33%" stopColor="#ff4757" />
-            <stop offset="66%" stopColor="#00d4ff" />
-            <stop offset="100%" stopColor="#a855f7" />
-          </linearGradient>
-          <linearGradient id={`${idPrefix}-dim`} x1="0" y1="0" x2="32" y2="0" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#34d399" stopOpacity="0.15" />
-            <stop offset="33%" stopColor="#ff4757" stopOpacity="0.15" />
-            <stop offset="66%" stopColor="#00d4ff" stopOpacity="0.15" />
-            <stop offset="100%" stopColor="#a855f7" stopOpacity="0.15" />
-          </linearGradient>
-          <filter id={`${idPrefix}-glow`}>
-            <feGaussianBlur stdDeviation="1.5" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-        <path
-          d={EKG_PATH}
-          stroke={tickerAlive ? `url(#${idPrefix}-dim)` : "var(--color-fg-4)"}
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className={clsx(!tickerAlive && "opacity-20")}
-        />
-        {tickerAlive && (
-          <path
-            d={EKG_PATH}
-            stroke={`url(#${idPrefix}-grad)`}
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            pathLength={100}
-            strokeDasharray="20 80"
-            className="ekg-trace"
-            filter={`url(#${idPrefix}-glow)`}
-          />
-        )}
-      </svg>
-    );
-  }
-
   // ── Collapsed render ────────────────────────────────────────
 
   if (collapsed) {
@@ -246,7 +249,7 @@ export default function Sidebar({
             tickerAlive ? "border-b border-accent/15" : "border-b border-edge",
           )}
         >
-          <EkgLogo idPrefix="ekg-c" />
+          <EkgLogo idPrefix="ekg-c" alive={tickerAlive} />
         </button>
 
         {/* Source dots */}
@@ -352,7 +355,7 @@ export default function Sidebar({
               "radial-gradient(ellipse at 25% 50%, rgba(52,211,153,0.07) 0%, transparent 75%)",
           }}
         />
-        <EkgLogo idPrefix="ekg" />
+        <EkgLogo idPrefix="ekg" alive={tickerAlive} />
         <span
           className={clsx(
             "font-mono text-[15px] font-bold tracking-[0.15em] uppercase select-none transition-colors duration-500 whitespace-nowrap",
@@ -512,26 +515,49 @@ export default function Sidebar({
             <div className="flex flex-col gap-0.5">
               {sortedEnabledWidgets.map((widget) => {
                 const isActive = activeItem === widget.id;
+                const isConfiguring = isActive && configuring;
                 return (
-                  <button
-                    key={widget.id}
-                    onClick={() => onSelectItem(widget.id)}
-                    className={clsx(
-                      "flex items-center gap-2.5 w-full pl-3 pr-2 py-1.5 rounded-md text-[12px] font-medium transition-colors text-left",
-                      isActive
-                        ? "text-accent bg-accent/8"
-                        : "text-fg-2 hover:text-fg hover:bg-surface-hover",
-                    )}
-                  >
-                    <div
+                  <div key={widget.id} className="group flex items-center">
+                    <button
+                      onClick={() => onSelectItem(widget.id)}
                       className={clsx(
-                        "w-2 h-2 rounded-full shrink-0 transition-opacity",
-                        isActive ? "opacity-100" : "opacity-60",
+                        "flex items-center gap-2.5 flex-1 min-w-0 pl-3 pr-2 py-1.5 rounded-md text-[12px] font-medium transition-colors",
+                        isActive
+                          ? "text-accent bg-accent/8"
+                          : "text-fg-2 hover:text-fg hover:bg-surface-hover",
                       )}
-                      style={{ background: widget.hex }}
-                    />
-                    <span className="truncate">{widget.name}</span>
-                  </button>
+                    >
+                      <div
+                        className={clsx(
+                          "w-2 h-2 rounded-full shrink-0 transition-opacity",
+                          isActive ? "opacity-100" : "opacity-60",
+                        )}
+                        style={{ background: widget.hex }}
+                      />
+                      <span className="truncate">{widget.name}</span>
+                      {isConfiguring && (
+                        <span className="text-[8px] text-accent/50 ml-auto shrink-0">
+                          config
+                        </span>
+                      )}
+                    </button>
+                    {/* Gear icon — configure widget */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onConfigureWidget(widget.id);
+                      }}
+                      title={`Configure ${widget.name}`}
+                      className={clsx(
+                        "w-7 h-7 flex items-center justify-center rounded-md transition-all shrink-0",
+                        isActive
+                          ? "text-fg-3 opacity-60 hover:opacity-100 hover:text-fg-2 hover:bg-surface-hover"
+                          : "text-fg-4 opacity-0 group-hover:opacity-60 hover:!opacity-100 hover:text-fg-2 hover:bg-surface-hover",
+                      )}
+                    >
+                      <Settings size={12} />
+                    </button>
+                  </div>
                 );
               })}
             </div>

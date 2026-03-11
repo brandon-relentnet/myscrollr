@@ -38,6 +38,8 @@ const WEATHER_UNIT_KEY = "scrollr:widget:weather:unit";
 
 // ── Mini Clock Chip ─────────────────────────────────────────────
 
+const FORMAT_STORAGE_KEY = "scrollr:widget:clock:format";
+
 function MiniClockChip({ onClick }: { onClick: () => void }) {
   const [time, setTime] = useState(() => formatTime());
 
@@ -60,6 +62,12 @@ function MiniClockChip({ onClick }: { onClick: () => void }) {
 
 function formatTime(): string {
   const d = new Date();
+  const fmt = localStorage.getItem(FORMAT_STORAGE_KEY);
+  if (fmt === "24h") {
+    const h = String(d.getHours()).padStart(2, "0");
+    const m = String(d.getMinutes()).padStart(2, "0");
+    return `${h}:${m}`;
+  }
   const h = d.getHours();
   const m = String(d.getMinutes()).padStart(2, "0");
   const ampm = h >= 12 ? "PM" : "AM";
@@ -151,7 +159,7 @@ interface SavedCity {
   weather: { temperature: number } | null;
 }
 
-function MiniWeatherChip({ onClick }: { onClick: () => void }) {
+function MiniWeatherChip({ onClick, taskbarCity }: { onClick: () => void; taskbarCity?: string }) {
   const [display, setDisplay] = useState<string | null>(null);
 
   useEffect(() => {
@@ -160,12 +168,15 @@ function MiniWeatherChip({ onClick }: { onClick: () => void }) {
         const raw = localStorage.getItem(WEATHER_STORAGE_KEY);
         if (!raw) { setDisplay(null); return; }
         const cities = JSON.parse(raw) as SavedCity[];
-        const first = cities?.[0];
-        if (!first?.weather) { setDisplay(null); return; }
+        // Show the configured taskbar city, or fallback to the first city
+        const city = (taskbarCity
+          ? cities.find((c) => c.location.name === taskbarCity)
+          : undefined) ?? cities?.[0];
+        if (!city?.weather) { setDisplay(null); return; }
 
         const unitRaw = localStorage.getItem(WEATHER_UNIT_KEY);
         const unit = unitRaw === "celsius" ? "celsius" : "fahrenheit";
-        const tempC = first.weather.temperature;
+        const tempC = city.weather.temperature;
         const temp = unit === "fahrenheit" ? (tempC * 9) / 5 + 32 : tempC;
 
         setDisplay(`${Math.round(temp)}\u00B0`);
@@ -178,7 +189,7 @@ function MiniWeatherChip({ onClick }: { onClick: () => void }) {
     // Weather data changes infrequently; check every 30s
     const id = setInterval(update, 30_000);
     return () => clearInterval(id);
-  }, []);
+  }, [taskbarCity]);
 
   if (display === null) return null;
 
@@ -196,8 +207,18 @@ function MiniWeatherChip({ onClick }: { onClick: () => void }) {
 
 // ── Mini System Monitor Chip ────────────────────────────────────
 
-function MiniSysmonChip({ onClick }: { onClick: () => void }) {
-  const [cpuPct, setCpuPct] = useState<number | null>(null);
+interface SysInfo {
+  cpuUsage: number;
+  memTotal: number;
+  memUsed: number;
+  gpuUsage: number | null;
+}
+
+type SysMetric = "cpu" | "memory" | "gpu";
+
+function MiniSysmonChip({ onClick, metric = "cpu" }: { onClick: () => void; metric?: SysMetric }) {
+  const [display, setDisplay] = useState<string | null>(null);
+  const [hot, setHot] = useState(false);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -205,10 +226,30 @@ function MiniSysmonChip({ onClick }: { onClick: () => void }) {
 
     async function poll() {
       try {
-        const info = await invoke<{ cpuUsage: number }>("get_system_info");
-        if (mountedRef.current) setCpuPct(Math.round(info.cpuUsage));
+        const info = await invoke<SysInfo>("get_system_info");
+        if (!mountedRef.current) return;
+
+        let pct: number | null = null;
+        switch (metric) {
+          case "cpu":
+            pct = Math.round(info.cpuUsage);
+            break;
+          case "memory":
+            pct = info.memTotal > 0 ? Math.round((info.memUsed / info.memTotal) * 100) : null;
+            break;
+          case "gpu":
+            pct = info.gpuUsage != null ? Math.round(info.gpuUsage) : null;
+            break;
+        }
+
+        if (pct != null) {
+          setDisplay(`${pct}%`);
+          setHot(pct > 80);
+        } else {
+          setDisplay(null);
+        }
       } catch {
-        if (mountedRef.current) setCpuPct(null);
+        if (mountedRef.current) setDisplay(null);
       }
     }
 
@@ -218,19 +259,21 @@ function MiniSysmonChip({ onClick }: { onClick: () => void }) {
       mountedRef.current = false;
       clearInterval(id);
     };
-  }, []);
+  }, [metric]);
 
-  if (cpuPct === null) return null;
+  if (display === null) return null;
+
+  const labels: Record<SysMetric, string> = { cpu: "System Monitor", memory: "Memory", gpu: "GPU" };
 
   return (
     <button
       onClick={onClick}
-      title="System Monitor"
+      title={labels[metric]}
       className="flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-mono tabular-nums hover:bg-surface-hover transition-colors cursor-pointer shrink-0"
     >
       <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--color-widget-sysmon)" }} />
-      <span className={clsx("text-fg-2", cpuPct > 80 && "text-error")}>
-        {cpuPct}%
+      <span className={clsx("text-fg-2", hot && "text-error")}>
+        {display}
       </span>
     </button>
   );
@@ -360,8 +403,8 @@ export default function AppTaskbar({
           <div className="flex items-center gap-0.5 flex-1 min-w-0 overflow-hidden">
             {hasClock && <MiniClockChip onClick={() => nav("clock")} />}
             {hasClock && <MiniTimerChip onClick={() => nav("clock")} />}
-            {hasWeather && <MiniWeatherChip onClick={() => nav("weather")} />}
-            {hasSysmon && <MiniSysmonChip onClick={() => nav("sysmon")} />}
+            {hasWeather && <MiniWeatherChip onClick={() => nav("weather")} taskbarCity={prefs.widgets.weather.taskbarCity || undefined} />}
+            {hasSysmon && <MiniSysmonChip onClick={() => nav("sysmon")} metric={prefs.widgets.sysmon.taskbarMetric} />}
           </div>
           <div className="w-px h-3 bg-edge mx-1.5 shrink-0" />
         </>

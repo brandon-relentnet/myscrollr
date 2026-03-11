@@ -17,6 +17,8 @@ import AppTaskbar from "./components/AppTaskbar";
 import { getWebChannel, getAllWebChannels } from "./channels/webRegistry";
 import { getChannel } from "~/channels/registry";
 import { getWidget, getAllWidgets } from "./widgets/registry";
+import WidgetConfigPanel from "./widgets/WidgetConfigPanel";
+import { useWidgetTickerData } from "./hooks/useWidgetTickerData";
 import {
   login as authLogin,
   logout as authLogout,
@@ -179,7 +181,7 @@ export default function MainApp() {
   // ── Active item identity ──────────────────────────────────────
 
   const isChannelActive = channels.some(
-    (ch) => ch.channel_type === activeItem && ch.enabled,
+    (ch) => ch.channel_type === activeItem,
   );
   const activeWidget = getWidget(activeItem);
   const isWidgetActive = !!activeWidget && enabledWidgets.includes(activeItem);
@@ -265,39 +267,59 @@ export default function MainApp() {
     lastFetchRef.current = Date.now();
     try {
       setFetchError(null);
-      const isAuth = authenticatedRef.current;
-      let url = `${API_URL}/public/feed`;
-      const headers: Record<string, string> = {};
 
-      if (isAuth) {
-        const token = await getValidToken();
-        if (token) {
-          url = `${API_URL}/dashboard`;
-          headers["Authorization"] = `Bearer ${token}`;
+      // Always attempt to get a valid token — handles silent refresh
+      // even when isAuthenticated() returned false at init (expired
+      // access token with a valid refresh token).
+      const token = await getValidToken();
+
+      if (token) {
+        // Sync auth + tier state (covers silent refresh from expired state)
+        if (!authenticatedRef.current) {
+          setAuthenticated(true);
         }
-      }
+        const currentTier = getTier();
+        setTier(currentTier);
 
-      const res = await fetch(url, { headers });
-      if (res.status === 401 && isAuth) {
-        // Token expired, fall back to anonymous
-        setAuthenticated(false);
-        setTier("free");
-        setSessionExpired(true);
-        const anonRes = await fetch(`${API_URL}/public/feed`);
-        if (anonRes.ok) {
-          const data = await anonRes.json();
+        const res = await fetch(`${API_URL}/dashboard`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (res.status === 401) {
+          // Token rejected by server — fall back to anonymous
+          setAuthenticated(false);
+          setTier("free");
+          setSessionExpired(true);
+          const anonRes = await fetch(`${API_URL}/public/feed`);
+          if (anonRes.ok) {
+            const data = await anonRes.json();
+            setDashboard({ data: data.data });
+            if (data.channels) setChannels(data.channels);
+          }
+          return;
+        }
+
+        if (res.ok) {
+          const data = await res.json();
           setDashboard({ data: data.data });
           if (data.channels) setChannels(data.channels);
+        } else {
+          setFetchError(`Server returned ${res.status}`);
         }
-        return;
-      }
-
-      if (res.ok) {
-        const data = await res.json();
-        setDashboard({ data: data.data });
-        if (data.channels) setChannels(data.channels);
       } else {
-        setFetchError(`Server returned ${res.status}`);
+        // No token available (not logged in, or refresh failed)
+        if (authenticatedRef.current) {
+          setAuthenticated(false);
+          setTier("free");
+        }
+        const res = await fetch(`${API_URL}/public/feed`);
+        if (res.ok) {
+          const data = await res.json();
+          setDashboard({ data: data.data });
+          if (data.channels) setChannels(data.channels);
+        } else {
+          setFetchError(`Server returned ${res.status}`);
+        }
       }
     } catch (err) {
       console.error("[Scrollr] Dashboard fetch failed:", err);
@@ -339,6 +361,12 @@ export default function MainApp() {
     setActiveItem(channelType);
     setConfiguring(true);
     savePref("activeItem", channelType);
+  }, []);
+
+  const handleConfigureWidget = useCallback((widgetId: string) => {
+    setActiveItem(widgetId);
+    setConfiguring(true);
+    savePref("activeItem", widgetId);
   }, []);
 
   const handleBackToFeed = useCallback(() => {
@@ -558,6 +586,9 @@ export default function MainApp() {
     [channels, prefs.widgets.enabledWidgets],
   );
 
+  // ── Widget ticker data (local polling for clock/weather/sysmon) ──
+  const widgetData = useWidgetTickerData(prefs.widgets);
+
   // ── Ticker / taskbar toggles ────────────────────────────────
 
   function handleToggleAppTicker() {
@@ -574,6 +605,28 @@ export default function MainApp() {
     setPrefs(next);
     savePrefs(next);
   }
+
+  // ── Widget pin toggle (hover icon on consolidated chip) ─────────
+
+  const handleTogglePin = useCallback(
+    (widgetId: string) => {
+      setPrefs((prev) => {
+        const pinned = { ...prev.widgets.pinnedWidgets };
+        if (pinned[widgetId]) {
+          delete pinned[widgetId];
+        } else {
+          pinned[widgetId] = { side: "left" };
+        }
+        const updated = {
+          ...prev,
+          widgets: { ...prev.widgets, pinnedWidgets: pinned },
+        };
+        savePrefs(updated);
+        return updated;
+      });
+    },
+    [],
+  );
 
   // ── Content rendering helpers ────────────────────────────────
 
@@ -709,7 +762,20 @@ export default function MainApp() {
       return <FeedTabComponent mode="comfort" channelConfig={channelConfig} />;
     }
 
-    // Widget
+    // Widget — configure mode
+    if (isWidgetActive && configuring) {
+      return (
+        <div className="flex-1 overflow-y-auto p-4 scrollbar-thin dashboard-content">
+          <WidgetConfigPanel
+            widgetId={activeItem}
+            prefs={prefs}
+            onPrefsChange={handlePrefsChange}
+          />
+        </div>
+      );
+    }
+
+    // Widget — feed mode
     if (isWidgetActive && activeWidget) {
       const channelConfig = {
         __initialItems: [],
@@ -775,6 +841,7 @@ export default function MainApp() {
         onConfigureChannel={handleConfigureChannel}
         onAddChannel={handleAddChannel}
         onToggleWidget={handleToggleWidget}
+        onConfigureWidget={handleConfigureWidget}
         onLogin={handleLogin}
       />
 
@@ -786,6 +853,9 @@ export default function MainApp() {
               key={`app-row${i}-${prefs.ticker.tickerGap}-${prefs.ticker.tickerSpeed}-${prefs.ticker.hoverSpeed}-${prefs.ticker.tickerMode}-${prefs.ticker.mixMode}-${prefs.ticker.chipColors}-${prefs.ticker.tickerDirection}-${prefs.ticker.scrollMode}-${prefs.ticker.stepPause}-${prefs.appearance.tickerRows}`}
               dashboard={dashboard}
               activeTabs={activeTabs}
+              widgetData={widgetData}
+              onTogglePin={handleTogglePin}
+              pinnedWidgets={prefs.widgets.pinnedWidgets}
               speed={prefs.ticker.tickerSpeed}
               gap={TICKER_GAPS[prefs.ticker.tickerGap]}
               pauseOnHover={prefs.ticker.pauseOnHover}
@@ -818,8 +888,8 @@ export default function MainApp() {
         {/* Header */}
         <header className="flex items-center justify-between px-6 h-14 border-b border-edge shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            {/* Back arrow when configuring a channel */}
-            {configuring && isChannelActive && (
+            {/* Back arrow when configuring a channel or widget */}
+            {configuring && (isChannelActive || isWidgetActive) && (
               <button
                 onClick={handleBackToFeed}
                 className="flex items-center gap-1.5 text-xs font-medium text-fg-3 hover:text-fg-2 transition-colors shrink-0"
@@ -832,7 +902,7 @@ export default function MainApp() {
             )}
             <h1 className="text-base font-semibold truncate">
               {activeItemName}
-              {configuring && isChannelActive && (
+              {configuring && (isChannelActive || isWidgetActive) && (
                 <span className="text-fg-3 font-normal ml-2 text-sm">
                   Configuration
                 </span>

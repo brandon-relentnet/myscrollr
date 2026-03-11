@@ -14,6 +14,7 @@ export type MixMode = "grouped" | "weave" | "random";
 export type ChipColorMode = "channel" | "accent" | "muted";
 export type TickerDirection = "left" | "right";
 export type ScrollMode = "continuous" | "step" | "flip";
+export type PinSide = "left" | "right";
 
 export interface AppearancePrefs {
   theme: Theme;
@@ -59,12 +60,70 @@ export interface TaskbarPrefs {
   pinnedActions: string[];
 }
 
+// ── Per-widget config types ─────────────────────────────────────
+
+export interface ClockTickerConfig {
+  localTime: boolean;
+  /** Whether to show world clocks on the ticker at all (default false). */
+  showTimezones: boolean;
+  /** Timezone IANA IDs excluded from the ticker (empty = all configured TZs shown). */
+  excludedTimezones: string[];
+  activeTimer: boolean;
+}
+
+export interface ClockPomodoroConfig {
+  workMins: number;
+  shortBreakMins: number;
+  longBreakMins: number;
+  longBreakEvery: number;
+}
+
+export interface ClockWidgetConfig {
+  ticker: ClockTickerConfig;
+  pomodoro: ClockPomodoroConfig;
+}
+
+export interface WeatherTickerConfig {
+  /** City display names excluded from the ticker (empty = all configured cities shown). */
+  excludedCities: string[];
+}
+
+export interface WeatherWidgetConfig {
+  /** City display name shown on the taskbar mini chip (empty = first configured city). */
+  taskbarCity: string;
+  ticker: WeatherTickerConfig;
+}
+
+export type TaskbarMetric = "cpu" | "memory" | "gpu";
+export type TempUnit = "celsius" | "fahrenheit";
+
+export interface SysmonTickerConfig {
+  cpu: boolean;
+  memory: boolean;
+  gpu: boolean;
+  gpuPower: boolean;
+}
+
+export interface SysmonWidgetConfig {
+  taskbarMetric: TaskbarMetric;
+  refreshInterval: number;
+  tempUnit: TempUnit;
+  ticker: SysmonTickerConfig;
+}
+
+export interface WidgetPinConfig {
+  side: PinSide;
+}
+
 export interface WidgetPrefs {
   /** Widget IDs that are enabled (shown in feed tabs and ticker). */
   enabledWidgets: string[];
-  /** Per-widget settings — each key is a widget ID. */
-  clock: { timezones: string[]; defaultTimerMode: "pomodoro" | "countdown" | "stopwatch" };
-  weather: { apiKey: string; location: string; units: "metric" | "imperial" };
+  /** Per-widget pin state: removes the chip from the scrolling ticker and
+   *  places it as a static element on the chosen side. Keyed by widget ID. */
+  pinnedWidgets: Record<string, WidgetPinConfig>;
+  clock: ClockWidgetConfig;
+  weather: WeatherWidgetConfig;
+  sysmon: SysmonWidgetConfig;
 }
 
 export interface AppPreferences {
@@ -120,10 +179,48 @@ export const DEFAULT_TASKBAR: TaskbarPrefs = {
   pinnedActions: ["showTicker", "width", "pinned"],
 };
 
+export const DEFAULT_CLOCK_TICKER: ClockTickerConfig = {
+  localTime: true,
+  showTimezones: false,
+  excludedTimezones: [],
+  activeTimer: true,
+};
+
+export const DEFAULT_CLOCK_POMODORO: ClockPomodoroConfig = {
+  workMins: 25,
+  shortBreakMins: 5,
+  longBreakMins: 15,
+  longBreakEvery: 4,
+};
+
+export const DEFAULT_WEATHER_TICKER: WeatherTickerConfig = {
+  excludedCities: [],
+};
+
+export const DEFAULT_SYSMON_TICKER: SysmonTickerConfig = {
+  cpu: true,
+  memory: true,
+  gpu: false,
+  gpuPower: false,
+};
+
 export const DEFAULT_WIDGETS: WidgetPrefs = {
   enabledWidgets: [],
-  clock: { timezones: ["America/New_York", "Europe/London", "Asia/Tokyo"], defaultTimerMode: "pomodoro" },
-  weather: { apiKey: "", location: "", units: "imperial" },
+  pinnedWidgets: {},
+  clock: {
+    ticker: { ...DEFAULT_CLOCK_TICKER },
+    pomodoro: { ...DEFAULT_CLOCK_POMODORO },
+  },
+  weather: {
+    taskbarCity: "",
+    ticker: { ...DEFAULT_WEATHER_TICKER },
+  },
+  sysmon: {
+    taskbarMetric: "cpu",
+    refreshInterval: 2,
+    tempUnit: "celsius",
+    ticker: { ...DEFAULT_SYSMON_TICKER },
+  },
 };
 
 export const DEFAULT_PREFS: AppPreferences = {
@@ -202,6 +299,41 @@ export function savePref<T>(key: string, value: T): void {
 
 // ── Structured preferences ─────────────────────────────────────
 
+/** Deep-merge saved widget prefs with defaults.
+ *  Handles migration from the old flat shape gracefully. */
+function mergeWidgetPrefs(saved?: Partial<WidgetPrefs>): WidgetPrefs {
+  if (!saved) return { ...DEFAULT_WIDGETS };
+
+  // Safe accessor for nested sub-objects that may not exist in old formats
+  const obj = (v: unknown): Record<string, unknown> | undefined =>
+    v != null && typeof v === "object" ? (v as Record<string, unknown>) : undefined;
+
+  const clk = obj(saved.clock);
+  const wth = obj(saved.weather);
+  const sys = obj(saved.sysmon);
+
+  return {
+    enabledWidgets: Array.isArray(saved.enabledWidgets) ? saved.enabledWidgets : DEFAULT_WIDGETS.enabledWidgets,
+    pinnedWidgets: (saved.pinnedWidgets != null && typeof saved.pinnedWidgets === "object" && !Array.isArray(saved.pinnedWidgets))
+      ? saved.pinnedWidgets as Record<string, WidgetPinConfig>
+      : {},
+    clock: {
+      ticker: { ...DEFAULT_CLOCK_TICKER, ...obj(clk?.ticker) },
+      pomodoro: { ...DEFAULT_CLOCK_POMODORO, ...obj(clk?.pomodoro) },
+    },
+    weather: {
+      taskbarCity: typeof wth?.taskbarCity === "string" ? wth.taskbarCity : DEFAULT_WIDGETS.weather.taskbarCity,
+      ticker: { ...DEFAULT_WEATHER_TICKER, ...obj(wth?.ticker) },
+    },
+    sysmon: {
+      taskbarMetric: (sys?.taskbarMetric as TaskbarMetric) ?? DEFAULT_WIDGETS.sysmon.taskbarMetric,
+      refreshInterval: typeof sys?.refreshInterval === "number" ? sys.refreshInterval : DEFAULT_WIDGETS.sysmon.refreshInterval,
+      tempUnit: (sys?.tempUnit as TempUnit) ?? DEFAULT_WIDGETS.sysmon.tempUnit,
+      ticker: { ...DEFAULT_SYSMON_TICKER, ...obj(sys?.ticker) },
+    },
+  };
+}
+
 export function loadPrefs(): AppPreferences {
   try {
     const raw = localStorage.getItem(PREFIX);
@@ -219,7 +351,7 @@ export function loadPrefs(): AppPreferences {
       startup: { ...DEFAULT_STARTUP, ...source.startup },
       window: { ...DEFAULT_WINDOW, ...source.window },
       taskbar: { ...DEFAULT_TASKBAR, ...source.taskbar },
-      widgets: { ...DEFAULT_WIDGETS, ...source.widgets },
+      widgets: mergeWidgetPrefs(source.widgets as Partial<WidgetPrefs> | undefined),
     };
 
     // If migrated from v1, persist the new format
