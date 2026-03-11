@@ -2,9 +2,15 @@ import { clsx } from "clsx";
 import { Pin, PinOff } from "lucide-react";
 import type { ChipColorMode } from "../../preferences";
 import { getChipColors } from "./chipColors";
-import type { WeatherChipData } from "./WeatherTickerChip";
-
 // ── Types ────────────────────────────────────────────────────────
+
+interface WeatherChipData {
+  id: string;
+  label: string;
+  temp: string;
+  icon: string;
+  detail?: string;
+}
 
 interface WeatherConsolidatedChipProps {
   items: WeatherChipData[];

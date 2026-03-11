@@ -37,12 +37,7 @@ import { getAllChannels } from "../channels/registry";
 import { getAllWidgets, getWidget } from "../widgets/registry";
 
 // Data
-import {
-  dashboardQueryOptions,
-  useUpdateChannel,
-  useCreateChannel,
-  useDeleteChannel,
-} from "../api/queries";
+import { dashboardQueryOptions } from "../api/queries";
 import { channelsApi } from "../api/client";
 import type { ChannelType } from "../api/client";
 

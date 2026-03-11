@@ -408,5 +408,3 @@ export const sysmonWidget: WidgetManifest = {
   desktopOnly: true,
   FeedTab: SysmonFeedTab,
 };
-
-export default SysmonFeedTab;

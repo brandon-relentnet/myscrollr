@@ -88,23 +88,16 @@ fn probe_gpu_static() -> (Option<std::path::PathBuf>, Option<String>, Option<u64
     }
 
     // Fallback: try nvidia-smi once for static values
-    let has_nvidia_smi = std::process::Command::new("nvidia-smi")
+    if let Ok(out) = std::process::Command::new("nvidia-smi")
         .args(["--query-gpu=name,memory.total", "--format=csv,noheader,nounits"])
         .output()
-        .is_ok_and(|o| o.status.success());
-
-    if has_nvidia_smi {
-        if let Ok(out) = std::process::Command::new("nvidia-smi")
-            .args(["--query-gpu=name,memory.total", "--format=csv,noheader,nounits"])
-            .output()
-        {
-            if out.status.success() {
-                let line = String::from_utf8_lossy(&out.stdout);
-                let f: Vec<&str> = line.trim().splitn(2, ", ").collect();
-                let name = f.first().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
-                let vram = f.get(1).and_then(|s| s.trim().parse::<u64>().ok()).map(|m| m * 1024 * 1024);
-                return (None, name, vram, true);
-            }
+    {
+        if out.status.success() {
+            let line = String::from_utf8_lossy(&out.stdout);
+            let f: Vec<&str> = line.trim().splitn(2, ", ").collect();
+            let name = f.first().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+            let vram = f.get(1).and_then(|s| s.trim().parse::<u64>().ok()).map(|m| m * 1024 * 1024);
+            return (None, name, vram, true);
         }
     }
 

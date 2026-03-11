@@ -2,9 +2,15 @@ import { clsx } from "clsx";
 import { Pin, PinOff } from "lucide-react";
 import type { ChipColorMode } from "../../preferences";
 import { getChipColors } from "./chipColors";
-import type { SysmonChipData } from "./SysmonTickerChip";
-
 // ── Types ────────────────────────────────────────────────────────
+
+interface SysmonChipData {
+  id: string;
+  label: string;
+  value: string;
+  detail?: string;
+  hot?: boolean;
+}
 
 interface SysmonConsolidatedChipProps {
   items: SysmonChipData[];

@@ -1,8 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { WidgetPrefs } from "../preferences";
-import type { ClockChipData } from "../components/chips/ClockTickerChip";
-import type { WeatherChipData } from "../components/chips/WeatherTickerChip";
-import type { SysmonChipData } from "../components/chips/SysmonTickerChip";
 import { fetchSysmonData } from "./useSysmonData";
 import type { SystemInfo } from "./useSysmonData";
 
@@ -34,6 +31,32 @@ interface SavedCity {
     wind_direction?: number;
   };
   lastFetched?: number;
+}
+
+// ── Chip data types (local to this hook; mirrored in each chip component) ──
+
+interface ClockChipData {
+  id: string;
+  kind: "clock" | "timer";
+  label: string;
+  value: string;
+  detail?: string;
+}
+
+interface WeatherChipData {
+  id: string;
+  label: string;
+  temp: string;
+  icon: string;
+  detail?: string;
+}
+
+interface SysmonChipData {
+  id: string;
+  label: string;
+  value: string;
+  detail?: string;
+  hot?: boolean;
 }
 
 // ── Result type ─────────────────────────────────────────────────

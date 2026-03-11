@@ -2,9 +2,15 @@ import { clsx } from "clsx";
 import { Pin, PinOff } from "lucide-react";
 import type { ChipColorMode } from "../../preferences";
 import { getChipColors } from "./chipColors";
-import type { ClockChipData } from "./ClockTickerChip";
-
 // ── Types ────────────────────────────────────────────────────────
+
+interface ClockChipData {
+  id: string;
+  kind: "clock" | "timer";
+  label: string;
+  value: string;
+  detail?: string;
+}
 
 interface ClockConsolidatedChipProps {
   items: ClockChipData[];
