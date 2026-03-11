@@ -1,22 +1,52 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { FeedTabProps } from "~/channels/types";
 import type { WidgetManifest } from "~/widgets/types";
 
 // ── Types ───────────────────────────────────────────────────────
 
+interface ComponentTemp {
+  label: string;
+  temp: number;
+  max: number;
+  critical: number | null;
+}
+
+interface NetworkInfo {
+  name: string;
+  rxBytes: number;
+  txBytes: number;
+}
+
 interface SystemInfo {
   cpuName: string;
   cpuCores: number;
   cpuUsage: number;
+  cpuFreqMhz: number | null;
+  gpuName: string | null;
+  gpuUsage: number | null;
+  gpuVramTotal: number | null;
+  gpuVramUsed: number | null;
+  gpuPowerWatts: number | null;
+  gpuPowerCapWatts: number | null;
+  gpuClockMhz: number | null;
   memTotal: number;
   memUsed: number;
-  swapTotal: number;
-  swapUsed: number;
   osName: string;
   hostname: string;
   uptime: number;
+  components: ComponentTemp[];
+  network: NetworkInfo[];
 }
+
+interface TempReading {
+  temp: number;
+  critical: number | null;
+}
+
+// ── Constants ───────────────────────────────────────────────────
+
+const POLL_INTERVAL = 2000;
 
 // ── Helpers ─────────────────────────────────────────────────────
 
@@ -27,7 +57,18 @@ function formatBytes(bytes: number): string {
   const mb = kb / 1024;
   if (mb < 1024) return `${mb.toFixed(1)} MB`;
   const gb = mb / 1024;
-  return `${gb.toFixed(1)} GB`;
+  if (gb < 1024) return `${gb.toFixed(1)} GB`;
+  const tb = gb / 1024;
+  return `${tb.toFixed(2)} TB`;
+}
+
+function formatRate(bytesPerInterval: number): string {
+  const bytesPerSec = bytesPerInterval / (POLL_INTERVAL / 1000);
+  if (bytesPerSec < 1024) return `${Math.round(bytesPerSec)} B/s`;
+  const kbps = bytesPerSec / 1024;
+  if (kbps < 1024) return `${kbps.toFixed(1)} KB/s`;
+  const mbps = kbps / 1024;
+  return `${mbps.toFixed(1)} MB/s`;
 }
 
 function formatUptime(secs: number): string {
@@ -39,47 +80,68 @@ function formatUptime(secs: number): string {
   return `${mins}m`;
 }
 
+/** Format MHz as GHz when >= 1000, otherwise MHz. */
+function formatFreq(mhz: number): string {
+  if (mhz >= 1000) return `${(mhz / 1000).toFixed(1)} GHz`;
+  return `${mhz} MHz`;
+}
+
+/** Format watts, rounding to nearest integer. */
+function formatWatts(w: number): string {
+  return `${Math.round(w)}W`;
+}
+
 function usageColor(pct: number): string {
+  if (pct < 50) return "#34d399";
+  if (pct < 75) return "#fbbf24";
+  return "#f87171";
+}
+
+function usageColorClass(pct: number): string {
   if (pct < 50) return "text-emerald-400";
   if (pct < 75) return "text-amber-400";
   return "text-red-400";
 }
 
-// ── Usage Bar ───────────────────────────────────────────────────
+function tempColor(temp: number, critical: number | null): string {
+  if (critical && temp >= critical * 0.9) return "#f87171";
+  if (temp >= 80) return "#f87171";
+  if (temp >= 60) return "#fbbf24";
+  return "#34d399";
+}
 
-function UsageBar({
-  label,
-  used,
-  total,
-  formatFn,
-}: {
-  label: string;
-  used: number;
-  total: number;
-  formatFn?: (n: number) => string;
-}) {
-  const pct = total > 0 ? (used / total) * 100 : 0;
-  const fmt = formatFn ?? formatBytes;
+function tempColorClass(temp: number, critical: number | null): string {
+  if (critical && temp >= critical * 0.9) return "text-red-400";
+  if (temp >= 80) return "text-red-400";
+  if (temp >= 60) return "text-amber-400";
+  return "text-emerald-400";
+}
 
+/** Find CPU package/die temperature sensor. */
+function findCpuTemp(components: ComponentTemp[]): TempReading | null {
+  const m = components.find((c) =>
+    /package id|^tctl$|^tdie$/i.test(c.label),
+  );
+  return m ? { temp: m.temp, critical: m.critical } : null;
+}
+
+/** Find GPU temperature sensor (AMD edge/junction, nvidia, intel). */
+function findGpuTemp(components: ComponentTemp[]): TempReading | null {
+  const m = components.find((c) =>
+    /^edge$|^junction$|gpu/i.test(c.label),
+  );
+  return m ? { temp: m.temp, critical: m.critical } : null;
+}
+
+// ── Detail line helper ──────────────────────────────────────────
+
+/** Join non-null stat fragments with · separator. */
+function DetailLine({ items }: { items: (string | null | undefined)[] }) {
+  const filtered = items.filter(Boolean) as string[];
+  if (filtered.length === 0) return null;
   return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between">
-        <span className="text-[9px] font-mono text-fg-3 uppercase tracking-wider">
-          {label}
-        </span>
-        <span className={`text-[9px] font-mono tabular-nums ${usageColor(pct)}`}>
-          {Math.round(pct)}%
-        </span>
-      </div>
-      <div className="h-1.5 rounded-full bg-widget-sysmon/10 overflow-hidden">
-        <div
-          className="h-full rounded-full bg-widget-sysmon transition-all duration-500"
-          style={{ width: `${Math.min(100, pct)}%` }}
-        />
-      </div>
-      <div className="text-[8px] font-mono text-fg-4 tabular-nums">
-        {fmt(used)} / {fmt(total)}
-      </div>
+    <div className="text-xs font-mono text-fg-3 tabular-nums">
+      {filtered.join(" \u00B7 ")}
     </div>
   );
 }
@@ -92,38 +154,36 @@ function SysmonFeedTab({ mode: feedMode }: FeedTabProps) {
   const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const poll = useCallback(async () => {
+    try {
+      const data = await invoke<SystemInfo>("get_system_info");
+      setInfo(data);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
-
-    async function poll(): Promise<void> {
-      try {
-        const data = await invoke<SystemInfo>("get_system_info");
-        if (!cancelled) {
-          setInfo(data);
-          setError(null);
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : String(e));
-        }
+    (async () => {
+      await poll();
+      if (!cancelled) {
+        intervalRef.current = setInterval(poll, POLL_INTERVAL);
       }
-    }
-
-    poll();
-    intervalRef.current = setInterval(poll, 2000);
-
+    })();
     return () => {
       cancelled = true;
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, []);
+  }, [poll]);
 
   // ── Error state ─────────────────────────────────────────────
   if (error && !info) {
     return (
       <div className="p-4 flex flex-col items-center justify-center gap-2">
-        <span className="text-[10px] font-mono text-error">{error}</span>
-        <span className="text-[9px] font-mono text-fg-4">
+        <span className="text-xs font-mono text-error">{error}</span>
+        <span className="text-xs font-mono text-fg-3">
           System monitor requires the desktop app
         </span>
       </div>
@@ -134,116 +194,264 @@ function SysmonFeedTab({ mode: feedMode }: FeedTabProps) {
   if (!info) {
     return (
       <div className="p-4 flex items-center justify-center">
-        <span className="text-[9px] font-mono text-fg-4">
+        <span className="text-xs font-mono text-fg-3">
           Loading system info...
         </span>
       </div>
     );
   }
 
-  const memPct = info.memTotal > 0 ? (info.memUsed / info.memTotal) * 100 : 0;
+  const memPct =
+    info.memTotal > 0 ? (info.memUsed / info.memTotal) * 100 : 0;
+  const cpuTemp = findCpuTemp(info.components);
+  const gpuTemp = findGpuTemp(info.components);
 
-  // ── Compact render ──────────────────────────────────────────
+  // ── Compact ─────────────────────────────────────────────────
   if (compact) {
     return (
-      <div className="p-3 space-y-2">
+      <div className="p-3 space-y-1.5">
         <div className="flex items-center justify-between px-1">
-          <span className="text-[10px] font-mono font-semibold text-widget-sysmon/70 uppercase tracking-wider">
+          <span className="text-xs font-mono font-semibold text-widget-sysmon/80 uppercase tracking-wider">
             System
           </span>
-          <span className="text-[8px] font-mono text-fg-4">
+          <span className="text-xs font-mono text-fg-3">
             up {formatUptime(info.uptime)}
           </span>
         </div>
 
         <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-widget-sysmon/[0.04] border border-widget-sysmon/10">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <span className="text-[9px] font-mono text-widget-sysmon/50 shrink-0">
+          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            <span className="text-xs font-mono text-widget-sysmon/70 shrink-0">
               CPU
             </span>
-            <span className={`text-sm font-mono font-semibold tabular-nums ${usageColor(info.cpuUsage)}`}>
+            <span
+              className={`text-sm font-mono font-semibold tabular-nums ${usageColorClass(info.cpuUsage)}`}
+            >
               {Math.round(info.cpuUsage)}%
             </span>
           </div>
           <div className="w-px h-4 bg-widget-sysmon/10" />
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <span className="text-[9px] font-mono text-widget-sysmon/50 shrink-0">
+          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            <span className="text-xs font-mono text-widget-sysmon/70 shrink-0">
               RAM
             </span>
-            <span className={`text-sm font-mono font-semibold tabular-nums ${usageColor(memPct)}`}>
+            <span
+              className={`text-sm font-mono font-semibold tabular-nums ${usageColorClass(memPct)}`}
+            >
               {Math.round(memPct)}%
             </span>
           </div>
+          {(info.gpuUsage !== null || gpuTemp) && (
+            <>
+              <div className="w-px h-4 bg-widget-sysmon/10" />
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-xs font-mono text-widget-sysmon/70">
+                  GPU
+                </span>
+                {info.gpuUsage !== null ? (
+                  <span
+                    className={`text-sm font-mono font-semibold tabular-nums ${usageColorClass(info.gpuUsage)}`}
+                  >
+                    {Math.round(info.gpuUsage)}%
+                  </span>
+                ) : gpuTemp ? (
+                  <span
+                    className={`text-sm font-mono font-semibold tabular-nums ${tempColorClass(gpuTemp.temp, gpuTemp.critical)}`}
+                  >
+                    {Math.round(gpuTemp.temp)}&deg;
+                  </span>
+                ) : null}
+              </div>
+            </>
+          )}
+          {info.gpuPowerWatts !== null && (
+            <>
+              <div className="w-px h-4 bg-widget-sysmon/10" />
+              <span className="text-sm font-mono font-semibold tabular-nums text-fg-2 shrink-0">
+                {formatWatts(info.gpuPowerWatts)}
+              </span>
+            </>
+          )}
         </div>
       </div>
     );
   }
 
-  // ── Comfort render ──────────────────────────────────────────
-  return (
-    <div className="p-4 space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-mono font-semibold text-widget-sysmon/70 uppercase tracking-wider">
-          System Monitor
-        </span>
-        <span className="text-[8px] font-mono text-fg-4">
-          up {formatUptime(info.uptime)}
-        </span>
-      </div>
+  // ── Comfort ─────────────────────────────────────────────────
 
-      {/* System info */}
-      <div className="px-3 py-2 rounded-lg bg-widget-sysmon/[0.04] border border-widget-sysmon/10 space-y-1">
+  // Build GPU header subtitle: "NITRO+ RX 7900 XTX Vapor-X · 24 GB"
+  const gpuSubtitle = info.gpuName
+    ? info.gpuVramTotal
+      ? `${info.gpuName} \u00B7 ${formatBytes(info.gpuVramTotal)}`
+      : info.gpuName
+    : null;
+
+  return (
+    <div className="p-4 space-y-3">
+      {/* Header: device info + uptime */}
+      <div className="space-y-0.5">
         <div className="flex items-center justify-between">
-          <span className="text-[9px] font-mono text-fg-3 truncate">
-            {info.cpuName}
+          <span className="text-xs font-mono font-semibold text-widget-sysmon/80 uppercase tracking-wider">
+            System Monitor
           </span>
-          <span className="text-[9px] font-mono text-fg-4 shrink-0">
-            {info.cpuCores} cores
+          <span className="text-xs font-mono text-fg-3">
+            up {formatUptime(info.uptime)}
           </span>
         </div>
-        <div className="text-[8px] font-mono text-fg-4 truncate">
+        <div className="text-xs font-mono text-fg-2 truncate">
+          {info.cpuName} &middot; {info.cpuCores} cores
+        </div>
+        {gpuSubtitle && (
+          <div className="text-xs font-mono text-fg-2 truncate">
+            {gpuSubtitle}
+          </div>
+        )}
+        <div className="text-xs font-mono text-fg-3 truncate">
           {info.osName} &middot; {info.hostname}
         </div>
       </div>
 
-      {/* CPU usage */}
-      <div className="px-3 py-3 rounded-xl bg-widget-sysmon/[0.04] border border-widget-sysmon/10">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] font-mono text-widget-sysmon/60 uppercase tracking-wider">
+      {/* 2x2 stats grid */}
+      <div className="grid grid-cols-2 rounded-xl border border-widget-sysmon/10 overflow-hidden">
+        {/* CPU */}
+        <div className="p-3 border-r border-b border-widget-sysmon/10 bg-widget-sysmon/[0.03] space-y-1.5">
+          <span className="text-xs font-mono text-widget-sysmon/70 uppercase tracking-wider">
             CPU
           </span>
-          <span className={`text-lg font-mono font-bold tabular-nums ${usageColor(info.cpuUsage)}`}>
-            {Math.round(info.cpuUsage)}%
-          </span>
-        </div>
-        <div className="h-2 rounded-full bg-widget-sysmon/10 overflow-hidden">
+          <div className="text-[10px] font-mono text-fg-3 uppercase tracking-wider -mt-1">
+            Utilization
+          </div>
           <div
-            className="h-full rounded-full bg-widget-sysmon transition-all duration-500"
-            style={{ width: `${Math.min(100, info.cpuUsage)}%` }}
+            className={`text-xl font-mono font-bold tabular-nums ${usageColorClass(info.cpuUsage)}`}
+          >
+            {Math.round(info.cpuUsage)}%
+          </div>
+          <div className="h-1.5 rounded-full bg-widget-sysmon/10 overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${Math.min(100, info.cpuUsage)}%`,
+                background: `linear-gradient(90deg, #34d399, ${usageColor(info.cpuUsage)})`,
+              }}
+            />
+          </div>
+          <DetailLine
+            items={[
+              info.cpuFreqMhz !== null ? formatFreq(info.cpuFreqMhz) : null,
+              cpuTemp
+                ? `${Math.round(cpuTemp.temp)}\u00B0C`
+                : null,
+            ]}
           />
         </div>
-      </div>
 
-      {/* Memory */}
-      <div className="px-3 py-3 rounded-xl bg-widget-sysmon/[0.04] border border-widget-sysmon/10">
-        <UsageBar
-          label="Memory"
-          used={info.memUsed}
-          total={info.memTotal}
-        />
-      </div>
-
-      {/* Swap (only if swap exists) */}
-      {info.swapTotal > 0 && (
-        <div className="px-3 py-3 rounded-xl bg-widget-sysmon/[0.04] border border-widget-sysmon/10">
-          <UsageBar
-            label="Swap"
-            used={info.swapUsed}
-            total={info.swapTotal}
-          />
+        {/* Memory */}
+        <div className="p-3 border-b border-widget-sysmon/10 bg-widget-sysmon/[0.03] space-y-1.5">
+          <span className="text-xs font-mono text-widget-sysmon/70 uppercase tracking-wider">
+            Memory
+          </span>
+          <div
+            className={`text-xl font-mono font-bold tabular-nums ${usageColorClass(memPct)}`}
+          >
+            {Math.round(memPct)}%
+          </div>
+          <div className="h-1.5 rounded-full bg-widget-sysmon/10 overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${Math.min(100, memPct)}%`,
+                background: `linear-gradient(90deg, #34d399, ${usageColor(memPct)})`,
+              }}
+            />
+          </div>
+          <div className="text-xs font-mono text-fg-3 tabular-nums">
+            {formatBytes(info.memUsed)} / {formatBytes(info.memTotal)}
+          </div>
         </div>
-      )}
+
+        {/* GPU */}
+        <div className="p-3 border-r border-widget-sysmon/10 bg-widget-sysmon/[0.03] space-y-1.5">
+          <span className="text-xs font-mono text-widget-sysmon/70 uppercase tracking-wider">
+            GPU
+          </span>
+          {info.gpuUsage !== null ? (
+            <>
+              <div className="text-[10px] font-mono text-fg-3 uppercase tracking-wider -mt-1">
+                Utilization
+              </div>
+              <div
+                className={`text-xl font-mono font-bold tabular-nums ${usageColorClass(info.gpuUsage)}`}
+              >
+                {Math.round(info.gpuUsage)}%
+              </div>
+              <div className="h-1.5 rounded-full bg-widget-sysmon/10 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${Math.min(100, info.gpuUsage)}%`,
+                    background: `linear-gradient(90deg, #34d399, ${usageColor(info.gpuUsage)})`,
+                  }}
+                />
+              </div>
+              <DetailLine
+                items={[
+                  info.gpuClockMhz !== null
+                    ? formatFreq(info.gpuClockMhz)
+                    : null,
+                  info.gpuPowerWatts !== null
+                    ? formatWatts(info.gpuPowerWatts)
+                    : null,
+                  gpuTemp
+                    ? `${Math.round(gpuTemp.temp)}\u00B0C`
+                    : null,
+                ]}
+              />
+              {info.gpuVramTotal !== null && info.gpuVramUsed !== null && (
+                <div className="text-xs font-mono text-fg-3 tabular-nums">
+                  {formatBytes(info.gpuVramUsed)} /{" "}
+                  {formatBytes(info.gpuVramTotal)} VRAM
+                </div>
+              )}
+            </>
+          ) : gpuTemp ? (
+            <div
+              className={`text-xl font-mono font-bold tabular-nums ${tempColorClass(gpuTemp.temp, gpuTemp.critical)}`}
+            >
+              {Math.round(gpuTemp.temp)}&deg;C
+            </div>
+          ) : (
+            <div className="text-sm font-mono text-fg-3">&mdash;</div>
+          )}
+        </div>
+
+        {/* Network */}
+        <div className="p-3 bg-widget-sysmon/[0.03] space-y-1.5">
+          <span className="text-xs font-mono text-widget-sysmon/70 uppercase tracking-wider">
+            Network
+          </span>
+          {info.network.length > 0 ? (
+            <div className="space-y-1.5">
+              {info.network.map((iface) => (
+                <div key={iface.name} className="space-y-0.5">
+                  <div className="text-xs font-mono text-fg-3 truncate">
+                    {iface.name}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono text-emerald-400/90 tabular-nums">
+                      {"\u2191"} {formatRate(iface.txBytes)}
+                    </span>
+                    <span className="text-xs font-mono text-sky-400/90 tabular-nums">
+                      {"\u2193"} {formatRate(iface.rxBytes)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-sm font-mono text-fg-3">&mdash;</div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

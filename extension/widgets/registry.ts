@@ -12,7 +12,7 @@ const modules = import.meta.glob<Record<string, WidgetManifest>>(
 const widgets = new Map<string, WidgetManifest>();
 
 /** Canonical display order for widget tabs */
-export const WIDGET_ORDER = ["clock", "timer", "weather", "sysmon"] as const;
+export const WIDGET_ORDER = ["clock", "weather", "sysmon"] as const;
 
 // Auto-register all discovered widgets.
 // Convention: each module exports `export const {id}Widget: WidgetManifest`.

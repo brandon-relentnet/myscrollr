@@ -54,17 +54,18 @@ function weatherCodeToLabel(code: number): string {
 }
 
 function weatherCodeToIcon(code: number, isDay: boolean): string {
-  // Simple ASCII/text icons to keep the widget lightweight
   if (code === 0) return isDay ? "\u2600" : "\u263E"; // ☀ / ☾
   if (code <= 2) return isDay ? "\u26C5" : "\u263E"; // ⛅ / ☾
   if (code === 3) return "\u2601"; // ☁
   if (code === 45 || code === 48) return "\u2588"; // fog block
-  if (code >= 51 && code <= 67) return "\u2602"; // ☂
-  if (code >= 61 && code <= 67) return "\u2614"; // ☔
-  if (code >= 71 && code <= 77) return "\u2744"; // ❄
-  if (code >= 80 && code <= 82) return "\u2614"; // ☔
-  if (code >= 85 && code <= 86) return "\u2744"; // ❄
-  if (code >= 95) return "\u26A1"; // ⚡
+  if (code >= 51 && code <= 55) return "\u2602"; // ☂ drizzle
+  if (code >= 56 && code <= 57) return "\u2602"; // ☂ freezing drizzle
+  if (code >= 61 && code <= 65) return "\u2614"; // ☔ rain
+  if (code >= 66 && code <= 67) return "\u2614"; // ☔ freezing rain
+  if (code >= 71 && code <= 77) return "\u2744"; // ❄ snow
+  if (code >= 80 && code <= 82) return "\u2614"; // ☔ rain showers
+  if (code >= 85 && code <= 86) return "\u2744"; // ❄ snow showers
+  if (code >= 95) return "\u26A1"; // ⚡ thunderstorm
   return "\u2601"; // ☁ default
 }
 
@@ -119,6 +120,33 @@ function toFahrenheit(celsius: number): number {
 function formatTemp(celsius: number, unit: TempUnit): string {
   const val = unit === "fahrenheit" ? toFahrenheit(celsius) : celsius;
   return `${Math.round(val)}\u00B0`;
+}
+
+/** Wind speed from Open-Meteo is always km/h. Convert to mph for imperial. */
+function formatWind(kmh: number, unit: TempUnit): string {
+  if (unit === "fahrenheit") {
+    return `${Math.round(kmh * 0.621371)} mph`;
+  }
+  return `${Math.round(kmh)} km/h`;
+}
+
+// ── Inline SVG Icons ────────────────────────────────────────────
+
+function CloseIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+      <path d="M3 3L9 9M9 3L3 9" />
+    </svg>
+  );
+}
+
+function RefreshIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10 5.5A4 4 0 0 0 2.5 4M2 6.5A4 4 0 0 0 9.5 8" />
+      <path d="M10 2.5V5.5H7M2 9.5V6.5H5" />
+    </svg>
+  );
 }
 
 // ── Open-Meteo API ──────────────────────────────────────────────
@@ -199,9 +227,12 @@ function WeatherCard({
 
   if (compact) {
     return (
-      <div className="group flex items-center justify-between px-3 py-2 rounded-lg bg-widget-weather/[0.04] border border-widget-weather/10 hover:border-widget-weather/20 transition-colors">
+      <div
+        className="group flex items-center justify-between px-3 py-2 rounded-lg bg-widget-weather/[0.04] border border-widget-weather/10 hover:border-widget-weather/20 transition-colors"
+        style={{ animation: "widget-card-enter 0.25s ease-out both" }}
+      >
         <div className="flex items-center gap-3 min-w-0">
-          <span className="text-[10px] font-mono text-widget-weather/50 uppercase tracking-wider shrink-0 w-24 truncate">
+          <span className="text-xs font-mono text-widget-weather/80 uppercase tracking-wider shrink-0 w-24 truncate">
             {location.name}
           </span>
           {weather ? (
@@ -212,32 +243,32 @@ function WeatherCard({
               <span className="text-sm font-mono font-semibold text-fg tabular-nums">
                 {formatTemp(weather.temperature, unit)}
               </span>
-              <span className="text-[9px] font-mono text-fg-3">
+              <span className="text-[11px] font-mono text-fg-2">
                 {weatherCodeToLabel(weather.weatherCode)}
               </span>
             </div>
           ) : error ? (
-            <span className="text-[9px] font-mono text-error truncate">
+            <span className="text-[11px] font-mono text-error truncate">
               {error}
             </span>
           ) : (
-            <span className="text-[9px] font-mono text-fg-4">Loading...</span>
+            <span className="text-[11px] font-mono text-fg-3">Loading...</span>
           )}
         </div>
         <div className="flex items-center gap-1">
           <button
             onClick={onRefresh}
-            className="text-fg-4 hover:text-widget-weather text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+            className="text-fg-3 hover:text-widget-weather opacity-0 group-hover:opacity-100 transition-opacity"
             title="Refresh"
           >
-            \u21BB
+            <RefreshIcon />
           </button>
           <button
             onClick={onRemove}
-            className="text-fg-4 hover:text-error text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+            className="text-fg-3 hover:text-error opacity-0 group-hover:opacity-100 transition-opacity"
             title="Remove city"
           >
-            x
+            <CloseIcon />
           </button>
         </div>
       </div>
@@ -245,26 +276,29 @@ function WeatherCard({
   }
 
   return (
-    <div className="group relative px-4 py-3 rounded-xl bg-widget-weather/[0.04] border border-widget-weather/10 hover:border-widget-weather/20 transition-colors">
+    <div
+      className="group relative px-4 py-3 rounded-xl bg-widget-weather/[0.04] border border-widget-weather/10 hover:border-widget-weather/20 transition-colors"
+      style={{ animation: "widget-card-enter 0.25s ease-out both" }}
+    >
       <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
           onClick={onRefresh}
-          className="text-fg-4 hover:text-widget-weather text-[10px] font-mono"
+          className="text-fg-3 hover:text-widget-weather p-0.5"
           title="Refresh"
         >
-          \u21BB
+          <RefreshIcon />
         </button>
         <button
           onClick={onRemove}
-          className="text-fg-4 hover:text-error text-[10px] font-mono"
+          className="text-fg-3 hover:text-error p-0.5"
           title="Remove city"
         >
-          x
+          <CloseIcon />
         </button>
       </div>
 
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-[10px] font-mono text-widget-weather/60 uppercase tracking-wider truncate">
+        <span className="text-xs font-mono text-widget-weather/80 uppercase tracking-wider truncate">
           {label}
         </span>
       </div>
@@ -279,39 +313,39 @@ function WeatherCard({
               <div className="text-xl font-mono font-bold text-fg tabular-nums leading-none">
                 {formatTemp(weather.temperature, unit)}
               </div>
-              <div className="text-[10px] font-mono text-fg-3 mt-0.5">
+              <div className="text-xs font-mono text-fg-2 mt-0.5">
                 Feels {formatTemp(weather.feelsLike, unit)}
               </div>
             </div>
           </div>
 
-          <div className="text-[10px] font-mono text-fg-2 mb-2">
+          <div className="text-xs font-mono text-fg mb-2">
             {weatherCodeToLabel(weather.weatherCode)}
           </div>
 
-          <div className="flex items-center gap-4 text-[9px] font-mono text-fg-3">
+          <div className="flex items-center gap-4 text-[11px] font-mono text-fg-2">
             <span>
               {"\u{1F4A7}"} {weather.humidity}%
             </span>
             <span>
-              {"\u{1F4A8}"} {Math.round(weather.windSpeed)} km/h{" "}
+              {"\u{1F4A8}"} {formatWind(weather.windSpeed, unit)}{" "}
               {windDirectionToLabel(weather.windDirection)}
             </span>
           </div>
         </>
       ) : error ? (
         <div className="py-3">
-          <span className="text-[10px] font-mono text-error">{error}</span>
+          <span className="text-xs font-mono text-error">{error}</span>
           <button
             onClick={onRefresh}
-            className="block text-[9px] font-mono text-widget-weather/60 hover:text-widget-weather mt-1 transition-colors"
+            className="block text-[11px] font-mono text-widget-weather/70 hover:text-widget-weather mt-1 transition-colors"
           >
             Retry
           </button>
         </div>
       ) : (
         <div className="py-3">
-          <span className="text-[9px] font-mono text-fg-4">
+          <span className="text-[11px] font-mono text-fg-3">
             Loading weather...
           </span>
         </div>
@@ -489,47 +523,47 @@ function WeatherFeedTab({ mode: feedMode }: FeedTabProps) {
     if (!("geolocation" in navigator)) return;
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
+        const { latitude: lat, longitude: lon } = pos.coords;
         try {
-          // Reverse geocode with Open-Meteo
-          const url = `https://geocoding-api.open-meteo.com/v1/search?name=&latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&count=1&language=en&format=json`;
-          const res = await fetch(url);
+          // Reverse geocode with Nominatim (free, no key, supports lat/lon)
+          const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=10`;
+          const res = await fetch(url, {
+            headers: { "User-Agent": "Scrollr/1.0" },
+          });
           if (res.ok) {
             const data = (await res.json()) as {
-              results?: Array<{
-                name: string;
-                latitude: number;
-                longitude: number;
-                country: string;
-                admin1?: string;
-              }>;
+              address?: {
+                city?: string;
+                town?: string;
+                village?: string;
+                state?: string;
+                country?: string;
+                country_code?: string;
+              };
             };
-            if (data.results?.[0]) {
-              const r = data.results[0];
+            const addr = data.address;
+            if (addr) {
+              const name = addr.city || addr.town || addr.village || "My Location";
               addCity({
-                name: r.name,
-                lat: r.latitude,
-                lon: r.longitude,
-                country: r.country,
-                admin1: r.admin1,
+                name,
+                lat,
+                lon,
+                country: addr.country ?? "",
+                admin1: addr.state,
               });
               return;
             }
           }
-          // Fallback: use raw coordinates
-          addCity({
-            name: "My Location",
-            lat: pos.coords.latitude,
-            lon: pos.coords.longitude,
-            country: "",
-          });
         } catch {
-          addCity({
-            name: "My Location",
-            lat: pos.coords.latitude,
-            lon: pos.coords.longitude,
-            country: "",
-          });
+          // Fallback below
         }
+        // Fallback: use raw coordinates
+        addCity({
+          name: "My Location",
+          lat,
+          lon,
+          country: "",
+        });
       },
       () => {
         // Geolocation denied or failed — no-op
@@ -542,19 +576,19 @@ function WeatherFeedTab({ mode: feedMode }: FeedTabProps) {
     return (
       <div className="p-4 flex flex-col items-center justify-center gap-3">
         <span className="text-2xl">{"\u2600"}</span>
-        <span className="text-[11px] font-mono text-fg-3 text-center">
+        <span className="text-xs font-mono text-fg-2 text-center">
           Add a city to see weather
         </span>
         <div className="flex gap-2">
           <button
             onClick={() => setShowSearch(true)}
-            className="text-[10px] font-mono font-semibold text-widget-weather px-3 py-1.5 rounded-lg bg-widget-weather/10 border border-widget-weather/20 hover:bg-widget-weather/15 transition-colors"
+            className="text-xs font-mono font-semibold text-widget-weather px-3 py-1.5 rounded-lg bg-widget-weather/10 border border-widget-weather/25 hover:bg-widget-weather/15 transition-colors"
           >
             Search City
           </button>
           <button
             onClick={detectLocation}
-            className="text-[10px] font-mono text-fg-2 px-3 py-1.5 rounded-lg bg-surface-2 border border-edge hover:border-edge-2 transition-colors"
+            className="text-xs font-mono text-fg px-3 py-1.5 rounded-lg bg-surface-2 border border-edge hover:border-edge-2 transition-colors"
           >
             Use Location
           </button>
@@ -569,12 +603,12 @@ function WeatherFeedTab({ mode: feedMode }: FeedTabProps) {
       {/* Header */}
       <div className="flex items-center justify-between px-1 mb-1">
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono font-semibold text-widget-weather/70 uppercase tracking-wider">
+          <span className="text-xs font-mono font-semibold text-widget-weather/80 uppercase tracking-wider">
             Weather
           </span>
           <button
             onClick={toggleUnit}
-            className="text-[9px] font-mono text-fg-4 hover:text-fg-2 px-1 py-0.5 rounded bg-surface-2/50 transition-colors"
+            className="text-[11px] font-mono text-fg-2 hover:text-fg px-1.5 py-0.5 rounded border border-edge hover:border-edge-2 transition-colors"
           >
             {unit === "celsius" ? "\u00B0C" : "\u00B0F"}
           </button>
@@ -582,7 +616,7 @@ function WeatherFeedTab({ mode: feedMode }: FeedTabProps) {
         <div className="flex items-center gap-2">
           <button
             onClick={detectLocation}
-            className="text-[10px] font-mono text-widget-weather/50 hover:text-widget-weather transition-colors"
+            className="text-xs font-mono text-widget-weather/70 hover:text-widget-weather transition-colors"
             title="Detect location"
           >
             {"\u{1F4CD}"}
@@ -595,7 +629,7 @@ function WeatherFeedTab({ mode: feedMode }: FeedTabProps) {
                 setSearchResults([]);
               }
             }}
-            className="text-[10px] font-mono text-widget-weather/50 hover:text-widget-weather transition-colors"
+            className="text-xs font-mono text-widget-weather/70 hover:text-widget-weather transition-colors"
           >
             {showSearch ? "Done" : "+ Add"}
           </button>
@@ -611,10 +645,10 @@ function WeatherFeedTab({ mode: feedMode }: FeedTabProps) {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search city..."
-            className="w-full px-3 py-1.5 text-[11px] font-mono bg-surface-2 border border-widget-weather/15 rounded-lg text-fg placeholder:text-fg-4 outline-none focus:border-widget-weather/30 transition-colors"
+            className="w-full px-3 py-1.5 text-xs font-mono bg-surface-2 border border-widget-weather/15 rounded-lg text-fg placeholder:text-fg-3 outline-none focus:border-widget-weather/30 transition-colors"
           />
           {isSearching && (
-            <span className="block text-[9px] font-mono text-fg-4 px-1">
+            <span className="block text-[11px] font-mono text-fg-3 px-1">
               Searching...
             </span>
           )}
@@ -630,10 +664,10 @@ function WeatherFeedTab({ mode: feedMode }: FeedTabProps) {
                     onClick={() => addCity(r)}
                     className="flex items-center justify-between w-full px-3 py-1.5 text-left hover:bg-widget-weather/[0.06] transition-colors"
                   >
-                    <span className="text-[11px] font-mono text-fg-2">
+                    <span className="text-xs font-mono text-fg">
                       {r.name}
                     </span>
-                    <span className="text-[9px] font-mono text-fg-4 truncate ml-2">
+                    <span className="text-[11px] font-mono text-fg-2 truncate ml-2">
                       {sublabel}
                     </span>
                   </button>

@@ -256,10 +256,9 @@ export default function AppTaskbar({
 
   const enabledWidgets = prefs.widgets.enabledWidgets;
   const hasClock = enabledWidgets.includes("clock");
-  const hasTimer = enabledWidgets.includes("timer");
   const hasWeather = enabledWidgets.includes("weather");
   const hasSysmon = enabledWidgets.includes("sysmon");
-  const hasAnyChip = hasClock || hasTimer || hasWeather || hasSysmon;
+  const hasAnyChip = hasClock || hasWeather || hasSysmon;
 
   const nav = (id: string) => onNavigateToWidget?.(id);
 
@@ -360,7 +359,7 @@ export default function AppTaskbar({
           <div className="w-px h-3 bg-edge mx-1.5 shrink-0" />
           <div className="flex items-center gap-0.5 flex-1 min-w-0 overflow-hidden">
             {hasClock && <MiniClockChip onClick={() => nav("clock")} />}
-            {hasTimer && <MiniTimerChip onClick={() => nav("timer")} />}
+            {hasClock && <MiniTimerChip onClick={() => nav("clock")} />}
             {hasWeather && <MiniWeatherChip onClick={() => nav("weather")} />}
             {hasSysmon && <MiniSysmonChip onClick={() => nav("sysmon")} />}
           </div>

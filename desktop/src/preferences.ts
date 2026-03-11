@@ -63,8 +63,7 @@ export interface WidgetPrefs {
   /** Widget IDs that are enabled (shown in feed tabs and ticker). */
   enabledWidgets: string[];
   /** Per-widget settings — each key is a widget ID. */
-  clock: { timezones: string[] };
-  timer: { defaultMode: "pomodoro" | "countdown" | "stopwatch" };
+  clock: { timezones: string[]; defaultTimerMode: "pomodoro" | "countdown" | "stopwatch" };
   weather: { apiKey: string; location: string; units: "metric" | "imperial" };
 }
 
@@ -123,8 +122,7 @@ export const DEFAULT_TASKBAR: TaskbarPrefs = {
 
 export const DEFAULT_WIDGETS: WidgetPrefs = {
   enabledWidgets: [],
-  clock: { timezones: ["America/New_York", "Europe/London", "Asia/Tokyo"] },
-  timer: { defaultMode: "pomodoro" },
+  clock: { timezones: ["America/New_York", "Europe/London", "Asia/Tokyo"], defaultTimerMode: "pomodoro" },
   weather: { apiKey: "", location: "", units: "imperial" },
 };
 

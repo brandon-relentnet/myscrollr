@@ -407,6 +407,17 @@ body {
   animation: ekg-dot 2s ease-in-out infinite;
 }
 
+/* ── Widget card animations ──────────────────────────────────── */
+@keyframes widget-card-enter {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes widget-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.75); }
+}
+
 /* ── Toggle switch ──────────────────────────────────────────────── */
 
 .toggle-switch {

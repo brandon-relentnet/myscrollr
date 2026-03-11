@@ -1,12 +1,12 @@
 import type { FeedTabProps } from "~/channels/types";
 
 // ── Widget manifest — one per widget ─────────────────────────────
-// Widgets are local utilities (clock, timer, weather, system monitor)
+// Widgets are local utilities (clock, weather, system monitor)
 // with no backend. They share the feed tab UI surface with channels
 // but have zero API/CDC involvement.
 
 export interface WidgetManifest {
-  /** Unique identifier (e.g. "clock", "timer"). Must not collide with channel IDs. */
+  /** Unique identifier (e.g. "clock", "weather"). Must not collide with channel IDs. */
   id: string;
   /** Human-readable name. */
   name: string;

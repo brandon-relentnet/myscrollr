@@ -48,7 +48,7 @@ const EKG_PATH = "M0,8 L6,8 L9,2 L12,14 L15,4 L18,12 L21,8 L32,8";
 // ── Canonical display orders ────────────────────────────────────
 
 const CHANNEL_ORDER = ["finance", "sports", "rss", "fantasy"];
-const WIDGET_ORDER = ["clock", "timer", "weather", "sysmon"];
+const WIDGET_ORDER = ["clock", "weather", "sysmon"];
 
 // ── Popover anchor ──────────────────────────────────────────────
 
