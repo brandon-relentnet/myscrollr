@@ -888,29 +888,37 @@ export default function MainApp() {
         {/* Header */}
         <header className="flex items-center justify-between px-6 h-14 border-b border-edge shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            {/* Back arrow when configuring a channel or widget */}
-            {configuring && (isChannelActive || isWidgetActive) && (
-              <button
-                onClick={handleBackToFeed}
-                className="flex items-center gap-1.5 text-xs font-medium text-fg-3 hover:text-fg-2 transition-colors shrink-0"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M19 12H5M12 19l-7-7 7-7" />
-                </svg>
-                Feed
-              </button>
-            )}
             <h1 className="text-base font-semibold truncate">
               {activeItemName}
-              {configuring && (isChannelActive || isWidgetActive) && (
-                <span className="text-fg-3 font-normal ml-2 text-sm">
-                  Configuration
-                </span>
-              )}
             </h1>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {/* Settings tab switcher — only when viewing settings */}
+            {/* Feed / Configuration tabs — channels and widgets */}
+            {(isChannelActive || isWidgetActive) && (
+              <div className="flex gap-1">
+                {(["feed", "configuration"] as const).map((tab) => {
+                  const isActive =
+                    tab === "feed" ? !configuring : configuring;
+                  return (
+                    <button
+                      key={tab}
+                      onClick={() =>
+                        setConfiguring(tab === "configuration")
+                      }
+                      className={clsx(
+                        "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors capitalize",
+                        isActive
+                          ? "bg-accent/10 text-accent"
+                          : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
+                      )}
+                    >
+                      {tab}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {/* Settings tab switcher */}
             {isSettingsActive && (
               <div className="flex gap-1">
                 {(["general", "ticker", "account"] as SettingsTab[]).map(
@@ -931,7 +939,7 @@ export default function MainApp() {
                 )}
               </div>
             )}
-            {!authenticated && !isSettingsActive && (
+            {!authenticated && !isSettingsActive && !(isChannelActive || isWidgetActive) && (
               <button
                 onClick={handleLogin}
                 className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent/10 text-accent hover:bg-accent/20 transition-colors"

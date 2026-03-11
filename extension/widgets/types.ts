@@ -14,6 +14,8 @@ export interface WidgetManifest {
   tabLabel: string;
   /** Brand hex color for the widget. */
   hex: string;
+  /** Lucide icon component for sidebar and header display. */
+  icon: React.ComponentType<{ size?: number; className?: string }>;
   /** When true, this widget only works in the desktop app (e.g. system monitor). */
   desktopOnly?: boolean;
   /** The React component rendered inside the feed bar for this widget. */

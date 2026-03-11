@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { Clock } from "lucide-react";
 import type { FeedTabProps } from "~/channels/types";
 import type { WidgetManifest } from "../types";
 
@@ -630,6 +631,7 @@ export const clockWidget: WidgetManifest = {
   name: "Clock",
   tabLabel: "Clock",
   hex: "#6366f1",
+  icon: Clock,
   FeedTab: ClockFeedTab,
 };
 

@@ -260,6 +260,7 @@ export default function Sidebar({
               (m) => m.id === ch.channel_type,
             );
             const isActive = activeItem === ch.channel_type;
+            const Icon = manifest?.icon;
             return (
               <button
                 key={ch.channel_type}
@@ -270,10 +271,16 @@ export default function Sidebar({
                   isActive ? "bg-accent/10" : "hover:bg-surface-hover",
                 )}
               >
-                <div
-                  className="w-2.5 h-2.5 rounded-full"
-                  style={{ background: manifest?.hex ?? "var(--color-fg-4)" }}
-                />
+                {Icon ? (
+                  <span style={{ color: manifest!.hex }}>
+                    <Icon size={14} />
+                  </span>
+                ) : (
+                  <div
+                    className="w-2.5 h-2.5 rounded-full"
+                    style={{ background: "var(--color-fg-4)" }}
+                  />
+                )}
               </button>
             );
           })}
@@ -296,10 +303,9 @@ export default function Sidebar({
                   isActive ? "bg-accent/10" : "hover:bg-surface-hover",
                 )}
               >
-                <div
-                  className="w-2.5 h-2.5 rounded-full"
-                  style={{ background: widget.hex }}
-                />
+                <span style={{ color: widget.hex }}>
+                  <widget.icon size={14} />
+                </span>
               </button>
             );
           })}
@@ -432,15 +438,27 @@ export default function Sidebar({
                           : "text-fg-2 hover:text-fg hover:bg-surface-hover",
                       )}
                     >
-                      <div
-                        className={clsx(
-                          "w-2 h-2 rounded-full shrink-0 transition-opacity",
-                          isActive ? "opacity-100" : "opacity-60",
-                        )}
-                        style={{
-                          background: manifest?.hex ?? "var(--color-fg-4)",
-                        }}
-                      />
+                      {manifest?.icon ? (
+                        <span
+                          className={clsx(
+                            "shrink-0 transition-opacity",
+                            isActive ? "opacity-100" : "opacity-60",
+                          )}
+                          style={{ color: manifest.hex }}
+                        >
+                          <manifest.icon size={14} />
+                        </span>
+                      ) : (
+                        <div
+                          className={clsx(
+                            "w-2 h-2 rounded-full shrink-0 transition-opacity",
+                            isActive ? "opacity-100" : "opacity-60",
+                          )}
+                          style={{
+                            background: "var(--color-fg-4)",
+                          }}
+                        />
+                      )}
                       <span className="truncate">
                         {manifest?.name ?? ch.channel_type}
                       </span>
@@ -527,13 +545,15 @@ export default function Sidebar({
                           : "text-fg-2 hover:text-fg hover:bg-surface-hover",
                       )}
                     >
-                      <div
+                      <span
                         className={clsx(
-                          "w-2 h-2 rounded-full shrink-0 transition-opacity",
+                          "shrink-0 transition-opacity",
                           isActive ? "opacity-100" : "opacity-60",
                         )}
-                        style={{ background: widget.hex }}
-                      />
+                        style={{ color: widget.hex }}
+                      >
+                        <widget.icon size={14} />
+                      </span>
                       <span className="truncate">{widget.name}</span>
                       {isConfiguring && (
                         <span className="text-[8px] text-accent/50 ml-auto shrink-0">
@@ -620,10 +640,9 @@ export default function Sidebar({
               }}
               className="flex items-center gap-3 w-full px-3 py-2.5 text-left hover:bg-surface-hover transition-colors"
             >
-              <div
-                className="w-2.5 h-2.5 rounded-full shrink-0"
-                style={{ background: manifest.hex }}
-              />
+              <span className="shrink-0" style={{ color: manifest.hex }}>
+                <manifest.icon size={14} />
+              </span>
               <div className="min-w-0">
                 <p className="text-[12px] font-medium text-fg-2 truncate">
                   {manifest.name}
@@ -658,10 +677,9 @@ export default function Sidebar({
               }}
               className="flex items-center gap-3 w-full px-3 py-2.5 text-left hover:bg-surface-hover transition-colors"
             >
-              <div
-                className="w-2.5 h-2.5 rounded-full shrink-0"
-                style={{ background: widget.hex }}
-              />
+              <span className="shrink-0" style={{ color: widget.hex }}>
+                <widget.icon size={14} />
+              </span>
               <div className="min-w-0 flex-1">
                 <p className="text-[12px] font-medium text-fg-2 truncate">
                   {widget.name}

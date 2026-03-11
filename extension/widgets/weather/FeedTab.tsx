@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { CloudSun } from "lucide-react";
 import type { FeedTabProps } from "~/channels/types";
 import type { WidgetManifest } from "../types";
 
@@ -706,6 +707,7 @@ export const weatherWidget: WidgetManifest = {
   name: "Weather",
   tabLabel: "Weather",
   hex: "#0ea5e9",
+  icon: CloudSun,
   FeedTab: WeatherFeedTab,
 };
 

@@ -1,3 +1,4 @@
+import { Activity } from "lucide-react";
 import type { FeedTabProps } from "~/channels/types";
 import type { WidgetManifest } from "~/widgets/types";
 import { useSysmonData } from "../../hooks/useSysmonData";
@@ -393,6 +394,7 @@ export const sysmonWidget: WidgetManifest = {
   name: "System Monitor",
   tabLabel: "System",
   hex: "#06b6d4",
+  icon: Activity,
   desktopOnly: true,
   FeedTab: SysmonFeedTab,
 };
