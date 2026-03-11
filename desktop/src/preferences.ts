@@ -430,22 +430,4 @@ export const TICKER_HEIGHTS: Record<TickerMode, number> = {
   comfort: 64,
 };
 
-// ── Pinnable actions registry ───────────────────────────────────
-// Defines which settings can be pinned to the taskbar as quick toggles.
 
-export interface PinnableAction {
-  id: string;
-  label: string;
-  icon: string; // Lucide icon name
-  category: "appearance" | "ticker" | "window";
-}
-
-export const PINNABLE_ACTIONS: PinnableAction[] = [
-  { id: "showTicker", label: "Ticker", icon: "TicketSlash", category: "ticker" },
-  { id: "width", label: "Width", icon: "ArrowLeftRight", category: "window" },
-  { id: "pinned", label: "Pin", icon: "Pin", category: "window" },
-  { id: "theme", label: "Theme", icon: "Moon", category: "appearance" },
-  { id: "tickerRows", label: "Rows", icon: "Rows3", category: "appearance" },
-  { id: "tickerMode", label: "Density", icon: "Rows3", category: "ticker" },
-  { id: "mixMode", label: "Mix", icon: "Shuffle", category: "ticker" },
-];

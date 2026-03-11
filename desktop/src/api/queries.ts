@@ -11,8 +11,8 @@ import {
 } from "@tanstack/react-query";
 import { fetch } from "@tauri-apps/plugin-http";
 import { API_BASE } from "../config";
-import { getValidToken, getTier, isAuthenticated } from "../auth";
-import type { Channel, ChannelType } from "./client";
+import { getValidToken } from "../auth";
+import type { ChannelType } from "./client";
 import { channelsApi } from "./client";
 import type { DashboardResponse } from "../types";
 
@@ -139,22 +139,4 @@ export function useDeleteChannel() {
   });
 }
 
-// ── Helpers ──────────────────────────────────────────────────────
 
-/** Extract channels from dashboard data, sorted by canonical order. */
-export function extractChannels(
-  dashboard: DashboardResponse | undefined,
-): Channel[] {
-  const ORDER = ["finance", "sports", "rss", "fantasy"];
-  return (dashboard?.channels ?? [])
-    .filter((ch) => ch.enabled && ch.visible)
-    .sort((a, b) => ORDER.indexOf(a.channel_type) - ORDER.indexOf(b.channel_type));
-}
-
-/** Get the current auth state for route-level decisions. */
-export function getAuthContext() {
-  return {
-    isAuthenticated: isAuthenticated(),
-    tier: getTier(),
-  };
-}

@@ -60,32 +60,6 @@ export interface RssItem {
   updated_at: string;
 }
 
-// ── User Preferences (server-side) ──────────────────────────────
-
-export interface UserPreferences {
-  feed_mode: FeedMode;
-  feed_position: FeedPosition;
-  feed_behavior: FeedBehavior;
-  feed_enabled: boolean;
-  enabled_sites: string[];
-  disabled_sites: string[];
-  subscription_tier?: SubscriptionTier;
-  updated_at: string;
-}
-
-// ── User Channels ────────────────────────────────────────────────
-
-export interface UserChannel {
-  id: number;
-  logto_sub: string;
-  channel_type: "finance" | "sports" | "fantasy" | "rss";
-  enabled: boolean;
-  visible: boolean;
-  config: Record<string, unknown>;
-  created_at: string;
-  updated_at: string;
-}
-
 // ── API Responses ────────────────────────────────────────────────
 
 export interface DashboardResponse {
@@ -95,38 +69,32 @@ export interface DashboardResponse {
     rss?: RssItem[];
     [key: string]: unknown;
   };
-  preferences?: UserPreferences;
-  channels?: UserChannel[];
+  preferences?: {
+    feed_mode: FeedMode;
+    feed_position: "top" | "bottom";
+    feed_behavior: "overlay" | "push";
+    feed_enabled: boolean;
+    enabled_sites: string[];
+    disabled_sites: string[];
+    subscription_tier?: "anonymous" | "free" | "uplink" | "uplink_unlimited";
+    updated_at: string;
+  };
+  channels?: Array<{
+    id: number;
+    logto_sub: string;
+    channel_type: "finance" | "sports" | "fantasy" | "rss";
+    enabled: boolean;
+    visible: boolean;
+    config: Record<string, unknown>;
+    created_at: string;
+    updated_at: string;
+  }>;
 }
-
-// ── SSE / CDC Payloads ───────────────────────────────────────────
-
-export interface CDCRecord {
-  action: "insert" | "update" | "delete";
-  changes: Record<string, unknown>;
-  metadata: { table_name: string };
-  record: Record<string, unknown>;
-}
-
-export interface SSEPayload {
-  data: CDCRecord[];
-}
-
-// ── Connection ───────────────────────────────────────────────────
-
-export type ConnectionStatus = "connected" | "disconnected" | "reconnecting";
 
 // ── Enums ────────────────────────────────────────────────────────
 
-export type FeedPosition = "top" | "bottom";
 export type FeedMode = "comfort" | "compact";
-export type FeedBehavior = "overlay" | "push";
 export type DeliveryMode = "polling" | "sse";
-export type SubscriptionTier =
-  | "anonymous"
-  | "free"
-  | "uplink"
-  | "uplink_unlimited";
 
 // ── Component Contracts ──────────────────────────────────────────
 

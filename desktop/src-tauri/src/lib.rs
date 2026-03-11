@@ -113,11 +113,12 @@ fn probe_gpu_static() -> (Option<std::path::PathBuf>, Option<String>, Option<u64
 
 /// Read dynamic GPU values from sysfs (AMD/Intel).
 fn read_gpu_dynamic_sysfs(dev: &std::path::Path) -> GpuDynamic {
+    let (power_watts, power_cap_watts) = read_gpu_power(dev);
     GpuDynamic {
         usage: read_sysfs_f64(dev, "gpu_busy_percent"),
         vram_used: read_sysfs_u64(dev, "mem_info_vram_used"),
-        power_watts: read_gpu_power(dev).0,
-        power_cap_watts: read_gpu_power(dev).1,
+        power_watts,
+        power_cap_watts,
         clock_mhz: read_gpu_clock(dev),
     }
 }
@@ -619,14 +620,8 @@ fn position_ticker(
     Ok(())
 }
 
-/// Hyprland: move + resize via `hyprctl dispatch`.
-fn position_hyprland(
-    window: &tauri::Window,
-    x: f64,
-    y: f64,
-    width: f64,
-    height: f64,
-) -> Result<(), String> {
+/// Look up a Hyprland client by window title and return its address field.
+fn hyprland_find_address(window: &tauri::Window) -> Result<(String, Vec<serde_json::Value>), String> {
     let title = window.title().unwrap_or_default();
 
     let output = std::process::Command::new("hyprctl")
@@ -639,33 +634,48 @@ fn position_hyprland(
 
     for client in &clients {
         if client["title"].as_str().unwrap_or("") == title {
-            let addr = client["address"].as_str().ok_or("no address field")?;
-
-            // Resize to full monitor width + desired height
-            std::process::Command::new("hyprctl")
-                .args([
-                    "dispatch",
-                    "resizewindowpixel",
-                    &format!("exact {} {},address:{addr}", width as i32, height as i32),
-                ])
-                .output()
-                .map_err(|e| format!("hyprctl resize failed: {e}"))?;
-
-            // Move to target position
-            std::process::Command::new("hyprctl")
-                .args([
-                    "dispatch",
-                    "movewindowpixel",
-                    &format!("exact {} {},address:{addr}", x as i32, y as i32),
-                ])
-                .output()
-                .map_err(|e| format!("hyprctl move failed: {e}"))?;
-
-            return Ok(());
+            let addr = client["address"]
+                .as_str()
+                .ok_or("no address field")?
+                .to_string();
+            return Ok((addr, clients));
         }
     }
 
     Err("window not found in hyprctl clients".into())
+}
+
+/// Hyprland: move + resize via `hyprctl dispatch`.
+fn position_hyprland(
+    window: &tauri::Window,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+) -> Result<(), String> {
+    let (addr, _) = hyprland_find_address(window)?;
+
+    // Resize to full monitor width + desired height
+    std::process::Command::new("hyprctl")
+        .args([
+            "dispatch",
+            "resizewindowpixel",
+            &format!("exact {} {},address:{addr}", width as i32, height as i32),
+        ])
+        .output()
+        .map_err(|e| format!("hyprctl resize failed: {e}"))?;
+
+    // Move to target position
+    std::process::Command::new("hyprctl")
+        .args([
+            "dispatch",
+            "movewindowpixel",
+            &format!("exact {} {},address:{addr}", x as i32, y as i32),
+        ])
+        .output()
+        .map_err(|e| format!("hyprctl move failed: {e}"))?;
+
+    Ok(())
 }
 
 /// Sway: `move absolute position` + `resize set` for floating windows.
@@ -689,32 +699,12 @@ fn position_sway(
     Ok(())
 }
 
-/// KDE/KWin: inject a KWin script that sets the full `frameGeometry` via D-Bus.
-fn position_kwin(
-    window: &tauri::Window,
-    x: f64,
-    y: f64,
-    width: f64,
-    height: f64,
-    qdbus: &str,
-) -> Result<(), String> {
-    let title = window.title().unwrap_or_default();
-    let x_int = x as i32;
-    let y_int = y as i32;
-    let w_int = width as i32;
-    let h_int = height as i32;
-
-    let script = format!(
-        r#"var wins = workspace.windowList();
-for (var i = 0; i < wins.length; i++) {{
-    if (wins[i].caption === "{title}") {{
-        wins[i].frameGeometry = {{x: {x_int}, y: {y_int}, width: {w_int}, height: {h_int}}};
-    }}
-}}"#
-    );
-
-    let tmp = std::env::temp_dir().join("scrollr_kwin_pos.js");
-    std::fs::write(&tmp, &script).map_err(|e| format!("write temp script: {e}"))?;
+/// Load, run, and clean up a one-shot KWin script via D-Bus.
+/// Used by both `position_kwin` and `pin_kwin` to avoid duplicating
+/// the load → run → stop → unload → delete-temp-file boilerplate.
+fn run_kwin_script(qdbus: &str, script_content: &str, script_name: &str) -> Result<(), String> {
+    let tmp = std::env::temp_dir().join(format!("{script_name}.js"));
+    std::fs::write(&tmp, script_content).map_err(|e| format!("write temp script: {e}"))?;
     let tmp_path = tmp.to_str().ok_or("invalid temp path")?;
 
     // Unload any previous instance (ignore errors — may not exist)
@@ -723,7 +713,7 @@ for (var i = 0; i < wins.length; i++) {{
             "org.kde.KWin",
             "/Scripting",
             "org.kde.kwin.Scripting.unloadScript",
-            "scrollr_pos",
+            script_name,
         ])
         .output()
         .ok();
@@ -735,7 +725,7 @@ for (var i = 0; i < wins.length; i++) {{
             "/Scripting",
             "org.kde.kwin.Scripting.loadScript",
             tmp_path,
-            "scrollr_pos",
+            script_name,
         ])
         .output()
         .map_err(|e| format!("{qdbus} loadScript failed: {e}"))?;
@@ -765,13 +755,40 @@ for (var i = 0; i < wins.length; i++) {{
             "org.kde.KWin",
             "/Scripting",
             "org.kde.kwin.Scripting.unloadScript",
-            "scrollr_pos",
+            script_name,
         ])
         .output()
         .ok();
 
     std::fs::remove_file(&tmp).ok();
     Ok(())
+}
+
+/// KDE/KWin: inject a KWin script that sets the full `frameGeometry` via D-Bus.
+fn position_kwin(
+    window: &tauri::Window,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+    qdbus: &str,
+) -> Result<(), String> {
+    let title = window.title().unwrap_or_default();
+    let x_int = x as i32;
+    let y_int = y as i32;
+    let w_int = width as i32;
+    let h_int = height as i32;
+
+    let script = format!(
+        r#"var wins = workspace.windowList();
+for (var i = 0; i < wins.length; i++) {{
+    if (wins[i].caption === "{title}") {{
+        wins[i].frameGeometry = {{x: {x_int}, y: {y_int}, width: {w_int}, height: {h_int}}};
+    }}
+}}"#
+    );
+
+    run_kwin_script(qdbus, &script, "scrollr_pos")
 }
 
 // ── Pin (always-on-top) via compositor IPC ───────────────────────
@@ -812,34 +829,23 @@ fn pin_window(window: tauri::Window, pinned: bool) -> Result<(), String> {
 /// Hyprland: `pin` is a toggle, so we query current state first.
 fn pin_hyprland(window: &tauri::Window, desired: bool) -> Result<(), String> {
     let title = window.title().unwrap_or_default();
+    let (addr, clients) = hyprland_find_address(window)?;
 
-    // Query all clients as JSON to find our window
-    let output = std::process::Command::new("hyprctl")
-        .args(["clients", "-j"])
-        .output()
-        .map_err(|e| format!("hyprctl failed: {e}"))?;
+    // Find the current pinned state from the already-fetched client list
+    let currently_pinned = clients
+        .iter()
+        .find(|c| c["title"].as_str().unwrap_or("") == title)
+        .and_then(|c| c["pinned"].as_bool())
+        .unwrap_or(false);
 
-    let clients: Vec<serde_json::Value> =
-        serde_json::from_slice(&output.stdout).map_err(|e| format!("parse error: {e}"))?;
-
-    for client in &clients {
-        let client_title = client["title"].as_str().unwrap_or("");
-        if client_title == title {
-            let currently_pinned = client["pinned"].as_bool().unwrap_or(false);
-            if currently_pinned != desired {
-                let addr = client["address"]
-                    .as_str()
-                    .ok_or("no address field")?;
-                std::process::Command::new("hyprctl")
-                    .args(["dispatch", "pin", &format!("address:{addr}")])
-                    .output()
-                    .map_err(|e| format!("hyprctl dispatch failed: {e}"))?;
-            }
-            return Ok(());
-        }
+    if currently_pinned != desired {
+        std::process::Command::new("hyprctl")
+            .args(["dispatch", "pin", &format!("address:{addr}")])
+            .output()
+            .map_err(|e| format!("hyprctl dispatch failed: {e}"))?;
     }
 
-    Err("window not found in hyprctl clients".into())
+    Ok(())
 }
 
 /// Sway: `sticky` enables/disables always-visible-on-all-workspaces.
@@ -891,66 +897,7 @@ for (var i = 0; i < wins.length; i++) {{
 }}"#
     );
 
-    // Write to temp file — KWin scripting API requires a file path
-    let tmp = std::env::temp_dir().join("scrollr_kwin_pin.js");
-    std::fs::write(&tmp, &script).map_err(|e| format!("write temp script: {e}"))?;
-    let tmp_path = tmp.to_str().ok_or("invalid temp path")?;
-
-    // Unload any previous instance (ignore errors — may not exist)
-    std::process::Command::new(qdbus)
-        .args([
-            "org.kde.KWin",
-            "/Scripting",
-            "org.kde.kwin.Scripting.unloadScript",
-            "scrollr_pin",
-        ])
-        .output()
-        .ok();
-
-    // Load the script → returns a numeric script ID
-    let load = std::process::Command::new(qdbus)
-        .args([
-            "org.kde.KWin",
-            "/Scripting",
-            "org.kde.kwin.Scripting.loadScript",
-            tmp_path,
-            "scrollr_pin",
-        ])
-        .output()
-        .map_err(|e| format!("{qdbus} loadScript failed: {e}"))?;
-
-    let script_id = String::from_utf8_lossy(&load.stdout).trim().to_string();
-    if script_id.is_empty() || !load.status.success() {
-        let stderr = String::from_utf8_lossy(&load.stderr);
-        std::fs::remove_file(&tmp).ok();
-        return Err(format!("loadScript failed: {stderr}"));
-    }
-
-    // Run the script
-    let run_path = format!("/Scripting/Script{script_id}");
-    std::process::Command::new(qdbus)
-        .args(["org.kde.KWin", &run_path, "org.kde.kwin.Script.run"])
-        .output()
-        .map_err(|e| format!("{qdbus} run failed: {e}"))?;
-
-    // Stop and unload — script is one-shot, clean up immediately
-    std::process::Command::new(qdbus)
-        .args(["org.kde.KWin", &run_path, "org.kde.kwin.Script.stop"])
-        .output()
-        .ok();
-
-    std::process::Command::new(qdbus)
-        .args([
-            "org.kde.KWin",
-            "/Scripting",
-            "org.kde.kwin.Scripting.unloadScript",
-            "scrollr_pin",
-        ])
-        .output()
-        .ok();
-
-    std::fs::remove_file(&tmp).ok();
-    Ok(())
+    run_kwin_script(qdbus, &script, "scrollr_pin")
 }
 
 // ── SSE commands ─────────────────────────────────────────────────

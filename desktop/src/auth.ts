@@ -320,13 +320,6 @@ export function isAuthenticated(): boolean {
 }
 
 /**
- * Get the current auth state without refreshing.
- */
-export function getAuth(): AuthState | null {
-  return loadAuth();
-}
-
-/**
  * Extract user identity (email/name) from the stored access token JWT.
  * Returns null fields if no auth or claims not present.
  */

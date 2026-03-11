@@ -51,16 +51,4 @@ export function getAllChannels(): ChannelManifest[] {
   return [...known, ...unknown];
 }
 
-/**
- * Sort a list of channel IDs into the canonical tab order.
- * Unknown IDs are appended alphabetically at the end.
- */
-export function sortChannelOrder(ids: string[]): string[] {
-  const known = (CHANNEL_ORDER as readonly string[]).filter((id) =>
-    ids.includes(id),
-  );
-  const unknown = ids
-    .filter((id) => !(CHANNEL_ORDER as readonly string[]).includes(id))
-    .sort();
-  return [...known, ...unknown];
-}
+
