@@ -1144,7 +1144,7 @@ pub fn run() {
     {
         use windows_sys::Win32::System::Com::{CoInitializeEx, COINIT_APARTMENTTHREADED};
         unsafe {
-            CoInitializeEx(std::ptr::null(), COINIT_APARTMENTTHREADED);
+            CoInitializeEx(std::ptr::null(), COINIT_APARTMENTTHREADED as u32);
         }
     }
 
