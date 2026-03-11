@@ -2,55 +2,6 @@
 
 export const API_BASE = import.meta.env.VITE_API_URL || ''
 
-/**
- * Dispatches a CustomEvent on the document to notify the Scrollr extension's
- * content script that config has changed. The content script listens for this
- * on myscrollr.com pages and sends FORCE_REFRESH to the background, which
- * immediately re-fetches dashboard data — giving free-tier users instant
- * config sync without needing SSE/CDC.
- */
-function notifyExtensionConfigChanged(): void {
-  try {
-    document.dispatchEvent(new CustomEvent('scrollr:config-changed'))
-  } catch {
-    // Extension not installed or content script not loaded — ignore
-  }
-}
-
-/**
- * Notify the Scrollr extension that the user has logged in on the website.
- * The content script relays these tokens to the extension background so
- * it can authenticate without a separate PKCE flow.  Both Logto apps share
- * the same tenant / audience / issuer, so website tokens work for the API.
- */
-export function notifyExtensionAuthLogin(
-  accessToken: string,
-  refreshToken: string | null,
-  expiresAt: number,
-): void {
-  try {
-    document.dispatchEvent(
-      new CustomEvent('scrollr:auth-login', {
-        detail: { accessToken, refreshToken, expiresAt },
-      }),
-    )
-  } catch {
-    // Extension not installed — ignore
-  }
-}
-
-/**
- * Notify the Scrollr extension that the user is about to log out on the
- * website.  Must be called BEFORE the Logto signOut redirect.
- */
-export function notifyExtensionAuthLogout(): void {
-  try {
-    document.dispatchEvent(new CustomEvent('scrollr:auth-logout'))
-  } catch {
-    // Extension not installed — ignore
-  }
-}
-
 // ── Shared Types ──────────────────────────────────────────────────
 
 export interface UserPreferences {
@@ -151,12 +102,12 @@ export const channelsApi = {
       getToken,
     ),
 
-  create: async (
+  create: (
     channelType: ChannelType,
     config: Record<string, unknown>,
     getToken: () => Promise<string | null>,
-  ) => {
-    const result = await authenticatedFetch<Channel>(
+  ) =>
+    authenticatedFetch<Channel>(
       '/users/me/channels',
       {
         method: 'POST',
@@ -164,12 +115,9 @@ export const channelsApi = {
         body: JSON.stringify({ channel_type: channelType, config }),
       },
       getToken,
-    )
-    notifyExtensionConfigChanged()
-    return result
-  },
+    ),
 
-  update: async (
+  update: (
     channelType: ChannelType,
     data: {
       enabled?: boolean
@@ -177,8 +125,8 @@ export const channelsApi = {
       config?: Record<string, unknown>
     },
     getToken: () => Promise<string | null>,
-  ) => {
-    const result = await authenticatedFetch<Channel>(
+  ) =>
+    authenticatedFetch<Channel>(
       `/users/me/channels/${channelType}`,
       {
         method: 'PUT',
@@ -186,22 +134,13 @@ export const channelsApi = {
         body: JSON.stringify(data),
       },
       getToken,
-    )
-    notifyExtensionConfigChanged()
-    return result
-  },
+    ),
 
-  delete: async (
-    channelType: ChannelType,
-    getToken: () => Promise<string | null>,
-  ) => {
-    const result = await authenticatedFetch<{
+  delete: (channelType: ChannelType, getToken: () => Promise<string | null>) =>
+    authenticatedFetch<{
       status: string
       message: string
-    }>(`/users/me/channels/${channelType}`, { method: 'DELETE' }, getToken)
-    notifyExtensionConfigChanged()
-    return result
-  },
+    }>(`/users/me/channels/${channelType}`, { method: 'DELETE' }, getToken),
 }
 
 // ── RSS Types & API ──────────────────────────────────────────────
@@ -242,11 +181,11 @@ export async function getPreferences(
   )
 }
 
-export async function updatePreferences(
+export function updatePreferences(
   prefs: Partial<UserPreferences>,
   getToken: () => Promise<string | null>,
 ): Promise<UserPreferences> {
-  const result = await authenticatedFetch<UserPreferences>(
+  return authenticatedFetch<UserPreferences>(
     '/users/me/preferences',
     {
       method: 'PUT',
@@ -255,8 +194,6 @@ export async function updatePreferences(
     },
     getToken,
   )
-  notifyExtensionConfigChanged()
-  return result
 }
 
 // ── Billing Types & API ────────────────────────────────────────────

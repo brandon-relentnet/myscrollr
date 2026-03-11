@@ -577,7 +577,7 @@ export function ChannelsShowcase() {
           className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 mt-12"
         >
           <Link
-            to="/discover"
+            to="/channels"
             className="group inline-flex items-center gap-2 text-sm font-semibold text-base-content/40 hover:text-primary transition-colors"
           >
             See It in Action

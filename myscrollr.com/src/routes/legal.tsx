@@ -1,16 +1,17 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { motion, AnimatePresence } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { BookOpen, ChevronDown, AlertTriangle, Info, List } from 'lucide-react'
+import { AlertTriangle, BookOpen, ChevronDown, Info, List } from 'lucide-react'
 
+import type {LegalDocument, LegalSection} from '@/components/legal/documents';
 import { usePageMeta } from '@/lib/usePageMeta'
-import { pageVariants, sectionVariants, itemVariants } from '@/lib/animations'
+import { itemVariants, pageVariants, sectionVariants } from '@/lib/animations'
 import {
-  getDocument,
-  getDocumentsByCategory,
   LEGAL_DOCUMENTS,
-  type LegalDocument,
-  type LegalSection,
+  
+  
+  getDocument,
+  getDocumentsByCategory
 } from '@/components/legal/documents'
 
 // ── Route ───────────────────────────────────────────────────────
@@ -250,7 +251,7 @@ function TableOfContents({
   sections,
   docSlug,
 }: {
-  sections: LegalSection[]
+  sections: Array<LegalSection>
   docSlug: string
 }) {
   return (

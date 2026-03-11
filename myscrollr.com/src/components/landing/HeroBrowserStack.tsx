@@ -76,10 +76,10 @@ interface MockupConfig {
   tabIconBg: string
   tabIconDot: string
   accent: Accent
-  tickerChips: { label: string; value: string }[]
+  tickerChips: Array<{ label: string; value: string }>
 }
 
-const MOCKUPS: MockupConfig[] = [
+const MOCKUPS: Array<MockupConfig> = [
   {
     word: 'Scores',
     url: 'youtube.com/watch?v=dQw4w9W',
@@ -340,10 +340,10 @@ function ContentView({
   viewIndex: number
   activeIndex: number
 }) {
-  const x = useSpring(
-    calculateViewX(activeIndex - viewIndex, containerWidth),
-    { stiffness: 400, damping: 60 },
-  )
+  const x = useSpring(calculateViewX(activeIndex - viewIndex, containerWidth), {
+    stiffness: 400,
+    damping: 60,
+  })
 
   const xVelocity = useVelocity(x)
 
@@ -477,9 +477,7 @@ export function HeroBrowserStack({
                   </div>
                   <span
                     className={`text-[10px] truncate transition-colors duration-300 ${
-                      isActive
-                        ? 'text-base-content/50'
-                        : 'text-base-content/25'
+                      isActive ? 'text-base-content/50' : 'text-base-content/25'
                     }`}
                   >
                     {mockup.tabTitle}

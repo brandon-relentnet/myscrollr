@@ -15,6 +15,9 @@ import {
   Users,
 } from 'lucide-react'
 
+import type { GitHubStats } from '@/hooks/useGitHubStats'
+import { useGitHubStats } from '@/hooks/useGitHubStats'
+
 // ── Constants ────────────────────────────────────────────────────
 
 const EASE = [0.22, 1, 0.36, 1] as const
@@ -93,9 +96,6 @@ const COMING_SOON_ICONS = [
   { name: 'YouTube', emoji: '▶' },
   { name: 'Spotify', emoji: '🎵' },
 ]
-
-import { useGitHubStats } from '@/hooks/useGitHubStats'
-import type { GitHubStats } from '@/hooks/useGitHubStats'
 
 // ── Principle Card ───────────────────────────────────────────────
 

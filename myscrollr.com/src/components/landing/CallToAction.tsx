@@ -9,6 +9,8 @@ import {
 import { GitFork, Github, Globe, MessageSquare, Star, Zap } from 'lucide-react'
 import InstallButton from '@/components/InstallButton'
 
+import { useGitHubStats } from '@/hooks/useGitHubStats'
+
 /* ────────────────────────────────────────────────────────────────────────── */
 /*  Constants                                                                */
 /* ────────────────────────────────────────────────────────────────────────── */
@@ -32,8 +34,6 @@ const PARTICLES = Array.from({ length: 28 }, (_, i) => ({
   duration: Math.random() * 6 + 8,
   channelIndex: i % 4,
 }))
-
-import { useGitHubStats } from '@/hooks/useGitHubStats'
 
 /* ────────────────────────────────────────────────────────────────────────── */
 /*  Animated counter hook                                                    */

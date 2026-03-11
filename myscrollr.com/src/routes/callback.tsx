@@ -1,9 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useHandleSignInCallback, useLogto } from '@logto/react'
-import { useRef } from 'react'
-import { notifyExtensionAuthLogin } from '@/api/client'
-
-const API_RESOURCE = import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'
+import { useHandleSignInCallback } from '@logto/react'
 
 export const Route = createFileRoute('/callback')({
   component: Callback,
@@ -11,35 +7,9 @@ export const Route = createFileRoute('/callback')({
 
 function Callback() {
   const navigate = useNavigate()
-  const { getAccessToken } = useLogto()
-  const notifiedRef = useRef(false)
 
   const { isLoading, error } = useHandleSignInCallback(() => {
-    // After Logto callback completes, get the access token and notify
-    // the extension so it can sync auth without a separate PKCE flow.
-    if (!notifiedRef.current) {
-      notifiedRef.current = true
-      getAccessToken(API_RESOURCE)
-        .then((token) => {
-          if (token) {
-            try {
-              const payload = JSON.parse(atob(token.split('.')[1]))
-              const expiresAt = payload.exp ? payload.exp * 1000 : Date.now() + 3600_000
-              // Note: Logto React SDK doesn't expose the refresh token,
-              // so we pass null.  The extension will use the access token
-              // until it expires, then gracefully fall back to anonymous.
-              notifyExtensionAuthLogin(token, null, expiresAt)
-            } catch {
-              notifyExtensionAuthLogin(token, null, Date.now() + 3600_000)
-            }
-          }
-        })
-        .catch(() => {
-          // Token fetch failed — non-critical, extension just won't sync
-        })
-    }
-
-    navigate({ to: '/dashboard' })
+    navigate({ to: '/account' })
   })
 
   if (isLoading) {
@@ -70,7 +40,7 @@ function Callback() {
           </p>
           <p className="text-xs text-base-content/50">{error.message}</p>
           <button
-            onClick={() => navigate({ to: '/dashboard' })}
+            onClick={() => navigate({ to: '/' })}
             className="btn btn-primary btn-sm mt-4"
           >
             Try Again

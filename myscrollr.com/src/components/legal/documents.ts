@@ -1,26 +1,26 @@
-import type { LucideIcon } from 'lucide-react'
 import {
-  FileText,
-  Shield,
+  Accessibility,
   Cookie,
-  TrendingUp,
-  Link2,
-  Puzzle,
+  Copyright,
   CreditCard,
+  FileText,
+  GitPullRequest,
+  Link2,
+  Lock,
+  Puzzle,
   RotateCcw,
   Scale,
-  GitPullRequest,
+  Shield,
   ShieldAlert,
-  Copyright,
-  Lock,
-  Accessibility,
+  TrendingUp,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 
 // ── Types ────────────────────────────────────────────────────────
 
 export interface LegalSection {
   heading: string
-  content: string[]
+  content: Array<string>
   callout?: { type: 'warning' | 'info'; text: string }
 }
 
@@ -33,7 +33,7 @@ export interface LegalDocument {
   lastUpdated: string
   effectiveDate: string
   badge?: string
-  sections: LegalSection[]
+  sections: Array<LegalSection>
 }
 
 // ── Categories ───────────────────────────────────────────────────
@@ -48,7 +48,7 @@ export const CATEGORIES: Record<string, string> = {
 
 // ── Documents ────────────────────────────────────────────────────
 
-export const LEGAL_DOCUMENTS: LegalDocument[] = [
+export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
   // ─────────────────────────────────────────────────────────────
   // 1. TERMS OF SERVICE
   // ─────────────────────────────────────────────────────────────
@@ -894,7 +894,7 @@ export function getDocument(slug: string): LegalDocument | undefined {
 export function getDocumentsByCategory(): Array<{
   category: string
   label: string
-  docs: LegalDocument[]
+  docs: Array<LegalDocument>
 }> {
   const order: Array<LegalDocument['category']> = [
     'core',

@@ -1,6 +1,6 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { motion } from 'motion/react'
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import {
   ArrowLeft,
   Check,
@@ -263,8 +263,12 @@ function LifetimePage() {
                 transition={{ duration: 0.6, delay: 0.3, ease: EASE }}
                 className="space-y-3 mb-10"
               >
-                <Feature>50% off any Unlimited subscription — from $25.00/mo</Feature>
-                <Feature>Real-time SSE, unlimited symbols, feeds & leagues</Feature>
+                <Feature>
+                  50% off any Unlimited subscription — from $25.00/mo
+                </Feature>
+                <Feature>
+                  Real-time SSE, unlimited symbols, feeds & leagues
+                </Feature>
                 <Feature>Permanent Uplink-tier access (30s polling)</Feature>
                 <Feature>25 symbols, 50 RSS feeds, 3 fantasy leagues</Feature>
                 <Feature>Founding member badge & priority support</Feature>
@@ -340,8 +344,8 @@ function LifetimePage() {
                   <div className="mb-2">
                     <div className="flex items-baseline gap-2">
                       <span className="text-5xl font-black text-base-content tracking-tight">
-                      $399
-                    </span>
+                        $399
+                      </span>
                       <span className="text-sm text-base-content/25">
                         one-time
                       </span>
@@ -352,7 +356,8 @@ function LifetimePage() {
                   </p>
 
                   {/* Unlimited upgrade callout — with aura */}
-                  <div className="relative mb-8 p-3 rounded-xl border border-primary/15 overflow-hidden unlimited-glow"
+                  <div
+                    className="relative mb-8 p-3 rounded-xl border border-primary/15 overflow-hidden unlimited-glow"
                     style={{ background: 'rgba(52, 211, 153, 0.04)' }}
                   >
                     {/* Smoke layer — left bloom */}
@@ -397,9 +402,10 @@ function LifetimePage() {
                         50% Off Unlimited — From $25.00/mo
                       </p>
                       <p className="text-[10px] text-base-content/35 leading-relaxed">
-                        Lifetime members get half off any Unlimited subscription.
-                        Real-time SSE, unlimited symbols and feeds, webhooks,
-                        API access, and data export — all at half price.
+                        Lifetime members get half off any Unlimited
+                        subscription. Real-time SSE, unlimited symbols and
+                        feeds, webhooks, API access, and data export — all at
+                        half price.
                       </p>
                     </div>
                   </div>

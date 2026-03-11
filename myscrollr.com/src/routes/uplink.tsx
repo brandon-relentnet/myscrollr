@@ -795,7 +795,7 @@ function BottomCTA({
             </Link>
             <span className="w-px h-4 bg-base-content/10" />
             <Link
-              to="/dashboard"
+              to="/"
               className="inline-flex items-center gap-2 text-sm text-base-content/40 hover:text-primary transition-colors duration-200"
             >
               <Satellite className="size-4" aria-hidden />
@@ -1913,12 +1913,12 @@ function UplinkPage() {
                         <PricingFeature>1 fantasy league</PricingFeature>
                         <PricingFeature>Pro sports leagues</PricingFeature>
                         <PricingFeature>25 items retention</PricingFeature>
-                        <PricingFeature>Full dashboard access</PricingFeature>
+                        <PricingFeature>Full desktop app access</PricingFeature>
                       </div>
 
                       <div className="mt-auto pt-2 flex flex-col items-center gap-1.5">
                         <Link
-                          to="/dashboard"
+                          to="/"
                           className="block w-full py-2.5 text-center text-[10px] font-semibold border border-base-300/30 text-base-content/35 rounded-lg hover:border-base-300/50 hover:text-base-content/50 transition-colors"
                         >
                           Get Started Free
@@ -2012,15 +2012,33 @@ function UplinkPage() {
                         </div>
                         <div className="flex items-center gap-2 h-5">
                           <span className="inline-grid text-[10px] font-mono text-base-content/25 tabular-nums">
-                            <span className="col-start-1 row-start-1 transition-opacity duration-200" style={{ opacity: billingPeriod === 'annual' ? 1 : 0 }}>
+                            <span
+                              className="col-start-1 row-start-1 transition-opacity duration-200"
+                              style={{
+                                opacity: billingPeriod === 'annual' ? 1 : 0,
+                              }}
+                            >
                               Billed ${PRICING.uplink.annual.price}/yr
                             </span>
-                            <span className="col-start-1 row-start-1 transition-opacity duration-200" style={{ opacity: billingPeriod === 'monthly' ? 1 : 0 }}>
+                            <span
+                              className="col-start-1 row-start-1 transition-opacity duration-200"
+                              style={{
+                                opacity: billingPeriod === 'monthly' ? 1 : 0,
+                              }}
+                            >
                               Billed monthly
                             </span>
                           </span>
-                          <span className="text-[8px] font-bold text-info/60 bg-info/8 px-1.5 py-0.5 rounded transition-opacity duration-200" style={{ opacity: PRICING.uplink[billingPeriod].savings ? 1 : 0 }}>
-                            {PRICING.uplink[billingPeriod].savings ?? PRICING.uplink.annual.savings}
+                          <span
+                            className="text-[8px] font-bold text-info/60 bg-info/8 px-1.5 py-0.5 rounded transition-opacity duration-200"
+                            style={{
+                              opacity: PRICING.uplink[billingPeriod].savings
+                                ? 1
+                                : 0,
+                            }}
+                          >
+                            {PRICING.uplink[billingPeriod].savings ??
+                              PRICING.uplink.annual.savings}
                           </span>
                         </div>
                       </div>
@@ -2130,15 +2148,33 @@ function UplinkPage() {
                         </div>
                         <div className="flex items-center gap-2 h-5">
                           <span className="inline-grid text-[10px] font-mono text-base-content/25 tabular-nums">
-                            <span className="col-start-1 row-start-1 transition-opacity duration-200" style={{ opacity: billingPeriod === 'annual' ? 1 : 0 }}>
+                            <span
+                              className="col-start-1 row-start-1 transition-opacity duration-200"
+                              style={{
+                                opacity: billingPeriod === 'annual' ? 1 : 0,
+                              }}
+                            >
                               Billed ${PRICING.pro.annual.price}/yr
                             </span>
-                            <span className="col-start-1 row-start-1 transition-opacity duration-200" style={{ opacity: billingPeriod === 'monthly' ? 1 : 0 }}>
+                            <span
+                              className="col-start-1 row-start-1 transition-opacity duration-200"
+                              style={{
+                                opacity: billingPeriod === 'monthly' ? 1 : 0,
+                              }}
+                            >
                               Billed monthly
                             </span>
                           </span>
-                          <span className="text-[8px] font-bold text-[#a78bfa]/60 bg-[#a78bfa]/8 px-1.5 py-0.5 rounded transition-opacity duration-200" style={{ opacity: PRICING.pro[billingPeriod].savings ? 1 : 0 }}>
-                            {PRICING.pro[billingPeriod].savings ?? PRICING.pro.annual.savings}
+                          <span
+                            className="text-[8px] font-bold text-[#a78bfa]/60 bg-[#a78bfa]/8 px-1.5 py-0.5 rounded transition-opacity duration-200"
+                            style={{
+                              opacity: PRICING.pro[billingPeriod].savings
+                                ? 1
+                                : 0,
+                            }}
+                          >
+                            {PRICING.pro[billingPeriod].savings ??
+                              PRICING.pro.annual.savings}
                           </span>
                         </div>
                       </div>
@@ -2399,18 +2435,37 @@ function UplinkPage() {
                               /mo
                             </span>
                           </div>
-                        <div className="flex items-center gap-2 h-5">
-                          <span className="inline-grid text-[10px] font-mono text-primary/40 tabular-nums">
-                            <span className="col-start-1 row-start-1 transition-opacity duration-200" style={{ opacity: billingPeriod === 'annual' ? 1 : 0 }}>
-                              Billed ${PRICING.unlimited.annual.price}/yr
+                          <div className="flex items-center gap-2 h-5">
+                            <span className="inline-grid text-[10px] font-mono text-primary/40 tabular-nums">
+                              <span
+                                className="col-start-1 row-start-1 transition-opacity duration-200"
+                                style={{
+                                  opacity: billingPeriod === 'annual' ? 1 : 0,
+                                }}
+                              >
+                                Billed ${PRICING.unlimited.annual.price}/yr
+                              </span>
+                              <span
+                                className="col-start-1 row-start-1 transition-opacity duration-200"
+                                style={{
+                                  opacity: billingPeriod === 'monthly' ? 1 : 0,
+                                }}
+                              >
+                                Billed monthly
+                              </span>
                             </span>
-                            <span className="col-start-1 row-start-1 transition-opacity duration-200" style={{ opacity: billingPeriod === 'monthly' ? 1 : 0 }}>
-                              Billed monthly
+                            <span
+                              className="text-[8px] font-bold text-primary/70 bg-primary/10 px-1.5 py-0.5 rounded transition-opacity duration-200"
+                              style={{
+                                opacity: PRICING.unlimited[billingPeriod]
+                                  .savings
+                                  ? 1
+                                  : 0,
+                              }}
+                            >
+                              {PRICING.unlimited[billingPeriod].savings ??
+                                PRICING.unlimited.annual.savings}
                             </span>
-                          </span>
-                          <span className="text-[8px] font-bold text-primary/70 bg-primary/10 px-1.5 py-0.5 rounded transition-opacity duration-200" style={{ opacity: PRICING.unlimited[billingPeriod].savings ? 1 : 0 }}>
-                            {PRICING.unlimited[billingPeriod].savings ?? PRICING.unlimited.annual.savings}
-                          </span>
                           </div>
                         </div>
 

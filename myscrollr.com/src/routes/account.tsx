@@ -1,7 +1,5 @@
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useScrollrAuth } from '@/hooks/useScrollrAuth'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { ComponentType } from 'react'
 import {
   ArrowRight,
   BarChart3,
@@ -14,7 +12,9 @@ import {
   Wifi,
 } from 'lucide-react'
 import { motion } from 'motion/react'
+import type { ComponentType } from 'react'
 import type { IdTokenClaims } from '@logto/react'
+import { useScrollrAuth } from '@/hooks/useScrollrAuth'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { pageVariants, sectionVariants } from '@/lib/animations'
 import { channelsApi } from '@/api/client'
@@ -58,11 +58,11 @@ interface HubCardDef {
   }>
 }
 
-const HUB_CARDS: HubCardDef[] = [
+const HUB_CARDS: Array<HubCardDef> = [
   {
-    title: 'Data Terminal',
-    desc: 'Market overview & live scores',
-    to: '/dashboard',
+    title: 'Desktop App',
+    desc: 'Download the Scrollr desktop app',
+    href: 'https://github.com/brandon-relentnet/myscrollr/releases/latest',
     Icon: BarChart3,
     hex: HEX.primary,
     WatermarkIcon: BarChart3,

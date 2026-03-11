@@ -11,10 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UplinkRouteImport } from './routes/uplink'
 import { Route as StatusRouteImport } from './routes/status'
-import { Route as OnboardRouteImport } from './routes/onboard'
 import { Route as LegalRouteImport } from './routes/legal'
-import { Route as DiscoverRouteImport } from './routes/discover'
-import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ChannelsRouteImport } from './routes/channels'
 import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as ArchitectureRouteImport } from './routes/architecture'
@@ -33,24 +30,9 @@ const StatusRoute = StatusRouteImport.update({
   path: '/status',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OnboardRoute = OnboardRouteImport.update({
-  id: '/onboard',
-  path: '/onboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const LegalRoute = LegalRouteImport.update({
   id: '/legal',
   path: '/legal',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DiscoverRoute = DiscoverRouteImport.update({
-  id: '/discover',
-  path: '/discover',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChannelsRoute = ChannelsRouteImport.update({
@@ -95,10 +77,7 @@ export interface FileRoutesByFullPath {
   '/architecture': typeof ArchitectureRoute
   '/callback': typeof CallbackRoute
   '/channels': typeof ChannelsRoute
-  '/dashboard': typeof DashboardRoute
-  '/discover': typeof DiscoverRoute
   '/legal': typeof LegalRoute
-  '/onboard': typeof OnboardRoute
   '/status': typeof StatusRoute
   '/uplink': typeof UplinkRoute
   '/u/$username': typeof UUsernameRoute
@@ -110,10 +89,7 @@ export interface FileRoutesByTo {
   '/architecture': typeof ArchitectureRoute
   '/callback': typeof CallbackRoute
   '/channels': typeof ChannelsRoute
-  '/dashboard': typeof DashboardRoute
-  '/discover': typeof DiscoverRoute
   '/legal': typeof LegalRoute
-  '/onboard': typeof OnboardRoute
   '/status': typeof StatusRoute
   '/uplink': typeof UplinkRoute
   '/u/$username': typeof UUsernameRoute
@@ -126,10 +102,7 @@ export interface FileRoutesById {
   '/architecture': typeof ArchitectureRoute
   '/callback': typeof CallbackRoute
   '/channels': typeof ChannelsRoute
-  '/dashboard': typeof DashboardRoute
-  '/discover': typeof DiscoverRoute
   '/legal': typeof LegalRoute
-  '/onboard': typeof OnboardRoute
   '/status': typeof StatusRoute
   '/uplink': typeof UplinkRoute
   '/u/$username': typeof UUsernameRoute
@@ -143,10 +116,7 @@ export interface FileRouteTypes {
     | '/architecture'
     | '/callback'
     | '/channels'
-    | '/dashboard'
-    | '/discover'
     | '/legal'
-    | '/onboard'
     | '/status'
     | '/uplink'
     | '/u/$username'
@@ -158,10 +128,7 @@ export interface FileRouteTypes {
     | '/architecture'
     | '/callback'
     | '/channels'
-    | '/dashboard'
-    | '/discover'
     | '/legal'
-    | '/onboard'
     | '/status'
     | '/uplink'
     | '/u/$username'
@@ -173,10 +140,7 @@ export interface FileRouteTypes {
     | '/architecture'
     | '/callback'
     | '/channels'
-    | '/dashboard'
-    | '/discover'
     | '/legal'
-    | '/onboard'
     | '/status'
     | '/uplink'
     | '/u/$username'
@@ -189,10 +153,7 @@ export interface RootRouteChildren {
   ArchitectureRoute: typeof ArchitectureRoute
   CallbackRoute: typeof CallbackRoute
   ChannelsRoute: typeof ChannelsRoute
-  DashboardRoute: typeof DashboardRoute
-  DiscoverRoute: typeof DiscoverRoute
   LegalRoute: typeof LegalRoute
-  OnboardRoute: typeof OnboardRoute
   StatusRoute: typeof StatusRoute
   UplinkRoute: typeof UplinkRoute
   UUsernameRoute: typeof UUsernameRoute
@@ -215,32 +176,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StatusRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/onboard': {
-      id: '/onboard'
-      path: '/onboard'
-      fullPath: '/onboard'
-      preLoaderRoute: typeof OnboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/legal': {
       id: '/legal'
       path: '/legal'
       fullPath: '/legal'
       preLoaderRoute: typeof LegalRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/discover': {
-      id: '/discover'
-      path: '/discover'
-      fullPath: '/discover'
-      preLoaderRoute: typeof DiscoverRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/channels': {
@@ -301,10 +241,7 @@ const rootRouteChildren: RootRouteChildren = {
   ArchitectureRoute: ArchitectureRoute,
   CallbackRoute: CallbackRoute,
   ChannelsRoute: ChannelsRoute,
-  DashboardRoute: DashboardRoute,
-  DiscoverRoute: DiscoverRoute,
   LegalRoute: LegalRoute,
-  OnboardRoute: OnboardRoute,
   StatusRoute: StatusRoute,
   UplinkRoute: UplinkRoute,
   UUsernameRoute: UUsernameRoute,

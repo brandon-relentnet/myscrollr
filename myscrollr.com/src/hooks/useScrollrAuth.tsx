@@ -11,17 +11,17 @@
  */
 
 import {
+  
   createContext,
   useCallback,
   useContext,
   useEffect,
   useRef,
-  useState,
-  type ReactNode,
+  useState
 } from 'react'
 import { useLogto } from '@logto/react'
+import type {ReactNode} from 'react';
 import type { IdTokenClaims } from '@logto/react'
-import { notifyExtensionAuthLogout } from '@/api/client'
 
 // ── Bridge token types ────────────────────────────────────────────
 
@@ -98,7 +98,8 @@ const ScrollrAuthContext = createContext<ScrollrAuthContextValue | null>(null)
 
 // ── Provider ──────────────────────────────────────────────────────
 
-const API_RESOURCE = import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'
+const API_RESOURCE =
+  import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'
 
 export function ScrollrAuthProvider({ children }: { children: ReactNode }) {
   const logto = useLogto()
@@ -181,7 +182,6 @@ export function ScrollrAuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback((postLogoutRedirectUri: string) => {
     clearBridge()
     setBridge(null)
-    notifyExtensionAuthLogout()
     logtoRef.current.signOut(postLogoutRedirectUri)
   }, [])
 

@@ -421,7 +421,7 @@ function AccordionItem({
 // ── Main Component ───────────────────────────────────────────────
 
 interface FAQSectionProps {
-  items?: FAQItem[]
+  items?: Array<FAQItem>
   title?: string
   titleHighlight?: string
   subtitle?: string
@@ -508,7 +508,8 @@ export function FAQSection({
           className="flex flex-col items-center text-center mb-14 lg:mb-16"
         >
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4 text-center">
-            {title} <span className="text-gradient-primary">{titleHighlight}</span>
+            {title}{' '}
+            <span className="text-gradient-primary">{titleHighlight}</span>
           </h2>
           <p className="text-base text-base-content/50 leading-relaxed text-center max-w-lg">
             {subtitle}
@@ -603,9 +604,7 @@ export function FAQSection({
               {/* Counter */}
               <span className="text-sm text-base-content/30 font-medium tabular-nums">
                 {activeIndex + 1}{' '}
-                <span className="text-base-content/15">
-                  / {items.length}
-                </span>
+                <span className="text-base-content/15">/ {items.length}</span>
               </span>
 
               {/* Prev / Next */}

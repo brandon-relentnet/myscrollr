@@ -1,6 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { ComponentType } from 'react'
 import {
   Activity,
   ArrowUpRight,
@@ -15,6 +14,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { motion } from 'motion/react'
+import type { ComponentType } from 'react'
 import { usePageMeta } from '@/lib/usePageMeta'
 import { API_BASE } from '@/api/client'
 
@@ -46,7 +46,7 @@ interface HealthData {
 interface ChannelEntry {
   name: string
   display_name: string
-  capabilities: string[]
+  capabilities: Array<string>
 }
 
 interface ViewerData {
@@ -158,7 +158,7 @@ function StatusPage() {
   })
 
   const [health, setHealth] = useState<HealthData | null>(null)
-  const [channels, setChannels] = useState<ChannelEntry[]>([])
+  const [channels, setChannels] = useState<Array<ChannelEntry>>([])
   const [viewers, setViewers] = useState<number | null>(null)
   const [lastChecked, setLastChecked] = useState<Date | null>(null)
   const [fetchError, setFetchError] = useState(false)
@@ -186,7 +186,7 @@ function StatusPage() {
       }
 
       if (chnlRes.status === 'fulfilled' && chnlRes.value.ok) {
-        const data: ChannelEntry[] = await chnlRes.value.json()
+        const data: Array<ChannelEntry> = await chnlRes.value.json()
         setChannels(data)
       }
 

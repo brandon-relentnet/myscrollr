@@ -1,30 +1,18 @@
-# Build context: monorepo root (one level above myscrollr.com/)
-# This allows access to both myscrollr.com/ and channels/
+# Build context: myscrollr.com/ directory
 
 # ── Stage 1: Build ──────────────────────────────────────────────
 FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Copy frontend package files first for better layer caching
-COPY myscrollr.com/package.json myscrollr.com/package-lock.json* ./myscrollr.com/
+# Copy package files first for better layer caching
+COPY package.json package-lock.json* ./
 
 # Install dependencies
-WORKDIR /app/myscrollr.com
 RUN npm ci
 
-# Copy channel web components (only what the frontend build needs)
-WORKDIR /app
-COPY channels/finance/web/ ./channels/finance/web/
-COPY channels/sports/web/ ./channels/sports/web/
-COPY channels/rss/web/ ./channels/rss/web/
-COPY channels/fantasy/web/ ./channels/fantasy/web/
-
-# Create node_modules symlink for TypeScript resolution of channel files
-RUN ln -s ../myscrollr.com/node_modules ./channels/node_modules
-
-# Copy the rest of the frontend source
-COPY myscrollr.com/ ./myscrollr.com/
+# Copy source
+COPY . .
 
 # Accept build-time env vars
 ARG VITE_API_URL
@@ -39,14 +27,13 @@ ENV VITE_LOGTO_RESOURCE=${VITE_LOGTO_RESOURCE}
 ENV VITE_STRIPE_PUBLISHABLE_KEY=${VITE_STRIPE_PUBLISHABLE_KEY}
 
 # Build (vite build + tsc)
-WORKDIR /app/myscrollr.com
 RUN npm run build
 
 # ── Stage 2: Serve ──────────────────────────────────────────────
 FROM nginx:alpine
 
 # Copy built assets to nginx
-COPY --from=builder /app/myscrollr.com/dist /usr/share/nginx/html
+COPY --from=builder /app/dist /usr/share/nginx/html
 
 # SPA fallback: route all paths to index.html for client-side routing
 # Includes security headers, gzip compression, and proper caching

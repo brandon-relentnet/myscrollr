@@ -1,19 +1,13 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
-import { useScrollrAuth } from '@/hooks/useScrollrAuth'
-import { useEffect, useState } from 'react'
-import type { ComponentType } from 'react'
+import { createFileRoute } from '@tanstack/react-router'
 import {
-  ArrowRight,
   ArrowUpRight,
   BookOpen,
-  Check,
   Clock,
   Cloud,
   Code2,
   Cpu,
   Ghost,
   Lightbulb,
-  Lock,
   MessageSquare,
   Music,
   Play,
@@ -27,10 +21,8 @@ import {
 } from 'lucide-react'
 
 import { motion } from 'motion/react'
-import type { Channel, ChannelType } from '@/api/client'
+import type { ComponentType } from 'react'
 import { usePageMeta } from '@/lib/usePageMeta'
-import { useGetToken } from '@/hooks/useGetToken'
-import { channelsApi } from '@/api/client'
 
 export const Route = createFileRoute('/channels')({
   component: ChannelsPage,
@@ -51,7 +43,6 @@ const HEX = {
 
 interface ChannelDef {
   id: string
-  channelType: ChannelType
   name: string
   description: string
   detail: string
@@ -62,7 +53,6 @@ interface ChannelDef {
     strokeWidth?: number
     className?: string
   }>
-  recommended?: boolean
 }
 
 interface ComingSoonChannel {
@@ -72,10 +62,9 @@ interface ComingSoonChannel {
   Icon: ComponentType<{ size?: number; className?: string }>
 }
 
-const CHANNELS: ChannelDef[] = [
+const CHANNELS: Array<ChannelDef> = [
   {
     id: 'finance',
-    channelType: 'finance',
     name: 'Finance',
     description: 'Real-time market data',
     detail:
@@ -83,11 +72,9 @@ const CHANNELS: ChannelDef[] = [
     Icon: TrendingUp,
     hex: HEX.primary,
     Watermark: TrendingUp,
-    recommended: true,
   },
   {
     id: 'sports',
-    channelType: 'sports',
     name: 'Sports',
     description: 'Live scores & schedules',
     detail:
@@ -95,11 +82,9 @@ const CHANNELS: ChannelDef[] = [
     Icon: Trophy,
     hex: HEX.secondary,
     Watermark: Trophy,
-    recommended: true,
   },
   {
     id: 'rss',
-    channelType: 'rss',
     name: 'RSS Feeds',
     description: 'Custom news streams',
     detail:
@@ -107,11 +92,9 @@ const CHANNELS: ChannelDef[] = [
     Icon: Rss,
     hex: HEX.info,
     Watermark: Rss,
-    recommended: true,
   },
   {
     id: 'fantasy',
-    channelType: 'fantasy',
     name: 'Yahoo Fantasy',
     description: 'Fantasy sports leagues',
     detail:
@@ -122,7 +105,7 @@ const CHANNELS: ChannelDef[] = [
   },
 ]
 
-const COMING_SOON: ComingSoonChannel[] = [
+const COMING_SOON: Array<ComingSoonChannel> = [
   {
     id: 'discord',
     name: 'Discord',
@@ -173,7 +156,7 @@ interface WidgetDef {
   platforms: string
 }
 
-const WIDGETS: WidgetDef[] = [
+const WIDGETS: Array<WidgetDef> = [
   {
     id: 'clock',
     name: 'World Clock',
@@ -182,7 +165,7 @@ const WIDGETS: WidgetDef[] = [
       'Track time across 18 cities worldwide. Auto-detects your local timezone with add/remove city management.',
     Icon: Clock,
     hex: '#6366f1',
-    platforms: 'Extension & Desktop',
+    platforms: 'Desktop',
   },
   {
     id: 'timer',
@@ -192,7 +175,7 @@ const WIDGETS: WidgetDef[] = [
       'Three modes in one widget. Pomodoro with session tracking, countdown presets from 1-60 minutes, and a simple stopwatch. Keyboard shortcuts included.',
     Icon: Timer,
     hex: '#f59e0b',
-    platforms: 'Extension & Desktop',
+    platforms: 'Desktop',
   },
   {
     id: 'weather',
@@ -202,7 +185,7 @@ const WIDGETS: WidgetDef[] = [
       'Search and add any city worldwide. Shows temperature, feels-like, humidity, wind, and conditions. Auto-refreshes every 10 minutes. No API key needed.',
     Icon: Cloud,
     hex: '#0ea5e9',
-    platforms: 'Extension & Desktop',
+    platforms: 'Desktop',
   },
   {
     id: 'sysmon',
@@ -222,54 +205,9 @@ function ChannelsPage() {
   usePageMeta({
     title: 'Channels — Scrollr',
     description:
-      'Browse and connect channels to extend your Scrollr feed with real-time data from your favorite platforms.',
+      'Browse channels and widgets available in the Scrollr desktop app.',
     canonicalUrl: 'https://myscrollr.com/channels',
   })
-
-  const { isAuthenticated, signIn } = useScrollrAuth()
-  const [channels, setChannels] = useState<Channel[]>([])
-  const [loading, setLoading] = useState(false)
-  const [adding, setAdding] = useState<string | null>(null)
-  const getToken = useGetToken()
-
-  // Fetch user's channels when authenticated
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setChannels([])
-      return
-    }
-    setLoading(true)
-    channelsApi
-      .getAll(getToken)
-      .then((res) => setChannels(res.channels || []))
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [isAuthenticated, getToken])
-
-  const hasChannel = (type: ChannelType) =>
-    channels.some((s) => s.channel_type === type)
-
-  const handleAdd = async (channel: ChannelDef) => {
-    if (!isAuthenticated) {
-      signIn(`${window.location.origin}/callback`)
-      return
-    }
-    if (hasChannel(channel.channelType)) return
-
-    setAdding(channel.id)
-    try {
-      const created = await channelsApi.create(
-        channel.channelType,
-        {},
-        getToken,
-      )
-      setChannels((prev) => [...prev, created])
-    } catch {
-      // Silently handle — likely 409 conflict (already exists)
-    } finally {
-      setAdding(null)
-    }
-  }
 
   return (
     <div className="min-h-screen pt-20">
@@ -344,7 +282,7 @@ function ChannelsPage() {
               <span className="text-gradient-primary">Channels</span>
             </h2>
             <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
-              Add data sources to your account to build your feed
+              Real-time data sources available in the desktop app
             </p>
           </motion.div>
 
@@ -362,15 +300,7 @@ function ChannelsPage() {
                   ease: EASE,
                 }}
               >
-                <ChannelCard
-                  channel={channel}
-                  installed={hasChannel(channel.channelType)}
-                  loading={loading}
-                  onAdd={handleAdd}
-                  adding={adding === channel.id}
-                  isAuthenticated={isAuthenticated}
-                  recommended={channel.recommended}
-                />
+                <ChannelCard channel={channel} />
               </motion.div>
             ))}
           </div>
@@ -391,8 +321,7 @@ function ChannelsPage() {
             className="text-center mb-12 sm:mb-16"
           >
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4">
-              Built-in{' '}
-              <span className="text-gradient-primary">Widgets</span>
+              Built-in <span className="text-gradient-primary">Widgets</span>
             </h2>
             <p className="text-base text-base-content/45 leading-relaxed max-w-lg mx-auto">
               Lightweight utilities that live alongside your feed — no account
@@ -577,23 +506,7 @@ function ChannelsPage() {
 
 // ── Channel Card ───────────────────────────────────────────────
 
-function ChannelCard({
-  channel,
-  installed,
-  loading,
-  onAdd,
-  adding,
-  isAuthenticated,
-  recommended = false,
-}: {
-  channel: ChannelDef
-  installed: boolean
-  loading: boolean
-  onAdd: (channel: ChannelDef) => void
-  adding: boolean
-  isAuthenticated: boolean
-  recommended?: boolean
-}) {
+function ChannelCard({ channel }: { channel: ChannelDef }) {
   const { hex } = channel
 
   return (
@@ -635,27 +548,16 @@ function ChannelCard({
             <channel.Icon size={20} className="text-base-content/80" />
           </div>
 
-          {/* Status Badge */}
-          {loading ? (
-            <span className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-base-content/30 bg-base-300/30 rounded-full border border-base-300/25">
-              Loading
-            </span>
-          ) : installed ? (
-            <span className="flex items-center gap-1 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-success/80 bg-success/10 rounded-full border border-success/20">
-              <Check size={10} /> Added
-            </span>
-          ) : recommended ? (
-            <span
-              className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide rounded-full border"
-              style={{
-                color: hex,
-                background: `${hex}10`,
-                borderColor: `${hex}20`,
-              }}
-            >
-              Recommended
-            </span>
-          ) : null}
+          <span
+            className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide rounded-full border"
+            style={{
+              color: `${hex}99`,
+              background: `${hex}08`,
+              borderColor: `${hex}20`,
+            }}
+          >
+            Desktop
+          </span>
         </div>
 
         {/* Content */}
@@ -672,45 +574,11 @@ function ChannelCard({
           {channel.detail}
         </p>
 
-        {/* Action — pinned to bottom */}
+        {/* Footer */}
         <div className="mt-auto pt-5">
-          {installed ? (
-            <Link
-              to="/dashboard"
-              search={{ tab: channel.channelType }}
-              className="flex items-center gap-2 text-[10px] font-semibold text-base-content/50 hover:text-base-content/70 transition-colors"
-            >
-              Manage on Dashboard <ArrowRight size={12} />
-            </Link>
-          ) : (
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => onAdd(channel)}
-              disabled={adding}
-              className="flex items-center gap-2 px-4 py-2 text-[10px] font-semibold border rounded-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              style={{
-                borderColor: `${hex}30`,
-                color: `${hex}cc`,
-              }}
-            >
-              {!isAuthenticated ? (
-                <>
-                  <Lock size={12} /> Sign in to Add
-                </>
-              ) : adding ? (
-                <>
-                  <div
-                    className="h-2.5 w-2.5 rounded-full border border-t-transparent animate-spin"
-                    style={{ borderColor: `${hex}50` }}
-                  />
-                  Adding...
-                </>
-              ) : (
-                <>Add to Account</>
-              )}
-            </motion.button>
-          )}
+          <span className="text-[10px] font-medium text-base-content/30">
+            Available in the desktop app
+          </span>
         </div>
       </div>
 

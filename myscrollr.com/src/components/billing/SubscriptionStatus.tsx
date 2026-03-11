@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { AlertTriangle, Calendar, Crown, Infinity, Loader2 } from 'lucide-react'
+import type {SubscriptionStatus as SubStatus} from '@/api/client';
 import {
+  
   billingApi,
-  getPreferences,
-  type SubscriptionStatus as SubStatus,
+  getPreferences
 } from '@/api/client'
-import { Crown, Loader2, AlertTriangle, Calendar, Infinity } from 'lucide-react'
 
 interface SubscriptionStatusProps {
   getToken: () => Promise<string | null>
@@ -26,7 +27,9 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   past_due: { label: 'Past Due', color: 'text-error' },
 }
 
-export default function SubscriptionStatus({ getToken }: SubscriptionStatusProps) {
+export default function SubscriptionStatus({
+  getToken,
+}: SubscriptionStatusProps) {
   const [subscription, setSubscription] = useState<SubStatus | null>(null)
   const [tier, setTier] = useState<string>('free')
   const [loading, setLoading] = useState(true)
@@ -56,7 +59,11 @@ export default function SubscriptionStatus({ getToken }: SubscriptionStatusProps
   }
 
   async function handleCancel() {
-    if (!confirm('Are you sure you want to cancel? You will keep access until the end of your billing period.')) {
+    if (
+      !confirm(
+        'Are you sure you want to cancel? You will keep access until the end of your billing period.',
+      )
+    ) {
       return
     }
     try {
@@ -112,22 +119,38 @@ export default function SubscriptionStatus({ getToken }: SubscriptionStatusProps
     : null
 
   return (
-    <div className={`space-y-4 ${isUnlimited ? 'unlimited-glow rounded-xl p-4 -m-4' : ''}`}
-      style={isUnlimited ? { background: 'rgba(52, 211, 153, 0.03)', borderColor: 'rgba(52, 211, 153, 0.15)' } : undefined}
+    <div
+      className={`space-y-4 ${isUnlimited ? 'unlimited-glow rounded-xl p-4 -m-4' : ''}`}
+      style={
+        isUnlimited
+          ? {
+              background: 'rgba(52, 211, 153, 0.03)',
+              borderColor: 'rgba(52, 211, 153, 0.15)',
+            }
+          : undefined
+      }
     >
       {/* Plan + Status */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Crown
             size={14}
-            className={isUnlimited ? 'text-primary unlimited-dot-glow rounded-full' : 'text-primary'}
+            className={
+              isUnlimited
+                ? 'text-primary unlimited-dot-glow rounded-full'
+                : 'text-primary'
+            }
           />
-          <span className={`text-xs font-semibold text-primary ${isUnlimited ? 'unlimited-text-glow' : ''}`}>
+          <span
+            className={`text-xs font-semibold text-primary ${isUnlimited ? 'unlimited-text-glow' : ''}`}
+          >
             {isUnlimited ? 'Uplink Unlimited' : 'Uplink'}{' '}
             {PLAN_LABELS[subscription.plan] || subscription.plan}
           </span>
         </div>
-        <span className={`text-[10px] font-semibold uppercase tracking-wide ${statusInfo.color}`}>
+        <span
+          className={`text-[10px] font-semibold uppercase tracking-wide ${statusInfo.color}`}
+        >
           {statusInfo.label}
         </span>
       </div>
@@ -136,7 +159,9 @@ export default function SubscriptionStatus({ getToken }: SubscriptionStatusProps
       {subscription.lifetime ? (
         <div className="flex items-center gap-2">
           <Infinity size={12} className="text-base-content/30" />
-          <span className="text-xs text-base-content/40">Lifetime access — no expiration</span>
+          <span className="text-xs text-base-content/40">
+            Lifetime access — no expiration
+          </span>
         </div>
       ) : periodEnd ? (
         <div className="flex items-center gap-2">

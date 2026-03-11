@@ -55,7 +55,7 @@ const CHANNELS: Array<{
   { name: 'Fantasy', icon: Ghost, color: 'accent', defaultOn: true },
 ]
 
-const DEMO_CHIPS: { label: string; value: string; color: ChipColor }[] = [
+const DEMO_CHIPS: Array<{ label: string; value: string; color: ChipColor }> = [
   { label: 'BTC', value: '$67,241', color: 'primary' },
   { label: 'LAL 118', value: 'BOS 112', color: 'secondary' },
   { label: 'NVDA', value: '$891.20', color: 'primary' },
@@ -244,10 +244,10 @@ function InstallVisual() {
 // ── Step 2 Visual: Choose Channels ───────────────────────────────
 
 function ChooseVisual() {
-  const [toggled, setToggled] = useState<boolean[]>(CHANNELS.map(() => false))
+  const [toggled, setToggled] = useState<Array<boolean>>(CHANNELS.map(() => false))
 
   useEffect(() => {
-    const timeouts: ReturnType<typeof setTimeout>[] = []
+    const timeouts: Array<ReturnType<typeof setTimeout>> = []
     CHANNELS.forEach((channel, i) => {
       if (channel.defaultOn) {
         timeouts.push(

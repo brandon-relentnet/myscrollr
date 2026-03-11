@@ -1,6 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { motion } from 'motion/react'
-import type { ComponentType } from 'react'
 import {
   Activity,
   ArrowDown,
@@ -19,6 +18,7 @@ import {
   Shield,
   Workflow,
 } from 'lucide-react'
+import type { ComponentType } from 'react'
 
 import { usePageMeta } from '@/lib/usePageMeta'
 
@@ -45,7 +45,7 @@ interface PipelineStep {
   description: string
   hex: string
   label: string
-  items: string[]
+  items: Array<string>
   Watermark: ComponentType<{
     size?: number
     strokeWidth?: number
@@ -53,7 +53,7 @@ interface PipelineStep {
   }>
 }
 
-const PIPELINE_STEPS: PipelineStep[] = [
+const PIPELINE_STEPS: Array<PipelineStep> = [
   {
     Icon: Globe,
     title: 'Data Sources',
@@ -105,7 +105,7 @@ interface CdcStep {
   hex: string
 }
 
-const CDC_FLOW: CdcStep[] = [
+const CDC_FLOW: Array<CdcStep> = [
   {
     label: 'Rust Service',
     detail: 'Writes to PostgreSQL',
@@ -158,7 +158,7 @@ interface Principle {
   }>
 }
 
-const PRINCIPLES: Principle[] = [
+const PRINCIPLES: Array<Principle> = [
   {
     Icon: Box,
     title: 'Decoupled Channels',
@@ -199,7 +199,7 @@ interface TechGroup {
   category: string
   Icon: ComponentType<{ size?: number; className?: string }>
   hex: string
-  items: { name: string; detail: string }[]
+  items: Array<{ name: string; detail: string }>
   Watermark: ComponentType<{
     size?: number
     strokeWidth?: number
@@ -207,7 +207,7 @@ interface TechGroup {
   }>
 }
 
-const TECH_STACK: TechGroup[] = [
+const TECH_STACK: Array<TechGroup> = [
   {
     category: 'Core API',
     Icon: Server,

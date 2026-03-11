@@ -2,7 +2,6 @@ import { Link, useLocation } from '@tanstack/react-router'
 import {
   ChevronRight,
   House,
-  LayoutDashboard,
   LogOut,
   Menu,
   Puzzle,
@@ -111,11 +110,6 @@ export default function Header() {
 
             {isAuthenticated && (
               <>
-                <NavLink to="/dashboard" activeOn="/dashboard">
-                  <LayoutDashboard size={14} />
-                  Dashboard
-                </NavLink>
-
                 <NavLink to="/account" activeOn="/account">
                   <UserCircle size={14} />
                   {userClaims?.username || userClaims?.name || 'Account'}
@@ -258,14 +252,6 @@ export default function Header() {
 
                 {isAuthenticated && (
                   <>
-                    <MobileNavLink
-                      to="/dashboard"
-                      icon={<ChevronRight size={18} />}
-                      onClick={() => setIsOpen(false)}
-                    >
-                      Dashboard
-                    </MobileNavLink>
-
                     <MobileNavLink
                       to="/account"
                       icon={<ChevronRight size={18} />}

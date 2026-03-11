@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useScrollrAuth } from '@/hooks/useScrollrAuth'
 import { useEffect, useState } from 'react'
 import {
   AlertCircle,
@@ -9,6 +8,7 @@ import {
   Shield,
 } from 'lucide-react'
 import { motion } from 'motion/react'
+import { useScrollrAuth } from '@/hooks/useScrollrAuth'
 import { pageVariants, sectionVariants } from '@/lib/animations'
 import { API_BASE, authenticatedFetch } from '@/api/client'
 import { usePageMeta } from '@/lib/usePageMeta'
@@ -338,21 +338,12 @@ function ProfilePage() {
 
               {isOwnProfile && (
                 <div className="w-full sm:w-auto">
-                  {profile.connected_yahoo ? (
-                    <a
-                      href="/dashboard"
-                      className="btn btn-outline btn-sm w-full sm:w-auto"
-                    >
-                      Enter Dashboard
-                    </a>
-                  ) : (
-                    <a
-                      href="/dashboard"
-                      className="btn btn-pulse w-full sm:w-auto"
-                    >
-                      Link Account
-                    </a>
-                  )}
+                  <a
+                    href="/account"
+                    className="btn btn-outline btn-sm w-full sm:w-auto"
+                  >
+                    Manage Account
+                  </a>
                 </div>
               )}
             </div>

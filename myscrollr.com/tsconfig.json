@@ -6,9 +6,7 @@
     "**/*.jsx",
     "eslint.config.js",
     "prettier.config.js",
-    "vite.config.js",
-    "../channels/*/web/**/*.ts",
-    "../channels/*/web/**/*.tsx"
+    "vite.config.js"
   ],
   "exclude": ["frontend_wxt/**/*"],
 
@@ -35,8 +33,7 @@
     "noUncheckedSideEffectImports": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@scrollr/*": ["../channels/*"]
+      "@/*": ["./src/*"]
     }
   }
 }

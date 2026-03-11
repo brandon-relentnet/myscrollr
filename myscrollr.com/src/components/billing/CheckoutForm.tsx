@@ -1,11 +1,11 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  EmbeddedCheckoutProvider,
   EmbeddedCheckout,
+  EmbeddedCheckoutProvider,
 } from '@stripe/react-stripe-js'
 import { loadStripe } from '@stripe/stripe-js'
+import { AlertTriangle, Loader2, X } from 'lucide-react'
 import { billingApi } from '@/api/client'
-import { X, Loader2, AlertTriangle } from 'lucide-react'
 
 // Lazy-load Stripe once using the publishable key from env
 const stripePromise = loadStripe(
@@ -130,7 +130,9 @@ export default function CheckoutForm({
         >
           <h3
             className={`text-xs font-semibold ${
-              isUnlimited ? 'text-primary unlimited-text-glow' : 'text-base-content/60'
+              isUnlimited
+                ? 'text-primary unlimited-text-glow'
+                : 'text-base-content/60'
             }`}
           >
             {isLifetime

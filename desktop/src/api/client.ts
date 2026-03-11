@@ -13,24 +13,6 @@ import { fetch } from "@tauri-apps/plugin-http";
 import { API_BASE } from "../config";
 export { API_BASE };
 
-// ── Extension notification (no-op in desktop) ───────────────────
-
-function notifyExtensionConfigChanged(): void {
-  // Desktop context — no browser extension to notify
-}
-
-export function notifyExtensionAuthLogin(
-  _accessToken: string,
-  _refreshToken: string | null,
-  _expiresAt: number,
-): void {
-  // No-op in desktop
-}
-
-export function notifyExtensionAuthLogout(): void {
-  // No-op in desktop
-}
-
 // ── Shared Types ────────────────────────────────────────────────
 
 export interface UserPreferences {
@@ -134,12 +116,12 @@ export const channelsApi = {
       getToken,
     ),
 
-  create: async (
+  create: (
     channelType: ChannelType,
     config: Record<string, unknown>,
     getToken: () => Promise<string | null>,
-  ) => {
-    const result = await authenticatedFetch<Channel>(
+  ) =>
+    authenticatedFetch<Channel>(
       "/users/me/channels",
       {
         method: "POST",
@@ -147,12 +129,9 @@ export const channelsApi = {
         body: JSON.stringify({ channel_type: channelType, config }),
       },
       getToken,
-    );
-    notifyExtensionConfigChanged();
-    return result;
-  },
+    ),
 
-  update: async (
+  update: (
     channelType: ChannelType,
     data: {
       enabled?: boolean;
@@ -160,8 +139,8 @@ export const channelsApi = {
       config?: Record<string, unknown>;
     },
     getToken: () => Promise<string | null>,
-  ) => {
-    const result = await authenticatedFetch<Channel>(
+  ) =>
+    authenticatedFetch<Channel>(
       `/users/me/channels/${channelType}`,
       {
         method: "PUT",
@@ -169,22 +148,16 @@ export const channelsApi = {
         body: JSON.stringify(data),
       },
       getToken,
-    );
-    notifyExtensionConfigChanged();
-    return result;
-  },
+    ),
 
-  delete: async (
+  delete: (
     channelType: ChannelType,
     getToken: () => Promise<string | null>,
-  ) => {
-    const result = await authenticatedFetch<{
+  ) =>
+    authenticatedFetch<{
       status: string;
       message: string;
-    }>(`/users/me/channels/${channelType}`, { method: "DELETE" }, getToken);
-    notifyExtensionConfigChanged();
-    return result;
-  },
+    }>(`/users/me/channels/${channelType}`, { method: "DELETE" }, getToken),
 };
 
 // ── RSS Types & API ─────────────────────────────────────────────
@@ -225,11 +198,11 @@ export async function getPreferences(
   );
 }
 
-export async function updatePreferences(
+export function updatePreferences(
   prefs: Partial<UserPreferences>,
   getToken: () => Promise<string | null>,
 ): Promise<UserPreferences> {
-  const result = await authenticatedFetch<UserPreferences>(
+  return authenticatedFetch<UserPreferences>(
     "/users/me/preferences",
     {
       method: "PUT",
@@ -238,8 +211,6 @@ export async function updatePreferences(
     },
     getToken,
   );
-  notifyExtensionConfigChanged();
-  return result;
 }
 
 // ── Billing Types & API ─────────────────────────────────────────
