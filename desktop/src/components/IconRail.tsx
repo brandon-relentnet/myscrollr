@@ -109,7 +109,6 @@ export default function IconRail({
 }: IconRailProps) {
   // Sort channels and widgets by canonical order
   const sortedChannels = [...channels]
-    .filter((ch) => ch.enabled)
     .sort(
       (a, b) =>
         CHANNEL_ORDER.indexOf(a.channel_type) -
