@@ -132,7 +132,7 @@ export default function SysmonConfigPanel({
           </svg>
         </div>
         <div>
-          <h2 className="text-sm font-bold text-fg">System Monitor</h2>
+          <h2 className="text-sm font-bold text-fg">System Monitor Setup</h2>
           <p className="text-[11px] text-fg-4">CPU, memory, GPU, and network stats</p>
         </div>
       </div>
@@ -152,21 +152,25 @@ export default function SysmonConfigPanel({
       <Section title="Ticker">
         <ToggleRow
           label="CPU usage"
+          description="Show processor load on the ticker"
           checked={config.ticker.cpu}
           onChange={(v) => setTicker({ cpu: v })}
         />
         <ToggleRow
           label="Memory usage"
+          description="Show RAM consumption on the ticker"
           checked={config.ticker.memory}
           onChange={(v) => setTicker({ memory: v })}
         />
         <ToggleRow
           label="GPU usage"
+          description="Show graphics card load on the ticker"
           checked={config.ticker.gpu}
           onChange={(v) => setTicker({ gpu: v })}
         />
         <ToggleRow
           label="GPU power draw"
+          description="Show graphics card wattage on the ticker"
           checked={config.ticker.gpuPower}
           onChange={(v) => setTicker({ gpuPower: v })}
         />

@@ -202,7 +202,7 @@ export default function TickerSettings({
           onChange={(v) => setTicker("mixMode", v)}
         />
         <SegmentedRow
-          label="Chip colors"
+          label="Item colors"
           description="Color scheme for ticker items"
           value={ticker.chipColors}
           options={COLOR_OPTIONS}

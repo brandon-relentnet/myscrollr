@@ -190,7 +190,7 @@ export default function ClockConfigPanel({
           </svg>
         </div>
         <div>
-          <h2 className="text-sm font-bold text-fg">Clock</h2>
+          <h2 className="text-sm font-bold text-fg">Clock Setup</h2>
           <p className="text-[11px] text-fg-4">World clocks and Pomodoro timer</p>
         </div>
       </div>
@@ -235,7 +235,7 @@ export default function ClockConfigPanel({
         )}
         <ToggleRow
           label="Active timer"
-          description="Show countdown on the ticker when a timer is running"
+          description="Show running timers on the ticker"
           checked={config.ticker.activeTimer}
           onChange={(v) => setTicker({ activeTimer: v })}
         />

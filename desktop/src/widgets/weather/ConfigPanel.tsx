@@ -179,7 +179,7 @@ export default function WeatherConfigPanel({
           </svg>
         </div>
         <div>
-          <h2 className="text-sm font-bold text-fg">Weather</h2>
+          <h2 className="text-sm font-bold text-fg">Weather Setup</h2>
           <p className="text-[11px] text-fg-4">Current conditions for your saved cities</p>
         </div>
       </div>

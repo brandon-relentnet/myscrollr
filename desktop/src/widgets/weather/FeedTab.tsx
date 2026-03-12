@@ -33,8 +33,7 @@ export const weatherWidget: WidgetManifest = {
   info: {
     about:
       "The Weather widget shows current weather conditions for one or more " +
-      "locations on your ticker. Data is fetched from the Open-Meteo API " +
-      "with no API key required.",
+      "locations on your ticker. Weather data updates automatically.",
     usage: [
       "Search for a city in the feed view to add it to your weather locations.",
       "Each location appears as a ticker chip with temperature, conditions, and an icon.",

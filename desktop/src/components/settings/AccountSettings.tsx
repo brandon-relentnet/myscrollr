@@ -148,7 +148,6 @@ export default function AccountSettings({
 
       <Section title="About">
         <DisplayRow label="Version" value={appVersion ? `v${appVersion}` : "\u2014"} />
-        <DisplayRow label="Runtime" value="Tauri v2" />
       </Section>
 
       <Section title="Updates">
