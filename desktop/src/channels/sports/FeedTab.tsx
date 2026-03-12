@@ -26,7 +26,7 @@ export const sportsChannel: ChannelManifest = {
       "Follow live scores across NFL, NBA, MLB, NHL, MLS, and more. " +
       "Games update in real-time via CDC with score flash animations.",
     usage: [
-      "Select your leagues from the Configuration tab.",
+      "Select your leagues from the Setup tab.",
       "Live games show a pulsing indicator and update scores in real-time.",
       "Final scores highlight the winning team in bold.",
     ],
@@ -65,12 +65,24 @@ function SportsFeedTab({ mode, channelConfig }: FeedTabProps) {
       )}
     >
       {games.length === 0 && (
-        <div className="col-span-full text-center py-8 text-fg-3 text-xs font-mono">
-          {!channelConfig.__dashboardLoaded
-            ? "Waiting for game data\u2026"
-            : channelConfig.__hasConfig
-              ? "No active games for your selected leagues"
-              : "No leagues selected \u2014 configure in Settings"}
+        <div className="col-span-full flex flex-col items-center justify-center gap-2 py-12 bg-surface">
+          <Trophy size={28} className="text-fg-4/40" />
+          {!channelConfig.__dashboardLoaded ? (
+            <p className="text-xs text-fg-4">Waiting for game data&hellip;</p>
+          ) : channelConfig.__hasConfig ? (
+            <p className="text-sm font-medium text-fg-3">
+              No active games right now
+            </p>
+          ) : (
+            <>
+              <p className="text-sm font-medium text-fg-3">
+                No leagues selected yet
+              </p>
+              <p className="text-xs text-fg-4">
+                Go to the <span className="text-fg-3 font-medium">Setup</span> tab to pick your leagues.
+              </p>
+            </>
+          )}
         </div>
       )}
       {games.map((game) => (

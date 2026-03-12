@@ -29,7 +29,7 @@ export const rssChannel: ChannelManifest = {
       "Aggregate articles from any RSS or Atom feed into a single stream. " +
       "New articles appear in real-time via CDC as they are ingested.",
     usage: [
-      "Add feed URLs from the Configuration tab.",
+      "Add feed URLs from the Setup tab.",
       "Articles are sorted by publish date, newest first.",
       "Tap any article to open it in your browser.",
     ],
@@ -75,10 +75,20 @@ function RssFeedTab({ mode, channelConfig }: FeedTabProps) {
   return (
     <div className="grid gap-px bg-edge grid-cols-1">
       {rssItems.length === 0 && (
-        <div className="col-span-full text-center py-8 text-fg-3 text-xs font-mono">
-          {dashboardLoaded && initialItems.length === 0
-            ? "No feeds configured \u2014 add feeds in Settings"
-            : "Waiting for RSS articles\u2026"}
+        <div className="col-span-full flex flex-col items-center justify-center gap-2 py-12 bg-surface">
+          <Rss size={28} className="text-fg-4/40" />
+          {dashboardLoaded && initialItems.length === 0 ? (
+            <>
+              <p className="text-sm font-medium text-fg-3">
+                No feeds added yet
+              </p>
+              <p className="text-xs text-fg-4">
+                Go to the <span className="text-fg-3 font-medium">Setup</span> tab to add RSS feeds.
+              </p>
+            </>
+          ) : (
+            <p className="text-xs text-fg-4">Waiting for RSS articles&hellip;</p>
+          )}
         </div>
       )}
       {rssItems.map((item) => (

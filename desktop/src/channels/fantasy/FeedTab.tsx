@@ -26,7 +26,7 @@ export const fantasyChannel: ChannelManifest = {
       "View your Yahoo Fantasy Sports leagues at a glance. See your current " +
       "matchup score, standings rank, win/loss record, and roster injury alerts.",
     usage: [
-      "Connect your Yahoo account from the Configuration tab.",
+      "Connect your Yahoo account from the Setup tab.",
       "Your leagues and matchups appear automatically.",
       "Scores update when the dashboard refreshes.",
     ],
@@ -56,12 +56,20 @@ function FantasyFeedTab({ mode, channelConfig }: FeedTabProps) {
 
   if (leagues.length === 0) {
     return (
-      <div className="flex items-center justify-center py-8 px-4 bg-surface">
-        <span className="text-xs font-mono text-fg-3">
-          {dashboardLoaded
-            ? "No fantasy leagues \u2014 connect Yahoo in Settings"
-            : "Loading fantasy data\u2026"}
-        </span>
+      <div className="flex flex-col items-center justify-center gap-2 py-12 px-4 bg-surface">
+        <Swords size={28} className="text-fg-4/40" />
+        {dashboardLoaded ? (
+          <>
+            <p className="text-sm font-medium text-fg-3">
+              No fantasy leagues connected
+            </p>
+            <p className="text-xs text-fg-4">
+              Go to the <span className="text-fg-3 font-medium">Setup</span> tab to connect your Yahoo account.
+            </p>
+          </>
+        ) : (
+          <p className="text-xs text-fg-4">Loading fantasy data&hellip;</p>
+        )}
       </div>
     );
   }

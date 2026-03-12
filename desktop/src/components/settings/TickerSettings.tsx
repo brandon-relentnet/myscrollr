@@ -38,7 +38,7 @@ const ROW_OPTIONS: { value: string; label: string }[] = [
 
 const MODE_OPTIONS: { value: TickerMode; label: string }[] = [
   { value: "compact", label: "Compact" },
-  { value: "comfort", label: "Comfort" },
+  { value: "comfort", label: "Detailed" },
 ];
 
 const GAP_OPTIONS: { value: TickerGap; label: string }[] = [
@@ -49,7 +49,7 @@ const GAP_OPTIONS: { value: TickerGap; label: string }[] = [
 
 const MIX_OPTIONS: { value: MixMode; label: string }[] = [
   { value: "grouped", label: "Grouped" },
-  { value: "weave", label: "Weave" },
+  { value: "weave", label: "Mixed" },
   { value: "random", label: "Random" },
 ];
 
@@ -113,7 +113,7 @@ export default function TickerSettings({
         />
         <SegmentedRow
           label="Density"
-          description="Comfort shows extra detail in a taller chip"
+          description="Detailed shows extra info in a taller chip"
           value={ticker.tickerMode}
           options={MODE_OPTIONS}
           onChange={(v) => setTicker("tickerMode", v)}

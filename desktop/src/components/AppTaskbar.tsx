@@ -322,7 +322,8 @@ export default function AppTaskbar({
           <button
             role="switch"
             aria-checked={tickerAlive}
-            aria-label="Toggle ticker widget"
+            aria-label={tickerAlive ? "Hide the scrolling ticker bar" : "Show the scrolling ticker bar"}
+            title={tickerAlive ? "Hide the scrolling ticker bar" : "Show the scrolling ticker bar"}
             className="toggle-switch shrink-0"
             data-checked={tickerAlive}
             onClick={onToggleStandaloneTicker}
@@ -359,8 +360,10 @@ export default function AppTaskbar({
           <span className={clsx(
             "text-[11px] font-mono uppercase tracking-widest",
             deliveryMode === "sse" ? "text-info" : "text-warn",
-          )}>
-            {deliveryMode === "sse" ? "SSE" : "Poll"}
+          )}
+            title={deliveryMode === "sse" ? "Receiving updates in real time" : "Checking for updates periodically"}
+          >
+            {deliveryMode === "sse" ? "Live" : "Checking"}
           </span>
         </div>
       </div>
@@ -396,8 +399,8 @@ export default function AppTaskbar({
         <button
           onClick={onToggleTicker}
           className={clsx(showTicker ? btnActive : btnIdle)}
-          title={showTicker ? "Hide ticker preview" : "Show ticker preview"}
-          aria-label={showTicker ? "Hide ticker preview" : "Show ticker preview"}
+          title={showTicker ? "Hide the ticker strip in this window" : "Show the ticker strip in this window"}
+          aria-label={showTicker ? "Hide the ticker strip in this window" : "Show the ticker strip in this window"}
         >
           {showTicker ? <TicketCheck size={14} /> : <TicketSlash size={14} />}
         </button>
@@ -405,8 +408,8 @@ export default function AppTaskbar({
         <button
           onClick={cycleRows}
           className={clsx(btnIdle, "relative")}
-          title={`Ticker rows: ${rows} (click to cycle)`}
-          aria-label={`Ticker rows: ${rows}`}
+          title={`Ticker has ${rows} row${rows > 1 ? "s" : ""} -- click to change`}
+          aria-label={`Ticker rows: ${rows}. Click to change.`}
         >
           <RowIcon size={14} />
           <span className="absolute -top-0.5 -right-0.5 min-w-[12px] h-3 flex items-center justify-center rounded-full bg-accent/20 text-accent text-[8px] font-bold leading-none">
@@ -417,8 +420,8 @@ export default function AppTaskbar({
         <button
           onClick={togglePin}
           className={clsx(isPinned ? btnActive : btnIdle)}
-          title={isPinned ? "Unpin from top" : "Pin on top"}
-          aria-label={isPinned ? "Unpin from top" : "Pin on top"}
+          title={isPinned ? "Stop keeping this window above others" : "Keep this window above other windows"}
+          aria-label={isPinned ? "Unpin window from top" : "Pin window on top of others"}
         >
           {isPinned ? <Pin size={14} /> : <PinOff size={14} />}
         </button>

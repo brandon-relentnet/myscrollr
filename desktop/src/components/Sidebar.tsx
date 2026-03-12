@@ -345,6 +345,7 @@ export default function Sidebar({
       <button
         onClick={() => firstSource && onSelectItem(firstSource)}
         aria-label="Go to Feed"
+        title="Go to feed"
         className={clsx(
           "relative flex items-center gap-3 px-5 h-14 shrink-0 overflow-hidden transition-all duration-500 w-full cursor-pointer",
           tickerAlive ? "border-b border-accent/15" : "border-b border-edge",
@@ -415,9 +416,19 @@ export default function Sidebar({
 
           {/* Channel items */}
           {sortedChannels.length === 0 ? (
-            <p className="pl-1 py-1.5 text-[11px] text-fg-4/60 italic">
-              {authenticated ? "No channels added" : "Sign in to add"}
-            </p>
+            authenticated ? (
+              <p className="pl-1 py-1.5 text-[11px] text-fg-4/60 italic">
+                No channels added
+              </p>
+            ) : (
+              <button
+                onClick={onLogin}
+                className="flex items-center gap-2 pl-2 pr-3 py-1.5 ml-1 rounded-md text-[11px] font-medium text-accent/70 hover:text-accent hover:bg-accent/5 transition-colors cursor-pointer"
+              >
+                <Plus size={12} strokeWidth={2} className="shrink-0" />
+                Sign in to add channels
+              </button>
+            )
           ) : (
             <div className="flex flex-col gap-0.5">
               {sortedChannels.map((ch) => {
@@ -463,7 +474,7 @@ export default function Sidebar({
                       </span>
                       {isConfiguring && (
                         <span className="text-[8px] text-accent/50 ml-auto shrink-0">
-                          config
+                          setup
                         </span>
                       )}
                     </button>
@@ -473,12 +484,12 @@ export default function Sidebar({
                         e.stopPropagation();
                         onConfigureChannel(ch.channel_type);
                       }}
-                      title={`Configure ${manifest?.name ?? ch.channel_type}`}
+                      title={`${manifest?.name ?? ch.channel_type} setup`}
                       className={clsx(
                         "w-7 h-7 flex items-center justify-center rounded-md transition-all shrink-0",
                         isActive
                           ? "text-fg-3 opacity-60 hover:opacity-100 hover:text-fg-2 hover:bg-surface-hover"
-                          : "text-fg-4 opacity-0 group-hover:opacity-60 hover:!opacity-100 hover:text-fg-2 hover:bg-surface-hover",
+                          : "text-fg-4 opacity-25 hover:opacity-100 hover:text-fg-2 hover:bg-surface-hover",
                       )}
                     >
                       <Settings size={12} />
@@ -526,7 +537,7 @@ export default function Sidebar({
           {/* Widget items */}
           {sortedEnabledWidgets.length === 0 ? (
             <p className="pl-1 py-1.5 text-[11px] text-fg-4/60 italic">
-              No widgets enabled
+              Click + to add a widget
             </p>
           ) : (
             <div className="flex flex-col gap-0.5">
@@ -556,7 +567,7 @@ export default function Sidebar({
                       <span className="truncate">{widget.name}</span>
                       {isConfiguring && (
                         <span className="text-[8px] text-accent/50 ml-auto shrink-0">
-                          config
+                          setup
                         </span>
                       )}
                     </button>
@@ -566,12 +577,12 @@ export default function Sidebar({
                         e.stopPropagation();
                         onConfigureWidget(widget.id);
                       }}
-                      title={`Configure ${widget.name}`}
+                      title={`${widget.name} setup`}
                       className={clsx(
                         "w-7 h-7 flex items-center justify-center rounded-md transition-all shrink-0",
                         isActive
                           ? "text-fg-3 opacity-60 hover:opacity-100 hover:text-fg-2 hover:bg-surface-hover"
-                          : "text-fg-4 opacity-0 group-hover:opacity-60 hover:!opacity-100 hover:text-fg-2 hover:bg-surface-hover",
+                          : "text-fg-4 opacity-25 hover:opacity-100 hover:text-fg-2 hover:bg-surface-hover",
                       )}
                     >
                       <Settings size={12} />

@@ -718,7 +718,8 @@ function RootLayout() {
                         )
                       }
                       className="shrink-0"
-                      title={active ? "On Ticker" : "Off Ticker"}
+                      title={active ? "Visible on ticker" : "Hidden from ticker"}
+                      aria-label={active ? "Hide from ticker" : "Show on ticker"}
                     >
                       <span
                         className="block h-4 w-7 rounded-full relative transition-colors"
@@ -754,7 +755,8 @@ function RootLayout() {
                         handleToggleWidgetTicker(route.activeItem)
                       }
                       className="shrink-0"
-                      title={active ? "On Ticker" : "Off Ticker"}
+                      title={active ? "Visible on ticker" : "Hidden from ticker"}
+                      aria-label={active ? "Hide from ticker" : "Show on ticker"}
                     >
                       <span
                         className="block h-4 w-7 rounded-full relative transition-colors"
@@ -779,21 +781,27 @@ function RootLayout() {
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              {/* Feed / Info / Configuration tabs */}
+              {/* Feed / About / Setup tabs */}
               {(isChannelActive || isWidgetActive) && (
                 <div className="flex gap-1">
-                  {(["feed", "info", "configuration"] as const).map((tab) => (
+                  {(
+                    [
+                      { key: "feed", label: "Feed" },
+                      { key: "info", label: "About" },
+                      { key: "configuration", label: "Setup" },
+                    ] as const
+                  ).map(({ key, label }) => (
                     <button
-                      key={tab}
-                      onClick={() => handleSourceTab(tab)}
+                      key={key}
+                      onClick={() => handleSourceTab(key)}
                       className={clsx(
-                        "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors capitalize",
-                        route.sourceTab === tab
+                        "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                        route.sourceTab === key
                           ? "bg-accent/10 text-accent"
                           : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
                       )}
                     >
-                      {tab}
+                      {label}
                     </button>
                   ))}
                 </div>
@@ -854,20 +862,23 @@ function RootLayout() {
                     }
                   }}
                   className={clsx(
-                    "p-2 rounded-lg transition-colors",
+                    "px-2 py-1.5 rounded-lg transition-colors flex items-center gap-1.5",
                     deleteArmed
                       ? "text-red-500 bg-red-500/10"
                       : "text-fg-4/40 hover:text-red-500",
                   )}
                   title={
                     deleteArmed
-                      ? "Click again to remove"
+                      ? "Click again to confirm removal"
                       : isChannelActive
-                        ? "Remove channel"
-                        : "Remove widget"
+                        ? "Remove this channel"
+                        : "Remove this widget"
                   }
                 >
                   <Trash2 size={14} />
+                  {deleteArmed && (
+                    <span className="text-[11px] font-medium">Remove?</span>
+                  )}
                 </button>
               )}
             </div>

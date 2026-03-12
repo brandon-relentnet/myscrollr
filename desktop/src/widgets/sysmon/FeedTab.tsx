@@ -116,10 +116,9 @@ function SysmonFeedTab({ mode: feedMode }: FeedTabProps) {
   // ── Loading state ───────────────────────────────────────────
   if (!info) {
     return (
-      <div className="p-4 flex items-center justify-center">
-        <span className="text-xs font-mono text-fg-3">
-          Loading system info...
-        </span>
+      <div className="flex flex-col items-center justify-center gap-2 py-12">
+        <Activity size={28} className="text-fg-4/40" />
+        <p className="text-xs text-fg-4">Loading system info&hellip;</p>
       </div>
     );
   }
@@ -343,7 +342,7 @@ function SysmonFeedTab({ mode: feedMode }: FeedTabProps) {
               {Math.round(gpuTemp.temp)}&deg;C
             </div>
           ) : (
-            <div className="text-sm font-mono text-fg-3">&mdash;</div>
+            <div className="text-xs font-mono text-fg-4">Not available</div>
           )}
         </div>
 
@@ -371,7 +370,7 @@ function SysmonFeedTab({ mode: feedMode }: FeedTabProps) {
               ))}
             </div>
           ) : (
-            <div className="text-sm font-mono text-fg-3">&mdash;</div>
+            <div className="text-xs font-mono text-fg-4">No network interfaces found</div>
           )}
         </div>
       </div>
@@ -393,7 +392,7 @@ export const sysmonWidget: WidgetManifest = {
       "The System Monitor widget displays live hardware metrics on your ticker, including CPU usage, memory consumption, and GPU stats. Available on the desktop app only.",
     usage: [
       "CPU, memory, and GPU usage appear as a consolidated chip on the ticker.",
-      "Toggle individual metrics (CPU, memory, GPU, GPU power) in the Configuration tab.",
+      "Toggle individual metrics (CPU, memory, GPU, GPU power) in the Setup tab.",
       "The feed view shows detailed real-time stats including temperatures and per-component breakdowns.",
       "Pin the system monitor chip to keep it stationary on one side of the ticker.",
     ],

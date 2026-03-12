@@ -25,7 +25,7 @@ export const financeChannel: ChannelManifest = {
       "Track stocks, ETFs, and cryptocurrencies with real-time price updates. " +
       "Prices stream via CDC so your feed stays current without manual refresh.",
     usage: [
-      "Add symbols from the Configuration tab to start tracking.",
+      "Add symbols from the Setup tab to start tracking.",
       "Prices update in real-time via SSE when connected.",
       "Tap any symbol to view its chart on Google Finance.",
     ],
@@ -64,10 +64,20 @@ function FinanceFeedTab({ mode, channelConfig }: FeedTabProps) {
       )}
     >
       {trades.length === 0 && (
-        <div className="col-span-full text-center py-8 text-fg-3 text-xs font-mono">
-          {channelConfig.__dashboardLoaded && initialItems.length === 0
-            ? "No symbols selected \u2014 configure in Settings"
-            : "Waiting for trade data\u2026"}
+        <div className="col-span-full flex flex-col items-center justify-center gap-2 py-12 bg-surface">
+          <TrendingUp size={28} className="text-fg-4/40" />
+          {channelConfig.__dashboardLoaded && initialItems.length === 0 ? (
+            <>
+              <p className="text-sm font-medium text-fg-3">
+                No stocks or crypto picked yet
+              </p>
+              <p className="text-xs text-fg-4">
+                Go to the <span className="text-fg-3 font-medium">Setup</span> tab to choose what to track.
+              </p>
+            </>
+          ) : (
+            <p className="text-xs text-fg-4">Waiting for trade data&hellip;</p>
+          )}
         </div>
       )}
       {trades.map((trade) => (
