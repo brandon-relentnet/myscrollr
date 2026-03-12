@@ -2,12 +2,15 @@
  * RssSummary — dashboard card content for the RSS channel.
  *
  * Shows latest article titles with source and time.
+ * Respects per-card display preferences from the dashboard editor.
  */
 import { useScrollrCDC } from "../../hooks/useScrollrCDC";
 import type { RssItem, DashboardResponse } from "../../types";
+import type { RssCardPrefs } from "./dashboardPrefs";
 
 interface RssSummaryProps {
   dashboard: DashboardResponse | undefined;
+  prefs: RssCardPrefs;
 }
 
 function timeAgo(dateStr: string | null): string {
@@ -22,7 +25,7 @@ function timeAgo(dateStr: string | null): string {
   return `${days}d`;
 }
 
-export default function RssSummary({ dashboard }: RssSummaryProps) {
+export default function RssSummary({ dashboard, prefs }: RssSummaryProps) {
   const initialItems = (dashboard?.data?.rss ?? []) as RssItem[];
   const { items } = useScrollrCDC<RssItem>({
     table: "rss_items",
@@ -44,35 +47,44 @@ export default function RssSummary({ dashboard }: RssSummaryProps) {
     );
   }
 
-  const latest = items.slice(0, 3);
+  const latest = items.slice(0, prefs.itemCount);
   const sources = new Set(items.map((r) => r.source_name));
 
   return (
     <div className="space-y-1.5">
-      {latest.map((article, i) => (
-        <div key={i} className="flex flex-col gap-0.5">
-          <p className="text-[11px] text-fg-2 leading-tight line-clamp-1">
-            {article.title}
-          </p>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[9px] font-mono text-accent-purple uppercase truncate max-w-[100px]">
-              {article.source_name}
-            </span>
-            <span className="text-[9px] text-fg-4">
-              {timeAgo(article.published_at)}
-            </span>
+      {prefs.headlines &&
+        latest.map((article, i) => (
+          <div key={i} className="flex flex-col gap-0.5">
+            <p className="text-[11px] text-fg-2 leading-tight line-clamp-1">
+              {article.title}
+            </p>
+            {(prefs.showSource || prefs.showTime) && (
+              <div className="flex items-center gap-1.5">
+                {prefs.showSource && (
+                  <span className="text-[9px] font-mono text-accent-purple uppercase truncate max-w-[100px]">
+                    {article.source_name}
+                  </span>
+                )}
+                {prefs.showTime && (
+                  <span className="text-[9px] text-fg-4">
+                    {timeAgo(article.published_at)}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
-        </div>
-      ))}
+        ))}
 
-      <div className="flex items-center gap-3 pt-1 border-t border-edge/30">
-        <span className="text-[10px] text-fg-4">
-          {sources.size} feed{sources.size !== 1 ? "s" : ""}
-        </span>
-        <span className="text-[10px] text-fg-4">
-          {items.length} articles
-        </span>
-      </div>
+      {prefs.stats && (
+        <div className="flex items-center gap-3 pt-1 border-t border-edge/30">
+          <span className="text-[10px] text-fg-4">
+            {sources.size} feed{sources.size !== 1 ? "s" : ""}
+          </span>
+          <span className="text-[10px] text-fg-4">
+            {items.length} articles
+          </span>
+        </div>
+      )}
     </div>
   );
 }

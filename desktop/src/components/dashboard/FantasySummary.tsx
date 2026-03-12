@@ -2,11 +2,14 @@
  * FantasySummary — dashboard card content for the Fantasy channel.
  *
  * Shows best league with matchup score, rank, and record.
+ * Respects per-card display preferences from the dashboard editor.
  */
 import type { DashboardResponse } from "../../types";
+import type { FantasyCardPrefs } from "./dashboardPrefs";
 
 interface FantasySummaryProps {
   dashboard: DashboardResponse | undefined;
+  prefs: FantasyCardPrefs;
 }
 
 interface LeagueResponse {
@@ -46,7 +49,7 @@ const SPORT_EMOJI: Record<string, string> = {
   mlb: "\u26BE",
 };
 
-export default function FantasySummary({ dashboard }: FantasySummaryProps) {
+export default function FantasySummary({ dashboard, prefs }: FantasySummaryProps) {
   // Fantasy data comes via channelConfig.__initialItems (not CDC)
   // On the dashboard, we read from the dashboard response directly
   const channelData = (dashboard?.channels ?? []).find(
@@ -80,7 +83,7 @@ export default function FantasySummary({ dashboard }: FantasySummaryProps) {
         </span>
       </div>
 
-      {currentMatchup && currentMatchup.teams.length === 2 && (
+      {prefs.matchup && currentMatchup && currentMatchup.teams.length === 2 && (
         <div className="flex items-center justify-between gap-2 py-0.5">
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="text-[12px] font-mono font-bold text-fg tabular-nums">
@@ -97,21 +100,23 @@ export default function FantasySummary({ dashboard }: FantasySummaryProps) {
         </div>
       )}
 
-      <div className="flex items-center gap-3 pt-1 border-t border-edge/30">
-        <span className="text-[10px] text-fg-4">
-          {leagues.length} league{leagues.length !== 1 ? "s" : ""}
-        </span>
-        {myStanding && (
-          <>
-            <span className="text-[10px] text-accent font-semibold">
-              #{myStanding.rank}
-            </span>
-            <span className="text-[10px] text-fg-3 tabular-nums">
-              {myStanding.wins}-{myStanding.losses}{myStanding.ties > 0 ? `-${myStanding.ties}` : ""}
-            </span>
-          </>
-        )}
-      </div>
+      {prefs.standings && (
+        <div className="flex items-center gap-3 pt-1 border-t border-edge/30">
+          <span className="text-[10px] text-fg-4">
+            {leagues.length} league{leagues.length !== 1 ? "s" : ""}
+          </span>
+          {myStanding && (
+            <>
+              <span className="text-[10px] text-accent font-semibold">
+                #{myStanding.rank}
+              </span>
+              <span className="text-[10px] text-fg-3 tabular-nums">
+                {myStanding.wins}-{myStanding.losses}{myStanding.ties > 0 ? `-${myStanding.ties}` : ""}
+              </span>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

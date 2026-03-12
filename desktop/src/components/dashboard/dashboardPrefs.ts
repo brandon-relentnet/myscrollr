@@ -1,0 +1,183 @@
+/**
+ * Dashboard card display preferences.
+ *
+ * Controls what data each summary card shows on the dashboard.
+ * Stored in localStorage via loadPref/savePref.
+ */
+import { loadPref, savePref } from "../../preferences";
+
+// ── Per-card preference types ───────────────────────────────────
+
+export interface FinanceCardPrefs {
+  topMovers: boolean;
+  itemCount: number;
+  showPrice: boolean;
+  showChange: boolean;
+  stats: boolean;
+}
+
+export interface SportsCardPrefs {
+  showLogos: boolean;
+  showTimer: boolean;
+  compact: boolean;
+  upcoming: boolean;
+  final: boolean;
+  stats: boolean;
+}
+
+export interface RssCardPrefs {
+  headlines: boolean;
+  itemCount: number;
+  showSource: boolean;
+  showTime: boolean;
+  stats: boolean;
+}
+
+export interface FantasyCardPrefs {
+  matchup: boolean;
+  standings: boolean;
+}
+
+export interface ClockCardPrefs {
+  date: boolean;
+  timer: boolean;
+  worldClocks: boolean;
+}
+
+export interface WeatherCardPrefs {
+  condition: boolean;
+  feelsLike: boolean;
+  cityCount: boolean;
+}
+
+export interface SysmonCardPrefs {
+  cpu: boolean;
+  ram: boolean;
+  gpu: boolean;
+  uptime: boolean;
+}
+
+export interface DashboardCardPrefs {
+  finance: FinanceCardPrefs;
+  sports: SportsCardPrefs;
+  rss: RssCardPrefs;
+  fantasy: FantasyCardPrefs;
+  clock: ClockCardPrefs;
+  weather: WeatherCardPrefs;
+  sysmon: SysmonCardPrefs;
+}
+
+// ── Defaults ────────────────────────────────────────────────────
+
+export const DEFAULT_CARD_PREFS: DashboardCardPrefs = {
+  finance: { topMovers: true, itemCount: 3, showPrice: true, showChange: true, stats: true },
+  sports: { showLogos: true, showTimer: true, compact: true, upcoming: true, final: true, stats: true },
+  rss: { headlines: true, itemCount: 3, showSource: true, showTime: true, stats: true },
+  fantasy: { matchup: true, standings: true },
+  clock: { date: true, timer: true, worldClocks: true },
+  weather: { condition: true, feelsLike: true, cityCount: true },
+  sysmon: { cpu: true, ram: true, gpu: true, uptime: true },
+};
+
+// ── Storage ─────────────────────────────────────────────────────
+
+const PREFS_KEY = "dashboard:cardPrefs";
+const GHOSTS_KEY = "dashboard:showAddMore";
+
+export function loadCardPrefs(): DashboardCardPrefs {
+  const saved = loadPref<Partial<DashboardCardPrefs>>(PREFS_KEY, {});
+  // Deep-merge each card's prefs with defaults so new fields get defaults
+  return {
+    finance: { ...DEFAULT_CARD_PREFS.finance, ...saved.finance },
+    sports: { ...DEFAULT_CARD_PREFS.sports, ...saved.sports },
+    rss: { ...DEFAULT_CARD_PREFS.rss, ...saved.rss },
+    fantasy: { ...DEFAULT_CARD_PREFS.fantasy, ...saved.fantasy },
+    clock: { ...DEFAULT_CARD_PREFS.clock, ...saved.clock },
+    weather: { ...DEFAULT_CARD_PREFS.weather, ...saved.weather },
+    sysmon: { ...DEFAULT_CARD_PREFS.sysmon, ...saved.sysmon },
+  };
+}
+
+export function saveCardPrefs(prefs: DashboardCardPrefs): void {
+  savePref(PREFS_KEY, prefs);
+}
+
+export function loadShowAddMore(): boolean {
+  return loadPref<boolean>(GHOSTS_KEY, true);
+}
+
+export function saveShowAddMore(show: boolean): void {
+  savePref(GHOSTS_KEY, show);
+}
+
+// ── Toggle schema (used by CardEditor) ──────────────────────────
+
+export interface ToggleField {
+  key: string;
+  label: string;
+  /** Indented sub-option, disabled when parent is off. */
+  parent?: string;
+}
+
+export interface StepperField {
+  key: string;
+  label: string;
+  min: number;
+  max: number;
+  parent?: string;
+}
+
+export type EditorField =
+  | (ToggleField & { type: "toggle" })
+  | (StepperField & { type: "stepper" });
+
+// ── Schemas per card type ───────────────────────────────────────
+
+export const FINANCE_SCHEMA: EditorField[] = [
+  { type: "toggle", key: "topMovers", label: "Top Movers" },
+  { type: "stepper", key: "itemCount", label: "Items", min: 1, max: 5, parent: "topMovers" },
+  { type: "toggle", key: "showPrice", label: "Price", parent: "topMovers" },
+  { type: "toggle", key: "showChange", label: "% Change", parent: "topMovers" },
+  { type: "toggle", key: "stats", label: "Stats" },
+];
+
+export const SPORTS_SCHEMA: EditorField[] = [
+  { type: "toggle", key: "showLogos", label: "Team Logos" },
+  { type: "toggle", key: "showTimer", label: "Game Clock" },
+  { type: "toggle", key: "compact", label: "Other Games" },
+  { type: "toggle", key: "upcoming", label: "Upcoming" },
+  { type: "toggle", key: "final", label: "Final Scores" },
+  { type: "toggle", key: "stats", label: "Stats" },
+];
+
+export const RSS_SCHEMA: EditorField[] = [
+  { type: "toggle", key: "headlines", label: "Headlines" },
+  { type: "stepper", key: "itemCount", label: "Items", min: 1, max: 5, parent: "headlines" },
+  { type: "toggle", key: "showSource", label: "Source", parent: "headlines" },
+  { type: "toggle", key: "showTime", label: "Time", parent: "headlines" },
+  { type: "toggle", key: "stats", label: "Stats" },
+];
+
+export const FANTASY_SCHEMA: EditorField[] = [
+  { type: "toggle", key: "matchup", label: "Matchup" },
+  { type: "toggle", key: "standings", label: "Standings" },
+];
+
+export const CLOCK_SCHEMA: EditorField[] = [
+  { type: "toggle", key: "date", label: "Date" },
+  { type: "toggle", key: "timer", label: "Timer Status" },
+  { type: "toggle", key: "worldClocks", label: "World Clocks" },
+];
+
+export const WEATHER_SCHEMA: EditorField[] = [
+  { type: "toggle", key: "condition", label: "Condition" },
+  { type: "toggle", key: "feelsLike", label: "Feels Like" },
+  { type: "toggle", key: "cityCount", label: "City Count" },
+];
+
+export const SYSMON_SCHEMA: EditorField[] = [
+  { type: "toggle", key: "cpu", label: "CPU" },
+  { type: "toggle", key: "ram", label: "RAM" },
+  { type: "toggle", key: "gpu", label: "GPU" },
+  { type: "toggle", key: "uptime", label: "Uptime" },
+];

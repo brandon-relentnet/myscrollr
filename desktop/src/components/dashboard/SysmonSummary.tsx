@@ -2,9 +2,15 @@
  * SysmonSummary — dashboard card content for the System Monitor widget.
  *
  * Shows CPU and RAM usage with mini progress bars, GPU %, and uptime.
+ * Respects per-card display preferences from the dashboard editor.
  */
 import { useSysmonData } from "../../hooks/useSysmonData";
 import clsx from "clsx";
+import type { SysmonCardPrefs } from "./dashboardPrefs";
+
+interface SysmonSummaryProps {
+  prefs: SysmonCardPrefs;
+}
 
 function usageColor(pct: number): string {
   if (pct < 50) return "#34d399";
@@ -21,7 +27,7 @@ function formatUptime(seconds: number): string {
   return `${mins}m`;
 }
 
-export default function SysmonSummary() {
+export default function SysmonSummary({ prefs }: SysmonSummaryProps) {
   const data = useSysmonData(2000);
 
   if (!data) {
@@ -38,56 +44,64 @@ export default function SysmonSummary() {
     : 0;
   const gpuPct = data.gpuUsage != null ? Math.round(data.gpuUsage) : null;
 
+  const hasFooter = (prefs.gpu && gpuPct !== null) || (prefs.uptime && data.uptime != null);
+
   return (
     <div className="space-y-2">
       {/* CPU bar */}
-      <div className="flex items-center gap-2">
-        <span className="text-[10px] text-fg-3 w-8 shrink-0">CPU</span>
-        <div className="flex-1 h-1.5 rounded-full bg-base-300 overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-500"
-            style={{ width: `${cpuPct}%`, background: usageColor(cpuPct) }}
-          />
+      {prefs.cpu && (
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-fg-3 w-8 shrink-0">CPU</span>
+          <div className="flex-1 h-1.5 rounded-full bg-base-300 overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{ width: `${cpuPct}%`, background: usageColor(cpuPct) }}
+            />
+          </div>
+          <span
+            className={clsx(
+              "text-[11px] font-mono font-semibold tabular-nums w-8 text-right",
+            )}
+            style={{ color: usageColor(cpuPct) }}
+          >
+            {cpuPct}%
+          </span>
         </div>
-        <span
-          className={clsx(
-            "text-[11px] font-mono font-semibold tabular-nums w-8 text-right",
-          )}
-          style={{ color: usageColor(cpuPct) }}
-        >
-          {cpuPct}%
-        </span>
-      </div>
+      )}
 
       {/* RAM bar */}
-      <div className="flex items-center gap-2">
-        <span className="text-[10px] text-fg-3 w-8 shrink-0">RAM</span>
-        <div className="flex-1 h-1.5 rounded-full bg-base-300 overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-500"
-            style={{ width: `${memPct}%`, background: usageColor(memPct) }}
-          />
+      {prefs.ram && (
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-fg-3 w-8 shrink-0">RAM</span>
+          <div className="flex-1 h-1.5 rounded-full bg-base-300 overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{ width: `${memPct}%`, background: usageColor(memPct) }}
+            />
+          </div>
+          <span
+            className="text-[11px] font-mono font-semibold tabular-nums w-8 text-right"
+            style={{ color: usageColor(memPct) }}
+          >
+            {memPct}%
+          </span>
         </div>
-        <span
-          className="text-[11px] font-mono font-semibold tabular-nums w-8 text-right"
-          style={{ color: usageColor(memPct) }}
-        >
-          {memPct}%
-        </span>
-      </div>
+      )}
 
-      <div className="flex items-center gap-3 pt-1 border-t border-edge/30">
-        {gpuPct !== null && (
-          <span className="text-[10px] text-fg-4">
-            GPU {gpuPct}%
-          </span>
-        )}
-        {data.uptime != null && (
-          <span className="text-[10px] text-fg-4">
-            {formatUptime(data.uptime)}
-          </span>
-        )}
-      </div>
+      {hasFooter && (
+        <div className="flex items-center gap-3 pt-1 border-t border-edge/30">
+          {prefs.gpu && gpuPct !== null && (
+            <span className="text-[10px] text-fg-4">
+              GPU {gpuPct}%
+            </span>
+          )}
+          {prefs.uptime && data.uptime != null && (
+            <span className="text-[10px] text-fg-4">
+              {formatUptime(data.uptime)}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

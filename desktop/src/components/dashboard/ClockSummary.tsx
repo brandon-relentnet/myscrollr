@@ -2,11 +2,17 @@
  * ClockSummary — dashboard card content for the Clock widget.
  *
  * Shows live local time (ticking), world clock count, and timer status.
+ * Respects per-card display preferences from the dashboard editor.
  */
 import { useState, useEffect } from "react";
 import { loadPref } from "../../preferences";
+import type { ClockCardPrefs } from "./dashboardPrefs";
 
-export default function ClockSummary() {
+interface ClockSummaryProps {
+  prefs: ClockCardPrefs;
+}
+
+export default function ClockSummary({ prefs }: ClockSummaryProps) {
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -49,19 +55,27 @@ export default function ClockSummary() {
         <span className="text-[18px] font-mono font-bold text-fg tabular-nums leading-tight">
           {timeStr}
         </span>
-        <span className="text-[10px] text-fg-3 mt-0.5">
-          {dateStr}
-        </span>
+        {prefs.date && (
+          <span className="text-[10px] text-fg-3 mt-0.5">
+            {dateStr}
+          </span>
+        )}
       </div>
 
-      <div className="flex items-center gap-3 pt-1 border-t border-edge/30">
-        <span className="text-[10px] text-fg-4">
-          {savedTimezones.length + 1} clock{savedTimezones.length !== 0 ? "s" : ""}
-        </span>
-        <span className="text-[10px] text-fg-4 capitalize">
-          {timerLabel}
-        </span>
-      </div>
+      {(prefs.worldClocks || prefs.timer) && (
+        <div className="flex items-center gap-3 pt-1 border-t border-edge/30">
+          {prefs.worldClocks && (
+            <span className="text-[10px] text-fg-4">
+              {savedTimezones.length + 1} clock{savedTimezones.length !== 0 ? "s" : ""}
+            </span>
+          )}
+          {prefs.timer && (
+            <span className="text-[10px] text-fg-4 capitalize">
+              {timerLabel}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

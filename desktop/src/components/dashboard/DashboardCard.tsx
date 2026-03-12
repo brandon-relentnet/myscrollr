@@ -3,9 +3,14 @@
  *
  * Renders a consistent card with hex-colored accent border, icon,
  * name, gear button, and click-to-navigate behavior.
+ *
+ * In edit mode the children (summary) are replaced by a CardEditor
+ * with the card's toggle schema.
  */
 import { Settings } from "lucide-react";
 import clsx from "clsx";
+import CardEditor from "./CardEditor";
+import type { EditorField } from "./dashboardPrefs";
 
 interface DashboardCardProps {
   /** Source name (e.g., "Finance", "Clock"). */
@@ -20,6 +25,14 @@ interface DashboardCardProps {
   onConfigure: () => void;
   /** Card content (summary component). */
   children: React.ReactNode;
+  /** Whether the dashboard is in edit mode. */
+  editing?: boolean;
+  /** Editor schema for this card type. */
+  schema?: EditorField[];
+  /** Current card prefs values. */
+  editorValues?: Record<string, boolean | number>;
+  /** Callback when an editor value changes. */
+  onEditorChange?: (key: string, value: boolean | number) => void;
 }
 
 export default function DashboardCard({
@@ -29,15 +42,21 @@ export default function DashboardCard({
   onClick,
   onConfigure,
   children,
+  editing,
+  schema,
+  editorValues,
+  onEditorChange,
 }: DashboardCardProps) {
   return (
     <div
       className={clsx(
         "group relative flex flex-col rounded-xl border border-edge/60",
-        "bg-surface-2/50 hover:bg-surface-2 transition-colors cursor-pointer",
-        "overflow-hidden",
+        "bg-surface-2/50 transition-colors overflow-hidden",
+        editing
+          ? "ring-1 ring-accent/20"
+          : "hover:bg-surface-2 cursor-pointer",
       )}
-      onClick={onClick}
+      onClick={editing ? undefined : onClick}
     >
       {/* Left accent bar */}
       <div
@@ -59,22 +78,32 @@ export default function DashboardCard({
           </span>
         </div>
 
-        {/* Gear — configure */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onConfigure();
-          }}
-          title={`${name} settings`}
-          className="w-6 h-6 flex items-center justify-center rounded-md text-fg-4 opacity-0 group-hover:opacity-60 hover:!opacity-100 hover:text-fg-2 hover:bg-surface-hover transition-all shrink-0"
-        >
-          <Settings size={12} />
-        </button>
+        {/* Gear — configure (hidden in edit mode) */}
+        {!editing && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onConfigure();
+            }}
+            title={`${name} settings`}
+            className="w-6 h-6 flex items-center justify-center rounded-md text-fg-4 opacity-0 group-hover:opacity-60 hover:!opacity-100 hover:text-fg-2 hover:bg-surface-hover transition-all shrink-0"
+          >
+            <Settings size={12} />
+          </button>
+        )}
       </div>
 
-      {/* Content — summary component */}
+      {/* Content — summary or editor */}
       <div className="px-4 pb-3.5 flex-1 min-h-0">
-        {children}
+        {editing && schema && editorValues && onEditorChange ? (
+          <CardEditor
+            schema={schema}
+            values={editorValues}
+            onChange={onEditorChange}
+          />
+        ) : (
+          children
+        )}
       </div>
     </div>
   );
