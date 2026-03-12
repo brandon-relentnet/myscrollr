@@ -26,7 +26,7 @@ export const fantasyChannel: ChannelManifest = {
       "View your Yahoo Fantasy Sports leagues at a glance. See your current " +
       "matchup score, standings rank, win/loss record, and roster injury alerts.",
     usage: [
-      "Connect your Yahoo account from the Setup tab.",
+      "Connect your Yahoo account from the Settings tab.",
       "Your leagues and matchups appear automatically.",
       "Scores update when the dashboard refreshes.",
     ],

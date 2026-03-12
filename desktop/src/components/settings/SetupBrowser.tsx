@@ -178,7 +178,7 @@ export function SetupBrowser<T>({
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-bold text-fg">{title} Setup</h2>
+            <h2 className="text-sm font-bold text-fg">{title} Settings</h2>
           </div>
           {subtitle && (
             <p className="text-[11px] text-fg-4">{subtitle}</p>

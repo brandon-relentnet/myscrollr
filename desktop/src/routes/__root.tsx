@@ -781,7 +781,7 @@ function RootLayout() {
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              {/* Feed / About / Setup tabs */}
+              {/* Feed / About / Settings tabs */}
               {(isChannelActive || isWidgetActive) && (
                 <div className="flex gap-1">
                   {(
