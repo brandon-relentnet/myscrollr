@@ -14,7 +14,6 @@ import type { DashboardResponse } from "../types";
 
 export const queryKeys = {
   dashboard: ["dashboard"] as const,
-  publicFeed: ["public-feed"] as const,
 };
 
 // ── Dashboard Query ──────────────────────────────────────────────

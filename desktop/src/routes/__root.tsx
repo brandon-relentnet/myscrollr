@@ -70,7 +70,6 @@ import { useWidgetTickerData } from "../hooks/useWidgetTickerData";
 
 // Shell context
 import { ShellContext } from "../shell-context";
-import type { ShellState } from "../shell-context";
 
 // ── Route context ────────────────────────────────────────────────
 
@@ -166,7 +165,6 @@ function RootLayout() {
     refetch: fetchDashboard,
   } = useQuery(dashboardQueryOptions());
 
-  const fetchError = queryError?.message ?? null;
   const channels = useMemo(() => dashboard?.channels ?? [], [dashboard]);
 
   const sortedChannels = useMemo(() => {

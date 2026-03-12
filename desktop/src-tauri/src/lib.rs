@@ -384,8 +384,6 @@ fn get_system_info_blocking(inner: &SysInfoInner) -> Result<serde_json::Value, S
     }))
 }
 
-/// Resize the window height, preserving current width.
-/// The `anchor` parameter controls which edge stays fixed:
 /// Start a temporary HTTP server on 127.0.0.1:19284 to receive the OAuth
 /// callback from the system browser. Returns immediately — the server runs
 /// in a background thread and emits an `auth-callback` event when the
