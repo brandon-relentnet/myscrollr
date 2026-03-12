@@ -7,6 +7,7 @@
  */
 import { useMemo, useCallback } from "react";
 import { Rss } from "lucide-react";
+import { clsx } from "clsx";
 import { useScrollrCDC } from "../../hooks/useScrollrCDC";
 import type {
   RssItem as RssItemType,
@@ -27,9 +28,9 @@ export const rssChannel: ChannelManifest = {
   info: {
     about:
       "Aggregate articles from any RSS or Atom feed into a single stream. " +
-      "New articles appear in real-time via CDC as they are ingested.",
+      "New articles appear automatically as they are published.",
     usage: [
-      "Add feed URLs from the Setup tab.",
+      "Add feeds from the Setup tab.",
       "Articles are sorted by publish date, newest first.",
       "Tap any article to open it in your browser.",
     ],
@@ -73,7 +74,14 @@ function RssFeedTab({ mode, channelConfig }: FeedTabProps) {
   });
 
   return (
-    <div className="grid gap-px bg-edge grid-cols-1">
+    <div
+      className={clsx(
+        "grid gap-px bg-edge",
+        mode === "compact"
+          ? "grid-cols-1"
+          : "grid-cols-1 sm:grid-cols-2",
+      )}
+    >
       {rssItems.length === 0 && (
         <div className="col-span-full flex flex-col items-center justify-center gap-2 py-12 bg-surface">
           <Rss size={28} className="text-fg-4/40" />

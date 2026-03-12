@@ -22,11 +22,11 @@ export const financeChannel: ChannelManifest = {
   icon: TrendingUp,
   info: {
     about:
-      "Track stocks, ETFs, and cryptocurrencies with real-time price updates. " +
-      "Prices stream via CDC so your feed stays current without manual refresh.",
+      "Track stocks, ETFs, and cryptocurrencies with live price updates. " +
+      "Prices update automatically so your feed always shows the latest.",
     usage: [
       "Add symbols from the Setup tab to start tracking.",
-      "Prices update in real-time via SSE when connected.",
+      "Prices update automatically when connected.",
       "Tap any symbol to view its chart on Google Finance.",
     ],
   },
@@ -47,11 +47,17 @@ function FinanceFeedTab({ mode, channelConfig }: FeedTabProps) {
     [],
   );
 
+  const sort = useCallback(
+    (a: Trade, b: Trade) => a.symbol.localeCompare(b.symbol),
+    [],
+  );
+
   const { items: trades } = useScrollrCDC<Trade>({
     table: "trades",
     initialItems,
     keyOf,
     validate,
+    sort,
   });
 
   return (

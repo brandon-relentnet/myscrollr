@@ -178,12 +178,8 @@ interface FantasyConfigPanelProps {
 export default function FantasyConfigPanel({
   channel: _channel,
   getToken,
-  subscriptionTier,
-  connected,
   hex,
 }: FantasyConfigPanelProps) {
-  const isUnlimited = subscriptionTier === "uplink_unlimited";
-  const isUplink = subscriptionTier === "uplink" || isUnlimited;
 
   const [leagues, setLeagues] = useState<LeagueData[]>([]);
   const [yahooConnected, setYahooConnected] = useState(false);
@@ -432,11 +428,7 @@ export default function FantasyConfigPanel({
     0,
   );
 
-  const delivery = isUnlimited
-    ? "Real-time SSE"
-    : isUplink
-      ? "Poll 30s"
-      : "Poll 60s";
+  // delivery/connection labels removed — non-technical users don't need them
 
   // ── Render ─────────────────────────────────────────────────────
 
@@ -696,18 +688,11 @@ export default function FantasyConfigPanel({
 
       {/* ── CONNECTED — Status ────────────────────────────────── */}
       {phase === "connected" && leagues.length > 0 && (
-        <Section title="Status">
+        <Section title="Overview">
           <DisplayRow label="Leagues" value={String(totalLeagues)} />
           <DisplayRow
             label="Active Matchups"
             value={String(totalActiveMatchups)}
-          />
-          <DisplayRow label="Delivery" value={delivery} />
-          <DisplayRow
-            label="Connection"
-            value={
-              isUnlimited ? (connected ? "Live" : "Offline") : "Polling"
-            }
           />
         </Section>
       )}
