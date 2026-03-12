@@ -179,17 +179,17 @@ export default function WeatherConfigPanel({
           </svg>
         </div>
         <div>
-          <h2 className="text-sm font-bold text-fg">Weather Setup</h2>
+          <h2 className="text-sm font-bold text-fg">Weather Settings</h2>
           <p className="text-[11px] text-fg-4">Current conditions for your saved cities</p>
         </div>
       </div>
 
       {/* Taskbar */}
-      <Section title="Taskbar Chip">
+      <Section title="Toolbar Preview">
         {cities.length > 1 ? (
           <SegmentedRow
             label="City shown"
-            description="Which city to display on the taskbar"
+            description="Which city to display on the toolbar"
             value={config.taskbarCity}
             options={taskbarCityOptions}
             onChange={(v) => update({ taskbarCity: v })}
@@ -197,8 +197,8 @@ export default function WeatherConfigPanel({
         ) : (
           <div className="px-3 py-2.5 text-[11px] text-fg-4">
             {cities.length === 1
-              ? `Showing ${cityName(cities[0])} on the taskbar.`
-              : "Add a city in the Weather widget to see it on the taskbar."}
+              ? `Showing ${cityName(cities[0])} on the toolbar.`
+              : "Add a city in the Weather tab to see it on the toolbar."}
           </div>
         )}
       </Section>
@@ -216,18 +216,18 @@ export default function WeatherConfigPanel({
         ))}
         {cities.length === 0 && (
           <div className="px-3 py-2.5 text-[11px] text-fg-4">
-            Add cities in the Weather widget to configure ticker display.
+            Add cities in the Weather tab to choose what shows on the ticker.
           </div>
         )}
         <ToggleRow
-          label="Pin to ticker edge"
-          description="Fix the chip to the side of the ticker instead of scrolling"
+          label="Keep in a fixed spot"
+          description="Stay on one side instead of scrolling across"
           checked={isPinned}
           onChange={togglePin}
         />
         {isPinned && (
           <SegmentedRow
-            label="Pin side"
+            label="Which side"
             value={pinSide}
             options={PIN_SIDE_OPTIONS}
             onChange={setPinSide}

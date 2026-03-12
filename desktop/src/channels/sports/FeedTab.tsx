@@ -26,7 +26,7 @@ export const sportsChannel: ChannelManifest = {
       "Follow live scores across NFL, NBA, MLB, NHL, MLS, and more. " +
       "Scores update automatically with a visual flash when they change.",
     usage: [
-      "Pick your leagues from the Setup tab.",
+      "Pick your leagues from the Settings tab.",
       "Live games show a pulsing indicator and scores update automatically.",
       "Final scores highlight the winning team in bold.",
     ],
@@ -90,7 +90,7 @@ function SportsFeedTab({ mode, channelConfig }: FeedTabProps) {
       <div className="flex flex-col items-center justify-center gap-2 py-12 bg-surface">
         <Trophy size={28} className="text-fg-4/40" />
         {!channelConfig.__dashboardLoaded ? (
-          <p className="text-xs text-fg-4">Waiting for game data&hellip;</p>
+          <p className="text-xs text-fg-4">Loading scores&hellip;</p>
         ) : channelConfig.__hasConfig ? (
           <p className="text-sm font-medium text-fg-3">
             No active games right now
@@ -102,7 +102,7 @@ function SportsFeedTab({ mode, channelConfig }: FeedTabProps) {
             </p>
             <p className="text-xs text-fg-4">
               Go to the{" "}
-              <span className="text-fg-3 font-medium">Setup</span> tab to pick
+               <span className="text-fg-3 font-medium">Settings</span> tab to pick
               your leagues.
             </p>
           </>

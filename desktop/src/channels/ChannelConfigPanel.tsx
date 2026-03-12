@@ -75,10 +75,10 @@ export default function ChannelConfigPanel({
       return (
         <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto gap-3 p-6">
           <h2 className="text-base font-semibold text-fg">
-            Configuration unavailable
+            No settings available
           </h2>
           <p className="text-sm text-fg-3 leading-relaxed">
-            This channel does not have a configuration panel.
+            There are no settings for this channel.
           </p>
         </div>
       );

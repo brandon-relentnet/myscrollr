@@ -788,7 +788,7 @@ function RootLayout() {
                     [
                       { key: "feed", label: "Feed" },
                       { key: "info", label: "About" },
-                      { key: "configuration", label: "Setup" },
+                      { key: "configuration", label: "Settings" },
                     ] as const
                   ).map(({ key, label }) => (
                     <button
@@ -949,10 +949,10 @@ function RootLayout() {
               <div className="text-center">
                 <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto mb-3" />
                 <p className="text-sm font-medium text-fg-2">
-                  Waiting for login...
+                  Signing you in...
                 </p>
                 <p className="text-xs text-fg-3 mt-1">
-                  Complete sign-in in your browser
+                  Finish signing in from your browser
                 </p>
                 <button
                   onClick={() => setLoggingIn(false)}

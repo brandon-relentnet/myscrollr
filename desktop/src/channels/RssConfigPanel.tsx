@@ -104,7 +104,7 @@ export default function RssConfigPanel({
     const url = newFeedUrl.trim();
     if (!name || !url) return;
     if (!/^https?:\/\/.+/.test(url)) {
-      setUrlError("URL must start with http:// or https://");
+      setUrlError("Please enter a full web address (starting with http:// or https://)");
       return;
     }
     setUrlError(null);
@@ -158,7 +158,7 @@ export default function RssConfigPanel({
                     e.stopPropagation();
                     deleteCatalogFeed(item);
                   }}
-                  title="Remove custom feed from catalog"
+                  title="Delete this feed"
                   className="p-0.5 rounded hover:bg-error/10 text-fg-4 hover:text-error transition-colors cursor-pointer"
                 >
                   <Trash2 size={11} />
@@ -167,7 +167,7 @@ export default function RssConfigPanel({
             </div>
           </>
         )}
-        searchPlaceholder="Search by feed name or URL..."
+        searchPlaceholder="Search feeds..."
         renderBeforeList={() => (
           <AddCustomFeed
             name={newFeedName}

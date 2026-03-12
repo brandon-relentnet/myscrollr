@@ -282,7 +282,7 @@ export default function FantasyConfigPanel({
     } catch (err: unknown) {
       console.error("[Fantasy] discover failed:", err);
       setDiscoverError(
-        err instanceof Error ? err.message : "Discovery failed",
+        err instanceof Error ? err.message : "Something went wrong while looking for your leagues",
       );
       setPhase(leagues.length > 0 ? "connected" : "disconnected");
     }
@@ -460,7 +460,7 @@ export default function FantasyConfigPanel({
         >
           <Ghost size={40} className="mx-auto text-fg-4/30" />
           <div className="space-y-2">
-            <p className="text-sm font-bold text-fg-2">No Fantasy Data</p>
+            <p className="text-sm font-bold text-fg-2">No Leagues Connected</p>
             <p className="text-[12px] text-fg-3 max-w-xs mx-auto">
               Connect your Yahoo account to see your fantasy leagues, matchup
               scores, standings, and rosters.
@@ -513,10 +513,10 @@ export default function FantasyConfigPanel({
               className="text-sm font-bold"
               style={{ color: `${hex}B3` }}
             >
-              Discovering Leagues
+              Finding Your Leagues
             </p>
             <p className="text-[12px] text-fg-3 max-w-xs mx-auto">
-              Scanning your Yahoo Fantasy account for leagues across all
+              Looking through your Yahoo Fantasy account for leagues across all
               sports.
             </p>
           </div>
@@ -592,7 +592,7 @@ export default function FantasyConfigPanel({
                       selectedKeys.size > 0 ? hex : "var(--color-base-300)",
                   }}
                 >
-                  Import Selected ({selectedKeys.size})
+                  Add Selected ({selectedKeys.size})
                 </button>
                 <button
                   onClick={() =>
@@ -616,7 +616,7 @@ export default function FantasyConfigPanel({
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <Section title="Importing Leagues">
+          <Section title="Adding Leagues">
             <div className="px-3 space-y-1.5">
               {Array.from(selectedKeys).map((key) => {
                 const league = discoveredLeagues.find(
@@ -676,7 +676,13 @@ export default function FantasyConfigPanel({
                                 : "var(--color-fg-4)",
                       }}
                     >
-                      {status}
+                      {status === "done"
+                        ? "Added"
+                        : status === "importing"
+                          ? "Adding..."
+                          : status === "error"
+                            ? "Failed"
+                            : "Waiting"}
                     </span>
                   </motion.div>
                 );
@@ -772,7 +778,7 @@ export default function FantasyConfigPanel({
       {phase === "connected" && yahooConnected && leagues.length === 0 && (
         <div className="text-center py-8 space-y-3 px-3">
           <p className="text-[12px] text-fg-3">
-            Yahoo account connected — no leagues imported yet
+            Yahoo account connected — no leagues added yet
           </p>
           <button
             onClick={startDiscovery}
@@ -780,7 +786,7 @@ export default function FantasyConfigPanel({
             style={{ background: hex }}
           >
             <Plus size={14} />
-            Import Leagues
+            Add Leagues
           </button>
         </div>
       )}
@@ -790,8 +796,8 @@ export default function FantasyConfigPanel({
         <Section title="Account">
           <ActionRow
             label="Add more leagues"
-            description="Discover and import new Yahoo Fantasy leagues"
-            action="Discover"
+            description="Find and add new Yahoo Fantasy leagues"
+            action="Find Leagues"
             onClick={startDiscovery}
           />
           <ActionRow
@@ -1091,7 +1097,7 @@ function LeagueCard({
           <div className="px-4 pb-3">
             <div className="h-px bg-edge/20 mb-2" />
             <p className="text-[11px] text-fg-4 text-center">
-              Data not yet available — syncing soon
+              League data is still loading — check back shortly
             </p>
           </div>
         )}
@@ -1261,10 +1267,10 @@ function MatchupScoreCard({
         !isDone && (
           <div className="flex justify-between mt-1.5 text-[10px] text-fg-4 font-mono">
             <span>
-              Proj: {userTeam.projected_points?.toFixed(1) ?? "---"}
+              Projected: {userTeam.projected_points?.toFixed(1) ?? "---"}
             </span>
             <span>
-              Proj: {opponentTeam.projected_points?.toFixed(1) ?? "---"}
+              Projected: {opponentTeam.projected_points?.toFixed(1) ?? "---"}
             </span>
           </div>
         )}
@@ -1457,7 +1463,7 @@ function StandingsSection({
                 {team.ties > 0 ? `-${team.ties}` : ""}
               </span>
               <span className="text-[11px] font-mono text-fg-4 tabular-nums w-16 text-right">
-                {team.points_for} PF
+                {team.points_for} pts
               </span>
             </div>
           </motion.div>
@@ -1495,7 +1501,7 @@ function RosterSection({
           >
             {rosters.map((r) => (
               <option key={r.team_key} value={r.team_key}>
-                {r.data?.team_name || r.team_key}
+                {r.data?.team_name || "Unnamed League"}
                 {r.team_key === userTeamKey ? " (You)" : ""}
               </option>
             ))}
@@ -1558,7 +1564,7 @@ function RosterSection({
 
         {players.length === 0 && (
           <p className="text-[11px] text-fg-4 text-center py-3">
-            No roster data available
+            No players found
           </p>
         )}
       </div>

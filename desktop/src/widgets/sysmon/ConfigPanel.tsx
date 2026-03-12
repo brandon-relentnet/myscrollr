@@ -132,16 +132,16 @@ export default function SysmonConfigPanel({
           </svg>
         </div>
         <div>
-          <h2 className="text-sm font-bold text-fg">System Monitor Setup</h2>
+          <h2 className="text-sm font-bold text-fg">System Monitor Settings</h2>
           <p className="text-[11px] text-fg-4">CPU, memory, GPU, and network stats</p>
         </div>
       </div>
 
       {/* Taskbar */}
-      <Section title="Taskbar Chip">
+      <Section title="Toolbar Preview">
         <SegmentedRow
-          label="Metric shown"
-          description="Which stat to display on the taskbar"
+          label="What to show"
+          description="What info to show on the toolbar"
           value={config.taskbarMetric}
           options={METRIC_OPTIONS}
           onChange={(v) => update({ taskbarMetric: v })}
@@ -152,19 +152,19 @@ export default function SysmonConfigPanel({
       <Section title="Ticker">
         <ToggleRow
           label="CPU usage"
-          description="Show processor load on the ticker"
+          description="Show how busy your processor is on the ticker"
           checked={config.ticker.cpu}
           onChange={(v) => setTicker({ cpu: v })}
         />
         <ToggleRow
           label="Memory usage"
-          description="Show RAM consumption on the ticker"
+          description="Show how much memory is being used on the ticker"
           checked={config.ticker.memory}
           onChange={(v) => setTicker({ memory: v })}
         />
         <ToggleRow
           label="GPU usage"
-          description="Show graphics card load on the ticker"
+          description="Show how busy your graphics card is on the ticker"
           checked={config.ticker.gpu}
           onChange={(v) => setTicker({ gpu: v })}
         />
@@ -175,14 +175,14 @@ export default function SysmonConfigPanel({
           onChange={(v) => setTicker({ gpuPower: v })}
         />
         <ToggleRow
-          label="Pin to ticker edge"
-          description="Fix the chip to the side of the ticker instead of scrolling"
+          label="Keep in a fixed spot"
+          description="Stay on one side instead of scrolling across"
           checked={isPinned}
           onChange={togglePin}
         />
         {isPinned && (
           <SegmentedRow
-            label="Pin side"
+            label="Which side"
             value={pinSide}
             options={PIN_SIDE_OPTIONS}
             onChange={setPinSide}
@@ -193,8 +193,8 @@ export default function SysmonConfigPanel({
       {/* Display */}
       <Section title="Display">
         <SegmentedRow
-          label="Refresh rate"
-          description="How often system stats update"
+          label="Update speed"
+          description="How often the numbers update"
           value={String(config.refreshInterval)}
           options={REFRESH_OPTIONS}
           onChange={(v) => update({ refreshInterval: Number(v) })}

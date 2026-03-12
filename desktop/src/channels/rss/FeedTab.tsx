@@ -27,12 +27,12 @@ export const rssChannel: ChannelManifest = {
   icon: Rss,
   info: {
     about:
-      "Aggregate articles from any RSS or Atom feed into a single stream. " +
+      "Collect articles from your favorite websites into one place. " +
       "New articles appear automatically as they are published.",
     usage: [
-      "Add feeds from the Setup tab.",
+      "Add news sources from the Settings tab.",
       "Articles are sorted by publish date, newest first.",
-      "Tap any article to open it in your browser.",
+      "Click any article to open it in your browser.",
     ],
   },
   FeedTab: RssFeedTab,
@@ -91,11 +91,11 @@ function RssFeedTab({ mode, channelConfig }: FeedTabProps) {
                 No feeds added yet
               </p>
               <p className="text-xs text-fg-4">
-                Go to the <span className="text-fg-3 font-medium">Setup</span> tab to add RSS feeds.
+                Go to the <span className="text-fg-3 font-medium">Settings</span> tab to add websites.
               </p>
             </>
           ) : (
-            <p className="text-xs text-fg-4">Waiting for RSS articles&hellip;</p>
+            <p className="text-xs text-fg-4">Loading articles&hellip;</p>
           )}
         </div>
       )}

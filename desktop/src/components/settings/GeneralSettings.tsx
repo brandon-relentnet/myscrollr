@@ -32,7 +32,7 @@ interface GeneralSettingsProps {
 const THEME_OPTIONS: { value: Theme; label: string }[] = [
   { value: "light", label: "Light" },
   { value: "dark", label: "Dark" },
-  { value: "system", label: "System" },
+  { value: "system", label: "Auto" },
 ];
 
 const SCALE_PRESETS: { value: string; label: string }[] = [
@@ -70,14 +70,14 @@ export default function GeneralSettings({
       <Section title="Appearance">
         <SegmentedRow
           label="Color mode"
-          description="Switch between light and dark interface"
+          description="Choose light or dark colors"
           value={appearance.theme}
           options={THEME_OPTIONS}
           onChange={(v) => setApp("theme", v)}
         />
         <SegmentedRow
-          label="Interface scale"
-          description="Adjust the size of all UI elements"
+          label="Display size"
+          description="Make everything bigger or smaller"
           value={String(appearance.uiScale)}
           options={SCALE_PRESETS}
           onChange={(v) => setApp("uiScale", Number(v) as AppearancePrefs["uiScale"])}
@@ -92,14 +92,14 @@ export default function GeneralSettings({
           onChange={(v) => onWindowChange({ ...window_, pinned: v })}
         />
         <ToggleRow
-          label="Show taskbar"
-          description="Quick action bar below the ticker"
+          label="Show toolbar"
+          description="Buttons and controls below the ticker"
           checked={showTaskbar}
           onChange={onToggleTaskbar}
         />
         <ToggleRow
-          label="Show in-app ticker"
-          description="Display the scrolling ticker strip in this window"
+          label="Show ticker in main window"
+          description="Show the scrolling ticker inside this window"
           checked={showAppTicker}
           onChange={onToggleAppTicker}
         />
@@ -108,15 +108,15 @@ export default function GeneralSettings({
       <Section title="Startup">
         <ToggleRow
           label="Launch on system startup"
-          description="Automatically start Scrollr when you log in"
+          description="Automatically open Scrollr when you start your computer"
           checked={autostartEnabled}
           onChange={onAutostartChange}
         />
       </Section>
 
       <div className="flex items-center gap-2 justify-end pt-2">
-        <ResetButton label="Reset appearance" onClick={onResetAppearance} />
-        <ResetButton label="Reset window" onClick={onResetWindow} />
+        <ResetButton label="Reset appearance settings" onClick={onResetAppearance} />
+        <ResetButton label="Reset window settings" onClick={onResetWindow} />
       </div>
     </div>
   );

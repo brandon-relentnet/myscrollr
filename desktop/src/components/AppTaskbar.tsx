@@ -232,7 +232,7 @@ function MiniSysmonChip({ onClick, metric = "cpu" }: { onClick: () => void; metr
 
   const display = `${pct}%`;
   const hot = pct > 80;
-  const labels: Record<SysMetric, string> = { cpu: "System Monitor", memory: "Memory", gpu: "GPU" };
+  const labels: Record<SysMetric, string> = { cpu: "CPU Usage", memory: "Memory Usage", gpu: "GPU Usage" };
 
   return (
     <button
@@ -399,8 +399,8 @@ export default function AppTaskbar({
         <button
           onClick={onToggleTicker}
           className={clsx(showTicker ? btnActive : btnIdle)}
-          title={showTicker ? "Hide the ticker strip in this window" : "Show the ticker strip in this window"}
-          aria-label={showTicker ? "Hide the ticker strip in this window" : "Show the ticker strip in this window"}
+          title={showTicker ? "Hide the ticker in this window" : "Show the ticker in this window"}
+          aria-label={showTicker ? "Hide the ticker in this window" : "Show the ticker in this window"}
         >
           {showTicker ? <TicketCheck size={14} /> : <TicketSlash size={14} />}
         </button>
@@ -408,7 +408,7 @@ export default function AppTaskbar({
         <button
           onClick={cycleRows}
           className={clsx(btnIdle, "relative")}
-          title={`Ticker has ${rows} row${rows > 1 ? "s" : ""} -- click to change`}
+          title={`Ticker rows: ${rows} — click to change`}
           aria-label={`Ticker rows: ${rows}. Click to change.`}
         >
           <RowIcon size={14} />

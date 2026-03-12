@@ -190,16 +190,16 @@ export default function ClockConfigPanel({
           </svg>
         </div>
         <div>
-          <h2 className="text-sm font-bold text-fg">Clock Setup</h2>
+          <h2 className="text-sm font-bold text-fg">Clock Settings</h2>
           <p className="text-[11px] text-fg-4">World clocks and Pomodoro timer</p>
         </div>
       </div>
 
       {/* Taskbar */}
-      <Section title="Taskbar Chip">
+      <Section title="Toolbar Preview">
         <SegmentedRow
           label="Time format"
-          description="Applies to the taskbar chip and ticker"
+          description="Applies to the toolbar and ticker"
           value={format}
           options={FORMAT_OPTIONS}
           onChange={handleFormatChange}
@@ -230,7 +230,7 @@ export default function ClockConfigPanel({
         ))}
         {config.ticker.showTimezones && timezones.length === 0 && (
           <div className="px-3 py-2.5 text-[11px] text-fg-4">
-            Add world clocks in the Clock widget to see them here.
+            Add world clocks in the Clock tab to see them here.
           </div>
         )}
         <ToggleRow
@@ -240,14 +240,14 @@ export default function ClockConfigPanel({
           onChange={(v) => setTicker({ activeTimer: v })}
         />
         <ToggleRow
-          label="Pin to ticker edge"
-          description="Fix the chip to the side of the ticker instead of scrolling"
+          label="Keep in a fixed spot"
+          description="Stay on one side instead of scrolling across"
           checked={isPinned}
           onChange={togglePin}
         />
         {isPinned && (
           <SegmentedRow
-            label="Pin side"
+            label="Which side"
             value={pinSide}
             options={PIN_SIDE_OPTIONS}
             onChange={setPinSide}

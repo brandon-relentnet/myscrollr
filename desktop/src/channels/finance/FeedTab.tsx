@@ -25,9 +25,9 @@ export const financeChannel: ChannelManifest = {
       "Track stocks, ETFs, and cryptocurrencies with live price updates. " +
       "Prices update automatically so your feed always shows the latest.",
     usage: [
-      "Add symbols from the Setup tab to start tracking.",
+      "Add symbols from the Settings tab to start tracking.",
       "Prices update automatically when connected.",
-      "Tap any symbol to view its chart on Google Finance.",
+      "Click any symbol to view its chart on Google Finance.",
     ],
   },
   FeedTab: FinanceFeedTab,
@@ -78,11 +78,11 @@ function FinanceFeedTab({ mode, channelConfig }: FeedTabProps) {
                 No stocks or crypto picked yet
               </p>
               <p className="text-xs text-fg-4">
-                Go to the <span className="text-fg-3 font-medium">Setup</span> tab to choose what to track.
+                Go to the <span className="text-fg-3 font-medium">Settings</span> tab to choose what to track.
               </p>
             </>
           ) : (
-            <p className="text-xs text-fg-4">Waiting for trade data&hellip;</p>
+            <p className="text-xs text-fg-4">Loading prices&hellip;</p>
           )}
         </div>
       )}
@@ -216,7 +216,7 @@ function TradeItem({ trade, mode }: TradeItemProps) {
         </span>
         {trade.previous_close != null && Number(trade.previous_close) > 0 && (
           <span className="text-[10px] font-mono text-fg-3 tabular-nums">
-            prev {formatPrice(trade.previous_close)}
+            Prev close {formatPrice(trade.previous_close)}
           </span>
         )}
       </div>

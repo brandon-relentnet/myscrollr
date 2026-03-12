@@ -474,7 +474,7 @@ export default function Sidebar({
                       </span>
                       {isConfiguring && (
                         <span className="text-[8px] text-accent/50 ml-auto shrink-0">
-                          setup
+                          settings
                         </span>
                       )}
                     </button>
@@ -484,7 +484,7 @@ export default function Sidebar({
                         e.stopPropagation();
                         onConfigureChannel(ch.channel_type);
                       }}
-                      title={`${manifest?.name ?? ch.channel_type} setup`}
+                      title={`${manifest?.name ?? ch.channel_type} settings`}
                       className={clsx(
                         "w-7 h-7 flex items-center justify-center rounded-md transition-all shrink-0",
                         isActive
@@ -518,8 +518,8 @@ export default function Sidebar({
               }}
               title={
                 availableWidgets.length === 0
-                  ? "All widgets enabled"
-                  : "Add widget"
+                    ? "All widgets added"
+                    : "Add widget"
               }
               className={clsx(
                 "w-6 h-6 flex items-center justify-center rounded-md transition-colors",
@@ -567,7 +567,7 @@ export default function Sidebar({
                       <span className="truncate">{widget.name}</span>
                       {isConfiguring && (
                         <span className="text-[8px] text-accent/50 ml-auto shrink-0">
-                          setup
+                          settings
                         </span>
                       )}
                     </button>
@@ -577,7 +577,7 @@ export default function Sidebar({
                         e.stopPropagation();
                         onConfigureWidget(widget.id);
                       }}
-                      title={`${widget.name} setup`}
+                      title={`${widget.name} settings`}
                       className={clsx(
                         "w-7 h-7 flex items-center justify-center rounded-md transition-all shrink-0",
                         isActive
@@ -675,7 +675,7 @@ export default function Sidebar({
         >
           <div className="px-3 py-2 border-b border-edge/50">
             <p className="text-[10px] font-mono font-semibold text-fg-4 uppercase tracking-wider">
-              Enable Widget
+              Add Widget
             </p>
           </div>
           {availableWidgets.map((widget) => (
@@ -695,11 +695,7 @@ export default function Sidebar({
                   {widget.name}
                 </p>
               </div>
-              {widget.desktopOnly && (
-                <span className="text-[9px] text-fg-4 bg-surface border border-edge rounded px-1.5 py-0.5 shrink-0">
-                  Desktop
-                </span>
-              )}
+              
             </button>
           ))}
         </div>

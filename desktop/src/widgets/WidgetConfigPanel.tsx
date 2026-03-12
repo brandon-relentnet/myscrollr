@@ -31,7 +31,7 @@ export default function WidgetConfigPanel({
     default:
       return (
         <div className="flex items-center justify-center h-full text-fg-3 text-xs">
-          No configuration available for this widget.
+          No settings available for this widget.
         </div>
       );
   }

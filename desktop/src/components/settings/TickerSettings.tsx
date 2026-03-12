@@ -48,15 +48,15 @@ const GAP_OPTIONS: { value: TickerGap; label: string }[] = [
 ];
 
 const MIX_OPTIONS: { value: MixMode; label: string }[] = [
-  { value: "grouped", label: "Grouped" },
+  { value: "grouped", label: "By source" },
   { value: "weave", label: "Mixed" },
   { value: "random", label: "Random" },
 ];
 
 const COLOR_OPTIONS: { value: ChipColorMode; label: string }[] = [
-  { value: "channel", label: "Channel" },
-  { value: "accent", label: "Accent" },
-  { value: "muted", label: "Muted" },
+  { value: "channel", label: "Colorful" },
+  { value: "accent", label: "Theme" },
+  { value: "muted", label: "Subtle" },
 ];
 
 const DIRECTION_OPTIONS: { value: TickerDirection; label: string }[] = [
@@ -66,16 +66,16 @@ const DIRECTION_OPTIONS: { value: TickerDirection; label: string }[] = [
 
 const SCROLL_MODE_OPTIONS: { value: ScrollMode; label: string }[] = [
   { value: "continuous", label: "Continuous" },
-  { value: "step", label: "Step" },
-  { value: "flip", label: "Flip" },
+  { value: "step", label: "Page" },
+  { value: "flip", label: "Rotate" },
 ];
 
 function speedLabel(speed: number): string {
-  if (speed <= 15) return "Crawl";
+  if (speed <= 15) return "Slowest";
   if (speed <= 30) return "Slow";
   if (speed <= 60) return "Normal";
   if (speed <= 100) return "Fast";
-  return "Blazing";
+  return "Fastest";
 }
 
 // ── Component ───────────────────────────────────────────────────
@@ -100,20 +100,20 @@ export default function TickerSettings({
       <Section title="Layout">
         <ToggleRow
           label="Show ticker"
-          description="Scrolling data strip above the taskbar"
+          description="The scrolling bar that shows your updates"
           checked={ticker.showTicker}
           onChange={(v) => setTicker("showTicker", v)}
         />
         <SegmentedRow
           label="Rows"
-          description="Stack multiple ticker strips for more data at a glance"
+          description="Show more than one row of scrolling items"
           value={String(appearance.tickerRows)}
           options={ROW_OPTIONS}
           onChange={(v) => onAppearanceChange({ ...appearance, tickerRows: Number(v) as TickerRows })}
         />
         <SegmentedRow
-          label="Density"
-          description="Detailed shows extra info in a taller chip"
+          label="Detail level"
+          description="Detailed items are larger with more info"
           value={ticker.tickerMode}
           options={MODE_OPTIONS}
           onChange={(v) => setTicker("tickerMode", v)}
@@ -130,6 +130,7 @@ export default function TickerSettings({
         />
         <SliderRow
           label="Speed"
+          description="How fast items scroll across the screen"
           value={ticker.tickerSpeed}
           min={5}
           max={150}
@@ -149,7 +150,7 @@ export default function TickerSettings({
         {ticker.scrollMode !== "continuous" && (
           <SliderRow
             label="Pause"
-            description="How long to wait between transitions"
+            description="How long each set of items stays before moving"
             value={ticker.stepPause}
             min={1}
             max={10}
@@ -162,16 +163,16 @@ export default function TickerSettings({
           label="Pause on hover"
           description={
             ticker.scrollMode === "continuous"
-              ? "Slow the ticker when your cursor is over it"
-              : "Pause transitions when your cursor is over the ticker"
+              ? "Slow the ticker when your mouse is over it"
+              : "Pause when your mouse is over the ticker"
           }
           checked={ticker.pauseOnHover}
           onChange={(v) => setTicker("pauseOnHover", v)}
         />
         {ticker.scrollMode === "continuous" && ticker.pauseOnHover && (
           <SliderRow
-            label="Hover speed"
-            description="How much the ticker slows on hover"
+            label="Mouse-over speed"
+            description="How much the ticker slows when your mouse is over it"
             value={ticker.hoverSpeed}
             min={0}
             max={1}
@@ -188,7 +189,7 @@ export default function TickerSettings({
 
       <Section title="Style">
         <SegmentedRow
-          label="Gap"
+          label="Spacing"
           description="Space between ticker items"
           value={ticker.tickerGap}
           options={GAP_OPTIONS}
@@ -196,7 +197,7 @@ export default function TickerSettings({
         />
         <SegmentedRow
           label="Item order"
-          description="How items from different channels are mixed"
+          description="How items from different sources are arranged"
           value={ticker.mixMode}
           options={MIX_OPTIONS}
           onChange={(v) => setTicker("mixMode", v)}
@@ -211,8 +212,8 @@ export default function TickerSettings({
       </Section>
 
       <div className="flex items-center gap-2 justify-end pt-2">
-        <ResetButton label="Reset layout" onClick={onResetAppearance} />
-        <ResetButton label="Reset ticker" onClick={onResetTicker} />
+        <ResetButton label="Reset layout settings" onClick={onResetAppearance} />
+        <ResetButton label="Reset ticker settings" onClick={onResetTicker} />
       </div>
     </div>
   );
