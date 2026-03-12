@@ -26,13 +26,15 @@ export function useTauriListener<T>(
 
     listen<T>(event, (e: Event<T>) => {
       handlerRef.current(e);
-    }).then((fn) => {
-      if (cancelled) {
-        fn(); // already unmounted — clean up immediately
-      } else {
-        unlisten = fn;
-      }
-    });
+    })
+      .then((fn) => {
+        if (cancelled) {
+          fn(); // already unmounted — clean up immediately
+        } else {
+          unlisten = fn;
+        }
+      })
+      .catch(() => {}); // listen() rejection is non-recoverable — swallow silently
 
     return () => {
       cancelled = true;
