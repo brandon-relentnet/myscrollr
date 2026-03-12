@@ -16,10 +16,22 @@ import type { QueryClient } from "@tanstack/react-query";
 
 const HISTORY_KEY = "scrollr:lastRoute";
 
+/** Routes that were removed in the nav overhaul — redirect to their replacements. */
+const ROUTE_REDIRECTS: Record<string, string> = {
+  "/settings/general": "/settings",
+  "/settings/ticker": "/ticker",
+  "/settings/account": "/account",
+};
+
 function getInitialEntry(): string {
   try {
     const saved = localStorage.getItem(HISTORY_KEY);
-    if (saved) return saved;
+    if (saved) {
+      // Handle routes that moved in the nav overhaul
+      const redirect = ROUTE_REDIRECTS[saved];
+      if (redirect) return redirect;
+      return saved;
+    }
   } catch {
     // ignore
   }
