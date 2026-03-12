@@ -397,7 +397,7 @@ fn start_auth_server(app: tauri::AppHandle) -> Result<(), String> {
     // Prevent multiple concurrent auth servers
     let running = app.state::<AuthServerRunning>();
     {
-        let mut guard = running.0.lock().unwrap();
+        let mut guard = running.0.lock().map_err(|e| format!("lock: {e}"))?;
         if *guard {
             return Err("Auth server already running".into());
         }
@@ -407,7 +407,7 @@ fn start_auth_server(app: tauri::AppHandle) -> Result<(), String> {
     // Bind first (on the calling thread) so we know the port is available
     // before opening the browser.
     let listener = TcpListener::bind("127.0.0.1:19284").map_err(|e| {
-        *running.0.lock().unwrap() = false;
+        *running.0.lock().unwrap_or_else(|p| p.into_inner()) = false;
         format!("Failed to bind: {e}")
     })?;
 
@@ -446,7 +446,7 @@ fn start_auth_server(app: tauri::AppHandle) -> Result<(), String> {
             }
         }
         // Listener drops here, freeing the port
-        *running_handle.0.lock().unwrap() = false;
+        *running_handle.0.lock().unwrap_or_else(|p| p.into_inner()) = false;
     });
 
     Ok(())
@@ -867,7 +867,7 @@ async fn start_sse(app: tauri::AppHandle, token: String) -> Result<(), String> {
     let (cancel_tx, cancel_rx) = watch::channel(false);
     {
         let state = app.state::<SseHandle>();
-        *state.0.lock().unwrap() = Some(cancel_tx);
+        *state.0.lock().map_err(|e| format!("lock: {e}"))? = Some(cancel_tx);
     }
 
     tokio::spawn(sse_loop(app, token, cancel_rx));
@@ -884,7 +884,7 @@ async fn stop_sse(app: tauri::AppHandle) -> Result<(), String> {
 
 fn stop_sse_internal(app: &tauri::AppHandle) {
     let state = app.state::<SseHandle>();
-    let sender = state.0.lock().unwrap().take();
+    let sender = state.0.lock().unwrap_or_else(|p| p.into_inner()).take();
     if let Some(tx) = sender {
         let _ = tx.send(true);
     }
@@ -899,7 +899,6 @@ async fn sse_loop(
     use futures_util::StreamExt;
 
     let client = reqwest::Client::new();
-    let url = format!("{SSE_URL}?token={token}");
     let mut backoff_secs = 1u64;
 
     loop {
@@ -908,8 +907,9 @@ async fn sse_loop(
         }
 
         let response = client
-            .get(&url)
+            .get(SSE_URL)
             .header("Accept", "text/event-stream")
+            .header("Authorization", format!("Bearer {token}"))
             .send()
             .await;
 

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -16,18 +17,28 @@ func GetActiveViewers(c *fiber.Ctx) error {
 }
 
 // StreamEvents handles authenticated Server-Sent Events (SSE).
-// Authentication is via ?token= query parameter since EventSource
-// does not support custom headers.
+// Accepts token via Authorization: Bearer header (preferred) or
+// ?token= query parameter (fallback for browser EventSource).
 //
 // @Summary Real-time event stream (authenticated)
 // @Description Server-Sent Events endpoint for per-user CDC updates
 // @Tags Events
 // @Produce text/event-stream
-// @Param token query string true "JWT access token"
+// @Param token query string false "JWT access token (fallback if no Authorization header)"
+// @Param Authorization header string false "Bearer token (preferred)"
 // @Router /events [get]
 func StreamEvents(c *fiber.Ctx) error {
-	// 1. Extract token from query param
-	tokenString := c.Query("token")
+	// 1. Extract token — prefer Authorization header, fall back to query param
+	tokenString := ""
+	if authHeader := c.Get("Authorization"); authHeader != "" {
+		parts := strings.Split(authHeader, " ")
+		if len(parts) == 2 && strings.ToLower(parts[0]) == "bearer" {
+			tokenString = parts[1]
+		}
+	}
+	if tokenString == "" {
+		tokenString = c.Query("token")
+	}
 	if tokenString == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
 			Status: "unauthorized",
