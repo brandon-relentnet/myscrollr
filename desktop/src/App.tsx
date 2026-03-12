@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { fetch } from "@tauri-apps/plugin-http";
+import { useTauriListener } from "./hooks/useTauriListener";
 import { Menu, CheckMenuItem, MenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu";
 import type {
   DashboardResponse,
@@ -179,59 +179,48 @@ export default function App() {
   }, []);
 
   // Listen for SSE status events from the Rust backend
-  useEffect(() => {
-    let unlisten: (() => void) | null = null;
+  useTauriListener<{ status: string; code?: number; error?: string }>(
+    "sse-status",
+    async (event) => {
+      const { status: sseStatus } = event.payload;
 
-    listen<{ status: string; code?: number; error?: string }>(
-      "sse-status",
-      async (event) => {
-        const { status: sseStatus } = event.payload;
-
-        switch (sseStatus) {
-          case "connected":
+      switch (sseStatus) {
+        case "connected":
+          setDeliveryMode("sse");
+          break;
+        case "auth-expired": {
+          sseActiveRef.current = false;
+          setDeliveryMode("polling");
+          const newToken = await getValidToken();
+          if (newToken) {
+            sseActiveRef.current = true;
             setDeliveryMode("sse");
-            break;
-          case "auth-expired": {
-            sseActiveRef.current = false;
-            setDeliveryMode("polling");
-            const newToken = await getValidToken();
-            if (newToken) {
-              sseActiveRef.current = true;
-              setDeliveryMode("sse");
-              invoke("start_sse", { token: newToken }).catch(() => {
-                sseActiveRef.current = false;
-                setDeliveryMode("polling");
-              });
-            }
-            break;
+            invoke("start_sse", { token: newToken }).catch(() => {
+              sseActiveRef.current = false;
+              setDeliveryMode("polling");
+            });
           }
-          case "disconnected":
-          case "error":
-            setDeliveryMode("polling");
-            break;
+          break;
         }
-      },
-    ).then((fn) => {
-      unlisten = fn;
-    });
-
-    return () => {
-      unlisten?.();
-    };
-  }, []);
+        case "disconnected":
+        case "error":
+          setDeliveryMode("polling");
+          break;
+      }
+    },
+  );
 
   // ── Channel config sync via CDC ────────────────────────────────
 
-  useEffect(() => {
-    let unlisten: (() => void) | null = null;
-
-    listen<{
-      data?: {
-        action: string;
-        record: Record<string, unknown>;
-        metadata: { table_name: string };
-      }[];
-    }>("sse-event", (event) => {
+  useTauriListener<{
+    data?: {
+      action: string;
+      record: Record<string, unknown>;
+      metadata: { table_name: string };
+    }[];
+  }>(
+    "sse-event",
+    (event) => {
       const records = event.payload?.data;
       if (!Array.isArray(records)) return;
 
@@ -263,14 +252,9 @@ export default function App() {
       });
 
       setTimeout(() => fetchFeed(), SSE_REFETCH_DELAY_MS);
-    }).then((fn) => {
-      unlisten = fn;
-    });
-
-    return () => {
-      unlisten?.();
-    };
-  }, [fetchFeed]);
+    },
+    [fetchFeed],
+  );
 
   // ── Initial data fetch + delivery start ────────────────────────
 
@@ -304,15 +288,25 @@ export default function App() {
   // ── Window focus refetch ────────────────────────────────────────
 
   useEffect(() => {
+    let cancelled = false;
+    let unlisten: (() => void) | null = null;
+
     const appWindow = getCurrentWindow();
-    const promise = appWindow.onFocusChanged(({ payload: focused }) => {
+    appWindow.onFocusChanged(({ payload: focused }) => {
       if (focused && authenticatedRef.current) {
         fetchFeed();
+      }
+    }).then((fn) => {
+      if (cancelled) {
+        fn();
+      } else {
+        unlisten = fn;
       }
     });
 
     return () => {
-      promise.then((unlisten) => unlisten());
+      cancelled = true;
+      unlisten?.();
     };
   }, [fetchFeed]);
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { listen } from "@tauri-apps/api/event";
+import { useTauriListener } from "./useTauriListener";
 
 /**
  * Uniqueness key extractor — given a record, returns a string key
@@ -78,10 +78,9 @@ export function useScrollrCDC<T>({
   }, [initialItems]);
 
   // Listen for CDC events from the Rust SSE client
-  useEffect(() => {
-    let unlisten: (() => void) | null = null;
-
-    listen<SSEPayload>("sse-event", (event) => {
+  useTauriListener<SSEPayload>(
+    "sse-event",
+    (event) => {
       const payload = event.payload;
       if (!payload?.data) return;
 
@@ -122,14 +121,9 @@ export function useScrollrCDC<T>({
 
         return next;
       });
-    }).then((fn) => {
-      unlisten = fn;
-    });
-
-    return () => {
-      unlisten?.();
-    };
-  }, [table, keyOf, sort, maxItems, validate]);
+    },
+    [table, keyOf, sort, maxItems, validate],
+  );
 
   return { items };
 }

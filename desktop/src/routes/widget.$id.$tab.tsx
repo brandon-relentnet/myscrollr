@@ -100,6 +100,11 @@ function WidgetRoute() {
   }
 
   // ── Configuration tab ──────────────────────────────────────────
+  return <WidgetConfigTab id={id} />;
+}
+
+/** Extracted so useShell() is called unconditionally. */
+function WidgetConfigTab({ id }: { id: string }) {
   const shell = useShell();
 
   return (

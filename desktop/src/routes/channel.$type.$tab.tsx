@@ -14,7 +14,7 @@ import { getValidToken } from "../auth";
 import { getTier } from "../auth";
 import ChannelConfigPanel from "../channels/ChannelConfigPanel";
 import type { Channel } from "../api/client";
-import type { DeliveryMode } from "../types";
+import type { DashboardResponse, DeliveryMode } from "../types";
 import { loadPref } from "../preferences";
 
 const VALID_TABS = ["feed", "info", "configuration"] as const;
@@ -117,6 +117,17 @@ function ChannelRoute() {
   }
 
   // ── Configuration tab ──────────────────────────────────────────
+  return <ChannelConfigTab type={type} dashboard={dashboard} />;
+}
+
+/** Extracted so useQueryClient() is called unconditionally. */
+function ChannelConfigTab({
+  type,
+  dashboard,
+}: {
+  type: string;
+  dashboard: DashboardResponse | undefined;
+}) {
   const queryClient = useQueryClient();
   const channelData = (dashboard?.channels ?? []).find(
     (ch) => ch.channel_type === type,

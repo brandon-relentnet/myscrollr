@@ -221,18 +221,25 @@ export async function login(): Promise<AuthState | null> {
     const payload = await new Promise<AuthCallbackPayload>(
       (resolve, reject) => {
         let unlisten: (() => void) | null = null;
+        let settled = false;
 
         const timer = setTimeout(() => {
+          settled = true;
           unlisten?.();
           reject(new Error("Login timed out after 5 minutes"));
         }, 300_000);
 
         listen<AuthCallbackPayload>("auth-callback", (event) => {
+          settled = true;
           clearTimeout(timer);
           unlisten?.();
           resolve(event.payload);
         }).then((fn) => {
-          unlisten = fn;
+          if (settled) {
+            fn(); // already resolved/rejected — clean up immediately
+          } else {
+            unlisten = fn;
+          }
         });
       },
     );
