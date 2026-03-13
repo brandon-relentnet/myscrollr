@@ -35,20 +35,22 @@ export default function CardEditor({ schema, values, onChange }: CardEditorProps
               <span className="text-[11px] text-fg-3 select-none">
                 {field.label}
               </span>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5" role="group" aria-label={field.label}>
                 <button
                   onClick={() => onChange(field.key, Math.max(field.min, val - 1))}
-                  disabled={val <= field.min}
+                  disabled={parentOff || val <= field.min}
+                  aria-label={`Decrease ${field.label}`}
                   className="w-5 h-5 flex items-center justify-center rounded bg-surface-3/60 text-fg-3 hover:bg-surface-3 hover:text-fg disabled:opacity-30 disabled:pointer-events-none transition-colors"
                 >
                   <Minus size={10} />
                 </button>
-                <span className="text-[11px] font-mono font-semibold text-fg tabular-nums w-4 text-center">
+                <span className="text-[11px] font-mono font-semibold text-fg tabular-nums w-5 text-center">
                   {val}
                 </span>
                 <button
                   onClick={() => onChange(field.key, Math.min(field.max, val + 1))}
-                  disabled={val >= field.max}
+                  disabled={parentOff || val >= field.max}
+                  aria-label={`Increase ${field.label}`}
                   className="w-5 h-5 flex items-center justify-center rounded bg-surface-3/60 text-fg-3 hover:bg-surface-3 hover:text-fg disabled:opacity-30 disabled:pointer-events-none transition-colors"
                 >
                   <Plus size={10} />
@@ -60,22 +62,34 @@ export default function CardEditor({ schema, values, onChange }: CardEditorProps
 
         // Toggle
         const checked = (values[field.key] as boolean) ?? true;
+        const toggleId = `editor-${field.key}`;
         return (
-          <label
+          <div
             key={field.key}
+            role="switch"
+            aria-checked={checked}
+            aria-label={field.label}
+            tabIndex={parentOff ? -1 : 0}
+            onClick={() => !parentOff && onChange(field.key, !checked)}
+            onKeyDown={(e) => {
+              if (parentOff) return;
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onChange(field.key, !checked);
+              }
+            }}
             className={clsx(
               "flex items-center justify-between py-1 rounded-md cursor-pointer transition-opacity",
+              "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40",
               field.parent && "pl-4",
               parentOff && "opacity-30 pointer-events-none",
             )}
           >
-            <span className="text-[11px] text-fg-3 select-none">
+            <span id={toggleId} className="text-[11px] text-fg-3 select-none">
               {field.label}
             </span>
-            <button
-              role="switch"
-              aria-checked={checked}
-              onClick={() => onChange(field.key, !checked)}
+            <span
+              aria-hidden="true"
               className={clsx(
                 "relative w-7 h-4 rounded-full transition-colors shrink-0",
                 checked ? "bg-accent" : "bg-surface-3",
@@ -87,8 +101,8 @@ export default function CardEditor({ schema, values, onChange }: CardEditorProps
                   checked && "translate-x-3",
                 )}
               />
-            </button>
-          </label>
+            </span>
+          </div>
         );
       })}
     </div>

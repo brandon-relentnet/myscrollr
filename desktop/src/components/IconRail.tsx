@@ -5,6 +5,7 @@
  * Channel/widget icons with tooltips, active indicator via left accent bar.
  * Adding channels/widgets happens on the dashboard, not here.
  */
+import { useMemo } from "react";
 import { Settings } from "lucide-react";
 import clsx from "clsx";
 import type { ChannelManifest, WidgetManifest } from "../types";
@@ -91,6 +92,8 @@ interface IconRailProps {
   onNavigateToSettings: () => void;
   /** Whether we're on the settings page. */
   isSettings: boolean;
+  /** Whether we're on the feed dashboard. */
+  isFeed: boolean;
 }
 
 // ── Component ───────────────────────────────────────────────────
@@ -106,21 +109,29 @@ export default function IconRail({
   onNavigateToFeed,
   onNavigateToSettings,
   isSettings,
+  isFeed,
 }: IconRailProps) {
   // Sort channels and widgets by canonical order
-  const sortedChannels = [...channels]
-    .sort(
-      (a, b) =>
-        CHANNEL_ORDER.indexOf(a.channel_type) -
-        CHANNEL_ORDER.indexOf(b.channel_type),
-    );
+  const sortedChannels = useMemo(
+    () =>
+      [...channels].sort(
+        (a, b) =>
+          CHANNEL_ORDER.indexOf(a.channel_type) -
+          CHANNEL_ORDER.indexOf(b.channel_type),
+      ),
+    [channels],
+  );
 
-  const sortedEnabledWidgets = enabledWidgets
-    .map((id) => allWidgets.find((w) => w.id === id))
-    .filter((w): w is WidgetManifest => w != null)
-    .sort(
-      (a, b) => WIDGET_ORDER.indexOf(a.id) - WIDGET_ORDER.indexOf(b.id),
-    );
+  const sortedEnabledWidgets = useMemo(
+    () =>
+      enabledWidgets
+        .map((id) => allWidgets.find((w) => w.id === id))
+        .filter((w): w is WidgetManifest => w != null)
+        .sort(
+          (a, b) => WIDGET_ORDER.indexOf(a.id) - WIDGET_ORDER.indexOf(b.id),
+        ),
+    [enabledWidgets, allWidgets],
+  );
 
   return (
     <aside className="flex flex-col items-center shrink-0 border-r border-edge bg-surface-2 h-full w-[48px] overflow-hidden">
@@ -131,7 +142,11 @@ export default function IconRail({
         title="Dashboard"
         className={clsx(
           "relative flex items-center justify-center w-full h-12 shrink-0 cursor-pointer transition-all duration-500",
-          tickerAlive ? "border-b border-accent/15" : "border-b border-edge",
+          isFeed
+            ? "border-b border-accent/30 bg-accent/5"
+            : tickerAlive
+              ? "border-b border-accent/15"
+              : "border-b border-edge",
         )}
       >
         <EkgLogo alive={tickerAlive} />
@@ -147,9 +162,10 @@ export default function IconRail({
           const isActive = activeItem === ch.channel_type;
           const Icon = manifest?.icon;
           return (
-            <button
+             <button
               key={ch.channel_type}
               onClick={() => onSelectItem(ch.channel_type)}
+              aria-label={manifest?.name ?? ch.channel_type}
               title={manifest?.name ?? ch.channel_type}
               className={clsx(
                 "relative w-8 h-8 flex items-center justify-center rounded-md transition-colors shrink-0",
@@ -191,6 +207,7 @@ export default function IconRail({
             <button
               key={widget.id}
               onClick={() => onSelectItem(widget.id)}
+              aria-label={widget.name}
               title={widget.name}
               className={clsx(
                 "relative w-8 h-8 flex items-center justify-center rounded-md transition-colors shrink-0",
@@ -217,6 +234,7 @@ export default function IconRail({
       <div className="flex flex-col items-center py-2 gap-1 border-t border-edge shrink-0 w-full">
         <button
           onClick={onNavigateToSettings}
+          aria-label="Settings"
           title="Settings"
           className={clsx(
             "w-8 h-8 flex items-center justify-center rounded-md transition-colors",

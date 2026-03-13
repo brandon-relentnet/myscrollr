@@ -69,8 +69,22 @@ export default function DashboardCard({
         editing
           ? "ring-1 ring-accent/20"
           : fullCardClick && "hover:bg-surface-2 cursor-pointer",
+        fullCardClick && "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
       )}
+      role={fullCardClick ? "button" : undefined}
+      tabIndex={fullCardClick ? 0 : undefined}
+      aria-label={fullCardClick ? `Open ${name}` : undefined}
       onClick={fullCardClick ? onClick : undefined}
+      onKeyDown={
+        fullCardClick
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
     >
       {/* Left accent bar */}
       <div
@@ -132,6 +146,7 @@ export default function DashboardCard({
                   ? "text-fg-4 hover:text-fg-2 hover:bg-surface-3/80"
                   : "text-fg-4/20 cursor-default",
               )}
+              aria-label={`Move ${name} up`}
               title="Move up"
             >
               <ChevronUp size={14} />
@@ -148,6 +163,7 @@ export default function DashboardCard({
                   ? "text-fg-4 hover:text-fg-2 hover:bg-surface-3/80"
                   : "text-fg-4/20 cursor-default",
               )}
+              aria-label={`Move ${name} down`}
               title="Move down"
             >
               <ChevronDown size={14} />
@@ -162,8 +178,9 @@ export default function DashboardCard({
               e.stopPropagation();
               onConfigure();
             }}
+            aria-label={`${name} settings`}
             title={`${name} settings`}
-            className="w-6 h-6 flex items-center justify-center rounded-md text-fg-4 opacity-0 group-hover/card:opacity-60 hover:!opacity-100 hover:text-fg-2 hover:bg-surface-hover transition-all shrink-0"
+            className="w-6 h-6 flex items-center justify-center rounded-md text-fg-4 opacity-0 group-hover/card:opacity-60 hover:!opacity-100 hover:text-fg-2 hover:bg-surface-hover focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40 transition-all shrink-0"
           >
             <Settings size={12} />
           </button>
@@ -200,7 +217,8 @@ export function GhostCard({ name, description, icon: Icon, hex, onClick }: Ghost
   return (
     <button
       onClick={onClick}
-      className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-edge/40 hover:border-edge bg-transparent hover:bg-surface-2/30 transition-all p-5 cursor-pointer min-h-[120px]"
+      aria-label={`Add ${name}`}
+      className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-edge/40 hover:border-edge bg-transparent hover:bg-surface-2/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:border-accent/30 transition-all p-5 cursor-pointer min-h-[120px]"
     >
       <span style={{ color: hex }} className="opacity-40">
         <Icon size={20} />

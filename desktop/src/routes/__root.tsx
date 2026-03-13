@@ -666,6 +666,7 @@ function RootLayout() {
           onNavigateToFeed={handleNavigateToFeed}
           onNavigateToSettings={handleNavigateToSettings}
           isSettings={route.isSettings}
+          isFeed={route.isFeed}
         />
 
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">

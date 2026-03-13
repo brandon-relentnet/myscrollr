@@ -79,6 +79,7 @@ export default function TopNav({
       <div className="flex items-center gap-1">
         <button
           onClick={onNavigateToSettings}
+          aria-label="Settings"
           title="Settings"
           className={clsx(
             "w-8 h-8 flex items-center justify-center rounded-lg transition-colors",
@@ -93,6 +94,7 @@ export default function TopNav({
         {/* Account button */}
         <button
           onClick={authenticated ? onNavigateToAccount : onLogin}
+          aria-label={authenticated ? "Account" : "Sign in"}
           title={
             authenticated
               ? `${identity?.email ?? "Account"} — ${TIER_LABELS[tier]}`
@@ -139,6 +141,7 @@ function NavTab({
   return (
     <button
       onClick={onClick}
+      aria-current={active ? "page" : undefined}
       className={clsx(
         "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
         active

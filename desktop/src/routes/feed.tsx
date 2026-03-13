@@ -6,7 +6,7 @@
  * In edit mode, arrow buttons let users reorder cards within each panel.
  * Order persists to localStorage.
  */
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Pencil, Check, ChevronDown, ChevronRight } from "lucide-react";
 import { useShell } from "../shell-context";
@@ -216,16 +216,27 @@ function FeedDashboard() {
   );
 
   // ── Ghost cards ─────────────────────────────────────────────
-  const addedTypes = new Set(channels.map((ch) => ch.channel_type));
-  const availableChannels = allChannelManifests.filter(
-    (m) => !addedTypes.has(m.id as ChannelType),
-  );
-  const enabledSet = new Set(enabledWidgets);
-  const availableWidgets = allWidgets.filter((w) => !enabledSet.has(w.id));
+  const availableChannels = useMemo(() => {
+    const addedTypes = new Set(channels.map((ch) => ch.channel_type));
+    return allChannelManifests.filter(
+      (m) => !addedTypes.has(m.id as ChannelType),
+    );
+  }, [channels, allChannelManifests]);
+
+  const availableWidgets = useMemo(() => {
+    const enabledSet = new Set(enabledWidgets);
+    return allWidgets.filter((w) => !enabledSet.has(w.id));
+  }, [enabledWidgets, allWidgets]);
+
   const hasGhosts = availableChannels.length > 0 || availableWidgets.length > 0;
 
   const hasAnySources =
     orderedChannels.length > 0 || orderedWidgets.length > 0;
+
+  // Reset edit mode when all sources are removed
+  useEffect(() => {
+    if (!hasAnySources) setEditing(false);
+  }, [hasAnySources]);
 
   return (
     <div className="p-5">
