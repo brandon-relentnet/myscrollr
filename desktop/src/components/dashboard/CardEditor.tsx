@@ -1,9 +1,10 @@
 /**
- * CardEditor — compact toggle/stepper list rendered inside a
- * DashboardCard when the dashboard is in edit mode.
+ * CardEditor — compact toggle/stepper list for card display prefs.
  *
- * Each card type provides a schema of EditorFields (toggles + steppers)
- * and its current prefs slice. Changes are applied immediately.
+ * Rendered inline on a DashboardCard when the user clicks the
+ * customize (sliders) icon. Each card type provides a schema of
+ * EditorFields (toggles + steppers) and its current prefs slice.
+ * Changes are applied immediately.
  */
 import { Minus, Plus } from "lucide-react";
 import clsx from "clsx";

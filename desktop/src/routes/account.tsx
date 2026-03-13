@@ -24,6 +24,9 @@ function AccountRoute() {
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
+      <h2 className="text-[13px] font-mono font-semibold text-fg-4 uppercase tracking-wider mb-6">
+        Account
+      </h2>
       <AccountSettings
         authenticated={shell.authenticated}
         tier={shell.tier}

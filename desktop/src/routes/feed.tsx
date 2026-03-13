@@ -2,15 +2,13 @@
  * Feed route — the dashboard.
  *
  * Two-panel layout: channels on the left (responsive 1–2 column grid),
- * widgets stacked on the right (240px). Both use natural card heights.
- * In edit mode, arrow buttons let users reorder cards within each panel.
- * Order persists to localStorage.
+ * widgets stacked on the right (240px). Management actions (ticker toggle,
+ * reorder, remove) are inline on each card. No edit mode.
  */
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import RouteError from "../components/RouteError";
-import { Pencil, Check, ChevronDown, ChevronRight } from "lucide-react";
-import clsx from "clsx";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { useShell, useShellData } from "../shell-context";
 import DashboardCard, { GhostCard } from "../components/dashboard/DashboardCard";
 import FinanceSummary from "../components/dashboard/FinanceSummary";
@@ -37,11 +35,7 @@ import {
 } from "../components/dashboard/dashboardPrefs";
 import type { ChannelType } from "../api/client";
 import type { ChannelManifest, WidgetManifest, DashboardResponse } from "../types";
-import type {
-  DashboardCardPrefs,
-  CardOrder,
-  EditorField,
-} from "../components/dashboard/dashboardPrefs";
+import type { DashboardCardPrefs, CardOrder, EditorField } from "../components/dashboard/dashboardPrefs";
 
 // ── Summary renderers (type-safe, no casts) ────────────────────
 
@@ -81,7 +75,7 @@ function renderWidgetSummary(
   }
 }
 
-// ── Schema map ──────────────────────────────────────────────────
+// ── Schema + prefs key maps ─────────────────────────────────────
 
 const CHANNEL_SCHEMAS: Record<string, EditorField[]> = {
   finance: FINANCE_SCHEMA,
@@ -95,8 +89,6 @@ const WIDGET_SCHEMAS: Record<string, EditorField[]> = {
   weather: WEATHER_SCHEMA,
   sysmon: SYSMON_SCHEMA,
 };
-
-// ── Prefs key map (card type → prefs key) ───────────────────────
 
 const CHANNEL_PREFS_KEY: Record<string, keyof DashboardCardPrefs> = {
   finance: "finance",
@@ -127,14 +119,17 @@ function FeedDashboard() {
     allWidgets,
     authenticated,
     onAddChannel,
+    onDeleteChannel,
+    onToggleChannelTicker,
+    onToggleWidgetTicker,
     onToggleWidget,
     onLogin,
   } = shell;
 
   const enabledWidgets = shell.prefs.widgets.enabledWidgets;
+  const widgetsOnTicker = shell.prefs.widgets.widgetsOnTicker;
 
-  // ── Edit mode ───────────────────────────────────────────────
-  const [editing, setEditing] = useState(false);
+  // ── Card display prefs (editable inline via per-card expansion) ──
   const [cardPrefs, setCardPrefs] = useState<DashboardCardPrefs>(loadCardPrefs);
 
   const handleCardPrefChange = useCallback(
@@ -167,7 +162,7 @@ function FeedDashboard() {
     () => channels.map((ch) => ch.channel_type),
     [channels],
   );
-  const activeWidgetIds = useMemo(() => enabledWidgets, [enabledWidgets]);
+  const activeWidgetIds = enabledWidgets;
 
   const [cardOrder, setCardOrder] = useState<CardOrder>(() =>
     loadCardOrder(activeChannelIds, activeWidgetIds),
@@ -200,7 +195,7 @@ function FeedDashboard() {
       : merged;
   }, [cardOrder.widgets, mergedOrder.widgets, activeWidgetIds]);
 
-  // Arrow-button move helper
+  // Reorder helper
   const moveItem = useCallback(
     (list: string[], index: number, direction: -1 | 1, isChannel: boolean) => {
       const newIndex = index + direction;
@@ -255,11 +250,6 @@ function FeedDashboard() {
   const hasAnySources =
     orderedChannels.length > 0 || orderedWidgets.length > 0;
 
-  // Reset edit mode when all sources are removed
-  useEffect(() => {
-    if (!hasAnySources) setEditing(false);
-  }, [hasAnySources]);
-
   return (
     <div className="p-5">
       {/* Empty state */}
@@ -282,28 +272,12 @@ function FeedDashboard() {
         </div>
       )}
 
-      {/* Header row — title + edit toggle */}
+      {/* Header row */}
       {hasAnySources && (
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-[13px] font-mono font-semibold text-fg-4 uppercase tracking-wider">
             Dashboard
           </h2>
-          <button
-            onClick={() => setEditing((p) => !p)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors bg-surface-3/50 hover:bg-surface-3 text-fg-3 hover:text-fg"
-          >
-            {editing ? (
-              <>
-                <Check size={12} />
-                Done
-              </>
-            ) : (
-              <>
-                <Pencil size={11} />
-                Edit
-              </>
-            )}
-          </button>
         </div>
       )}
 
@@ -312,64 +286,59 @@ function FeedDashboard() {
         <div className="flex flex-col md:flex-row gap-3 mb-6">
           {/* Left panel — channels */}
           {orderedChannels.length > 0 && (
-            <div className={clsx("flex-1 min-w-0 grid gap-3", editing ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2")}>
+            <div className="flex-1 min-w-0 grid gap-3 grid-cols-1 lg:grid-cols-2">
               {orderedChannels.map(({ ch, manifest }, index) => {
-                const schema = CHANNEL_SCHEMAS[ch.channel_type];
                 const prefsKey = CHANNEL_PREFS_KEY[ch.channel_type];
-                const prefs = prefsKey ? cardPrefs[prefsKey] : undefined;
-
                 return (
-                  <DashboardCard
-                    key={ch.channel_type}
-                    name={manifest.name}
-                    icon={manifest.icon}
-                    hex={manifest.hex}
-                    headerClickOnly
-                    onClick={() =>
-                      navigate({
-                        to: "/channel/$type/$tab",
-                        params: { type: ch.channel_type, tab: "feed" },
-                      })
-                    }
-                    onConfigure={() =>
+                <DashboardCard
+                  key={ch.channel_type}
+                  name={manifest.name}
+                  icon={manifest.icon}
+                  hex={manifest.hex}
+                  onClick={() =>
+                    navigate({
+                      to: "/channel/$type/$tab",
+                      params: { type: ch.channel_type, tab: "feed" },
+                    })
+                  }
+                  onConfigure={() =>
+                    navigate({
+                      to: "/channel/$type/$tab",
+                      params: { type: ch.channel_type, tab: "configuration" },
+                    })
+                  }
+                  tickerEnabled={ch.visible}
+                  onToggleTicker={() =>
+                    onToggleChannelTicker(ch.channel_type as ChannelType, !ch.visible)
+                  }
+                  onMoveUp={
+                    index > 0
+                      ? () => moveItem(channelOrder, index, -1, true)
+                      : undefined
+                  }
+                  onMoveDown={
+                    index < orderedChannels.length - 1
+                      ? () => moveItem(channelOrder, index, 1, true)
+                      : undefined
+                  }
+                  onRemove={() => onDeleteChannel(ch.channel_type as ChannelType)}
+                  schema={CHANNEL_SCHEMAS[ch.channel_type]}
+                  editorValues={prefsKey ? cardPrefs[prefsKey] as Record<string, boolean | number> : undefined}
+                  onEditorChange={prefsKey ? (key, value) => handleCardPrefChange(prefsKey, key, value) : undefined}
+                >
+                  {renderChannelSummary(
+                    ch.channel_type,
+                    dashboard,
+                    cardPrefs,
+                    () =>
                       navigate({
                         to: "/channel/$type/$tab",
                         params: { type: ch.channel_type, tab: "configuration" },
-                      })
-                    }
-                    editing={editing}
-                    schema={schema}
-                    editorValues={prefs as Record<string, boolean | number> | undefined}
-                    onEditorChange={
-                      prefsKey
-                        ? (key: string, value: boolean | number) =>
-                            handleCardPrefChange(prefsKey, key, value)
-                        : undefined
-                    }
-                    onMoveUp={
-                      editing && index > 0
-                        ? () => moveItem(channelOrder, index, -1, true)
-                        : undefined
-                    }
-                    onMoveDown={
-                      editing && index < orderedChannels.length - 1
-                        ? () => moveItem(channelOrder, index, 1, true)
-                        : undefined
-                    }
-                  >
-                    {renderChannelSummary(
-                      ch.channel_type,
-                      dashboard,
-                      cardPrefs,
-                      () =>
-                        navigate({
-                          to: "/channel/$type/$tab",
-                          params: { type: ch.channel_type, tab: "configuration" },
-                        }),
-                    ) ?? (
-                      <p className="text-[11px] text-fg-4 italic">No preview</p>
-                    )}
-                  </DashboardCard>
+                      }),
+                  ) ?? (
+                    <p className="text-[11px] text-fg-4 italic">No preview</p>
+                  )}
+                </DashboardCard>
                 );
               })}
             </div>
@@ -379,52 +348,46 @@ function FeedDashboard() {
           {orderedWidgets.length > 0 && (
             <div className="w-full md:w-[240px] shrink-0 flex flex-col gap-3">
               {orderedWidgets.map((widget, index) => {
-                const schema = WIDGET_SCHEMAS[widget.id];
                 const prefsKey = WIDGET_PREFS_KEY[widget.id];
-                const prefs = prefsKey ? cardPrefs[prefsKey] : undefined;
-
                 return (
-                  <DashboardCard
-                    key={widget.id}
-                    name={widget.name}
-                    icon={widget.icon}
-                    hex={widget.hex}
-                    onClick={() =>
-                      navigate({
-                        to: "/widget/$id/$tab",
-                        params: { id: widget.id, tab: "feed" },
-                      })
-                    }
-                    onConfigure={() =>
-                      navigate({
-                        to: "/widget/$id/$tab",
-                        params: { id: widget.id, tab: "configuration" },
-                      })
-                    }
-                    editing={editing}
-                    schema={schema}
-                    editorValues={prefs as Record<string, boolean | number> | undefined}
-                    onEditorChange={
-                      prefsKey
-                        ? (key: string, value: boolean | number) =>
-                            handleCardPrefChange(prefsKey, key, value)
-                        : undefined
-                    }
-                    onMoveUp={
-                      editing && index > 0
-                        ? () => moveItem(widgetOrder, index, -1, false)
-                        : undefined
-                    }
-                    onMoveDown={
-                      editing && index < orderedWidgets.length - 1
-                        ? () => moveItem(widgetOrder, index, 1, false)
-                        : undefined
-                    }
-                  >
-                    {renderWidgetSummary(widget.id, cardPrefs) ?? (
-                      <p className="text-[11px] text-fg-4 italic">No preview</p>
-                    )}
-                  </DashboardCard>
+                <DashboardCard
+                  key={widget.id}
+                  name={widget.name}
+                  icon={widget.icon}
+                  hex={widget.hex}
+                  onClick={() =>
+                    navigate({
+                      to: "/widget/$id/$tab",
+                      params: { id: widget.id, tab: "feed" },
+                    })
+                  }
+                  onConfigure={() =>
+                    navigate({
+                      to: "/widget/$id/$tab",
+                      params: { id: widget.id, tab: "configuration" },
+                    })
+                  }
+                  tickerEnabled={widgetsOnTicker.includes(widget.id)}
+                  onToggleTicker={() => onToggleWidgetTicker(widget.id)}
+                  onMoveUp={
+                    index > 0
+                      ? () => moveItem(widgetOrder, index, -1, false)
+                      : undefined
+                  }
+                  onMoveDown={
+                    index < orderedWidgets.length - 1
+                      ? () => moveItem(widgetOrder, index, 1, false)
+                      : undefined
+                  }
+                  onRemove={() => onToggleWidget(widget.id)}
+                  schema={WIDGET_SCHEMAS[widget.id]}
+                  editorValues={prefsKey ? cardPrefs[prefsKey] as Record<string, boolean | number> : undefined}
+                  onEditorChange={prefsKey ? (key, value) => handleCardPrefChange(prefsKey, key, value) : undefined}
+                >
+                  {renderWidgetSummary(widget.id, cardPrefs) ?? (
+                    <p className="text-[11px] text-fg-4 italic">No preview</p>
+                  )}
+                </DashboardCard>
                 );
               })}
             </div>

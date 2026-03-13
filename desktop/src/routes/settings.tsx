@@ -42,8 +42,12 @@ function SettingsRoute() {
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
-      {/* Tab pills */}
-      <div className="flex gap-1 mb-6">
+      {/* Page heading + tab pills */}
+      <div className="flex items-center gap-4 mb-6">
+        <h2 className="text-[13px] font-mono font-semibold text-fg-4 uppercase tracking-wider">
+          Settings
+        </h2>
+        <div className="flex gap-1">
         {TABS.map(({ key, label }) => (
           <button
             key={key}
@@ -58,6 +62,7 @@ function SettingsRoute() {
             {label}
           </button>
         ))}
+        </div>
       </div>
 
       {/* Tab content */}
