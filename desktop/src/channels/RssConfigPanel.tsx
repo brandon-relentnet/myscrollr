@@ -117,7 +117,7 @@ export default function RssConfigPanel({
   return (
     <div className="w-full max-w-2xl mx-auto">
       <SetupBrowser
-        title="RSS"
+        title="News"
         subtitle="News and articles from your favorite sites"
         icon={Rss}
         hex={hex}

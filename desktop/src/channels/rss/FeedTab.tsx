@@ -20,8 +20,8 @@ import type {
 
 export const rssChannel: ChannelManifest = {
   id: "rss",
-  name: "RSS",
-  tabLabel: "RSS",
+  name: "News",
+  tabLabel: "News",
   description: "Articles from your favorite feeds",
   hex: "#a855f7",
   icon: Rss,
