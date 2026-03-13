@@ -9,10 +9,10 @@ import { loadPref, savePref } from "../../preferences";
 // ── Per-card preference types ───────────────────────────────────
 
 export interface FinanceCardPrefs {
-  topMovers: boolean;
-  itemCount: number;
+  primaryCount: number;
   showPrice: boolean;
   showChange: boolean;
+  showBadges: boolean;
   stats: boolean;
 }
 
@@ -70,7 +70,7 @@ export interface DashboardCardPrefs {
 // ── Defaults ────────────────────────────────────────────────────
 
 export const DEFAULT_CARD_PREFS: DashboardCardPrefs = {
-  finance: { topMovers: true, itemCount: 3, showPrice: true, showChange: true, stats: true },
+  finance: { primaryCount: 5, showPrice: true, showChange: true, showBadges: true, stats: true },
   sports: { showLogos: true, showTimer: true, compact: true, upcoming: true, final: true, stats: true },
   rss: { headlines: true, itemCount: 3, showSource: true, showTime: true, stats: true },
   fantasy: { matchup: true, standings: true },
@@ -134,10 +134,10 @@ export type EditorField =
 // ── Schemas per card type ───────────────────────────────────────
 
 export const FINANCE_SCHEMA: EditorField[] = [
-  { type: "toggle", key: "topMovers", label: "Top Movers" },
-  { type: "stepper", key: "itemCount", label: "Items", min: 1, max: 5, parent: "topMovers" },
-  { type: "toggle", key: "showPrice", label: "Price", parent: "topMovers" },
-  { type: "toggle", key: "showChange", label: "% Change", parent: "topMovers" },
+  { type: "stepper", key: "primaryCount", label: "Primary Stocks", min: 1, max: 5 },
+  { type: "toggle", key: "showPrice", label: "Price" },
+  { type: "toggle", key: "showChange", label: "% Change" },
+  { type: "toggle", key: "showBadges", label: "Other Stocks" },
   { type: "toggle", key: "stats", label: "Stats" },
 ];
 
