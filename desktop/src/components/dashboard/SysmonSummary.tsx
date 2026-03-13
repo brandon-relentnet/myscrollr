@@ -44,8 +44,6 @@ export default function SysmonSummary({ prefs }: SysmonSummaryProps) {
     : 0;
   const gpuPct = data.gpuUsage != null ? Math.round(data.gpuUsage) : null;
 
-  const hasFooter = (prefs.gpu && gpuPct !== null) || (prefs.uptime && data.uptime != null);
-
   return (
     <div className="space-y-2">
       {/* CPU bar */}
@@ -88,18 +86,30 @@ export default function SysmonSummary({ prefs }: SysmonSummaryProps) {
         </div>
       )}
 
-      {hasFooter && (
-        <div className="flex items-center gap-3 pt-1 border-t border-edge/30">
-          {prefs.gpu && gpuPct !== null && (
-            <span className="text-[10px] text-fg-4">
-              GPU {gpuPct}%
-            </span>
-          )}
-          {prefs.uptime && data.uptime != null && (
-            <span className="text-[10px] text-fg-4">
-              {formatUptime(data.uptime)}
-            </span>
-          )}
+      {/* GPU bar */}
+      {prefs.gpu && gpuPct !== null && (
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-fg-3 w-8 shrink-0">GPU</span>
+          <div className="flex-1 h-1.5 rounded-full bg-base-300 overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{ width: `${gpuPct}%`, background: usageColor(gpuPct) }}
+            />
+          </div>
+          <span
+            className="text-[11px] font-mono font-semibold tabular-nums w-8 text-right"
+            style={{ color: usageColor(gpuPct) }}
+          >
+            {gpuPct}%
+          </span>
+        </div>
+      )}
+
+      {prefs.uptime && data.uptime != null && (
+        <div className="flex items-center pt-1 border-t border-edge/30">
+          <span className="text-[10px] text-fg-4">
+            {formatUptime(data.uptime)}
+          </span>
         </div>
       )}
     </div>
