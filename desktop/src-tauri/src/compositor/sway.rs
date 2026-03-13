@@ -1,7 +1,11 @@
 /// Escape a window title for use inside a swaymsg `[title="..."]` criteria.
-/// Prevents shell metacharacter injection via crafted window titles.
+/// Prevents injection via crafted window titles — `]` closes the criteria
+/// block in swaymsg's parser, so it must be escaped alongside `\` and `"`.
 fn escape_title(title: &str) -> String {
-    title.replace('\\', "\\\\").replace('"', "\\\"")
+    title
+        .replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace(']', "\\]")
 }
 
 /// Sway: `move absolute position` + `resize set` for floating windows.

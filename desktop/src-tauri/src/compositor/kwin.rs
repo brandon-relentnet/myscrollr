@@ -1,13 +1,17 @@
 use super::run_kwin_script;
 
 /// Escape a window title for safe interpolation into a KWin JavaScript string.
-/// Prevents script injection via crafted window titles.
+/// Prevents script injection via crafted window titles. Covers all JS string
+/// terminators including null bytes and Unicode line separators.
 fn escape_title_js(title: &str) -> String {
     title
         .replace('\\', "\\\\")
         .replace('"', "\\\"")
         .replace('\n', "\\n")
         .replace('\r', "\\r")
+        .replace('\0', "\\0")
+        .replace('\u{2028}', "\\u2028")
+        .replace('\u{2029}', "\\u2029")
 }
 
 /// KDE/KWin: inject a KWin script that sets the full `frameGeometry` via D-Bus.
