@@ -37,7 +37,7 @@ import { getAllWidgets, getWidget } from "../widgets/registry";
 // Data
 import { dashboardQueryOptions } from "../api/queries";
 import { channelsApi } from "../api/client";
-import type { ChannelType } from "../api/client";
+import type { ChannelType, Channel } from "../api/client";
 
 // Auth
 import {
@@ -199,7 +199,7 @@ function RootLayout() {
     refetch: fetchDashboard,
   } = useQuery(dashboardQueryOptions());
 
-  const channels = useMemo(() => dashboard?.channels ?? [], [dashboard]);
+  const channels: Channel[] = useMemo(() => dashboard?.channels ?? [], [dashboard]);
 
   const sortedChannels = useMemo(() => {
     const ORDER = ["finance", "sports", "rss", "fantasy"];
@@ -618,10 +618,10 @@ function RootLayout() {
       appVersion,
       getToken,
       // New navigation overhaul additions
-      channels: channels as any,
+      channels,
       dashboard,
-      allChannelManifests: allChannelManifests as any,
-      allWidgets: allWidgets as any,
+      allChannelManifests,
+      allWidgets,
       onToggleChannelTicker: handleToggleChannel,
       onToggleWidgetTicker: handleToggleWidgetTicker,
       onAddChannel: handleAddChannel,
@@ -656,9 +656,9 @@ function RootLayout() {
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
         <IconRail
-          channels={channels as any}
-          allChannelManifests={allChannelManifests as any}
-          allWidgets={allWidgets as any}
+          channels={channels}
+          allChannelManifests={allChannelManifests}
+          allWidgets={allWidgets}
           enabledWidgets={enabledWidgets}
           activeItem={route.activeItem}
           tickerAlive={prefs.ticker.showTicker}
@@ -687,7 +687,7 @@ function RootLayout() {
             Array.from({ length: prefs.appearance.tickerRows }, (_, i) => (
               <ScrollrTicker
                 key={`app-row${i}-${prefs.ticker.tickerGap}-${prefs.ticker.tickerSpeed}-${prefs.ticker.hoverSpeed}-${prefs.ticker.tickerMode}-${prefs.ticker.mixMode}-${prefs.ticker.chipColors}-${prefs.ticker.tickerDirection}-${prefs.ticker.scrollMode}-${prefs.ticker.stepPause}-${prefs.appearance.tickerRows}`}
-                dashboard={dashboard as any}
+                dashboard={dashboard}
                 activeTabs={activeTabs}
                 widgetData={widgetData}
                 onTogglePin={handleTogglePin}

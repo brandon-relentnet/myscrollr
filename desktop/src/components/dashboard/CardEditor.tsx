@@ -62,7 +62,6 @@ export default function CardEditor({ schema, values, onChange }: CardEditorProps
 
         // Toggle
         const checked = (values[field.key] as boolean) ?? true;
-        const toggleId = `editor-${field.key}`;
         return (
           <div
             key={field.key}
@@ -85,7 +84,7 @@ export default function CardEditor({ schema, values, onChange }: CardEditorProps
               parentOff && "opacity-30 pointer-events-none",
             )}
           >
-            <span id={toggleId} className="text-[11px] text-fg-3 select-none">
+            <span className="text-[11px] text-fg-3 select-none">
               {field.label}
             </span>
             <span

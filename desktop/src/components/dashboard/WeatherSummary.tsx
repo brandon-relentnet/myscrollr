@@ -5,6 +5,7 @@
  * Reads from the same localStorage data the full Weather widget uses.
  * Respects per-card display preferences from the dashboard editor.
  */
+import { useState } from "react";
 import {
   loadCities,
   loadUnit,
@@ -19,8 +20,9 @@ interface WeatherSummaryProps {
 }
 
 export default function WeatherSummary({ prefs }: WeatherSummaryProps) {
-  const cities = loadCities();
-  const unit = loadUnit();
+  // Read once on mount — changes require navigating to the weather widget
+  const [cities] = useState(loadCities);
+  const [unit] = useState(loadUnit);
 
   if (cities.length === 0) {
     return (

@@ -4,7 +4,7 @@
  * Shows: back button, source name + icon, ticker toggle, tab pills,
  * and a double-click-confirm delete button.
  */
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import clsx from "clsx";
@@ -58,6 +58,12 @@ export default function ContentHeader({
   const [deleteArmed, setDeleteArmed] = useState(false);
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useEffect(() => {
+    return () => {
+      if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+    };
+  }, []);
+
   function handleDeleteClick() {
     if (deleteArmed) {
       if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
@@ -75,6 +81,7 @@ export default function ContentHeader({
       <div className="flex items-center gap-2.5 min-w-0">
         <button
           onClick={onBack}
+          aria-label="Back to dashboard"
           title="Back to dashboard"
           className="w-7 h-7 flex items-center justify-center rounded-md text-fg-3 hover:text-fg-2 hover:bg-surface-hover transition-colors shrink-0"
         >

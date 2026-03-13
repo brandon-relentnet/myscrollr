@@ -15,20 +15,25 @@ interface ClockSummaryProps {
 export default function ClockSummary({ prefs }: ClockSummaryProps) {
   const [now, setNow] = useState(() => new Date());
 
+  // Read once on mount — these change rarely (only when the user edits
+  // clock settings, which navigates away from the dashboard anyway)
+  const [savedTimezones] = useState(() =>
+    loadPref<string[]>("widget:clock:timezones", []),
+  );
+  const [format] = useState(() =>
+    loadPref<string>("widget:clock:format", "12h"),
+  );
+  const [timerState] = useState(() =>
+    loadPref<{ mode?: string; startedAt?: number; bankedMs?: number } | null>(
+      "widget:timer:state",
+      null,
+    ),
+  );
+
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
-
-  // Read saved timezones from localStorage
-  const savedTimezones = loadPref<string[]>("widget:clock:timezones", []);
-  const format = loadPref<string>("widget:clock:format", "12h");
-
-  // Read timer state from localStorage
-  const timerState = loadPref<{ mode?: string; startedAt?: number; bankedMs?: number } | null>(
-    "widget:timer:state",
-    null,
-  );
 
   const timeStr = now.toLocaleTimeString(undefined, {
     hour: "numeric",

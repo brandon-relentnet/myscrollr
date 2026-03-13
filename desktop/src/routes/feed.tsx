@@ -9,6 +9,7 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Pencil, Check, ChevronDown, ChevronRight } from "lucide-react";
+import clsx from "clsx";
 import { useShell } from "../shell-context";
 import DashboardCard, { GhostCard } from "../components/dashboard/DashboardCard";
 import FinanceSummary from "../components/dashboard/FinanceSummary";
@@ -290,7 +291,7 @@ function FeedDashboard() {
         <div className="flex flex-col md:flex-row gap-3 mb-6">
           {/* Left panel — channels */}
           {orderedChannels.length > 0 && (
-            <div className={`flex-1 min-w-0 grid gap-3 ${editing ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2"}`}>
+            <div className={clsx("flex-1 min-w-0 grid gap-3", editing ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2")}>
               {orderedChannels.map(({ ch, manifest }, index) => {
                 const SummaryComponent = CHANNEL_SUMMARIES[ch.channel_type];
                 const schema = CHANNEL_SCHEMAS[ch.channel_type];
