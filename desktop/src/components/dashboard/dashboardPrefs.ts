@@ -110,6 +110,53 @@ export function saveShowAddMore(show: boolean): void {
   savePref(GHOSTS_KEY, show);
 }
 
+// ── Card order ──────────────────────────────────────────────────
+
+const ORDER_KEY = "dashboard:cardOrder";
+
+const DEFAULT_CHANNEL_ORDER = ["finance", "sports", "rss", "fantasy"];
+const DEFAULT_WIDGET_ORDER = ["clock", "weather", "sysmon"];
+
+export interface CardOrder {
+  channels: string[];
+  widgets: string[];
+}
+
+/**
+ * Load persisted card order, merging with current sources.
+ *
+ * - Removes stale IDs no longer present in activeChannels/activeWidgets
+ * - Appends newly-added IDs at the end (in canonical order among themselves)
+ */
+export function loadCardOrder(
+  activeChannels: string[],
+  activeWidgets: string[],
+): CardOrder {
+  const saved = loadPref<Partial<CardOrder>>(ORDER_KEY, {});
+
+  function merge(saved: string[] | undefined, active: string[], defaults: string[]): string[] {
+    const activeSet = new Set(active);
+    // Filter stale entries from saved order
+    const kept = (saved ?? defaults).filter((id) => activeSet.has(id));
+    // Find new IDs not in saved order, sorted by canonical position
+    const keptSet = new Set(kept);
+    const added = defaults
+      .filter((id) => activeSet.has(id) && !keptSet.has(id));
+    // Any active IDs not in defaults at all go last
+    const remaining = active.filter((id) => !keptSet.has(id) && !added.includes(id));
+    return [...kept, ...added, ...remaining];
+  }
+
+  return {
+    channels: merge(saved.channels, activeChannels, DEFAULT_CHANNEL_ORDER),
+    widgets: merge(saved.widgets, activeWidgets, DEFAULT_WIDGET_ORDER),
+  };
+}
+
+export function saveCardOrder(order: CardOrder): void {
+  savePref(ORDER_KEY, order);
+}
+
 // ── Toggle schema (used by CardEditor) ──────────────────────────
 
 export interface ToggleField {

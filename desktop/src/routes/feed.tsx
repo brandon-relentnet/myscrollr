@@ -1,11 +1,12 @@
 /**
  * Feed route — the dashboard.
  *
- * Shows a responsive grid of summary cards for all enabled channels
- * and widgets, plus a collapsible section of ghost cards for un-added
- * sources. An edit mode lets users toggle what data each card displays.
+ * Two-panel layout: channels on the left (responsive 1–2 column grid),
+ * widgets stacked on the right (240px). Both use natural card heights.
+ * In edit mode, arrow buttons let users reorder cards within each panel.
+ * Order persists to localStorage.
  */
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Pencil, Check, ChevronDown, ChevronRight } from "lucide-react";
 import { useShell } from "../shell-context";
@@ -22,6 +23,8 @@ import {
   saveCardPrefs,
   loadShowAddMore,
   saveShowAddMore,
+  loadCardOrder,
+  saveCardOrder,
   FINANCE_SCHEMA,
   SPORTS_SCHEMA,
   RSS_SCHEMA,
@@ -34,13 +37,9 @@ import type { ChannelType } from "../api/client";
 import type { ChannelManifest, WidgetManifest } from "../types";
 import type {
   DashboardCardPrefs,
+  CardOrder,
   EditorField,
 } from "../components/dashboard/dashboardPrefs";
-
-// ── Display orders ──────────────────────────────────────────────
-
-const CHANNEL_ORDER = ["finance", "sports", "rss", "fantasy"];
-const WIDGET_ORDER = ["clock", "weather", "sysmon"];
 
 // ── Summary component map ───────────────────────────────────────
 
@@ -141,20 +140,80 @@ function FeedDashboard() {
     });
   }, []);
 
-  // ── Sorted sources ──────────────────────────────────────────
-  const sortedChannels = [...channels]
-    .sort(
-      (a, b) =>
-        CHANNEL_ORDER.indexOf(a.channel_type) -
-        CHANNEL_ORDER.indexOf(b.channel_type),
-    );
+  // ── Card order ──────────────────────────────────────────────
+  const activeChannelIds = useMemo(
+    () => channels.map((ch) => ch.channel_type),
+    [channels],
+  );
+  const activeWidgetIds = useMemo(() => enabledWidgets, [enabledWidgets]);
 
-  const sortedEnabledWidgets = enabledWidgets
-    .map((id) => allWidgets.find((w) => w.id === id))
-    .filter((w): w is WidgetManifest => w != null)
-    .sort(
-      (a, b) => WIDGET_ORDER.indexOf(a.id) - WIDGET_ORDER.indexOf(b.id),
-    );
+  const [cardOrder, setCardOrder] = useState<CardOrder>(() =>
+    loadCardOrder(activeChannelIds, activeWidgetIds),
+  );
+
+  // Re-merge when active sources change (channel added/removed)
+  const mergedOrder = useMemo(
+    () => loadCardOrder(activeChannelIds, activeWidgetIds),
+    [activeChannelIds, activeWidgetIds],
+  );
+
+  // Keep order in sync — only update if the set of active IDs changed
+  const channelOrder = useMemo(() => {
+    const activeSet = new Set(activeChannelIds);
+    const current = cardOrder.channels.filter((id) => activeSet.has(id));
+    const merged = mergedOrder.channels;
+    return current.length === merged.length &&
+      current.every((id) => activeSet.has(id))
+      ? current
+      : merged;
+  }, [cardOrder.channels, mergedOrder.channels, activeChannelIds]);
+
+  const widgetOrder = useMemo(() => {
+    const activeSet = new Set(activeWidgetIds);
+    const current = cardOrder.widgets.filter((id) => activeSet.has(id));
+    const merged = mergedOrder.widgets;
+    return current.length === merged.length &&
+      current.every((id) => activeSet.has(id))
+      ? current
+      : merged;
+  }, [cardOrder.widgets, mergedOrder.widgets, activeWidgetIds]);
+
+  // Arrow-button move helper
+  const moveItem = useCallback(
+    (list: string[], index: number, direction: -1 | 1, isChannel: boolean) => {
+      const newIndex = index + direction;
+      if (newIndex < 0 || newIndex >= list.length) return;
+      const next = [...list];
+      [next[index], next[newIndex]] = [next[newIndex], next[index]];
+      const updated = isChannel
+        ? { channels: next, widgets: widgetOrder }
+        : { channels: channelOrder, widgets: next };
+      setCardOrder(updated);
+      saveCardOrder(updated);
+    },
+    [channelOrder, widgetOrder],
+  );
+
+  // ── Resolve ordered sources ─────────────────────────────────
+  const orderedChannels = useMemo(
+    () =>
+      channelOrder
+        .map((id) => {
+          const ch = channels.find((c) => c.channel_type === id);
+          const manifest = allChannelManifests.find((m) => m.id === id);
+          return ch && manifest ? { ch, manifest } : null;
+        })
+        .filter(Boolean) as { ch: (typeof channels)[0]; manifest: ChannelManifest }[],
+    [channelOrder, channels, allChannelManifests],
+  );
+
+  const orderedWidgets = useMemo(
+    () =>
+      widgetOrder
+        .map((id) => allWidgets.find((w) => w.id === id))
+        .filter(Boolean) as WidgetManifest[],
+    [widgetOrder, allWidgets],
+  );
 
   // ── Ghost cards ─────────────────────────────────────────────
   const addedTypes = new Set(channels.map((ch) => ch.channel_type));
@@ -166,7 +225,7 @@ function FeedDashboard() {
   const hasGhosts = availableChannels.length > 0 || availableWidgets.length > 0;
 
   const hasAnySources =
-    sortedChannels.length > 0 || sortedEnabledWidgets.length > 0;
+    orderedChannels.length > 0 || orderedWidgets.length > 0;
 
   return (
     <div className="p-5">
@@ -215,99 +274,124 @@ function FeedDashboard() {
         </div>
       )}
 
-      {/* Active cards grid */}
+      {/* Two-panel layout */}
       {hasAnySources && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
-          {/* Channel cards */}
-          {sortedChannels.map((ch) => {
-            const manifest = allChannelManifests.find(
-              (m) => m.id === ch.channel_type,
-            ) as ChannelManifest | undefined;
-            if (!manifest) return null;
+        <div className="flex flex-col md:flex-row gap-3 mb-6">
+          {/* Left panel — channels */}
+          {orderedChannels.length > 0 && (
+            <div className={`flex-1 min-w-0 grid gap-3 ${editing ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2"}`}>
+              {orderedChannels.map(({ ch, manifest }, index) => {
+                const SummaryComponent = CHANNEL_SUMMARIES[ch.channel_type];
+                const schema = CHANNEL_SCHEMAS[ch.channel_type];
+                const prefsKey = CHANNEL_PREFS_KEY[ch.channel_type];
+                const prefs = prefsKey ? cardPrefs[prefsKey] : undefined;
 
-            const SummaryComponent = CHANNEL_SUMMARIES[ch.channel_type];
-            const schema = CHANNEL_SCHEMAS[ch.channel_type];
-            const prefsKey = CHANNEL_PREFS_KEY[ch.channel_type];
-            const prefs = prefsKey ? cardPrefs[prefsKey] : undefined;
+                return (
+                  <DashboardCard
+                    key={ch.channel_type}
+                    name={manifest.name}
+                    icon={manifest.icon}
+                    hex={manifest.hex}
+                    onClick={() =>
+                      navigate({
+                        to: "/channel/$type/$tab",
+                        params: { type: ch.channel_type, tab: "feed" },
+                      })
+                    }
+                    onConfigure={() =>
+                      navigate({
+                        to: "/channel/$type/$tab",
+                        params: { type: ch.channel_type, tab: "configuration" },
+                      })
+                    }
+                    editing={editing}
+                    schema={schema}
+                    editorValues={prefs as Record<string, boolean | number> | undefined}
+                    onEditorChange={
+                      prefsKey
+                        ? (key: string, value: boolean | number) =>
+                            handleCardPrefChange(prefsKey, key, value)
+                        : undefined
+                    }
+                    onMoveUp={
+                      editing && index > 0
+                        ? () => moveItem(channelOrder, index, -1, true)
+                        : undefined
+                    }
+                    onMoveDown={
+                      editing && index < orderedChannels.length - 1
+                        ? () => moveItem(channelOrder, index, 1, true)
+                        : undefined
+                    }
+                  >
+                    {SummaryComponent ? (
+                      <SummaryComponent dashboard={dashboard} prefs={prefs} />
+                    ) : (
+                      <p className="text-[11px] text-fg-4 italic">No preview</p>
+                    )}
+                  </DashboardCard>
+                );
+              })}
+            </div>
+          )}
 
-            return (
-              <DashboardCard
-                key={ch.channel_type}
-                name={manifest.name}
-                icon={manifest.icon}
-                hex={manifest.hex}
-                onClick={() =>
-                  navigate({
-                    to: "/channel/$type/$tab",
-                    params: { type: ch.channel_type, tab: "feed" },
-                  })
-                }
-                onConfigure={() =>
-                  navigate({
-                    to: "/channel/$type/$tab",
-                    params: { type: ch.channel_type, tab: "configuration" },
-                  })
-                }
-                editing={editing}
-                schema={schema}
-                editorValues={prefs as Record<string, boolean | number> | undefined}
-                onEditorChange={
-                  prefsKey
-                    ? (key, value) => handleCardPrefChange(prefsKey, key, value)
-                    : undefined
-                }
-              >
-                {SummaryComponent ? (
-                  <SummaryComponent dashboard={dashboard} prefs={prefs} />
-                ) : (
-                  <p className="text-[11px] text-fg-4 italic">No preview</p>
-                )}
-              </DashboardCard>
-            );
-          })}
+          {/* Right panel — widgets */}
+          {orderedWidgets.length > 0 && (
+            <div className="w-full md:w-[240px] shrink-0 flex flex-col gap-3">
+              {orderedWidgets.map((widget, index) => {
+                const SummaryComponent = WIDGET_SUMMARIES[widget.id];
+                const schema = WIDGET_SCHEMAS[widget.id];
+                const prefsKey = WIDGET_PREFS_KEY[widget.id];
+                const prefs = prefsKey ? cardPrefs[prefsKey] : undefined;
 
-          {/* Widget cards */}
-          {sortedEnabledWidgets.map((widget) => {
-            const SummaryComponent = WIDGET_SUMMARIES[widget.id];
-            const schema = WIDGET_SCHEMAS[widget.id];
-            const prefsKey = WIDGET_PREFS_KEY[widget.id];
-            const prefs = prefsKey ? cardPrefs[prefsKey] : undefined;
-
-            return (
-              <DashboardCard
-                key={widget.id}
-                name={widget.name}
-                icon={widget.icon}
-                hex={widget.hex}
-                onClick={() =>
-                  navigate({
-                    to: "/widget/$id/$tab",
-                    params: { id: widget.id, tab: "feed" },
-                  })
-                }
-                onConfigure={() =>
-                  navigate({
-                    to: "/widget/$id/$tab",
-                    params: { id: widget.id, tab: "configuration" },
-                  })
-                }
-                editing={editing}
-                schema={schema}
-                editorValues={prefs as Record<string, boolean | number> | undefined}
-                onEditorChange={
-                  prefsKey
-                    ? (key, value) => handleCardPrefChange(prefsKey, key, value)
-                    : undefined
-                }
-              >
-                {SummaryComponent ? (
-                  <SummaryComponent prefs={prefs} />
-                ) : (
-                  <p className="text-[11px] text-fg-4 italic">No preview</p>
-                )}
-              </DashboardCard>
-            );
-          })}
+                return (
+                  <DashboardCard
+                    key={widget.id}
+                    name={widget.name}
+                    icon={widget.icon}
+                    hex={widget.hex}
+                    onClick={() =>
+                      navigate({
+                        to: "/widget/$id/$tab",
+                        params: { id: widget.id, tab: "feed" },
+                      })
+                    }
+                    onConfigure={() =>
+                      navigate({
+                        to: "/widget/$id/$tab",
+                        params: { id: widget.id, tab: "configuration" },
+                      })
+                    }
+                    editing={editing}
+                    schema={schema}
+                    editorValues={prefs as Record<string, boolean | number> | undefined}
+                    onEditorChange={
+                      prefsKey
+                        ? (key: string, value: boolean | number) =>
+                            handleCardPrefChange(prefsKey, key, value)
+                        : undefined
+                    }
+                    onMoveUp={
+                      editing && index > 0
+                        ? () => moveItem(widgetOrder, index, -1, false)
+                        : undefined
+                    }
+                    onMoveDown={
+                      editing && index < orderedWidgets.length - 1
+                        ? () => moveItem(widgetOrder, index, 1, false)
+                        : undefined
+                    }
+                  >
+                    {SummaryComponent ? (
+                      <SummaryComponent prefs={prefs} />
+                    ) : (
+                      <p className="text-[11px] text-fg-4 italic">No preview</p>
+                    )}
+                  </DashboardCard>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

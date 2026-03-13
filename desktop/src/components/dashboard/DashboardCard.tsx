@@ -5,9 +5,9 @@
  * name, gear button, and click-to-navigate behavior.
  *
  * In edit mode the children (summary) are replaced by a CardEditor
- * with the card's toggle schema.
+ * with the card's toggle schema. Arrow buttons allow reordering.
  */
-import { Settings } from "lucide-react";
+import { Settings, ChevronUp, ChevronDown } from "lucide-react";
 import clsx from "clsx";
 import CardEditor from "./CardEditor";
 import type { EditorField } from "./dashboardPrefs";
@@ -33,6 +33,10 @@ interface DashboardCardProps {
   editorValues?: Record<string, boolean | number>;
   /** Callback when an editor value changes. */
   onEditorChange?: (key: string, value: boolean | number) => void;
+  /** Move this card up in the order. */
+  onMoveUp?: () => void;
+  /** Move this card down in the order. */
+  onMoveDown?: () => void;
 }
 
 export default function DashboardCard({
@@ -46,11 +50,13 @@ export default function DashboardCard({
   schema,
   editorValues,
   onEditorChange,
+  onMoveUp,
+  onMoveDown,
 }: DashboardCardProps) {
   return (
     <div
       className={clsx(
-        "group relative flex flex-col rounded-xl border border-edge/60",
+        "group/card relative flex flex-col rounded-xl border border-edge/60",
         "bg-surface-2/50 transition-colors overflow-hidden",
         editing
           ? "ring-1 ring-accent/20"
@@ -78,6 +84,44 @@ export default function DashboardCard({
           </span>
         </div>
 
+        {/* Edit mode — arrow buttons */}
+        {editing && (
+          <div className="flex items-center gap-0.5 shrink-0">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onMoveUp?.();
+              }}
+              disabled={!onMoveUp}
+              className={clsx(
+                "w-5 h-5 flex items-center justify-center rounded transition-colors",
+                onMoveUp
+                  ? "text-fg-4 hover:text-fg-2 hover:bg-surface-3/80"
+                  : "text-fg-4/20 cursor-default",
+              )}
+              title="Move up"
+            >
+              <ChevronUp size={14} />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onMoveDown?.();
+              }}
+              disabled={!onMoveDown}
+              className={clsx(
+                "w-5 h-5 flex items-center justify-center rounded transition-colors",
+                onMoveDown
+                  ? "text-fg-4 hover:text-fg-2 hover:bg-surface-3/80"
+                  : "text-fg-4/20 cursor-default",
+              )}
+              title="Move down"
+            >
+              <ChevronDown size={14} />
+            </button>
+          </div>
+        )}
+
         {/* Gear — configure (hidden in edit mode) */}
         {!editing && (
           <button
@@ -86,7 +130,7 @@ export default function DashboardCard({
               onConfigure();
             }}
             title={`${name} settings`}
-            className="w-6 h-6 flex items-center justify-center rounded-md text-fg-4 opacity-0 group-hover:opacity-60 hover:!opacity-100 hover:text-fg-2 hover:bg-surface-hover transition-all shrink-0"
+            className="w-6 h-6 flex items-center justify-center rounded-md text-fg-4 opacity-0 group-hover/card:opacity-60 hover:!opacity-100 hover:text-fg-2 hover:bg-surface-hover transition-all shrink-0"
           >
             <Settings size={12} />
           </button>
