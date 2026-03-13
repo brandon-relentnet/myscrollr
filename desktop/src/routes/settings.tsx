@@ -1,13 +1,13 @@
 /**
  * Settings route — consolidated settings with tabbed navigation.
  *
- * Tabs: General (appearance, window, startup) and Ticker (sources,
- * layout, playback, style). Replaces the old separate /settings
- * and /ticker routes.
+ * Tabs: General (appearance, window, startup) and Ticker (layout,
+ * playback, style). Source management lives in each channel/widget's
+ * own config tab, not here.
  */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import RouteError from "../components/RouteError";
-import { useShell, useShellData } from "../shell-context";
+import { useShell } from "../shell-context";
 import GeneralSettings from "../components/settings/GeneralSettings";
 import TickerSettings from "../components/settings/TickerSettings";
 import { resetCategory } from "../preferences";
@@ -38,7 +38,6 @@ function SettingsRoute() {
   const { tab } = Route.useSearch();
   const navigate = useNavigate();
   const shell = useShell();
-  const { channels } = useShellData();
   const { prefs, onPrefsChange } = shell;
 
   return (
@@ -86,11 +85,6 @@ function SettingsRoute() {
         <TickerSettings
           prefs={prefs}
           onPrefsChange={onPrefsChange}
-          channels={channels}
-          allChannelManifests={shell.allChannelManifests}
-          allWidgets={shell.allWidgets}
-          onToggleChannelTicker={shell.onToggleChannelTicker}
-          onToggleWidgetTicker={shell.onToggleWidgetTicker}
         />
       )}
     </div>
