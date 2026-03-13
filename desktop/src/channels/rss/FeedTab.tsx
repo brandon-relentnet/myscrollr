@@ -41,11 +41,6 @@ export const rssChannel: ChannelManifest = {
 // ── FeedTab ──────────────────────────────────────────────────────
 
 function RssFeedTab({ mode, channelConfig }: FeedTabProps) {
-  const initialItems = useMemo(() => {
-    const items = channelConfig.__initialItems as RssItemType[] | undefined;
-    return items ?? [];
-  }, [channelConfig]);
-
   const dashboardLoaded = channelConfig.__dashboardLoaded as
     | boolean
     | undefined;
@@ -67,7 +62,7 @@ function RssFeedTab({ mode, channelConfig }: FeedTabProps) {
 
   const { items: rssItems } = useScrollrCDC<RssItemType>({
     table: "rss_items",
-    initialItems,
+    dataKey: "rss",
     keyOf,
     validate,
     sort,
@@ -85,7 +80,7 @@ function RssFeedTab({ mode, channelConfig }: FeedTabProps) {
       {rssItems.length === 0 && (
         <div className="col-span-full flex flex-col items-center justify-center gap-2 py-12 bg-surface">
           <Rss size={28} className="text-fg-4/40" />
-          {dashboardLoaded && initialItems.length === 0 ? (
+          {dashboardLoaded && !channelConfig.__hasConfig ? (
             <>
               <p className="text-sm font-medium text-fg-3">
                 No feeds added yet

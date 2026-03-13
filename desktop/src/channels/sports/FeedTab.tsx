@@ -37,11 +37,6 @@ export const sportsChannel: ChannelManifest = {
 // ── FeedTab ──────────────────────────────────────────────────────
 
 function SportsFeedTab({ mode, channelConfig }: FeedTabProps) {
-  const initialItems = useMemo(() => {
-    const items = channelConfig.__initialItems as Game[] | undefined;
-    return items ?? [];
-  }, [channelConfig]);
-
   const keyOf = useCallback((g: Game) => String(g.id), []);
   const validate = useCallback(
     (record: Record<string, unknown>) => record.id != null,
@@ -50,7 +45,7 @@ function SportsFeedTab({ mode, channelConfig }: FeedTabProps) {
 
   const { items: games } = useScrollrCDC<Game>({
     table: "games",
-    initialItems,
+    dataKey: "sports",
     keyOf,
     validate,
   });

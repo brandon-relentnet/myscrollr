@@ -1,13 +1,14 @@
 /**
  * Channel CRUD actions for the app window.
  *
- * Handles toggling channel visibility, adding new channels,
- * and deleting channels via the API.
+ * Uses TanStack Query mutations with automatic dashboard cache
+ * invalidation — no manual fetchDashboard() threading required.
  */
 import { useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { getValidToken } from "../auth";
+import { useQueryClient } from "@tanstack/react-query";
 import { channelsApi } from "../api/client";
+import { queryKeys } from "../api/queries";
 import type { ChannelType } from "../api/client";
 
 interface ChannelActions {
@@ -16,40 +17,27 @@ interface ChannelActions {
   handleDeleteChannel: (channelType: ChannelType) => Promise<void>;
 }
 
-export function useChannelActions(
-  fetchDashboard: () => void,
-): ChannelActions {
+export function useChannelActions(): ChannelActions {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const handleToggleChannel = useCallback(
     async (channelType: ChannelType, visible: boolean) => {
-      const token = await getValidToken();
-      if (!token) return;
       try {
-        await channelsApi.update(
-          channelType,
-          { enabled: true, visible },
-          () => Promise.resolve(token),
-        );
-        fetchDashboard();
+        await channelsApi.update(channelType, { enabled: true, visible });
+        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
       } catch (err) {
         console.error("[Scrollr] Channel toggle failed:", err);
       }
     },
-    [fetchDashboard],
+    [queryClient],
   );
 
   const handleAddChannel = useCallback(
     async (channelType: ChannelType) => {
-      const token = await getValidToken();
-      if (!token) return;
       try {
-        await channelsApi.create(
-          channelType,
-          {},
-          () => Promise.resolve(token),
-        );
-        fetchDashboard();
+        await channelsApi.create(channelType);
+        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
         navigate({
           to: "/channel/$type/$tab",
           params: { type: channelType, tab: "feed" },
@@ -58,22 +46,20 @@ export function useChannelActions(
         console.error("[Scrollr] Channel add failed:", err);
       }
     },
-    [fetchDashboard, navigate],
+    [queryClient, navigate],
   );
 
   const handleDeleteChannel = useCallback(
     async (channelType: ChannelType) => {
-      const token = await getValidToken();
-      if (!token) return;
       try {
-        await channelsApi.delete(channelType, () => Promise.resolve(token));
-        await fetchDashboard();
+        await channelsApi.delete(channelType);
+        await queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
         navigate({ to: "/feed" });
       } catch (err) {
         console.error("[Scrollr] Channel delete failed:", err);
       }
     },
-    [fetchDashboard, navigate],
+    [queryClient, navigate],
   );
 
   return { handleToggleChannel, handleAddChannel, handleDeleteChannel };

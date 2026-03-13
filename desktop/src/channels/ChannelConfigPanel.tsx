@@ -9,8 +9,6 @@ import FantasyConfigPanel from "./FantasyConfigPanel";
 interface ChannelConfigPanelProps {
   channelType: string;
   channel: Channel;
-  getToken: () => Promise<string | null>;
-  onChannelUpdate: (updated: Channel) => void;
   subscriptionTier: string;
   /** SSE delivery mode active */
   connected: boolean;
@@ -23,8 +21,6 @@ interface ChannelConfigPanelProps {
 export default function ChannelConfigPanel({
   channelType,
   channel,
-  getToken,
-  onChannelUpdate,
   subscriptionTier,
   connected,
   hex,
@@ -34,8 +30,6 @@ export default function ChannelConfigPanel({
       return (
         <FinanceConfigPanel
           channel={channel}
-          getToken={getToken}
-          onChannelUpdate={onChannelUpdate}
           subscriptionTier={subscriptionTier}
           connected={connected}
           hex={hex}
@@ -45,8 +39,6 @@ export default function ChannelConfigPanel({
       return (
         <SportsConfigPanel
           channel={channel}
-          getToken={getToken}
-          onChannelUpdate={onChannelUpdate}
           subscriptionTier={subscriptionTier}
           connected={connected}
           hex={hex}
@@ -56,8 +48,6 @@ export default function ChannelConfigPanel({
       return (
         <RssConfigPanel
           channel={channel}
-          getToken={getToken}
-          onChannelUpdate={onChannelUpdate}
           hex={hex}
         />
       );
@@ -65,7 +55,6 @@ export default function ChannelConfigPanel({
       return (
         <FantasyConfigPanel
           channel={channel}
-          getToken={getToken}
           subscriptionTier={subscriptionTier}
           connected={connected}
           hex={hex}

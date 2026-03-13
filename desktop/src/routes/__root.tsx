@@ -35,7 +35,6 @@ import { getAllWidgets, getWidget } from "../widgets/registry";
 
 // Data
 import { dashboardQueryOptions } from "../api/queries";
-import { getValidToken } from "../auth";
 
 // Preferences
 import {
@@ -194,10 +193,8 @@ function RootLayout() {
 
   // ── Extracted hooks ─────────────────────────────────────────
 
-  const refetchDashboard = useCallback(() => { fetchDashboard(); }, [fetchDashboard]);
-
-  const auth = useAuthState(refetchDashboard);
-  const channelActions = useChannelActions(refetchDashboard);
+  const auth = useAuthState();
+  const channelActions = useChannelActions();
   const widgetActions = useWidgetActions(prefs, setPrefs, route.activeItem);
 
   // Apply theme + UI scale
@@ -305,8 +302,6 @@ function RootLayout() {
     }
   }, []);
 
-  const getToken = useCallback(() => getValidToken(), []);
-
   // ── Ticker data ─────────────────────────────────────────────
 
   const activeTabs = useMemo(
@@ -361,7 +356,6 @@ function RootLayout() {
         savePref("showTaskbar", v);
       },
       appVersion,
-      getToken,
       channels,
       dashboard,
       allChannelManifests,
@@ -371,17 +365,16 @@ function RootLayout() {
       onAddChannel: channelActions.handleAddChannel,
       onDeleteChannel: channelActions.handleDeleteChannel,
       onToggleWidget: widgetActions.handleToggleWidget,
-      fetchDashboard: refetchDashboard,
       onSelectItem: handleSelectItem,
     }),
     [
       prefs, handlePrefsChange, auth.authenticated, auth.tier,
       auth.handleLogin, auth.handleLogout, autostartOn, handleAutostartChange,
-      showAppTicker, showTaskbar, appVersion, getToken,
+      showAppTicker, showTaskbar, appVersion,
       channels, dashboard, allChannelManifests, allWidgets,
       channelActions.handleToggleChannel, widgetActions.handleToggleWidgetTicker,
       channelActions.handleAddChannel, channelActions.handleDeleteChannel,
-      widgetActions.handleToggleWidget, refetchDashboard, handleSelectItem,
+      widgetActions.handleToggleWidget, handleSelectItem,
     ],
   );
 

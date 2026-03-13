@@ -1,13 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
-import { fetch } from "@tauri-apps/plugin-http";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTauriListener } from "./hooks/useTauriListener";
 import { Menu, CheckMenuItem, MenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu";
-import type {
-  DashboardResponse,
-  DeliveryMode,
-} from "./types";
+import { dashboardQueryOptions, queryKeys } from "./api/queries";
 import ScrollrTicker from "./components/ScrollrTicker";
 import TickerToolbar from "./components/TickerToolbar";
 import {
@@ -15,8 +12,6 @@ import {
   isAuthenticated as checkAuth,
   getTier,
 } from "./auth";
-import type { SubscriptionTier } from "./auth";
-import type { Channel, ChannelType } from "./api/client";
 import { channelsApi } from "./api/client";
 import {
   loadPref,
@@ -26,6 +21,9 @@ import {
   TICKER_GAPS,
   TICKER_HEIGHTS,
 } from "./preferences";
+import type { SubscriptionTier } from "./auth";
+import type { ChannelType } from "./api/client";
+import type { DeliveryMode } from "./types";
 import type { AppPreferences, TickerPosition } from "./preferences";
 import { getAllWidgets } from "./widgets/registry";
 import { useWidgetTickerData } from "./hooks/useWidgetTickerData";
@@ -46,15 +44,44 @@ const SSE_REFETCH_DELAY_MS = 500;
 // ── App (Ticker Window) ─────────────────────────────────────────
 
 export default function App() {
-  // Data state
-  const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
+  const queryClient = useQueryClient();
+
+  // Auth + tier state (drives refetchInterval)
+  const [authenticated, setAuthenticated] = useState(() => checkAuth());
+  const [tier, setTier] = useState<SubscriptionTier>(() =>
+    checkAuth() ? getTier() : "free",
+  );
+
+  // Delivery mode
   const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>("polling");
 
-  // Channel state
-  const [channels, setChannels] = useState<Channel[]>([]);
-  const [channelTabs, setChannelTabs] = useState<string[]>(() =>
-    loadPref("activeFeedTabs", ["finance", "sports"]),
+  // ── Dashboard data via TanStack Query ──────────────────────────
+  // refetchInterval replaces the manual setInterval polling lifecycle.
+  // TanStack Query also handles refetchOnWindowFocus (configured in
+  // the QueryClient defaults).
+
+  const { data: dashboard } = useQuery({
+    ...dashboardQueryOptions(),
+    refetchInterval: POLL_INTERVALS[tier],
+  });
+
+  // Derive channels and active tabs from query data
+  const channels = useMemo(
+    () => dashboard?.channels ?? [],
+    [dashboard?.channels],
   );
+
+  const channelTabs = useMemo(() => {
+    if (channels.length === 0) {
+      return loadPref("activeFeedTabs", ["finance", "sports"]);
+    }
+    const visible = channels
+      .filter((ch) => ch.enabled && ch.visible)
+      .map((ch) => ch.channel_type);
+    savePref("activeFeedTabs", visible);
+    return visible;
+  }, [channels]);
+
   const channelsRef = useRef(channels);
   channelsRef.current = channels;
 
@@ -79,84 +106,11 @@ export default function App() {
   const prefsRef = useRef(prefs);
   prefsRef.current = prefs;
 
-  // Auth state
-  const [authenticated, setAuthenticated] = useState(() => checkAuth());
-
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const authenticatedRef = useRef(authenticated);
   authenticatedRef.current = authenticated;
-  const tierRef = useRef<SubscriptionTier>("free");
+  const tierRef = useRef<SubscriptionTier>(tier);
+  tierRef.current = tier;
   const sseActiveRef = useRef(false);
-
-  // ── Fetch feed data ───────────────────────────────────────────
-
-  const fetchFeed = useCallback(async () => {
-    try {
-      // Always attempt to get a valid token — handles silent refresh
-      // even when the access token has expired but a refresh token exists.
-      const token = await getValidToken();
-      let res: Response;
-
-      if (token) {
-        // Sync auth state (covers silent refresh from expired state)
-        if (!authenticatedRef.current) {
-          setAuthenticated(true);
-          const currentTier = getTier();
-          tierRef.current = currentTier;
-        }
-        res = await fetch(`${API_URL}/dashboard`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.status === 401) {
-          setAuthenticated(false);
-          tierRef.current = "free";
-          res = await fetch(`${API_URL}/public/feed`);
-        }
-      } else {
-        if (authenticatedRef.current) {
-          setAuthenticated(false);
-          tierRef.current = "free";
-        }
-        res = await fetch(`${API_URL}/public/feed`);
-      }
-
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setDashboard({ data: data.data });
-
-      // Sync channels and active tabs from server config
-      if (Array.isArray(data.channels)) {
-        const channelList = data.channels as Channel[];
-        setChannels(channelList);
-        const visible = channelList
-          .filter((ch) => ch.enabled && ch.visible)
-          .map((ch) => ch.channel_type);
-        setChannelTabs(visible);
-        savePref("activeFeedTabs", visible);
-      }
-    } catch {
-      // Silently fail — ticker just shows stale data
-    }
-  }, []);
-
-  // ── Polling lifecycle ─────────────────────────────────────────
-
-  const startPolling = useCallback(
-    (tier: SubscriptionTier) => {
-      if (pollRef.current) clearInterval(pollRef.current);
-      const interval = POLL_INTERVALS[tier];
-      fetchFeed();
-      pollRef.current = setInterval(fetchFeed, interval);
-    },
-    [fetchFeed],
-  );
-
-  const stopPolling = useCallback(() => {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-  }, []);
 
   // ── SSE lifecycle ───────────────────────────────────────────
 
@@ -168,9 +122,8 @@ export default function App() {
     await invoke("start_sse", { token, apiBase: API_URL }).catch(() => {
       sseActiveRef.current = false;
       setDeliveryMode("polling");
-      startPolling(tierRef.current);
     });
-  }, [startPolling]);
+  }, []);
 
   const stopSSE = useCallback(async () => {
     sseActiveRef.current = false;
@@ -211,6 +164,14 @@ export default function App() {
   );
 
   // ── Channel config sync via CDC ────────────────────────────────
+  // CDC events for user_channels come via SSE. We update the local
+  // channelTabs optimistically and then invalidate the dashboard
+  // query so TanStack Query re-fetches the full dashboard.
+  //
+  // Note: channelTabs is now derived from the query cache, so the
+  // invalidation will cause it to update automatically. But the SSE
+  // event gives us immediate CDC data to update tabs without waiting
+  // for the re-fetch round-trip.
 
   useTauriListener<{
     data?: {
@@ -229,86 +190,65 @@ export default function App() {
       );
       if (channelRecords.length === 0) return;
 
-      setChannelTabs((prev) => {
-        let next = [...prev];
+      // Optimistically update the dashboard cache with CDC channel changes
+      queryClient.setQueryData(queryKeys.dashboard, (old: typeof dashboard) => {
+        if (!old?.channels) return old;
 
+        const updatedChannels = [...old.channels];
         for (const cdc of channelRecords) {
           const type = cdc.record.channel_type as string | undefined;
           if (!type) continue;
 
-          if (
-            cdc.action === "delete" ||
-            !cdc.record.enabled ||
-            !cdc.record.visible
-          ) {
-            next = next.filter((t) => t !== type);
-          } else if (!next.includes(type)) {
-            next.push(type);
+          const idx = updatedChannels.findIndex(
+            (ch) => ch.channel_type === type,
+          );
+
+          if (cdc.action === "delete") {
+            if (idx !== -1) updatedChannels.splice(idx, 1);
+          } else if (idx !== -1) {
+            updatedChannels[idx] = {
+              ...updatedChannels[idx],
+              enabled: cdc.record.enabled as boolean,
+              visible: cdc.record.visible as boolean,
+            };
           }
         }
 
-        savePref("activeFeedTabs", next);
-        return next;
+        return { ...old, channels: updatedChannels };
       });
 
-      setTimeout(() => fetchFeed(), SSE_REFETCH_DELAY_MS);
+      // Re-fetch full dashboard after a delay to pick up data changes
+      setTimeout(
+        () =>
+          queryClient.invalidateQueries({ queryKey: queryKeys.dashboard }),
+        SSE_REFETCH_DELAY_MS,
+      );
     },
-    [fetchFeed],
+    [queryClient],
   );
 
-  // ── Initial data fetch + delivery start ────────────────────────
+  // ── Initial SSE start for unlimited tier ──────────────────────
 
   useEffect(() => {
     async function init() {
-      // Attempt silent token refresh to determine the real tier,
-      // even if checkAuth() returned false due to an expired access token.
+      // Attempt silent token refresh to determine the real tier
       const token = await getValidToken();
-      const tier = token ? getTier() : "free";
-      tierRef.current = tier;
+      const resolvedTier = token ? getTier() : "free";
+      setTier(resolvedTier);
+      tierRef.current = resolvedTier;
 
       if (token && !authenticatedRef.current) {
         setAuthenticated(true);
       }
 
-      startPolling(tier);
-
-      if (tier === "uplink_unlimited") {
+      if (resolvedTier === "uplink_unlimited") {
         startSSE();
       }
     }
 
     init();
-
-    return () => {
-      stopPolling();
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // ── Window focus refetch ────────────────────────────────────────
-
-  useEffect(() => {
-    let cancelled = false;
-    let unlisten: (() => void) | null = null;
-
-    const appWindow = getCurrentWindow();
-    appWindow.onFocusChanged(({ payload: focused }) => {
-      if (focused && authenticatedRef.current) {
-        fetchFeed();
-      }
-    }).then((fn) => {
-      if (cancelled) {
-        fn();
-      } else {
-        unlisten = fn;
-      }
-    });
-
-    return () => {
-      cancelled = true;
-      unlisten?.();
-    };
-  }, [fetchFeed]);
 
   // ── Auth sync from app window ──────────────────────────────────
   // When the user logs in/out via the app window, auth tokens change
@@ -323,24 +263,24 @@ export default function App() {
         setAuthenticated(isAuth);
 
         if (isAuth && !wasAuth) {
-          // Just logged in — restart with proper tier
-          const tier = getTier();
-          tierRef.current = tier;
-          stopPolling();
-          startPolling(tier);
-          if (tier === "uplink_unlimited") startSSE();
+          // Just logged in — update tier (drives refetchInterval)
+          const newTier = getTier();
+          setTier(newTier);
+          tierRef.current = newTier;
+          queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+          if (newTier === "uplink_unlimited") startSSE();
         } else if (!isAuth && wasAuth) {
-          // Just logged out — tear down SSE, restart as anonymous
+          // Just logged out — tear down SSE, reset to free tier
           if (sseActiveRef.current) stopSSE();
-          stopPolling();
-          startPolling("free");
+          setTier("free");
           tierRef.current = "free";
+          queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
         }
       }
     }
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, [startPolling, stopPolling, startSSE, stopSSE]);
+  }, [startSSE, stopSSE, queryClient]);
 
   // ── Cross-window prefs sync ─────────────────────────────────
 
@@ -452,20 +392,14 @@ export default function App() {
 
   const handleChannelToggle = useCallback(
     async (channelType: ChannelType, visible: boolean) => {
-      const token = await getValidToken();
-      if (!token) return;
       try {
-        await channelsApi.update(
-          channelType,
-          { visible },
-          () => Promise.resolve(token),
-        );
-        fetchFeed();
+        await channelsApi.update(channelType, { visible });
+        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
       } catch {
         // Silently fail — will sync on next poll
       }
     },
-    [fetchFeed],
+    [queryClient],
   );
 
   // ── Widget quick-toggle (for context menu) ─────────────────────
@@ -680,7 +614,7 @@ export default function App() {
           {Array.from({ length: prefs.appearance.tickerRows }, (_, i) => (
             <ScrollrTicker
               key={`row${i}-${prefs.ticker.tickerGap}-${prefs.ticker.tickerSpeed}-${prefs.ticker.hoverSpeed}-${prefs.ticker.tickerMode}-${prefs.ticker.mixMode}-${prefs.ticker.chipColors}-${prefs.ticker.tickerDirection}-${prefs.ticker.scrollMode}-${prefs.ticker.stepPause}-${prefs.appearance.tickerRows}`}
-              dashboard={dashboard}
+              dashboard={dashboard ?? null}
               activeTabs={activeTabs}
               widgetData={widgetData}
               onChipClick={handleChipClick}

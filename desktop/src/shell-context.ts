@@ -25,7 +25,6 @@ export interface ShellState {
   showTaskbar: boolean;
   onToggleTaskbar: (enabled: boolean) => void;
   appVersion: string;
-  getToken: () => Promise<string | null>;
 
   // ── Navigation overhaul additions ──────────────────────────────
   /** User's channel records from the dashboard API. */
@@ -46,8 +45,6 @@ export interface ShellState {
   onDeleteChannel: (channelType: ChannelType) => void;
   /** Toggle a widget on/off entirely. */
   onToggleWidget: (widgetId: string) => void;
-  /** Refetch the dashboard data. */
-  fetchDashboard: () => void;
   /** Navigate to a source by ID. */
   onSelectItem: (id: string) => void;
 }

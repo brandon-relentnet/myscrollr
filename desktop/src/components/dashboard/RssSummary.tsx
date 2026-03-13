@@ -164,10 +164,9 @@ interface RssSummaryProps {
 }
 
 export default function RssSummary({ dashboard, prefs, onConfigure }: RssSummaryProps) {
-  const initialItems = (dashboard?.data?.rss ?? []) as RssItem[];
   const { items } = useScrollrCDC<RssItem>({
     table: "rss_items",
-    initialItems,
+    dataKey: "rss",
     keyOf: (r) => `${r.feed_url}::${r.guid}`,
     sort: (a, b) => {
       const aTime = a.published_at ? new Date(a.published_at).getTime() : 0;

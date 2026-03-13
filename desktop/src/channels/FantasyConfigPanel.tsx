@@ -18,7 +18,8 @@ import {
   ActionRow,
   SegmentedRow,
 } from "../components/settings/SettingsControls";
-import { authenticatedFetch, API_BASE } from "../api/client";
+import { authFetch, API_BASE } from "../api/client";
+import { getValidToken } from "../auth";
 import type { Channel } from "../api/client";
 
 // ── Data Types ───────────────────────────────────────────────────
@@ -167,7 +168,6 @@ const LEAGUES_PER_PAGE = 5;
 
 interface FantasyConfigPanelProps {
   channel: Channel;
-  getToken: () => Promise<string | null>;
   subscriptionTier: string;
   connected: boolean;
   hex: string;
@@ -177,7 +177,6 @@ interface FantasyConfigPanelProps {
 
 export default function FantasyConfigPanel({
   channel: _channel,
-  getToken,
   hex,
 }: FantasyConfigPanelProps) {
 
@@ -203,15 +202,11 @@ export default function FantasyConfigPanel({
   const fetchYahooData = useCallback(async () => {
     try {
       const [statusData, leaguesData] = await Promise.all([
-        authenticatedFetch<{ connected: boolean; synced: boolean }>(
+        authFetch<{ connected: boolean; synced: boolean }>(
           "/users/me/yahoo-status",
-          {},
-          getToken,
         ).catch(() => null),
-        authenticatedFetch<MyLeaguesResponse>(
+        authFetch<MyLeaguesResponse>(
           "/users/me/yahoo-leagues",
-          {},
-          getToken,
         ).catch(() => null),
       ]);
 
@@ -236,7 +231,7 @@ export default function FantasyConfigPanel({
         setPhase("disconnected");
       }
     }
-  }, [getToken]);
+  }, []);
 
   useEffect(() => {
     fetchYahooData();
@@ -250,10 +245,10 @@ export default function FantasyConfigPanel({
     setDiscoveredLeagues([]);
 
     try {
-      const result = await authenticatedFetch<{
+      const result = await authFetch<{
         leagues: DiscoveredLeague[];
         error?: string;
-      }>("/users/me/yahoo-leagues/discover", { method: "POST" }, getToken);
+      }>("/users/me/yahoo-leagues/discover", { method: "POST" });
 
       if (result.error) {
         setDiscoverError(result.error);
@@ -286,7 +281,7 @@ export default function FantasyConfigPanel({
       );
       setPhase(leagues.length > 0 ? "connected" : "disconnected");
     }
-  }, [getToken, leagues]);
+  }, [leagues]);
 
   // ── Import selected leagues ────────────────────────────────────
 
@@ -308,7 +303,7 @@ export default function FantasyConfigPanel({
       setImportStatuses({ ...statuses });
 
       try {
-        const result = await authenticatedFetch<{
+        const result = await authFetch<{
           status: string;
           error?: string;
         }>(
@@ -322,7 +317,6 @@ export default function FantasyConfigPanel({
               season: league.season,
             }),
           },
-          getToken,
         );
         statuses[key] = result.error ? "error" : "done";
       } catch {
@@ -333,7 +327,7 @@ export default function FantasyConfigPanel({
 
     await fetchYahooData();
     setPhase("connected");
-  }, [selectedKeys, discoveredLeagues, getToken, fetchYahooData]);
+  }, [selectedKeys, discoveredLeagues, fetchYahooData]);
 
   // ── Listen for Yahoo auth popup completion ─────────────────────
 
@@ -351,7 +345,7 @@ export default function FantasyConfigPanel({
   // ── Yahoo connect / disconnect ─────────────────────────────────
 
   const handleYahooConnect = useCallback(async () => {
-    const token = await getToken();
+    const token = await getValidToken();
     if (!token) return;
 
     let sub: string | undefined;
@@ -365,15 +359,11 @@ export default function FantasyConfigPanel({
 
     const popupUrl = `${API_BASE}/yahoo/start?logto_sub=${sub}`;
     window.open(popupUrl, "yahoo-auth", "width=600,height=700");
-  }, [getToken]);
+  }, []);
 
   const handleYahooDisconnect = useCallback(async () => {
     try {
-      await authenticatedFetch(
-        "/users/me/yahoo",
-        { method: "DELETE" },
-        getToken,
-      );
+      await authFetch("/users/me/yahoo", { method: "DELETE" });
       setYahooConnected(false);
       setLeagues([]);
       setPhase("disconnected");
@@ -381,7 +371,7 @@ export default function FantasyConfigPanel({
     } catch (err) {
       console.error("[Fantasy] disconnect failed:", err);
     }
-  }, [getToken]);
+  }, []);
 
   // ── Derived data ───────────────────────────────────────────────
 

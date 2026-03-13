@@ -381,10 +381,9 @@ interface SportsSummaryProps {
 }
 
 export default function SportsSummary({ dashboard, prefs, onConfigure }: SportsSummaryProps) {
-  const initialItems = (dashboard?.data?.sports ?? []) as Game[];
   const { items } = useScrollrCDC<Game>({
     table: "games",
-    initialItems,
+    dataKey: "sports",
     keyOf: (g) => String(g.id),
     maxItems: 200,
   });

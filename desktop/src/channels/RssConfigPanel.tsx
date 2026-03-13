@@ -1,15 +1,15 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Plus, Rss, Trash2 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SetupBrowser } from "../components/settings/SetupBrowser";
 import { channelsApi, rssApi } from "../api/client";
+import { rssCatalogOptions, queryKeys } from "../api/queries";
 import type { Channel, TrackedFeed, RssChannelConfig } from "../api/client";
 
 // ── Types ────────────────────────────────────────────────────────
 
 interface RssConfigPanelProps {
   channel: Channel;
-  getToken: () => Promise<string | null>;
-  onChannelUpdate: (updated: Channel) => void;
   hex: string;
 }
 
@@ -17,14 +17,9 @@ interface RssConfigPanelProps {
 
 export default function RssConfigPanel({
   channel,
-  getToken,
-  onChannelUpdate,
   hex,
 }: RssConfigPanelProps) {
-  const [catalog, setCatalog] = useState<TrackedFeed[]>([]);
-  const [catalogLoading, setCatalogLoading] = useState(true);
-  const [catalogError, setCatalogError] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [newFeedName, setNewFeedName] = useState("");
   const [newFeedUrl, setNewFeedUrl] = useState("");
@@ -34,38 +29,50 @@ export default function RssConfigPanel({
   const feeds = Array.isArray(rssConfig?.feeds) ? rssConfig.feeds : [];
   const feedUrlSet = useMemo(() => new Set(feeds.map((f) => f.url)), [feeds]);
 
-  useEffect(() => {
+  // Auto-dismiss errors
+  useState(() => {
     if (!error) return;
     const t = setTimeout(() => setError(null), 4000);
     return () => clearTimeout(t);
-  }, [error]);
+  });
 
-  useEffect(() => {
-    rssApi
-      .getCatalog()
-      .then(setCatalog)
-      .catch(() => setCatalogError(true))
-      .finally(() => setCatalogLoading(false));
-  }, []);
+  // ── Catalog query ──────────────────────────────────────────────
+  const {
+    data: catalog = [],
+    isLoading: catalogLoading,
+    isError: catalogError,
+  } = useQuery(rssCatalogOptions());
+
+  // ── Update feeds mutation ──────────────────────────────────────
+  const updateMutation = useMutation({
+    mutationFn: (nextFeeds: Array<{ name: string; url: string }>) =>
+      channelsApi.update("rss", { config: { feeds: nextFeeds } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+    },
+    onError: () => {
+      setError("Failed to save — try again");
+    },
+  });
 
   const updateFeeds = useCallback(
-    async (next: Array<{ name: string; url: string }>) => {
-      setSaving(true);
-      try {
-        const updated = await channelsApi.update(
-          "rss",
-          { config: { feeds: next } },
-          getToken,
-        );
-        onChannelUpdate(updated);
-      } catch {
-        setError("Failed to save — try again");
-      } finally {
-        setSaving(false);
+    (next: Array<{ name: string; url: string }>) => updateMutation.mutate(next),
+    [updateMutation],
+  );
+
+  // ── Delete catalog feed mutation ───────────────────────────────
+  const deleteCatalogMutation = useMutation({
+    mutationFn: (url: string) => rssApi.deleteFeed(url),
+    onSuccess: (_data, url) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.catalogs.rss });
+      if (feedUrlSet.has(url)) {
+        updateFeeds(feeds.filter((f) => f.url !== url));
       }
     },
-    [getToken, onChannelUpdate],
-  );
+    onError: () => {
+      setError("Failed to remove feed from catalog");
+    },
+  });
 
   const addCatalogFeed = useCallback(
     (url: string) => {
@@ -84,19 +91,11 @@ export default function RssConfigPanel({
   );
 
   const deleteCatalogFeed = useCallback(
-    async (feed: TrackedFeed) => {
+    (feed: TrackedFeed) => {
       if (feed.is_default) return;
-      try {
-        await rssApi.deleteFeed(feed.url, getToken);
-        setCatalog((prev) => prev.filter((f) => f.url !== feed.url));
-        if (feedUrlSet.has(feed.url)) {
-          updateFeeds(feeds.filter((f) => f.url !== feed.url));
-        }
-      } catch {
-        setError("Failed to remove feed from catalog");
-      }
+      deleteCatalogMutation.mutate(feed.url);
     },
-    [getToken, feedUrlSet, feeds, updateFeeds],
+    [deleteCatalogMutation],
   );
 
   const addCustomFeed = useCallback(() => {
@@ -123,16 +122,16 @@ export default function RssConfigPanel({
         hex={hex}
         items={catalog}
         selectedKeys={feedUrlSet}
-        getKey={(f) => f.url}
-        getCategory={(f) => f.category}
-        matchesSearch={(f, q) => {
+        getKey={(f: TrackedFeed) => f.url}
+        getCategory={(f: TrackedFeed) => f.category}
+        matchesSearch={(f: TrackedFeed, q: string) => {
           const lower = q.toLowerCase();
           return (
             f.name.toLowerCase().includes(lower) ||
             f.url.toLowerCase().includes(lower)
           );
         }}
-        renderItem={(item, isSelected) => (
+        renderItem={(item: TrackedFeed, isSelected: boolean) => (
           <>
             <div className="min-w-0 mr-2">
               <div className="text-[12px] font-bold text-fg-2 truncate">
@@ -173,7 +172,7 @@ export default function RssConfigPanel({
             name={newFeedName}
             url={newFeedUrl}
             urlError={urlError}
-            saving={saving}
+            saving={updateMutation.isPending}
             onNameChange={setNewFeedName}
             onUrlChange={setNewFeedUrl}
             onSubmit={addCustomFeed}
@@ -183,7 +182,7 @@ export default function RssConfigPanel({
         onDismissError={() => setError(null)}
         loading={catalogLoading}
         catalogError={catalogError}
-        saving={saving}
+        saving={updateMutation.isPending}
         onAdd={addCatalogFeed}
         onRemove={removeFeed}
         onClearAll={() => updateFeeds([])}

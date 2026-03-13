@@ -1,22 +1,13 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Trophy } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SetupBrowser } from "../components/settings/SetupBrowser";
-import { fetch } from "@tauri-apps/plugin-http";
-import { channelsApi, API_BASE } from "../api/client";
+import { channelsApi } from "../api/client";
+import { sportsCatalogOptions, queryKeys } from "../api/queries";
+import type { TrackedLeague } from "../api/queries";
 import type { Channel } from "../api/client";
 
 // ── Types ────────────────────────────────────────────────────────
-
-interface TrackedLeague {
-  name: string;
-  sport_api: string;
-  category: string;
-  country: string;
-  logo_url: string;
-  game_count: number;
-  live_count: number;
-  next_game: string | null;
-}
 
 interface SportsChannelConfig {
   leagues?: string[];
@@ -24,8 +15,6 @@ interface SportsChannelConfig {
 
 interface SportsConfigPanelProps {
   channel: Channel;
-  getToken: () => Promise<string | null>;
-  onChannelUpdate: (updated: Channel) => void;
   subscriptionTier: string;
   connected: boolean;
   hex: string;
@@ -50,36 +39,28 @@ function formatNextGame(dateStr: string | null): string | null {
 
 export default function SportsConfigPanel({
   channel,
-  getToken,
-  onChannelUpdate,
   hex,
 }: SportsConfigPanelProps) {
-  const [catalog, setCatalog] = useState<TrackedLeague[]>([]);
-  const [catalogLoading, setCatalogLoading] = useState(true);
-  const [catalogError, setCatalogError] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
 
   const config = channel.config as SportsChannelConfig;
   const leagues = Array.isArray(config?.leagues) ? config.leagues : [];
   const leagueSet = useMemo(() => new Set(leagues), [leagues]);
 
-  useEffect(() => {
+  // Auto-dismiss errors
+  useState(() => {
     if (!error) return;
     const t = setTimeout(() => setError(null), 4000);
     return () => clearTimeout(t);
-  }, [error]);
+  });
 
-  useEffect(() => {
-    fetch(`${API_BASE}/sports/leagues`)
-      .then((r) => {
-        if (!r.ok) throw new Error("Failed");
-        return r.json() as Promise<TrackedLeague[]>;
-      })
-      .then(setCatalog)
-      .catch(() => setCatalogError(true))
-      .finally(() => setCatalogLoading(false));
-  }, []);
+  // ── Catalog query ──────────────────────────────────────────────
+  const {
+    data: catalog = [],
+    isLoading: catalogLoading,
+    isError: catalogError,
+  } = useQuery(sportsCatalogOptions());
 
   // Sort catalog: live first, then by game count, then alpha
   const sortedCatalog = useMemo(
@@ -92,23 +73,21 @@ export default function SportsConfigPanel({
     [catalog],
   );
 
-  const updateLeagues = useCallback(
-    async (next: string[]) => {
-      setSaving(true);
-      try {
-        const updated = await channelsApi.update(
-          "sports",
-          { config: { leagues: next } },
-          getToken,
-        );
-        onChannelUpdate(updated);
-      } catch {
-        setError("Failed to save — try again");
-      } finally {
-        setSaving(false);
-      }
+  // ── Update mutation ────────────────────────────────────────────
+  const updateMutation = useMutation({
+    mutationFn: (nextLeagues: string[]) =>
+      channelsApi.update("sports", { config: { leagues: nextLeagues } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
     },
-    [getToken, onChannelUpdate],
+    onError: () => {
+      setError("Failed to save — try again");
+    },
+  });
+
+  const updateLeagues = useCallback(
+    (next: string[]) => updateMutation.mutate(next),
+    [updateMutation],
   );
 
   const addLeague = useCallback(
@@ -135,16 +114,16 @@ export default function SportsConfigPanel({
         hex={hex}
         items={sortedCatalog}
         selectedKeys={leagueSet}
-        getKey={(l) => l.name}
-        getCategory={(l) => l.category}
-        matchesSearch={(l, q) => {
+        getKey={(l: TrackedLeague) => l.name}
+        getCategory={(l: TrackedLeague) => l.category}
+        matchesSearch={(l: TrackedLeague, q: string) => {
           const lower = q.toLowerCase();
           return (
             l.name.toLowerCase().includes(lower) ||
             l.category.toLowerCase().includes(lower)
           );
         }}
-        renderItem={(item, isSelected) => (
+        renderItem={(item: TrackedLeague, isSelected: boolean) => (
           <>
             <div className="flex items-center gap-2 min-w-0 mr-2">
               {item.logo_url && (
@@ -192,11 +171,11 @@ export default function SportsConfigPanel({
         onDismissError={() => setError(null)}
         loading={catalogLoading}
         catalogError={catalogError}
-        saving={saving}
+        saving={updateMutation.isPending}
         onAdd={addLeague}
         onRemove={removeLeague}
-        onBulkAdd={(keys) => updateLeagues([...leagues, ...keys])}
-        onBulkRemove={(keys) => {
+        onBulkAdd={(keys: string[]) => updateLeagues([...leagues, ...keys])}
+        onBulkRemove={(keys: string[]) => {
           const toRemove = new Set(keys);
           updateLeagues(leagues.filter((l) => !toRemove.has(l)));
         }}

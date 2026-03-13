@@ -1,18 +1,14 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { TrendingUp } from "lucide-react";
 import { clsx } from "clsx";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SetupBrowser } from "../components/settings/SetupBrowser";
-import { fetch } from "@tauri-apps/plugin-http";
-import { channelsApi, API_BASE } from "../api/client";
+import { channelsApi } from "../api/client";
+import { financeCatalogOptions, queryKeys } from "../api/queries";
+import type { TrackedSymbol } from "../api/queries";
 import type { Channel } from "../api/client";
 
 // ── Types ────────────────────────────────────────────────────────
-
-interface TrackedSymbol {
-  symbol: string;
-  name: string;
-  category: string;
-}
 
 interface FinanceChannelConfig {
   symbols?: string[];
@@ -20,8 +16,6 @@ interface FinanceChannelConfig {
 
 interface FinanceConfigPanelProps {
   channel: Channel;
-  getToken: () => Promise<string | null>;
-  onChannelUpdate: (updated: Channel) => void;
   subscriptionTier: string;
   connected: boolean;
   hex: string;
@@ -48,14 +42,9 @@ const POPULAR_SYMBOLS = [
 
 export default function FinanceConfigPanel({
   channel,
-  getToken,
-  onChannelUpdate,
   hex,
 }: FinanceConfigPanelProps) {
-  const [catalog, setCatalog] = useState<TrackedSymbol[]>([]);
-  const [catalogLoading, setCatalogLoading] = useState(true);
-  const [catalogError, setCatalogError] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [hidePopular, setHidePopular] = useState(
     () => localStorage.getItem("scrollr:hidePopular") === "1",
@@ -65,47 +54,40 @@ export default function FinanceConfigPanel({
   const symbols = Array.isArray(config?.symbols) ? config.symbols : [];
   const symbolSet = useMemo(() => new Set(symbols), [symbols]);
 
+  // ── Catalog query ──────────────────────────────────────────────
+  const {
+    data: catalog = [],
+    isLoading: catalogLoading,
+    isError: catalogError,
+  } = useQuery(financeCatalogOptions());
+
   const nameMap = useMemo(
     () => new Map(catalog.map((s) => [s.symbol, s.name])),
     [catalog],
   );
 
   // Auto-dismiss errors
-  useEffect(() => {
+  useState(() => {
     if (!error) return;
     const t = setTimeout(() => setError(null), 4000);
     return () => clearTimeout(t);
-  }, [error]);
+  });
 
-  // Fetch catalog
-  useEffect(() => {
-    fetch(`${API_BASE}/finance/symbols`)
-      .then((r) => {
-        if (!r.ok) throw new Error("Failed");
-        return r.json() as Promise<TrackedSymbol[]>;
-      })
-      .then(setCatalog)
-      .catch(() => setCatalogError(true))
-      .finally(() => setCatalogLoading(false));
-  }, []);
+  // ── Update mutation ────────────────────────────────────────────
+  const updateMutation = useMutation({
+    mutationFn: (nextSymbols: string[]) =>
+      channelsApi.update("finance", { config: { symbols: nextSymbols } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+    },
+    onError: () => {
+      setError("Failed to save — try again");
+    },
+  });
 
   const updateSymbols = useCallback(
-    async (next: string[]) => {
-      setSaving(true);
-      try {
-        const updated = await channelsApi.update(
-          "finance",
-          { config: { symbols: next } },
-          getToken,
-        );
-        onChannelUpdate(updated);
-      } catch {
-        setError("Failed to save — try again");
-      } finally {
-        setSaving(false);
-      }
-    },
-    [getToken, onChannelUpdate],
+    (next: string[]) => updateMutation.mutate(next),
+    [updateMutation],
   );
 
   const addSymbol = useCallback(
@@ -139,16 +121,16 @@ export default function FinanceConfigPanel({
         hex={hex}
         items={catalog}
         selectedKeys={symbolSet}
-        getKey={(s) => s.symbol}
-        getCategory={(s) => s.category}
-        matchesSearch={(s, q) => {
+        getKey={(s: TrackedSymbol) => s.symbol}
+        getCategory={(s: TrackedSymbol) => s.category}
+        matchesSearch={(s: TrackedSymbol, q: string) => {
           const lower = q.toLowerCase();
           return (
             s.symbol.toLowerCase().includes(lower) ||
             s.name.toLowerCase().includes(lower)
           );
         }}
-        renderItem={(item, isSelected) => (
+        renderItem={(item: TrackedSymbol, isSelected: boolean) => (
           <>
             <div className="min-w-0 mr-2">
               <span className="text-[12px] font-bold font-mono text-fg-2">
@@ -175,7 +157,7 @@ export default function FinanceConfigPanel({
             hex={hex}
             onAdd={addSymbol}
             onRemove={removeSymbol}
-            saving={saving}
+            saving={updateMutation.isPending}
             hidden={hidePopular}
             onToggleHidden={(hidden) => {
               setHidePopular(hidden);
@@ -187,11 +169,11 @@ export default function FinanceConfigPanel({
         onDismissError={() => setError(null)}
         loading={catalogLoading}
         catalogError={catalogError}
-        saving={saving}
+        saving={updateMutation.isPending}
         onAdd={addSymbol}
         onRemove={removeSymbol}
-        onBulkAdd={(keys) => updateSymbols([...symbols, ...keys])}
-        onBulkRemove={(keys) => {
+        onBulkAdd={(keys: string[]) => updateSymbols([...symbols, ...keys])}
+        onBulkRemove={(keys: string[]) => {
           const toRemove = new Set(keys);
           updateSymbols(symbols.filter((s) => !toRemove.has(s)));
         }}

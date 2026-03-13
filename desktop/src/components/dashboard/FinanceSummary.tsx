@@ -179,10 +179,9 @@ interface FinanceSummaryProps {
 }
 
 export default function FinanceSummary({ dashboard, prefs, onConfigure }: FinanceSummaryProps) {
-  const initialItems = (dashboard?.data?.finance ?? []) as Trade[];
   const { items } = useScrollrCDC<Trade>({
     table: "trades",
-    initialItems,
+    dataKey: "finance",
     keyOf: (t) => t.symbol,
     maxItems: 50,
   });

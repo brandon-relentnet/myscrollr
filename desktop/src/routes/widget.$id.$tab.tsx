@@ -77,7 +77,6 @@ function WidgetFeedTab({
   widget: NonNullable<ReturnType<typeof getWidget>>;
 }) {
   const channelConfig = {
-    __initialItems: [],
     __dashboardLoaded: true,
   };
   return <widget.FeedTab mode="comfort" channelConfig={channelConfig} />;

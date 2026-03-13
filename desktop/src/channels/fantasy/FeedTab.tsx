@@ -8,7 +8,9 @@
  */
 import { useMemo } from "react";
 import { Swords } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { LeagueCard } from "./LeagueCard";
+import { dashboardQueryOptions } from "../../api/queries";
 import type { FeedTabProps, ChannelManifest } from "../../types";
 import type { LeagueResponse, MyLeaguesResponse } from "./types";
 
@@ -36,20 +38,21 @@ export const fantasyChannel: ChannelManifest = {
 
 // ── Helpers ──────────────────────────────────────────────────────
 
-function getLeagues(config: Record<string, unknown>): LeagueResponse[] {
-  const items = config.__initialItems;
-  if (items && typeof items === "object" && !Array.isArray(items)) {
-    const resp = items as MyLeaguesResponse;
+function extractLeagues(data: unknown): LeagueResponse[] {
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    const resp = data as MyLeaguesResponse;
     return resp.leagues ?? [];
   }
-  if (Array.isArray(items)) return items as LeagueResponse[];
+  if (Array.isArray(data)) return data as LeagueResponse[];
   return [];
 }
 
 // ── FeedTab ──────────────────────────────────────────────────────
 
 function FantasyFeedTab({ mode, channelConfig }: FeedTabProps) {
-  const leagues = useMemo(() => getLeagues(channelConfig), [channelConfig]);
+  const { data: dashboard } = useQuery(dashboardQueryOptions());
+  const fantasyData = dashboard?.data?.fantasy;
+  const leagues = useMemo(() => extractLeagues(fantasyData), [fantasyData]);
   const dashboardLoaded = channelConfig.__dashboardLoaded as
     | boolean
     | undefined;

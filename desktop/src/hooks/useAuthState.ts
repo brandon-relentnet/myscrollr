@@ -6,12 +6,14 @@
  */
 import { useState, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   login as authLogin,
   logout as authLogout,
   isAuthenticated as checkAuth,
   getTier,
 } from "../auth";
+import { queryKeys } from "../api/queries";
 import type { SubscriptionTier } from "../auth";
 import type { DashboardResponse } from "../types";
 
@@ -27,9 +29,8 @@ interface AuthState {
   syncAuthFromDashboard: (dashboard: DashboardResponse | undefined) => void;
 }
 
-export function useAuthState(
-  fetchDashboard: () => void,
-): AuthState {
+export function useAuthState(): AuthState {
+  const queryClient = useQueryClient();
   const [authenticated, setAuthenticated] = useState(() => checkAuth());
   const [tier, setTier] = useState<SubscriptionTier>(() =>
     checkAuth() ? getTier() : "free",
@@ -47,20 +48,20 @@ export function useAuthState(
       if (result) {
         setAuthenticated(true);
         setTier(getTier());
-        fetchDashboard();
+        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
       }
     } finally {
       setLoggingIn(false);
     }
-  }, [fetchDashboard]);
+  }, [queryClient]);
 
   const handleLogout = useCallback(async () => {
     await invoke("stop_sse").catch(() => {});
     authLogout();
     setAuthenticated(false);
     setTier("free");
-    fetchDashboard();
-  }, [fetchDashboard]);
+    queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+  }, [queryClient]);
 
   const syncAuthFromDashboard = useCallback(
     (dashboard: DashboardResponse | undefined) => {

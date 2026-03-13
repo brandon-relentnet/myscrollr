@@ -7,11 +7,9 @@
  */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import RouteError from "../components/RouteError";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getChannel } from "../channels/registry";
-import { getAllChannels } from "../channels/registry";
-import { dashboardQueryOptions, queryKeys } from "../api/queries";
-import { getValidToken } from "../auth";
+import { useQuery } from "@tanstack/react-query";
+import { getChannel, getAllChannels } from "../channels/registry";
+import { dashboardQueryOptions } from "../api/queries";
 import { getTier } from "../auth";
 import ChannelConfigPanel from "../channels/ChannelConfigPanel";
 import ContentHeader from "../components/ContentHeader";
@@ -97,9 +95,7 @@ function ChannelFeedTab({
   dashboard: DashboardResponse | undefined;
   channel: NonNullable<ReturnType<typeof getChannel>>;
 }) {
-  const initialItems = dashboard?.data?.[type] ?? [];
   const channelConfig = {
-    __initialItems: initialItems,
     __dashboardLoaded: dashboard !== undefined,
     __hasConfig: (dashboard?.channels ?? []).some(
       (ch) => ch.channel_type === type && ch.enabled,
@@ -166,7 +162,6 @@ function ChannelInfoTab({
   );
 }
 
-/** Extracted so useQueryClient() is called unconditionally. */
 function ChannelConfigTab({
   type,
   dashboard,
@@ -174,7 +169,6 @@ function ChannelConfigTab({
   type: string;
   dashboard: DashboardResponse | undefined;
 }) {
-  const queryClient = useQueryClient();
   const channelData = (dashboard?.channels ?? []).find(
     (ch) => ch.channel_type === type,
   );
@@ -200,10 +194,6 @@ function ChannelConfigTab({
       <ChannelConfigPanel
         channelType={type}
         channel={channelData as unknown as Channel}
-        getToken={() => getValidToken().then((t) => t ?? null)}
-        onChannelUpdate={() => {
-          queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
-        }}
         subscriptionTier={getTier()}
         connected={deliveryMode === "sse"}
         hex={manifest?.hex ?? "var(--color-accent)"}

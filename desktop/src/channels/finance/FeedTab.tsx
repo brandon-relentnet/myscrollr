@@ -36,11 +36,6 @@ export const financeChannel: ChannelManifest = {
 // ── FeedTab ──────────────────────────────────────────────────────
 
 function FinanceFeedTab({ mode, channelConfig }: FeedTabProps) {
-  const initialItems = useMemo(() => {
-    const items = channelConfig.__initialItems as Trade[] | undefined;
-    return items ?? [];
-  }, [channelConfig]);
-
   const keyOf = useCallback((t: Trade) => t.symbol, []);
   const validate = useCallback(
     (record: Record<string, unknown>) => typeof record.symbol === "string",
@@ -54,7 +49,7 @@ function FinanceFeedTab({ mode, channelConfig }: FeedTabProps) {
 
   const { items: trades } = useScrollrCDC<Trade>({
     table: "trades",
-    initialItems,
+    dataKey: "finance",
     keyOf,
     validate,
     sort,
@@ -72,7 +67,7 @@ function FinanceFeedTab({ mode, channelConfig }: FeedTabProps) {
       {trades.length === 0 && (
         <div className="col-span-full flex flex-col items-center justify-center gap-2 py-12 bg-surface">
           <TrendingUp size={28} className="text-fg-4/40" />
-          {channelConfig.__dashboardLoaded && initialItems.length === 0 ? (
+          {channelConfig.__dashboardLoaded && !channelConfig.__hasConfig ? (
             <>
               <p className="text-sm font-medium text-fg-3">
                 No stocks or crypto picked yet

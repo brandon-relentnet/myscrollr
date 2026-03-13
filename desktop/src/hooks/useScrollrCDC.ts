@@ -1,5 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTauriListener } from "./useTauriListener";
+import { dashboardQueryOptions, queryKeys } from "../api/queries";
+import type { DashboardResponse } from "../types";
 
 /**
  * Uniqueness key extractor — given a record, returns a string key
@@ -16,8 +19,8 @@ type ItemComparator<T> = (a: T, b: T) => number;
 interface UseScrollrCDCOptions<T> {
   /** CDC table name to subscribe to (e.g. 'trades', 'games', 'rss_items'). */
   table: string;
-  /** Initial items from the dashboard snapshot. */
-  initialItems: T[];
+  /** Dashboard data key to read initial items from (e.g. 'finance', 'sports', 'rss'). */
+  dataKey: string;
   /** Extract a unique key from a record for upsert/dedup. */
   keyOf: KeyExtractor<T>;
   /** Optional sort comparator applied after every upsert. */
@@ -49,35 +52,35 @@ interface SSEPayload {
 }
 
 /**
- * Desktop CDC hook — manages an in-memory array of items with
- * real-time upsert/delete from the Rust SSE client.
+ * Desktop CDC hook — merges real-time SSE mutations directly into
+ * the TanStack Query dashboard cache.
  *
- * In polling mode (no SSE connection), items are driven entirely
- * by the dashboard snapshot that App.tsx fetches on interval.
+ * In polling mode (no SSE connection), items come from the dashboard
+ * query snapshot that TanStack Query manages automatically.
  *
- * In SSE mode, the hook listens for `sse-event` Tauri events,
- * filters by table name, and applies CDC mutations to the array.
+ * In SSE mode, CDC events update the dashboard cache in-place via
+ * queryClient.setQueryData, so there is no parallel state and no
+ * visual flash on refetch.
  */
 export function useScrollrCDC<T>({
   table,
-  initialItems,
+  dataKey,
   keyOf,
   sort,
   maxItems = 50,
   validate,
 }: UseScrollrCDCOptions<T>): UseScrollrCDCResult<T> {
-  const [items, setItems] = useState<T[]>(initialItems);
+  const queryClient = useQueryClient();
   const initializedRef = useRef(false);
 
-  // Sync when initialItems changes (e.g., polling refresh arrives)
-  useEffect(() => {
-    // Skip the very first empty array (dashboard hasn't loaded yet)
-    if (!initializedRef.current && initialItems.length === 0) return;
-    initializedRef.current = true;
-    setItems(initialItems);
-  }, [initialItems]);
+  // Read items from the dashboard query cache
+  const { data: dashboard } = useQuery(dashboardQueryOptions());
+  const items = ((dashboard?.data?.[dataKey] as T[] | undefined) ?? []);
 
-  // Listen for CDC events from the Rust SSE client
+  // Track initialization
+  if (items.length > 0) initializedRef.current = true;
+
+  // Listen for CDC events from the Rust SSE client and merge into cache
   useTauriListener<SSEPayload>(
     "sse-event",
     (event) => {
@@ -90,39 +93,52 @@ export function useScrollrCDC<T>({
       );
       if (relevant.length === 0) return;
 
-      setItems((prev) => {
-        let next = [...prev];
+      // Update the dashboard cache in-place
+      queryClient.setQueryData<DashboardResponse>(
+        queryKeys.dashboard,
+        (old) => {
+          if (!old) return old;
 
-        for (const cdc of relevant) {
-          const record = cdc.record as unknown as T;
+          let currentItems = ((old.data?.[dataKey] as T[] | undefined) ?? []);
+          let next = [...currentItems];
 
-          if (cdc.action === "delete") {
-            const key = keyOf(record);
-            next = next.filter((item) => keyOf(item) !== key);
-          } else {
-            // insert or update — validate first
-            if (validate && !validate(cdc.record)) continue;
+          for (const cdc of relevant) {
+            const record = cdc.record as unknown as T;
 
-            const key = keyOf(record);
-            const idx = next.findIndex((item) => keyOf(item) === key);
-            if (idx >= 0) {
-              next[idx] = record;
+            if (cdc.action === "delete") {
+              const key = keyOf(record);
+              next = next.filter((item) => keyOf(item) !== key);
             } else {
-              next.push(record);
-              if (next.length > maxItems) next.shift();
+              // insert or update — validate first
+              if (validate && !validate(cdc.record)) continue;
+
+              const key = keyOf(record);
+              const idx = next.findIndex((item) => keyOf(item) === key);
+              if (idx >= 0) {
+                next[idx] = record;
+              } else {
+                next.push(record);
+                if (next.length > maxItems) next.shift();
+              }
             }
           }
-        }
 
-        // Apply sort if provided
-        if (sort) {
-          next.sort(sort);
-        }
+          // Apply sort if provided
+          if (sort) {
+            next.sort(sort);
+          }
 
-        return next;
-      });
+          return {
+            ...old,
+            data: {
+              ...old.data,
+              [dataKey]: next,
+            },
+          };
+        },
+      );
     },
-    [table, keyOf, sort, maxItems, validate],
+    [table, dataKey, keyOf, sort, maxItems, validate, queryClient],
   );
 
   return { items };
