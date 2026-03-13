@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TickerRouteImport } from './routes/ticker'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as AccountRouteImport } from './routes/account'
@@ -17,11 +16,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as WidgetIdTabRouteImport } from './routes/widget.$id.$tab'
 import { Route as ChannelTypeTabRouteImport } from './routes/channel.$type.$tab'
 
-const TickerRoute = TickerRouteImport.update({
-  id: '/ticker',
-  path: '/ticker',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -58,7 +52,6 @@ export interface FileRoutesByFullPath {
   '/account': typeof AccountRoute
   '/feed': typeof FeedRoute
   '/settings': typeof SettingsRoute
-  '/ticker': typeof TickerRoute
   '/channel/$type/$tab': typeof ChannelTypeTabRoute
   '/widget/$id/$tab': typeof WidgetIdTabRoute
 }
@@ -67,7 +60,6 @@ export interface FileRoutesByTo {
   '/account': typeof AccountRoute
   '/feed': typeof FeedRoute
   '/settings': typeof SettingsRoute
-  '/ticker': typeof TickerRoute
   '/channel/$type/$tab': typeof ChannelTypeTabRoute
   '/widget/$id/$tab': typeof WidgetIdTabRoute
 }
@@ -77,7 +69,6 @@ export interface FileRoutesById {
   '/account': typeof AccountRoute
   '/feed': typeof FeedRoute
   '/settings': typeof SettingsRoute
-  '/ticker': typeof TickerRoute
   '/channel/$type/$tab': typeof ChannelTypeTabRoute
   '/widget/$id/$tab': typeof WidgetIdTabRoute
 }
@@ -88,7 +79,6 @@ export interface FileRouteTypes {
     | '/account'
     | '/feed'
     | '/settings'
-    | '/ticker'
     | '/channel/$type/$tab'
     | '/widget/$id/$tab'
   fileRoutesByTo: FileRoutesByTo
@@ -97,7 +87,6 @@ export interface FileRouteTypes {
     | '/account'
     | '/feed'
     | '/settings'
-    | '/ticker'
     | '/channel/$type/$tab'
     | '/widget/$id/$tab'
   id:
@@ -106,7 +95,6 @@ export interface FileRouteTypes {
     | '/account'
     | '/feed'
     | '/settings'
-    | '/ticker'
     | '/channel/$type/$tab'
     | '/widget/$id/$tab'
   fileRoutesById: FileRoutesById
@@ -116,20 +104,12 @@ export interface RootRouteChildren {
   AccountRoute: typeof AccountRoute
   FeedRoute: typeof FeedRoute
   SettingsRoute: typeof SettingsRoute
-  TickerRoute: typeof TickerRoute
   ChannelTypeTabRoute: typeof ChannelTypeTabRoute
   WidgetIdTabRoute: typeof WidgetIdTabRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/ticker': {
-      id: '/ticker'
-      path: '/ticker'
-      fullPath: '/ticker'
-      preLoaderRoute: typeof TickerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -180,7 +160,6 @@ const rootRouteChildren: RootRouteChildren = {
   AccountRoute: AccountRoute,
   FeedRoute: FeedRoute,
   SettingsRoute: SettingsRoute,
-  TickerRoute: TickerRoute,
   ChannelTypeTabRoute: ChannelTypeTabRoute,
   WidgetIdTabRoute: WidgetIdTabRoute,
 }

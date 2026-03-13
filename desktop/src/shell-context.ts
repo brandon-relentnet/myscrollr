@@ -30,10 +30,6 @@ export interface ShellState {
   onLogout: () => void;
   autostartEnabled: boolean;
   onAutostartChange: (enabled: boolean) => void;
-  showAppTicker: boolean;
-  onToggleAppTicker: (enabled: boolean) => void;
-  showTaskbar: boolean;
-  onToggleTaskbar: (enabled: boolean) => void;
   appVersion: string;
 
   /** All registered channel manifests (static). */

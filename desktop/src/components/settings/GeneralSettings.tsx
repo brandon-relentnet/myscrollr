@@ -21,10 +21,6 @@ interface GeneralSettingsProps {
   onResetWindow: () => void;
   autostartEnabled: boolean;
   onAutostartChange: (enabled: boolean) => void;
-  showAppTicker: boolean;
-  onToggleAppTicker: (enabled: boolean) => void;
-  showTaskbar: boolean;
-  onToggleTaskbar: (enabled: boolean) => void;
 }
 
 // ── Options ─────────────────────────────────────────────────────
@@ -53,10 +49,6 @@ export default function GeneralSettings({
   onResetWindow,
   autostartEnabled,
   onAutostartChange,
-  showAppTicker,
-  onToggleAppTicker,
-  showTaskbar,
-  onToggleTaskbar,
 }: GeneralSettingsProps) {
   const setApp = <K extends keyof AppearancePrefs>(
     key: K,
@@ -90,18 +82,6 @@ export default function GeneralSettings({
           description="Keep the ticker above all other windows"
           checked={window_.pinned}
           onChange={(v) => onWindowChange({ ...window_, pinned: v })}
-        />
-        <ToggleRow
-          label="Show toolbar"
-          description="Buttons and controls below the ticker"
-          checked={showTaskbar}
-          onChange={onToggleTaskbar}
-        />
-        <ToggleRow
-          label="Show ticker in main window"
-          description="Show the scrolling ticker inside this window"
-          checked={showAppTicker}
-          onChange={onToggleAppTicker}
         />
       </Section>
 

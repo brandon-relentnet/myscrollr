@@ -1,9 +1,8 @@
 /**
  * Root layout route — the persistent app shell.
  *
- * Renders IconRail, TopNav, ticker, taskbar around an <Outlet />
- * for route-specific content. Navigation overhaul: top-level views
- * (Feed, Ticker, Account) replace the old sidebar-driven paradigm.
+ * Renders TitleBar + Sidebar + content <Outlet />.
+ * Single navigation paradigm via the labeled Sidebar component.
  */
 import {
   createRootRouteWithContext,
@@ -24,10 +23,7 @@ import clsx from "clsx";
 
 // Shell components
 import TitleBar from "../components/TitleBar";
-import IconRail from "../components/IconRail";
-import TopNav from "../components/TopNav";
-import ScrollrTicker from "../components/ScrollrTicker";
-import AppTaskbar from "../components/AppTaskbar";
+import Sidebar from "../components/Sidebar";
 
 // Registries
 import { getAllChannels } from "../channels/registry";
@@ -39,10 +35,8 @@ import { dashboardQueryOptions } from "../api/queries";
 // Preferences
 import {
   loadPref,
-  savePref,
   loadPrefs,
   savePrefs,
-  TICKER_GAPS,
 } from "../preferences";
 import type { AppPreferences } from "../preferences";
 
@@ -51,7 +45,6 @@ import type { DeliveryMode } from "../types";
 import type { Channel } from "../api/client";
 
 // Hooks
-import { useWidgetTickerData } from "../hooks/useWidgetTickerData";
 import { useTheme } from "../hooks/useTheme";
 import { useAuthState } from "../hooks/useAuthState";
 import { useChannelActions } from "../hooks/useChannelActions";
@@ -78,8 +71,6 @@ const IS_MACOS =
 
 // ── URL helpers ─────────────────────────────────────────────────
 
-type ActiveView = "feed" | "ticker" | "settings" | "account" | "none";
-
 function parseRoute(pathname: string) {
   const segments = pathname.split("/").filter(Boolean);
   const [kind, itemId] = segments;
@@ -87,56 +78,42 @@ function parseRoute(pathname: string) {
   if (kind === "feed" || pathname === "/") {
     return {
       activeItem: "",
-      activeView: "feed" as ActiveView,
       isChannel: false, isWidget: false, isFeed: true,
-      isTicker: false, isSettings: false, isAccount: false,
+      isSettings: false, isAccount: false,
     };
   }
   if (kind === "channel" && itemId) {
     return {
       activeItem: itemId,
-      activeView: "none" as ActiveView,
       isChannel: true, isWidget: false, isFeed: false,
-      isTicker: false, isSettings: false, isAccount: false,
+      isSettings: false, isAccount: false,
     };
   }
   if (kind === "widget" && itemId) {
     return {
       activeItem: itemId,
-      activeView: "none" as ActiveView,
       isChannel: false, isWidget: true, isFeed: false,
-      isTicker: false, isSettings: false, isAccount: false,
-    };
-  }
-  if (kind === "ticker") {
-    return {
-      activeItem: "",
-      activeView: "ticker" as ActiveView,
-      isChannel: false, isWidget: false, isFeed: false,
-      isTicker: true, isSettings: false, isAccount: false,
+      isSettings: false, isAccount: false,
     };
   }
   if (kind === "settings") {
     return {
       activeItem: "settings",
-      activeView: "settings" as ActiveView,
       isChannel: false, isWidget: false, isFeed: false,
-      isTicker: false, isSettings: true, isAccount: false,
+      isSettings: true, isAccount: false,
     };
   }
   if (kind === "account") {
     return {
       activeItem: "",
-      activeView: "account" as ActiveView,
       isChannel: false, isWidget: false, isFeed: false,
-      isTicker: false, isSettings: false, isAccount: true,
+      isSettings: false, isAccount: true,
     };
   }
   return {
     activeItem: "",
-    activeView: "feed" as ActiveView,
     isChannel: false, isWidget: false, isFeed: true,
-    isTicker: false, isSettings: false, isAccount: false,
+    isSettings: false, isAccount: false,
   };
 }
 
@@ -173,13 +150,6 @@ function RootLayout() {
   const [prefs, setPrefs] = useState<AppPreferences>(loadPrefs);
   const [autostartOn, setAutostartOn] = useState(false);
   const enabledWidgets = prefs.widgets.enabledWidgets;
-
-  const [showAppTicker, setShowAppTicker] = useState(() =>
-    loadPref("showAppTicker", true),
-  );
-  const [showTaskbar, setShowTaskbar] = useState(() =>
-    loadPref("showTaskbar", true),
-  );
 
   const [appVersion, setAppVersion] = useState("");
   useEffect(() => {
@@ -260,13 +230,45 @@ function RootLayout() {
   );
 
   const handleNavigateToFeed = useCallback(() => navigate({ to: "/feed" }), [navigate]);
-  const handleNavigateToTicker = useCallback(() => navigate({ to: "/ticker" }), [navigate]);
   const handleNavigateToSettings = useCallback(() => navigate({ to: "/settings" }), [navigate]);
   const handleNavigateToAccount = useCallback(() => navigate({ to: "/account" }), [navigate]);
 
   // ── Keyboard shortcuts ──────────────────────────────────────
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
+      // Ctrl+, → open settings
+      if ((e.ctrlKey || e.metaKey) && e.key === ",") {
+        e.preventDefault();
+        navigate({ to: "/settings" });
+        return;
+      }
+
+      // Ctrl+T → toggle standalone ticker visibility
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === "t") {
+        e.preventDefault();
+        const next = {
+          ...prefs,
+          ticker: { ...prefs.ticker, showTicker: !prefs.ticker.showTicker },
+        };
+        setPrefs(next);
+        savePrefs(next);
+        return;
+      }
+
+      // Ctrl+Shift+T → cycle theme
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "T") {
+        e.preventDefault();
+        const cycle: Record<string, string> = { dark: "light", light: "system", system: "dark" };
+        const nextTheme = cycle[prefs.appearance.theme] ?? "dark";
+        const next = {
+          ...prefs,
+          appearance: { ...prefs.appearance, theme: nextTheme as AppPreferences["appearance"]["theme"] },
+        };
+        setPrefs(next);
+        savePrefs(next);
+        return;
+      }
+
       if (e.key === "Escape") {
         if (auth.loggingIn) { auth.setLoggingIn(false); return; }
         if (auth.sessionExpired) { auth.setSessionExpired(false); return; }
@@ -287,7 +289,7 @@ function RootLayout() {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [auth.loggingIn, auth.sessionExpired, route, location.pathname, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [auth.loggingIn, auth.sessionExpired, route, location.pathname, navigate, prefs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Settings handlers ───────────────────────────────────────
 
@@ -306,49 +308,6 @@ function RootLayout() {
     }
   }, []);
 
-  // ── Ticker data ─────────────────────────────────────────────
-
-  const activeTabs = useMemo(
-    () => [
-      ...channels
-        .filter((ch) => ch.enabled && ch.visible)
-        .map((ch) => ch.channel_type),
-      ...prefs.widgets.widgetsOnTicker,
-    ],
-    [channels, prefs.widgets.widgetsOnTicker],
-  );
-
-  const widgetData = useWidgetTickerData(prefs.widgets);
-
-  // ── Ticker / taskbar toggles ────────────────────────────────
-
-  function handleToggleAppTicker() {
-    const next = !showAppTicker;
-    setShowAppTicker(next);
-    savePref("showAppTicker", next);
-  }
-
-  function handleToggleStandaloneTicker() {
-    const next = {
-      ...prefs,
-      ticker: { ...prefs.ticker, showTicker: !prefs.ticker.showTicker },
-    };
-    setPrefs(next);
-    savePrefs(next);
-  }
-
-  // ── Stable callbacks for context ─────────────────────────────
-
-  const handleToggleAppTickerPref = useCallback((v: boolean) => {
-    setShowAppTicker(v);
-    savePref("showAppTicker", v);
-  }, []);
-
-  const handleToggleTaskbarPref = useCallback((v: boolean) => {
-    setShowTaskbar(v);
-    savePref("showTaskbar", v);
-  }, []);
-
   // ── Shell context values (split: stable + volatile) ────────
 
   const shellStableValue = useMemo(
@@ -361,10 +320,6 @@ function RootLayout() {
       onLogout: auth.handleLogout,
       autostartEnabled: autostartOn,
       onAutostartChange: handleAutostartChange,
-      showAppTicker,
-      onToggleAppTicker: handleToggleAppTickerPref,
-      showTaskbar,
-      onToggleTaskbar: handleToggleTaskbarPref,
       appVersion,
       allChannelManifests,
       allWidgets,
@@ -378,8 +333,6 @@ function RootLayout() {
     [
       prefs, handlePrefsChange, auth.authenticated, auth.tier,
       auth.handleLogin, auth.handleLogout, autostartOn, handleAutostartChange,
-      showAppTicker, handleToggleAppTickerPref,
-      showTaskbar, handleToggleTaskbarPref,
       appVersion, allChannelManifests, allWidgets,
       channelActions.handleToggleChannel, widgetActions.handleToggleWidgetTicker,
       channelActions.handleAddChannel, channelActions.handleDeleteChannel,
@@ -406,69 +359,24 @@ function RootLayout() {
       {!IS_MACOS && <TitleBar />}
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        <IconRail
-          channels={channels}
+        <Sidebar
+          activeItem={route.activeItem}
+          isFeed={route.isFeed}
+          isSettings={route.isSettings}
+          isAccount={route.isAccount}
+          channels={sortedChannels}
+          enabledWidgets={enabledWidgets}
           allChannelManifests={allChannelManifests}
           allWidgets={allWidgets}
-          enabledWidgets={enabledWidgets}
-          activeItem={route.activeItem}
+          deliveryMode={deliveryMode}
           tickerAlive={prefs.ticker.showTicker}
           onSelectItem={handleSelectItem}
           onNavigateToFeed={handleNavigateToFeed}
           onNavigateToSettings={handleNavigateToSettings}
-          isSettings={route.isSettings}
-          isFeed={route.isFeed}
+          onNavigateToAccount={handleNavigateToAccount}
         />
 
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-          <TopNav
-            activeView={route.activeView}
-            authenticated={auth.authenticated}
-            tier={auth.tier}
-            onNavigateToFeed={handleNavigateToFeed}
-            onNavigateToTicker={handleNavigateToTicker}
-            onNavigateToSettings={handleNavigateToSettings}
-            onNavigateToAccount={handleNavigateToAccount}
-            onLogin={auth.handleLogin}
-          />
-
-          {showAppTicker &&
-            Array.from({ length: prefs.appearance.tickerRows }, (_, i) => (
-              <ScrollrTicker
-                key={`app-row${i}-${prefs.ticker.tickerGap}-${prefs.ticker.tickerSpeed}-${prefs.ticker.hoverSpeed}-${prefs.ticker.tickerMode}-${prefs.ticker.mixMode}-${prefs.ticker.chipColors}-${prefs.ticker.tickerDirection}-${prefs.ticker.scrollMode}-${prefs.ticker.stepPause}-${prefs.appearance.tickerRows}`}
-                dashboard={dashboard ?? null}
-                activeTabs={activeTabs}
-                widgetData={widgetData}
-                onTogglePin={widgetActions.handleTogglePin}
-                pinnedWidgets={prefs.widgets.pinnedWidgets}
-                speed={prefs.ticker.tickerSpeed}
-                gap={TICKER_GAPS[prefs.ticker.tickerGap]}
-                pauseOnHover={prefs.ticker.pauseOnHover}
-                hoverSpeed={prefs.ticker.hoverSpeed}
-                mixMode={prefs.ticker.mixMode}
-                chipColorMode={prefs.ticker.chipColors}
-                comfort={prefs.ticker.tickerMode === "comfort"}
-                rowIndex={i}
-                totalRows={prefs.appearance.tickerRows}
-                direction={prefs.ticker.tickerDirection}
-                scrollMode={prefs.ticker.scrollMode}
-                stepPause={prefs.ticker.stepPause}
-              />
-            ))}
-
-          {showTaskbar && (
-            <AppTaskbar
-              prefs={prefs}
-              onPrefsChange={handlePrefsChange}
-              showTicker={showAppTicker}
-              onToggleTicker={handleToggleAppTicker}
-              tickerAlive={prefs.ticker.showTicker}
-              onToggleStandaloneTicker={handleToggleStandaloneTicker}
-              deliveryMode={deliveryMode}
-              onNavigateToWidget={handleSelectItem}
-            />
-          )}
-
           {auth.sessionExpired && (
             <div className="flex items-center justify-between px-4 py-2 bg-warn/10 border-b border-warn/20 shrink-0">
               <span className="text-xs text-warn">

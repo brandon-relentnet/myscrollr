@@ -5,6 +5,7 @@
  *   - type: "finance" | "sports" | "rss" | "fantasy"
  *   - tab: "feed" | "info" | "configuration"
  */
+import { useState, useRef, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import RouteError from "../components/RouteError";
 import { useQuery } from "@tanstack/react-query";
@@ -12,14 +13,21 @@ import { getChannel, getAllChannels } from "../channels/registry";
 import { dashboardQueryOptions } from "../api/queries";
 import { getTier } from "../auth";
 import ChannelConfigPanel from "../channels/ChannelConfigPanel";
-import ContentHeader from "../components/ContentHeader";
 import { useShell } from "../shell-context";
+import { Trash2 } from "lucide-react";
+import clsx from "clsx";
 import type { Channel, ChannelType } from "../api/client";
 import type { DashboardResponse, DeliveryMode } from "../types";
 import { loadPref } from "../preferences";
 
 const VALID_TABS = ["feed", "info", "configuration"] as const;
 type ChannelTab = (typeof VALID_TABS)[number];
+
+const TABS: { key: ChannelTab; label: string }[] = [
+  { key: "feed", label: "Feed" },
+  { key: "info", label: "About" },
+  { key: "configuration", label: "Settings" },
+];
 
 export const Route = createFileRoute("/channel/$type/$tab")({
   loader: ({ context: { queryClient } }) =>
@@ -58,29 +66,56 @@ function ChannelRoute() {
 
   return (
     <div className="flex flex-col h-full">
-      <ContentHeader
-        name={channel.name}
-        icon={channel.icon}
-        hex={channel.hex}
-        activeTab={tab}
-        onTabChange={(t) =>
-          navigate({
-            to: "/channel/$type/$tab",
-            params: { type, tab: t },
-          })
-        }
-        tickerEnabled={tickerEnabled}
-        onToggleTicker={() =>
-          shell.onToggleChannelTicker(type as ChannelType, !tickerEnabled)
-        }
-        onDelete={() => shell.onDeleteChannel(type as ChannelType)}
-        onBack={() => navigate({ to: "/feed" })}
-      />
+      {/* Breadcrumb header */}
+      <header className="flex items-center justify-between px-5 h-12 border-b border-edge shrink-0">
+        <div className="flex items-center gap-1.5 min-w-0 text-sm">
+          <button
+            onClick={() => navigate({ to: "/feed" })}
+            className="text-fg-3 hover:text-fg-2 transition-colors shrink-0"
+          >
+            Dashboard
+          </button>
+          <span className="text-fg-4">/</span>
+          <span className="font-medium truncate">{channel.name}</span>
+        </div>
+        <div className="flex gap-1 shrink-0">
+          {TABS.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() =>
+                navigate({
+                  to: "/channel/$type/$tab",
+                  params: { type, tab: key },
+                })
+              }
+              className={clsx(
+                "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                tab === key
+                  ? "bg-accent/10 text-accent"
+                  : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </header>
 
       <div className="flex-1 overflow-y-auto scrollbar-thin">
         {tab === "feed" && <ChannelFeedTab type={type} dashboard={dashboard} channel={channel} />}
         {tab === "info" && <ChannelInfoTab channel={channel} />}
-        {tab === "configuration" && <ChannelConfigTab type={type} dashboard={dashboard} />}
+        {tab === "configuration" && (
+          <ChannelConfigTab
+            type={type}
+            dashboard={dashboard}
+            tickerEnabled={tickerEnabled}
+            onToggleTicker={() =>
+              shell.onToggleChannelTicker(type as ChannelType, !tickerEnabled)
+            }
+            onDelete={() => shell.onDeleteChannel(type as ChannelType)}
+            hex={channel.hex}
+          />
+        )}
       </div>
     </div>
   );
@@ -165,25 +200,41 @@ function ChannelInfoTab({
 function ChannelConfigTab({
   type,
   dashboard,
+  tickerEnabled,
+  onToggleTicker,
+  onDelete,
+  hex,
 }: {
   type: string;
   dashboard: DashboardResponse | undefined;
+  tickerEnabled: boolean;
+  onToggleTicker: () => void;
+  onDelete: () => void;
+  hex: string;
 }) {
   const channelData = (dashboard?.channels ?? []).find(
     (ch) => ch.channel_type === type,
   );
 
-  if (!channelData) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto gap-3 p-6">
-        <h2 className="text-base font-semibold text-fg">
-          Configuration unavailable
-        </h2>
-        <p className="text-sm text-fg-3 leading-relaxed">
-          This channel does not have a configuration panel.
-        </p>
-      </div>
-    );
+  // Delete confirmation state
+  const [deleteArmed, setDeleteArmed] = useState(false);
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+    };
+  }, []);
+
+  function handleDeleteClick() {
+    if (deleteArmed) {
+      if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+      onDelete();
+      setDeleteArmed(false);
+    } else {
+      setDeleteArmed(true);
+      deleteTimerRef.current = setTimeout(() => setDeleteArmed(false), 3000);
+    }
   }
 
   const manifest = getAllChannels().find((m) => m.id === type);
@@ -191,13 +242,79 @@ function ChannelConfigTab({
 
   return (
     <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">
-      <ChannelConfigPanel
-        channelType={type}
-        channel={channelData as unknown as Channel}
-        subscriptionTier={getTier()}
-        connected={deliveryMode === "sse"}
-        hex={manifest?.hex ?? "var(--color-accent)"}
-      />
+      {channelData ? (
+        <ChannelConfigPanel
+          channelType={type}
+          channel={channelData as unknown as Channel}
+          subscriptionTier={getTier()}
+          connected={deliveryMode === "sse"}
+          hex={manifest?.hex ?? "var(--color-accent)"}
+        />
+      ) : (
+        <div className="flex flex-col items-center justify-center text-center max-w-sm mx-auto gap-3 p-6">
+          <h2 className="text-base font-semibold text-fg">
+            Configuration unavailable
+          </h2>
+          <p className="text-sm text-fg-3 leading-relaxed">
+            This channel does not have a configuration panel.
+          </p>
+        </div>
+      )}
+
+      {/* Source management — ticker toggle + remove */}
+      <div className="border-t border-edge mt-6 pt-4 max-w-2xl">
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-fg-3 mb-3 px-3">
+          Source
+        </h3>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={tickerEnabled}
+          onClick={onToggleTicker}
+          className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg hover:bg-base-250/50 transition-colors cursor-pointer group"
+        >
+          <div className="flex flex-col gap-0.5 text-left">
+            <span className="text-[12px] text-fg-2 group-hover:text-fg leading-tight">
+              Show on ticker
+            </span>
+            <span className="text-[11px] text-fg-4 leading-tight">
+              Display updates from this channel in the ticker
+            </span>
+          </div>
+          <span
+            className="block h-4 w-7 rounded-full relative transition-colors shrink-0 ml-4"
+            style={{ background: tickerEnabled ? hex : undefined }}
+          >
+            {!tickerEnabled && (
+              <span className="absolute inset-0 rounded-full bg-fg-4/25" />
+            )}
+            <span
+              className="absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white transition-transform duration-200"
+              style={{ transform: tickerEnabled ? "translateX(12px)" : "translateX(0)" }}
+            />
+          </span>
+        </button>
+        <div className="flex items-center justify-between px-3 py-2.5 rounded-lg">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[12px] text-fg-2 leading-tight">Remove channel</span>
+            <span className="text-[11px] text-fg-4 leading-tight">
+              Remove this channel from your dashboard
+            </span>
+          </div>
+          <button
+            onClick={handleDeleteClick}
+            className={clsx(
+              "text-[11px] font-medium px-2.5 py-1 rounded-md transition-colors cursor-pointer flex items-center gap-1.5 shrink-0 ml-4",
+              deleteArmed
+                ? "bg-red-500/10 text-red-500"
+                : "bg-base-250 text-fg-3 hover:text-red-400 hover:bg-red-500/10",
+            )}
+          >
+            <Trash2 size={12} />
+            {deleteArmed ? "Confirm?" : "Remove"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -226,5 +343,3 @@ function ChannelPending() {
     </div>
   );
 }
-
-

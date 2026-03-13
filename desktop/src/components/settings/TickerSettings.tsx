@@ -1,14 +1,15 @@
 /**
- * Ticker route — consolidated ticker management.
+ * TickerSettings — ticker management panel.
  *
- * Combines: source toggles + Layout + Playback + Style settings.
- * Replaces the old Settings > Ticker tab.
+ * Extracted from the old /ticker route. Renders as a tab within
+ * the consolidated Settings page.
+ *
+ * Sections: Sources, Layout, Playback, Style.
  */
-import { createFileRoute } from "@tanstack/react-router";
-import RouteError from "../components/RouteError";
-import { useShell, useShellData } from "../shell-context";
-import type { ChannelType } from "../api/client";
+import type { ChannelManifest, WidgetManifest } from "../../types";
+import type { Channel, ChannelType } from "../../api/client";
 import type {
+  AppPreferences,
   AppearancePrefs,
   TickerPrefs,
   TickerRows,
@@ -18,24 +19,29 @@ import type {
   ChipColorMode,
   TickerDirection,
   ScrollMode,
-} from "../preferences";
-import { resetCategory } from "../preferences";
+} from "../../preferences";
+import { resetCategory } from "../../preferences";
 import {
   Section,
   ToggleRow,
   SegmentedRow,
   SliderRow,
   ResetButton,
-} from "../components/settings/SettingsControls";
-import { CHANNEL_ORDER } from "../channels/registry";
-import { WIDGET_ORDER } from "../widgets/registry";
+} from "./SettingsControls";
+import { CHANNEL_ORDER } from "../../channels/registry";
+import { WIDGET_ORDER } from "../../widgets/registry";
 
-// ── Route ───────────────────────────────────────────────────────
+// ── Props ───────────────────────────────────────────────────────
 
-export const Route = createFileRoute("/ticker")({
-  component: TickerRoute,
-  errorComponent: RouteError,
-});
+interface TickerSettingsProps {
+  prefs: AppPreferences;
+  onPrefsChange: (prefs: AppPreferences) => void;
+  channels: Channel[];
+  allChannelManifests: ChannelManifest[];
+  allWidgets: WidgetManifest[];
+  onToggleChannelTicker: (channelType: ChannelType, visible: boolean) => void;
+  onToggleWidgetTicker: (widgetId: string) => void;
+}
 
 // ── Options ─────────────────────────────────────────────────────
 
@@ -89,10 +95,15 @@ function speedLabel(speed: number): string {
 
 // ── Component ───────────────────────────────────────────────────
 
-function TickerRoute() {
-  const shell = useShell();
-  const { channels } = useShellData();
-  const { prefs, onPrefsChange, allChannelManifests, allWidgets } = shell;
+export default function TickerSettings({
+  prefs,
+  onPrefsChange,
+  channels,
+  allChannelManifests,
+  allWidgets,
+  onToggleChannelTicker,
+  onToggleWidgetTicker,
+}: TickerSettingsProps) {
   const { appearance, ticker } = prefs;
   const enabledWidgets = prefs.widgets.enabledWidgets;
 
@@ -127,7 +138,7 @@ function TickerRoute() {
     );
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
+    <div>
       {/* Sources — which channels/widgets show on the ticker */}
       <Section title="Sources">
         {sortedChannels.length === 0 && sortedEnabledWidgets.length === 0 && (
@@ -152,7 +163,7 @@ function TickerRoute() {
                 type="button"
                 role="switch"
                 aria-checked={ch.visible}
-                onClick={() => shell.onToggleChannelTicker(ch.channel_type as ChannelType, !ch.visible)}
+                onClick={() => onToggleChannelTicker(ch.channel_type as ChannelType, !ch.visible)}
                 className="cursor-pointer"
               >
                 <span
@@ -186,7 +197,7 @@ function TickerRoute() {
                 type="button"
                 role="switch"
                 aria-checked={isOnTicker}
-                onClick={() => shell.onToggleWidgetTicker(widget.id)}
+                onClick={() => onToggleWidgetTicker(widget.id)}
                 className="cursor-pointer"
               >
                 <span
