@@ -1,16 +1,18 @@
 /**
- * Sidebar — 200px labeled navigation sidebar.
+ * Sidebar — collapsible labeled navigation sidebar.
  *
  * Replaces IconRail + TopNav + AppTaskbar. Single navigation system
  * with text labels, clear sections, and a status footer.
+ * Collapses to a 48px icon-only rail with tooltips.
  */
-import { useMemo } from "react";
-import { LayoutDashboard, Settings, User } from "lucide-react";
+import { useState, useMemo } from "react";
+import { LayoutDashboard, Settings, User, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import clsx from "clsx";
 import type { ChannelManifest, WidgetManifest, DeliveryMode } from "../types";
 import type { Channel } from "../api/client";
 import { CHANNEL_ORDER } from "../channels/registry";
 import { WIDGET_ORDER } from "../widgets/registry";
+import { loadPref, savePref } from "../preferences";
 
 // ── EKG heartbeat logo ──────────────────────────────────────────
 
@@ -119,7 +121,17 @@ export default function Sidebar({
   onNavigateToSettings,
   onNavigateToAccount,
 }: SidebarProps) {
-  // Sort channels by canonical order, only show enabled+visible
+  const [collapsed, setCollapsed] = useState(() =>
+    loadPref("sidebarCollapsed", false),
+  );
+
+  function toggleCollapsed() {
+    const next = !collapsed;
+    setCollapsed(next);
+    savePref("sidebarCollapsed", next);
+  }
+
+  // Sort channels by canonical order, only show enabled
   const sortedChannels = useMemo(
     () =>
       [...channels]
@@ -145,13 +157,20 @@ export default function Sidebar({
   );
 
   return (
-    <aside className="flex flex-col shrink-0 border-r border-edge bg-surface-2 h-full w-[200px] overflow-hidden select-none">
+    <aside
+      className={clsx(
+        "flex flex-col shrink-0 border-r border-edge bg-surface-2 h-full overflow-hidden select-none transition-[width] duration-200 ease-out",
+        collapsed ? "w-[48px]" : "w-[200px]",
+      )}
+    >
       {/* App header — logo + name */}
       <button
         onClick={onNavigateToFeed}
         aria-label="Scrollr — go to dashboard"
+        title={collapsed ? "Dashboard" : undefined}
         className={clsx(
-          "flex items-center gap-2.5 w-full h-12 px-4 shrink-0 transition-colors",
+          "flex items-center w-full h-12 shrink-0 transition-colors",
+          collapsed ? "justify-center px-0" : "gap-2.5 px-4",
           isFeed
             ? "border-b border-accent/30 bg-accent/5"
             : tickerAlive
@@ -160,23 +179,32 @@ export default function Sidebar({
         )}
       >
         <EkgLogo alive={tickerAlive} />
-        <span className="text-sm font-semibold text-fg tracking-tight">Scrollr</span>
+        {!collapsed && (
+          <span className="text-sm font-semibold text-fg tracking-tight">Scrollr</span>
+        )}
       </button>
 
       {/* Navigation items */}
-      <nav className="flex-1 overflow-y-auto scrollbar-thin py-2 px-2">
+      <nav
+        className={clsx(
+          "flex-1 overflow-y-auto scrollbar-thin py-2",
+          collapsed ? "px-1" : "px-2",
+        )}
+      >
         {/* Dashboard */}
         <NavItem
           icon={<LayoutDashboard size={15} />}
           label="Dashboard"
           active={isFeed}
+          collapsed={collapsed}
           onClick={onNavigateToFeed}
         />
 
         {/* Channels section */}
         {sortedChannels.length > 0 && (
           <>
-            <SectionHeader label="Channels" />
+            {!collapsed && <SectionHeader label="Channels" />}
+            {collapsed && sortedChannels.length > 0 && <Divider />}
             {sortedChannels.map((ch) => {
               const manifest = allChannelManifests.find(
                 (m) => m.id === ch.channel_type,
@@ -201,6 +229,7 @@ export default function Sidebar({
                   label={manifest?.name ?? ch.channel_type}
                   active={isActive}
                   accentColor={manifest?.hex}
+                  collapsed={collapsed}
                   onClick={() => onSelectItem(ch.channel_type)}
                 />
               );
@@ -211,7 +240,8 @@ export default function Sidebar({
         {/* Widgets section */}
         {sortedWidgets.length > 0 && (
           <>
-            <SectionHeader label="Widgets" />
+            {!collapsed && <SectionHeader label="Widgets" />}
+            {collapsed && <Divider />}
             {sortedWidgets.map((widget) => {
               const isActive = activeItem === widget.id;
               return (
@@ -225,6 +255,7 @@ export default function Sidebar({
                   label={widget.name}
                   active={isActive}
                   accentColor={widget.hex}
+                  collapsed={collapsed}
                   onClick={() => onSelectItem(widget.id)}
                 />
               );
@@ -233,24 +264,59 @@ export default function Sidebar({
         )}
       </nav>
 
-      {/* Footer — settings, account, status */}
-      <div className="shrink-0 border-t border-edge px-2 py-2 space-y-0.5">
+      {/* Footer — settings, account, collapse toggle, status */}
+      <div
+        className={clsx(
+          "shrink-0 border-t border-edge py-2 space-y-0.5",
+          collapsed ? "px-1" : "px-2",
+        )}
+      >
         <NavItem
           icon={<Settings size={15} />}
           label="Settings"
           active={isSettings}
+          collapsed={collapsed}
           onClick={onNavigateToSettings}
         />
         <NavItem
           icon={<User size={15} />}
           label="Account"
           active={isAccount}
+          collapsed={collapsed}
           onClick={onNavigateToAccount}
         />
 
+        {/* Collapse toggle */}
+        <button
+          onClick={toggleCollapsed}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className={clsx(
+            "flex items-center w-full rounded-lg text-fg-4 hover:text-fg-2 hover:bg-surface-hover transition-colors",
+            collapsed
+              ? "justify-center py-1.5"
+              : "gap-2.5 px-2.5 py-1.5",
+          )}
+        >
+          <span className="shrink-0 flex items-center justify-center w-5 h-5">
+            {collapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
+          </span>
+          {!collapsed && (
+            <span className="text-[12px] font-medium">Collapse</span>
+          )}
+        </button>
+
         {/* Status footer — informational only */}
-        <div className="flex items-center gap-3 px-2.5 pt-2 mt-1 border-t border-edge/30">
-          <div className="flex items-center gap-1.5">
+        <div
+          className={clsx(
+            "flex items-center pt-2 mt-1 border-t border-edge/30",
+            collapsed ? "flex-col gap-1.5 px-0 justify-center" : "gap-3 px-2.5",
+          )}
+        >
+          <div
+            className="flex items-center gap-1.5"
+            title={deliveryMode === "sse" ? "Receiving updates live" : "Polling for updates"}
+          >
             <div
               className={clsx(
                 "w-1.5 h-1.5 rounded-full shrink-0",
@@ -259,16 +325,16 @@ export default function Sidebar({
                   : "bg-warn",
               )}
             />
-            <span
-              className={clsx(
-                "text-[10px] font-mono uppercase tracking-wider",
-                deliveryMode === "sse" ? "text-fg-4" : "text-fg-4",
-              )}
-            >
-              {deliveryMode === "sse" ? "Live" : "Polling"}
-            </span>
+            {!collapsed && (
+              <span className="text-[10px] font-mono uppercase tracking-wider text-fg-4">
+                {deliveryMode === "sse" ? "Live" : "Polling"}
+              </span>
+            )}
           </div>
-          <div className="flex items-center gap-1.5">
+          <div
+            className="flex items-center gap-1.5"
+            title={tickerAlive ? "Ticker is running" : "Ticker is off"}
+          >
             <div
               className={clsx(
                 "w-1.5 h-1.5 rounded-full shrink-0 transition-all duration-500",
@@ -277,9 +343,11 @@ export default function Sidebar({
                   : "bg-fg-4/30",
               )}
             />
-            <span className="text-[10px] font-mono uppercase tracking-wider text-fg-4">
-              {tickerAlive ? "Ticker" : "Off"}
-            </span>
+            {!collapsed && (
+              <span className="text-[10px] font-mono uppercase tracking-wider text-fg-4">
+                {tickerAlive ? "Ticker" : "Off"}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -297,6 +365,12 @@ function SectionHeader({ label }: { label: string }) {
   );
 }
 
+// ── Divider (collapsed mode separator) ──────────────────────────
+
+function Divider() {
+  return <div className="w-5 h-px bg-edge mx-auto my-2 shrink-0" />;
+}
+
 // ── Nav item ────────────────────────────────────────────────────
 
 function NavItem({
@@ -304,20 +378,27 @@ function NavItem({
   label,
   active,
   accentColor,
+  collapsed,
   onClick,
 }: {
   icon: React.ReactNode;
   label: string;
   active: boolean;
   accentColor?: string;
+  collapsed?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       onClick={onClick}
       aria-current={active ? "page" : undefined}
+      aria-label={collapsed ? label : undefined}
+      title={collapsed ? label : undefined}
       className={clsx(
-        "relative flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-[13px] font-medium transition-colors",
+        "relative flex items-center w-full rounded-lg font-medium transition-colors",
+        collapsed
+          ? "justify-center py-1.5 px-0"
+          : "gap-2.5 px-2.5 py-1.5 text-[13px]",
         active
           ? "bg-accent/10 text-fg"
           : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
@@ -333,7 +414,7 @@ function NavItem({
       <span className="shrink-0 flex items-center justify-center w-5 h-5">
         {icon}
       </span>
-      <span className="truncate">{label}</span>
+      {!collapsed && <span className="truncate">{label}</span>}
     </button>
   );
 }
