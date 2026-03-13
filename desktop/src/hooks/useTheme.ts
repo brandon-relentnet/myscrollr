@@ -6,7 +6,7 @@
  * media query listening for system mode.
  */
 import { useEffect } from "react";
-import { savePref, resolveTheme } from "../preferences";
+import { resolveTheme } from "../preferences";
 import type { Theme } from "../preferences";
 
 export function useTheme(shellId: string, theme: Theme, uiScale: number): void {
@@ -22,13 +22,11 @@ export function useTheme(shellId: string, theme: Theme, uiScale: number): void {
       () => shell.classList.remove("theme-transition"),
       350,
     );
-    savePref("theme", resolved);
 
     if (theme === "system") {
       const mq = window.matchMedia("(prefers-color-scheme: dark)");
       const handler = (e: MediaQueryListEvent) => {
         shell.dataset.theme = e.matches ? "dark" : "light";
-        savePref("theme", e.matches ? "dark" : "light");
       };
       mq.addEventListener("change", handler);
       return () => {

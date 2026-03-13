@@ -6,6 +6,7 @@
  *   - tab: "feed" | "info" | "configuration"
  */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import RouteError from "../components/RouteError";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getChannel } from "../channels/registry";
 import { getAllChannels } from "../channels/registry";
@@ -27,7 +28,7 @@ export const Route = createFileRoute("/channel/$type/$tab")({
     queryClient.ensureQueryData(dashboardQueryOptions()),
   component: ChannelRoute,
   pendingComponent: ChannelPending,
-  errorComponent: ChannelError,
+  errorComponent: RouteError,
 });
 
 function ChannelRoute() {
@@ -236,14 +237,4 @@ function ChannelPending() {
   );
 }
 
-function ChannelError({ error }: { error: Error }) {
-  return (
-    <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto gap-3 p-6">
-      <div className="w-10 h-10 rounded-xl bg-error/10 flex items-center justify-center mb-1">
-        <span className="text-error text-lg font-bold">!</span>
-      </div>
-      <h2 className="text-base font-semibold text-fg">Something went wrong</h2>
-      <p className="text-sm text-fg-3 leading-relaxed">{error.message}</p>
-    </div>
-  );
-}
+
