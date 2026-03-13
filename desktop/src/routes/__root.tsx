@@ -132,15 +132,11 @@ function RootLayout() {
 
   const channels: Channel[] = useMemo(() => dashboard?.channels ?? [], [dashboard]);
 
-  const sortedChannels = useMemo(() => {
-    const ORDER = ["finance", "sports", "rss", "fantasy"];
-    return [...channels]
-      .filter((ch) => ch.enabled)
-      .sort(
-        (a, b) =>
-          ORDER.indexOf(a.channel_type) - ORDER.indexOf(b.channel_type),
-      );
-  }, [channels]);
+  // Filter to enabled channels only — Sidebar handles sorting by CHANNEL_ORDER
+  const enabledChannels = useMemo(
+    () => channels.filter((ch) => ch.enabled),
+    [channels],
+  );
 
   // ── Manifests ───────────────────────────────────────────────
   const allChannelManifests = useMemo(() => getAllChannels(), []);
@@ -368,7 +364,7 @@ function RootLayout() {
           isFeed={route.isFeed}
           isSettings={route.isSettings}
           isAccount={route.isAccount}
-          channels={sortedChannels}
+          channels={enabledChannels}
           enabledWidgets={enabledWidgets}
           allChannelManifests={allChannelManifests}
           allWidgets={allWidgets}
