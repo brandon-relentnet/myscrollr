@@ -52,13 +52,14 @@ export default function ClockConsolidatedChip({
       {onTogglePin && (
         <span
           role="button"
-          tabIndex={-1}
+          tabIndex={0}
+          aria-label={pinned ? "Unpin widget" : "Pin widget"}
           onClick={(e) => { e.stopPropagation(); onTogglePin(); }}
           onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); onTogglePin(); } }}
           className={clsx(
             "absolute -top-1 -right-1 z-10 p-0.5 rounded-full border transition-opacity",
             "bg-surface border-edge/50",
-            pinned ? "opacity-80" : "opacity-0 group-hover:opacity-80",
+            pinned ? "opacity-80" : "opacity-0 group-hover:opacity-80 focus:opacity-80",
           )}
         >
           <PinIcon size={10} className={c.textDim} />

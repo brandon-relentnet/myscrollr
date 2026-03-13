@@ -1,6 +1,6 @@
 [package]
 name = "scrollr-desktop"
-version = "0.8.3"
+version = "0.9.1"
 edition = "2021"
 
 [lib]

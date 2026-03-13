@@ -13,14 +13,13 @@ import {
 } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { getVersion } from "@tauri-apps/api/app";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   enable as enableAutostart,
   disable as disableAutostart,
   isEnabled as isAutostartEnabled,
 } from "@tauri-apps/plugin-autostart";
+import { getVersion } from "@tauri-apps/api/app";
 import clsx from "clsx";
 
 // Shell components
@@ -36,18 +35,7 @@ import { getAllWidgets, getWidget } from "../widgets/registry";
 
 // Data
 import { dashboardQueryOptions } from "../api/queries";
-import { channelsApi } from "../api/client";
-import type { ChannelType, Channel } from "../api/client";
-
-// Auth
-import {
-  login as authLogin,
-  logout as authLogout,
-  getValidToken,
-  isAuthenticated as checkAuth,
-  getTier,
-} from "../auth";
-import type { SubscriptionTier } from "../auth";
+import { getValidToken } from "../auth";
 
 // Preferences
 import {
@@ -55,16 +43,20 @@ import {
   savePref,
   loadPrefs,
   savePrefs,
-  resolveTheme,
   TICKER_GAPS,
 } from "../preferences";
 import type { AppPreferences } from "../preferences";
 
 // Types
 import type { DeliveryMode } from "../types";
+import type { Channel } from "../api/client";
 
 // Hooks
 import { useWidgetTickerData } from "../hooks/useWidgetTickerData";
+import { useTheme } from "../hooks/useTheme";
+import { useAuthState } from "../hooks/useAuthState";
+import { useChannelActions } from "../hooks/useChannelActions";
+import { useWidgetActions } from "../hooks/useWidgetActions";
 
 // Shell context
 import { ShellContext } from "../shell-context";
@@ -97,83 +89,55 @@ function parseRoute(pathname: string) {
     return {
       activeItem: "",
       activeView: "feed" as ActiveView,
-      isChannel: false,
-      isWidget: false,
-      isFeed: true,
-      isTicker: false,
-      isSettings: false,
-      isAccount: false,
+      isChannel: false, isWidget: false, isFeed: true,
+      isTicker: false, isSettings: false, isAccount: false,
     };
   }
   if (kind === "channel" && itemId) {
     return {
       activeItem: itemId,
       activeView: "none" as ActiveView,
-      isChannel: true,
-      isWidget: false,
-      isFeed: false,
-      isTicker: false,
-      isSettings: false,
-      isAccount: false,
+      isChannel: true, isWidget: false, isFeed: false,
+      isTicker: false, isSettings: false, isAccount: false,
     };
   }
   if (kind === "widget" && itemId) {
     return {
       activeItem: itemId,
       activeView: "none" as ActiveView,
-      isChannel: false,
-      isWidget: true,
-      isFeed: false,
-      isTicker: false,
-      isSettings: false,
-      isAccount: false,
+      isChannel: false, isWidget: true, isFeed: false,
+      isTicker: false, isSettings: false, isAccount: false,
     };
   }
   if (kind === "ticker") {
     return {
       activeItem: "",
       activeView: "ticker" as ActiveView,
-      isChannel: false,
-      isWidget: false,
-      isFeed: false,
-      isTicker: true,
-      isSettings: false,
-      isAccount: false,
+      isChannel: false, isWidget: false, isFeed: false,
+      isTicker: true, isSettings: false, isAccount: false,
     };
   }
   if (kind === "settings") {
     return {
       activeItem: "settings",
       activeView: "settings" as ActiveView,
-      isChannel: false,
-      isWidget: false,
-      isFeed: false,
-      isTicker: false,
-      isSettings: true,
-      isAccount: false,
+      isChannel: false, isWidget: false, isFeed: false,
+      isTicker: false, isSettings: true, isAccount: false,
     };
   }
   if (kind === "account") {
     return {
       activeItem: "",
       activeView: "account" as ActiveView,
-      isChannel: false,
-      isWidget: false,
-      isFeed: false,
-      isTicker: false,
-      isSettings: false,
-      isAccount: true,
+      isChannel: false, isWidget: false, isFeed: false,
+      isTicker: false, isSettings: false, isAccount: true,
     };
   }
   return {
     activeItem: "",
     activeView: "feed" as ActiveView,
-    isChannel: false,
-    isWidget: false,
-    isFeed: true,
-    isTicker: false,
-    isSettings: false,
-    isAccount: false,
+    isChannel: false, isWidget: false, isFeed: true,
+    isTicker: false, isSettings: false, isAccount: false,
   };
 }
 
@@ -183,14 +147,6 @@ function RootLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const route = parseRoute(location.pathname);
-
-  // ── Auth state ──────────────────────────────────────────────
-  const [authenticated, setAuthenticated] = useState(() => checkAuth());
-  const [tier, setTier] = useState<SubscriptionTier>(() =>
-    checkAuth() ? getTier() : "free",
-  );
-  const [loggingIn, setLoggingIn] = useState(false);
-  const [sessionExpired, setSessionExpired] = useState(false);
 
   // ── Dashboard data (TanStack Query) ─────────────────────────
   const {
@@ -236,18 +192,21 @@ function RootLayout() {
     loadPref<DeliveryMode>("deliveryMode", "polling"),
   );
 
-  // Refs for stable closures
-  const authenticatedRef = useRef(authenticated);
-  authenticatedRef.current = authenticated;
+  // ── Extracted hooks ─────────────────────────────────────────
+
+  const refetchDashboard = useCallback(() => { fetchDashboard(); }, [fetchDashboard]);
+
+  const auth = useAuthState(refetchDashboard);
+  const channelActions = useChannelActions(refetchDashboard);
+  const widgetActions = useWidgetActions(prefs, setPrefs, route.activeItem);
+
+  // Apply theme + UI scale
+  useTheme("app-shell", prefs.appearance.theme, prefs.appearance.uiScale);
 
   // ── Auth sync — refresh tier on dashboard load ──────────────
   useEffect(() => {
-    if (dashboard) {
-      const isAuth = checkAuth();
-      if (isAuth !== authenticated) setAuthenticated(isAuth);
-      if (isAuth) setTier(getTier());
-    }
-  }, [dashboard]);
+    auth.syncAuthFromDashboard(dashboard);
+  }, [dashboard]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Resolve empty route — redirect / to /feed ───────────────
   useEffect(() => {
@@ -256,48 +215,7 @@ function RootLayout() {
     }
   }, [location.pathname, loading, navigate]);
 
-  // ── Theme & scale ───────────────────────────────────────────
-
-  useEffect(() => {
-    const shell = document.getElementById("app-shell");
-    if (!shell) return;
-
-    const resolved = resolveTheme(prefs.appearance.theme);
-    shell.classList.add("theme-transition");
-    shell.dataset.theme = resolved;
-    const timer = setTimeout(
-      () => shell.classList.remove("theme-transition"),
-      350,
-    );
-    savePref("theme", resolved);
-
-    if (prefs.appearance.theme === "system") {
-      const mq = window.matchMedia("(prefers-color-scheme: dark)");
-      const handler = (e: MediaQueryListEvent) => {
-        shell.dataset.theme = e.matches ? "dark" : "light";
-        savePref("theme", e.matches ? "dark" : "light");
-      };
-      mq.addEventListener("change", handler);
-      return () => {
-        clearTimeout(timer);
-        mq.removeEventListener("change", handler);
-      };
-    }
-
-    return () => clearTimeout(timer);
-  }, [prefs.appearance.theme]);
-
-  useEffect(() => {
-    const shell = document.getElementById("app-shell");
-    if (!shell) return;
-    shell.style.zoom =
-      prefs.appearance.uiScale === 100
-        ? ""
-        : `${prefs.appearance.uiScale}%`;
-  }, [prefs.appearance.uiScale]);
-
   // ── Cross-window sync ───────────────────────────────────────
-
   useEffect(() => {
     function onStorage(e: StorageEvent) {
       if (e.key === "scrollr:settings" && e.newValue) {
@@ -327,12 +245,10 @@ function RootLayout() {
         navigate({ to: "/settings" });
         return;
       }
-      // Channel?
       if (channels.some((ch) => ch.channel_type === id)) {
         navigate({ to: "/channel/$type/$tab", params: { type: id, tab: "feed" } });
         return;
       }
-      // Widget?
       if (getWidget(id)) {
         navigate({ to: "/widget/$id/$tab", params: { id, tab: "feed" } });
         return;
@@ -342,187 +258,35 @@ function RootLayout() {
     [channels, navigate],
   );
 
-  const handleNavigateToFeed = useCallback(() => {
-    navigate({ to: "/feed" });
-  }, [navigate]);
-
-  const handleNavigateToTicker = useCallback(() => {
-    navigate({ to: "/ticker" });
-  }, [navigate]);
-
-  const handleNavigateToSettings = useCallback(() => {
-    navigate({ to: "/settings" });
-  }, [navigate]);
-
-  const handleNavigateToAccount = useCallback(() => {
-    navigate({ to: "/account" });
-  }, [navigate]);
+  const handleNavigateToFeed = useCallback(() => navigate({ to: "/feed" }), [navigate]);
+  const handleNavigateToTicker = useCallback(() => navigate({ to: "/ticker" }), [navigate]);
+  const handleNavigateToSettings = useCallback(() => navigate({ to: "/settings" }), [navigate]);
+  const handleNavigateToAccount = useCallback(() => navigate({ to: "/account" }), [navigate]);
 
   // ── Keyboard shortcuts ──────────────────────────────────────
-
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
-        if (loggingIn) { setLoggingIn(false); return; }
-        if (sessionExpired) { setSessionExpired(false); return; }
-        // If on a channel/widget detail sub-tab, go back to feed tab
+        if (auth.loggingIn) { auth.setLoggingIn(false); return; }
+        if (auth.sessionExpired) { auth.setSessionExpired(false); return; }
         if (route.isChannel || route.isWidget) {
           const segments = location.pathname.split("/").filter(Boolean);
           const tab = segments[2];
           if (tab && tab !== "feed") {
             if (route.isChannel) {
-              navigate({
-                to: "/channel/$type/$tab",
-                params: { type: route.activeItem, tab: "feed" },
-              });
+              navigate({ to: "/channel/$type/$tab", params: { type: route.activeItem, tab: "feed" } });
             } else {
-              navigate({
-                to: "/widget/$id/$tab",
-                params: { id: route.activeItem, tab: "feed" },
-              });
+              navigate({ to: "/widget/$id/$tab", params: { id: route.activeItem, tab: "feed" } });
             }
             return;
           }
-          // If already on feed tab, go back to dashboard
           navigate({ to: "/feed" });
         }
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [loggingIn, sessionExpired, route, location.pathname, navigate]);
-
-  // ── Auth handlers ───────────────────────────────────────────
-
-  const handleLogin = useCallback(async () => {
-    setLoggingIn(true);
-    try {
-      const result = await authLogin();
-      if (result) {
-        setAuthenticated(true);
-        setTier(getTier());
-        fetchDashboard();
-      }
-    } finally {
-      setLoggingIn(false);
-    }
-  }, [fetchDashboard]);
-
-  const handleLogout = useCallback(async () => {
-    await invoke("stop_sse").catch(() => {});
-    authLogout();
-    setAuthenticated(false);
-    setTier("free");
-    fetchDashboard();
-  }, [fetchDashboard]);
-
-  // ── Channel handlers ────────────────────────────────────────
-
-  const handleToggleChannel = useCallback(
-    async (channelType: ChannelType, visible: boolean) => {
-      const token = await getValidToken();
-      if (!token) return;
-      try {
-        await channelsApi.update(
-          channelType,
-          { enabled: true, visible },
-          () => Promise.resolve(token),
-        );
-        fetchDashboard();
-      } catch (err) {
-        console.error("[Scrollr] Channel toggle failed:", err);
-      }
-    },
-    [fetchDashboard],
-  );
-
-  const handleAddChannel = useCallback(
-    async (channelType: ChannelType) => {
-      const token = await getValidToken();
-      if (!token) return;
-      try {
-        await channelsApi.create(
-          channelType,
-          {},
-          () => Promise.resolve(token),
-        );
-        fetchDashboard();
-        navigate({
-          to: "/channel/$type/$tab",
-          params: { type: channelType, tab: "feed" },
-        });
-      } catch (err) {
-        console.error("[Scrollr] Channel add failed:", err);
-      }
-    },
-    [fetchDashboard, navigate],
-  );
-
-  const handleDeleteChannel = useCallback(
-    async (channelType: ChannelType) => {
-      const token = await getValidToken();
-      if (!token) return;
-      try {
-        await channelsApi.delete(channelType, () => Promise.resolve(token));
-        await fetchDashboard();
-        navigate({ to: "/feed" });
-      } catch (err) {
-        console.error("[Scrollr] Channel delete failed:", err);
-      }
-    },
-    [fetchDashboard, navigate],
-  );
-
-  // ── Widget handlers ─────────────────────────────────────────
-
-  const handleToggleWidgetTicker = useCallback(
-    (widgetId: string) => {
-      const onTicker = prefs.widgets.widgetsOnTicker;
-      const nextOnTicker = onTicker.includes(widgetId)
-        ? onTicker.filter((id) => id !== widgetId)
-        : [...onTicker, widgetId];
-      const next: AppPreferences = {
-        ...prefs,
-        widgets: { ...prefs.widgets, widgetsOnTicker: nextOnTicker },
-      };
-      setPrefs(next);
-      savePrefs(next);
-    },
-    [prefs],
-  );
-
-  const handleToggleWidget = useCallback(
-    (widgetId: string) => {
-      const isEnabled = enabledWidgets.includes(widgetId);
-      const nextEnabled = isEnabled
-        ? enabledWidgets.filter((id) => id !== widgetId)
-        : [...enabledWidgets, widgetId];
-      const nextOnTicker = isEnabled
-        ? prefs.widgets.widgetsOnTicker.filter((id) => id !== widgetId)
-        : [...prefs.widgets.widgetsOnTicker, widgetId];
-      const next: AppPreferences = {
-        ...prefs,
-        widgets: {
-          ...prefs.widgets,
-          enabledWidgets: nextEnabled,
-          widgetsOnTicker: nextOnTicker,
-        },
-      };
-      setPrefs(next);
-      savePrefs(next);
-
-      if (!isEnabled) {
-        navigate({
-          to: "/widget/$id/$tab",
-          params: { id: widgetId, tab: "feed" },
-        });
-      }
-      if (isEnabled && route.activeItem === widgetId) {
-        navigate({ to: "/feed" });
-      }
-    },
-    [prefs, enabledWidgets, route.activeItem, navigate],
-  );
+  }, [auth.loggingIn, auth.sessionExpired, route, location.pathname, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Settings handlers ───────────────────────────────────────
 
@@ -541,8 +305,6 @@ function RootLayout() {
     }
   }, []);
 
-  // ── Stable getToken ─────────────────────────────────────────
-
   const getToken = useCallback(() => getValidToken(), []);
 
   // ── Ticker data ─────────────────────────────────────────────
@@ -558,23 +320,6 @@ function RootLayout() {
   );
 
   const widgetData = useWidgetTickerData(prefs.widgets);
-
-  const handleTogglePin = useCallback((widgetId: string) => {
-    setPrefs((prev) => {
-      const pinned = { ...prev.widgets.pinnedWidgets };
-      if (pinned[widgetId]) {
-        delete pinned[widgetId];
-      } else {
-        pinned[widgetId] = { side: "left" };
-      }
-      const updated = {
-        ...prev,
-        widgets: { ...prev.widgets, pinnedWidgets: pinned },
-      };
-      savePrefs(updated);
-      return updated;
-    });
-  }, []);
 
   // ── Ticker / taskbar toggles ────────────────────────────────
 
@@ -599,10 +344,10 @@ function RootLayout() {
     () => ({
       prefs,
       onPrefsChange: handlePrefsChange,
-      authenticated,
-      tier,
-      onLogin: handleLogin,
-      onLogout: handleLogout,
+      authenticated: auth.authenticated,
+      tier: auth.tier,
+      onLogin: auth.handleLogin,
+      onLogout: auth.handleLogout,
       autostartEnabled: autostartOn,
       onAutostartChange: handleAutostartChange,
       showAppTicker,
@@ -617,27 +362,26 @@ function RootLayout() {
       },
       appVersion,
       getToken,
-      // New navigation overhaul additions
       channels,
       dashboard,
       allChannelManifests,
       allWidgets,
-      onToggleChannelTicker: handleToggleChannel,
-      onToggleWidgetTicker: handleToggleWidgetTicker,
-      onAddChannel: handleAddChannel,
-      onDeleteChannel: handleDeleteChannel,
-      onToggleWidget: handleToggleWidget,
-      fetchDashboard: () => { fetchDashboard(); },
+      onToggleChannelTicker: channelActions.handleToggleChannel,
+      onToggleWidgetTicker: widgetActions.handleToggleWidgetTicker,
+      onAddChannel: channelActions.handleAddChannel,
+      onDeleteChannel: channelActions.handleDeleteChannel,
+      onToggleWidget: widgetActions.handleToggleWidget,
+      fetchDashboard: refetchDashboard,
       onSelectItem: handleSelectItem,
     }),
     [
-      prefs, handlePrefsChange, authenticated, tier,
-      handleLogin, handleLogout, autostartOn, handleAutostartChange,
+      prefs, handlePrefsChange, auth.authenticated, auth.tier,
+      auth.handleLogin, auth.handleLogout, autostartOn, handleAutostartChange,
       showAppTicker, showTaskbar, appVersion, getToken,
       channels, dashboard, allChannelManifests, allWidgets,
-      handleToggleChannel, handleToggleWidgetTicker,
-      handleAddChannel, handleDeleteChannel, handleToggleWidget,
-      fetchDashboard, handleSelectItem,
+      channelActions.handleToggleChannel, widgetActions.handleToggleWidgetTicker,
+      channelActions.handleAddChannel, channelActions.handleDeleteChannel,
+      widgetActions.handleToggleWidget, refetchDashboard, handleSelectItem,
     ],
   );
 
@@ -670,27 +414,25 @@ function RootLayout() {
         />
 
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-          {/* Top navigation */}
           <TopNav
             activeView={route.activeView}
-            authenticated={authenticated}
-            tier={tier}
+            authenticated={auth.authenticated}
+            tier={auth.tier}
             onNavigateToFeed={handleNavigateToFeed}
             onNavigateToTicker={handleNavigateToTicker}
             onNavigateToSettings={handleNavigateToSettings}
             onNavigateToAccount={handleNavigateToAccount}
-            onLogin={handleLogin}
+            onLogin={auth.handleLogin}
           />
 
-          {/* App ticker */}
           {showAppTicker &&
             Array.from({ length: prefs.appearance.tickerRows }, (_, i) => (
               <ScrollrTicker
                 key={`app-row${i}-${prefs.ticker.tickerGap}-${prefs.ticker.tickerSpeed}-${prefs.ticker.hoverSpeed}-${prefs.ticker.tickerMode}-${prefs.ticker.mixMode}-${prefs.ticker.chipColors}-${prefs.ticker.tickerDirection}-${prefs.ticker.scrollMode}-${prefs.ticker.stepPause}-${prefs.appearance.tickerRows}`}
-                dashboard={dashboard}
+                dashboard={dashboard ?? null}
                 activeTabs={activeTabs}
                 widgetData={widgetData}
-                onTogglePin={handleTogglePin}
+                onTogglePin={widgetActions.handleTogglePin}
                 pinnedWidgets={prefs.widgets.pinnedWidgets}
                 speed={prefs.ticker.tickerSpeed}
                 gap={TICKER_GAPS[prefs.ticker.tickerGap]}
@@ -707,7 +449,6 @@ function RootLayout() {
               />
             ))}
 
-          {/* Taskbar */}
           {showTaskbar && (
             <AppTaskbar
               prefs={prefs}
@@ -721,21 +462,20 @@ function RootLayout() {
             />
           )}
 
-          {/* Session expired banner */}
-          {sessionExpired && (
+          {auth.sessionExpired && (
             <div className="flex items-center justify-between px-4 py-2 bg-warn/10 border-b border-warn/20 shrink-0">
               <span className="text-xs text-warn">
                 Your session has expired. Sign in again to access your channels.
               </span>
               <div className="flex items-center gap-2 shrink-0 ml-4">
                 <button
-                  onClick={handleLogin}
+                  onClick={auth.handleLogin}
                   className="text-xs font-medium text-warn hover:text-fg transition-colors"
                 >
                   Sign in
                 </button>
                 <button
-                  onClick={() => setSessionExpired(false)}
+                  onClick={() => auth.setSessionExpired(false)}
                   className="text-xs text-fg-4 hover:text-fg-3 transition-colors"
                   aria-label="Dismiss"
                 >
@@ -745,15 +485,13 @@ function RootLayout() {
             </div>
           )}
 
-          {/* Content — route outlet */}
           <div className="flex-1 overflow-y-auto scrollbar-thin">
             <ShellContext.Provider value={shellValue}>
               <Outlet />
             </ShellContext.Provider>
           </div>
 
-          {/* Login overlay */}
-          {loggingIn && (
+          {auth.loggingIn && (
             <div
               role="dialog"
               aria-modal="true"
@@ -769,7 +507,7 @@ function RootLayout() {
                   Finish signing in from your browser
                 </p>
                 <button
-                  onClick={() => setLoggingIn(false)}
+                  onClick={() => auth.setLoggingIn(false)}
                   className="mt-4 px-4 py-1.5 rounded-lg text-xs font-medium text-fg-3 hover:text-fg-2 hover:bg-surface-hover transition-colors"
                 >
                   Cancel

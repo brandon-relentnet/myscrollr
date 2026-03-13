@@ -10,11 +10,8 @@ import { Settings } from "lucide-react";
 import clsx from "clsx";
 import type { ChannelManifest, WidgetManifest } from "../types";
 import type { Channel } from "../api/client";
-
-// ── Canonical display orders ────────────────────────────────────
-
-const CHANNEL_ORDER = ["finance", "sports", "rss", "fantasy"];
-const WIDGET_ORDER = ["clock", "weather", "sysmon"];
+import { CHANNEL_ORDER } from "../channels/registry";
+import { WIDGET_ORDER } from "../widgets/registry";
 
 // ── EKG heartbeat path ──────────────────────────────────────────
 

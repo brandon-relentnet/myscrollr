@@ -100,7 +100,7 @@ export function GameItem({ game, mode }: GameItemProps) {
         {game.away_team_logo && (
           <img
             src={game.away_team_logo}
-            alt=""
+            alt={game.away_team_name}
             className="w-4 h-4 object-contain"
           />
         )}
@@ -144,7 +144,7 @@ export function GameItem({ game, mode }: GameItemProps) {
         {game.home_team_logo && (
           <img
             src={game.home_team_logo}
-            alt=""
+            alt={game.home_team_name}
             className="w-4 h-4 object-contain"
           />
         )}
@@ -178,7 +178,7 @@ export function GameItem({ game, mode }: GameItemProps) {
           {game.away_team_logo && (
             <img
               src={game.away_team_logo}
-              alt=""
+              alt={game.away_team_name}
               className="w-5 h-5 object-contain"
             />
           )}
@@ -207,7 +207,7 @@ export function GameItem({ game, mode }: GameItemProps) {
           {game.home_team_logo && (
             <img
               src={game.home_team_logo}
-              alt=""
+              alt={game.home_team_name}
               className="w-5 h-5 object-contain"
             />
           )}

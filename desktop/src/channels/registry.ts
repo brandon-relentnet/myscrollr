@@ -18,7 +18,7 @@ const modules = import.meta.glob<Record<string, ChannelManifest>>(
 const channels = new Map<string, ChannelManifest>();
 
 /** Canonical display order for channel tabs. */
-const CHANNEL_ORDER = ["finance", "sports", "fantasy", "rss"] as const;
+export const CHANNEL_ORDER: readonly string[] = ["finance", "sports", "fantasy", "rss"];
 
 // Auto-register all discovered channels.
 for (const [, mod] of Object.entries(modules)) {
@@ -42,11 +42,11 @@ export function getChannel(id: string): ChannelManifest | undefined {
 
 /** Get all registered channels. */
 export function getAllChannels(): ChannelManifest[] {
-  const known = (CHANNEL_ORDER as readonly string[])
+  const known = CHANNEL_ORDER
     .filter((id) => channels.has(id))
     .map((id) => channels.get(id)!);
   const unknown = Array.from(channels.values())
-    .filter((ch) => !(CHANNEL_ORDER as readonly string[]).includes(ch.id))
+    .filter((ch) => !CHANNEL_ORDER.includes(ch.id))
     .sort((a, b) => a.id.localeCompare(b.id));
   return [...known, ...unknown];
 }

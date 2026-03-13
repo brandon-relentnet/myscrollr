@@ -18,7 +18,7 @@ const modules = import.meta.glob<Record<string, WidgetManifest>>(
 const widgets = new Map<string, WidgetManifest>();
 
 /** Canonical display order for widget tabs. */
-const WIDGET_ORDER = ["clock", "weather", "sysmon"] as const;
+export const WIDGET_ORDER: readonly string[] = ["clock", "weather", "sysmon"];
 
 // Auto-register all discovered widgets.
 for (const [, mod] of Object.entries(modules)) {
@@ -42,11 +42,11 @@ export function getWidget(id: string): WidgetManifest | undefined {
 
 /** Get all registered widgets in canonical order. */
 export function getAllWidgets(): WidgetManifest[] {
-  const known = (WIDGET_ORDER as readonly string[])
+  const known = WIDGET_ORDER
     .filter((id) => widgets.has(id))
     .map((id) => widgets.get(id)!);
   const unknown = Array.from(widgets.values())
-    .filter((w) => !(WIDGET_ORDER as readonly string[]).includes(w.id))
+    .filter((w) => !WIDGET_ORDER.includes(w.id))
     .sort((a, b) => a.id.localeCompare(b.id));
   return [...known, ...unknown];
 }

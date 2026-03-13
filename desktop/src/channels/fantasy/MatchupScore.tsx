@@ -99,7 +99,7 @@ export function ComfortMatchupHero({
         {myTeam.team_logo && (
           <img
             src={myTeam.team_logo}
-            alt=""
+            alt={myTeam.name}
             className="w-5 h-5 object-contain shrink-0"
           />
         )}
@@ -155,7 +155,7 @@ export function ComfortMatchupHero({
         {oppTeam.team_logo && (
           <img
             src={oppTeam.team_logo}
-            alt=""
+            alt={oppTeam.name}
             className="w-5 h-5 object-contain shrink-0"
           />
         )}

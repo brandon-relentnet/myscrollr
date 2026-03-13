@@ -26,12 +26,27 @@ import {
   SliderRow,
   ResetButton,
 } from "../components/settings/SettingsControls";
+import { CHANNEL_ORDER } from "../channels/registry";
+import { WIDGET_ORDER } from "../widgets/registry";
 
 // ── Route ───────────────────────────────────────────────────────
 
 export const Route = createFileRoute("/ticker")({
   component: TickerRoute,
+  errorComponent: TickerError,
 });
+
+function TickerError({ error }: { error: Error }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto gap-3 p-6">
+      <div className="w-10 h-10 rounded-xl bg-error/10 flex items-center justify-center mb-1">
+        <span className="text-error text-lg font-bold">!</span>
+      </div>
+      <h2 className="text-base font-semibold text-fg">Something went wrong</h2>
+      <p className="text-sm text-fg-3 leading-relaxed">{error.message}</p>
+    </div>
+  );
+}
 
 // ── Options ─────────────────────────────────────────────────────
 
@@ -82,11 +97,6 @@ function speedLabel(speed: number): string {
   if (speed <= 100) return "Fast";
   return "Fastest";
 }
-
-// ── Display orders ──────────────────────────────────────────────
-
-const CHANNEL_ORDER = ["finance", "sports", "rss", "fantasy"];
-const WIDGET_ORDER = ["clock", "weather", "sysmon"];
 
 // ── Component ───────────────────────────────────────────────────
 

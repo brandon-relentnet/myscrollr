@@ -5,6 +5,8 @@
  * Stored in localStorage via loadPref/savePref.
  */
 import { loadPref, savePref } from "../../preferences";
+import { CHANNEL_ORDER } from "../../channels/registry";
+import { WIDGET_ORDER } from "../../widgets/registry";
 
 // ── Per-card preference types ───────────────────────────────────
 
@@ -114,8 +116,8 @@ export function saveShowAddMore(show: boolean): void {
 
 const ORDER_KEY = "dashboard:cardOrder";
 
-const DEFAULT_CHANNEL_ORDER = ["finance", "sports", "rss", "fantasy"];
-const DEFAULT_WIDGET_ORDER = ["clock", "weather", "sysmon"];
+const DEFAULT_CHANNEL_ORDER = [...CHANNEL_ORDER];
+const DEFAULT_WIDGET_ORDER = [...WIDGET_ORDER];
 
 export interface CardOrder {
   channels: string[];

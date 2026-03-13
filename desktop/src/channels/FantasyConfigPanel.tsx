@@ -1215,7 +1215,7 @@ function MatchupScoreCard({
           {userTeam.team_logo && (
             <img
               src={userTeam.team_logo}
-              alt=""
+              alt={userTeam.name}
               className="h-7 w-7 rounded object-cover shrink-0"
             />
           )}
@@ -1256,7 +1256,7 @@ function MatchupScoreCard({
           {opponentTeam.team_logo && (
             <img
               src={opponentTeam.team_logo}
-              alt=""
+              alt={opponentTeam.name}
               className="h-7 w-7 rounded object-cover shrink-0"
             />
           )}
@@ -1327,7 +1327,7 @@ function MatchupsSection({
               {teamA.team_logo && (
                 <img
                   src={teamA.team_logo}
-                  alt=""
+                  alt={teamA.name}
                   className="h-4 w-4 rounded object-cover shrink-0"
                 />
               )}
@@ -1375,7 +1375,7 @@ function MatchupsSection({
               {teamB.team_logo && (
                 <img
                   src={teamB.team_logo}
-                  alt=""
+                  alt={teamB.name}
                   className="h-4 w-4 rounded object-cover shrink-0"
                 />
               )}
@@ -1433,7 +1433,7 @@ function StandingsSection({
               {team.team_logo && (
                 <img
                   src={team.team_logo}
-                  alt=""
+                  alt={team.name}
                   className="h-5 w-5 rounded object-cover"
                 />
               )}

@@ -146,7 +146,7 @@ export default function GameChip({
         {game.away_team_logo && (
           <img
             src={game.away_team_logo}
-            alt=""
+            alt={game.away_team_name}
             className={clsx(
               "object-contain shrink-0",
               comfort ? "w-3.5 h-3.5" : "w-3 h-3",
@@ -198,7 +198,7 @@ export default function GameChip({
         {game.home_team_logo && (
           <img
             src={game.home_team_logo}
-            alt=""
+            alt={game.home_team_name}
             className={clsx(
               "object-contain shrink-0",
               comfort ? "w-3.5 h-3.5" : "w-3 h-3",

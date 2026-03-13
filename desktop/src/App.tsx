@@ -23,13 +23,13 @@ import {
   savePref,
   loadPrefs,
   savePrefs,
-  resolveTheme,
   TICKER_GAPS,
   TICKER_HEIGHTS,
 } from "./preferences";
 import type { AppPreferences, TickerPosition } from "./preferences";
 import { getAllWidgets } from "./widgets/registry";
 import { useWidgetTickerData } from "./hooks/useWidgetTickerData";
+import { useTheme } from "./hooks/useTheme";
 
 // ── Constants ────────────────────────────────────────────────────
 
@@ -165,7 +165,7 @@ export default function App() {
     if (!token) return;
     sseActiveRef.current = true;
     setDeliveryMode("sse");
-    await invoke("start_sse", { token }).catch(() => {
+    await invoke("start_sse", { token, apiBase: API_URL }).catch(() => {
       sseActiveRef.current = false;
       setDeliveryMode("polling");
       startPolling(tierRef.current);
@@ -195,7 +195,7 @@ export default function App() {
           if (newToken) {
             sseActiveRef.current = true;
             setDeliveryMode("sse");
-            invoke("start_sse", { token: newToken }).catch(() => {
+            invoke("start_sse", { token: newToken, apiBase: API_URL }).catch(() => {
               sseActiveRef.current = false;
               setDeliveryMode("polling");
             });
@@ -382,46 +382,8 @@ export default function App() {
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  // ── Theme application ────────────────────────────────────────
-
-  useEffect(() => {
-    const shell = document.getElementById("desktop-shell");
-    if (!shell) return;
-
-    const resolved = resolveTheme(prefs.appearance.theme);
-
-    shell.classList.add("theme-transition");
-    shell.dataset.theme = resolved;
-    const timer = setTimeout(
-      () => shell.classList.remove("theme-transition"),
-      350,
-    );
-
-    if (prefs.appearance.theme === "system") {
-      const mq = window.matchMedia("(prefers-color-scheme: dark)");
-      const handler = (e: MediaQueryListEvent) => {
-        shell.dataset.theme = e.matches ? "dark" : "light";
-      };
-      mq.addEventListener("change", handler);
-      return () => {
-        clearTimeout(timer);
-        mq.removeEventListener("change", handler);
-      };
-    }
-
-    return () => clearTimeout(timer);
-  }, [prefs.appearance.theme]);
-
-  // ── UI scale application ───────────────────────────────────────
-
-  useEffect(() => {
-    const shell = document.getElementById("desktop-shell");
-    if (!shell) return;
-    shell.style.zoom =
-      prefs.appearance.uiScale === 100
-        ? ""
-        : `${prefs.appearance.uiScale}%`;
-  }, [prefs.appearance.uiScale]);
+  // ── Theme + UI scale (shared hook) ────────────────────────────
+  useTheme("desktop-shell", prefs.appearance.theme, prefs.appearance.uiScale);
 
   // ── Broadcast delivery mode to app window ─────────────────────
 

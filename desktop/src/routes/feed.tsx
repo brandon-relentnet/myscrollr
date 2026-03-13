@@ -94,7 +94,20 @@ const WIDGET_PREFS_KEY: Record<string, keyof DashboardCardPrefs> = {
 
 export const Route = createFileRoute("/feed")({
   component: FeedDashboard,
+  errorComponent: FeedError,
 });
+
+function FeedError({ error }: { error: Error }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto gap-3 p-6">
+      <div className="w-10 h-10 rounded-xl bg-error/10 flex items-center justify-center mb-1">
+        <span className="text-error text-lg font-bold">!</span>
+      </div>
+      <h2 className="text-base font-semibold text-fg">Something went wrong</h2>
+      <p className="text-sm text-fg-3 leading-relaxed">{error.message}</p>
+    </div>
+  );
+}
 
 function FeedDashboard() {
   const navigate = useNavigate();
@@ -160,7 +173,7 @@ function FeedDashboard() {
 
   // Keep order in sync — only update if the set of active IDs changed
   const channelOrder = useMemo(() => {
-    const activeSet = new Set(activeChannelIds);
+    const activeSet: Set<string> = new Set(activeChannelIds);
     const current = cardOrder.channels.filter((id) => activeSet.has(id));
     const merged = mergedOrder.channels;
     return current.length === merged.length &&

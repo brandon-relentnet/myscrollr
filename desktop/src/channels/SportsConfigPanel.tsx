@@ -150,7 +150,7 @@ export default function SportsConfigPanel({
               {item.logo_url && (
                 <img
                   src={item.logo_url}
-                  alt=""
+                  alt={item.name}
                   className="w-5 h-5 object-contain shrink-0"
                 />
               )}
