@@ -377,9 +377,10 @@ function LeagueSection({ league, games, prefs, pinnedId, onPin }: LeagueSectionP
 interface SportsSummaryProps {
   dashboard: DashboardResponse | undefined;
   prefs: SportsCardPrefs;
+  onConfigure?: () => void;
 }
 
-export default function SportsSummary({ dashboard, prefs }: SportsSummaryProps) {
+export default function SportsSummary({ dashboard, prefs, onConfigure }: SportsSummaryProps) {
   const initialItems = (dashboard?.data?.sports ?? []) as Game[];
   const { items } = useScrollrCDC<Game>({
     table: "games",
@@ -424,9 +425,17 @@ export default function SportsSummary({ dashboard, prefs }: SportsSummaryProps) 
 
   if (items.length === 0) {
     return (
-      <p className="text-[11px] text-fg-4 italic py-1">
-        No games right now
-      </p>
+      <div className="flex flex-col gap-2 py-1">
+        <p className="text-[11px] text-fg-4">No games right now</p>
+        {onConfigure && (
+          <button
+            onClick={onConfigure}
+            className="text-[11px] font-medium text-accent hover:text-accent/80 transition-colors self-start"
+          >
+            Add leagues &rarr;
+          </button>
+        )}
+      </div>
     );
   }
 

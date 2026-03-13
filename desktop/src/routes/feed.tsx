@@ -45,7 +45,7 @@ import type {
 
 const CHANNEL_SUMMARIES: Record<
   string,
-  React.ComponentType<{ dashboard: any; prefs: any }>
+  React.ComponentType<{ dashboard: any; prefs: any; onConfigure?: () => void }>
 > = {
   finance: FinanceSummary,
   sports: SportsSummary,
@@ -292,6 +292,7 @@ function FeedDashboard() {
                     name={manifest.name}
                     icon={manifest.icon}
                     hex={manifest.hex}
+                    headerClickOnly
                     onClick={() =>
                       navigate({
                         to: "/channel/$type/$tab",
@@ -325,7 +326,16 @@ function FeedDashboard() {
                     }
                   >
                     {SummaryComponent ? (
-                      <SummaryComponent dashboard={dashboard} prefs={prefs} />
+                      <SummaryComponent
+                        dashboard={dashboard}
+                        prefs={prefs}
+                        onConfigure={() =>
+                          navigate({
+                            to: "/channel/$type/$tab",
+                            params: { type: ch.channel_type, tab: "configuration" },
+                          })
+                        }
+                      />
                     ) : (
                       <p className="text-[11px] text-fg-4 italic">No preview</p>
                     )}

@@ -4,10 +4,13 @@
  * Renders a consistent card with hex-colored accent border, icon,
  * name, gear button, and click-to-navigate behavior.
  *
+ * Channels use header-only navigation (click title → feed, with
+ * an arrow icon on hover). Widgets keep full-card click navigation.
+ *
  * In edit mode the children (summary) are replaced by a CardEditor
  * with the card's toggle schema. Arrow buttons allow reordering.
  */
-import { Settings, ChevronUp, ChevronDown } from "lucide-react";
+import { Settings, ChevronUp, ChevronDown, ArrowRight } from "lucide-react";
 import clsx from "clsx";
 import CardEditor from "./CardEditor";
 import type { EditorField } from "./dashboardPrefs";
@@ -19,7 +22,7 @@ interface DashboardCardProps {
   icon: React.ComponentType<{ size?: number; className?: string }>;
   /** Hex accent color. */
   hex: string;
-  /** Click the card body to navigate. */
+  /** Click to navigate to the feed. */
   onClick: () => void;
   /** Click the gear icon to configure. */
   onConfigure: () => void;
@@ -27,6 +30,8 @@ interface DashboardCardProps {
   children: React.ReactNode;
   /** Whether the dashboard is in edit mode. */
   editing?: boolean;
+  /** Only the header is clickable (channels). Full card clickable when false (widgets). */
+  headerClickOnly?: boolean;
   /** Editor schema for this card type. */
   schema?: EditorField[];
   /** Current card prefs values. */
@@ -47,12 +52,15 @@ export default function DashboardCard({
   onConfigure,
   children,
   editing,
+  headerClickOnly,
   schema,
   editorValues,
   onEditorChange,
   onMoveUp,
   onMoveDown,
 }: DashboardCardProps) {
+  const fullCardClick = !headerClickOnly && !editing;
+
   return (
     <div
       className={clsx(
@@ -60,9 +68,9 @@ export default function DashboardCard({
         "bg-surface-2/50 transition-colors overflow-hidden",
         editing
           ? "ring-1 ring-accent/20"
-          : "hover:bg-surface-2 cursor-pointer",
+          : fullCardClick && "hover:bg-surface-2 cursor-pointer",
       )}
-      onClick={editing ? undefined : onClick}
+      onClick={fullCardClick ? onClick : undefined}
     >
       {/* Left accent bar */}
       <div
@@ -72,17 +80,42 @@ export default function DashboardCard({
 
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span
-            className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0"
-            style={{ backgroundColor: `${hex}15`, color: hex }}
+        {/* Title area — clickable for header-only mode */}
+        {headerClickOnly && !editing ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onClick();
+            }}
+            className="group/title flex items-center gap-2.5 min-w-0 rounded-lg -ml-1 pl-1 pr-2 -my-0.5 py-0.5 hover:bg-surface-3/50 transition-colors"
           >
-            <Icon size={15} />
-          </span>
-          <span className="text-[13px] font-semibold text-fg truncate">
-            {name}
-          </span>
-        </div>
+            <span
+              className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0"
+              style={{ backgroundColor: `${hex}15`, color: hex }}
+            >
+              <Icon size={15} />
+            </span>
+            <span className="text-[13px] font-semibold text-fg truncate">
+              {name}
+            </span>
+            <ArrowRight
+              size={12}
+              className="text-fg-4 opacity-0 group-hover/title:opacity-100 transition-opacity shrink-0"
+            />
+          </button>
+        ) : (
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span
+              className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0"
+              style={{ backgroundColor: `${hex}15`, color: hex }}
+            >
+              <Icon size={15} />
+            </span>
+            <span className="text-[13px] font-semibold text-fg truncate">
+              {name}
+            </span>
+          </div>
+        )}
 
         {/* Edit mode — arrow buttons */}
         {editing && (

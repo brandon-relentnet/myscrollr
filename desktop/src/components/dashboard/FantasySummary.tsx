@@ -10,6 +10,7 @@ import type { FantasyCardPrefs } from "./dashboardPrefs";
 interface FantasySummaryProps {
   dashboard: DashboardResponse | undefined;
   prefs: FantasyCardPrefs;
+  onConfigure?: () => void;
 }
 
 interface LeagueResponse {
@@ -49,7 +50,7 @@ const SPORT_EMOJI: Record<string, string> = {
   mlb: "\u26BE",
 };
 
-export default function FantasySummary({ dashboard, prefs }: FantasySummaryProps) {
+export default function FantasySummary({ dashboard, prefs, onConfigure }: FantasySummaryProps) {
   // Fantasy data comes via channelConfig.__initialItems (not CDC)
   // On the dashboard, we read from the dashboard response directly
   const channelData = (dashboard?.channels ?? []).find(
@@ -60,9 +61,17 @@ export default function FantasySummary({ dashboard, prefs }: FantasySummaryProps
 
   if (leagues.length === 0) {
     return (
-      <p className="text-[11px] text-fg-4 italic py-1">
-        No leagues connected
-      </p>
+      <div className="flex flex-col gap-2 py-1">
+        <p className="text-[11px] text-fg-4">No leagues connected</p>
+        {onConfigure && (
+          <button
+            onClick={onConfigure}
+            className="text-[11px] font-medium text-accent hover:text-accent/80 transition-colors self-start"
+          >
+            Connect Yahoo &rarr;
+          </button>
+        )}
+      </div>
     );
   }
 

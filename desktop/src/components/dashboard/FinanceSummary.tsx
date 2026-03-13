@@ -175,9 +175,10 @@ function CompactBadge({ trade, onPromote }: CompactBadgeProps) {
 interface FinanceSummaryProps {
   dashboard: DashboardResponse | undefined;
   prefs: FinanceCardPrefs;
+  onConfigure?: () => void;
 }
 
-export default function FinanceSummary({ dashboard, prefs }: FinanceSummaryProps) {
+export default function FinanceSummary({ dashboard, prefs, onConfigure }: FinanceSummaryProps) {
   const initialItems = (dashboard?.data?.finance ?? []) as Trade[];
   const { items } = useScrollrCDC<Trade>({
     table: "trades",
@@ -242,9 +243,17 @@ export default function FinanceSummary({ dashboard, prefs }: FinanceSummaryProps
 
   if (items.length === 0) {
     return (
-      <p className="text-[11px] text-fg-4 italic py-1">
-        No stocks added yet
-      </p>
+      <div className="flex flex-col gap-2 py-1">
+        <p className="text-[11px] text-fg-4">No stocks added yet</p>
+        {onConfigure && (
+          <button
+            onClick={onConfigure}
+            className="text-[11px] font-medium text-accent hover:text-accent/80 transition-colors self-start"
+          >
+            Add stocks &rarr;
+          </button>
+        )}
+      </div>
     );
   }
 

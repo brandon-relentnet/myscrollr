@@ -11,6 +11,7 @@ import type { RssCardPrefs } from "./dashboardPrefs";
 interface RssSummaryProps {
   dashboard: DashboardResponse | undefined;
   prefs: RssCardPrefs;
+  onConfigure?: () => void;
 }
 
 function timeAgo(dateStr: string | null): string {
@@ -25,7 +26,7 @@ function timeAgo(dateStr: string | null): string {
   return `${days}d`;
 }
 
-export default function RssSummary({ dashboard, prefs }: RssSummaryProps) {
+export default function RssSummary({ dashboard, prefs, onConfigure }: RssSummaryProps) {
   const initialItems = (dashboard?.data?.rss ?? []) as RssItem[];
   const { items } = useScrollrCDC<RssItem>({
     table: "rss_items",
@@ -41,9 +42,17 @@ export default function RssSummary({ dashboard, prefs }: RssSummaryProps) {
 
   if (items.length === 0) {
     return (
-      <p className="text-[11px] text-fg-4 italic py-1">
-        No feeds added yet
-      </p>
+      <div className="flex flex-col gap-2 py-1">
+        <p className="text-[11px] text-fg-4">No feeds added yet</p>
+        {onConfigure && (
+          <button
+            onClick={onConfigure}
+            className="text-[11px] font-medium text-accent hover:text-accent/80 transition-colors self-start"
+          >
+            Add feeds &rarr;
+          </button>
+        )}
+      </div>
     );
   }
 
