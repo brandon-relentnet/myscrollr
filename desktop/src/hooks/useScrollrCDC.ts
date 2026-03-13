@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTauriListener } from "./useTauriListener";
 import { dashboardQueryOptions, queryKeys } from "../api/queries";
@@ -71,14 +70,10 @@ export function useScrollrCDC<T>({
   validate,
 }: UseScrollrCDCOptions<T>): UseScrollrCDCResult<T> {
   const queryClient = useQueryClient();
-  const initializedRef = useRef(false);
 
   // Read items from the dashboard query cache
   const { data: dashboard } = useQuery(dashboardQueryOptions());
   const items = ((dashboard?.data?.[dataKey] as T[] | undefined) ?? []);
-
-  // Track initialization
-  if (items.length > 0) initializedRef.current = true;
 
   // Listen for CDC events from the Rust SSE client and merge into cache
   useTauriListener<SSEPayload>(

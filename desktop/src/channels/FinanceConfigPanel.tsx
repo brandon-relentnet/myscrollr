@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { TrendingUp } from "lucide-react";
 import { clsx } from "clsx";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -67,11 +67,11 @@ export default function FinanceConfigPanel({
   );
 
   // Auto-dismiss errors
-  useState(() => {
+  useEffect(() => {
     if (!error) return;
     const t = setTimeout(() => setError(null), 4000);
     return () => clearTimeout(t);
-  });
+  }, [error]);
 
   // ── Update mutation ────────────────────────────────────────────
   const updateMutation = useMutation({

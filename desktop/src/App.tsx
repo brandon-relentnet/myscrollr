@@ -75,12 +75,17 @@ export default function App() {
     if (channels.length === 0) {
       return loadPref("activeFeedTabs", ["finance", "sports"]);
     }
-    const visible = channels
+    return channels
       .filter((ch) => ch.enabled && ch.visible)
       .map((ch) => ch.channel_type);
-    savePref("activeFeedTabs", visible);
-    return visible;
   }, [channels]);
+
+  // Persist active tabs when they change (side effect, not in useMemo)
+  useEffect(() => {
+    if (channels.length > 0) {
+      savePref("activeFeedTabs", channelTabs);
+    }
+  }, [channelTabs, channels.length]);
 
   const channelsRef = useRef(channels);
   channelsRef.current = channels;

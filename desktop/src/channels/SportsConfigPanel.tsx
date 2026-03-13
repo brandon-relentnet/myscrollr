@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Trophy } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SetupBrowser } from "../components/settings/SetupBrowser";
@@ -49,11 +49,11 @@ export default function SportsConfigPanel({
   const leagueSet = useMemo(() => new Set(leagues), [leagues]);
 
   // Auto-dismiss errors
-  useState(() => {
+  useEffect(() => {
     if (!error) return;
     const t = setTimeout(() => setError(null), 4000);
     return () => clearTimeout(t);
-  });
+  }, [error]);
 
   // ── Catalog query ──────────────────────────────────────────────
   const {

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Plus, Rss, Trash2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SetupBrowser } from "../components/settings/SetupBrowser";
@@ -30,11 +30,11 @@ export default function RssConfigPanel({
   const feedUrlSet = useMemo(() => new Set(feeds.map((f) => f.url)), [feeds]);
 
   // Auto-dismiss errors
-  useState(() => {
+  useEffect(() => {
     if (!error) return;
     const t = setTimeout(() => setError(null), 4000);
     return () => clearTimeout(t);
-  });
+  }, [error]);
 
   // ── Catalog query ──────────────────────────────────────────────
   const {
@@ -63,12 +63,6 @@ export default function RssConfigPanel({
   // ── Delete catalog feed mutation ───────────────────────────────
   const deleteCatalogMutation = useMutation({
     mutationFn: (url: string) => rssApi.deleteFeed(url),
-    onSuccess: (_data, url) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.catalogs.rss });
-      if (feedUrlSet.has(url)) {
-        updateFeeds(feeds.filter((f) => f.url !== url));
-      }
-    },
     onError: () => {
       setError("Failed to remove feed from catalog");
     },
@@ -91,11 +85,20 @@ export default function RssConfigPanel({
   );
 
   const deleteCatalogFeed = useCallback(
-    (feed: TrackedFeed) => {
+    async (feed: TrackedFeed) => {
       if (feed.is_default) return;
-      deleteCatalogMutation.mutate(feed.url);
+      try {
+        await deleteCatalogMutation.mutateAsync(feed.url);
+        queryClient.invalidateQueries({ queryKey: queryKeys.catalogs.rss });
+        // Also remove from user's feed list if subscribed
+        if (feedUrlSet.has(feed.url)) {
+          updateFeeds(feeds.filter((f) => f.url !== feed.url));
+        }
+      } catch {
+        // onError in mutation config handles the UI
+      }
     },
-    [deleteCatalogMutation],
+    [deleteCatalogMutation, queryClient, feedUrlSet, feeds, updateFeeds],
   );
 
   const addCustomFeed = useCallback(() => {

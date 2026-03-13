@@ -9,6 +9,7 @@ import { fetch } from "@tauri-apps/plugin-http";
 import { API_BASE } from "../config";
 import { getValidToken } from "../auth";
 import { request } from "./client";
+import type { TrackedFeed } from "./client";
 import type { DashboardResponse } from "../types";
 
 // ── Query Keys ───────────────────────────────────────────────────
@@ -107,7 +108,7 @@ export function financeCatalogOptions() {
 export function rssCatalogOptions() {
   return queryOptions({
     queryKey: queryKeys.catalogs.rss,
-    queryFn: () => request<Array<import("./client").TrackedFeed>>("/rss/feeds"),
+    queryFn: () => request<Array<TrackedFeed>>("/rss/feeds"),
     staleTime: 5 * 60 * 1000,
   });
 }
