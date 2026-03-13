@@ -51,8 +51,7 @@ const SPORT_EMOJI: Record<string, string> = {
 };
 
 export default function FantasySummary({ dashboard, prefs, onConfigure }: FantasySummaryProps) {
-  // Fantasy data comes via channelConfig.__initialItems (not CDC)
-  // On the dashboard, we read from the dashboard response directly
+  // Fantasy data is stored in channel config (not CDC like other channels)
   const channelData = (dashboard?.channels ?? []).find(
     (ch) => ch.channel_type === "fantasy",
   );

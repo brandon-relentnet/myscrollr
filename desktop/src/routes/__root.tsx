@@ -151,7 +151,6 @@ function RootLayout() {
   const {
     data: dashboard,
     isLoading: loading,
-    refetch: fetchDashboard,
   } = useQuery(dashboardQueryOptions());
 
   const channels: Channel[] = useMemo(() => dashboard?.channels ?? [], [dashboard]);
