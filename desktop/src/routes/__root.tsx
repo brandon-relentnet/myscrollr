@@ -135,7 +135,7 @@ function RootLayout() {
   const sortedChannels = useMemo(() => {
     const ORDER = ["finance", "sports", "rss", "fantasy"];
     return [...channels]
-      .filter((ch) => ch.enabled && ch.visible)
+      .filter((ch) => ch.enabled)
       .sort(
         (a, b) =>
           ORDER.indexOf(a.channel_type) - ORDER.indexOf(b.channel_type),
@@ -283,6 +283,10 @@ function RootLayout() {
             }
             return;
           }
+          navigate({ to: "/feed" });
+          return;
+        }
+        if (route.isSettings || route.isAccount) {
           navigate({ to: "/feed" });
         }
       }

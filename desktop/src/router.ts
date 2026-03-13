@@ -19,9 +19,9 @@ const HISTORY_KEY = "scrollr:lastRoute";
 /** Routes that were removed or moved — redirect to their replacements. */
 const ROUTE_REDIRECTS: Record<string, string> = {
   "/settings/general": "/settings",
-  "/settings/ticker": "/settings",
+  "/settings/ticker": "/settings?tab=ticker",
   "/settings/account": "/account",
-  "/ticker": "/settings",
+  "/ticker": "/settings?tab=ticker",
 };
 
 function getInitialEntry(): string {

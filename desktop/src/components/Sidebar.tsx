@@ -186,6 +186,7 @@ export default function Sidebar({
 
       {/* Navigation items */}
       <nav
+        aria-label="Main navigation"
         className={clsx(
           "flex-1 overflow-y-auto scrollbar-thin py-2",
           collapsed ? "px-1" : "px-2",
@@ -204,7 +205,7 @@ export default function Sidebar({
         {sortedChannels.length > 0 && (
           <>
             {!collapsed && <SectionHeader label="Channels" />}
-            {collapsed && sortedChannels.length > 0 && <Divider />}
+            {collapsed && <Divider />}
             {sortedChannels.map((ch) => {
               const manifest = allChannelManifests.find(
                 (m) => m.id === ch.channel_type,
