@@ -11,7 +11,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import RouteError from "../components/RouteError";
 import { Pencil, Check, ChevronDown, ChevronRight } from "lucide-react";
 import clsx from "clsx";
-import { useShell } from "../shell-context";
+import { useShell, useShellData } from "../shell-context";
 import DashboardCard, { GhostCard } from "../components/dashboard/DashboardCard";
 import FinanceSummary from "../components/dashboard/FinanceSummary";
 import SportsSummary from "../components/dashboard/SportsSummary";
@@ -101,9 +101,8 @@ export const Route = createFileRoute("/feed")({
 function FeedDashboard() {
   const navigate = useNavigate();
   const shell = useShell();
+  const { channels, dashboard } = useShellData();
   const {
-    channels,
-    dashboard,
     allChannelManifests,
     allWidgets,
     authenticated,

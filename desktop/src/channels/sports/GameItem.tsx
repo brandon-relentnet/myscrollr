@@ -4,7 +4,7 @@
  * Supports compact (single-row) and comfort (two-row with team logos)
  * display modes. Flashes briefly when scores update via CDC.
  */
-import { useState, useEffect, useRef } from "react";
+import { memo, useState, useEffect, useRef } from "react";
 import { clsx } from "clsx";
 import type { Game, FeedMode } from "../../types";
 
@@ -83,7 +83,7 @@ function useScoreFlash(
 
 // ── Component ───────────────────────────────────────────────────
 
-export function GameItem({ game, mode }: GameItemProps) {
+export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
   const live = isLive(game);
   const isFinal = game.state === "final";
   const winner = getWinner(game);
@@ -247,4 +247,14 @@ export function GameItem({ game, mode }: GameItemProps) {
       </div>
     </div>
   );
-}
+}, (prev, next) =>
+  prev.mode === next.mode &&
+  prev.game.id === next.game.id &&
+  prev.game.away_team_score === next.game.away_team_score &&
+  prev.game.home_team_score === next.game.home_team_score &&
+  prev.game.state === next.game.state &&
+  prev.game.timer === next.game.timer &&
+  prev.game.status_long === next.game.status_long &&
+  prev.game.status_short === next.game.status_short &&
+  prev.game.short_detail === next.game.short_detail
+);

@@ -1,8 +1,16 @@
 /**
  * Shell context — shared state between the root layout and child routes.
  *
+ * Split into two contexts for render performance:
+ *   - ShellContext  (stable)  — prefs, auth, callbacks, manifests. Changes
+ *     only on explicit user action. Consumed by all routes.
+ *   - ShellDataContext (volatile) — channels and dashboard data. Changes on
+ *     every TanStack Query refetch / CDC event. Only consumed by routes
+ *     that actually need live data (feed, ticker).
+ *
  * Routes that need preferences, auth state, or shell handlers consume
- * this context via useShell(). The root layout provides it.
+ * this context via useShell(). Routes that also need live dashboard data
+ * additionally call useShellData().
  */
 import { createContext, useContext } from "react";
 import type { AppPreferences } from "./preferences";
@@ -10,6 +18,8 @@ import type { SubscriptionTier } from "./auth";
 import type { ChannelType, Channel } from "./api/client";
 import type { DashboardResponse } from "./types";
 import type { ChannelManifest, WidgetManifest } from "./types";
+
+// ── Stable context (prefs, auth, callbacks, manifests) ──────────
 
 export interface ShellState {
   prefs: AppPreferences;
@@ -26,11 +36,6 @@ export interface ShellState {
   onToggleTaskbar: (enabled: boolean) => void;
   appVersion: string;
 
-  // ── Navigation overhaul additions ──────────────────────────────
-  /** User's channel records from the dashboard API. */
-  channels: Channel[];
-  /** Dashboard query response (for initial data snapshots). */
-  dashboard: DashboardResponse | undefined;
   /** All registered channel manifests (static). */
   allChannelManifests: ChannelManifest[];
   /** All registered widget manifests (static). */
@@ -54,5 +59,22 @@ export const ShellContext = createContext<ShellState | null>(null);
 export function useShell(): ShellState {
   const ctx = useContext(ShellContext);
   if (!ctx) throw new Error("useShell must be used within RootLayout");
+  return ctx;
+}
+
+// ── Volatile data context (channels + dashboard) ────────────────
+
+export interface ShellDataState {
+  /** User's channel records from the dashboard API. */
+  channels: Channel[];
+  /** Dashboard query response (for initial data snapshots). */
+  dashboard: DashboardResponse | undefined;
+}
+
+export const ShellDataContext = createContext<ShellDataState | null>(null);
+
+export function useShellData(): ShellDataState {
+  const ctx = useContext(ShellDataContext);
+  if (!ctx) throw new Error("useShellData must be used within RootLayout");
   return ctx;
 }

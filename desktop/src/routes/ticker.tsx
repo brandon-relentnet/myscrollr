@@ -6,7 +6,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import RouteError from "../components/RouteError";
-import { useShell } from "../shell-context";
+import { useShell, useShellData } from "../shell-context";
 import type { ChannelType } from "../api/client";
 import type {
   AppearancePrefs,
@@ -91,7 +91,8 @@ function speedLabel(speed: number): string {
 
 function TickerRoute() {
   const shell = useShell();
-  const { prefs, onPrefsChange, channels, allChannelManifests, allWidgets } = shell;
+  const { channels } = useShellData();
+  const { prefs, onPrefsChange, allChannelManifests, allWidgets } = shell;
   const { appearance, ticker } = prefs;
   const enabledWidgets = prefs.widgets.enabledWidgets;
 

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { clsx } from "clsx";
 import type { Trade } from "../../types";
 import type { ChipColorMode } from "../../preferences";
@@ -31,7 +32,7 @@ function formatPriceChange(change: number | string | undefined): string {
   return `${sign}$${Math.abs(num).toFixed(2)}`;
 }
 
-export default function TradeChip({ trade, comfort, colorMode = "channel", onClick }: TradeChipProps) {
+const TradeChip = memo(function TradeChip({ trade, comfort, colorMode = "channel", onClick }: TradeChipProps) {
   const c = getChipColors(colorMode, "finance");
   const isUp = trade.direction === "up";
   const changeStr = formatChange(trade.percentage_change);
@@ -82,4 +83,16 @@ export default function TradeChip({ trade, comfort, colorMode = "channel", onCli
       )}
     </button>
   );
-}
+}, (prev, next) =>
+  prev.comfort === next.comfort &&
+  prev.colorMode === next.colorMode &&
+  prev.onClick === next.onClick &&
+  prev.trade.symbol === next.trade.symbol &&
+  prev.trade.price === next.trade.price &&
+  prev.trade.percentage_change === next.trade.percentage_change &&
+  prev.trade.direction === next.trade.direction &&
+  prev.trade.previous_close === next.trade.previous_close &&
+  prev.trade.price_change === next.trade.price_change
+);
+
+export default TradeChip;

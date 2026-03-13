@@ -5,7 +5,7 @@
  * via the desktop CDC/SSE pipeline. Supports compact and comfort
  * display modes with price flash animations on change.
  */
-import { useMemo, useCallback, useRef, useEffect, useState } from "react";
+import { memo, useMemo, useCallback, useRef, useEffect, useState } from "react";
 import { clsx } from "clsx";
 import { TrendingUp } from "lucide-react";
 import { useScrollrCDC } from "../../hooks/useScrollrCDC";
@@ -130,7 +130,7 @@ function timeAgo(dateStr: string | undefined): string {
   return `${days}d`;
 }
 
-function TradeItem({ trade, mode }: TradeItemProps) {
+const TradeItem = memo(function TradeItem({ trade, mode }: TradeItemProps) {
   const isUp = trade.direction === "up";
   const isDown = trade.direction === "down";
 
@@ -238,4 +238,12 @@ function TradeItem({ trade, mode }: TradeItemProps) {
       </div>
     </a>
   );
-}
+}, (prev, next) =>
+  prev.mode === next.mode &&
+  prev.trade.symbol === next.trade.symbol &&
+  prev.trade.price === next.trade.price &&
+  prev.trade.percentage_change === next.trade.percentage_change &&
+  prev.trade.direction === next.trade.direction &&
+  prev.trade.previous_close === next.trade.previous_close &&
+  prev.trade.last_updated === next.trade.last_updated
+);

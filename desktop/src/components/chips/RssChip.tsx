@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { clsx } from "clsx";
 import type { RssItem } from "../../types";
 import type { ChipColorMode } from "../../preferences";
@@ -22,7 +23,7 @@ function timeAgo(dateStr: string | null): string {
   return `${days}d ago`;
 }
 
-export default function RssChip({ item, comfort, colorMode = "channel", onClick }: RssChipProps) {
+const RssChip = memo(function RssChip({ item, comfort, colorMode = "channel", onClick }: RssChipProps) {
   const c = getChipColors(colorMode, "rss");
   const maxLen = comfort ? 60 : 40;
   const headline =
@@ -65,4 +66,15 @@ export default function RssChip({ item, comfort, colorMode = "channel", onClick 
       )}
     </button>
   );
-}
+}, (prev, next) =>
+  prev.comfort === next.comfort &&
+  prev.colorMode === next.colorMode &&
+  prev.onClick === next.onClick &&
+  prev.item.guid === next.item.guid &&
+  prev.item.feed_url === next.item.feed_url &&
+  prev.item.title === next.item.title &&
+  prev.item.source_name === next.item.source_name &&
+  prev.item.published_at === next.item.published_at
+);
+
+export default RssChip;

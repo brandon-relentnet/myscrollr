@@ -5,7 +5,7 @@
  * real-time updates via the desktop CDC/SSE pipeline. Shows source
  * name, title, description, and relative timestamps.
  */
-import { useMemo, useCallback } from "react";
+import { memo, useMemo, useCallback } from "react";
 import { Rss } from "lucide-react";
 import { clsx } from "clsx";
 import { useScrollrCDC } from "../../hooks/useScrollrCDC";
@@ -141,7 +141,7 @@ function truncate(text: string, maxLen: number): string {
   return text.slice(0, maxLen).trimEnd() + "\u2026";
 }
 
-function RssArticle({ item, mode }: RssArticleProps) {
+const RssArticle = memo(function RssArticle({ item, mode }: RssArticleProps) {
   const ago = timeAgo(item.published_at);
 
   if (mode === "compact") {
@@ -193,4 +193,10 @@ function RssArticle({ item, mode }: RssArticleProps) {
       </div>
     </a>
   );
-}
+}, (prev, next) =>
+  prev.mode === next.mode &&
+  prev.item.guid === next.item.guid &&
+  prev.item.feed_url === next.item.feed_url &&
+  prev.item.title === next.item.title &&
+  prev.item.published_at === next.item.published_at
+);
