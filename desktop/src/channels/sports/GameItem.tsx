@@ -250,7 +250,11 @@ export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
 }, (prev, next) =>
   prev.mode === next.mode &&
   prev.game.id === next.game.id &&
+  prev.game.away_team_name === next.game.away_team_name &&
+  prev.game.away_team_logo === next.game.away_team_logo &&
   prev.game.away_team_score === next.game.away_team_score &&
+  prev.game.home_team_name === next.game.home_team_name &&
+  prev.game.home_team_logo === next.game.home_team_logo &&
   prev.game.home_team_score === next.game.home_team_score &&
   prev.game.state === next.game.state &&
   prev.game.timer === next.game.timer &&

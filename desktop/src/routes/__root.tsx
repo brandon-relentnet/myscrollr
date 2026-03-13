@@ -13,7 +13,7 @@ import {
 } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   enable as enableAutostart,
   disable as disableAutostart,
@@ -235,13 +235,18 @@ function RootLayout() {
 
   // ── Navigation handlers ─────────────────────────────────────
 
+  // Keep a ref to channels so handleSelectItem doesn't depend on
+  // the volatile `channels` array, which changes every dashboard refetch.
+  const channelsRef = useRef(channels);
+  channelsRef.current = channels;
+
   const handleSelectItem = useCallback(
     (id: string) => {
       if (id === "settings") {
         navigate({ to: "/settings" });
         return;
       }
-      if (channels.some((ch) => ch.channel_type === id)) {
+      if (channelsRef.current.some((ch) => ch.channel_type === id)) {
         navigate({ to: "/channel/$type/$tab", params: { type: id, tab: "feed" } });
         return;
       }
@@ -251,7 +256,7 @@ function RootLayout() {
       }
       navigate({ to: "/feed" });
     },
-    [channels, navigate],
+    [navigate],
   );
 
   const handleNavigateToFeed = useCallback(() => navigate({ to: "/feed" }), [navigate]);

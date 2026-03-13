@@ -198,5 +198,8 @@ const RssArticle = memo(function RssArticle({ item, mode }: RssArticleProps) {
   prev.item.guid === next.item.guid &&
   prev.item.feed_url === next.item.feed_url &&
   prev.item.title === next.item.title &&
+  prev.item.description === next.item.description &&
+  prev.item.link === next.item.link &&
+  prev.item.source_name === next.item.source_name &&
   prev.item.published_at === next.item.published_at
 );
