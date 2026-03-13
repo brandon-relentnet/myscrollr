@@ -593,7 +593,10 @@ export default function App() {
   }, [handleChannelToggle, handleWidgetToggle]);
 
   // ── Merge channel + widget tabs ──────────────────────────────
-  const activeTabs = [...channelTabs, ...prefs.widgets.widgetsOnTicker];
+  const activeTabs = useMemo(
+    () => [...channelTabs, ...prefs.widgets.widgetsOnTicker],
+    [channelTabs, prefs.widgets.widgetsOnTicker],
+  );
 
   // ── Widget ticker data (local polling for clock/weather/sysmon) ──
   const widgetData = useWidgetTickerData(prefs.widgets);
@@ -618,7 +621,7 @@ export default function App() {
           />
           {Array.from({ length: prefs.appearance.tickerRows }, (_, i) => (
             <ScrollrTicker
-              key={`row${i}-${prefs.ticker.tickerGap}-${prefs.ticker.tickerSpeed}-${prefs.ticker.hoverSpeed}-${prefs.ticker.tickerMode}-${prefs.ticker.mixMode}-${prefs.ticker.chipColors}-${prefs.ticker.tickerDirection}-${prefs.ticker.scrollMode}-${prefs.ticker.stepPause}-${prefs.appearance.tickerRows}`}
+              key={`row${i}`}
               dashboard={dashboard ?? null}
               activeTabs={activeTabs}
               widgetData={widgetData}

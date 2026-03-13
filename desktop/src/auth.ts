@@ -134,7 +134,11 @@ async function refreshTokenRequest(
 
 function decodeJwtPayload(jwt: string): Record<string, unknown> | null {
   try {
-    return JSON.parse(atob(jwt.split(".")[1])) as Record<string, unknown>;
+    const part = jwt.split(".")[1];
+    // base64url → base64: swap URL-safe chars and restore padding
+    const b64 = part.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = b64.padEnd(b64.length + ((4 - (b64.length % 4)) % 4), "=");
+    return JSON.parse(atob(padded)) as Record<string, unknown>;
   } catch {
     return null;
   }

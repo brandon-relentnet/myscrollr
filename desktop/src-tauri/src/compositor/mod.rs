@@ -2,6 +2,8 @@ pub mod hyprland;
 pub mod kwin;
 pub mod sway;
 
+use std::sync::OnceLock;
+
 /// Which Wayland compositor (if any) is managing the session.
 pub enum Compositor {
     Hyprland,
@@ -10,8 +12,17 @@ pub enum Compositor {
     Fallback,
 }
 
+/// Cached compositor result — env vars don't change at runtime.
+static COMPOSITOR: OnceLock<Compositor> = OnceLock::new();
+
 /// Detect the running compositor from environment variables.
-pub fn detect() -> Compositor {
+/// Result is cached on first call since the compositor cannot change
+/// during the lifetime of the process.
+pub fn detect() -> &'static Compositor {
+    COMPOSITOR.get_or_init(detect_inner)
+}
+
+fn detect_inner() -> Compositor {
     if std::env::var("HYPRLAND_INSTANCE_SIGNATURE").is_ok() {
         return Compositor::Hyprland;
     }

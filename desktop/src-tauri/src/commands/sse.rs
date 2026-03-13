@@ -31,7 +31,10 @@ pub async fn stop_sse(app: tauri::AppHandle) -> Result<(), String> {
 
 fn stop_sse_internal(app: &tauri::AppHandle) {
     let state = app.state::<SseHandle>();
-    let sender = state.0.lock().unwrap_or_else(|p| p.into_inner()).take();
+    let sender = state.0.lock().unwrap_or_else(|p| {
+        log::warn!("SseHandle mutex was poisoned, recovering");
+        p.into_inner()
+    }).take();
     if let Some(tx) = sender {
         let _ = tx.send(true);
     }
@@ -48,6 +51,8 @@ async fn sse_loop(
 
     let client = reqwest::Client::new();
     let mut backoff_secs = 1u64;
+    let mut consecutive_overflows = 0u32;
+    const MAX_CONSECUTIVE_OVERFLOWS: u32 = 3;
 
     loop {
         if *cancel_rx.borrow() {
@@ -72,6 +77,8 @@ async fn sse_loop(
 
                 let mut stream = res.bytes_stream();
                 let mut buffer = String::new();
+                let mut overflow = false;
+                const MAX_BUFFER: usize = 10 * 1024 * 1024; // 10 MB
 
                 loop {
                     tokio::select! {
@@ -79,10 +86,16 @@ async fn sse_loop(
                             match chunk {
                                 Some(Ok(bytes)) => {
                                     buffer.push_str(&String::from_utf8_lossy(&bytes));
+                                    if buffer.len() > MAX_BUFFER {
+                                        log::warn!("SSE buffer exceeded {MAX_BUFFER} bytes, reconnecting");
+                                        buffer.clear();
+                                        overflow = true;
+                                        break;
+                                    }
                                     // Process complete SSE frames (delimited by \n\n)
                                     while let Some(pos) = buffer.find("\n\n") {
                                         let frame = buffer[..pos].to_string();
-                                        buffer = buffer[pos + 2..].to_string();
+                                        buffer.drain(..pos + 2);
                                         process_sse_frame(&app, &frame);
                                     }
                                 }
@@ -94,6 +107,12 @@ async fn sse_loop(
                             break; // Cancelled
                         }
                     }
+                }
+
+                if overflow {
+                    consecutive_overflows += 1;
+                } else {
+                    consecutive_overflows = 0;
                 }
             }
             Ok(res) if res.status() == 401 => {
@@ -129,6 +148,22 @@ async fn sse_loop(
 
         // Check cancellation before sleeping
         if *cancel_rx.borrow() {
+            break;
+        }
+
+        // Abort after repeated buffer overflows (likely a misbehaving server)
+        if consecutive_overflows >= MAX_CONSECUTIVE_OVERFLOWS {
+            log::error!(
+                "SSE connection aborted after {MAX_CONSECUTIVE_OVERFLOWS} consecutive buffer overflows"
+            );
+            app.emit(
+                "sse-status",
+                serde_json::json!({
+                    "status": "error",
+                    "message": "Connection aborted: server sending oversized data"
+                }),
+            )
+            .ok();
             break;
         }
 

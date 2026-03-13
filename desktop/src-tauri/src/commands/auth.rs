@@ -24,7 +24,10 @@ pub fn start_auth_server(app: tauri::AppHandle) -> Result<(), String> {
     // Bind first (on the calling thread) so we know the port is available
     // before opening the browser.
     let listener = TcpListener::bind("127.0.0.1:19284").map_err(|e| {
-        *running.0.lock().unwrap_or_else(|p| p.into_inner()) = false;
+        *running.0.lock().unwrap_or_else(|p| {
+            log::warn!("AuthServerRunning mutex was poisoned, recovering");
+            p.into_inner()
+        }) = false;
         format!("Failed to bind: {e}")
     })?;
 
@@ -63,7 +66,10 @@ pub fn start_auth_server(app: tauri::AppHandle) -> Result<(), String> {
             }
         }
         // Listener drops here, freeing the port
-        *running_handle.0.lock().unwrap_or_else(|p| p.into_inner()) = false;
+        *running_handle.0.lock().unwrap_or_else(|p| {
+            log::warn!("AuthServerRunning mutex was poisoned, recovering");
+            p.into_inner()
+        }) = false;
     });
 
     Ok(())
@@ -86,28 +92,30 @@ fn extract_query_param(request: &str, key: &str) -> Option<String> {
 }
 
 /// Minimal percent-decoding for OAuth callback parameters.
+/// Accumulates raw bytes so multi-byte UTF-8 sequences (e.g. %C3%A9 → é)
+/// decode correctly instead of being treated as individual codepoints.
 fn percent_decode(input: &str) -> String {
-    let mut out = String::with_capacity(input.len());
-    let mut chars = input.bytes();
-    while let Some(b) = chars.next() {
+    let mut bytes = Vec::with_capacity(input.len());
+    let mut iter = input.bytes();
+    while let Some(b) = iter.next() {
         if b == b'%' {
-            let hi = chars.next().unwrap_or(b'0');
-            let lo = chars.next().unwrap_or(b'0');
+            let hi = iter.next().unwrap_or(b'0');
+            let lo = iter.next().unwrap_or(b'0');
             let hex = [hi, lo];
             if let Ok(s) = std::str::from_utf8(&hex) {
                 if let Ok(val) = u8::from_str_radix(s, 16) {
-                    out.push(val as char);
+                    bytes.push(val);
                     continue;
                 }
             }
-            out.push('%');
-            out.push(hi as char);
-            out.push(lo as char);
+            bytes.push(b'%');
+            bytes.push(hi);
+            bytes.push(lo);
         } else if b == b'+' {
-            out.push(' ');
+            bytes.push(b' ');
         } else {
-            out.push(b as char);
+            bytes.push(b);
         }
     }
-    out
+    String::from_utf8(bytes).unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).into_owned())
 }

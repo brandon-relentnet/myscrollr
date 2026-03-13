@@ -20,8 +20,12 @@ window.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
     url = input.url;
   }
 
-  if (url.includes(API_HOST)) {
-    return tauriFetch(input, init);
+  try {
+    if (new URL(url).host === API_HOST) {
+      return tauriFetch(input, init);
+    }
+  } catch {
+    // Invalid URL — fall through to native fetch
   }
   return nativeFetch(input, init);
 }) as typeof window.fetch;

@@ -51,6 +51,8 @@ export async function authFetch<T>(
 
   if (token) {
     (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+  } else {
+    console.warn("[authFetch] No valid token — request will be unauthenticated:", path);
   }
 
   const response = await fetch(`${API_BASE}${path}`, {

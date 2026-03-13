@@ -306,6 +306,12 @@ export default function ScrollrTicker({
     return firstItem.offsetWidth + gap;
   }, [gap]);
 
+  // Reset step offset when entering step mode or when direction changes,
+  // so the ticker doesn't start from a stale accumulated position.
+  useEffect(() => {
+    if (scrollMode === "step") offset.set(0);
+  }, [scrollMode, direction, offset]);
+
   // Step loop: animate offset by one item width, pause, repeat
   useEffect(() => {
     if (scrollMode !== "step" || chips.length === 0) return;

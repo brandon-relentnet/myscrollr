@@ -15,7 +15,11 @@ pub fn setup(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 
     TrayIconBuilder::new()
         .tooltip("Scrollr")
-        .icon(app.default_window_icon().unwrap().clone())
+        .icon(
+            app.default_window_icon()
+                .ok_or("default_window_icon not set in tauri.conf.json")?
+                .clone(),
+        )
         .menu(&menu)
         .on_menu_event(move |app, event| match event.id().as_ref() {
             "open" => {

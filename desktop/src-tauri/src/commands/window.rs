@@ -65,7 +65,7 @@ pub fn position_ticker(
         Compositor::Sway => {
             compositor::sway::position(&window, monitor_x, new_y, screen_width, win_height)
         }
-        Compositor::Kwin(ref qdbus) => {
+        Compositor::Kwin(qdbus) => {
             compositor::kwin::position(&window, monitor_x, new_y, screen_width, win_height, qdbus)
         }
         Compositor::Fallback => {
@@ -93,7 +93,7 @@ pub fn pin_window(window: tauri::Window, pinned: bool) -> Result<(), String> {
     match compositor::detect() {
         Compositor::Hyprland => compositor::hyprland::pin(&window, pinned),
         Compositor::Sway => compositor::sway::pin(&window, pinned),
-        Compositor::Kwin(ref qdbus) => compositor::kwin::pin(&window, pinned, qdbus),
+        Compositor::Kwin(qdbus) => compositor::kwin::pin(&window, pinned, qdbus),
         Compositor::Fallback => window
             .set_always_on_top(pinned)
             .map_err(|e| format!("set_always_on_top failed: {e}")),

@@ -36,30 +36,50 @@ import {
   SYSMON_SCHEMA,
 } from "../components/dashboard/dashboardPrefs";
 import type { ChannelType } from "../api/client";
-import type { ChannelManifest, WidgetManifest } from "../types";
+import type { ChannelManifest, WidgetManifest, DashboardResponse } from "../types";
 import type {
   DashboardCardPrefs,
   CardOrder,
   EditorField,
 } from "../components/dashboard/dashboardPrefs";
 
-// ── Summary component map ───────────────────────────────────────
+// ── Summary renderers (type-safe, no casts) ────────────────────
 
-const CHANNEL_SUMMARIES: Record<
-  string,
-  React.ComponentType<{ dashboard: any; prefs: any; onConfigure?: () => void }>
-> = {
-  finance: FinanceSummary,
-  sports: SportsSummary,
-  rss: RssSummary,
-  fantasy: FantasySummary,
-};
+function renderChannelSummary(
+  type: string,
+  dashboard: DashboardResponse | undefined,
+  cardPrefs: DashboardCardPrefs,
+  onConfigure: () => void,
+): React.ReactNode {
+  switch (type) {
+    case "finance":
+      return <FinanceSummary dashboard={dashboard} prefs={cardPrefs.finance} onConfigure={onConfigure} />;
+    case "sports":
+      return <SportsSummary dashboard={dashboard} prefs={cardPrefs.sports} onConfigure={onConfigure} />;
+    case "rss":
+      return <RssSummary dashboard={dashboard} prefs={cardPrefs.rss} onConfigure={onConfigure} />;
+    case "fantasy":
+      return <FantasySummary dashboard={dashboard} prefs={cardPrefs.fantasy} onConfigure={onConfigure} />;
+    default:
+      return null;
+  }
+}
 
-const WIDGET_SUMMARIES: Record<string, React.ComponentType<{ prefs: any }>> = {
-  clock: ClockSummary,
-  weather: WeatherSummary,
-  sysmon: SysmonSummary,
-};
+function renderWidgetSummary(
+  id: string,
+  cardPrefs: DashboardCardPrefs,
+): React.ReactNode {
+  switch (id) {
+    case "clock":
+      return <ClockSummary prefs={cardPrefs.clock} />;
+    case "weather":
+      return <WeatherSummary prefs={cardPrefs.weather} />;
+    case "sysmon":
+      return <SysmonSummary prefs={cardPrefs.sysmon} />;
+    default:
+      return null;
+  }
+}
 
 // ── Schema map ──────────────────────────────────────────────────
 
@@ -294,7 +314,6 @@ function FeedDashboard() {
           {orderedChannels.length > 0 && (
             <div className={clsx("flex-1 min-w-0 grid gap-3", editing ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2")}>
               {orderedChannels.map(({ ch, manifest }, index) => {
-                const SummaryComponent = CHANNEL_SUMMARIES[ch.channel_type];
                 const schema = CHANNEL_SCHEMAS[ch.channel_type];
                 const prefsKey = CHANNEL_PREFS_KEY[ch.channel_type];
                 const prefs = prefsKey ? cardPrefs[prefsKey] : undefined;
@@ -338,18 +357,16 @@ function FeedDashboard() {
                         : undefined
                     }
                   >
-                    {SummaryComponent ? (
-                      <SummaryComponent
-                        dashboard={dashboard}
-                        prefs={prefs}
-                        onConfigure={() =>
-                          navigate({
-                            to: "/channel/$type/$tab",
-                            params: { type: ch.channel_type, tab: "configuration" },
-                          })
-                        }
-                      />
-                    ) : (
+                    {renderChannelSummary(
+                      ch.channel_type,
+                      dashboard,
+                      cardPrefs,
+                      () =>
+                        navigate({
+                          to: "/channel/$type/$tab",
+                          params: { type: ch.channel_type, tab: "configuration" },
+                        }),
+                    ) ?? (
                       <p className="text-[11px] text-fg-4 italic">No preview</p>
                     )}
                   </DashboardCard>
@@ -362,7 +379,6 @@ function FeedDashboard() {
           {orderedWidgets.length > 0 && (
             <div className="w-full md:w-[240px] shrink-0 flex flex-col gap-3">
               {orderedWidgets.map((widget, index) => {
-                const SummaryComponent = WIDGET_SUMMARIES[widget.id];
                 const schema = WIDGET_SCHEMAS[widget.id];
                 const prefsKey = WIDGET_PREFS_KEY[widget.id];
                 const prefs = prefsKey ? cardPrefs[prefsKey] : undefined;
@@ -405,9 +421,7 @@ function FeedDashboard() {
                         : undefined
                     }
                   >
-                    {SummaryComponent ? (
-                      <SummaryComponent prefs={prefs} />
-                    ) : (
+                    {renderWidgetSummary(widget.id, cardPrefs) ?? (
                       <p className="text-[11px] text-fg-4 italic">No preview</p>
                     )}
                   </DashboardCard>

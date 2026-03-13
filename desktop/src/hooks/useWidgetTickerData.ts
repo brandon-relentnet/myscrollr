@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type { WidgetPrefs } from "../preferences";
 import { fetchSysmonData } from "./useSysmonData";
 import type { SystemInfo } from "./useSysmonData";
@@ -216,11 +216,15 @@ export function useWidgetTickerData(
 ): WidgetTickerData {
   const [data, setData] = useState<WidgetTickerData>(EMPTY);
   const sysInfoRef = useRef<SystemInfo | null>(null);
-  const enabledSet = new Set(widgetPrefs.widgetsOnTicker);
+
+  const enabledWidgets = useMemo(
+    () => new Set(widgetPrefs.widgetsOnTicker),
+    [widgetPrefs.widgetsOnTicker],
+  );
 
   // ── Build clock + timer chips ─────────────────────────────────
   const buildClockChips = useCallback((): ClockChipData[] => {
-    if (!enabledSet.has("clock")) return [];
+    if (!enabledWidgets.has("clock")) return [];
     const cfg = widgetPrefs.clock;
     const chips: ClockChipData[] = [];
     const now = new Date();
@@ -268,12 +272,11 @@ export function useWidgetTickerData(
     }
 
     return chips;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [widgetPrefs.clock, widgetPrefs.widgetsOnTicker]);
+  }, [widgetPrefs.clock, enabledWidgets]);
 
   // ── Build weather chips ───────────────────────────────────────
   const buildWeatherChips = useCallback((): WeatherChipData[] => {
-    if (!enabledSet.has("weather")) return [];
+    if (!enabledWidgets.has("weather")) return [];
     const cfg = widgetPrefs.weather;
     const chips: WeatherChipData[] = [];
     const unit = localStorage.getItem(LS_UNIT) ?? "fahrenheit";
@@ -303,12 +306,11 @@ export function useWidgetTickerData(
     } catch { /* ignore corrupt localStorage */ }
 
     return chips;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [widgetPrefs.weather, widgetPrefs.widgetsOnTicker]);
+  }, [widgetPrefs.weather, enabledWidgets]);
 
   // ── Build sysmon chips ────────────────────────────────────────
   const buildSysmonChips = useCallback((): SysmonChipData[] => {
-    if (!enabledSet.has("sysmon")) return [];
+    if (!enabledWidgets.has("sysmon")) return [];
     const info = sysInfoRef.current;
     if (!info) return [];
 
@@ -368,15 +370,14 @@ export function useWidgetTickerData(
     }
 
     return chips;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [widgetPrefs.sysmon, widgetPrefs.widgetsOnTicker]);
+  }, [widgetPrefs.sysmon, enabledWidgets]);
 
   // ── Polling intervals ─────────────────────────────────────────
 
   useEffect(() => {
-    const hasClock = enabledSet.has("clock");
-    const hasWeather = enabledSet.has("weather");
-    const hasSysmon = enabledSet.has("sysmon");
+    const hasClock = enabledWidgets.has("clock");
+    const hasWeather = enabledWidgets.has("weather");
+    const hasSysmon = enabledWidgets.has("sysmon");
 
     if (!hasClock && !hasWeather && !hasSysmon) {
       setData(EMPTY);
@@ -426,9 +427,11 @@ export function useWidgetTickerData(
       if (weatherInterval) clearInterval(weatherInterval);
       if (sysmonInterval) clearInterval(sysmonInterval);
     };
+  // Suppressed: JSON.stringify stabilizes the dep by value instead of reference,
+  // so the effect only re-runs when the array contents actually change.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    widgetPrefs.widgetsOnTicker.join(","),
+    JSON.stringify(widgetPrefs.widgetsOnTicker),
     widgetPrefs.sysmon.refreshInterval,
     buildClockChips,
     buildWeatherChips,
