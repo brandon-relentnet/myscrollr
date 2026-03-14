@@ -200,12 +200,10 @@ export default function FantasyConfigPanel({
   const leagues: LeagueData[] = (leaguesData?.leagues ?? []) as LeagueData[];
 
   // Determine initial phase from query data
-  const initialPhase = useMemo((): Phase => {
-    if (!statusData) return "disconnected";
-    if (yahooConnected && leagues.length > 0) return "connected";
-    if (yahooConnected) return "connected";
-    return "disconnected";
-  }, [statusData, yahooConnected, leagues.length]);
+  const initialPhase = useMemo(
+    (): Phase => (statusData && yahooConnected ? "connected" : "disconnected"),
+    [statusData, yahooConnected],
+  );
 
   const [phase, setPhase] = useState<Phase>("disconnected");
   const phaseInitRef = useRef(false);

@@ -77,7 +77,7 @@ export function formatPriceChange(change: number | string | undefined): string {
   if (change == null) return "";
   const num = typeof change === "string" ? parseFloat(change) : change;
   if (isNaN(num)) return String(change);
-  const sign = num >= 0 ? "+" : "";
+  const sign = num >= 0 ? "+" : "-";
   return `${sign}$${Math.abs(num).toFixed(2)}`;
 }
 
