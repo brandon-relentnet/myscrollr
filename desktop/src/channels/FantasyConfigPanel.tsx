@@ -277,6 +277,22 @@ export default function FantasyConfigPanel({
 
   // ── Import selected leagues ────────────────────────────────────
 
+  const importLeagueMutation = useMutation({
+    mutationFn: (league: DiscoveredLeague) =>
+      authFetch<{ status: string; error?: string }>(
+        "/users/me/yahoo-leagues/import",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            league_key: league.league_key,
+            game_code: league.game_code,
+            season: league.season,
+          }),
+        },
+      ),
+  });
+
   const importSelected = useCallback(async () => {
     const keys = Array.from(selectedKeys);
     if (keys.length === 0) return;
@@ -295,21 +311,7 @@ export default function FantasyConfigPanel({
       setImportStatuses({ ...statuses });
 
       try {
-        const result = await authFetch<{
-          status: string;
-          error?: string;
-        }>(
-          "/users/me/yahoo-leagues/import",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              league_key: league.league_key,
-              game_code: league.game_code,
-              season: league.season,
-            }),
-          },
-        );
+        const result = await importLeagueMutation.mutateAsync(league);
         statuses[key] = result.error ? "error" : "done";
       } catch {
         statuses[key] = "error";
@@ -320,7 +322,7 @@ export default function FantasyConfigPanel({
     await queryClient.invalidateQueries({ queryKey: queryKeys.fantasy.leagues });
     await queryClient.invalidateQueries({ queryKey: queryKeys.fantasy.status });
     setPhase("connected");
-  }, [selectedKeys, discoveredLeagues, queryClient]);
+  }, [selectedKeys, discoveredLeagues, queryClient, importLeagueMutation]);
 
   // ── Listen for Yahoo auth popup completion ─────────────────────
 
@@ -351,17 +353,23 @@ export default function FantasyConfigPanel({
     window.open(popupUrl, "yahoo-auth", "width=600,height=700");
   }, []);
 
-  const handleYahooDisconnect = useCallback(async () => {
-    try {
-      await authFetch("/users/me/yahoo", { method: "DELETE" });
+  const disconnectMutation = useMutation({
+    mutationFn: () =>
+      authFetch("/users/me/yahoo", { method: "DELETE" }),
+    onSuccess: () => {
       queryClient.setQueryData(queryKeys.fantasy.status, { connected: false, synced: false });
       queryClient.setQueryData(queryKeys.fantasy.leagues, { leagues: [] });
       setPhase("disconnected");
       phaseInitRef.current = false;
-    } catch (err) {
+    },
+    onError: (err) => {
       console.error("[Fantasy] disconnect failed:", err);
-    }
-  }, [queryClient]);
+    },
+  });
+
+  const handleYahooDisconnect = useCallback(() => {
+    disconnectMutation.mutate();
+  }, [disconnectMutation]);
 
   // ── Derived data ───────────────────────────────────────────────
 
