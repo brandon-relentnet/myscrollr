@@ -358,12 +358,12 @@ export function WorldClock({ compact }: WorldClockProps) {
       <div className="flex items-center justify-between px-1 mb-1">
         <div className="flex items-center gap-2">
           <Tooltip content={fmt === "12h" ? "Switch to 24-hour format" : "Switch to 12-hour format"}>
-          <button
-            onClick={toggleFormat}
-            className="text-xs font-mono px-1.5 py-0.5 rounded border transition-colors text-widget-clock/70 border-widget-clock/20 hover:text-widget-clock hover:border-widget-clock/30"
-          >
-            {fmt === "12h" ? "12h" : "24h"}
-          </button>
+            <button
+              onClick={toggleFormat}
+              className="text-xs font-mono px-1.5 py-0.5 rounded border transition-colors text-widget-clock/70 border-widget-clock/20 hover:text-widget-clock hover:border-widget-clock/30"
+            >
+              {fmt === "12h" ? "12h" : "24h"}
+            </button>
           </Tooltip>
         </div>
         <button

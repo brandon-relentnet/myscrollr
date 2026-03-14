@@ -223,12 +223,12 @@ function WeatherFeedTab({ mode: feedMode }: FeedTabProps) {
         </div>
         <div className="flex items-center gap-2">
           <Tooltip content="Use my location">
-          <button
-            onClick={detectLocation}
-            className="text-xs font-mono text-widget-weather/70 hover:text-widget-weather transition-colors"
-          >
-            {"\u{1F4CD}"}
-          </button>
+            <button
+              onClick={detectLocation}
+              className="text-xs font-mono text-widget-weather/70 hover:text-widget-weather transition-colors"
+            >
+              {"\u{1F4CD}"}
+            </button>
           </Tooltip>
           <button
             onClick={() => {

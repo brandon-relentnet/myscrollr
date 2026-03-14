@@ -140,7 +140,7 @@ export default function DashboardCard({
             "absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-0.5 rounded-lg px-1 py-0.5 transition-opacity",
             deleteArmed || customizing
               ? "opacity-100 bg-surface-2"
-              : "opacity-0 pointer-events-none group-hover/card:opacity-100 group-hover/card:pointer-events-auto bg-surface-2",
+              : "opacity-0 pointer-events-none group-hover/card:opacity-100 group-hover/card:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto bg-surface-2",
           )}
         >
           {/* Ticker visibility toggle (hover-revealed) */}

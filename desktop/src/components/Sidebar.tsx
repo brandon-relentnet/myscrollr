@@ -166,24 +166,24 @@ export default function Sidebar({
     >
       {/* App header — logo + name */}
       <Tooltip content={collapsed ? "Dashboard" : undefined} side="right">
-      <button
-        onClick={onNavigateToFeed}
-        aria-label="Scrollr — go to dashboard"
-        className={clsx(
-          "flex items-center w-full h-12 shrink-0 transition-colors",
-          collapsed ? "justify-center px-0" : "gap-2.5 px-4",
-          isFeed
-            ? "border-b border-accent/30 bg-accent/5"
-            : tickerAlive
-              ? "border-b border-accent/15"
-              : "border-b border-edge",
-        )}
-      >
-        <EkgLogo alive={tickerAlive} />
-        {!collapsed && (
-          <span className="text-sm font-semibold text-fg tracking-tight">Scrollr</span>
-        )}
-      </button>
+        <button
+          onClick={onNavigateToFeed}
+          aria-label="Scrollr — go to dashboard"
+          className={clsx(
+            "flex items-center w-full h-12 shrink-0 transition-colors",
+            collapsed ? "justify-center px-0" : "gap-2.5 px-4",
+            isFeed
+              ? "border-b border-accent/30 bg-accent/5"
+              : tickerAlive
+                ? "border-b border-accent/15"
+                : "border-b border-edge",
+          )}
+        >
+          <EkgLogo alive={tickerAlive} />
+          {!collapsed && (
+            <span className="text-sm font-semibold text-fg tracking-tight">Scrollr</span>
+          )}
+        </button>
       </Tooltip>
 
       {/* Navigation items */}
@@ -291,23 +291,23 @@ export default function Sidebar({
 
         {/* Collapse toggle */}
         <Tooltip content={collapsed ? "Expand sidebar" : "Collapse sidebar"} side="right">
-        <button
-          onClick={toggleCollapsed}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className={clsx(
-            "flex items-center w-full rounded-lg text-fg-4 hover:text-fg-2 hover:bg-surface-hover transition-colors",
-            collapsed
-              ? "justify-center py-1.5"
-              : "gap-2.5 px-2.5 py-1.5",
-          )}
-        >
-          <span className="shrink-0 flex items-center justify-center w-5 h-5">
-            {collapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
-          </span>
-          {!collapsed && (
-            <span className="text-[12px] font-medium">Collapse</span>
-          )}
-        </button>
+          <button
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className={clsx(
+              "flex items-center w-full rounded-lg text-fg-4 hover:text-fg-2 hover:bg-surface-hover transition-colors",
+              collapsed
+                ? "justify-center py-1.5"
+                : "gap-2.5 px-2.5 py-1.5",
+            )}
+          >
+            <span className="shrink-0 flex items-center justify-center w-5 h-5">
+              {collapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
+            </span>
+            {!collapsed && (
+              <span className="text-[12px] font-medium">Collapse</span>
+            )}
+          </button>
         </Tooltip>
 
         {/* Status footer — informational only */}
@@ -318,42 +318,38 @@ export default function Sidebar({
           )}
         >
           <Tooltip content={deliveryMode === "sse" ? "Receiving updates live" : "Polling for updates"} side="right">
-          <div
-            className="flex items-center gap-1.5"
-          >
-            <div
-              className={clsx(
-                "w-1.5 h-1.5 rounded-full shrink-0",
-                deliveryMode === "sse"
-                  ? "bg-info"
-                  : "bg-warn",
+            <div className="flex items-center gap-1.5">
+              <div
+                className={clsx(
+                  "w-1.5 h-1.5 rounded-full shrink-0",
+                  deliveryMode === "sse"
+                    ? "bg-info"
+                    : "bg-warn",
+                )}
+              />
+              {!collapsed && (
+                <span className="text-[10px] font-mono uppercase tracking-wider text-fg-4">
+                  {deliveryMode === "sse" ? "Live" : "Polling"}
+                </span>
               )}
-            />
-            {!collapsed && (
-              <span className="text-[10px] font-mono uppercase tracking-wider text-fg-4">
-                {deliveryMode === "sse" ? "Live" : "Polling"}
-              </span>
-            )}
-          </div>
+            </div>
           </Tooltip>
           <Tooltip content={tickerAlive ? "Ticker is running" : "Ticker is off"} side="right">
-          <div
-            className="flex items-center gap-1.5"
-          >
-            <div
-              className={clsx(
-                "w-1.5 h-1.5 rounded-full shrink-0 transition-all duration-500",
-                tickerAlive
-                  ? "bg-accent"
-                  : "bg-fg-4/30",
+            <div className="flex items-center gap-1.5">
+              <div
+                className={clsx(
+                  "w-1.5 h-1.5 rounded-full shrink-0 transition-all duration-500",
+                  tickerAlive
+                    ? "bg-accent"
+                    : "bg-fg-4/30",
+                )}
+              />
+              {!collapsed && (
+                <span className="text-[10px] font-mono uppercase tracking-wider text-fg-4">
+                  {tickerAlive ? "Ticker" : "Off"}
+                </span>
               )}
-            />
-            {!collapsed && (
-              <span className="text-[10px] font-mono uppercase tracking-wider text-fg-4">
-                {tickerAlive ? "Ticker" : "Off"}
-              </span>
-            )}
-          </div>
+            </div>
           </Tooltip>
         </div>
       </div>
@@ -396,32 +392,32 @@ function NavItem({
 }) {
   return (
     <Tooltip content={collapsed ? label : undefined} side="right">
-    <button
-      onClick={onClick}
-      aria-current={active ? "page" : undefined}
-      aria-label={collapsed ? label : undefined}
-      className={clsx(
-        "relative flex items-center w-full rounded-lg font-medium transition-colors",
-        collapsed
-          ? "justify-center py-1.5 px-0"
-          : "gap-2.5 px-2.5 py-1.5 text-[13px]",
-        active
-          ? "bg-accent/10 text-fg"
-          : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
-      )}
-    >
-      {/* Active indicator — left accent bar */}
-      {active && (
-        <span
-          className="absolute left-0 top-1.5 bottom-1.5 w-[2.5px] rounded-full"
-          style={{ background: accentColor ?? "var(--color-accent)" }}
-        />
-      )}
-      <span className="shrink-0 flex items-center justify-center w-5 h-5">
-        {icon}
-      </span>
-      {!collapsed && <span className="truncate">{label}</span>}
-    </button>
+      <button
+        onClick={onClick}
+        aria-current={active ? "page" : undefined}
+        aria-label={collapsed ? label : undefined}
+        className={clsx(
+          "relative flex items-center w-full rounded-lg font-medium transition-colors",
+          collapsed
+            ? "justify-center py-1.5 px-0"
+            : "gap-2.5 px-2.5 py-1.5 text-[13px]",
+          active
+            ? "bg-accent/10 text-fg"
+            : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
+        )}
+      >
+        {/* Active indicator — left accent bar */}
+        {active && (
+          <span
+            className="absolute left-0 top-1.5 bottom-1.5 w-[2.5px] rounded-full"
+            style={{ background: accentColor ?? "var(--color-accent)" }}
+          />
+        )}
+        <span className="shrink-0 flex items-center justify-center w-5 h-5">
+          {icon}
+        </span>
+        {!collapsed && <span className="truncate">{label}</span>}
+      </button>
     </Tooltip>
   );
 }
