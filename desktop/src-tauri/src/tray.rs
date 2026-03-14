@@ -1,4 +1,5 @@
 use tauri::{
+    image::Image,
     menu::{MenuBuilder, MenuItemBuilder},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Manager,
@@ -13,13 +14,15 @@ pub fn setup(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .items(&[&open, &show_ticker, &quit])
         .build()?;
 
+    // Monochrome icon for the system tray. On macOS, icon_as_template(true)
+    // tells the OS to tint it white/black to match the menu bar appearance.
+    let tray_icon = Image::from_bytes(include_bytes!("../icons/tray-icon.png"))
+        .map_err(|e| format!("failed to load tray icon: {e}"))?;
+
     TrayIconBuilder::new()
         .tooltip("Scrollr")
-        .icon(
-            app.default_window_icon()
-                .ok_or("default_window_icon not set in tauri.conf.json")?
-                .clone(),
-        )
+        .icon(tray_icon)
+        .icon_as_template(true)
         .menu(&menu)
         .on_menu_event(move |app, event| match event.id().as_ref() {
             "open" => {

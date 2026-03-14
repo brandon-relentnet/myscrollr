@@ -355,39 +355,22 @@ body {
   cursor: pointer;
 }
 
-/* ── EKG animated trace ──────────────────────────────────────────
-   A bright segment sweeps along the heartbeat path like a real
-   cardiac monitor. Uses pathLength normalisation + stroke-dashoffset.
-   60% sweep, 40% pause — gives it a breathing rhythm. */
+/* ── Scroll logo channel-color glow ─────────────────────────────── */
+/* Cycles a soft drop-shadow through the four channel colors
+   while the gradient fill inside the SVG shifts in sync. */
 
-@keyframes ekg-trace {
-  0%   { stroke-dashoffset: 0; }
-  60%  { stroke-dashoffset: -100; }
-  100% { stroke-dashoffset: -100; }
+@keyframes scroll-glow {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(52, 211, 153, 0.5)); }
+  25%      { filter: drop-shadow(0 0 4px rgba(255, 71, 87, 0.5)); }
+  50%      { filter: drop-shadow(0 0 4px rgba(0, 212, 255, 0.5)); }
+  75%      { filter: drop-shadow(0 0 4px rgba(168, 85, 247, 0.5)); }
 }
 
-.ekg-trace {
-  animation: ekg-trace 2.8s ease-in-out infinite;
+.scroll-logo-alive {
+  animation: scroll-glow 8s ease-in-out infinite;
 }
 
 /* ── Live indicator dot ─────────────────────────────────────────── */
-
-@keyframes ekg-dot {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-    box-shadow: 0 0 6px rgba(52, 211, 153, 0.6);
-  }
-  50% {
-    opacity: 0.35;
-    transform: scale(0.65);
-    box-shadow: 0 0 2px rgba(52, 211, 153, 0.2);
-  }
-}
-
-.ekg-dot {
-  animation: ekg-dot 2s ease-in-out infinite;
-}
 
 /* ── Widget card animations ──────────────────────────────────── */
 @keyframes widget-card-enter {
@@ -409,4 +392,5 @@ body {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+
 }

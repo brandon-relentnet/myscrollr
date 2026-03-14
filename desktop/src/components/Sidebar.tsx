@@ -15,55 +15,58 @@ import { CHANNEL_ORDER } from "../channels/registry";
 import { WIDGET_ORDER } from "../widgets/registry";
 import { loadPref, savePref } from "../preferences";
 
-// ── EKG heartbeat logo ──────────────────────────────────────────
+// ── Scroll S logo ───────────────────────────────────────────────
+// Solid mint when idle; animated channel-color gradient + glow when alive.
 
-const EKG_PATH = "M0,8 L6,8 L9,2 L12,14 L15,4 L18,12 L21,8 L32,8";
+const SCROLL_PATH =
+  "M4870 6321 c-100 -32 -157 -70 -215 -140 l-29 -36 41 37 c329 291 807 -68 501 -375 -132 -132 -60 -130 -1750 -66 -1538 57 -1544 57 -1792 9 -1687 -328 -1763 -2552 -101 -2980 253 -65 227 -64 1750 -65 1531 0 1427 4 1568 -66 371 -184 376 -666 9 -858 -160 -83 43 -75 -2157 -81 -2131 -6 -2047 -4 -2225 -61 -234 -74 -312 -243 -250 -539 54 -254 193 -701 256 -821 145 -275 578 -316 759 -72 l28 38 -39 -36 c-279 -257 -732 -25 -564 289 84 158 228 208 560 195 354 -13 3176 -93 3313 -93 895 0 1529 475 1690 1264 188 928 -386 1701 -1383 1862 -108 18 -198 19 -1510 19 l-1395 0 -78 22 c-556 158 -528 849 38 968 60 12 287 15 1525 15 1678 0 1780 4 1990 72 190 61 284 172 283 333 -2 156 -215 857 -302 991 -105 164 -326 238 -521 175z";
 
-function EkgLogo({ alive }: { alive: boolean }) {
+function ScrollLogo({ alive }: { alive: boolean }) {
   return (
-    <svg viewBox="0 0 32 16" fill="none" aria-hidden="true" className="w-7 h-4 shrink-0">
-      <defs>
-        <linearGradient id="sb-grad" x1="0" y1="0" x2="32" y2="0" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#34d399" />
-          <stop offset="33%" stopColor="#ff4757" />
-          <stop offset="66%" stopColor="#00d4ff" />
-          <stop offset="100%" stopColor="#a855f7" />
-        </linearGradient>
-        <linearGradient id="sb-dim" x1="0" y1="0" x2="32" y2="0" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#34d399" stopOpacity="0.15" />
-          <stop offset="33%" stopColor="#ff4757" stopOpacity="0.15" />
-          <stop offset="66%" stopColor="#00d4ff" stopOpacity="0.15" />
-          <stop offset="100%" stopColor="#a855f7" stopOpacity="0.15" />
-        </linearGradient>
-        <filter id="sb-glow">
-          <feGaussianBlur stdDeviation="1.5" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-      <path
-        d={EKG_PATH}
-        stroke={alive ? "url(#sb-dim)" : "var(--color-fg-4)"}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className={clsx(!alive && "opacity-20")}
-      />
+    <svg
+      viewBox="0 0 639 639"
+      aria-hidden="true"
+      className={clsx("w-6 h-6 shrink-0", alive && "scroll-logo-alive")}
+    >
       {alive && (
-        <path
-          d={EKG_PATH}
-          stroke="url(#sb-grad)"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          pathLength={100}
-          strokeDasharray="20 80"
-          className="ekg-trace"
-          filter="url(#sb-glow)"
-        />
+        <defs>
+          <linearGradient id="sb-scroll-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%">
+              <animate
+                attributeName="stop-color"
+                values="#34d399;#ff4757;#00d4ff;#a855f7;#34d399"
+                dur="8s"
+                repeatCount="indefinite"
+              />
+            </stop>
+            <stop offset="50%">
+              <animate
+                attributeName="stop-color"
+                values="#00d4ff;#a855f7;#34d399;#ff4757;#00d4ff"
+                dur="8s"
+                repeatCount="indefinite"
+              />
+            </stop>
+            <stop offset="100%">
+              <animate
+                attributeName="stop-color"
+                values="#a855f7;#34d399;#ff4757;#00d4ff;#a855f7"
+                dur="8s"
+                repeatCount="indefinite"
+              />
+            </stop>
+          </linearGradient>
+        </defs>
       )}
+      <g
+        transform="translate(0,639) scale(0.1,-0.1)"
+        fill={alive ? "url(#sb-scroll-grad)" : "var(--color-primary)"}
+        stroke="none"
+      >
+        <path d={SCROLL_PATH} />
+      </g>
+      <circle cx="492" cy="39" r="20" fill="var(--color-fg)" className={clsx(!alive && "opacity-60")} />
+      <circle cx="97" cy="599" r="20" fill="var(--color-fg)" className={clsx(!alive && "opacity-60")} />
     </svg>
   );
 }
@@ -179,7 +182,7 @@ export default function Sidebar({
                 : "border-b border-edge",
           )}
         >
-          <EkgLogo alive={tickerAlive} />
+          <ScrollLogo alive={tickerAlive} />
           {!collapsed && (
             <span className="text-sm font-semibold text-fg tracking-tight">Scrollr</span>
           )}
