@@ -12,6 +12,7 @@ import {
   formatTemp,
   formatWind,
 } from "./types";
+import Tooltip from "../../components/Tooltip";
 
 // ── Inline SVG Icons ────────────────────────────────────────────
 
@@ -104,20 +105,22 @@ export function WeatherCard({
           )}
         </div>
         <div className="flex items-center gap-1">
-          <button
-            onClick={onRefresh}
-            className="text-fg-3 hover:text-widget-weather opacity-0 group-hover:opacity-100 transition-opacity"
-            title="Refresh"
-          >
-            <RefreshIcon />
-          </button>
-          <button
-            onClick={onRemove}
-            className="text-fg-3 hover:text-error opacity-0 group-hover:opacity-100 transition-opacity"
-            title="Remove city"
-          >
-            <CloseIcon />
-          </button>
+          <Tooltip content="Refresh">
+            <button
+              onClick={onRefresh}
+              className="text-fg-3 hover:text-widget-weather opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <RefreshIcon />
+            </button>
+          </Tooltip>
+          <Tooltip content="Remove city">
+            <button
+              onClick={onRemove}
+              className="text-fg-3 hover:text-error opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <CloseIcon />
+            </button>
+          </Tooltip>
         </div>
       </div>
     );
@@ -129,20 +132,22 @@ export function WeatherCard({
       style={{ animation: "widget-card-enter 0.25s ease-out both" }}
     >
       <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button
-          onClick={onRefresh}
-          className="text-fg-3 hover:text-widget-weather p-0.5"
-          title="Refresh"
-        >
-          <RefreshIcon />
-        </button>
-        <button
-          onClick={onRemove}
-          className="text-fg-3 hover:text-error p-0.5"
-          title="Remove city"
-        >
-          <CloseIcon />
-        </button>
+        <Tooltip content="Refresh">
+          <button
+            onClick={onRefresh}
+            className="text-fg-3 hover:text-widget-weather p-0.5"
+          >
+            <RefreshIcon />
+          </button>
+        </Tooltip>
+        <Tooltip content="Remove city">
+          <button
+            onClick={onRemove}
+            className="text-fg-3 hover:text-error p-0.5"
+          >
+            <CloseIcon />
+          </button>
+        </Tooltip>
       </div>
 
       <div className="flex items-center gap-2 mb-2">

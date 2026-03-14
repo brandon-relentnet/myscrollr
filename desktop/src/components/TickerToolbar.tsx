@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { ChevronUp, ChevronDown, AppWindow, EyeOff } from "lucide-react";
 import clsx from "clsx";
+import Tooltip from "./Tooltip";
 import type { TickerPosition } from "../preferences";
 
 interface TickerToolbarProps {
@@ -42,32 +43,35 @@ export default function TickerToolbar({
 
       {/* Toolbar body */}
       <div className="h-full flex items-center gap-0.5 pr-2 bg-surface/80 backdrop-blur-sm">
-        <button
-          onClick={openApp}
-          aria-label="Open Scrollr"
-          title="Open Scrollr"
-          className={btn}
-        >
-          <AppWindow size={14} />
-        </button>
+        <Tooltip content="Open Scrollr" side="bottom">
+          <button
+            onClick={openApp}
+            aria-label="Open Scrollr"
+            className={btn}
+          >
+            <AppWindow size={14} />
+          </button>
+        </Tooltip>
 
-        <button
-          onClick={onTogglePosition}
-          aria-label={posLabel}
-          title={posLabel}
-          className={btn}
-        >
-          <PosIcon size={16} />
-        </button>
+        <Tooltip content={posLabel} side="bottom">
+          <button
+            onClick={onTogglePosition}
+            aria-label={posLabel}
+            className={btn}
+          >
+            <PosIcon size={16} />
+          </button>
+        </Tooltip>
 
-        <button
-          onClick={onHideTicker}
-          aria-label="Hide Ticker"
-          title="Hide Ticker"
-          className={btn}
-        >
-          <EyeOff size={14} />
-        </button>
+        <Tooltip content="Hide Ticker" side="bottom">
+          <button
+            onClick={onHideTicker}
+            aria-label="Hide Ticker"
+            className={btn}
+          >
+            <EyeOff size={14} />
+          </button>
+        </Tooltip>
       </div>
     </div>
   );

@@ -13,6 +13,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useScrollrCDC } from "../../hooks/useScrollrCDC";
 import { loadPref, savePref } from "../../preferences";
 import clsx from "clsx";
+import Tooltip from "../Tooltip";
 import { formatPrice, formatChange } from "../../utils/format";
 import type { Trade, DashboardResponse } from "../../types";
 import type { FinanceCardPrefs } from "./dashboardPrefs";
@@ -95,20 +96,21 @@ function PrimaryStock({ trade, pinned, prefs, onUnpin }: PrimaryStockProps) {
           </span>
         )}
         {pinned && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onUnpin();
-            }}
-            className={clsx(
-              "w-4 h-4 flex items-center justify-center rounded-sm",
-              "text-[10px] text-fg-4 opacity-0 group-hover:opacity-100",
-              "hover:text-fg-2 hover:bg-surface-3/80 transition-all",
-            )}
-            title="Unpin"
-          >
-            &#x2715;
-          </button>
+          <Tooltip content="Unpin">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onUnpin();
+              }}
+              className={clsx(
+                "w-4 h-4 flex items-center justify-center rounded-sm",
+                "text-[10px] text-fg-4 opacity-0 group-hover:opacity-100",
+                "hover:text-fg-2 hover:bg-surface-3/80 transition-all",
+              )}
+            >
+              &#x2715;
+            </button>
+          </Tooltip>
         )}
       </div>
     </div>
@@ -127,27 +129,28 @@ function CompactBadge({ trade, onPromote }: CompactBadgeProps) {
   const pct = Number(trade.percentage_change) || 0;
 
   return (
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        onPromote();
-      }}
-      className={clsx(
-        "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono",
-        "transition-colors shrink-0 cursor-pointer",
-        "bg-surface-3/40 hover:bg-surface-3/70 text-fg-3",
-      )}
-      title="Click to pin this stock"
-    >
-      <span className="font-semibold">{trade.symbol}</span>
-      {pct !== 0 && (
-        <span
-          className={clsx("tabular-nums", up ? "text-up" : "text-down")}
-        >
-          {formatChange(trade.percentage_change)}
-        </span>
-      )}
-    </button>
+    <Tooltip content="Click to pin this stock">
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onPromote();
+        }}
+        className={clsx(
+          "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono",
+          "transition-colors shrink-0 cursor-pointer",
+          "bg-surface-3/40 hover:bg-surface-3/70 text-fg-3",
+        )}
+      >
+        <span className="font-semibold">{trade.symbol}</span>
+        {pct !== 0 && (
+          <span
+            className={clsx("tabular-nums", up ? "text-up" : "text-down")}
+          >
+            {formatChange(trade.percentage_change)}
+          </span>
+        )}
+      </button>
+    </Tooltip>
   );
 }
 

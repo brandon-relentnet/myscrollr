@@ -13,6 +13,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Settings, SlidersHorizontal, ChevronUp, ChevronDown, ArrowRight, X, Eye, EyeOff } from "lucide-react";
 import clsx from "clsx";
+import Tooltip from "../Tooltip";
 import CardEditor from "./CardEditor";
 import type { EditorField } from "./dashboardPrefs";
 
@@ -139,118 +140,124 @@ export default function DashboardCard({
             "absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-0.5 rounded-lg px-1 py-0.5 transition-opacity",
             deleteArmed || customizing
               ? "opacity-100 bg-surface-2"
-              : "opacity-0 group-hover/card:opacity-100 bg-surface-2",
+              : "opacity-0 pointer-events-none group-hover/card:opacity-100 group-hover/card:pointer-events-auto bg-surface-2",
           )}
         >
           {/* Ticker visibility toggle (hover-revealed) */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleTicker();
-            }}
-            aria-label={tickerEnabled ? `Hide ${name} from ticker` : `Show ${name} on ticker`}
-            title={tickerEnabled ? "Visible on ticker" : "Hidden from ticker"}
-            className={clsx(
-              "w-6 h-6 flex items-center justify-center rounded-md transition-all shrink-0",
-              tickerEnabled
-                ? "text-fg-3 hover:text-fg hover:bg-surface-hover"
-                : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover",
-              "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40",
-            )}
-          >
-            {tickerEnabled ? <Eye size={12} /> : <EyeOff size={12} />}
-          </button>
-
-          {/* Customize card display (hover-revealed, toggles inline editor) */}
-          {hasEditor && (
+          <Tooltip content={tickerEnabled ? "Visible on ticker" : "Hidden from ticker"}>
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setCustomizing((p) => !p);
+                onToggleTicker();
               }}
-              aria-label={customizing ? "Close card customization" : "Customize card display"}
-              title={customizing ? "Done customizing" : "Customize card"}
+              aria-label={tickerEnabled ? `Hide ${name} from ticker` : `Show ${name} on ticker`}
               className={clsx(
                 "w-6 h-6 flex items-center justify-center rounded-md transition-all shrink-0",
-                customizing
-                  ? "text-accent bg-accent/10"
-                  : "text-fg-4 hover:text-fg-2 hover:bg-surface-hover",
+                tickerEnabled
+                  ? "text-fg-3 hover:text-fg hover:bg-surface-hover"
+                  : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover",
                 "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40",
               )}
             >
-              <SlidersHorizontal size={12} />
+              {tickerEnabled ? <Eye size={12} /> : <EyeOff size={12} />}
             </button>
+          </Tooltip>
+
+          {/* Customize card display (hover-revealed, toggles inline editor) */}
+          {hasEditor && (
+            <Tooltip content={customizing ? "Done customizing" : "Customize card"}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCustomizing((p) => !p);
+                }}
+                aria-label={customizing ? "Close card customization" : "Customize card display"}
+                className={clsx(
+                  "w-6 h-6 flex items-center justify-center rounded-md transition-all shrink-0",
+                  customizing
+                    ? "text-accent bg-accent/10"
+                    : "text-fg-4 hover:text-fg-2 hover:bg-surface-hover",
+                  "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40",
+                )}
+              >
+                <SlidersHorizontal size={12} />
+              </button>
+            </Tooltip>
           )}
 
           {/* Gear — configure source (hover-revealed) */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onConfigure();
-            }}
-            aria-label={`Configure ${name}`}
-            title="Configure"
-            className="w-6 h-6 flex items-center justify-center rounded-md text-fg-4 hover:text-fg-2 hover:bg-surface-hover focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40 transition-all shrink-0"
-          >
-            <Settings size={12} />
-          </button>
+          <Tooltip content="Configure">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onConfigure();
+              }}
+              aria-label={`Configure ${name}`}
+              className="w-6 h-6 flex items-center justify-center rounded-md text-fg-4 hover:text-fg-2 hover:bg-surface-hover focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40 transition-all shrink-0"
+            >
+              <Settings size={12} />
+            </button>
+          </Tooltip>
 
           {/* Reorder arrows (hover-revealed) */}
           <div className="flex items-center">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onMoveUp?.();
-              }}
-              disabled={!onMoveUp}
-              className={clsx(
-                "w-5 h-5 flex items-center justify-center rounded transition-colors",
-                onMoveUp
-                  ? "text-fg-4 hover:text-fg-2 hover:bg-surface-hover"
-                  : "text-fg-4/20 cursor-default",
-              )}
-              aria-label={`Move ${name} up`}
-              title="Move up"
-            >
-              <ChevronUp size={13} />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onMoveDown?.();
-              }}
-              disabled={!onMoveDown}
-              className={clsx(
-                "w-5 h-5 flex items-center justify-center rounded transition-colors",
-                onMoveDown
-                  ? "text-fg-4 hover:text-fg-2 hover:bg-surface-hover"
-                  : "text-fg-4/20 cursor-default",
-              )}
-              aria-label={`Move ${name} down`}
-              title="Move down"
-            >
-              <ChevronDown size={13} />
-            </button>
+            <Tooltip content="Move up">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMoveUp?.();
+                }}
+                disabled={!onMoveUp}
+                className={clsx(
+                  "w-5 h-5 flex items-center justify-center rounded transition-colors",
+                  onMoveUp
+                    ? "text-fg-4 hover:text-fg-2 hover:bg-surface-hover"
+                    : "text-fg-4/20 cursor-default",
+                )}
+                aria-label={`Move ${name} up`}
+              >
+                <ChevronUp size={13} />
+              </button>
+            </Tooltip>
+            <Tooltip content="Move down">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMoveDown?.();
+                }}
+                disabled={!onMoveDown}
+                className={clsx(
+                  "w-5 h-5 flex items-center justify-center rounded transition-colors",
+                  onMoveDown
+                    ? "text-fg-4 hover:text-fg-2 hover:bg-surface-hover"
+                    : "text-fg-4/20 cursor-default",
+                )}
+                aria-label={`Move ${name} down`}
+              >
+                <ChevronDown size={13} />
+              </button>
+            </Tooltip>
           </div>
 
           {/* Remove (hover-revealed, two-click confirm) */}
-          <button
-            onClick={handleDeleteClick}
-            aria-label={deleteArmed ? `Confirm removal of ${name}` : `Remove ${name}`}
-            title={deleteArmed ? "Click again to confirm" : "Remove"}
-            className={clsx(
-              "flex items-center gap-1 rounded-md transition-all shrink-0",
-              deleteArmed
-                ? "px-2 py-0.5 text-red-500 bg-red-500/10"
-                : "w-6 h-6 justify-center text-fg-4 hover:text-red-400 hover:bg-red-500/10",
-              "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500/40",
-            )}
-          >
-            <X size={12} />
-            {deleteArmed && (
-              <span className="text-[10px] font-medium">Remove?</span>
-            )}
-          </button>
+          <Tooltip content={deleteArmed ? "Click again to confirm" : "Remove"}>
+            <button
+              onClick={handleDeleteClick}
+              aria-label={deleteArmed ? `Confirm removal of ${name}` : `Remove ${name}`}
+              className={clsx(
+                "flex items-center gap-1 rounded-md transition-all shrink-0",
+                deleteArmed
+                  ? "px-2 py-0.5 text-red-500 bg-red-500/10"
+                  : "w-6 h-6 justify-center text-fg-4 hover:text-red-400 hover:bg-red-500/10",
+                "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-500/40",
+              )}
+            >
+              <X size={12} />
+              {deleteArmed && (
+                <span className="text-[10px] font-medium">Remove?</span>
+              )}
+            </button>
+          </Tooltip>
         </div>
       </div>
 

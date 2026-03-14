@@ -5,6 +5,7 @@
  * TODO: Phase E — migrate to Tauri store plugin.
  */
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import Tooltip from "../../components/Tooltip";
 import type { TimeFormat, TimezoneEntry } from "./types";
 
 // ── Timezone presets ────────────────────────────────────────────
@@ -223,13 +224,14 @@ function ClockCard({
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-mono text-fg-2">{offset}</span>
           {!isLocal && onRemove && (
-            <button
-              onClick={onRemove}
-              className="text-fg-3 hover:text-error opacity-0 group-hover:opacity-100 transition-all"
-              title="Remove timezone"
-            >
-              <CloseIcon size={11} />
-            </button>
+            <Tooltip content="Remove timezone">
+              <button
+                onClick={onRemove}
+                className="text-fg-3 hover:text-error opacity-0 group-hover:opacity-100 transition-all"
+              >
+                <CloseIcon size={11} />
+              </button>
+            </Tooltip>
           )}
         </div>
       </div>
@@ -251,13 +253,14 @@ function ClockCard({
       }
     >
       {!isLocal && onRemove && (
-        <button
-          onClick={onRemove}
-          className="absolute top-2.5 right-2.5 w-5 h-5 flex items-center justify-center rounded text-fg-3 hover:text-error hover:bg-error/10 opacity-0 group-hover:opacity-100 transition-all"
-          title="Remove timezone"
-        >
-          <CloseIcon size={11} />
-        </button>
+        <Tooltip content="Remove timezone">
+          <button
+            onClick={onRemove}
+            className="absolute top-2.5 right-2.5 w-5 h-5 flex items-center justify-center rounded text-fg-3 hover:text-error hover:bg-error/10 opacity-0 group-hover:opacity-100 transition-all"
+          >
+            <CloseIcon size={11} />
+          </button>
+        </Tooltip>
       )}
       <div className="flex items-center gap-2 mb-1">
         <span className="text-xs font-mono text-widget-clock/80 uppercase tracking-wider">
@@ -354,17 +357,14 @@ export function WorldClock({ compact }: WorldClockProps) {
       {/* Controls */}
       <div className="flex items-center justify-between px-1 mb-1">
         <div className="flex items-center gap-2">
+          <Tooltip content={fmt === "12h" ? "Switch to 24-hour format" : "Switch to 12-hour format"}>
           <button
             onClick={toggleFormat}
             className="text-xs font-mono px-1.5 py-0.5 rounded border transition-colors text-widget-clock/70 border-widget-clock/20 hover:text-widget-clock hover:border-widget-clock/30"
-            title={
-              fmt === "12h"
-                ? "Switch to 24-hour format"
-                : "Switch to 12-hour format"
-            }
           >
             {fmt === "12h" ? "12h" : "24h"}
           </button>
+          </Tooltip>
         </div>
         <button
           onClick={() => setShowAdd(!showAdd)}

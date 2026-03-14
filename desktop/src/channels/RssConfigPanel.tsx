@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Plus, Rss, Trash2 } from "lucide-react";
+import Tooltip from "../components/Tooltip";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SetupBrowser } from "../components/settings/SetupBrowser";
 import { channelsApi, rssApi } from "../api/client";
@@ -155,16 +156,17 @@ export default function RssConfigPanel({
                 {isSelected ? "✓ Added" : "+ Add"}
               </span>
               {!item.is_default && !isSelected && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteCatalogFeed(item);
-                  }}
-                  title="Delete this feed"
-                  className="p-0.5 rounded hover:bg-error/10 text-fg-4 hover:text-error transition-colors cursor-pointer"
-                >
-                  <Trash2 size={11} />
-                </button>
+                <Tooltip content="Delete this feed">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteCatalogFeed(item);
+                    }}
+                    className="p-0.5 rounded hover:bg-error/10 text-fg-4 hover:text-error transition-colors cursor-pointer"
+                  >
+                    <Trash2 size={11} />
+                  </button>
+                </Tooltip>
               )}
             </div>
           </>

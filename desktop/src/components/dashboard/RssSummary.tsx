@@ -13,6 +13,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useScrollrCDC } from "../../hooks/useScrollrCDC";
 import { loadPref, savePref } from "../../preferences";
 import clsx from "clsx";
+import Tooltip from "../Tooltip";
 import { timeAgo, truncate } from "../../utils/format";
 import type { RssItem, DashboardResponse } from "../../types";
 import type { RssCardPrefs } from "./dashboardPrefs";
@@ -106,13 +107,13 @@ function CompactHeadline({ article, prefs, onPromote }: CompactHeadlineProps) {
   const ago = timeAgo(article.published_at);
 
   return (
+    <Tooltip content="Click to feature this article">
     <button
       onClick={(e) => {
         e.stopPropagation();
         onPromote();
       }}
       className="flex items-center gap-1.5 w-full text-left px-1 py-1 rounded hover:bg-surface-3/40 transition-colors cursor-pointer group/headline"
-      title="Click to feature this article"
     >
       {fresh && (
         <span className="w-1 h-1 rounded-full bg-accent shrink-0 animate-pulse" />
@@ -131,6 +132,7 @@ function CompactHeadline({ article, prefs, onPromote }: CompactHeadlineProps) {
         </span>
       )}
     </button>
+    </Tooltip>
   );
 }
 

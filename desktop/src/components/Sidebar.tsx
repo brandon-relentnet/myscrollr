@@ -8,6 +8,7 @@
 import { useState, useMemo } from "react";
 import { LayoutDashboard, Settings, User, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import clsx from "clsx";
+import Tooltip from "./Tooltip";
 import type { ChannelManifest, WidgetManifest, DeliveryMode } from "../types";
 import type { Channel } from "../api/client";
 import { CHANNEL_ORDER } from "../channels/registry";
@@ -164,10 +165,10 @@ export default function Sidebar({
       )}
     >
       {/* App header — logo + name */}
+      <Tooltip content={collapsed ? "Dashboard" : undefined} side="right">
       <button
         onClick={onNavigateToFeed}
         aria-label="Scrollr — go to dashboard"
-        title={collapsed ? "Dashboard" : undefined}
         className={clsx(
           "flex items-center w-full h-12 shrink-0 transition-colors",
           collapsed ? "justify-center px-0" : "gap-2.5 px-4",
@@ -183,6 +184,7 @@ export default function Sidebar({
           <span className="text-sm font-semibold text-fg tracking-tight">Scrollr</span>
         )}
       </button>
+      </Tooltip>
 
       {/* Navigation items */}
       <nav
@@ -288,10 +290,10 @@ export default function Sidebar({
         />
 
         {/* Collapse toggle */}
+        <Tooltip content={collapsed ? "Expand sidebar" : "Collapse sidebar"} side="right">
         <button
           onClick={toggleCollapsed}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           className={clsx(
             "flex items-center w-full rounded-lg text-fg-4 hover:text-fg-2 hover:bg-surface-hover transition-colors",
             collapsed
@@ -306,6 +308,7 @@ export default function Sidebar({
             <span className="text-[12px] font-medium">Collapse</span>
           )}
         </button>
+        </Tooltip>
 
         {/* Status footer — informational only */}
         <div
@@ -314,9 +317,9 @@ export default function Sidebar({
             collapsed ? "flex-col gap-1.5 px-0 justify-center" : "gap-3 px-2.5",
           )}
         >
+          <Tooltip content={deliveryMode === "sse" ? "Receiving updates live" : "Polling for updates"} side="right">
           <div
             className="flex items-center gap-1.5"
-            title={deliveryMode === "sse" ? "Receiving updates live" : "Polling for updates"}
           >
             <div
               className={clsx(
@@ -332,9 +335,10 @@ export default function Sidebar({
               </span>
             )}
           </div>
+          </Tooltip>
+          <Tooltip content={tickerAlive ? "Ticker is running" : "Ticker is off"} side="right">
           <div
             className="flex items-center gap-1.5"
-            title={tickerAlive ? "Ticker is running" : "Ticker is off"}
           >
             <div
               className={clsx(
@@ -350,6 +354,7 @@ export default function Sidebar({
               </span>
             )}
           </div>
+          </Tooltip>
         </div>
       </div>
     </aside>
@@ -390,11 +395,11 @@ function NavItem({
   onClick: () => void;
 }) {
   return (
+    <Tooltip content={collapsed ? label : undefined} side="right">
     <button
       onClick={onClick}
       aria-current={active ? "page" : undefined}
       aria-label={collapsed ? label : undefined}
-      title={collapsed ? label : undefined}
       className={clsx(
         "relative flex items-center w-full rounded-lg font-medium transition-colors",
         collapsed
@@ -417,5 +422,6 @@ function NavItem({
       </span>
       {!collapsed && <span className="truncate">{label}</span>}
     </button>
+    </Tooltip>
   );
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import Tooltip from "./Tooltip";
 
 const appWindow = getCurrentWindow();
 
@@ -44,26 +45,27 @@ export default function TitleBar() {
       {/* Window controls — right side */}
       <div className="flex items-center h-full">
         {/* Minimize */}
-        <button
-          onClick={() => appWindow.minimize()}
-          className={`${btnBase} text-fg-3 hover:text-fg hover:bg-surface-hover`}
-          title="Minimize"
-          aria-label="Minimize"
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          <svg width="10" height="1" viewBox="0 0 10 1">
-            <rect fill="currentColor" width="10" height="1" rx="0.5" />
-          </svg>
-        </button>
+        <Tooltip content="Minimize" side="bottom">
+          <button
+            onClick={() => appWindow.minimize()}
+            className={`${btnBase} text-fg-3 hover:text-fg hover:bg-surface-hover`}
+            aria-label="Minimize"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <svg width="10" height="1" viewBox="0 0 10 1">
+              <rect fill="currentColor" width="10" height="1" rx="0.5" />
+            </svg>
+          </button>
+        </Tooltip>
 
         {/* Maximize / Restore */}
-        <button
-          onClick={() => appWindow.toggleMaximize()}
-          className={`${btnBase} text-fg-3 hover:text-fg hover:bg-surface-hover`}
-          title={maximized ? "Restore" : "Maximize"}
-          aria-label={maximized ? "Restore" : "Maximize"}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
+        <Tooltip content={maximized ? "Restore" : "Maximize"} side="bottom">
+          <button
+            onClick={() => appWindow.toggleMaximize()}
+            className={`${btnBase} text-fg-3 hover:text-fg hover:bg-surface-hover`}
+            aria-label={maximized ? "Restore" : "Maximize"}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
           {maximized ? (
             // Restore icon — two overlapping rectangles
             <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -97,24 +99,26 @@ export default function TitleBar() {
             </svg>
           )}
         </button>
+        </Tooltip>
 
         {/* Close */}
-        <button
-          onClick={() => appWindow.close()}
-          className={`${btnBase} text-fg-3 hover:text-fg hover:bg-error/80 hover:text-white`}
-          title="Close"
-          aria-label="Close"
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-            <path
-              d="M1 1l8 8M9 1l-8 8"
-              stroke="currentColor"
-              strokeWidth="1.3"
-              strokeLinecap="round"
-            />
-          </svg>
-        </button>
+        <Tooltip content="Close" side="bottom">
+          <button
+            onClick={() => appWindow.close()}
+            className={`${btnBase} text-fg-3 hover:text-fg hover:bg-error/80 hover:text-white`}
+            aria-label="Close"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+              <path
+                d="M1 1l8 8M9 1l-8 8"
+                stroke="currentColor"
+                strokeWidth="1.3"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        </Tooltip>
       </div>
     </div>
   );

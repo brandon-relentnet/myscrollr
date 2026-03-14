@@ -14,6 +14,7 @@ import { useScrollrCDC } from "../../hooks/useScrollrCDC";
 import { isCloseGame } from "../chips/GameChip";
 import { loadPref, savePref } from "../../preferences";
 import clsx from "clsx";
+import Tooltip from "../Tooltip";
 import type { Game, DashboardResponse } from "../../types";
 import type { SportsCardPrefs } from "./dashboardPrefs";
 
@@ -276,41 +277,42 @@ function CompactChip({ game, onPromote, showFinals, showUpcoming }: CompactChipP
   if (pre && !showUpcoming) return null;
 
   return (
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        onPromote();
-      }}
-      className={clsx(
-        "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono",
-        "transition-colors cursor-pointer shrink-0",
-        live
-          ? "bg-live/8 hover:bg-live/15 text-fg-2"
-          : "bg-surface-3/40 hover:bg-surface-3/70 text-fg-3",
-      )}
-      title="Click to feature this game"
-    >
-      {live && (
-        <span className="w-1 h-1 rounded-full bg-live shrink-0 animate-pulse" />
-      )}
-      <span className={live ? "font-semibold" : ""}>
-        {abbreviate(game.away_team_name)}
-      </span>
-      {pre ? (
-        <span className="text-fg-4">vs</span>
-      ) : (
-        <>
-          <span className="tabular-nums">
-            {game.away_team_score}-{game.home_team_score}
-          </span>
-        </>
-      )}
-      <span className={live ? "font-semibold" : ""}>
-        {abbreviate(game.home_team_name)}
-      </span>
-      {final && <span className="text-fg-4 text-[9px]">F</span>}
-      {pre && <span className="text-fg-4 text-[9px]">{formatCountdown(game.start_time)}</span>}
-    </button>
+    <Tooltip content="Click to feature this game">
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onPromote();
+        }}
+        className={clsx(
+          "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono",
+          "transition-colors cursor-pointer shrink-0",
+          live
+            ? "bg-live/8 hover:bg-live/15 text-fg-2"
+            : "bg-surface-3/40 hover:bg-surface-3/70 text-fg-3",
+        )}
+      >
+        {live && (
+          <span className="w-1 h-1 rounded-full bg-live shrink-0 animate-pulse" />
+        )}
+        <span className={live ? "font-semibold" : ""}>
+          {abbreviate(game.away_team_name)}
+        </span>
+        {pre ? (
+          <span className="text-fg-4">vs</span>
+        ) : (
+          <>
+            <span className="tabular-nums">
+              {game.away_team_score}-{game.home_team_score}
+            </span>
+          </>
+        )}
+        <span className={live ? "font-semibold" : ""}>
+          {abbreviate(game.home_team_name)}
+        </span>
+        {final && <span className="text-fg-4 text-[9px]">F</span>}
+        {pre && <span className="text-fg-4 text-[9px]">{formatCountdown(game.start_time)}</span>}
+      </button>
+    </Tooltip>
   );
 }
 
