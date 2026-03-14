@@ -11,14 +11,11 @@ import type {
   ClockWidgetConfig,
   ClockTickerConfig,
   ClockPomodoroConfig,
-  PinSide,
 } from "../../preferences";
 import { DEFAULT_CLOCK_TICKER, DEFAULT_CLOCK_POMODORO } from "../../preferences";
 import { savePrefs } from "../../preferences";
-
-// ── localStorage keys (shared with the Clock FeedTab) ───────────
-const LS_FORMAT = "scrollr:widget:clock:format";
-const LS_TIMEZONES = "scrollr:widget:clock:timezones";
+import { useWidgetPin } from "../../hooks/useWidgetPin";
+import { LS_CLOCK_FORMAT, LS_CLOCK_TIMEZONES, PIN_SIDE_OPTIONS } from "../../constants";
 
 type ClockFormat = "12h" | "24h";
 
@@ -30,14 +27,14 @@ interface ClockConfigPanelProps {
 /** Read the user's configured timezones from widget localStorage. */
 function loadTimezones(): string[] {
   try {
-    const raw = localStorage.getItem(LS_TIMEZONES);
+    const raw = localStorage.getItem(LS_CLOCK_TIMEZONES);
     if (raw) return JSON.parse(raw) as string[];
   } catch { /* ignore */ }
   return ["America/New_York", "Europe/London", "Asia/Tokyo"];
 }
 
 function loadFormat(): ClockFormat {
-  return (localStorage.getItem(LS_FORMAT) as ClockFormat) ?? "12h";
+  return (localStorage.getItem(LS_CLOCK_FORMAT) as ClockFormat) ?? "12h";
 }
 
 /** Human-readable label for an IANA timezone. */
@@ -49,11 +46,6 @@ function tzLabel(tz: string): string {
 const FORMAT_OPTIONS: { value: ClockFormat; label: string }[] = [
   { value: "12h", label: "12h" },
   { value: "24h", label: "24h" },
-];
-
-const PIN_SIDE_OPTIONS: { value: PinSide; label: string }[] = [
-  { value: "left", label: "Left" },
-  { value: "right", label: "Right" },
 ];
 
 const LONG_BREAK_OPTIONS = [
@@ -72,11 +64,13 @@ export default function ClockConfigPanel({
   const [format, setFormatState] = useState<ClockFormat>(loadFormat);
   const [timezones, setTimezones] = useState<string[]>(loadTimezones);
 
+  const { isPinned, pinSide, togglePin, setPinSide } = useWidgetPin("clock", prefs, onPrefsChange);
+
   // Re-read timezones when localStorage changes (e.g., user adds a TZ in the widget)
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key === LS_TIMEZONES) setTimezones(loadTimezones());
-      if (e.key === LS_FORMAT) setFormatState(loadFormat());
+      if (e.key === LS_CLOCK_TIMEZONES) setTimezones(loadTimezones());
+      if (e.key === LS_CLOCK_FORMAT) setFormatState(loadFormat());
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -114,7 +108,7 @@ export default function ClockConfigPanel({
   const handleFormatChange = useCallback(
     (v: ClockFormat) => {
       setFormatState(v);
-      localStorage.setItem(LS_FORMAT, v);
+      localStorage.setItem(LS_CLOCK_FORMAT, v);
     },
     [],
   );
@@ -133,46 +127,12 @@ export default function ClockConfigPanel({
     [config.ticker.excludedTimezones, setTicker],
   );
 
-  const isPinned = !!prefs.widgets.pinnedWidgets.clock;
-  const pinSide = prefs.widgets.pinnedWidgets.clock?.side ?? "left";
-
-  const togglePin = useCallback(
-    (pinned: boolean) => {
-      const pw = { ...prefs.widgets.pinnedWidgets };
-      if (pinned) {
-        pw.clock = { side: pinSide };
-      } else {
-        delete pw.clock;
-      }
-      const next: AppPreferences = {
-        ...prefs,
-        widgets: { ...prefs.widgets, pinnedWidgets: pw },
-      };
-      onPrefsChange(next);
-      savePrefs(next);
-    },
-    [prefs, pinSide, onPrefsChange],
-  );
-
-  const setPinSide = useCallback(
-    (side: PinSide) => {
-      const pw = { ...prefs.widgets.pinnedWidgets, clock: { side } };
-      const next: AppPreferences = {
-        ...prefs,
-        widgets: { ...prefs.widgets, pinnedWidgets: pw },
-      };
-      onPrefsChange(next);
-      savePrefs(next);
-    },
-    [prefs, onPrefsChange],
-  );
-
   const resetAll = useCallback(() => {
     update({
       ticker: { ...DEFAULT_CLOCK_TICKER },
       pomodoro: { ...DEFAULT_CLOCK_POMODORO },
     });
-    localStorage.setItem(LS_FORMAT, "12h");
+    localStorage.setItem(LS_CLOCK_FORMAT, "12h");
     setFormatState("12h");
   }, [update]);
 

@@ -1,102 +1,17 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type { WidgetPrefs } from "../preferences";
+import type { TempUnit } from "../preferences";
 import { fetchSysmonData } from "./useSysmonData";
 import type { SystemInfo } from "./useSysmonData";
-
-// ── localStorage keys (shared with widget FeedTabs) ─────────────
-const LS_TIMEZONES = "scrollr:widget:clock:timezones";
-const LS_FORMAT = "scrollr:widget:clock:format";
-const LS_TIMER_STATE = "scrollr:widget:timer:state";
-const LS_CITIES = "scrollr:widget:weather:cities";
-const LS_UNIT = "scrollr:widget:weather:unit";
-
-// ── Types matching widget localStorage structures ───────────────
-
-interface TimerState {
-  mode: string;
-  startedAt: number | null;
-  bankedMs: number;
-  targetSecs: number;
-  completedSessions?: number;
-}
-
-interface SavedCity {
-  location: { name: string; lat: number; lon: number; country?: string; admin1?: string };
-  weather?: {
-    temperature?: number;
-    apparent_temperature?: number;
-    weather_code?: number;
-    relative_humidity?: number;
-    wind_speed?: number;
-    wind_direction?: number;
-  };
-  lastFetched?: number;
-}
-
-// ── Chip data types (local to this hook; mirrored in each chip component) ──
-
-interface ClockChipData {
-  id: string;
-  kind: "clock" | "timer";
-  label: string;
-  value: string;
-  detail?: string;
-}
-
-interface WeatherChipData {
-  id: string;
-  label: string;
-  temp: string;
-  icon: string;
-  detail?: string;
-}
-
-interface SysmonChipData {
-  id: string;
-  label: string;
-  value: string;
-  detail?: string;
-  hot?: boolean;
-}
-
-// ── Result type ─────────────────────────────────────────────────
-
-export interface WidgetTickerData {
-  clock: ClockChipData[];
-  weather: WeatherChipData[];
-  sysmon: SysmonChipData[];
-}
+import { LS_CLOCK_TIMEZONES, LS_CLOCK_FORMAT, LS_TIMER_STATE, LS_WEATHER_CITIES, LS_WEATHER_UNIT } from "../constants";
+import { formatBytes } from "../utils/format";
+import { weatherCodeToIcon, weatherCodeToLabel, formatTemp } from "../widgets/weather/types";
+import { findCpuTemp, findGpuTemp, formatComponentTemp } from "../widgets/sysmon/utils";
+import type { ClockChipData, WeatherChipData, SysmonChipData, WidgetTickerData } from "../types";
+import type { TimerState } from "../widgets/clock/types";
+import type { SavedCity } from "../widgets/weather/types";
 
 const EMPTY: WidgetTickerData = { clock: [], weather: [], sysmon: [] };
-
-// ── Weather code → emoji ────────────────────────────────────────
-
-function weatherIcon(code: number | undefined): string {
-  if (code == null) return "\u2601\uFE0F";
-  if (code === 0) return "\u2600\uFE0F";
-  if (code <= 3) return "\u26C5";
-  if (code <= 49) return "\uD83C\uDF2B\uFE0F";
-  if (code <= 69) return "\uD83C\uDF27\uFE0F";
-  if (code <= 79) return "\u2744\uFE0F";
-  if (code <= 82) return "\uD83C\uDF27\uFE0F";
-  if (code <= 86) return "\uD83C\uDF28\uFE0F";
-  if (code <= 99) return "\u26A1";
-  return "\u2601\uFE0F";
-}
-
-function weatherCondition(code: number | undefined): string {
-  if (code == null) return "";
-  if (code === 0) return "Clear";
-  if (code <= 3) return "Partly cloudy";
-  if (code <= 49) return "Fog";
-  if (code <= 59) return "Drizzle";
-  if (code <= 69) return "Rain";
-  if (code <= 79) return "Snow";
-  if (code <= 82) return "Showers";
-  if (code <= 86) return "Snow showers";
-  if (code <= 99) return "Thunderstorm";
-  return "";
-}
 
 // ── Time formatting helpers ─────────────────────────────────────
 
@@ -136,16 +51,6 @@ function tzShortLabel(tz: string): string {
   return city;
 }
 
-// ── Temperature formatting ──────────────────────────────────────
-
-function formatTemp(celsius: number | undefined, unit: string): string {
-  if (celsius == null) return "--";
-  if (unit === "fahrenheit") {
-    return `${Math.round(celsius * 9 / 5 + 32)}\u00B0F`;
-  }
-  return `${Math.round(celsius)}\u00B0C`;
-}
-
 // ── Timer helpers ───────────────────────────────────────────────
 
 function getTimerChipData(state: TimerState): ClockChipData | null {
@@ -178,37 +83,6 @@ function getTimerChipData(state: TimerState): ClockChipData | null {
   };
 }
 
-// ── Sysmon helpers ──────────────────────────────────────────────
-
-function formatBytes(bytes: number): string {
-  const gb = bytes / (1024 ** 3);
-  return gb >= 10 ? `${Math.round(gb)} GB` : `${gb.toFixed(1)} GB`;
-}
-
-function cpuTemp(info: SystemInfo, tempUnit: string): string {
-  const sensor = info.components.find((c) =>
-    /package id|^tctl$|^tdie$/i.test(c.label),
-  );
-  if (!sensor) return "";
-  const temp = tempUnit === "fahrenheit"
-    ? Math.round(sensor.temp * 9 / 5 + 32)
-    : Math.round(sensor.temp);
-  const unit = tempUnit === "fahrenheit" ? "\u00B0F" : "\u00B0C";
-  return `${temp}${unit}`;
-}
-
-function gpuTemp(info: SystemInfo, tempUnit: string): string {
-  const sensor = info.components.find((c) =>
-    /^edge$|^junction$|gpu/i.test(c.label),
-  );
-  if (!sensor) return "";
-  const temp = tempUnit === "fahrenheit"
-    ? Math.round(sensor.temp * 9 / 5 + 32)
-    : Math.round(sensor.temp);
-  const unit = tempUnit === "fahrenheit" ? "\u00B0F" : "\u00B0C";
-  return `${temp}${unit}`;
-}
-
 // ── Hook ────────────────────────────────────────────────────────
 
 export function useWidgetTickerData(
@@ -228,7 +102,7 @@ export function useWidgetTickerData(
     const cfg = widgetPrefs.clock;
     const chips: ClockChipData[] = [];
     const now = new Date();
-    const format = localStorage.getItem(LS_FORMAT) ?? "12h";
+    const format = localStorage.getItem(LS_CLOCK_FORMAT) ?? "12h";
 
     // Local time
     if (cfg.ticker.localTime) {
@@ -244,7 +118,7 @@ export function useWidgetTickerData(
     // Configured timezones (gated by showTimezones, then filtered by excludedTimezones)
     if (cfg.ticker.showTimezones) {
       try {
-        const raw = localStorage.getItem(LS_TIMEZONES);
+        const raw = localStorage.getItem(LS_CLOCK_TIMEZONES);
         const tzs: string[] = raw ? JSON.parse(raw) : [];
         for (const tz of tzs) {
           if (cfg.ticker.excludedTimezones.includes(tz)) continue;
@@ -279,10 +153,10 @@ export function useWidgetTickerData(
     if (!enabledWidgets.has("weather")) return [];
     const cfg = widgetPrefs.weather;
     const chips: WeatherChipData[] = [];
-    const unit = localStorage.getItem(LS_UNIT) ?? "fahrenheit";
+    const unit = localStorage.getItem(LS_WEATHER_UNIT) ?? "fahrenheit";
 
     try {
-      const raw = localStorage.getItem(LS_CITIES);
+      const raw = localStorage.getItem(LS_WEATHER_CITIES);
       const cities: SavedCity[] = raw ? JSON.parse(raw) : [];
 
       for (const city of cities) {
@@ -290,10 +164,10 @@ export function useWidgetTickerData(
         if (cfg.ticker.excludedCities.includes(name)) continue;
 
         const w = city.weather;
-        const temp = formatTemp(w?.temperature, unit);
-        const feelsLike = formatTemp(w?.apparent_temperature, unit);
-        const icon = weatherIcon(w?.weather_code);
-        const condition = weatherCondition(w?.weather_code);
+        const temp = w?.temperature != null ? formatTemp(w.temperature, unit as TempUnit, true) : "--";
+        const feelsLike = w?.feelsLike != null ? formatTemp(w.feelsLike, unit as TempUnit, true) : "--";
+        const icon = w?.weatherCode != null ? weatherCodeToIcon(w.weatherCode) : "\u2601";
+        const condition = w?.weatherCode != null ? weatherCodeToLabel(w.weatherCode) : "";
 
         chips.push({
           id: `weather-${name}`,
@@ -321,7 +195,8 @@ export function useWidgetTickerData(
     if (cfg.ticker.cpu) {
       const pct = Math.round(info.cpuUsage);
       const freq = info.cpuFreqMhz ? `${(info.cpuFreqMhz / 1000).toFixed(1)} GHz` : "";
-      const temp = cpuTemp(info, tu);
+      const sensor = findCpuTemp(info.components);
+      const temp = sensor ? formatComponentTemp(sensor.temp, tu) : "";
       chips.push({
         id: "sysmon-cpu",
         label: "CPU",
@@ -347,7 +222,8 @@ export function useWidgetTickerData(
     if (cfg.ticker.gpu && info.gpuUsage != null) {
       const pct = Math.round(info.gpuUsage);
       const clock = info.gpuClockMhz ? `${info.gpuClockMhz} MHz` : "";
-      const temp = gpuTemp(info, tu);
+      const sensor = findGpuTemp(info.components);
+      const temp = sensor ? formatComponentTemp(sensor.temp, tu) : "";
       chips.push({
         id: "sysmon-gpu",
         label: "GPU",

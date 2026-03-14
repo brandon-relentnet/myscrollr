@@ -9,6 +9,8 @@ import { memo, useMemo, useCallback, useRef, useEffect, useState } from "react";
 import { clsx } from "clsx";
 import { TrendingUp } from "lucide-react";
 import { useScrollrCDC } from "../../hooks/useScrollrCDC";
+import { formatPrice, formatChange, timeAgo } from "../../utils/format";
+import EmptyChannelState from "../../components/EmptyChannelState";
 import type { Trade, FeedTabProps, ChannelManifest } from "../../types";
 
 // ── Channel manifest ─────────────────────────────────────────────
@@ -65,21 +67,14 @@ function FinanceFeedTab({ mode, channelConfig }: FeedTabProps) {
       )}
     >
       {trades.length === 0 && (
-        <div className="col-span-full flex flex-col items-center justify-center gap-2 py-12 bg-surface">
-          <TrendingUp size={28} className="text-fg-4/40" />
-          {channelConfig.__dashboardLoaded && !channelConfig.__hasConfig ? (
-            <>
-              <p className="text-sm font-medium text-fg-3">
-                No stocks or crypto picked yet
-              </p>
-              <p className="text-xs text-fg-4">
-                Go to the <span className="text-fg-3 font-medium">Settings</span> tab to choose what to track.
-              </p>
-            </>
-          ) : (
-            <p className="text-xs text-fg-4">Loading prices&hellip;</p>
-          )}
-        </div>
+        <EmptyChannelState
+          icon={TrendingUp}
+          noun="stocks or crypto"
+          hasConfig={!!channelConfig.__hasConfig}
+          dashboardLoaded={!!channelConfig.__dashboardLoaded}
+          loadingNoun="prices"
+          actionHint="choose what to track"
+        />
       )}
       {trades.map((trade) => (
         <TradeItem key={trade.symbol} trade={trade} mode={mode} />
@@ -95,39 +90,10 @@ interface TradeItemProps {
   mode: "comfort" | "compact";
 }
 
-function formatPrice(price: number | string): string {
-  const num = typeof price === "string" ? parseFloat(price) : price;
-  return isNaN(num) ? String(price) : `$${num.toFixed(2)}`;
-}
-
-function formatChange(change: number | string | undefined): string {
-  if (change == null) return "";
-  const num = typeof change === "string" ? parseFloat(change) : change;
-  if (isNaN(num)) return String(change);
-  const sign = num >= 0 ? "+" : "";
-  return `${sign}${num.toFixed(2)}%`;
-}
-
 /** Build a Google Finance URL for a symbol. Strips exchange prefixes like "BINANCE:". */
 function googleFinanceUrl(symbol: string): string {
   const clean = symbol.includes(":") ? symbol.split(":").pop()! : symbol;
   return `https://www.google.com/finance/quote/${encodeURIComponent(clean)}`;
-}
-
-/** Format a timestamp as relative time (e.g. "12s ago", "5m ago"). */
-function timeAgo(dateStr: string | undefined): string {
-  if (!dateStr) return "";
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return "";
-  const secs = Math.floor((Date.now() - d.getTime()) / 1000);
-  if (secs < 5) return "now";
-  if (secs < 60) return `${secs}s`;
-  const mins = Math.floor(secs / 60);
-  if (mins < 60) return `${mins}m`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d`;
 }
 
 const TradeItem = memo(function TradeItem({ trade, mode }: TradeItemProps) {
@@ -231,7 +197,7 @@ const TradeItem = memo(function TradeItem({ trade, mode }: TradeItemProps) {
           </span>
           {trade.last_updated && (
             <span className="text-[9px] font-mono text-fg-4 tabular-nums">
-              {timeAgo(trade.last_updated)}
+              {timeAgo(trade.last_updated, { includeSeconds: true })}
             </span>
           )}
         </div>

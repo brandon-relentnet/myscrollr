@@ -4,22 +4,22 @@
  * Shows current weather for user-selected cities using the
  * Open-Meteo API (free, no API key required). Cities and unit
  * preference are persisted to localStorage.
+ *
+ * Weather fetching is managed by TanStack Query (useQueries).
+ * Query results are synced back to localStorage so the ticker
+ * window can read them via StorageEvent.
+ *
  * TODO: Phase E — migrate to Tauri store plugin.
  */
 import { useState, useEffect, useCallback } from "react";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { CloudSun } from "lucide-react";
 import { WeatherCard } from "./WeatherCard";
 import { CitySearch } from "./CitySearch";
 import type { FeedTabProps, WidgetManifest } from "../../types";
 import type { WeatherLocation } from "./types";
-import {
-  loadCities,
-  saveCities,
-  loadUnit,
-  saveUnit,
-  fetchWeather,
-  CACHE_TTL,
-} from "./types";
+import { loadCities, saveCities, loadUnit, saveUnit } from "./types";
+import { weatherQueryOptions } from "../../api/queries";
 
 // ── Widget manifest ─────────────────────────────────────────────
 
@@ -48,6 +48,9 @@ export const weatherWidget: WidgetManifest = {
 
 function WeatherFeedTab({ mode: feedMode }: FeedTabProps) {
   const compact = feedMode === "compact";
+  const queryClient = useQueryClient();
+
+  // City list is local state backed by localStorage
   const [cities, setCities] = useState(loadCities);
   const [unit, setUnit] = useState(loadUnit);
   const [showSearch, setShowSearch] = useState(false);
@@ -57,68 +60,42 @@ function WeatherFeedTab({ mode: feedMode }: FeedTabProps) {
     saveCities(cities);
   }, [cities]);
 
-  // Fetch weather for cities that need it (stale or no data)
+  // Fetch weather for each city using TanStack Query
+  const weatherQueries = useQueries({
+    queries: cities.map((city) => ({
+      ...weatherQueryOptions(city.location.lat, city.location.lon),
+      // Use existing weather as initial data if available and non-null
+      ...(city.weather ? { initialData: city.weather } : {}),
+    })),
+  });
+
+  // Sync query results back to cities (for localStorage persistence)
   useEffect(() => {
-    let cancelled = false;
-
-    async function refreshAll(): Promise<void> {
-      const now = Date.now();
-      const needsUpdate = cities.filter(
-        (c) => !c.weather || now - c.lastFetched > CACHE_TTL,
-      );
-      if (needsUpdate.length === 0) return;
-
-      const updates = await Promise.allSettled(
-        needsUpdate.map(async (c) => {
-          const weather = await fetchWeather(c.location.lat, c.location.lon);
-          return { location: c.location, weather };
-        }),
-      );
-
-      if (cancelled) return;
-
-      setCities((prev) =>
-        prev.map((c) => {
-          const idx = needsUpdate.findIndex(
-            (n) =>
-              n.location.lat === c.location.lat &&
-              n.location.lon === c.location.lon,
-          );
-          if (idx === -1) return c;
-          const result = updates[idx];
-          if (!result) return c;
-          if (result.status === "fulfilled") {
-            return {
-              ...c,
-              weather: result.value.weather,
-              lastFetched: Date.now(),
-              error: undefined,
-            };
-          }
-          return {
-            ...c,
-            error: "Couldn't get weather data",
-            lastFetched: Date.now(),
-          };
-        }),
-      );
+    let hasUpdates = false;
+    const updated = cities.map((city, i) => {
+      const query = weatherQueries[i];
+      if (query?.data && query.data !== city.weather) {
+        hasUpdates = true;
+        return { ...city, weather: query.data, lastFetched: Date.now(), error: undefined };
+      }
+      if (query?.error && !city.error) {
+        hasUpdates = true;
+        return { ...city, error: "Couldn't get weather data", lastFetched: Date.now() };
+      }
+      return city;
+    });
+    if (hasUpdates) {
+      setCities(updated);
     }
-
-    refreshAll();
-
-    const interval = setInterval(refreshAll, CACHE_TTL);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [cities.length]);
+    // Only sync when query data actually changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weatherQueries.map((q) => q.dataUpdatedAt).join(",")]);
 
   // Add city
   const addCity = useCallback((location: WeatherLocation) => {
     setCities((prev) => {
       const exists = prev.some(
-        (c) =>
-          c.location.lat === location.lat && c.location.lon === location.lon,
+        (c) => c.location.lat === location.lat && c.location.lon === location.lon,
       );
       if (exists) return prev;
       return [...prev, { location, weather: null, lastFetched: 0 }];
@@ -127,35 +104,24 @@ function WeatherFeedTab({ mode: feedMode }: FeedTabProps) {
   }, []);
 
   // Remove city
-  const removeCity = useCallback((lat: number, lon: number) => {
-    setCities((prev) =>
-      prev.filter((c) => c.location.lat !== lat || c.location.lon !== lon),
-    );
-  }, []);
+  const removeCity = useCallback(
+    (lat: number, lon: number) => {
+      setCities((prev) =>
+        prev.filter((c) => c.location.lat !== lat || c.location.lon !== lon),
+      );
+      // Also remove from query cache
+      queryClient.removeQueries({ queryKey: ["weather", lat, lon] });
+    },
+    [queryClient],
+  );
 
   // Refresh single city
-  const refreshCity = useCallback((lat: number, lon: number) => {
-    (async () => {
-      try {
-        const weather = await fetchWeather(lat, lon);
-        setCities((prev) =>
-          prev.map((c) =>
-            c.location.lat === lat && c.location.lon === lon
-              ? { ...c, weather, lastFetched: Date.now(), error: undefined }
-              : c,
-          ),
-        );
-      } catch {
-        setCities((prev) =>
-          prev.map((c) =>
-            c.location.lat === lat && c.location.lon === lon
-              ? { ...c, error: "Couldn't get weather data", lastFetched: Date.now() }
-              : c,
-          ),
-        );
-      }
-    })();
-  }, []);
+  const refreshCity = useCallback(
+    (lat: number, lon: number) => {
+      queryClient.invalidateQueries({ queryKey: ["weather", lat, lon] });
+    },
+    [queryClient],
+  );
 
   // Toggle unit
   const toggleUnit = useCallback(() => {

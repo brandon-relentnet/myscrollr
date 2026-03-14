@@ -158,3 +158,36 @@ export interface WidgetManifest {
   /** The React component rendered inside the feed bar for this widget. */
   FeedTab: React.ComponentType<FeedTabProps>;
 }
+
+// ── Widget Chip Data Types ──────────────────────────────────────
+// Shared between the ticker data hook and the chip components.
+
+export interface ClockChipData {
+  id: string;
+  kind: "clock" | "timer";
+  label: string;
+  value: string;
+  detail?: string;
+}
+
+export interface WeatherChipData {
+  id: string;
+  label: string;
+  temp: string;
+  icon: string;
+  detail?: string;
+}
+
+export interface SysmonChipData {
+  id: string;
+  label: string;
+  value: string;
+  detail?: string;
+  hot?: boolean;
+}
+
+export interface WidgetTickerData {
+  clock: ClockChipData[];
+  weather: WeatherChipData[];
+  sysmon: SysmonChipData[];
+}

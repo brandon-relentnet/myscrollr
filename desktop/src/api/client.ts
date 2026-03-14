@@ -16,16 +16,8 @@ export { API_BASE };
 
 // ── Request helpers ─────────────────────────────────────────────
 
-/** Unauthenticated request — use for public endpoints. */
-export async function request<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: { ...options.headers },
-  });
-
+/** Parse error body and throw — shared by request() and authFetch(). */
+async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const error = await response
       .json()
@@ -36,6 +28,19 @@ export async function request<T>(
   }
 
   return response.json() as Promise<T>;
+}
+
+/** Unauthenticated request — use for public endpoints. */
+export async function request<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: { ...options.headers },
+  });
+
+  return handleResponse<T>(response);
 }
 
 /**
@@ -60,16 +65,7 @@ export async function authFetch<T>(
     headers,
   });
 
-  if (!response.ok) {
-    const error = await response
-      .json()
-      .catch(() => ({ error: "Request failed" }));
-    throw new Error(
-      (error as { error?: string }).error || "Request failed",
-    );
-  }
-
-  return response.json() as Promise<T>;
+  return handleResponse<T>(response);
 }
 
 // ── Channel Types ───────────────────────────────────────────────

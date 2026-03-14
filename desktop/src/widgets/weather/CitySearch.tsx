@@ -1,8 +1,11 @@
 /**
  * CitySearch — debounced city search using Open-Meteo Geocoding API.
+ *
+ * Uses TanStack Query for data fetching with a debounced query string.
  */
 import { useState, useEffect, useRef } from "react";
-import { searchCities } from "./types";
+import { useQuery } from "@tanstack/react-query";
+import { citySearchOptions } from "../../api/queries";
 import type { WeatherLocation } from "./types";
 
 interface CitySearchProps {
@@ -11,9 +14,7 @@ interface CitySearchProps {
 
 export function CitySearch({ onSelect }: CitySearchProps) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<WeatherLocation[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Focus on mount
@@ -21,28 +22,15 @@ export function CitySearch({ onSelect }: CitySearchProps) {
     inputRef.current?.focus();
   }, []);
 
-  // Debounced search
+  // Debounce the query
   useEffect(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (query.trim().length < 2) {
-      setResults([]);
-      return;
-    }
-    setIsSearching(true);
-    timerRef.current = setTimeout(async () => {
-      try {
-        const r = await searchCities(query);
-        setResults(r);
-      } catch {
-        setResults([]);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 400);
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
+    const timer = setTimeout(() => setDebouncedQuery(query), 400);
+    return () => clearTimeout(timer);
   }, [query]);
+
+  const { data: results = [], isFetching: isSearching } = useQuery(
+    citySearchOptions(debouncedQuery),
+  );
 
   return (
     <div className="space-y-1">

@@ -11,9 +11,10 @@ import type {
   SysmonTickerConfig,
   TaskbarMetric,
   TempUnit,
-  PinSide,
 } from "../../preferences";
 import { DEFAULT_SYSMON_TICKER, savePrefs } from "../../preferences";
+import { useWidgetPin } from "../../hooks/useWidgetPin";
+import { PIN_SIDE_OPTIONS } from "../../constants";
 
 interface SysmonConfigPanelProps {
   prefs: AppPreferences;
@@ -36,11 +37,6 @@ const REFRESH_OPTIONS: { value: string; label: string }[] = [
 const TEMP_OPTIONS: { value: TempUnit; label: string }[] = [
   { value: "celsius", label: "\u00B0C" },
   { value: "fahrenheit", label: "\u00B0F" },
-];
-
-const PIN_SIDE_OPTIONS: { value: PinSide; label: string }[] = [
-  { value: "left", label: "Left" },
-  { value: "right", label: "Right" },
 ];
 
 export default function SysmonConfigPanel({
@@ -71,39 +67,7 @@ export default function SysmonConfigPanel({
     [update, config.ticker],
   );
 
-  const isPinned = !!prefs.widgets.pinnedWidgets.sysmon;
-  const pinSide = prefs.widgets.pinnedWidgets.sysmon?.side ?? "left";
-
-  const togglePin = useCallback(
-    (pinned: boolean) => {
-      const pw = { ...prefs.widgets.pinnedWidgets };
-      if (pinned) {
-        pw.sysmon = { side: pinSide };
-      } else {
-        delete pw.sysmon;
-      }
-      const next: AppPreferences = {
-        ...prefs,
-        widgets: { ...prefs.widgets, pinnedWidgets: pw },
-      };
-      onPrefsChange(next);
-      savePrefs(next);
-    },
-    [prefs, pinSide, onPrefsChange],
-  );
-
-  const setPinSide = useCallback(
-    (side: PinSide) => {
-      const pw = { ...prefs.widgets.pinnedWidgets, sysmon: { side } };
-      const next: AppPreferences = {
-        ...prefs,
-        widgets: { ...prefs.widgets, pinnedWidgets: pw },
-      };
-      onPrefsChange(next);
-      savePrefs(next);
-    },
-    [prefs, onPrefsChange],
-  );
+  const { isPinned, pinSide, togglePin, setPinSide } = useWidgetPin("sysmon", prefs, onPrefsChange);
 
   const resetAll = useCallback(() => {
     update({

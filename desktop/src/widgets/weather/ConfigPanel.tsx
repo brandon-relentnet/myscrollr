@@ -9,38 +9,17 @@ import type {
   AppPreferences,
   WeatherWidgetConfig,
   WeatherTickerConfig,
-  PinSide,
 } from "../../preferences";
 import { DEFAULT_WEATHER_TICKER, savePrefs } from "../../preferences";
-
-// ── localStorage keys (shared with the Weather FeedTab) ─────────
-const LS_CITIES = "scrollr:widget:weather:cities";
-const LS_UNIT = "scrollr:widget:weather:unit";
-
-type TempUnit = "celsius" | "fahrenheit";
-
-interface SavedCity {
-  location: { name: string; lat: number; lon: number; country?: string; admin1?: string };
-  weather?: unknown;
-  lastFetched?: number;
-  error?: string;
-}
+import { useWidgetPin } from "../../hooks/useWidgetPin";
+import { LS_WEATHER_CITIES, LS_WEATHER_UNIT, PIN_SIDE_OPTIONS } from "../../constants";
+import { loadCities, loadUnit } from "./types";
+import type { TempUnit } from "../../preferences";
+import type { SavedCity } from "./types";
 
 interface WeatherConfigPanelProps {
   prefs: AppPreferences;
   onPrefsChange: (prefs: AppPreferences) => void;
-}
-
-function loadCities(): SavedCity[] {
-  try {
-    const raw = localStorage.getItem(LS_CITIES);
-    if (raw) return JSON.parse(raw) as SavedCity[];
-  } catch { /* ignore */ }
-  return [];
-}
-
-function loadUnit(): TempUnit {
-  return (localStorage.getItem(LS_UNIT) as TempUnit) ?? "fahrenheit";
 }
 
 /** Stable display name for a city (used as ID in exclusion list). */
@@ -53,11 +32,6 @@ const UNIT_OPTIONS: { value: TempUnit; label: string }[] = [
   { value: "celsius", label: "\u00B0C" },
 ];
 
-const PIN_SIDE_OPTIONS: { value: PinSide; label: string }[] = [
-  { value: "left", label: "Left" },
-  { value: "right", label: "Right" },
-];
-
 export default function WeatherConfigPanel({
   prefs,
   onPrefsChange,
@@ -66,11 +40,13 @@ export default function WeatherConfigPanel({
   const [cities, setCities] = useState<SavedCity[]>(loadCities);
   const [unit, setUnitState] = useState<TempUnit>(loadUnit);
 
+  const { isPinned, pinSide, togglePin, setPinSide } = useWidgetPin("weather", prefs, onPrefsChange);
+
   // Re-read when localStorage changes (user adds/removes city in widget)
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key === LS_CITIES) setCities(loadCities());
-      if (e.key === LS_UNIT) setUnitState(loadUnit());
+      if (e.key === LS_WEATHER_CITIES) setCities(loadCities());
+      if (e.key === LS_WEATHER_UNIT) setUnitState(loadUnit());
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -114,7 +90,7 @@ export default function WeatherConfigPanel({
 
   const handleUnitChange = useCallback((v: TempUnit) => {
     setUnitState(v);
-    localStorage.setItem(LS_UNIT, v);
+    localStorage.setItem(LS_WEATHER_UNIT, v);
   }, []);
 
   // Build taskbar city options from configured cities
@@ -123,46 +99,12 @@ export default function WeatherConfigPanel({
     ...cities.map((c) => ({ value: cityName(c), label: cityName(c) })),
   ];
 
-  const isPinned = !!prefs.widgets.pinnedWidgets.weather;
-  const pinSide = prefs.widgets.pinnedWidgets.weather?.side ?? "left";
-
-  const togglePin = useCallback(
-    (pinned: boolean) => {
-      const pw = { ...prefs.widgets.pinnedWidgets };
-      if (pinned) {
-        pw.weather = { side: pinSide };
-      } else {
-        delete pw.weather;
-      }
-      const next: AppPreferences = {
-        ...prefs,
-        widgets: { ...prefs.widgets, pinnedWidgets: pw },
-      };
-      onPrefsChange(next);
-      savePrefs(next);
-    },
-    [prefs, pinSide, onPrefsChange],
-  );
-
-  const setPinSide = useCallback(
-    (side: PinSide) => {
-      const pw = { ...prefs.widgets.pinnedWidgets, weather: { side } };
-      const next: AppPreferences = {
-        ...prefs,
-        widgets: { ...prefs.widgets, pinnedWidgets: pw },
-      };
-      onPrefsChange(next);
-      savePrefs(next);
-    },
-    [prefs, onPrefsChange],
-  );
-
   const resetAll = useCallback(() => {
     update({
       taskbarCity: "",
       ticker: { ...DEFAULT_WEATHER_TICKER },
     });
-    localStorage.setItem(LS_UNIT, "fahrenheit");
+    localStorage.setItem(LS_WEATHER_UNIT, "fahrenheit");
     setUnitState("fahrenheit");
   }, [update]);
 

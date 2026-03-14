@@ -1,34 +1,15 @@
 import { Activity } from "lucide-react";
 import type { FeedTabProps, WidgetManifest } from "../../types";
 import { useSysmonData } from "../../hooks/useSysmonData";
-import type { SystemInfo } from "../../hooks/useSysmonData";
-
-// ── Types ───────────────────────────────────────────────────────
-
-type ComponentTemp = SystemInfo["components"][number];
-
-interface TempReading {
-  temp: number;
-  critical: number | null;
-}
+import { formatBytes } from "../../utils/format";
+import { findCpuTemp, findGpuTemp } from "./utils";
+import type { TempReading } from "./utils";
 
 // ── Constants ───────────────────────────────────────────────────
 
 const POLL_INTERVAL = 2000;
 
 // ── Helpers ─────────────────────────────────────────────────────
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  const kb = bytes / 1024;
-  if (kb < 1024) return `${Math.round(kb)} KB`;
-  const mb = kb / 1024;
-  if (mb < 1024) return `${mb.toFixed(1)} MB`;
-  const gb = mb / 1024;
-  if (gb < 1024) return `${gb.toFixed(1)} GB`;
-  const tb = gb / 1024;
-  return `${tb.toFixed(2)} TB`;
-}
 
 function formatRate(bytesPerInterval: number): string {
   const bytesPerSec = bytesPerInterval / (POLL_INTERVAL / 1000);
@@ -76,22 +57,6 @@ function tempColorClass(temp: number, critical: number | null): string {
   if (temp >= 80) return "text-red-400";
   if (temp >= 60) return "text-amber-400";
   return "text-emerald-400";
-}
-
-/** Find CPU package/die temperature sensor. */
-function findCpuTemp(components: ComponentTemp[]): TempReading | null {
-  const m = components.find((c) =>
-    /package id|^tctl$|^tdie$/i.test(c.label),
-  );
-  return m ? { temp: m.temp, critical: m.critical } : null;
-}
-
-/** Find GPU temperature sensor (AMD edge/junction, nvidia, intel). */
-function findGpuTemp(components: ComponentTemp[]): TempReading | null {
-  const m = components.find((c) =>
-    /^edge$|^junction$|gpu/i.test(c.label),
-  );
-  return m ? { temp: m.temp, critical: m.critical } : null;
 }
 
 // ── Detail line helper ──────────────────────────────────────────

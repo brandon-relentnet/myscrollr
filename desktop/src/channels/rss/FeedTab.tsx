@@ -9,6 +9,8 @@ import { memo, useMemo, useCallback } from "react";
 import { Rss } from "lucide-react";
 import { clsx } from "clsx";
 import { useScrollrCDC } from "../../hooks/useScrollrCDC";
+import { timeAgo, truncate } from "../../utils/format";
+import EmptyChannelState from "../../components/EmptyChannelState";
 import type {
   RssItem as RssItemType,
   FeedTabProps,
@@ -78,21 +80,14 @@ function RssFeedTab({ mode, channelConfig }: FeedTabProps) {
       )}
     >
       {rssItems.length === 0 && (
-        <div className="col-span-full flex flex-col items-center justify-center gap-2 py-12 bg-surface">
-          <Rss size={28} className="text-fg-4/40" />
-          {dashboardLoaded && !channelConfig.__hasConfig ? (
-            <>
-              <p className="text-sm font-medium text-fg-3">
-                No feeds added yet
-              </p>
-              <p className="text-xs text-fg-4">
-                Go to the <span className="text-fg-3 font-medium">Settings</span> tab to add websites.
-              </p>
-            </>
-          ) : (
-            <p className="text-xs text-fg-4">Loading articles&hellip;</p>
-          )}
-        </div>
+        <EmptyChannelState
+          icon={Rss}
+          noun="feeds"
+          hasConfig={!!channelConfig.__hasConfig}
+          dashboardLoaded={!!dashboardLoaded}
+          loadingNoun="articles"
+          actionHint="add websites"
+        />
       )}
       {rssItems.map((item) => (
         <RssArticle
@@ -110,35 +105,6 @@ function RssFeedTab({ mode, channelConfig }: FeedTabProps) {
 interface RssArticleProps {
   item: RssItemType;
   mode: FeedMode;
-}
-
-function timeAgo(dateStr: string | null): string {
-  if (!dateStr) return "";
-  const now = Date.now();
-  const then = new Date(dateStr).getTime();
-  if (isNaN(then)) return "";
-
-  const diffMs = now - then;
-  const diffMin = Math.floor(diffMs / 60_000);
-  if (diffMin < 1) return "now";
-  if (diffMin < 60) return `${diffMin}m`;
-
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h`;
-
-  const diffDay = Math.floor(diffHr / 24);
-  if (diffDay < 7) return `${diffDay}d`;
-
-  return new Date(dateStr).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function truncate(text: string, maxLen: number): string {
-  if (!text) return "";
-  if (text.length <= maxLen) return text;
-  return text.slice(0, maxLen).trimEnd() + "\u2026";
 }
 
 const RssArticle = memo(function RssArticle({ item, mode }: RssArticleProps) {

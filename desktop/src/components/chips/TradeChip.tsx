@@ -3,33 +3,13 @@ import { clsx } from "clsx";
 import type { Trade } from "../../types";
 import type { ChipColorMode } from "../../preferences";
 import { getChipColors } from "./chipColors";
+import { formatPrice, formatChange, formatPriceChange } from "../../utils/format";
 
 interface TradeChipProps {
   trade: Trade;
   comfort?: boolean;
   colorMode?: ChipColorMode;
   onClick?: () => void;
-}
-
-function formatPrice(price: number | string): string {
-  const num = typeof price === "string" ? parseFloat(price) : price;
-  return isNaN(num) ? String(price) : `$${num.toFixed(2)}`;
-}
-
-function formatChange(change: number | string | undefined): string {
-  if (change == null) return "";
-  const num = typeof change === "string" ? parseFloat(change) : change;
-  if (isNaN(num)) return String(change);
-  const sign = num >= 0 ? "+" : "";
-  return `${sign}${num.toFixed(2)}%`;
-}
-
-function formatPriceChange(change: number | string | undefined): string {
-  if (change == null) return "";
-  const num = typeof change === "string" ? parseFloat(change) : change;
-  if (isNaN(num)) return String(change);
-  const sign = num >= 0 ? "+" : "";
-  return `${sign}$${Math.abs(num).toFixed(2)}`;
 }
 
 const TradeChip = memo(function TradeChip({ trade, comfort, colorMode = "channel", onClick }: TradeChipProps) {

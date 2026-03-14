@@ -13,6 +13,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useScrollrCDC } from "../../hooks/useScrollrCDC";
 import { loadPref, savePref } from "../../preferences";
 import clsx from "clsx";
+import { timeAgo, truncate } from "../../utils/format";
 import type { RssItem, DashboardResponse } from "../../types";
 import type { RssCardPrefs } from "./dashboardPrefs";
 
@@ -39,28 +40,6 @@ const ONE_HOUR = 60 * 60 * 1000;
 function isNew(r: RssItem): boolean {
   if (!r.published_at) return false;
   return Date.now() - new Date(r.published_at).getTime() < ONE_HOUR;
-}
-
-function timeAgo(dateStr: string | null): string {
-  if (!dateStr) return "";
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return "now";
-  if (mins < 60) return `${mins}m`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d`;
-  return new Date(dateStr).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function truncate(text: string, maxLen: number): string {
-  if (!text) return "";
-  if (text.length <= maxLen) return text;
-  return text.slice(0, maxLen).trimEnd() + "\u2026";
 }
 
 // ── Primary article (detailed card) ─────────────────────────────

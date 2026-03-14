@@ -10,6 +10,7 @@ import { clsx } from "clsx";
 import { Trophy } from "lucide-react";
 import { useScrollrCDC } from "../../hooks/useScrollrCDC";
 import { GameItem } from "./GameItem";
+import EmptyChannelState from "../../components/EmptyChannelState";
 import type { Game, FeedTabProps, ChannelManifest } from "../../types";
 
 // ── Channel manifest ─────────────────────────────────────────────
@@ -82,27 +83,14 @@ function SportsFeedTab({ mode, channelConfig }: FeedTabProps) {
 
   if (games.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-2 py-12 bg-surface">
-        <Trophy size={28} className="text-fg-4/40" />
-        {!channelConfig.__dashboardLoaded ? (
-          <p className="text-xs text-fg-4">Loading scores&hellip;</p>
-        ) : channelConfig.__hasConfig ? (
-          <p className="text-sm font-medium text-fg-3">
-            No active games right now
-          </p>
-        ) : (
-          <>
-            <p className="text-sm font-medium text-fg-3">
-              No leagues selected yet
-            </p>
-            <p className="text-xs text-fg-4">
-              Go to the{" "}
-               <span className="text-fg-3 font-medium">Settings</span> tab to pick
-              your leagues.
-            </p>
-          </>
-        )}
-      </div>
+      <EmptyChannelState
+        icon={Trophy}
+        noun="leagues"
+        hasConfig={!!channelConfig.__hasConfig}
+        dashboardLoaded={!!channelConfig.__dashboardLoaded}
+        loadingNoun="scores"
+        actionHint="pick your leagues"
+      />
     );
   }
 

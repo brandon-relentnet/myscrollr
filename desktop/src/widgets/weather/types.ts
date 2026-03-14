@@ -1,6 +1,13 @@
 /**
- * Weather widget types.
+ * Weather widget types, utilities, and API functions.
+ *
+ * Canonical source for weather-related types and helpers.
+ * Import from here — do not redefine locally.
  */
+import type { TempUnit } from "../../preferences";
+import { LS_WEATHER_CITIES, LS_WEATHER_UNIT } from "../../constants";
+
+export type { TempUnit };
 
 export interface WeatherLocation {
   name: string;
@@ -11,7 +18,7 @@ export interface WeatherLocation {
   admin1?: string;
 }
 
-interface CurrentWeather {
+export interface CurrentWeather {
   temperature: number;
   feelsLike: number;
   humidity: number;
@@ -28,8 +35,6 @@ export interface SavedCity {
   lastFetched: number;
   error?: string;
 }
-
-export type TempUnit = "celsius" | "fahrenheit";
 
 // ── WMO Weather Codes ───────────────────────────────────────────
 
@@ -52,9 +57,9 @@ export function weatherCodeToLabel(code: number): string {
   return "Unknown";
 }
 
-export function weatherCodeToIcon(code: number, isDay: boolean): string {
-  if (code === 0) return isDay ? "\u2600" : "\u263E";
-  if (code <= 2) return isDay ? "\u26C5" : "\u263E";
+export function weatherCodeToIcon(code: number, isDay?: boolean): string {
+  if (code === 0) return isDay === false ? "\u263E" : "\u2600";
+  if (code <= 2) return isDay === false ? "\u263E" : "\u26C5";
   if (code === 3) return "\u2601";
   if (code === 45 || code === 48) return "\u2588";
   if (code >= 51 && code <= 55) return "\u2602";
@@ -79,9 +84,14 @@ function toFahrenheit(celsius: number): number {
   return (celsius * 9) / 5 + 32;
 }
 
-export function formatTemp(celsius: number, unit: TempUnit): string {
+/**
+ * Format a temperature in the given unit.
+ * @param showUnit  Append the unit letter (e.g. "72°F" vs "72°").
+ */
+export function formatTemp(celsius: number, unit: TempUnit, showUnit = false): string {
   const val = unit === "fahrenheit" ? toFahrenheit(celsius) : celsius;
-  return `${Math.round(val)}\u00B0`;
+  const suffix = showUnit ? (unit === "fahrenheit" ? "F" : "C") : "";
+  return `${Math.round(val)}\u00B0${suffix}`;
 }
 
 export function formatWind(kmh: number, unit: TempUnit): string {
@@ -93,13 +103,11 @@ export function formatWind(kmh: number, unit: TempUnit): string {
 
 // ── Storage ─────────────────────────────────────────────────────
 
-const STORAGE_KEY = "scrollr:widget:weather:cities";
-const UNIT_KEY = "scrollr:widget:weather:unit";
 export const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 export function loadCities(): SavedCity[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(LS_WEATHER_CITIES);
     if (raw) {
       const parsed = JSON.parse(raw) as SavedCity[];
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
@@ -111,12 +119,12 @@ export function loadCities(): SavedCity[] {
 }
 
 export function saveCities(cities: SavedCity[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(cities));
+  localStorage.setItem(LS_WEATHER_CITIES, JSON.stringify(cities));
 }
 
 export function loadUnit(): TempUnit {
   try {
-    const raw = localStorage.getItem(UNIT_KEY);
+    const raw = localStorage.getItem(LS_WEATHER_UNIT);
     if (raw === "celsius" || raw === "fahrenheit") return raw;
   } catch {
     /* ignore */
@@ -125,7 +133,7 @@ export function loadUnit(): TempUnit {
 }
 
 export function saveUnit(unit: TempUnit): void {
-  localStorage.setItem(UNIT_KEY, unit);
+  localStorage.setItem(LS_WEATHER_UNIT, unit);
 }
 
 // ── Open-Meteo API ──────────────────────────────────────────────

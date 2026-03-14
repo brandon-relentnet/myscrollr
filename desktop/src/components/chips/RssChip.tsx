@@ -3,24 +3,13 @@ import { clsx } from "clsx";
 import type { RssItem } from "../../types";
 import type { ChipColorMode } from "../../preferences";
 import { getChipColors } from "./chipColors";
+import { timeAgo } from "../../utils/format";
 
 interface RssChipProps {
   item: RssItem;
   comfort?: boolean;
   colorMode?: ChipColorMode;
   onClick?: () => void;
-}
-
-function timeAgo(dateStr: string | null): string {
-  if (!dateStr) return "";
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return "now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
 }
 
 const RssChip = memo(function RssChip({ item, comfort, colorMode = "channel", onClick }: RssChipProps) {
@@ -50,7 +39,7 @@ const RssChip = memo(function RssChip({ item, comfort, colorMode = "channel", on
           {item.published_at && (
             <>
               <span className="text-fg-4">&middot;</span>
-              <span>{timeAgo(item.published_at)}</span>
+              <span>{timeAgo(item.published_at, { suffix: true })}</span>
             </>
           )}
         </div>

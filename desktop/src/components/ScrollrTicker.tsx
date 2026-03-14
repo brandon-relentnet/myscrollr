@@ -2,16 +2,13 @@ import { useMemo, useEffect, useRef, useState, useCallback } from "react";
 import clsx from "clsx";
 import { Ticker } from "motion-plus/react";
 import { useMotionValue, animate, AnimatePresence, motion } from "motion/react";
-import type { DashboardResponse, Trade, Game, RssItem } from "../types";
+import type { DashboardResponse, Trade, Game, RssItem, WidgetTickerData } from "../types";
 import type { MixMode, ChipColorMode, TickerDirection, ScrollMode, WidgetPinConfig } from "../preferences";
 import TradeChip from "./chips/TradeChip";
 import GameChip, { isLive, isCloseGame } from "./chips/GameChip";
 import RssChip from "./chips/RssChip";
 import FantasyChip from "./chips/FantasyChip";
-import ClockConsolidatedChip from "./chips/ClockConsolidatedChip";
-import WeatherConsolidatedChip from "./chips/WeatherConsolidatedChip";
-import SysmonConsolidatedChip from "./chips/SysmonConsolidatedChip";
-import type { WidgetTickerData } from "../hooks/useWidgetTickerData";
+import ConsolidatedChip from "./chips/ConsolidatedChip";
 
 // ── Sport engagement scoring (higher = more prominent in ticker) ─
 
@@ -140,7 +137,8 @@ export default function ScrollrTicker({
         if (!pinnedWidgets.clock) {
           bucket.push(
             wrap("clk-consolidated",
-              <ClockConsolidatedChip
+              <ConsolidatedChip
+                type="clock"
                 items={widgetData.clock}
                 comfort={comfort}
                 colorMode={chipColorMode}
@@ -158,7 +156,8 @@ export default function ScrollrTicker({
         if (!pinnedWidgets.weather) {
           bucket.push(
             wrap("wth-consolidated",
-              <WeatherConsolidatedChip
+              <ConsolidatedChip
+                type="weather"
                 items={widgetData.weather}
                 comfort={comfort}
                 colorMode={chipColorMode}
@@ -176,7 +175,8 @@ export default function ScrollrTicker({
         if (!pinnedWidgets.sysmon) {
           bucket.push(
             wrap("sys-consolidated",
-              <SysmonConsolidatedChip
+              <ConsolidatedChip
+                type="sysmon"
                 items={widgetData.sysmon}
                 comfort={comfort}
                 colorMode={chipColorMode}
@@ -400,8 +400,9 @@ export default function ScrollrTicker({
 
     if (tab === "clock" && widgetData?.clock.length) {
       target.push(
-        <ClockConsolidatedChip
+        <ConsolidatedChip
           key="pinned-clock"
+          type="clock"
           items={widgetData.clock}
           comfort={comfort}
           colorMode={chipColorMode}
@@ -413,8 +414,9 @@ export default function ScrollrTicker({
     }
     if (tab === "weather" && widgetData?.weather.length) {
       target.push(
-        <WeatherConsolidatedChip
+        <ConsolidatedChip
           key="pinned-weather"
+          type="weather"
           items={widgetData.weather}
           comfort={comfort}
           colorMode={chipColorMode}
@@ -426,8 +428,9 @@ export default function ScrollrTicker({
     }
     if (tab === "sysmon" && widgetData?.sysmon.length) {
       target.push(
-        <SysmonConsolidatedChip
+        <ConsolidatedChip
           key="pinned-sysmon"
+          type="sysmon"
           items={widgetData.sysmon}
           comfort={comfort}
           colorMode={chipColorMode}

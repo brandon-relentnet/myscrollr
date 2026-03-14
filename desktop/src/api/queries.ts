@@ -5,10 +5,8 @@
  * Every remote data fetch uses this layer — no manual fetch + useState.
  */
 import { queryOptions } from "@tanstack/react-query";
-import { fetch } from "@tauri-apps/plugin-http";
-import { API_BASE } from "../config";
-import { getValidToken } from "../auth";
-import { request } from "./client";
+import { isAuthenticated } from "../auth";
+import { authFetch, request } from "./client";
 import type { TrackedFeed } from "./client";
 import type { DashboardResponse } from "../types";
 
@@ -30,34 +28,24 @@ export const queryKeys = {
 // ── Dashboard Query ──────────────────────────────────────────────
 
 async function fetchDashboard(): Promise<DashboardResponse> {
-  const token = await getValidToken();
-
-  if (token) {
-    const res = await fetch(`${API_BASE}/dashboard`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (res.status === 401) {
-      // Token rejected — fall back to public feed
-      const anonRes = await fetch(`${API_BASE}/public/feed`);
-      if (!anonRes.ok) throw new Error(`Server returned ${anonRes.status}`);
-      const data = await anonRes.json();
-      return { data: data.data } as DashboardResponse;
+  if (isAuthenticated()) {
+    try {
+      const data = await authFetch<{
+        data: DashboardResponse["data"];
+        channels?: DashboardResponse["channels"];
+        preferences?: DashboardResponse["preferences"];
+      }>("/dashboard");
+      return {
+        data: data.data,
+        channels: data.channels,
+        preferences: data.preferences,
+      } as DashboardResponse;
+    } catch {
+      // Token rejected or expired — fall back to public feed
     }
-
-    if (!res.ok) throw new Error(`Server returned ${res.status}`);
-    const data = await res.json();
-    return {
-      data: data.data,
-      channels: data.channels,
-      preferences: data.preferences,
-    } as DashboardResponse;
   }
 
-  // Not authenticated — public feed only
-  const res = await fetch(`${API_BASE}/public/feed`);
-  if (!res.ok) throw new Error(`Server returned ${res.status}`);
-  const data = await res.json();
+  const data = await request<{ data: DashboardResponse["data"] }>("/public/feed");
   return { data: data.data } as DashboardResponse;
 }
 
@@ -110,5 +98,80 @@ export function rssCatalogOptions() {
     queryKey: queryKeys.catalogs.rss,
     queryFn: () => request<Array<TrackedFeed>>("/rss/feeds"),
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+// ── Fantasy Queries ─────────────────────────────────────────────
+
+interface YahooStatusResponse {
+  connected: boolean;
+  synced: boolean;
+}
+
+interface MyLeaguesResponse {
+  leagues: Array<{
+    league_key: string;
+    name: string;
+    game_code: string;
+    season: string;
+    team_key: string | null;
+    team_name: string | null;
+    data: {
+      num_teams: number;
+      is_finished: boolean;
+      current_week: number | null;
+      scoring_type: string;
+      [k: string]: unknown;
+    };
+    standings: unknown[] | null;
+    matchups: unknown[] | null;
+    rosters: unknown[] | null;
+  }>;
+}
+
+export function fantasyStatusOptions() {
+  return queryOptions({
+    queryKey: queryKeys.fantasy.status,
+    queryFn: () =>
+      authFetch<YahooStatusResponse>("/users/me/yahoo-status"),
+    staleTime: 30_000,
+    retry: false,
+  });
+}
+
+export function fantasyLeaguesOptions() {
+  return queryOptions({
+    queryKey: queryKeys.fantasy.leagues,
+    queryFn: () =>
+      authFetch<MyLeaguesResponse>("/users/me/yahoo-leagues"),
+    staleTime: 30_000,
+    retry: false,
+  });
+}
+
+// ── Weather Queries ──────────────────────────────────────────────
+
+import { searchCities, fetchWeather } from "../widgets/weather/types";
+import type { WeatherLocation, CurrentWeather } from "../widgets/weather/types";
+
+export type { WeatherLocation, CurrentWeather };
+
+export function weatherQueryOptions(lat: number, lon: number) {
+  return queryOptions({
+    queryKey: ["weather", lat, lon] as const,
+    queryFn: () => fetchWeather(lat, lon),
+    staleTime: 10 * 60 * 1000, // 10 min
+    gcTime: 30 * 60 * 1000,
+    refetchInterval: 10 * 60 * 1000, // auto-refetch every 10 min
+  });
+}
+
+export function citySearchOptions(query: string) {
+  return queryOptions({
+    queryKey: ["city-search", query] as const,
+    queryFn: () => searchCities(query),
+    enabled: query.trim().length >= 2,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 }

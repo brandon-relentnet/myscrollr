@@ -13,6 +13,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useScrollrCDC } from "../../hooks/useScrollrCDC";
 import { loadPref, savePref } from "../../preferences";
 import clsx from "clsx";
+import { formatPrice, formatChange } from "../../utils/format";
 import type { Trade, DashboardResponse } from "../../types";
 import type { FinanceCardPrefs } from "./dashboardPrefs";
 
@@ -26,26 +27,6 @@ function loadPinned(): string[] {
 
 function savePinnedStocks(pinned: string[]): void {
   savePref(PINNED_KEY, pinned);
-}
-
-// ── Formatting helpers ──────────────────────────────────────────
-
-function formatPrice(price: number | string): string {
-  const num = typeof price === "string" ? parseFloat(price) : price;
-  if (isNaN(num)) return String(price);
-  // Use compact notation for large prices (crypto)
-  if (num >= 10_000) {
-    return `$${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  }
-  return `$${num.toFixed(2)}`;
-}
-
-function formatChange(change: number | string | undefined): string {
-  if (change == null) return "";
-  const num = typeof change === "string" ? parseFloat(change) : change;
-  if (isNaN(num)) return String(change);
-  const sign = num >= 0 ? "+" : "";
-  return `${sign}${num.toFixed(2)}%`;
 }
 
 function absChange(trade: Trade): number {
