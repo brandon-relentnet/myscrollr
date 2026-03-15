@@ -72,16 +72,6 @@ function getItemId(item: Record<string, unknown>): string | number {
   return (item.id as string | number) ?? (item.symbol as string) ?? 0;
 }
 
-/** Fisher-Yates shuffle using Math.random(). */
-function randomShuffle<T>(arr: T[]): T[] {
-  const out = arr.slice();
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [out[i], out[j]] = [out[j], out[i]];
-  }
-  return out;
-}
-
 /** Round-robin interleave across buckets:
  *  bucket0[0], bucket1[0], bucket2[0], bucket0[1], bucket1[1], ... */
 function weave<T>(buckets: T[][]): T[] {
@@ -304,18 +294,9 @@ export default function ScrollrTicker({
     }
 
     // Combine based on mix mode
-    let allItems: React.ReactNode[];
-    switch (mixMode) {
-      case "weave":
-        allItems = weave(buckets);
-        break;
-      case "random":
-        allItems = randomShuffle(buckets.flat());
-        break;
-      default:
-        allItems = buckets.flat();
-        break;
-    }
+    const allItems: React.ReactNode[] = mixMode === "weave"
+      ? weave(buckets)
+      : buckets.flat();
 
     // When multiple rows, distribute items round-robin
     if (totalRows <= 1) return allItems;

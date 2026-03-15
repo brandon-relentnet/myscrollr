@@ -79,41 +79,48 @@ function parseRoute(pathname: string) {
     return {
       activeItem: "",
       isChannel: false, isWidget: false, isFeed: true,
-      isSettings: false, isAccount: false,
+      isTicker: false, isSettings: false, isAccount: false,
     };
   }
   if (kind === "channel" && itemId) {
     return {
       activeItem: itemId,
       isChannel: true, isWidget: false, isFeed: false,
-      isSettings: false, isAccount: false,
+      isTicker: false, isSettings: false, isAccount: false,
     };
   }
   if (kind === "widget" && itemId) {
     return {
       activeItem: itemId,
       isChannel: false, isWidget: true, isFeed: false,
-      isSettings: false, isAccount: false,
+      isTicker: false, isSettings: false, isAccount: false,
+    };
+  }
+  if (kind === "ticker") {
+    return {
+      activeItem: "ticker",
+      isChannel: false, isWidget: false, isFeed: false,
+      isTicker: true, isSettings: false, isAccount: false,
     };
   }
   if (kind === "settings") {
     return {
       activeItem: "settings",
       isChannel: false, isWidget: false, isFeed: false,
-      isSettings: true, isAccount: false,
+      isTicker: false, isSettings: true, isAccount: false,
     };
   }
   if (kind === "account") {
     return {
       activeItem: "",
       isChannel: false, isWidget: false, isFeed: false,
-      isSettings: false, isAccount: true,
+      isTicker: false, isSettings: false, isAccount: true,
     };
   }
   return {
     activeItem: "",
     isChannel: false, isWidget: false, isFeed: true,
-    isSettings: false, isAccount: false,
+    isTicker: false, isSettings: false, isAccount: false,
   };
 }
 
@@ -209,7 +216,7 @@ function RootLayout() {
   const handleSelectItem = useCallback(
     (id: string) => {
       if (id === "settings") {
-        navigate({ to: "/settings", search: { tab: "general" } });
+        navigate({ to: "/settings" });
         return;
       }
       if (channelsRef.current.some((ch) => ch.channel_type === id)) {
@@ -226,7 +233,8 @@ function RootLayout() {
   );
 
   const handleNavigateToFeed = useCallback(() => navigate({ to: "/feed" }), [navigate]);
-  const handleNavigateToSettings = useCallback(() => navigate({ to: "/settings", search: { tab: "general" } }), [navigate]);
+  const handleNavigateToTicker = useCallback(() => navigate({ to: "/ticker" }), [navigate]);
+  const handleNavigateToSettings = useCallback(() => navigate({ to: "/settings" }), [navigate]);
   const handleNavigateToAccount = useCallback(() => navigate({ to: "/account" }), [navigate]);
 
   // ── Keyboard shortcuts ──────────────────────────────────────
@@ -235,7 +243,7 @@ function RootLayout() {
       // Ctrl+, → open settings
       if ((e.ctrlKey || e.metaKey) && e.key === ",") {
         e.preventDefault();
-        navigate({ to: "/settings", search: { tab: "general" } });
+        navigate({ to: "/settings" });
         return;
       }
 
@@ -362,6 +370,7 @@ function RootLayout() {
         <Sidebar
           activeItem={route.activeItem}
           isFeed={route.isFeed}
+          isTicker={route.isTicker}
           isSettings={route.isSettings}
           isAccount={route.isAccount}
           channels={enabledChannels}
@@ -372,6 +381,7 @@ function RootLayout() {
           tickerAlive={prefs.ticker.showTicker}
           onSelectItem={handleSelectItem}
           onNavigateToFeed={handleNavigateToFeed}
+          onNavigateToTicker={handleNavigateToTicker}
           onNavigateToSettings={handleNavigateToSettings}
           onNavigateToAccount={handleNavigateToAccount}
         />

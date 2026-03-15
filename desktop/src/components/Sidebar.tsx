@@ -6,7 +6,7 @@
  * Collapses to a 48px icon-only rail with tooltips.
  */
 import { useState, useMemo } from "react";
-import { LayoutDashboard, Settings, User, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { LayoutDashboard, Rows3, Settings, User, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import clsx from "clsx";
 import Tooltip from "./Tooltip";
 import type { ChannelManifest, WidgetManifest, DeliveryMode } from "../types";
@@ -78,6 +78,8 @@ interface SidebarProps {
   activeItem: string;
   /** Whether the feed dashboard is active. */
   isFeed: boolean;
+  /** Whether the ticker settings page is active. */
+  isTicker: boolean;
   /** Whether the settings page is active. */
   isSettings: boolean;
   /** Whether the account page is active. */
@@ -101,6 +103,8 @@ interface SidebarProps {
   onSelectItem: (id: string) => void;
   /** Navigate to the feed dashboard. */
   onNavigateToFeed: () => void;
+  /** Navigate to the ticker settings page. */
+  onNavigateToTicker: () => void;
   /** Navigate to the settings page. */
   onNavigateToSettings: () => void;
   /** Navigate to the account page. */
@@ -112,6 +116,7 @@ interface SidebarProps {
 export default function Sidebar({
   activeItem,
   isFeed,
+  isTicker,
   isSettings,
   isAccount,
   channels,
@@ -122,6 +127,7 @@ export default function Sidebar({
   tickerAlive,
   onSelectItem,
   onNavigateToFeed,
+  onNavigateToTicker,
   onNavigateToSettings,
   onNavigateToAccount,
 }: SidebarProps) {
@@ -204,6 +210,15 @@ export default function Sidebar({
           active={isFeed}
           collapsed={collapsed}
           onClick={onNavigateToFeed}
+        />
+
+        {/* Ticker */}
+        <NavItem
+          icon={<Rows3 size={15} />}
+          label="Ticker"
+          active={isTicker}
+          collapsed={collapsed}
+          onClick={onNavigateToTicker}
         />
 
         {/* Channels section */}
