@@ -65,6 +65,12 @@ export interface UptimeCardPrefs {
   monitors: boolean;
 }
 
+export interface GitHubCardPrefs {
+  status: boolean;
+  counts: boolean;
+  repos: boolean;
+}
+
 export interface DashboardCardPrefs {
   finance: FinanceCardPrefs;
   sports: SportsCardPrefs;
@@ -74,6 +80,7 @@ export interface DashboardCardPrefs {
   weather: WeatherCardPrefs;
   sysmon: SysmonCardPrefs;
   uptime: UptimeCardPrefs;
+  github: GitHubCardPrefs;
 }
 
 // ── Defaults ────────────────────────────────────────────────────
@@ -87,6 +94,7 @@ export const DEFAULT_CARD_PREFS: DashboardCardPrefs = {
   weather: { condition: true, feelsLike: true, cityCount: true },
   sysmon: { cpu: true, ram: true, gpu: true, uptime: true },
   uptime: { health: true, monitorCount: true, monitors: true },
+  github: { status: true, counts: true, repos: true },
 };
 
 // ── Storage ─────────────────────────────────────────────────────
@@ -106,6 +114,7 @@ export function loadCardPrefs(): DashboardCardPrefs {
     weather: { ...DEFAULT_CARD_PREFS.weather, ...saved.weather },
     sysmon: { ...DEFAULT_CARD_PREFS.sysmon, ...saved.sysmon },
     uptime: { ...DEFAULT_CARD_PREFS.uptime, ...saved.uptime },
+    github: { ...DEFAULT_CARD_PREFS.github, ...saved.github },
   };
 }
 
@@ -244,4 +253,10 @@ export const UPTIME_SCHEMA: EditorField[] = [
   { type: "toggle", key: "health", label: "Health Status" },
   { type: "toggle", key: "monitorCount", label: "Monitor Count" },
   { type: "toggle", key: "monitors", label: "Monitor List" },
+];
+
+export const GITHUB_SCHEMA: EditorField[] = [
+  { type: "toggle", key: "status", label: "Overall Status" },
+  { type: "toggle", key: "counts", label: "Pass/Fail Counts" },
+  { type: "toggle", key: "repos", label: "Repo List" },
 ];

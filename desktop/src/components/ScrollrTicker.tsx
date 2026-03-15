@@ -209,6 +209,25 @@ export default function ScrollrTicker({
         continue;
       }
 
+      if (tab === "github" && widgetData?.github.length) {
+        if (!pinnedWidgets.github) {
+          bucket.push(
+            wrap("ghb-consolidated",
+              <ConsolidatedChip
+                type="github"
+                items={widgetData.github}
+                comfort={comfort}
+                colorMode={chipColorMode}
+                onTogglePin={onTogglePin ? () => onTogglePin("github") : undefined}
+                onClick={() => onChipClick?.("github", "github")}
+              />
+            )
+          );
+          buckets.push(bucket);
+        }
+        continue;
+      }
+
       // ── Channel tabs: use dashboard.data ──────────────────────
       const data = dashboard?.data?.[tab];
       if (!Array.isArray(data) || data.length === 0) continue;
@@ -470,6 +489,20 @@ export default function ScrollrTicker({
           pinned
           onTogglePin={onTogglePin ? () => onTogglePin("uptime") : undefined}
           onClick={() => onChipClick?.("uptime", "uptime")}
+        />
+      );
+    }
+    if (tab === "github" && widgetData?.github.length) {
+      target.push(
+        <ConsolidatedChip
+          key="pinned-github"
+          type="github"
+          items={widgetData.github}
+          comfort={comfort}
+          colorMode={chipColorMode}
+          pinned
+          onTogglePin={onTogglePin ? () => onTogglePin("github") : undefined}
+          onClick={() => onChipClick?.("github", "github")}
         />
       );
     }

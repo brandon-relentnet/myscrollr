@@ -1,5 +1,5 @@
 /**
- * ConsolidatedChip — generic ticker chip for clock, weather, sysmon, and uptime widgets.
+ * ConsolidatedChip — generic ticker chip for clock, weather, sysmon, uptime, and github widgets.
  *
  * Replaces the three nearly-identical ClockConsolidatedChip,
  * WeatherConsolidatedChip, and SysmonConsolidatedChip components.
@@ -13,11 +13,12 @@ import type {
   WeatherChipData,
   SysmonChipData,
   UptimeChipData,
+  GitHubChipData,
 } from "../../types";
 
 // ── Item shape union ────────────────────────────────────────────
 
-type ChipItem = ClockChipData | WeatherChipData | SysmonChipData | UptimeChipData;
+type ChipItem = ClockChipData | WeatherChipData | SysmonChipData | UptimeChipData | GitHubChipData;
 
 // ── Type guards ─────────────────────────────────────────────────
 
@@ -33,6 +34,10 @@ function isUptime(item: ChipItem): item is UptimeChipData {
   return "status" in item && "uptime" in item;
 }
 
+function isGithub(item: ChipItem): item is GitHubChipData {
+  return "workflowName" in item;
+}
+
 // ── Uptime status dot color ─────────────────────────────────────
 
 const UPTIME_DOT_COLORS: Record<string, string> = {
@@ -40,6 +45,15 @@ const UPTIME_DOT_COLORS: Record<string, string> = {
   down: "bg-down",
   pending: "bg-warning",
   maintenance: "bg-info",
+};
+
+// ── GitHub CI status dot color ───────────────────────────────────
+
+const CI_DOT_COLORS: Record<string, string> = {
+  success: "bg-up",
+  failure: "bg-down",
+  in_progress: "bg-warning",
+  unavailable: "bg-fg-4",
 };
 
 // ── Heartbeat mini bar ──────────────────────────────────────────
@@ -67,7 +81,7 @@ function HeartbeatBar({ heartbeats }: { heartbeats: number[] }) {
 // ── Props ───────────────────────────────────────────────────────
 
 interface ConsolidatedChipProps {
-  type: "clock" | "weather" | "sysmon" | "uptime";
+  type: "clock" | "weather" | "sysmon" | "uptime" | "github";
   items: ChipItem[];
   comfort?: boolean;
   colorMode?: ChipColorMode;
@@ -93,6 +107,7 @@ export default function ConsolidatedChip({
   const PinIcon = pinned ? PinOff : Pin;
   const anyHot = type === "sysmon" && items.some((item) => isSysmon(item) && item.hot);
   const anyDown = type === "uptime" && items.some((item) => isUptime(item) && item.status === "down");
+  const anyFailing = type === "github" && items.some((item) => isGithub(item) && item.status === "failure");
 
   return (
     <button
@@ -105,6 +120,7 @@ export default function ConsolidatedChip({
         c.bg, c.border, c.hoverBorder,
         anyHot && "border-error/30",
         anyDown && "border-down/30",
+        anyFailing && "border-down/30",
         comfort ? "flex flex-col items-start py-1.5 gap-0.5" : "flex items-center gap-2 py-1 text-[13px]",
       )}
     >
@@ -134,7 +150,12 @@ export default function ConsolidatedChip({
             <span className={clsx("font-semibold text-[11px] uppercase tracking-wider mr-1.5", c.textDim)}>
               {"label" in item ? item.label : ""}
             </span>
-            {isUptime(item) ? (
+            {isGithub(item) ? (
+              <>
+                <span className={clsx("w-1.5 h-1.5 rounded-full inline-block mr-1", CI_DOT_COLORS[item.status] ?? "bg-fg-4")} />
+                <span className={c.text}>{item.workflowName}</span>
+              </>
+            ) : isUptime(item) ? (
               <>
                 <span className={clsx("w-1.5 h-1.5 rounded-full inline-block mr-1", UPTIME_DOT_COLORS[item.status] ?? "bg-fg-4")} />
                 <span className={c.text}>{item.uptime}</span>

@@ -19,6 +19,7 @@ import ClockSummary from "../components/dashboard/ClockSummary";
 import WeatherSummary from "../components/dashboard/WeatherSummary";
 import SysmonSummary from "../components/dashboard/SysmonSummary";
 import UptimeSummary from "../components/dashboard/UptimeSummary";
+import GitHubSummary from "../components/dashboard/GitHubSummary";
 import {
   loadCardPrefs,
   saveCardPrefs,
@@ -34,6 +35,7 @@ import {
   WEATHER_SCHEMA,
   SYSMON_SCHEMA,
   UPTIME_SCHEMA,
+  GITHUB_SCHEMA,
 } from "../components/dashboard/dashboardPrefs";
 import type { ChannelType } from "../api/client";
 import type { ChannelManifest, WidgetManifest, DashboardResponse } from "../types";
@@ -74,6 +76,8 @@ function renderWidgetSummary(
       return <SysmonSummary prefs={cardPrefs.sysmon} />;
     case "uptime":
       return <UptimeSummary prefs={cardPrefs.uptime} />;
+    case "github":
+      return <GitHubSummary prefs={cardPrefs.github} />;
     default:
       return null;
   }
@@ -93,6 +97,7 @@ const WIDGET_SCHEMAS: Record<string, EditorField[]> = {
   weather: WEATHER_SCHEMA,
   sysmon: SYSMON_SCHEMA,
   uptime: UPTIME_SCHEMA,
+  github: GITHUB_SCHEMA,
 };
 
 const CHANNEL_PREFS_KEY: Record<string, keyof DashboardCardPrefs> = {
@@ -107,6 +112,7 @@ const WIDGET_PREFS_KEY: Record<string, keyof DashboardCardPrefs> = {
   weather: "weather",
   sysmon: "sysmon",
   uptime: "uptime",
+  github: "github",
 };
 
 // ── Route ───────────────────────────────────────────────────────

@@ -124,6 +124,19 @@ export interface UptimeWidgetConfig {
   ticker: UptimeTickerConfig;
 }
 
+export interface GitHubTickerConfig {
+  /** Repo keys ("owner/repo") excluded from the ticker. */
+  excludedRepos: string[];
+}
+
+export interface GitHubWidgetConfig {
+  /** Configured repos to track. */
+  repos: Array<{ owner: string; repo: string }>;
+  /** Poll interval in seconds (default 120). */
+  pollInterval: number;
+  ticker: GitHubTickerConfig;
+}
+
 export interface WidgetPinConfig {
   side: PinSide;
 }
@@ -140,6 +153,7 @@ export interface WidgetPrefs {
   weather: WeatherWidgetConfig;
   sysmon: SysmonWidgetConfig;
   uptime: UptimeWidgetConfig;
+  github: GitHubWidgetConfig;
 }
 
 export interface AppPreferences {
@@ -224,6 +238,10 @@ export const DEFAULT_UPTIME_TICKER: UptimeTickerConfig = {
   excludedMonitors: [],
 };
 
+export const DEFAULT_GITHUB_TICKER: GitHubTickerConfig = {
+  excludedRepos: [],
+};
+
 const DEFAULT_WIDGETS: WidgetPrefs = {
   enabledWidgets: [],
   widgetsOnTicker: [],
@@ -246,6 +264,11 @@ const DEFAULT_WIDGETS: WidgetPrefs = {
     url: "",
     pollInterval: 60,
     ticker: { ...DEFAULT_UPTIME_TICKER },
+  },
+  github: {
+    repos: [],
+    pollInterval: 120,
+    ticker: { ...DEFAULT_GITHUB_TICKER },
   },
 };
 
@@ -338,6 +361,7 @@ function mergeWidgetPrefs(saved?: Partial<WidgetPrefs>): WidgetPrefs {
   const wth = obj(saved.weather);
   const sys = obj(saved.sysmon);
   const upt = obj(saved.uptime);
+  const ghb = obj(saved.github);
 
   const enabledWidgets = Array.isArray(saved.enabledWidgets) ? saved.enabledWidgets : DEFAULT_WIDGETS.enabledWidgets;
 
@@ -366,6 +390,11 @@ function mergeWidgetPrefs(saved?: Partial<WidgetPrefs>): WidgetPrefs {
       url: typeof upt?.url === "string" ? upt.url : DEFAULT_WIDGETS.uptime.url,
       pollInterval: typeof upt?.pollInterval === "number" ? upt.pollInterval : DEFAULT_WIDGETS.uptime.pollInterval,
       ticker: { ...DEFAULT_UPTIME_TICKER, ...obj(upt?.ticker) },
+    },
+    github: {
+      repos: Array.isArray(ghb?.repos) ? ghb.repos as Array<{ owner: string; repo: string }> : DEFAULT_WIDGETS.github.repos,
+      pollInterval: typeof ghb?.pollInterval === "number" ? ghb.pollInterval : DEFAULT_WIDGETS.github.pollInterval,
+      ticker: { ...DEFAULT_GITHUB_TICKER, ...obj(ghb?.ticker) },
     },
   };
 }

@@ -3,6 +3,7 @@ import ClockConfigPanel from "./clock/ConfigPanel";
 import WeatherConfigPanel from "./weather/ConfigPanel";
 import SysmonConfigPanel from "./sysmon/ConfigPanel";
 import UptimeConfigPanel from "./uptime/ConfigPanel";
+import GitHubConfigPanel from "./github/ConfigPanel";
 
 interface WidgetConfigPanelProps {
   widgetId: string;
@@ -32,6 +33,10 @@ export default function WidgetConfigPanel({
     case "uptime":
       return (
         <UptimeConfigPanel prefs={prefs} onPrefsChange={onPrefsChange} />
+      );
+    case "github":
+      return (
+        <GitHubConfigPanel prefs={prefs} onPrefsChange={onPrefsChange} />
       );
     default:
       return (

@@ -196,9 +196,18 @@ export interface UptimeChipData {
   heartbeats?: number[];
 }
 
+export interface GitHubChipData {
+  id: string;
+  label: string;
+  status: "success" | "failure" | "in_progress" | "unavailable";
+  workflowName: string;
+  detail?: string;
+}
+
 export interface WidgetTickerData {
   clock: ClockChipData[];
   weather: WeatherChipData[];
   sysmon: SysmonChipData[];
   uptime: UptimeChipData[];
+  github: GitHubChipData[];
 }

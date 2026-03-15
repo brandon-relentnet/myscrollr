@@ -7,12 +7,13 @@ import { LS_CLOCK_TIMEZONES, LS_CLOCK_FORMAT, LS_TIMER_STATE, LS_WEATHER_CITIES,
 import { formatBytes, timeAgo } from "../utils/format";
 import { weatherCodeToIcon, weatherCodeToLabel, formatTemp } from "../widgets/weather/types";
 import { findCpuTemp, findGpuTemp, formatComponentTemp } from "../widgets/sysmon/utils";
-import type { ClockChipData, WeatherChipData, SysmonChipData, UptimeChipData, WidgetTickerData } from "../types";
+import type { ClockChipData, WeatherChipData, SysmonChipData, UptimeChipData, GitHubChipData, WidgetTickerData } from "../types";
 import type { TimerState } from "../widgets/clock/types";
 import type { SavedCity } from "../widgets/weather/types";
 import { loadMonitors } from "../widgets/uptime/types";
+import { loadRepoData, repoKey } from "../widgets/github/types";
 
-const EMPTY: WidgetTickerData = { clock: [], weather: [], sysmon: [], uptime: [] };
+const EMPTY: WidgetTickerData = { clock: [], weather: [], sysmon: [], uptime: [], github: [] };
 
 // ── Time formatting helpers ─────────────────────────────────────
 
@@ -283,6 +284,40 @@ export function useWidgetTickerData(
     return chips;
   }, [widgetPrefs.uptime, enabledWidgets]);
 
+  // ── Build github chips ────────────────────────────────────────
+  const buildGithubChips = useCallback((): GitHubChipData[] => {
+    if (!enabledWidgets.has("github")) return [];
+    const repos = loadRepoData();
+    if (repos.length === 0) return [];
+
+    const cfg = widgetPrefs.github;
+    const chips: GitHubChipData[] = [];
+
+    for (const repo of repos) {
+      const key = repoKey(repo);
+      if (cfg.ticker.excludedRepos.includes(key)) continue;
+
+      const repoLabel = repo.repo.length > 20 ? repo.repo.slice(0, 18) + "\u2026" : repo.repo;
+      const workflow = repo.workflowName ?? "CI";
+
+      // Comfort detail: first line of commit message + time ago
+      const firstLine = repo.commitMessage?.split("\n")[0] ?? "";
+      const commit = firstLine.length > 30 ? firstLine.slice(0, 28) + "\u2026" : firstLine;
+      const checked = timeAgo(repo.updatedAt, { suffix: true });
+      const detail = [commit, checked].filter(Boolean).join(" \u00B7 ");
+
+      chips.push({
+        id: `github-${key}`,
+        label: repoLabel,
+        status: repo.status,
+        workflowName: workflow,
+        detail: detail || undefined,
+      });
+    }
+
+    return chips;
+  }, [widgetPrefs.github, enabledWidgets]);
+
   // ── Polling intervals ─────────────────────────────────────────
 
   useEffect(() => {
@@ -290,8 +325,9 @@ export function useWidgetTickerData(
     const hasWeather = enabledWidgets.has("weather");
     const hasSysmon = enabledWidgets.has("sysmon");
     const hasUptime = enabledWidgets.has("uptime");
+    const hasGithub = enabledWidgets.has("github");
 
-    if (!hasClock && !hasWeather && !hasSysmon && !hasUptime) {
+    if (!hasClock && !hasWeather && !hasSysmon && !hasUptime && !hasGithub) {
       setData(EMPTY);
       return;
     }
@@ -303,6 +339,7 @@ export function useWidgetTickerData(
         weather: buildWeatherChips(),
         sysmon: buildSysmonChips(),
         uptime: buildUptimeChips(),
+        github: buildGithubChips(),
       });
     };
 
@@ -331,6 +368,12 @@ export function useWidgetTickerData(
       setData((prev) => ({ ...prev, uptime: buildUptimeChips() }));
     }, uptimeMs) : null;
 
+    // GitHub: re-read cached localStorage data at poll cadence (FeedTab does the actual fetching)
+    const githubMs = (widgetPrefs.github.pollInterval || 120) * 1000;
+    const githubInterval = hasGithub ? setInterval(() => {
+      setData((prev) => ({ ...prev, github: buildGithubChips() }));
+    }, githubMs) : null;
+
     // Initial fetch for sysmon (only widget that needs async init)
     if (hasSysmon) {
       fetchSysmonData()
@@ -346,6 +389,7 @@ export function useWidgetTickerData(
       if (weatherInterval) clearInterval(weatherInterval);
       if (sysmonInterval) clearInterval(sysmonInterval);
       if (uptimeInterval) clearInterval(uptimeInterval);
+      if (githubInterval) clearInterval(githubInterval);
     };
   // Suppressed: JSON.stringify stabilizes the dep by value instead of reference,
   // so the effect only re-runs when the array contents actually change.
@@ -354,10 +398,12 @@ export function useWidgetTickerData(
     JSON.stringify(widgetPrefs.widgetsOnTicker),
     widgetPrefs.sysmon.refreshInterval,
     widgetPrefs.uptime.pollInterval,
+    widgetPrefs.github.pollInterval,
     buildClockChips,
     buildWeatherChips,
     buildSysmonChips,
     buildUptimeChips,
+    buildGithubChips,
   ]);
 
   return data;
