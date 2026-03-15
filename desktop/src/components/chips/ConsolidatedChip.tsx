@@ -42,6 +42,28 @@ const UPTIME_DOT_COLORS: Record<string, string> = {
   maintenance: "bg-info",
 };
 
+// ── Heartbeat mini bar ──────────────────────────────────────────
+
+const HB_COLORS: Record<number, string> = {
+  1: "bg-up",         // up
+  0: "bg-down",       // down
+  3: "bg-info",       // maintenance
+  2: "bg-warning",    // pending
+};
+
+function HeartbeatBar({ heartbeats }: { heartbeats: number[] }) {
+  return (
+    <span className="inline-flex items-center gap-px" aria-label="Recent heartbeat history">
+      {heartbeats.map((status, i) => (
+        <span
+          key={i}
+          className={clsx("w-[3px] h-2 rounded-[1px]", HB_COLORS[status] ?? "bg-fg-4/30")}
+        />
+      ))}
+    </span>
+  );
+}
+
 // ── Props ───────────────────────────────────────────────────────
 
 interface ConsolidatedChipProps {
@@ -136,14 +158,23 @@ export default function ConsolidatedChip({
       {/* Row 2: detail (comfort only) */}
       {comfort && (
         <div className={clsx("flex items-center text-[10px]", type === "weather" && "min-h-4", c.textFaint)}>
-          {items.map((item, i) =>
-            item.detail ? (
+          {items.map((item, i) => {
+            const hasDetail = item.detail || (isUptime(item) && item.heartbeats?.length);
+            if (!hasDetail) return null;
+            return (
               <div key={"id" in item ? item.id : i} className="flex items-center">
                 {i > 0 && <span className="mx-2">|</span>}
-                <span>{item.detail}</span>
+                {isUptime(item) && item.heartbeats?.length ? (
+                  <span className="flex items-center gap-1.5">
+                    <HeartbeatBar heartbeats={item.heartbeats} />
+                    {item.detail && <span>{item.detail}</span>}
+                  </span>
+                ) : (
+                  <span>{item.detail}</span>
+                )}
               </div>
-            ) : null
-          )}
+            );
+          })}
         </div>
       )}
     </button>

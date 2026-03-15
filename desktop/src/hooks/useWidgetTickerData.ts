@@ -4,7 +4,7 @@ import type { TempUnit } from "../preferences";
 import { fetchSysmonData } from "./useSysmonData";
 import type { SystemInfo } from "./useSysmonData";
 import { LS_CLOCK_TIMEZONES, LS_CLOCK_FORMAT, LS_TIMER_STATE, LS_WEATHER_CITIES, LS_WEATHER_UNIT, LS_UPTIME_MONITORS } from "../constants";
-import { formatBytes } from "../utils/format";
+import { formatBytes, timeAgo } from "../utils/format";
 import { weatherCodeToIcon, weatherCodeToLabel, formatTemp } from "../widgets/weather/types";
 import { findCpuTemp, findGpuTemp, formatComponentTemp } from "../widgets/sysmon/utils";
 import type { ClockChipData, WeatherChipData, SysmonChipData, UptimeChipData, WidgetTickerData } from "../types";
@@ -269,7 +269,8 @@ export function useWidgetTickerData(
 
       const statusLabel = mon.status.charAt(0).toUpperCase() + mon.status.slice(1);
       const respTime = mon.responseTime != null ? `${mon.responseTime}ms` : "";
-      const detail = [statusLabel, respTime].filter(Boolean).join(" \u00B7 ");
+      const checked = timeAgo(mon.lastChecked, { suffix: true });
+      const detail = [statusLabel, respTime, checked].filter(Boolean).join(" \u00B7 ");
 
       chips.push({
         id: `uptime-${mon.id}`,
@@ -277,6 +278,7 @@ export function useWidgetTickerData(
         status: mon.status,
         uptime: uptimeStr,
         detail: detail || undefined,
+        heartbeats: mon.recentHeartbeats.length > 0 ? mon.recentHeartbeats : undefined,
       });
     }
 

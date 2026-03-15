@@ -192,6 +192,8 @@ export interface UptimeChipData {
   status: "up" | "down" | "pending" | "maintenance";
   uptime: string;
   detail?: string;
+  /** Recent heartbeat status codes for the mini bar (0=down, 1=up, 2=pending, 3=maint). */
+  heartbeats?: number[];
 }
 
 export interface WidgetTickerData {

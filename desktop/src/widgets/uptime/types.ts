@@ -65,6 +65,11 @@ export interface KumaMonitor {
   uptimePercent: number | null;
   /** Latest response time in ms, or null if unavailable. */
   responseTime: number | null;
+  /** ISO-ish timestamp of the most recent heartbeat check, or null. */
+  lastChecked: string | null;
+  /** Recent heartbeat status codes (0=down, 1=up, 2=pending, 3=maintenance).
+   *  Last ~30 entries, oldest first. Used to render the mini heartbeat bar. */
+  recentHeartbeats: number[];
 }
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -152,12 +157,17 @@ export async function fetchKumaStatus(statusPageUrl: string): Promise<KumaMonito
         ? Math.round(rawUptime * 10000) / 100  // e.g. 0.9987 → 99.87
         : null;
 
+      // Take the last 30 heartbeats (oldest first) for the mini bar
+      const recent = heartbeats.slice(-30).map((hb) => hb.status);
+
       monitors.push({
         id: mon.id,
         name: mon.name,
         status: latest ? heartbeatToStatus(latest.status) : "pending",
         uptimePercent,
         responseTime: latest?.ping ?? null,
+        lastChecked: latest?.time ?? null,
+        recentHeartbeats: recent,
       });
     }
   }
