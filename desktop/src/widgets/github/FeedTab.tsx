@@ -93,7 +93,7 @@ function GitHubFeedTab({ mode: feedMode }: FeedTabProps) {
 
   // Auto-refresh when repos are configured via TanStack Query
   const { data, error } = useQuery({
-    queryKey: ["github-actions", configRepos.map(repoKey).join(",")],
+    queryKey: ["github-actions", configRepos.map(repoKey)],
     queryFn: () => fetchAllRepos(configRepos),
     enabled: configRepos.length > 0,
     refetchInterval: pollInterval * 1000,
@@ -226,6 +226,9 @@ function GitHubFeedTab({ mode: feedMode }: FeedTabProps) {
       <div className="flex items-center gap-3 px-1 text-[11px] font-mono text-fg-3">
         {passCount > 0 && <span className="text-up">{passCount} passing</span>}
         {failCount > 0 && <span className="text-down">{failCount} failing</span>}
+        {passCount === 0 && failCount === 0 && repoData.length > 0 && (
+          <span className="text-fg-4">checking...</span>
+        )}
       </div>
 
       {/* Error banner */}

@@ -392,7 +392,14 @@ function mergeWidgetPrefs(saved?: Partial<WidgetPrefs>): WidgetPrefs {
       ticker: { ...DEFAULT_UPTIME_TICKER, ...obj(upt?.ticker) },
     },
     github: {
-      repos: Array.isArray(ghb?.repos) ? ghb.repos as Array<{ owner: string; repo: string }> : DEFAULT_WIDGETS.github.repos,
+      repos: Array.isArray(ghb?.repos)
+        ? (ghb.repos as unknown[]).filter(
+            (r): r is { owner: string; repo: string } =>
+              r != null && typeof r === "object" &&
+              typeof (r as Record<string, unknown>).owner === "string" &&
+              typeof (r as Record<string, unknown>).repo === "string",
+          )
+        : DEFAULT_WIDGETS.github.repos,
       pollInterval: typeof ghb?.pollInterval === "number" ? ghb.pollInterval : DEFAULT_WIDGETS.github.pollInterval,
       ticker: { ...DEFAULT_GITHUB_TICKER, ...obj(ghb?.ticker) },
     },

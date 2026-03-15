@@ -59,13 +59,19 @@ function toCIStatus(status: string, conclusion: string | null): CIStatus {
  *   https://github.com/owner/repo/anything/else
  *   github.com/owner/repo
  */
+/** Valid GitHub owner/repo name: alphanumeric, hyphens, dots, underscores. */
+const GITHUB_NAME_RE = /^[a-zA-Z0-9_.-]+$/;
+
 export function parseRepoUrl(url: string): { owner: string; repo: string } | null {
   const trimmed = url.trim().replace(/\/+$/, "");
   const match = trimmed.match(/(?:https?:\/\/)?github\.com\/([^/]+)\/([^/]+)/i);
-  if (match) {
-    return { owner: match[1], repo: match[2] };
-  }
-  return null;
+  if (!match) return null;
+
+  const owner = match[1];
+  const repo = match[2];
+  if (!GITHUB_NAME_RE.test(owner) || !GITHUB_NAME_RE.test(repo)) return null;
+
+  return { owner, repo };
 }
 
 /** Format owner/repo as a stable key for exclusion lists. */
@@ -108,7 +114,7 @@ export async function fetchRepoStatus(
 
     const data = (await res.json()) as GitHubActionsResponse;
     const run = data.workflow_runs?.[0];
-    if (!run) return { ...unavailable, status: "unavailable" };
+    if (!run) return unavailable;
 
     return {
       owner,
