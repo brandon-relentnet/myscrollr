@@ -50,30 +50,34 @@ interface SampleChip {
 }
 
 const SAMPLE_CHIPS: SampleChip[] = [
-  // Finance (2)
+  // Finance (4)
   { label: "FINANCE", value: "Symbol \u00B7 Price", detail: "Exchange \u00B7 Change %", color: "bg-primary/[0.06]", textColor: "text-primary", borderColor: "ring-primary/25" },
   { label: "FINANCE", value: "Ticker \u00B7 Change", detail: "Sector \u00B7 Market Cap", color: "bg-primary/[0.06]", textColor: "text-primary", borderColor: "ring-primary/25" },
-  // Sports (2)
+  { label: "FINANCE", value: "Index \u00B7 Value", detail: "Day High \u00B7 Day Low", color: "bg-primary/[0.06]", textColor: "text-primary", borderColor: "ring-primary/25" },
+  { label: "FINANCE", value: "Crypto \u00B7 Price", detail: "24h Vol \u00B7 Change %", color: "bg-primary/[0.06]", textColor: "text-primary", borderColor: "ring-primary/25" },
+  // Sports (4)
   { label: "SPORTS", value: "Team vs Team", detail: "League \u00B7 Game Time", color: "bg-secondary/[0.06]", textColor: "text-secondary", borderColor: "ring-secondary/25" },
   { label: "SPORTS", value: "Score \u00B7 Status", detail: "Quarter \u00B7 Time Left", color: "bg-secondary/[0.06]", textColor: "text-secondary", borderColor: "ring-secondary/25" },
-  // RSS (2)
+  { label: "SPORTS", value: "Team \u00B7 Record", detail: "Conference \u00B7 Rank", color: "bg-secondary/[0.06]", textColor: "text-secondary", borderColor: "ring-secondary/25" },
+  { label: "SPORTS", value: "Final \u00B7 Score", detail: "Highlights \u00B7 Recap", color: "bg-secondary/[0.06]", textColor: "text-secondary", borderColor: "ring-secondary/25" },
+  // RSS (4)
   { label: "RSS", value: "Article Headline", detail: "Source \u00B7 Time Ago", color: "bg-info/[0.06]", textColor: "text-info", borderColor: "ring-info/25" },
   { label: "RSS", value: "News Title", detail: "Feed Name \u00B7 Published", color: "bg-info/[0.06]", textColor: "text-info", borderColor: "ring-info/25" },
-  // Weather (2)
-  { label: "WEATHER", value: "Location \u00B7 Temp", detail: "Condition \u00B7 Feels Like", color: "bg-widget-weather/[0.06]", textColor: "text-widget-weather", borderColor: "ring-widget-weather/25" },
-  { label: "WEATHER", value: "City \u00B7 Forecast", detail: "Wind \u00B7 Humidity", color: "bg-widget-weather/[0.06]", textColor: "text-widget-weather", borderColor: "ring-widget-weather/25" },
-  // Sysmon (2)
-  { label: "SYSMON", value: "CPU \u00B7 Usage %", detail: "Frequency \u00B7 Temp", color: "bg-widget-sysmon/[0.06]", textColor: "text-widget-sysmon", borderColor: "ring-widget-sysmon/25" },
-  { label: "SYSMON", value: "RAM \u00B7 Usage %", detail: "Used \u00B7 Total", color: "bg-widget-sysmon/[0.06]", textColor: "text-widget-sysmon", borderColor: "ring-widget-sysmon/25" },
-  // GitHub (2)
-  { label: "GITHUB", value: "Repo \u00B7 CI Status", detail: "Workflow \u00B7 Time Ago", color: "bg-widget-github/[0.06]", textColor: "text-widget-github", borderColor: "ring-widget-github/25" },
-  { label: "GITHUB", value: "Repo \u00B7 Passing", detail: "Branch \u00B7 Commit Msg", color: "bg-widget-github/[0.06]", textColor: "text-widget-github", borderColor: "ring-widget-github/25" },
-  // Uptime (2)
-  { label: "UPTIME", value: "Monitor \u00B7 Uptime %", detail: "Status \u00B7 Last Checked", color: "bg-widget-uptime/[0.06]", textColor: "text-widget-uptime", borderColor: "ring-widget-uptime/25" },
-  { label: "UPTIME", value: "Service \u00B7 99.9%", detail: "Response \u00B7 Latency", color: "bg-widget-uptime/[0.06]", textColor: "text-widget-uptime", borderColor: "ring-widget-uptime/25" },
-  // Fantasy (2)
+  { label: "RSS", value: "Blog Post Title", detail: "Author \u00B7 Read Time", color: "bg-info/[0.06]", textColor: "text-info", borderColor: "ring-info/25" },
+  { label: "RSS", value: "Breaking News", detail: "Category \u00B7 Just Now", color: "bg-info/[0.06]", textColor: "text-info", borderColor: "ring-info/25" },
+  // Fantasy (4)
   { label: "FANTASY", value: "Player \u00B7 Points", detail: "Position \u00B7 Team", color: "bg-accent-purple/[0.06]", textColor: "text-accent-purple", borderColor: "ring-accent-purple/25" },
   { label: "FANTASY", value: "Matchup \u00B7 Score", detail: "Week \u00B7 Standing", color: "bg-accent-purple/[0.06]", textColor: "text-accent-purple", borderColor: "ring-accent-purple/25" },
+  { label: "FANTASY", value: "Roster \u00B7 Projected", detail: "Bench \u00B7 Waiver", color: "bg-accent-purple/[0.06]", textColor: "text-accent-purple", borderColor: "ring-accent-purple/25" },
+  { label: "FANTASY", value: "Trade \u00B7 Offer", detail: "Deadline \u00B7 Status", color: "bg-accent-purple/[0.06]", textColor: "text-accent-purple", borderColor: "ring-accent-purple/25" },
+  // Weather (1)
+  { label: "WEATHER", value: "Location \u00B7 Temp", detail: "Condition \u00B7 Feels Like", color: "bg-widget-weather/[0.06]", textColor: "text-widget-weather", borderColor: "ring-widget-weather/25" },
+  // Sysmon (1)
+  { label: "SYSMON", value: "CPU \u00B7 Usage %", detail: "Frequency \u00B7 Temp", color: "bg-widget-sysmon/[0.06]", textColor: "text-widget-sysmon", borderColor: "ring-widget-sysmon/25" },
+  // GitHub (1)
+  { label: "GITHUB", value: "Repo \u00B7 CI Status", detail: "Workflow \u00B7 Time Ago", color: "bg-widget-github/[0.06]", textColor: "text-widget-github", borderColor: "ring-widget-github/25" },
+  // Uptime (1)
+  { label: "UPTIME", value: "Monitor \u00B7 Uptime %", detail: "Status \u00B7 Last Checked", color: "bg-widget-uptime/[0.06]", textColor: "text-widget-uptime", borderColor: "ring-widget-uptime/25" },
 ];
 
 const MUTED_OVERRIDE = {
@@ -87,6 +91,30 @@ const ACCENT_OVERRIDE = {
   textColor: "text-primary",
   borderColor: "ring-primary/25",
 };
+
+// ── Chip ordering for preview ───────────────────────────────────
+
+/** Group chips by their label (source), then round-robin interleave. */
+function weaveChips(chips: SampleChip[]): SampleChip[] {
+  const groups: Record<string, SampleChip[]> = {};
+  for (const chip of chips) {
+    (groups[chip.label] ??= []).push(chip);
+  }
+  const buckets = Object.values(groups);
+  if (buckets.length === 0) return [];
+  const result: SampleChip[] = [];
+  const maxLen = Math.max(...buckets.map((b) => b.length));
+  for (let i = 0; i < maxLen; i++) {
+    for (const bucket of buckets) {
+      if (i < bucket.length) result.push(bucket[i]);
+    }
+  }
+  return result;
+}
+
+function orderChips(chips: SampleChip[], mode: MixMode): SampleChip[] {
+  return mode === "weave" ? weaveChips(chips) : chips;
+}
 
 // ── Advanced options ────────────────────────────────────────────
 
@@ -130,7 +158,7 @@ function TickerRoute() {
 
   // Compute preview params — reflect all settings
   const velocity = ticker.tickerDirection === "right" ? ticker.tickerSpeed : -ticker.tickerSpeed;
-  const gapPx = ticker.tickerGap === "tight" ? 6 : ticker.tickerGap === "spacious" ? 16 : 10;
+  const gapPx = ticker.tickerGap === "tight" ? 8 : ticker.tickerGap === "spacious" ? 20 : 12;
   const comfort = ticker.tickerMode === "comfort";
   // Row height is dynamic — let content size naturally, no fixed height.
 
@@ -172,7 +200,8 @@ function TickerRoute() {
         >
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent z-10" />
           {Array.from({ length: appearance.tickerRows }, (_, rowIdx) => {
-            const rowChips = SAMPLE_CHIPS.filter((_, i) =>
+            const orderedChips = orderChips(SAMPLE_CHIPS, ticker.mixMode);
+            const rowChips = orderedChips.filter((_, i) =>
               appearance.tickerRows <= 1 ? true : i % appearance.tickerRows === rowIdx
             );
             return (
@@ -185,7 +214,7 @@ function TickerRoute() {
               >
                 <AnimatePresence mode="wait">
                   <motion.div
-                    key={`${ticker.scrollMode}-${ticker.tickerDirection}`}
+                    key={`${ticker.scrollMode}-${ticker.tickerDirection}-${ticker.mixMode}`}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
@@ -489,7 +518,7 @@ function PreviewRow({
         const firstItem = container?.querySelector(".ticker-chip") as HTMLElement | null;
         const stepSize = firstItem ? firstItem.offsetWidth + gap : 160;
 
-        const sign = direction === "right" ? 1 : -1;
+        const sign = direction === "left" ? 1 : -1;
         const current = offset.get();
 
         await animate(offset, current + sign * stepSize, {
@@ -552,7 +581,7 @@ function PreviewRow({
 
   // Continuous and step both use the Ticker component (same as real ticker)
   const isStep = scrollMode === "step";
-  const velocity = direction === "right" ? speed : -speed;
+  const velocity = direction === "left" ? speed : -speed;
 
   return (
     <div ref={containerRef} className="ticker-container w-full py-2 overflow-hidden relative">

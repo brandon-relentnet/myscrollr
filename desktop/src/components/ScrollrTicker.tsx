@@ -350,7 +350,7 @@ export default function ScrollrTicker({
         }
 
         const stepSize = measureStepSize();
-        const sign = direction === "right" ? 1 : -1;
+        const sign = direction === "left" ? 1 : -1;
         const current = offset.get();
         const target = current + sign * stepSize;
 
@@ -548,7 +548,7 @@ export default function ScrollrTicker({
   }
 
   // ── Continuous / Step mode: motion-plus Ticker ────────────────
-  const velocity = direction === "right" ? speed : -speed;
+  const velocity = direction === "left" ? speed : -speed;
   const isStepMode = scrollMode === "step";
 
   return (

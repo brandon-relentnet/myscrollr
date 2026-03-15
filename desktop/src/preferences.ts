@@ -175,12 +175,12 @@ const DEFAULT_APPEARANCE: AppearancePrefs = {
 
 const DEFAULT_TICKER: TickerPrefs = {
   showTicker: true,
-  tickerSpeed: 25,
+  tickerSpeed: 40,
   pauseOnHover: true,
   hoverSpeed: 0.3,
-  tickerGap: "normal",
-  tickerMode: "compact",
-  mixMode: "grouped",
+  tickerGap: "tight",
+  tickerMode: "comfort",
+  mixMode: "weave",
   chipColors: "channel",
   tickerDirection: "left",
   scrollMode: "continuous",
