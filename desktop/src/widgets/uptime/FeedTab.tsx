@@ -13,7 +13,7 @@
  */
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, RefreshCw, Unlink, Loader2 } from "lucide-react";
+import { HeartPulse, RefreshCw, Unlink, Loader2 } from "lucide-react";
 import type { FeedTabProps, WidgetManifest } from "../../types";
 import type { KumaMonitor, MonitorStatus } from "./types";
 import { fetchKumaStatus, loadMonitors, saveMonitors } from "./types";
@@ -30,7 +30,7 @@ export const uptimeWidget: WidgetManifest = {
   tabLabel: "Uptime",
   description: "Monitor status from Uptime Kuma",
   hex: "#10b981",
-  icon: Activity,
+  icon: HeartPulse,
   info: {
     about:
       "The Uptime widget connects to your Uptime Kuma status page and " +
@@ -105,7 +105,7 @@ function UptimeFeedTab({ mode: feedMode }: FeedTabProps) {
 
   // Sync query results to localStorage + local state
   useEffect(() => {
-    if (data && data.length > 0) {
+    if (data) {
       setMonitors(data);
       saveMonitors(data);
     }
@@ -185,7 +185,7 @@ function UptimeFeedTab({ mode: feedMode }: FeedTabProps) {
   if (!url) {
     return (
       <div className="p-4 flex flex-col items-center justify-center gap-3">
-        <Activity size={24} className="text-widget-uptime/60" />
+        <HeartPulse size={24} className="text-widget-uptime/60" />
         <span className="text-xs font-mono text-fg-2 text-center">
           Connect to your Uptime Kuma status page
         </span>

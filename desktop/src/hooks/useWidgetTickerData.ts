@@ -10,8 +10,7 @@ import { findCpuTemp, findGpuTemp, formatComponentTemp } from "../widgets/sysmon
 import type { ClockChipData, WeatherChipData, SysmonChipData, UptimeChipData, WidgetTickerData } from "../types";
 import type { TimerState } from "../widgets/clock/types";
 import type { SavedCity } from "../widgets/weather/types";
-import { fetchKumaStatus, loadMonitors, saveMonitors } from "../widgets/uptime/types";
-import type { KumaMonitor } from "../widgets/uptime/types";
+import { loadMonitors } from "../widgets/uptime/types";
 
 const EMPTY: WidgetTickerData = { clock: [], weather: [], sysmon: [], uptime: [] };
 
@@ -92,7 +91,6 @@ export function useWidgetTickerData(
 ): WidgetTickerData {
   const [data, setData] = useState<WidgetTickerData>(EMPTY);
   const sysInfoRef = useRef<SystemInfo | null>(null);
-  const uptimeRef = useRef<KumaMonitor[]>([]);
 
   const enabledWidgets = useMemo(
     () => new Set(widgetPrefs.widgetsOnTicker),
@@ -254,7 +252,7 @@ export function useWidgetTickerData(
   // ── Build uptime chips ────────────────────────────────────────
   const buildUptimeChips = useCallback((): UptimeChipData[] => {
     if (!enabledWidgets.has("uptime")) return [];
-    const monitors = uptimeRef.current.length > 0 ? uptimeRef.current : loadMonitors();
+    const monitors = loadMonitors();
     if (monitors.length === 0) return [];
 
     const cfg = widgetPrefs.uptime;
@@ -327,39 +325,18 @@ export function useWidgetTickerData(
       } catch { /* ignore IPC failures */ }
     }, sysmonMs) : null;
 
-    // Uptime: poll Kuma endpoint at the configured interval
+    // Uptime: re-read cached localStorage data at poll cadence (FeedTab does the actual fetching)
     const uptimeMs = (widgetPrefs.uptime.pollInterval || 60) * 1000;
-    const uptimeUrl = widgetPrefs.uptime.url;
-    const uptimeInterval = hasUptime && uptimeUrl ? setInterval(async () => {
-      try {
-        const monitors = await fetchKumaStatus(uptimeUrl);
-        uptimeRef.current = monitors;
-        saveMonitors(monitors);
-        setData((prev) => ({ ...prev, uptime: buildUptimeChips() }));
-      } catch { /* ignore fetch failures — keep stale data */ }
+    const uptimeInterval = hasUptime ? setInterval(() => {
+      setData((prev) => ({ ...prev, uptime: buildUptimeChips() }));
     }, uptimeMs) : null;
 
-    // Initial fetches
-    const initPromises: Promise<void>[] = [];
-
+    // Initial fetch for sysmon (only widget that needs async init)
     if (hasSysmon) {
-      initPromises.push(
-        fetchSysmonData()
-          .then((info) => { sysInfoRef.current = info; })
-          .catch(() => {}),
-      );
-    }
-
-    if (hasUptime && uptimeUrl) {
-      initPromises.push(
-        fetchKumaStatus(uptimeUrl)
-          .then((monitors) => { uptimeRef.current = monitors; saveMonitors(monitors); })
-          .catch(() => {}),
-      );
-    }
-
-    if (initPromises.length > 0) {
-      Promise.allSettled(initPromises).then(refresh);
+      fetchSysmonData()
+        .then((info) => { sysInfoRef.current = info; })
+        .catch(() => {})
+        .finally(refresh);
     } else {
       refresh();
     }
@@ -377,7 +354,6 @@ export function useWidgetTickerData(
     JSON.stringify(widgetPrefs.widgetsOnTicker),
     widgetPrefs.sysmon.refreshInterval,
     widgetPrefs.uptime.pollInterval,
-    widgetPrefs.uptime.url,
     buildClockChips,
     buildWeatherChips,
     buildSysmonChips,
