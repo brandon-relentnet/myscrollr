@@ -59,6 +59,12 @@ export interface SysmonCardPrefs {
   uptime: boolean;
 }
 
+export interface UptimeCardPrefs {
+  health: boolean;
+  monitorCount: boolean;
+  monitors: boolean;
+}
+
 export interface DashboardCardPrefs {
   finance: FinanceCardPrefs;
   sports: SportsCardPrefs;
@@ -67,6 +73,7 @@ export interface DashboardCardPrefs {
   clock: ClockCardPrefs;
   weather: WeatherCardPrefs;
   sysmon: SysmonCardPrefs;
+  uptime: UptimeCardPrefs;
 }
 
 // ── Defaults ────────────────────────────────────────────────────
@@ -79,6 +86,7 @@ export const DEFAULT_CARD_PREFS: DashboardCardPrefs = {
   clock: { date: true, timer: true, worldClocks: true },
   weather: { condition: true, feelsLike: true, cityCount: true },
   sysmon: { cpu: true, ram: true, gpu: true, uptime: true },
+  uptime: { health: true, monitorCount: true, monitors: true },
 };
 
 // ── Storage ─────────────────────────────────────────────────────
@@ -97,6 +105,7 @@ export function loadCardPrefs(): DashboardCardPrefs {
     clock: { ...DEFAULT_CARD_PREFS.clock, ...saved.clock },
     weather: { ...DEFAULT_CARD_PREFS.weather, ...saved.weather },
     sysmon: { ...DEFAULT_CARD_PREFS.sysmon, ...saved.sysmon },
+    uptime: { ...DEFAULT_CARD_PREFS.uptime, ...saved.uptime },
   };
 }
 
@@ -229,4 +238,10 @@ export const SYSMON_SCHEMA: EditorField[] = [
   { type: "toggle", key: "ram", label: "RAM" },
   { type: "toggle", key: "gpu", label: "GPU" },
   { type: "toggle", key: "uptime", label: "Uptime" },
+];
+
+export const UPTIME_SCHEMA: EditorField[] = [
+  { type: "toggle", key: "health", label: "Health Status" },
+  { type: "toggle", key: "monitorCount", label: "Monitor Count" },
+  { type: "toggle", key: "monitors", label: "Monitor List" },
 ];

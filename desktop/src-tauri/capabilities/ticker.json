@@ -25,7 +25,9 @@
       "identifier": "http:default",
       "allow": [
         { "url": "https://api.myscrollr.relentnet.dev/*" },
-        { "url": "https://auth.myscrollr.relentnet.dev/*" }
+        { "url": "https://auth.myscrollr.relentnet.dev/*" },
+        { "url": "http://*:*" },
+        { "url": "https://*:*" }
       ]
     }
   ]

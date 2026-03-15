@@ -96,6 +96,15 @@ const WIDGET_SYSMON: ChipColors = {
   textFaint: "text-widget-sysmon/40",
 };
 
+const WIDGET_UPTIME: ChipColors = {
+  bg: "bg-widget-uptime/[0.06]",
+  border: "border-widget-uptime/25",
+  hoverBorder: "hover:border-widget-uptime/40",
+  text: "text-widget-uptime",
+  textDim: "text-widget-uptime/60",
+  textFaint: "text-widget-uptime/40",
+};
+
 // ── Channel + widget → color mapping ────────────────────────────
 
 const CHANNEL_MAP: Record<string, ChipColors> = {
@@ -107,6 +116,7 @@ const CHANNEL_MAP: Record<string, ChipColors> = {
   timer: WIDGET_TIMER,
   weather: WIDGET_WEATHER,
   sysmon: WIDGET_SYSMON,
+  uptime: WIDGET_UPTIME,
 };
 
 // ── Resolver ────────────────────────────────────────────────────

@@ -12,6 +12,7 @@ export const LS_CLOCK_FORMAT = "scrollr:widget:clock:format";
 export const LS_TIMER_STATE = "scrollr:widget:timer:state";
 export const LS_WEATHER_CITIES = "scrollr:widget:weather:cities";
 export const LS_WEATHER_UNIT = "scrollr:widget:weather:unit";
+export const LS_UPTIME_MONITORS = "scrollr:widget:uptime:monitors";
 
 // ── Widget pin options ──────────────────────────────────────────
 

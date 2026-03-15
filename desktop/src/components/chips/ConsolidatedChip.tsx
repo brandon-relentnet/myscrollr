@@ -1,5 +1,5 @@
 /**
- * ConsolidatedChip — generic ticker chip for clock, weather, and sysmon widgets.
+ * ConsolidatedChip — generic ticker chip for clock, weather, sysmon, and uptime widgets.
  *
  * Replaces the three nearly-identical ClockConsolidatedChip,
  * WeatherConsolidatedChip, and SysmonConsolidatedChip components.
@@ -12,11 +12,12 @@ import type {
   ClockChipData,
   WeatherChipData,
   SysmonChipData,
+  UptimeChipData,
 } from "../../types";
 
 // ── Item shape union ────────────────────────────────────────────
 
-type ChipItem = ClockChipData | WeatherChipData | SysmonChipData;
+type ChipItem = ClockChipData | WeatherChipData | SysmonChipData | UptimeChipData;
 
 // ── Type guards ─────────────────────────────────────────────────
 
@@ -28,10 +29,23 @@ function isSysmon(item: ChipItem): item is SysmonChipData {
   return "hot" in item;
 }
 
+function isUptime(item: ChipItem): item is UptimeChipData {
+  return "status" in item && "uptime" in item;
+}
+
+// ── Uptime status dot color ─────────────────────────────────────
+
+const UPTIME_DOT_COLORS: Record<string, string> = {
+  up: "bg-up",
+  down: "bg-down",
+  pending: "bg-warning",
+  maintenance: "bg-info",
+};
+
 // ── Props ───────────────────────────────────────────────────────
 
 interface ConsolidatedChipProps {
-  type: "clock" | "weather" | "sysmon";
+  type: "clock" | "weather" | "sysmon" | "uptime";
   items: ChipItem[];
   comfort?: boolean;
   colorMode?: ChipColorMode;
@@ -56,6 +70,7 @@ export default function ConsolidatedChip({
   const c = getChipColors(colorMode, type);
   const PinIcon = pinned ? PinOff : Pin;
   const anyHot = type === "sysmon" && items.some((item) => isSysmon(item) && item.hot);
+  const anyDown = type === "uptime" && items.some((item) => isUptime(item) && item.status === "down");
 
   return (
     <button
@@ -67,6 +82,7 @@ export default function ConsolidatedChip({
         "transition-colors cursor-pointer",
         c.bg, c.border, c.hoverBorder,
         anyHot && "border-error/30",
+        anyDown && "border-down/30",
         comfort ? "flex flex-col items-start py-1.5 gap-0.5" : "flex items-center gap-2 py-1 text-[13px]",
       )}
     >
@@ -96,7 +112,12 @@ export default function ConsolidatedChip({
             <span className={clsx("font-semibold text-[11px] uppercase tracking-wider mr-1.5", c.textDim)}>
               {"label" in item ? item.label : ""}
             </span>
-            {isWeather(item) ? (
+            {isUptime(item) ? (
+              <>
+                <span className={clsx("w-1.5 h-1.5 rounded-full inline-block mr-1", UPTIME_DOT_COLORS[item.status] ?? "bg-fg-4")} />
+                <span className={c.text}>{item.uptime}</span>
+              </>
+            ) : isWeather(item) ? (
               <>
                 <span className={c.text}>{item.temp}</span>
                 <span className="text-[13px] leading-none ml-1">{item.icon}</span>

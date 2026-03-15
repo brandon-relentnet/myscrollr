@@ -18,6 +18,7 @@ import FantasySummary from "../components/dashboard/FantasySummary";
 import ClockSummary from "../components/dashboard/ClockSummary";
 import WeatherSummary from "../components/dashboard/WeatherSummary";
 import SysmonSummary from "../components/dashboard/SysmonSummary";
+import UptimeSummary from "../components/dashboard/UptimeSummary";
 import {
   loadCardPrefs,
   saveCardPrefs,
@@ -32,6 +33,7 @@ import {
   CLOCK_SCHEMA,
   WEATHER_SCHEMA,
   SYSMON_SCHEMA,
+  UPTIME_SCHEMA,
 } from "../components/dashboard/dashboardPrefs";
 import type { ChannelType } from "../api/client";
 import type { ChannelManifest, WidgetManifest, DashboardResponse } from "../types";
@@ -70,6 +72,8 @@ function renderWidgetSummary(
       return <WeatherSummary prefs={cardPrefs.weather} />;
     case "sysmon":
       return <SysmonSummary prefs={cardPrefs.sysmon} />;
+    case "uptime":
+      return <UptimeSummary prefs={cardPrefs.uptime} />;
     default:
       return null;
   }
@@ -88,6 +92,7 @@ const WIDGET_SCHEMAS: Record<string, EditorField[]> = {
   clock: CLOCK_SCHEMA,
   weather: WEATHER_SCHEMA,
   sysmon: SYSMON_SCHEMA,
+  uptime: UPTIME_SCHEMA,
 };
 
 const CHANNEL_PREFS_KEY: Record<string, keyof DashboardCardPrefs> = {
@@ -101,6 +106,7 @@ const WIDGET_PREFS_KEY: Record<string, keyof DashboardCardPrefs> = {
   clock: "clock",
   weather: "weather",
   sysmon: "sysmon",
+  uptime: "uptime",
 };
 
 // ── Route ───────────────────────────────────────────────────────

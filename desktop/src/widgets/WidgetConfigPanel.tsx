@@ -2,6 +2,7 @@ import type { AppPreferences } from "../preferences";
 import ClockConfigPanel from "./clock/ConfigPanel";
 import WeatherConfigPanel from "./weather/ConfigPanel";
 import SysmonConfigPanel from "./sysmon/ConfigPanel";
+import UptimeConfigPanel from "./uptime/ConfigPanel";
 
 interface WidgetConfigPanelProps {
   widgetId: string;
@@ -27,6 +28,10 @@ export default function WidgetConfigPanel({
     case "sysmon":
       return (
         <SysmonConfigPanel prefs={prefs} onPrefsChange={onPrefsChange} />
+      );
+    case "uptime":
+      return (
+        <UptimeConfigPanel prefs={prefs} onPrefsChange={onPrefsChange} />
       );
     default:
       return (

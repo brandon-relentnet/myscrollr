@@ -186,8 +186,17 @@ export interface SysmonChipData {
   hot?: boolean;
 }
 
+export interface UptimeChipData {
+  id: string;
+  label: string;
+  status: "up" | "down" | "pending" | "maintenance";
+  uptime: string;
+  detail?: string;
+}
+
 export interface WidgetTickerData {
   clock: ClockChipData[];
   weather: WeatherChipData[];
   sysmon: SysmonChipData[];
+  uptime: UptimeChipData[];
 }

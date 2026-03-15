@@ -111,6 +111,19 @@ export interface SysmonWidgetConfig {
   ticker: SysmonTickerConfig;
 }
 
+export interface UptimeTickerConfig {
+  /** Monitor IDs excluded from the ticker (empty = all configured monitors shown). */
+  excludedMonitors: number[];
+}
+
+export interface UptimeWidgetConfig {
+  /** The user's Uptime Kuma public status page URL. Empty = not configured. */
+  url: string;
+  /** Poll interval in seconds (default 60). */
+  pollInterval: number;
+  ticker: UptimeTickerConfig;
+}
+
 export interface WidgetPinConfig {
   side: PinSide;
 }
@@ -126,6 +139,7 @@ export interface WidgetPrefs {
   clock: ClockWidgetConfig;
   weather: WeatherWidgetConfig;
   sysmon: SysmonWidgetConfig;
+  uptime: UptimeWidgetConfig;
 }
 
 export interface AppPreferences {
@@ -206,6 +220,10 @@ export const DEFAULT_SYSMON_TICKER: SysmonTickerConfig = {
   gpuPower: false,
 };
 
+export const DEFAULT_UPTIME_TICKER: UptimeTickerConfig = {
+  excludedMonitors: [],
+};
+
 const DEFAULT_WIDGETS: WidgetPrefs = {
   enabledWidgets: [],
   widgetsOnTicker: [],
@@ -223,6 +241,11 @@ const DEFAULT_WIDGETS: WidgetPrefs = {
     refreshInterval: 2,
     tempUnit: "celsius",
     ticker: { ...DEFAULT_SYSMON_TICKER },
+  },
+  uptime: {
+    url: "",
+    pollInterval: 60,
+    ticker: { ...DEFAULT_UPTIME_TICKER },
   },
 };
 
@@ -314,6 +337,7 @@ function mergeWidgetPrefs(saved?: Partial<WidgetPrefs>): WidgetPrefs {
   const clk = obj(saved.clock);
   const wth = obj(saved.weather);
   const sys = obj(saved.sysmon);
+  const upt = obj(saved.uptime);
 
   const enabledWidgets = Array.isArray(saved.enabledWidgets) ? saved.enabledWidgets : DEFAULT_WIDGETS.enabledWidgets;
 
@@ -337,6 +361,11 @@ function mergeWidgetPrefs(saved?: Partial<WidgetPrefs>): WidgetPrefs {
       refreshInterval: typeof sys?.refreshInterval === "number" ? sys.refreshInterval : DEFAULT_WIDGETS.sysmon.refreshInterval,
       tempUnit: (sys?.tempUnit as TempUnit) ?? DEFAULT_WIDGETS.sysmon.tempUnit,
       ticker: { ...DEFAULT_SYSMON_TICKER, ...obj(sys?.ticker) },
+    },
+    uptime: {
+      url: typeof upt?.url === "string" ? upt.url : DEFAULT_WIDGETS.uptime.url,
+      pollInterval: typeof upt?.pollInterval === "number" ? upt.pollInterval : DEFAULT_WIDGETS.uptime.pollInterval,
+      ticker: { ...DEFAULT_UPTIME_TICKER, ...obj(upt?.ticker) },
     },
   };
 }

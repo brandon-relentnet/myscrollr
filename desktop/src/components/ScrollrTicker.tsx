@@ -190,6 +190,25 @@ export default function ScrollrTicker({
         continue;
       }
 
+      if (tab === "uptime" && widgetData?.uptime.length) {
+        if (!pinnedWidgets.uptime) {
+          bucket.push(
+            wrap("upt-consolidated",
+              <ConsolidatedChip
+                type="uptime"
+                items={widgetData.uptime}
+                comfort={comfort}
+                colorMode={chipColorMode}
+                onTogglePin={onTogglePin ? () => onTogglePin("uptime") : undefined}
+                onClick={() => onChipClick?.("uptime", "uptime")}
+              />
+            )
+          );
+          buckets.push(bucket);
+        }
+        continue;
+      }
+
       // ── Channel tabs: use dashboard.data ──────────────────────
       const data = dashboard?.data?.[tab];
       if (!Array.isArray(data) || data.length === 0) continue;
@@ -437,6 +456,20 @@ export default function ScrollrTicker({
           pinned
           onTogglePin={onTogglePin ? () => onTogglePin("sysmon") : undefined}
           onClick={() => onChipClick?.("sysmon", "sysmon")}
+        />
+      );
+    }
+    if (tab === "uptime" && widgetData?.uptime.length) {
+      target.push(
+        <ConsolidatedChip
+          key="pinned-uptime"
+          type="uptime"
+          items={widgetData.uptime}
+          comfort={comfort}
+          colorMode={chipColorMode}
+          pinned
+          onTogglePin={onTogglePin ? () => onTogglePin("uptime") : undefined}
+          onClick={() => onChipClick?.("uptime", "uptime")}
         />
       );
     }
