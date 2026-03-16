@@ -1,8 +1,9 @@
 import { memo, useState, useEffect, useRef } from "react";
 import { clsx } from "clsx";
+import { isLive, isFinal, isPre, isCloseGame, getWinner, formatCountdown } from "../../utils/gameHelpers";
+import { getChipColors } from "./chipColors";
 import type { Game } from "../../types";
 import type { ChipColorMode } from "../../preferences";
-import { getChipColors } from "./chipColors";
 
 // ── Props ───────────────────────────────────────────────────────
 
@@ -13,59 +14,13 @@ interface GameChipProps {
   onClick?: () => void;
 }
 
-// ── Sport utilities (exported for ScrollrTicker sorting) ────────
-
-/** Close-game threshold per sport — roughly "one score" in each sport. */
-const CLOSE_THRESHOLDS: Record<string, number> = {
-  "american-football": 8,
-  "basketball": 6,
-  "hockey": 1,
-  "baseball": 2,
-  "football": 1,
-};
-
-export function isLive(game: Game): boolean {
-  return game.state === "in_progress" || game.state === "in";
-}
-
-export function isCloseGame(game: Game): boolean {
-  if (!isLive(game)) return false;
-  const away = Number(game.away_team_score);
-  const home = Number(game.home_team_score);
-  if (isNaN(away) || isNaN(home)) return false;
-  return Math.abs(away - home) <= (CLOSE_THRESHOLDS[game.sport] ?? 3);
-}
-
-function getWinner(game: Game): "home" | "away" | null {
-  if (game.state !== "final") return null;
-  const a = Number(game.away_team_score);
-  const h = Number(game.home_team_score);
-  if (isNaN(a) || isNaN(h) || a === h) return null;
-  return h > a ? "home" : "away";
-}
-
-function formatCountdown(startTime: string): string {
-  const diff = new Date(startTime).getTime() - Date.now();
-  if (diff <= 0) return "Starting";
-  const h = Math.floor(diff / 3_600_000);
-  const m = Math.floor((diff % 3_600_000) / 60_000);
-  if (h >= 48) {
-    return new Date(startTime).toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-    });
-  }
-  if (h >= 24) return "Tomorrow";
-  if (h > 0) return `in ${h}h ${m}m`;
-  if (m > 0) return `in ${m}m`;
-  return "Soon";
-}
+// ── Helpers ─────────────────────────────────────────────────────
 
 /** Rich status for the chip — game clock for live, countdown for pre. */
 function chipStatus(game: Game): string {
   if (isLive(game)) return game.timer || game.status_short || "LIVE";
-  if (game.state === "final") return game.status_long || "Final";
-  if (game.state === "pre") return formatCountdown(game.start_time);
+  if (isFinal(game)) return game.status_long || "Final";
+  if (isPre(game)) return formatCountdown(game.start_time);
   if (game.state === "postponed") return "PPD";
   return "";
 }
@@ -83,8 +38,8 @@ const GameChip = memo(function GameChip({
   const close = isCloseGame(game);
   const winner = getWinner(game);
   const status = chipStatus(game);
-  const isFinal = game.state === "final";
-  const isPre = game.state === "pre";
+  const final_ = isFinal(game);
+  const pre_ = isPre(game);
 
   // ── Score change flash ──────────────────────────────────────
   const prevRef = useRef({
@@ -157,7 +112,7 @@ const GameChip = memo(function GameChip({
           className={clsx(
             c.text,
             winner === "away" ? "font-bold" : "font-semibold",
-            isFinal && winner === "home" && "opacity-50",
+            final_ && winner === "home" && "opacity-50",
           )}
         >
           {game.away_team_name.slice(0, 3).toUpperCase()}
@@ -166,11 +121,11 @@ const GameChip = memo(function GameChip({
           className={clsx(
             "tabular-nums",
             winner === "away" ? "font-bold " + c.text : c.textDim,
-            isFinal && winner === "home" && "opacity-50",
-            isPre && "opacity-30",
+            final_ && winner === "home" && "opacity-50",
+            pre_ && "opacity-30",
           )}
         >
-          {isPre ? "_" : String(game.away_team_score)}
+          {pre_ ? "_" : String(game.away_team_score)}
         </span>
 
         <span className="text-fg-4">-</span>
@@ -180,17 +135,17 @@ const GameChip = memo(function GameChip({
           className={clsx(
             "tabular-nums",
             winner === "home" ? "font-bold " + c.text : c.textDim,
-            isFinal && winner === "away" && "opacity-50",
-            isPre && "opacity-30",
+            final_ && winner === "away" && "opacity-50",
+            pre_ && "opacity-30",
           )}
         >
-          {isPre ? "_" : String(game.home_team_score)}
+          {pre_ ? "_" : String(game.home_team_score)}
         </span>
         <span
           className={clsx(
             c.text,
             winner === "home" ? "font-bold" : "font-semibold",
-            isFinal && winner === "away" && "opacity-50",
+            final_ && winner === "away" && "opacity-50",
           )}
         >
           {game.home_team_name.slice(0, 3).toUpperCase()}

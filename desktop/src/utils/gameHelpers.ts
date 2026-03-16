@@ -1,0 +1,68 @@
+/**
+ * Shared game state helpers for sports data.
+ *
+ * Used by GameChip, SportsSummary, and ScrollrTicker to consistently
+ * determine game status across the app. Canonical source of truth
+ * for game state classification.
+ */
+import type { Game } from "../types";
+
+// ── State classification ────────────────────────────────────────
+
+export function isLive(game: Game): boolean {
+  return game.state === "in_progress" || game.state === "in";
+}
+
+export function isFinal(game: Game): boolean {
+  return game.state === "final" || game.state === "post";
+}
+
+export function isPre(game: Game): boolean {
+  return game.state === "pre";
+}
+
+// ── Derived helpers ─────────────────────────────────────────────
+
+/** Close-game threshold per sport — roughly "one score" in each sport. */
+const CLOSE_THRESHOLDS: Record<string, number> = {
+  "american-football": 8,
+  "basketball": 6,
+  "hockey": 1,
+  "baseball": 2,
+  "football": 1,
+};
+
+export function isCloseGame(game: Game): boolean {
+  if (!isLive(game)) return false;
+  const away = Number(game.away_team_score);
+  const home = Number(game.home_team_score);
+  if (isNaN(away) || isNaN(home)) return false;
+  return Math.abs(away - home) <= (CLOSE_THRESHOLDS[game.sport] ?? 3);
+}
+
+export function getWinner(game: Game): "home" | "away" | null {
+  if (!isFinal(game)) return null;
+  const a = Number(game.away_team_score);
+  const h = Number(game.home_team_score);
+  if (isNaN(a) || isNaN(h) || a === h) return null;
+  return h > a ? "home" : "away";
+}
+
+// ── Formatting ──────────────────────────────────────────────────
+
+export function formatCountdown(startTime: string): string {
+  const diff = new Date(startTime).getTime() - Date.now();
+  if (diff <= 0) return "Starting";
+  const h = Math.floor(diff / 3_600_000);
+  const m = Math.floor((diff % 3_600_000) / 60_000);
+  if (h >= 48) {
+    return new Date(startTime).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    });
+  }
+  if (h >= 24) return "Tomorrow";
+  if (h > 0) return `in ${h}h ${m}m`;
+  if (m > 0) return `in ${m}m`;
+  return "Soon";
+}
