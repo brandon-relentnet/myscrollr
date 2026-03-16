@@ -21,7 +21,9 @@ export function CompactMatchupScore({
 
   const isLive = matchup.status === "midevent";
   const isFinal = matchup.status === "postevent";
-  const myWinning = myTeam.points > oppTeam.points;
+  const myPts = myTeam.points ?? 0;
+  const oppPts = oppTeam.points ?? 0;
+  const myWinning = myPts > oppPts;
 
   return (
     <div className="flex items-center gap-2 mt-0.5 text-xs">
@@ -35,11 +37,11 @@ export function CompactMatchupScore({
               : "text-fg",
         )}
       >
-        {myTeam.points.toFixed(1)}
+        {myPts.toFixed(1)}
       </span>
       <span className="text-fg-4 font-mono">&ndash;</span>
       <span className="font-mono font-medium text-fg tabular-nums">
-        {oppTeam.points.toFixed(1)}
+        {oppPts.toFixed(1)}
       </span>
       <span className="text-[10px] font-mono text-fg-3 truncate max-w-[100px]">
         {oppTeam.name}
@@ -85,7 +87,9 @@ export function ComfortMatchupHero({
 
   const isLive = matchup.status === "midevent";
   const isFinal = matchup.status === "postevent";
-  const myWinning = myTeam.points > oppTeam.points;
+  const myPts = myTeam.points ?? 0;
+  const oppPts = oppTeam.points ?? 0;
+  const myWinning = myPts > oppPts;
 
   return (
     <div
@@ -108,7 +112,7 @@ export function ComfortMatchupHero({
             {myTeam.name}
           </div>
           <div className="text-[9px] font-mono text-fg-4 tabular-nums">
-            proj {myTeam.projected_points.toFixed(1)}
+            proj {(myTeam.projected_points ?? 0).toFixed(1)}
           </div>
         </div>
       </div>
@@ -125,20 +129,20 @@ export function ComfortMatchupHero({
                 : "text-fg",
           )}
         >
-          {myTeam.points.toFixed(1)}
+          {myPts.toFixed(1)}
         </span>
         <span className="text-fg-4 text-[10px] font-mono">&ndash;</span>
         <span
           className={clsx(
             "text-sm font-mono font-bold tabular-nums",
-            !myWinning && oppTeam.points > myTeam.points
+            !myWinning && oppPts > myPts
               ? isFinal
                 ? "text-up"
                 : "text-fg"
               : "text-fg",
           )}
         >
-          {oppTeam.points.toFixed(1)}
+          {oppPts.toFixed(1)}
         </span>
       </div>
 
@@ -149,7 +153,7 @@ export function ComfortMatchupHero({
             {oppTeam.name}
           </div>
           <div className="text-[9px] font-mono text-fg-4 tabular-nums">
-            proj {oppTeam.projected_points.toFixed(1)}
+            proj {(oppTeam.projected_points ?? 0).toFixed(1)}
           </div>
         </div>
         {oppTeam.team_logo && (

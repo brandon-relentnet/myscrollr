@@ -8,16 +8,10 @@ import { useMemo } from "react";
 import { clsx } from "clsx";
 import { CompactMatchupScore, ComfortMatchupHero } from "./MatchupScore";
 import type { FeedMode } from "../../types";
+import { SPORT_EMOJI } from "./types";
 import type { LeagueResponse, Matchup, StandingsEntry } from "./types";
 
 // ── Helpers ──────────────────────────────────────────────────────
-
-const SPORT_EMOJI: Record<string, string> = {
-  nfl: "\u{1F3C8}",
-  nba: "\u{1F3C0}",
-  nhl: "\u{1F3D2}",
-  mlb: "\u26BE",
-};
 
 function sportEmoji(gameCode: string): string {
   return SPORT_EMOJI[gameCode] ?? "\u{1F3C6}";
@@ -41,7 +35,7 @@ interface LeagueCardProps {
 }
 
 export function LeagueCard({ league, mode }: LeagueCardProps) {
-  const myTeamKey = league.team_key;
+  const myTeamKey = league.team_key ?? "";
   const currentWeek = league.data?.current_week ?? 0;
 
   const myMatchup = useMemo(() => {
@@ -98,7 +92,7 @@ function LeagueCardCompact({
   myStanding: StandingsEntry | undefined;
   injuryCount: number;
 }) {
-  const myTeamKey = league.team_key;
+  const myTeamKey = league.team_key ?? "";
 
   return (
     <div className="px-3 py-1.5 bg-surface">
@@ -144,7 +138,7 @@ function LeagueCardComfort({
   myStanding: StandingsEntry | undefined;
   injuryCount: number;
 }) {
-  const myTeamKey = league.team_key;
+  const myTeamKey = league.team_key ?? "";
 
   return (
     <div className="px-3 py-2.5 bg-surface border-l-2 border-l-accent/30">
