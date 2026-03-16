@@ -4,6 +4,7 @@
  * Supports compact (single-row) and comfort (expanded with
  * humidity, wind, feels-like) display modes.
  */
+import { X } from "lucide-react";
 import type { SavedCity, TempUnit } from "./types";
 import {
   weatherCodeToIcon,
@@ -15,23 +16,6 @@ import {
 import Tooltip from "../../components/Tooltip";
 
 // ── Inline SVG Icons ────────────────────────────────────────────
-
-function CloseIcon() {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 12 12"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <path d="M3 3L9 9M9 3L3 9" />
-    </svg>
-  );
-}
 
 function RefreshIcon() {
   return (
@@ -118,7 +102,7 @@ export function WeatherCard({
               onClick={onRemove}
               className="text-fg-3 hover:text-error opacity-0 group-hover:opacity-100 transition-opacity"
             >
-              <CloseIcon />
+              <X size={12} />
             </button>
           </Tooltip>
         </div>
@@ -145,7 +129,7 @@ export function WeatherCard({
             onClick={onRemove}
             className="text-fg-3 hover:text-error p-0.5"
           >
-            <CloseIcon />
+            <X size={12} />
           </button>
         </Tooltip>
       </div>

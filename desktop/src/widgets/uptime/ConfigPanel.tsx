@@ -10,6 +10,7 @@ import TickerPinSection from "../../components/settings/TickerPinSection";
 import { useWidgetConfig } from "../../hooks/useWidgetConfig";
 import { onStoreChange } from "../../lib/store";
 import { DEFAULT_UPTIME_TICKER } from "../../preferences";
+import { formatPollInterval } from "../../utils/format";
 import { LS_UPTIME_MONITORS } from "../../constants";
 import { loadMonitors } from "./types";
 import type { KumaMonitor } from "./types";
@@ -111,9 +112,7 @@ export default function UptimeConfigPanel({
           min={30}
           max={300}
           step={30}
-          displayValue={config.pollInterval >= 60
-            ? `${Math.floor(config.pollInterval / 60)}m${config.pollInterval % 60 ? ` ${config.pollInterval % 60}s` : ""}`
-            : `${config.pollInterval}s`}
+          displayValue={formatPollInterval(config.pollInterval)}
           onChange={(v) => update({ pollInterval: v })}
         />
       </Section>

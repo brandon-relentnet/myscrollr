@@ -1,8 +1,8 @@
 import { Activity } from "lucide-react";
 import type { FeedTabProps, WidgetManifest } from "../../types";
 import { useSysmonData } from "../../hooks/useSysmonData";
-import { formatBytes } from "../../utils/format";
-import { findCpuTemp, findGpuTemp } from "./utils";
+import { formatBytes, formatUptime } from "../../utils/format";
+import { findCpuTemp, findGpuTemp, usageColor } from "./utils";
 import type { TempReading } from "./utils";
 
 // ── Constants ───────────────────────────────────────────────────
@@ -20,15 +20,6 @@ function formatRate(bytesPerInterval: number): string {
   return `${mbps.toFixed(1)} MB/s`;
 }
 
-function formatUptime(secs: number): string {
-  const days = Math.floor(secs / 86400);
-  const hours = Math.floor((secs % 86400) / 3600);
-  const mins = Math.floor((secs % 3600) / 60);
-  if (days > 0) return `${days}d ${hours}h`;
-  if (hours > 0) return `${hours}h ${mins}m`;
-  return `${mins}m`;
-}
-
 /** Format MHz as GHz when >= 1000, otherwise MHz. */
 function formatFreq(mhz: number): string {
   if (mhz >= 1000) return `${(mhz / 1000).toFixed(1)} GHz`;
@@ -38,12 +29,6 @@ function formatFreq(mhz: number): string {
 /** Format watts, rounding to nearest integer. */
 function formatWatts(w: number): string {
   return `${Math.round(w)}W`;
-}
-
-function usageColor(pct: number): string {
-  if (pct < 50) return "#34d399";
-  if (pct < 75) return "#fbbf24";
-  return "#f87171";
 }
 
 function usageColorClass(pct: number): string {

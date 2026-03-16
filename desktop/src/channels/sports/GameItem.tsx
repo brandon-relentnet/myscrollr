@@ -4,8 +4,10 @@
  * Supports compact (single-row) and comfort (two-row with team logos)
  * display modes. Flashes briefly when scores update via CDC.
  */
-import { memo, useState, useEffect, useRef } from "react";
+import { memo } from "react";
 import { clsx } from "clsx";
+import { isLive, isFinal, getWinner, gameStatusLabel } from "../../utils/gameHelpers";
+import { useScoreFlash } from "../../hooks/useScoreFlash";
 import type { Game, FeedMode } from "../../types";
 
 interface GameItemProps {
@@ -17,75 +19,11 @@ function formatScore(score: number | string): string {
   return String(score);
 }
 
-function statusLabel(game: Game): string {
-  if (isLive(game)) {
-    if (game.timer) return game.timer;
-    if (game.status_long) return game.status_long;
-    if (game.short_detail) return game.short_detail;
-    return "Live";
-  }
-  if (game.state === "final" || game.state === "post") {
-    if (game.status_long) return game.status_long;
-    if (game.short_detail) return game.short_detail;
-    return "Final";
-  }
-  if (game.state === "pre") {
-    if (game.status_long) return game.status_long;
-    if (game.short_detail) return game.short_detail;
-    return "Upcoming";
-  }
-  if (game.status_long) return game.status_long;
-  if (game.short_detail) return game.short_detail;
-  if (game.status_short) return game.status_short;
-  return "";
-}
-
-function isLive(game: Game): boolean {
-  return game.state === "in_progress" || game.state === "in";
-}
-
-function getWinner(game: Game): "home" | "away" | null {
-  if (game.state !== "final") return null;
-  const a = Number(game.away_team_score);
-  const h = Number(game.home_team_score);
-  if (isNaN(a) || isNaN(h) || a === h) return null;
-  return h > a ? "home" : "away";
-}
-
-// ── Score flash hook ────────────────────────────────────────────
-
-function useScoreFlash(
-  awayScore: number | string,
-  homeScore: number | string,
-): boolean {
-  const prevRef = useRef({ away: awayScore, home: homeScore });
-  const [flash, setFlash] = useState(false);
-  const initialRender = useRef(true);
-
-  useEffect(() => {
-    if (initialRender.current) {
-      initialRender.current = false;
-      prevRef.current = { away: awayScore, home: homeScore };
-      return;
-    }
-
-    const prev = prevRef.current;
-    if (prev.away !== awayScore || prev.home !== homeScore) {
-      setFlash(true);
-      const t = setTimeout(() => setFlash(false), 800);
-      prevRef.current = { away: awayScore, home: homeScore };
-      return () => clearTimeout(t);
-    }
-  }, [awayScore, homeScore]);
-
-  return flash;
-}
-
 // ── Component ───────────────────────────────────────────────────
 
 export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
   const live = isLive(game);
-  const isFinal = game.state === "final";
+  const final_ = isFinal(game);
   const winner = getWinner(game);
   const flash = useScoreFlash(game.away_team_score, game.home_team_score);
 
@@ -107,7 +45,7 @@ export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
         <span
           className={clsx(
             "font-mono font-medium min-w-[28px]",
-            isFinal && winner === "home" ? "text-fg-3" : "text-fg",
+            final_ && winner === "home" ? "text-fg-3" : "text-fg",
             winner === "away" && "font-bold",
           )}
         >
@@ -116,7 +54,7 @@ export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
         <span
           className={clsx(
             "font-mono tabular-nums",
-            isFinal && winner === "home" ? "text-fg-3" : "text-fg",
+            final_ && winner === "home" ? "text-fg-3" : "text-fg",
             winner === "away" && "font-bold",
           )}
         >
@@ -126,7 +64,7 @@ export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
         <span
           className={clsx(
             "font-mono tabular-nums",
-            isFinal && winner === "away" ? "text-fg-3" : "text-fg",
+            final_ && winner === "away" ? "text-fg-3" : "text-fg",
             winner === "home" && "font-bold",
           )}
         >
@@ -135,7 +73,7 @@ export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
         <span
           className={clsx(
             "font-mono font-medium min-w-[28px]",
-            isFinal && winner === "away" ? "text-fg-3" : "text-fg",
+            final_ && winner === "away" ? "text-fg-3" : "text-fg",
             winner === "home" && "font-bold",
           )}
         >
@@ -158,7 +96,7 @@ export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
           {live && (
             <span className="inline-block w-1 h-1 rounded-full bg-live mr-1 align-middle animate-pulse" />
           )}
-          {statusLabel(game)}
+          {gameStatusLabel(game)}
         </span>
       </div>
     );
@@ -185,7 +123,7 @@ export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
           <span
             className={clsx(
               "text-sm",
-              isFinal && winner === "home" ? "text-fg-3" : "text-fg",
+              final_ && winner === "home" ? "text-fg-3" : "text-fg",
               winner === "away" && "font-semibold",
             )}
           >
@@ -195,7 +133,7 @@ export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
         <span
           className={clsx(
             "text-sm font-mono font-bold tabular-nums",
-            isFinal && winner === "home" ? "text-fg-3" : "text-fg",
+            final_ && winner === "home" ? "text-fg-3" : "text-fg",
           )}
         >
           {formatScore(game.away_team_score)}
@@ -214,7 +152,7 @@ export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
           <span
             className={clsx(
               "text-sm",
-              isFinal && winner === "away" ? "text-fg-3" : "text-fg",
+              final_ && winner === "away" ? "text-fg-3" : "text-fg",
               winner === "home" && "font-semibold",
             )}
           >
@@ -224,7 +162,7 @@ export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
         <span
           className={clsx(
             "text-sm font-mono font-bold tabular-nums",
-            isFinal && winner === "away" ? "text-fg-3" : "text-fg",
+            final_ && winner === "away" ? "text-fg-3" : "text-fg",
           )}
         >
           {formatScore(game.home_team_score)}
@@ -242,7 +180,7 @@ export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
             !live && "text-fg-3",
           )}
         >
-          {statusLabel(game)}
+          {gameStatusLabel(game)}
         </span>
       </div>
     </div>

@@ -50,6 +50,15 @@ export function getWinner(game: Game): "home" | "away" | null {
 
 // ── Formatting ──────────────────────────────────────────────────
 
+/** Human-readable game status: timer for live, countdown for pre, "Final"/"PPD". */
+export function gameStatusLabel(game: Game): string {
+  if (isLive(game)) return game.timer || game.status_short || "Live";
+  if (isFinal(game)) return game.status_long || "Final";
+  if (isPre(game)) return formatCountdown(game.start_time);
+  if (game.state === "postponed") return "PPD";
+  return "";
+}
+
 export function formatCountdown(startTime: string): string {
   const diff = new Date(startTime).getTime() - Date.now();
   if (diff <= 0) return "Starting";

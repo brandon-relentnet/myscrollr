@@ -3,6 +3,7 @@ import { Trophy } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { SetupBrowser } from "../components/settings/SetupBrowser";
 import { useChannelConfig } from "../hooks/useChannelConfig";
+import { formatCountdown } from "../utils/gameHelpers";
 import { sportsCatalogOptions } from "../api/queries";
 import type { TrackedLeague } from "../api/queries";
 import type { Channel } from "../api/client";
@@ -18,21 +19,6 @@ interface SportsConfigPanelProps {
   subscriptionTier: string;
   connected: boolean;
   hex: string;
-}
-
-// ── Helpers ──────────────────────────────────────────────────────
-
-function formatNextGame(dateStr: string | null): string | null {
-  if (!dateStr) return null;
-  const d = new Date(dateStr);
-  const diff = d.getTime() - Date.now();
-  if (diff <= 0) return "Starting";
-  const h = Math.floor(diff / 3_600_000);
-  if (h < 24) {
-    const m = Math.floor((diff % 3_600_000) / 60_000);
-    return h > 0 ? `in ${h}h ${m}m` : `in ${m}m`;
-  }
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 // ── Component ────────────────────────────────────────────────────
@@ -125,8 +111,8 @@ export default function SportsConfigPanel({
                   )}
                   {item.game_count === 0 && (
                     <span className="text-fg-4/60">
-                      {formatNextGame(item.next_game)
-                        ? `Next: ${formatNextGame(item.next_game)}`
+                      {item.next_game
+                        ? `Next: ${formatCountdown(item.next_game)}`
                         : "Off-season"}
                     </span>
                   )}

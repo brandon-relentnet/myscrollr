@@ -5,26 +5,13 @@
  * Respects per-card display preferences from the dashboard editor.
  */
 import { useSysmonData } from "../../hooks/useSysmonData";
+import { formatUptime } from "../../utils/format";
+import { usageColor } from "../../widgets/sysmon/utils";
 import clsx from "clsx";
 import type { SysmonCardPrefs } from "./dashboardPrefs";
 
 interface SysmonSummaryProps {
   prefs: SysmonCardPrefs;
-}
-
-function usageColor(pct: number): string {
-  if (pct < 50) return "#34d399";
-  if (pct < 75) return "#fbbf24";
-  return "#f87171";
-}
-
-function formatUptime(seconds: number): string {
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor((seconds % 86400) / 3600);
-  if (days > 0) return `${days}d ${hours}h`;
-  const mins = Math.floor((seconds % 3600) / 60);
-  if (hours > 0) return `${hours}h ${mins}m`;
-  return `${mins}m`;
 }
 
 export default function SysmonSummary({ prefs }: SysmonSummaryProps) {

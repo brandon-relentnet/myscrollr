@@ -1,6 +1,7 @@
-import { memo, useState, useEffect, useRef } from "react";
+import { memo } from "react";
 import { clsx } from "clsx";
-import { isLive, isFinal, isPre, isCloseGame, getWinner, formatCountdown } from "../../utils/gameHelpers";
+import { isLive, isFinal, isPre, isCloseGame, getWinner, gameStatusLabel } from "../../utils/gameHelpers";
+import { useScoreFlash } from "../../hooks/useScoreFlash";
 import { getChipColors } from "./chipColors";
 import type { Game } from "../../types";
 import type { ChipColorMode } from "../../preferences";
@@ -12,17 +13,6 @@ interface GameChipProps {
   comfort?: boolean;
   colorMode?: ChipColorMode;
   onClick?: () => void;
-}
-
-// ── Helpers ─────────────────────────────────────────────────────
-
-/** Rich status for the chip — game clock for live, countdown for pre. */
-function chipStatus(game: Game): string {
-  if (isLive(game)) return game.timer || game.status_short || "LIVE";
-  if (isFinal(game)) return game.status_long || "Final";
-  if (isPre(game)) return formatCountdown(game.start_time);
-  if (game.state === "postponed") return "PPD";
-  return "";
 }
 
 // ── Component ───────────────────────────────────────────────────
@@ -37,43 +27,10 @@ const GameChip = memo(function GameChip({
   const live = isLive(game);
   const close = isCloseGame(game);
   const winner = getWinner(game);
-  const status = chipStatus(game);
+  const status = gameStatusLabel(game);
   const final_ = isFinal(game);
   const pre_ = isPre(game);
-
-  // ── Score change flash ──────────────────────────────────────
-  const prevRef = useRef({
-    away: game.away_team_score,
-    home: game.home_team_score,
-  });
-  const [flash, setFlash] = useState(false);
-  const initialRender = useRef(true);
-
-  useEffect(() => {
-    // Skip flash on initial mount — only flash on updates.
-    if (initialRender.current) {
-      initialRender.current = false;
-      prevRef.current = {
-        away: game.away_team_score,
-        home: game.home_team_score,
-      };
-      return;
-    }
-
-    const prev = prevRef.current;
-    if (
-      prev.away !== game.away_team_score ||
-      prev.home !== game.home_team_score
-    ) {
-      setFlash(true);
-      const t = setTimeout(() => setFlash(false), 800);
-      prevRef.current = {
-        away: game.away_team_score,
-        home: game.home_team_score,
-      };
-      return () => clearTimeout(t);
-    }
-  }, [game.away_team_score, game.home_team_score]);
+  const flash = useScoreFlash(game.away_team_score, game.home_team_score);
 
   // ── Render ──────────────────────────────────────────────────
 

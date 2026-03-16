@@ -33,6 +33,16 @@ export function findGpuTemp(components: ComponentTemp[]): TempReading | null {
 }
 
 /**
+ * Usage color — returns a hex color based on usage percentage.
+ * Green < 50%, yellow < 75%, red >= 75%.
+ */
+export function usageColor(pct: number): string {
+  if (pct < 50) return "#34d399";
+  if (pct < 75) return "#fbbf24";
+  return "#f87171";
+}
+
+/**
  * Format a component temperature with unit conversion.
  * Returns e.g. "72°C" or "162°F".
  */

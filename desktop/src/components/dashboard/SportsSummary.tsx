@@ -11,7 +11,7 @@
  */
 import { useState, useMemo, useCallback } from "react";
 import { useScrollrCDC } from "../../hooks/useScrollrCDC";
-import { isLive, isFinal, isPre, isCloseGame, getWinner, formatCountdown } from "../../utils/gameHelpers";
+import { isLive, isFinal, isPre, isCloseGame, getWinner, gameStatusLabel, formatCountdown } from "../../utils/gameHelpers";
 import { loadPref, savePref } from "../../preferences";
 import clsx from "clsx";
 import Tooltip from "../Tooltip";
@@ -31,16 +31,7 @@ function savePinned(pinned: PinnedMap): void {
   savePref(PINNED_KEY, pinned);
 }
 
-// ── Game state helpers ──────────────────────────────────────────
-// Shared helpers imported from utils/gameHelpers.ts
-
-function gameStatus(game: Game): string {
-  if (isLive(game)) return game.timer || game.status_short || "Live";
-  if (isFinal(game)) return game.status_long || "Final";
-  if (isPre(game)) return formatCountdown(game.start_time);
-  if (game.state === "postponed") return "PPD";
-  return "";
-}
+// Game state helpers imported from utils/gameHelpers.ts
 
 function abbreviate(name: string): string {
   return name.slice(0, 3).toUpperCase();
@@ -106,7 +97,7 @@ function PrimaryGame({ game, prefs }: PrimaryGameProps) {
   const live = isLive(game);
   const pre = isPre(game);
   const winner = getWinner(game);
-  const status = gameStatus(game);
+  const status = gameStatusLabel(game);
 
   return (
     <div

@@ -10,6 +10,7 @@ import TickerPinSection from "../../components/settings/TickerPinSection";
 import { useWidgetConfig } from "../../hooks/useWidgetConfig";
 import { onStoreChange } from "../../lib/store";
 import { DEFAULT_GITHUB_TICKER } from "../../preferences";
+import { formatPollInterval } from "../../utils/format";
 import { LS_GITHUB_REPOS } from "../../constants";
 import { loadRepoData, repoKey } from "./types";
 import type { GitHubRepo } from "./types";
@@ -121,9 +122,7 @@ export default function GitHubConfigPanel({
           min={60}
           max={300}
           step={30}
-          displayValue={config.pollInterval >= 60
-            ? `${Math.floor(config.pollInterval / 60)}m${config.pollInterval % 60 ? ` ${config.pollInterval % 60}s` : ""}`
-            : `${config.pollInterval}s`}
+          displayValue={formatPollInterval(config.pollInterval)}
           onChange={(v) => update({ pollInterval: v })}
         />
       </Section>
