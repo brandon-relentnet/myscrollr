@@ -10,18 +10,13 @@
  */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import RouteError from "../components/RouteError";
+import SourcePageLayout from "../components/SourcePageLayout";
 import { getWidget } from "../widgets/registry";
 import WidgetConfigPanel from "../widgets/WidgetConfigPanel";
 import { useShell } from "../shell-context";
-import clsx from "clsx";
 
 const VALID_TABS = ["feed", "configuration"] as const;
 type WidgetTab = (typeof VALID_TABS)[number];
-
-const TABS: { key: WidgetTab; label: string }[] = [
-  { key: "feed", label: "Feed" },
-  { key: "configuration", label: "Configure" },
-];
 
 export const Route = createFileRoute("/widget/$id/$tab")({
   component: WidgetRoute,
@@ -49,48 +44,17 @@ function WidgetRoute() {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Breadcrumb header */}
-      <header className="flex items-center justify-between px-5 h-12 border-b border-edge shrink-0">
-        <div className="flex items-center gap-1.5 min-w-0 text-sm">
-          <button
-            onClick={() => navigate({ to: "/feed" })}
-            aria-label="Back to dashboard"
-            className="text-fg-3 hover:text-fg-2 transition-colors shrink-0"
-          >
-            Dashboard
-          </button>
-          <span className="text-fg-4">/</span>
-          <span className="font-medium truncate">{widget.name}</span>
-        </div>
-        <div className="flex gap-1 shrink-0">
-          {TABS.map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() =>
-                navigate({
-                  to: "/widget/$id/$tab",
-                  params: { id, tab: key },
-                })
-              }
-              className={clsx(
-                "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
-                tab === key
-                  ? "bg-accent/10 text-accent"
-                  : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </header>
-
-      <div className="flex-1 overflow-y-auto scrollbar-thin">
-        {tab === "feed" && <WidgetFeedTab widget={widget} />}
-        {tab === "configuration" && <WidgetConfigTab id={id} />}
-      </div>
-    </div>
+    <SourcePageLayout
+      name={widget.name}
+      activeTab={tab}
+      onTabChange={(t) =>
+        navigate({ to: "/widget/$id/$tab", params: { id, tab: t } })
+      }
+      onBack={() => navigate({ to: "/feed" })}
+    >
+      {tab === "feed" && <WidgetFeedTab widget={widget} />}
+      {tab === "configuration" && <WidgetConfigTab id={id} />}
+    </SourcePageLayout>
   );
 }
 

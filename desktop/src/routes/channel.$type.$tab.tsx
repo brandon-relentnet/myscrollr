@@ -10,23 +10,18 @@
  */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import RouteError from "../components/RouteError";
+import SourcePageLayout from "../components/SourcePageLayout";
 import { useQuery } from "@tanstack/react-query";
 import { getChannel, getAllChannels } from "../channels/registry";
 import { dashboardQueryOptions } from "../api/queries";
 import { getTier } from "../auth";
 import ChannelConfigPanel from "../channels/ChannelConfigPanel";
-import clsx from "clsx";
 import type { Channel } from "../api/client";
 import type { DashboardResponse, DeliveryMode } from "../types";
 import { loadPref } from "../preferences";
 
 const VALID_TABS = ["feed", "configuration"] as const;
 type ChannelTab = (typeof VALID_TABS)[number];
-
-const TABS: { key: ChannelTab; label: string }[] = [
-  { key: "feed", label: "Feed" },
-  { key: "configuration", label: "Configure" },
-];
 
 export const Route = createFileRoute("/channel/$type/$tab")({
   loader: ({ context: { queryClient } }) =>
@@ -58,48 +53,17 @@ function ChannelRoute() {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Breadcrumb header */}
-      <header className="flex items-center justify-between px-5 h-12 border-b border-edge shrink-0">
-        <div className="flex items-center gap-1.5 min-w-0 text-sm">
-          <button
-            onClick={() => navigate({ to: "/feed" })}
-            aria-label="Back to dashboard"
-            className="text-fg-3 hover:text-fg-2 transition-colors shrink-0"
-          >
-            Dashboard
-          </button>
-          <span className="text-fg-4">/</span>
-          <span className="font-medium truncate">{channel.name}</span>
-        </div>
-        <div className="flex gap-1 shrink-0">
-          {TABS.map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() =>
-                navigate({
-                  to: "/channel/$type/$tab",
-                  params: { type, tab: key },
-                })
-              }
-              className={clsx(
-                "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
-                tab === key
-                  ? "bg-accent/10 text-accent"
-                  : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </header>
-
-      <div className="flex-1 overflow-y-auto scrollbar-thin">
-        {tab === "feed" && <ChannelFeedTab type={type} dashboard={dashboard} channel={channel} />}
-        {tab === "configuration" && <ChannelConfigTab type={type} dashboard={dashboard} />}
-      </div>
-    </div>
+    <SourcePageLayout
+      name={channel.name}
+      activeTab={tab}
+      onTabChange={(t) =>
+        navigate({ to: "/channel/$type/$tab", params: { type, tab: t } })
+      }
+      onBack={() => navigate({ to: "/feed" })}
+    >
+      {tab === "feed" && <ChannelFeedTab type={type} dashboard={dashboard} channel={channel} />}
+      {tab === "configuration" && <ChannelConfigTab type={type} dashboard={dashboard} />}
+    </SourcePageLayout>
   );
 }
 
