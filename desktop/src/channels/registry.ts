@@ -5,50 +5,24 @@
  * directory. Each channel module exports a named `{id}Channel`
  * conforming to ChannelManifest.
  */
+import { createRegistry } from "../lib/createRegistry";
 import type { ChannelManifest } from "../types";
 
-// Convention-based discovery: scan channels/*/FeedTab.tsx at build time.
-const modules = import.meta.glob<Record<string, ChannelManifest>>(
-  "./*/FeedTab.tsx",
-  { eager: true },
+const modules = import.meta.glob<Record<string, ChannelManifest>>("./*/FeedTab.tsx", {
+  eager: true,
+});
+
+const { get, getAll, ORDER } = createRegistry<ChannelManifest>(
+  modules,
+  "Channel",
+  ["finance", "sports", "fantasy", "rss"],
 );
 
-// ── Registry ─────────────────────────────────────────────────────
+/** Look up a channel by id. */
+export const getChannel = get;
 
-const channels = new Map<string, ChannelManifest>();
+/** Get all registered channels in canonical order. */
+export const getAllChannels = getAll;
 
 /** Canonical display order for channel tabs. */
-export const CHANNEL_ORDER: readonly string[] = ["finance", "sports", "fantasy", "rss"];
-
-// Auto-register all discovered channels.
-for (const [, mod] of Object.entries(modules)) {
-  for (const [exportName, value] of Object.entries(mod)) {
-    if (
-      exportName.endsWith("Channel") &&
-      value &&
-      typeof value === "object" &&
-      "id" in value &&
-      "FeedTab" in value
-    ) {
-      channels.set(value.id, value);
-    }
-  }
-}
-
-/** Look up a channel by id. */
-export function getChannel(id: string): ChannelManifest | undefined {
-  return channels.get(id);
-}
-
-/** Get all registered channels. */
-export function getAllChannels(): ChannelManifest[] {
-  const known = CHANNEL_ORDER
-    .filter((id) => channels.has(id))
-    .map((id) => channels.get(id)!);
-  const unknown = Array.from(channels.values())
-    .filter((ch) => !CHANNEL_ORDER.includes(ch.id))
-    .sort((a, b) => a.id.localeCompare(b.id));
-  return [...known, ...unknown];
-}
-
-
+export const CHANNEL_ORDER = ORDER;
