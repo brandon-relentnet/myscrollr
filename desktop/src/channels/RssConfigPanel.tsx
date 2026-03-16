@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Plus, Rss, Trash2 } from "lucide-react";
 import Tooltip from "../components/Tooltip";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SetupBrowser } from "../components/settings/SetupBrowser";
-import { channelsApi, rssApi } from "../api/client";
+import { rssApi } from "../api/client";
+import { useChannelConfig } from "../hooks/useChannelConfig";
 import { rssCatalogOptions, queryKeys } from "../api/queries";
 import type { Channel, TrackedFeed, RssChannelConfig } from "../api/client";
 
@@ -21,7 +22,7 @@ export default function RssConfigPanel({
   hex,
 }: RssConfigPanelProps) {
   const queryClient = useQueryClient();
-  const [error, setError] = useState<string | null>(null);
+  const { error, setError, saving, updateItems } = useChannelConfig<Array<{ name: string; url: string }>>("rss", "feeds");
   const [newFeedName, setNewFeedName] = useState("");
   const [newFeedUrl, setNewFeedUrl] = useState("");
   const [urlError, setUrlError] = useState<string | null>(null);
@@ -30,36 +31,12 @@ export default function RssConfigPanel({
   const feeds = Array.isArray(rssConfig?.feeds) ? rssConfig.feeds : [];
   const feedUrlSet = useMemo(() => new Set(feeds.map((f) => f.url)), [feeds]);
 
-  // Auto-dismiss errors
-  useEffect(() => {
-    if (!error) return;
-    const t = setTimeout(() => setError(null), 4000);
-    return () => clearTimeout(t);
-  }, [error]);
-
   // ── Catalog query ──────────────────────────────────────────────
   const {
     data: catalog = [],
     isLoading: catalogLoading,
     isError: catalogError,
   } = useQuery(rssCatalogOptions());
-
-  // ── Update feeds mutation ──────────────────────────────────────
-  const updateMutation = useMutation({
-    mutationFn: (nextFeeds: Array<{ name: string; url: string }>) =>
-      channelsApi.update("rss", { config: { feeds: nextFeeds } }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
-    },
-    onError: () => {
-      setError("Failed to save — try again");
-    },
-  });
-
-  const updateFeeds = useCallback(
-    (next: Array<{ name: string; url: string }>) => updateMutation.mutate(next),
-    [updateMutation],
-  );
 
   // ── Delete catalog feed mutation ───────────────────────────────
   const deleteCatalogMutation = useMutation({
@@ -73,16 +50,16 @@ export default function RssConfigPanel({
     (url: string) => {
       const feed = catalog.find((f) => f.url === url);
       if (!feed || feedUrlSet.has(url)) return;
-      updateFeeds([...feeds, { name: feed.name, url: feed.url }]);
+      updateItems([...feeds, { name: feed.name, url: feed.url }]);
     },
-    [catalog, feeds, feedUrlSet, updateFeeds],
+    [catalog, feeds, feedUrlSet, updateItems],
   );
 
   const removeFeed = useCallback(
     (url: string) => {
-      updateFeeds(feeds.filter((f) => f.url !== url));
+      updateItems(feeds.filter((f) => f.url !== url));
     },
-    [feeds, updateFeeds],
+    [feeds, updateItems],
   );
 
   const deleteCatalogFeed = useCallback(
@@ -93,13 +70,13 @@ export default function RssConfigPanel({
         queryClient.invalidateQueries({ queryKey: queryKeys.catalogs.rss });
         // Also remove from user's feed list if subscribed
         if (feedUrlSet.has(feed.url)) {
-          updateFeeds(feeds.filter((f) => f.url !== feed.url));
+          updateItems(feeds.filter((f) => f.url !== feed.url));
         }
       } catch {
         // onError in mutation config handles the UI
       }
     },
-    [deleteCatalogMutation, queryClient, feedUrlSet, feeds, updateFeeds],
+    [deleteCatalogMutation, queryClient, feedUrlSet, feeds, updateItems],
   );
 
   const addCustomFeed = useCallback(() => {
@@ -112,10 +89,10 @@ export default function RssConfigPanel({
     }
     setUrlError(null);
     if (feedUrlSet.has(url)) return;
-    updateFeeds([...feeds, { name, url }]);
+    updateItems([...feeds, { name, url }]);
     setNewFeedName("");
     setNewFeedUrl("");
-  }, [newFeedName, newFeedUrl, feeds, feedUrlSet, updateFeeds]);
+  }, [newFeedName, newFeedUrl, feeds, feedUrlSet, updateItems]);
 
   return (
     <div className="w-full max-w-2xl mx-auto">
@@ -177,7 +154,7 @@ export default function RssConfigPanel({
             name={newFeedName}
             url={newFeedUrl}
             urlError={urlError}
-            saving={updateMutation.isPending}
+            saving={saving}
             onNameChange={setNewFeedName}
             onUrlChange={setNewFeedUrl}
             onSubmit={addCustomFeed}
@@ -187,10 +164,10 @@ export default function RssConfigPanel({
         onDismissError={() => setError(null)}
         loading={catalogLoading}
         catalogError={catalogError}
-        saving={updateMutation.isPending}
+        saving={saving}
         onAdd={addCatalogFeed}
         onRemove={removeFeed}
-        onClearAll={() => updateFeeds([])}
+        onClearAll={() => updateItems([])}
       />
     </div>
   );

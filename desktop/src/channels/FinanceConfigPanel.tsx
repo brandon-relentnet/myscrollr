@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { TrendingUp } from "lucide-react";
 import { clsx } from "clsx";
 import { getStore, setStore } from "../lib/store";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { SetupBrowser } from "../components/settings/SetupBrowser";
-import { channelsApi } from "../api/client";
-import { financeCatalogOptions, queryKeys } from "../api/queries";
+import { useChannelConfig } from "../hooks/useChannelConfig";
+import { financeCatalogOptions } from "../api/queries";
 import type { TrackedSymbol } from "../api/queries";
 import type { Channel } from "../api/client";
 
@@ -45,8 +45,7 @@ export default function FinanceConfigPanel({
   channel,
   hex,
 }: FinanceConfigPanelProps) {
-  const queryClient = useQueryClient();
-  const [error, setError] = useState<string | null>(null);
+  const { error, setError, saving, updateItems } = useChannelConfig<string[]>("finance", "symbols");
   const [hidePopular, setHidePopular] = useState(
     () => getStore<string>("scrollr:hidePopular", "0") === "1",
   );
@@ -67,43 +66,19 @@ export default function FinanceConfigPanel({
     [catalog],
   );
 
-  // Auto-dismiss errors
-  useEffect(() => {
-    if (!error) return;
-    const t = setTimeout(() => setError(null), 4000);
-    return () => clearTimeout(t);
-  }, [error]);
-
-  // ── Update mutation ────────────────────────────────────────────
-  const updateMutation = useMutation({
-    mutationFn: (nextSymbols: string[]) =>
-      channelsApi.update("finance", { config: { symbols: nextSymbols } }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
-    },
-    onError: () => {
-      setError("Failed to save — try again");
-    },
-  });
-
-  const updateSymbols = useCallback(
-    (next: string[]) => updateMutation.mutate(next),
-    [updateMutation],
-  );
-
   const addSymbol = useCallback(
     (sym: string) => {
       if (symbolSet.has(sym)) return;
-      updateSymbols([...symbols, sym]);
+      updateItems([...symbols, sym]);
     },
-    [symbols, symbolSet, updateSymbols],
+    [symbols, symbolSet, updateItems],
   );
 
   const removeSymbol = useCallback(
     (sym: string) => {
-      updateSymbols(symbols.filter((s) => s !== sym));
+      updateItems(symbols.filter((s) => s !== sym));
     },
-    [symbols, updateSymbols],
+    [symbols, updateItems],
   );
 
   // Popular symbols that exist in the catalog
@@ -158,7 +133,7 @@ export default function FinanceConfigPanel({
             hex={hex}
             onAdd={addSymbol}
             onRemove={removeSymbol}
-            saving={updateMutation.isPending}
+            saving={saving}
             hidden={hidePopular}
             onToggleHidden={(hidden) => {
               setHidePopular(hidden);
@@ -170,15 +145,15 @@ export default function FinanceConfigPanel({
         onDismissError={() => setError(null)}
         loading={catalogLoading}
         catalogError={catalogError}
-        saving={updateMutation.isPending}
+        saving={saving}
         onAdd={addSymbol}
         onRemove={removeSymbol}
-        onBulkAdd={(keys: string[]) => updateSymbols([...symbols, ...keys])}
+        onBulkAdd={(keys: string[]) => updateItems([...symbols, ...keys])}
         onBulkRemove={(keys: string[]) => {
           const toRemove = new Set(keys);
-          updateSymbols(symbols.filter((s) => !toRemove.has(s)));
+          updateItems(symbols.filter((s) => !toRemove.has(s)));
         }}
-        onClearAll={() => updateSymbols([])}
+        onClearAll={() => updateItems([])}
       />
     </div>
   );
