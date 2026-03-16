@@ -7,7 +7,8 @@ import {
 import ConfigPanelLayout from "../../components/settings/ConfigPanelLayout";
 import TickerPinSection from "../../components/settings/TickerPinSection";
 import { useWidgetConfig } from "../../hooks/useWidgetConfig";
-import { onStoreChange, setStore } from "../../lib/store";
+import { useStoreData } from "../../hooks/useStoreData";
+import { setStore } from "../../lib/store";
 import { DEFAULT_WEATHER_TICKER } from "../../preferences";
 import { LS_WEATHER_CITIES, LS_WEATHER_UNIT } from "../../constants";
 import { loadCities, loadUnit } from "./types";
@@ -29,14 +30,8 @@ export default function WeatherConfigPanel({
   onPrefsChange,
 }: WidgetConfigPanelProps) {
   const { config, update, setTicker } = useWidgetConfig("weather", prefs, onPrefsChange);
-  const [cities, setCities] = useState<SavedCity[]>(loadCities);
-  const [unit, setUnitState] = useState<TempUnit>(loadUnit);
-
-  useEffect(() => {
-    const unsub1 = onStoreChange(LS_WEATHER_CITIES, () => setCities(loadCities()));
-    const unsub2 = onStoreChange(LS_WEATHER_UNIT, () => setUnitState(loadUnit()));
-    return () => { unsub1(); unsub2(); };
-  }, []);
+  const [cities] = useStoreData(LS_WEATHER_CITIES, loadCities);
+  const [unit, setUnitState] = useStoreData(LS_WEATHER_UNIT, loadUnit);
 
   const isCityExcluded = (name: string) =>
     config.ticker.excludedCities.includes(name);

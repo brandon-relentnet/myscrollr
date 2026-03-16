@@ -5,10 +5,9 @@
  * Reads from the same Tauri store data the full Uptime widget uses.
  * Respects per-card display preferences from the dashboard editor.
  */
-import { useState, useEffect } from "react";
 import { loadMonitors, MONITOR_STATUS_COLORS } from "../../widgets/uptime/types";
+import { useStoreData } from "../../hooks/useStoreData";
 import { LS_UPTIME_MONITORS } from "../../constants";
-import { onStoreChange } from "../../lib/store";
 import type { UptimeCardPrefs } from "./dashboardPrefs";
 
 interface UptimeSummaryProps {
@@ -16,12 +15,7 @@ interface UptimeSummaryProps {
 }
 
 export default function UptimeSummary({ prefs }: UptimeSummaryProps) {
-  const [monitors, setMonitors] = useState(loadMonitors);
-
-  // Re-read when store changes (FeedTab refreshes data)
-  useEffect(() => {
-    return onStoreChange(LS_UPTIME_MONITORS, () => setMonitors(loadMonitors()));
-  }, []);
+  const [monitors] = useStoreData(LS_UPTIME_MONITORS, loadMonitors);
 
   if (monitors.length === 0) {
     return (

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
 import {
   Section,
   ToggleRow,
@@ -8,7 +8,7 @@ import {
 import ConfigPanelLayout from "../../components/settings/ConfigPanelLayout";
 import TickerPinSection from "../../components/settings/TickerPinSection";
 import { useWidgetConfig } from "../../hooks/useWidgetConfig";
-import { onStoreChange } from "../../lib/store";
+import { useStoreData } from "../../hooks/useStoreData";
 import { DEFAULT_UPTIME_TICKER } from "../../preferences";
 import { formatPollInterval } from "../../utils/format";
 import { LS_UPTIME_MONITORS } from "../../constants";
@@ -21,11 +21,7 @@ export default function UptimeConfigPanel({
   onPrefsChange,
 }: WidgetConfigPanelProps) {
   const { config, update, setTicker } = useWidgetConfig("uptime", prefs, onPrefsChange);
-  const [monitors, setMonitors] = useState<KumaMonitor[]>(loadMonitors);
-
-  useEffect(() => {
-    return onStoreChange(LS_UPTIME_MONITORS, () => setMonitors(loadMonitors()));
-  }, []);
+  const [monitors] = useStoreData(LS_UPTIME_MONITORS, loadMonitors);
 
   const isMonitorExcluded = (id: number) =>
     config.ticker.excludedMonitors.includes(id);

@@ -20,6 +20,8 @@ import {
   savePrefs,
   TICKER_GAPS,
   TICKER_HEIGHTS,
+  toggleWidgetOnTicker,
+  toggleWidgetPin,
 } from "./preferences";
 import type { SubscriptionTier } from "./auth";
 import type { ChannelType } from "./api/client";
@@ -401,14 +403,7 @@ export default function App() {
   const handleWidgetToggle = useCallback(
     (widgetId: string) => {
       setPrefs((prev) => {
-        const onTicker = prev.widgets.widgetsOnTicker;
-        const next = onTicker.includes(widgetId)
-          ? onTicker.filter((id) => id !== widgetId)
-          : [...onTicker, widgetId];
-        const updated = {
-          ...prev,
-          widgets: { ...prev.widgets, widgetsOnTicker: next },
-        };
+        const updated = toggleWidgetOnTicker(prev, widgetId);
         savePrefs(updated);
         return updated;
       });
@@ -421,16 +416,7 @@ export default function App() {
   const handleTogglePin = useCallback(
     (widgetId: string) => {
       setPrefs((prev) => {
-        const pinned = { ...prev.widgets.pinnedWidgets };
-        if (pinned[widgetId]) {
-          delete pinned[widgetId];
-        } else {
-          pinned[widgetId] = { side: "left" };
-        }
-        const updated = {
-          ...prev,
-          widgets: { ...prev.widgets, pinnedWidgets: pinned },
-        };
+        const updated = toggleWidgetPin(prev, widgetId);
         savePrefs(updated);
         return updated;
       });

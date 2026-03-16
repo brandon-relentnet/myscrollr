@@ -4,10 +4,9 @@
  * Shows CI/Actions status summary: passing/failing counts and
  * per-repo status dots. Reads from the Tauri store.
  */
-import { useState, useEffect } from "react";
 import { loadRepoData, CI_STATUS_COLORS } from "../../widgets/github/types";
+import { useStoreData } from "../../hooks/useStoreData";
 import { LS_GITHUB_REPOS } from "../../constants";
-import { onStoreChange } from "../../lib/store";
 import type { GitHubCardPrefs } from "./dashboardPrefs";
 
 interface GitHubSummaryProps {
@@ -15,11 +14,7 @@ interface GitHubSummaryProps {
 }
 
 export default function GitHubSummary({ prefs }: GitHubSummaryProps) {
-  const [repos, setRepos] = useState(loadRepoData);
-
-  useEffect(() => {
-    return onStoreChange(LS_GITHUB_REPOS, () => setRepos(loadRepoData()));
-  }, []);
+  const [repos] = useStoreData(LS_GITHUB_REPOS, loadRepoData);
 
   if (repos.length === 0) {
     return (

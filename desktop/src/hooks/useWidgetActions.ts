@@ -6,7 +6,7 @@
  */
 import { useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { savePrefs } from "../preferences";
+import { savePrefs, toggleWidgetOnTicker, toggleWidgetPin } from "../preferences";
 import type { AppPreferences } from "../preferences";
 
 interface WidgetActions {
@@ -24,14 +24,7 @@ export function useWidgetActions(
 
   const handleToggleWidgetTicker = useCallback(
     (widgetId: string) => {
-      const onTicker = prefs.widgets.widgetsOnTicker;
-      const nextOnTicker = onTicker.includes(widgetId)
-        ? onTicker.filter((id) => id !== widgetId)
-        : [...onTicker, widgetId];
-      const next: AppPreferences = {
-        ...prefs,
-        widgets: { ...prefs.widgets, widgetsOnTicker: nextOnTicker },
-      };
+      const next = toggleWidgetOnTicker(prefs, widgetId);
       setPrefs(next);
       savePrefs(next);
     },
@@ -75,16 +68,7 @@ export function useWidgetActions(
   const handleTogglePin = useCallback(
     (widgetId: string) => {
       setPrefs((prev) => {
-        const pinned = { ...prev.widgets.pinnedWidgets };
-        if (pinned[widgetId]) {
-          delete pinned[widgetId];
-        } else {
-          pinned[widgetId] = { side: "left" };
-        }
-        const updated = {
-          ...prev,
-          widgets: { ...prev.widgets, pinnedWidgets: pinned },
-        };
+        const updated = toggleWidgetPin(prev, widgetId);
         savePrefs(updated);
         return updated;
       });

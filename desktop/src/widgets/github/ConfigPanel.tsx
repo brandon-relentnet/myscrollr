@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
 import {
   Section,
   ToggleRow,
@@ -8,7 +8,7 @@ import {
 import ConfigPanelLayout from "../../components/settings/ConfigPanelLayout";
 import TickerPinSection from "../../components/settings/TickerPinSection";
 import { useWidgetConfig } from "../../hooks/useWidgetConfig";
-import { onStoreChange } from "../../lib/store";
+import { useStoreData } from "../../hooks/useStoreData";
 import { DEFAULT_GITHUB_TICKER } from "../../preferences";
 import { formatPollInterval } from "../../utils/format";
 import { LS_GITHUB_REPOS } from "../../constants";
@@ -21,11 +21,7 @@ export default function GitHubConfigPanel({
   onPrefsChange,
 }: WidgetConfigPanelProps) {
   const { config, update, setTicker } = useWidgetConfig("github", prefs, onPrefsChange);
-  const [repoData, setRepoData] = useState<GitHubRepo[]>(loadRepoData);
-
-  useEffect(() => {
-    return onStoreChange(LS_GITHUB_REPOS, () => setRepoData(loadRepoData()));
-  }, []);
+  const [repoData] = useStoreData(LS_GITHUB_REPOS, loadRepoData);
 
   const isRepoExcluded = (key: string) =>
     config.ticker.excludedRepos.includes(key);

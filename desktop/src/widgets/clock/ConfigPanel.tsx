@@ -8,7 +8,8 @@ import {
 import ConfigPanelLayout from "../../components/settings/ConfigPanelLayout";
 import TickerPinSection from "../../components/settings/TickerPinSection";
 import { useWidgetConfig } from "../../hooks/useWidgetConfig";
-import { getStore, setStore, onStoreChange } from "../../lib/store";
+import { useStoreData } from "../../hooks/useStoreData";
+import { getStore, setStore } from "../../lib/store";
 import { DEFAULT_CLOCK_TICKER, DEFAULT_CLOCK_POMODORO } from "../../preferences";
 import { LS_CLOCK_FORMAT, LS_CLOCK_TIMEZONES } from "../../constants";
 import type { ClockPomodoroConfig } from "../../preferences";
@@ -48,15 +49,8 @@ export default function ClockConfigPanel({
   onPrefsChange,
 }: WidgetConfigPanelProps) {
   const { config, update, setTicker } = useWidgetConfig("clock", prefs, onPrefsChange);
-  const [format, setFormatState] = useState<ClockFormat>(loadFormat);
-  const [timezones, setTimezones] = useState<string[]>(loadTimezones);
-
-  // Re-read timezones when store changes (e.g., user adds a TZ in the widget)
-  useEffect(() => {
-    const unsub1 = onStoreChange(LS_CLOCK_TIMEZONES, () => setTimezones(loadTimezones()));
-    const unsub2 = onStoreChange(LS_CLOCK_FORMAT, () => setFormatState(loadFormat()));
-    return () => { unsub1(); unsub2(); };
-  }, []);
+  const [format, setFormatState] = useStoreData(LS_CLOCK_FORMAT, loadFormat);
+  const [timezones] = useStoreData(LS_CLOCK_TIMEZONES, loadTimezones);
 
   const setPomodoro = useCallback(
     (patch: Partial<ClockPomodoroConfig>) => {

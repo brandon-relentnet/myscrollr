@@ -491,4 +491,32 @@ export const TICKER_HEIGHTS: Record<TickerMode, number> = {
   comfort: 64,
 };
 
+// ── Pure preference updaters ────────────────────────────────────
+
+/** Toggle a widget on/off the ticker. Returns a new AppPreferences. */
+export function toggleWidgetOnTicker(prefs: AppPreferences, widgetId: string): AppPreferences {
+  const onTicker = prefs.widgets.widgetsOnTicker;
+  const next = onTicker.includes(widgetId)
+    ? onTicker.filter((id) => id !== widgetId)
+    : [...onTicker, widgetId];
+  return {
+    ...prefs,
+    widgets: { ...prefs.widgets, widgetsOnTicker: next },
+  };
+}
+
+/** Toggle a widget's pin state. Returns a new AppPreferences. */
+export function toggleWidgetPin(prefs: AppPreferences, widgetId: string): AppPreferences {
+  const pinned = { ...prefs.widgets.pinnedWidgets };
+  if (pinned[widgetId]) {
+    delete pinned[widgetId];
+  } else {
+    pinned[widgetId] = { side: "left" };
+  }
+  return {
+    ...prefs,
+    widgets: { ...prefs.widgets, pinnedWidgets: pinned },
+  };
+}
+
 
