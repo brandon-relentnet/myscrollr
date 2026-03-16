@@ -1,6 +1,8 @@
 // ── Preferences system ──────────────────────────────────────────
 // Centralized types, defaults, and helpers for all desktop settings.
-// All prefs are stored in localStorage under the `scrollr:` prefix.
+// All prefs are persisted via Tauri plugin-store (disk-backed).
+
+import { getStore, setStore } from "./lib/store";
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -334,16 +336,11 @@ function migrateV1(saved: Record<string, unknown>): Partial<AppPreferences> {
 // (e.g. feedHeight, activeTab, canvasMode). Used by both windows.
 
 export function loadPref<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(`scrollr:${key}`);
-    return raw !== null ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
+  return getStore(`scrollr:${key}`, fallback);
 }
 
 export function savePref<T>(key: string, value: T): void {
-  localStorage.setItem(`scrollr:${key}`, JSON.stringify(value));
+  setStore(`scrollr:${key}`, value);
 }
 
 // ── Structured preferences ─────────────────────────────────────
@@ -408,9 +405,8 @@ function mergeWidgetPrefs(saved?: Partial<WidgetPrefs>): WidgetPrefs {
 
 export function loadPrefs(): AppPreferences {
   try {
-    const raw = localStorage.getItem(PREFIX);
-    if (!raw) return { ...DEFAULT_PREFS };
-    const saved = JSON.parse(raw) as Record<string, unknown>;
+    const saved = getStore<Record<string, unknown> | null>(PREFIX, null);
+    if (!saved) return { ...DEFAULT_PREFS };
 
     // Detect v1 format: has "general" key but no "appearance" key
     const isV1 = "general" in saved && !("appearance" in saved);
@@ -428,7 +424,7 @@ export function loadPrefs(): AppPreferences {
 
     // If migrated from v1, persist the new format
     if (isV1) {
-      localStorage.setItem(PREFIX, JSON.stringify(merged));
+      setStore(PREFIX, merged);
     }
 
     return merged;
@@ -438,7 +434,7 @@ export function loadPrefs(): AppPreferences {
 }
 
 export function savePrefs(prefs: AppPreferences): void {
-  localStorage.setItem(PREFIX, JSON.stringify(prefs));
+  setStore(PREFIX, prefs);
 }
 
 /** Reset a single category to its defaults. */

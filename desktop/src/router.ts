@@ -3,13 +3,14 @@
  *
  * The desktop app has no URL bar, so we use createMemoryHistory
  * instead of browser history. Navigation state is persisted to
- * localStorage so the last-visited view is restored on relaunch.
+ * the Tauri store so the last-visited view is restored on relaunch.
  */
 import {
   createRouter,
   createMemoryHistory,
 } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
+import { getStore, setStore } from "./lib/store";
 import type { QueryClient } from "@tanstack/react-query";
 
 // ── Persistence ──────────────────────────────────────────────────
@@ -24,16 +25,11 @@ const ROUTE_REDIRECTS: Record<string, string> = {
 };
 
 function getInitialEntry(): string {
-  try {
-    const saved = localStorage.getItem(HISTORY_KEY);
-    if (saved) {
-      // Handle routes that moved in the nav overhaul
-      const redirect = ROUTE_REDIRECTS[saved];
-      if (redirect) return redirect;
-      return saved;
-    }
-  } catch {
-    // ignore
+  const saved = getStore<string | null>(HISTORY_KEY, null);
+  if (saved) {
+    const redirect = ROUTE_REDIRECTS[saved];
+    if (redirect) return redirect;
+    return saved;
   }
   return "/";
 }
@@ -54,12 +50,8 @@ export function createAppRouter(queryClient: QueryClient) {
 
   // Persist the current route on every navigation
   router.subscribe("onResolved", () => {
-    try {
-      const path = router.state.location.pathname;
-      localStorage.setItem(HISTORY_KEY, path);
-    } catch {
-      // ignore
-    }
+    const path = router.state.location.pathname;
+    setStore(HISTORY_KEY, path);
   });
 
   return router;

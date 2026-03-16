@@ -1,5 +1,5 @@
 /**
- * GitHub Actions widget types, fetch logic, and localStorage helpers.
+ * GitHub Actions widget types, fetch logic, and storage helpers.
  *
  * Fetches the latest workflow run status for user-configured public
  * GitHub repos. Uses @tauri-apps/plugin-http to bypass CORS.
@@ -8,6 +8,7 @@
  */
 import { fetch } from "@tauri-apps/plugin-http";
 import { LS_GITHUB_REPOS } from "../../constants";
+import { getStore, setStore } from "../../lib/store";
 
 // ── GitHub Actions API response ────────────────────────────────
 
@@ -156,17 +157,12 @@ export async function fetchAllRepos(
   );
 }
 
-// ── localStorage persistence ───────────────────────────────────
+// ── Store persistence ──────────────────────────────────────────
 
 export function loadRepoData(): GitHubRepo[] {
-  try {
-    const raw = localStorage.getItem(LS_GITHUB_REPOS);
-    return raw ? (JSON.parse(raw) as GitHubRepo[]) : [];
-  } catch {
-    return [];
-  }
+  return getStore<GitHubRepo[]>(LS_GITHUB_REPOS, []);
 }
 
 export function saveRepoData(repos: GitHubRepo[]): void {
-  localStorage.setItem(LS_GITHUB_REPOS, JSON.stringify(repos));
+  setStore(LS_GITHUB_REPOS, repos);
 }

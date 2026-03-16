@@ -2,12 +2,13 @@
  * UptimeSummary — dashboard card content for the Uptime widget.
  *
  * Shows overall health status, monitor count, and up/down breakdown.
- * Reads from the same localStorage data the full Uptime widget uses.
+ * Reads from the same Tauri store data the full Uptime widget uses.
  * Respects per-card display preferences from the dashboard editor.
  */
 import { useState, useEffect } from "react";
 import { loadMonitors } from "../../widgets/uptime/types";
 import { LS_UPTIME_MONITORS } from "../../constants";
+import { onStoreChange } from "../../lib/store";
 import type { UptimeCardPrefs } from "./dashboardPrefs";
 
 interface UptimeSummaryProps {
@@ -24,13 +25,9 @@ const STATUS_DOTS: Record<string, string> = {
 export default function UptimeSummary({ prefs }: UptimeSummaryProps) {
   const [monitors, setMonitors] = useState(loadMonitors);
 
-  // Re-read when localStorage changes (FeedTab refreshes data)
+  // Re-read when store changes (FeedTab refreshes data)
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === LS_UPTIME_MONITORS) setMonitors(loadMonitors());
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    return onStoreChange(LS_UPTIME_MONITORS, () => setMonitors(loadMonitors()));
   }, []);
 
   if (monitors.length === 0) {

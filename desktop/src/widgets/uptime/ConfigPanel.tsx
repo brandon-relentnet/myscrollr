@@ -13,6 +13,7 @@ import type {
 import { DEFAULT_UPTIME_TICKER, savePrefs } from "../../preferences";
 import { useWidgetPin } from "../../hooks/useWidgetPin";
 import { LS_UPTIME_MONITORS, PIN_SIDE_OPTIONS } from "../../constants";
+import { onStoreChange } from "../../lib/store";
 import { loadMonitors } from "./types";
 import { SegmentedRow } from "../../components/settings/SettingsControls";
 import type { KumaMonitor } from "./types";
@@ -31,13 +32,9 @@ export default function UptimeConfigPanel({
 
   const { isPinned, pinSide, togglePin, setPinSide } = useWidgetPin("uptime", prefs, onPrefsChange);
 
-  // Re-read when localStorage changes (user connects/refreshes in FeedTab)
+  // Re-read when store changes (user connects/refreshes in FeedTab)
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === LS_UPTIME_MONITORS) setMonitors(loadMonitors());
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    return onStoreChange(LS_UPTIME_MONITORS, () => setMonitors(loadMonitors()));
   }, []);
 
   const update = useCallback(

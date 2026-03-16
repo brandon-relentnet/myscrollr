@@ -3,10 +3,11 @@
  *
  * Tracks CI/Actions workflow run status for user-configured public
  * GitHub repos. Repos are added individually via URL input. Data is
- * cached in localStorage for cross-window ticker sync.
+ * cached in the Tauri store for cross-window ticker sync.
  */
 import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { onStoreChange } from "../../lib/store";
 import { Github, Plus, Trash2, ExternalLink, Loader2 } from "lucide-react";
 import type { FeedTabProps, WidgetManifest } from "../../types";
 import type { GitHubRepo, CIStatus } from "./types";
@@ -82,13 +83,9 @@ function GitHubFeedTab({ mode: feedMode }: FeedTabProps) {
   // Load cached repo data for initial display
   const [repoData, setRepoData] = useState<GitHubRepo[]>(loadRepoData);
 
-  // Listen for localStorage changes from the ticker window
+  // Listen for store changes from the other window
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === LS_GITHUB_REPOS) setRepoData(loadRepoData());
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    return onStoreChange(LS_GITHUB_REPOS, () => setRepoData(loadRepoData()));
   }, []);
 
   // Auto-refresh when repos are configured via TanStack Query
@@ -101,7 +98,7 @@ function GitHubFeedTab({ mode: feedMode }: FeedTabProps) {
     retry: 1,
   });
 
-  // Sync query results to localStorage + local state
+   // Sync query results to store + local state
   useEffect(() => {
     if (data) {
       setRepoData(data);

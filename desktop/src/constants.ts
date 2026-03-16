@@ -1,11 +1,11 @@
 /**
- * Shared localStorage keys and constants.
+ * Shared store keys and constants.
  *
  * Centralizes all widget-related storage keys so they're defined once
  * and imported everywhere — no magic strings scattered across files.
  */
 
-// ── Widget localStorage keys ────────────────────────────────────
+// ── Widget store keys ───────────────────────────────────────────
 
 export const LS_CLOCK_TIMEZONES = "scrollr:widget:clock:timezones";
 export const LS_CLOCK_FORMAT = "scrollr:widget:clock:format";

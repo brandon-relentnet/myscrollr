@@ -53,6 +53,9 @@ import { useWidgetActions } from "../hooks/useWidgetActions";
 // Shell context
 import { ShellContext, ShellDataContext } from "../shell-context";
 
+// Store
+import { onStoreChange } from "../lib/store";
+
 // ── Route context ────────────────────────────────────────────────
 
 interface RouterContext {
@@ -186,20 +189,13 @@ function RootLayout() {
 
   // ── Cross-window sync ───────────────────────────────────────
   useEffect(() => {
-    function onStorage(e: StorageEvent) {
-      if (e.key === "scrollr:settings" && e.newValue) {
-        try {
-          setPrefs(JSON.parse(e.newValue) as AppPreferences);
-        } catch { /* ignore */ }
-      }
-      if (e.key === "scrollr:deliveryMode" && e.newValue) {
-        try {
-          setDeliveryMode(JSON.parse(e.newValue) as DeliveryMode);
-        } catch { /* ignore */ }
-      }
-    }
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    const unsub1 = onStoreChange<AppPreferences>("scrollr:settings", (val) => {
+      if (val) setPrefs(val);
+    });
+    const unsub2 = onStoreChange<DeliveryMode>("scrollr:deliveryMode", (val) => {
+      if (val) setDeliveryMode(val);
+    });
+    return () => { unsub1(); unsub2(); };
   }, []);
 
   useEffect(() => {

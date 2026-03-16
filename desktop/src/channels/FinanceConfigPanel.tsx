@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { TrendingUp } from "lucide-react";
 import { clsx } from "clsx";
+import { getStore, setStore } from "../lib/store";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SetupBrowser } from "../components/settings/SetupBrowser";
 import { channelsApi } from "../api/client";
@@ -47,7 +48,7 @@ export default function FinanceConfigPanel({
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [hidePopular, setHidePopular] = useState(
-    () => localStorage.getItem("scrollr:hidePopular") === "1",
+    () => getStore<string>("scrollr:hidePopular", "0") === "1",
   );
 
   const config = channel.config as FinanceChannelConfig;
@@ -161,7 +162,7 @@ export default function FinanceConfigPanel({
             hidden={hidePopular}
             onToggleHidden={(hidden) => {
               setHidePopular(hidden);
-              localStorage.setItem("scrollr:hidePopular", hidden ? "1" : "0");
+              setStore("scrollr:hidePopular", hidden ? "1" : "0");
             }}
           />
         )}

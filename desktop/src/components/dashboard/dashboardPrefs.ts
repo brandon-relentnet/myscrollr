@@ -2,7 +2,7 @@
  * Dashboard card display preferences.
  *
  * Controls what data each summary card shows on the dashboard.
- * Stored in localStorage via loadPref/savePref.
+ * Stored via loadPref/savePref (Tauri store-backed).
  */
 import { loadPref, savePref } from "../../preferences";
 import { CHANNEL_ORDER } from "../../channels/registry";

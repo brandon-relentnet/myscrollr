@@ -8,31 +8,35 @@ MyScrollr aggregates financial market data, sports scores, RSS feeds, and Yahoo 
 
 ## Repository Layout
 
-Monorepo -- each component is independently deployable with its own dependencies:
+Monorepo — each component is independently deployable with its own dependencies:
 
-- `api/` -- Core gateway API (Go 1.21, Fiber v2, sub-package `core/`)
-- `myscrollr.com/` -- Marketing website + auth/billing (React 19, Vite 7, TanStack Router, Tailwind v4)
-- `desktop/` -- Tauri v2 desktop app (React 19, Vite 7, TanStack Router + Query, Tailwind v4, Rust backend) -- **primary product**
-- `channels/{finance,sports,rss}/api/` -- Channel Go APIs (flat `main` package, independent modules)
-- `channels/{finance,sports,rss}/service/` -- Rust ingestion services (independent crates, edition 2024)
-- `channels/fantasy/api/` -- Fantasy Go API (Yahoo OAuth2, Go-native sync, no Rust service)
+- `api/` — Core gateway API (Go 1.21, Fiber v2, sub-package `core/`)
+- `myscrollr.com/` — Marketing website + auth/billing (React 19, Vite 7, TanStack Router, Tailwind v4)
+- `desktop/` — Tauri v2 desktop app (React 19, Vite 7, TanStack Router + Query, Tailwind v4, Rust backend) — **primary product**
+- `channels/{finance,sports,rss}/api/` — Channel Go APIs (flat `main` package, independent modules)
+- `channels/{finance,sports,rss}/service/` — Rust ingestion services (independent crates, edition 2024)
+- `channels/fantasy/api/` — Fantasy Go API (Yahoo OAuth2, Go-native sync, no Rust service)
 
 ## Build, Lint, Test Commands
 
 ### Website (`myscrollr.com/`)
 
-- `npm run dev` -- Vite dev server on port 3000
-- `npm run build` -- `vite build && tsc` (includes type-checking)
-- `npm run check` -- `prettier --write . && eslint --fix` (run before committing; this is the one with flags)
-- `npm run lint` -- runs `eslint` (no flags -- pass them yourself, e.g. `npm run lint -- --fix`)
-- `npm run format` -- runs `prettier` (no flags -- pass them yourself, e.g. `npm run format -- --write .`)
+```sh
+npm run dev          # Vite dev server on port 3000
+npm run build        # vite build && tsc (includes type-checking)
+npm run check        # prettier --write . && eslint --fix (run before committing)
+npm run lint         # eslint (no flags — pass your own, e.g. npm run lint -- --fix)
+npm run format       # prettier (no flags — e.g. npm run format -- --write .)
+```
 
 ### Desktop (`desktop/`)
 
-- `npm run dev` -- Vite frontend only on port 5174
-- `npm run build` -- `vite build` (no tsc -- type-checking not included)
-- `npm run tauri:dev` -- full Tauri dev (Vite + Rust backend)
-- `npm run tauri:build` -- production build (native binary)
+```sh
+npm run dev          # Vite frontend only on port 5174
+npm run build        # vite build && tsc --noEmit (includes type-checking)
+npm run tauri:dev    # Full Tauri dev (Vite + Rust backend)
+npm run tauri:build  # Production build (native binary)
+```
 
 ### Go APIs (`api/` and `channels/{name}/api/`)
 
@@ -52,16 +56,16 @@ cargo build --release && cargo run   # finance=3001, sports=3002, rss=3004
 No test infrastructure exists yet. When adding tests:
 
 - **TypeScript** (Vitest): All: `npx vitest run`. File: `npx vitest run path/to/file.test.ts`. Single: `npx vitest run -t "test name"`.
-- **Go**: All: `go test ./...`. Single: `go test -run TestName ./path/to/pkg`.
+- **Go**: All: `go test ./...`. File: `go test ./path/to/pkg`. Single: `go test -run TestName ./path/to/pkg`.
 - **Rust**: All: `cargo test`. Single: `cargo test test_name`.
 
 ### CI
 
-Only desktop releases have CI (`.github/workflows/desktop-release.yml`). Triggers on push to `main` when `desktop/` changes, or via `workflow_dispatch` with platform selection. Builds for Linux/macOS/Windows via `tauri-action`. Uses Node 22, stable Rust, `npm ci`. No CI for website, Go APIs, or Rust services.
+Desktop releases only (`.github/workflows/desktop-release.yml`). Triggers on push to `main` when `desktop/` changes, or via `workflow_dispatch`. Builds Linux/macOS/Windows via `tauri-action`. Node 22, stable Rust, `npm ci`. No CI for website, Go APIs, or Rust services.
 
-## Code Style -- TypeScript
+## Code Style — TypeScript
 
-Two TS sub-projects with different conventions:
+Two sub-projects with divergent conventions:
 
 | | Website (`myscrollr.com/`) | Desktop (`desktop/`) |
 |---|---|---|
@@ -71,43 +75,41 @@ Two TS sub-projects with different conventions:
 | Linter | ESLint (`@tanstack/eslint-config` flat config) | None |
 | `noUnusedLocals` | Yes | No |
 | `noUnusedParameters` | Yes | No |
-| Path alias `@/` | Yes (`./src/*`) | **No** -- use relative `../` imports |
-| Conditional classes | template literals | `clsx` |
+| Path alias `@/` | Yes (`./src/*`) | **No** — use relative `../` imports |
+| Conditional classes | Template literals | `clsx` |
 | Data fetching | None (static marketing site) | TanStack Query |
-| Build check | `vite build && tsc` | `vite build` only |
+| Component exports | Named only | Default (`export default function C()`) |
 
 **Shared rules:**
 
-- Strict mode. Target ES2022. `verbatimModuleSyntax: true` -- always use `import type` for type-only imports. Website also enables `noUncheckedSideEffectImports`.
+- Strict mode. Target ES2022. `verbatimModuleSyntax: true` — always use `import type` for type-only imports.
 - Function components with named exports. Hooks as named function exports (`export function useX()`).
 - No barrel files. Never edit `src/routeTree.gen.ts` (auto-generated by TanStack Router).
-- Import order: 1) React/framework, 2) third-party libraries, 3) internal modules, 4) relative imports, 5) `import type` last.
+- Import order: 1) React/framework 2) third-party 3) internal modules 4) relative imports 5) `import type` last.
 
-**Website-specific**: Named exports only. No default exports except route modules (`export const Route = createFileRoute(...)`). Tailwind v4 zero-config via `@tailwindcss/vite` -- no `tailwind.config.*`. Dark mode via `.dark` class on `<html>`. Self-hosted fonts via `@font-face`.
+**Website-specific**: No default exports except route modules (`export const Route = createFileRoute(...)`). Tailwind v4 zero-config via `@tailwindcss/vite` — no `tailwind.config.*`. Dark mode via `.dark` class on `<html>`. Self-hosted fonts via `@font-face`. Also enables `noUncheckedSideEffectImports`.
 
-**Desktop-specific**: Default exports on components (`export default function Component()`). Multi-page build: two HTML entry points (`index.html` for ticker window, `app.html` for main window). Dark mode via `data-theme` attribute on shell div (dark is default). Tailwind uses `@source` directives and `@utility` custom utilities. Google Fonts CDN. Root route (`__root.tsx`) contains the entire app shell, state management, and context provider.
+**Desktop-specific**: Multi-page build: two HTML entry points (`index.html` for ticker, `app.html` for main window). Dark mode via `data-theme` attribute (dark is default). Tailwind uses `@source` directives and `@utility` custom utilities. Google Fonts CDN. Root route (`__root.tsx`) contains the entire app shell, state management, and context provider.
 
-## Code Style -- Go
+## Code Style — Go
 
-- `gofmt` formatting. No custom linter.
-- Go 1.21 across all modules. All use Fiber v2, pgx v5, go-redis v9.
-- **Module isolation is absolute.** Each Go API has its own `go.mod`. No shared packages. Code duplication between channels is intentional -- do not extract shared libraries.
+- `gofmt` formatting. No custom linter. Go 1.21 across all modules.
+- All use Fiber v2, pgx v5, go-redis v9.
+- **Module isolation is absolute.** Each Go API has its own `go.mod`. No shared packages. Code duplication between channels is intentional — do not extract shared libraries.
 - Core API: `core/` sub-package, package-level vars (`DBPool`, `Rdb`), `Server` struct.
 - Channel APIs: flat `main` package, `App` struct holding deps (`db *pgxpool.Pool`, `rdb *redis.Client`).
-- Naming: PascalCase exports, camelCase unexported, short receivers (`s *Server`, `a *App`), `snake_case` JSON tags. Constants are PascalCase (`RegistrationKey`, `DefaultPort`), grouped with `=====` comment separators.
-- Error handling: `if err != nil` returns. `fmt.Errorf("context: %w", err)` for wrapping. `log.Printf("[Context] message: %v", err)` with bracketed prefixes. `log.Fatalf` for startup failures. HTTP errors via `ErrorResponse` struct.
-- Registration: channels self-register in Redis with 30s TTL, 20s heartbeat. JSON payload includes name, display_name, internal_url, capabilities, CDC tables, and routes.
-- **Keep `api/core/extension_auth.go` and `/extension/token` routes** -- the desktop app uses these for PKCE auth despite the legacy naming.
+- Naming: PascalCase exports, camelCase unexported, short receivers (`s *Server`, `a *App`), `snake_case` JSON tags. Constants are PascalCase, grouped with `=====` comment separators.
+- Error handling: `if err != nil` returns. `fmt.Errorf("context: %w", err)` wrapping. `log.Printf("[Context] message: %v", err)` with bracketed prefixes. `log.Fatalf` for startup failures. HTTP errors via `ErrorResponse` struct.
+- Registration: channels self-register in Redis with 30s TTL, 20s heartbeat.
+- **Keep `api/core/extension_auth.go` and `/extension/token` routes** — the desktop app uses these for PKCE auth despite the legacy naming.
 
-## Code Style -- Rust
-
-Two distinct Rust contexts:
+## Code Style — Rust
 
 ### Ingestion Services (`channels/{name}/service/`)
 
 - Edition 2024. Default `rustfmt`.
 - Error handling: `anyhow` exclusively (`anyhow::{Context, Result}`). No custom error types. Use `.context("msg")?`. Avoid `unwrap()`/`panic!` except truly unrecoverable init failures.
-- Async: Tokio + tokio-util, Axum HTTP, SQLx Postgres. Tasks via `tokio::spawn`. Shutdown via `CancellationToken` (from `tokio_util::sync`).
+- Async: Tokio + tokio-util, Axum HTTP, SQLx Postgres. Shutdown via `CancellationToken` (tokio_util).
 - Logging: `log` crate macros. Custom async file logger (`log.rs`) writes to `./logs/`.
 - `database.rs` and `log.rs` are copy-pasted across services. Do not extract a shared crate.
 - Finance is unique: uses WebSocket (tokio-tungstenite) for TwelveData streaming. Others use HTTP polling.
@@ -115,33 +117,27 @@ Two distinct Rust contexts:
 ### Desktop Tauri (`desktop/src-tauri/`)
 
 - Edition 2021 (not 2024). `lib.rs` is the main entry point (~1200 lines).
-- Tauri commands: `#[tauri::command]`, `Result<(), String>` + `.map_err(|e| format!("context: {e}"))`.
-- State: custom structs via `app.manage()` (`SseHandle`, `AuthServerRunning`, `SysInfoState`).
-- Tauri plugins: shell, http, autostart, updater, process, store, single-instance, log, mcp-bridge (dev-only).
-- Two windows: `ticker` (always-on-top, no decorations, 1920x228) and `main` (centered, min 720x480, 960x640 default). Close hides instead of destroying.
-- Full Wayland compositor support: Hyprland (hyprctl), Sway (swaymsg), KDE (qdbus6), GTK fallback.
+- Commands: `#[tauri::command]`, `Result<(), String>` + `.map_err(|e| format!("context: {e}"))`.
+- State: custom structs via `app.manage()`. Two windows: `ticker` (always-on-top, 1920x228) and `main` (960x640 default). Close hides instead of destroying.
 - MCP bridge plugin: dev-only, non-Windows (`#[cfg(all(debug_assertions, not(target_os = "windows")))]`).
 
 ## Architecture Rules
 
 1. **Core API has zero channel-specific code.** Discovers channels via Redis, proxies routes dynamically.
 2. **Channel isolation is absolute.** Each channel owns its Go API, ingestion service, configs, and Docker Compose.
-3. **HTTP-only contract.** No shared Go interfaces or types. Core calls `POST /internal/cdc`, channels return `{ "users": [...] }`.
-4. **Route proxying**: Core proxies `/{name}/*` to channel APIs with `X-User-Sub` header. Channels never validate JWTs.
-5. **Topic-based CDC PubSub**: Core dispatches CDC events via Redis topic-based PubSub (O(1) per event).
-6. **No migration framework.** Tables created via `CREATE TABLE IF NOT EXISTS` on service startup.
-7. **Desktop is the primary product.** The website serves marketing, auth, and billing only.
+3. **HTTP-only contract.** No shared Go interfaces or types. Core proxies `/{name}/*` with `X-User-Sub` header. Channels never validate JWTs.
+4. **Topic-based CDC PubSub**: Core dispatches CDC events via Redis topic-based PubSub (O(1) per event).
+5. **No migration framework.** Tables created via `CREATE TABLE IF NOT EXISTS` on startup.
+6. **Desktop is the primary product.** The website serves marketing, auth, and billing only.
 
-## Docker
+## Docker & Deployment
 
-Each channel has its own `docker-compose.yml` defining api + service containers. Core API and website have standalone Dockerfiles. All deployed via Coolify.
+Each channel has its own `docker-compose.yml` (api + service containers). Core API and website have standalone Dockerfiles. All deployed via Coolify.
 
 ## Git Workflow
 
-Branch off `main`: `git checkout -b <prefix>/short-description`. PR back into `main`. Squash merge. Trivial fixes commit directly to `main`.
-
-Prefixes: `feature/`, `fix/`, `refactor/`, `chore/`.
+Branch off `main`: `git checkout -b <prefix>/short-description`. PR back into `main`. Squash merge. Trivial fixes commit directly to `main`. Prefixes: `feature/`, `fix/`, `refactor/`, `chore/`.
 
 ## Environment
 
-Copy `.env.example` to `.env` (Coolify template syntax). Frontend env in `myscrollr.com/.env` (`VITE_API_URL`). Desktop env in `desktop/.env` (`VITE_API_URL`). Never commit `.env` files. Package manager is **npm** throughout (not pnpm/yarn).
+Copy `.env.example` to `.env`. Frontend env in `myscrollr.com/.env` and `desktop/.env` (both use `VITE_API_URL`). Never commit `.env` files. Package manager is **npm** throughout (not pnpm/yarn).

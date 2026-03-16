@@ -2,7 +2,7 @@
  * WeatherSummary — dashboard card content for the Weather widget.
  *
  * Shows primary city temperature, condition emoji, and city count.
- * Reads from the same localStorage data the full Weather widget uses.
+ * Reads from the same Tauri store data the full Weather widget uses.
  * Respects per-card display preferences from the dashboard editor.
  */
 import { useState } from "react";

@@ -2,17 +2,16 @@
  * Uptime Kuma widget FeedTab — desktop-native.
  *
  * Connects to a user-provided Uptime Kuma public status page and
- * displays monitor statuses. Monitor data is cached in localStorage
- * so the ticker window can read it via StorageEvent.
+ * displays monitor statuses. Monitor data is cached in the Tauri
+ * store so the ticker window can read it via cross-window sync.
  *
  * Setup flow: paste URL → fetch → display monitors.
  * Connected state: auto-refresh via TanStack Query at the configured
- * poll interval, sync results to localStorage for the ticker.
- *
- * TODO: Phase E — migrate to Tauri store plugin.
+ * poll interval, sync results to the store for the ticker.
  */
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { onStoreChange } from "../../lib/store";
 import { HeartPulse, RefreshCw, Unlink, Loader2 } from "lucide-react";
 import type { FeedTabProps, WidgetManifest } from "../../types";
 import type { KumaMonitor, MonitorStatus } from "./types";
@@ -84,13 +83,9 @@ function UptimeFeedTab({ mode: feedMode }: FeedTabProps) {
   // Load cached monitors for initial display
   const [monitors, setMonitors] = useState<KumaMonitor[]>(loadMonitors);
 
-  // Listen for localStorage changes from the ticker window
+  // Listen for store changes from the other window
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === LS_UPTIME_MONITORS) setMonitors(loadMonitors());
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    return onStoreChange(LS_UPTIME_MONITORS, () => setMonitors(loadMonitors()));
   }, []);
 
   // Auto-refresh when connected via TanStack Query
@@ -103,7 +98,7 @@ function UptimeFeedTab({ mode: feedMode }: FeedTabProps) {
     retry: 2,
   });
 
-  // Sync query results to localStorage + local state
+   // Sync query results to store + local state
   useEffect(() => {
     if (data) {
       setMonitors(data);
@@ -128,7 +123,7 @@ function UptimeFeedTab({ mode: feedMode }: FeedTabProps) {
         return;
       }
 
-      // Save monitors to localStorage
+       // Save monitors to store
       saveMonitors(result);
       setMonitors(result);
 

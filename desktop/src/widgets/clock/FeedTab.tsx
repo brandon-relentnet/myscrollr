@@ -3,12 +3,13 @@
  *
  * Combines World Clock and Timer under a single tabbed interface.
  * Internal tab selection ("clocks" | "timer") is persisted to
- * localStorage for session continuity.
+ * Tauri store for session continuity.
  */
 import { useState, useCallback } from "react";
 import { Clock } from "lucide-react";
 import { WorldClock } from "./WorldClock";
 import { Timer } from "./Timer";
+import { getStore, setStore } from "../../lib/store";
 import type { FeedTabProps, WidgetManifest } from "../../types";
 import type { ClockTab } from "./types";
 
@@ -17,17 +18,12 @@ import type { ClockTab } from "./types";
 const TAB_KEY = "scrollr:widget:clock:tab";
 
 function loadTab(): ClockTab {
-  try {
-    const raw = localStorage.getItem(TAB_KEY);
-    if (raw === "clocks" || raw === "timer") return raw;
-  } catch {
-    /* ignore */
-  }
-  return "clocks";
+  const raw = getStore<string>(TAB_KEY, "clocks");
+  return raw === "clocks" || raw === "timer" ? raw : "clocks";
 }
 
 function saveTab(tab: ClockTab): void {
-  localStorage.setItem(TAB_KEY, tab);
+  setStore(TAB_KEY, tab);
 }
 
 // ── Widget manifest ─────────────────────────────────────────────

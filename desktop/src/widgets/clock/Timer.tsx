@@ -1,11 +1,11 @@
 /**
  * Timer section — pomodoro, countdown, and stopwatch.
  *
- * Timer state is persisted to localStorage so it survives
+ * Timer state is persisted to Tauri store so it survives
  * window close/reopen within the same session.
- * TODO: Phase E — migrate to Tauri store plugin.
  */
 import { useState, useEffect, useCallback, useRef } from "react";
+import { getStore, setStore } from "../../lib/store";
 import type { TimerMode, TimerState } from "./types";
 
 // ── Constants ───────────────────────────────────────────────────
@@ -26,27 +26,21 @@ const COUNTDOWN_PRESETS = [
 
 const TIMER_KEY = "scrollr:widget:timer:state";
 
+const DEFAULT_TIMER_STATE: TimerState = {
+  mode: "pomodoro",
+  startedAt: null,
+  bankedMs: 0,
+  targetSecs: POMODORO_WORK,
+  completedSessions: 0,
+};
+
 function loadTimerState(): TimerState {
-  try {
-    const r = localStorage.getItem(TIMER_KEY);
-    if (r) {
-      const p = JSON.parse(r) as TimerState;
-      if (p && typeof p.mode === "string") return p;
-    }
-  } catch {
-    /* ignore */
-  }
-  return {
-    mode: "pomodoro",
-    startedAt: null,
-    bankedMs: 0,
-    targetSecs: POMODORO_WORK,
-    completedSessions: 0,
-  };
+  const s = getStore<TimerState | null>(TIMER_KEY, null);
+  return s && typeof s.mode === "string" ? s : DEFAULT_TIMER_STATE;
 }
 
 function saveTimerState(s: TimerState): void {
-  localStorage.setItem(TIMER_KEY, JSON.stringify(s));
+  setStore(TIMER_KEY, s);
 }
 
 // ── Helpers ─────────────────────────────────────────────────────

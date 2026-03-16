@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { TIER_LABELS, getUserIdentity } from "../../auth";
+import { getStore, setStore } from "../../lib/store";
 import type { SubscriptionTier } from "../../auth";
 import { Section, DisplayRow, ActionRow, ResetButton } from "./SettingsControls";
 import ConfirmDialog from "../ConfirmDialog";
@@ -56,7 +57,7 @@ export default function AccountSettings({
       // Same-version patch detection: if the remote version matches the
       // installed version AND the pub_date matches what we stored after
       // our last install, the user already has this exact build.
-      const storedDate = localStorage.getItem("scrollr:lastUpdateDate");
+      const storedDate = getStore<string | null>("scrollr:lastUpdateDate", null);
       if (
         update.version === appVersion &&
         storedDate &&
@@ -112,7 +113,7 @@ export default function AccountSettings({
       // Store the pub_date of the build we just installed so future
       // same-version checks can tell we already have this build.
       if (update.date) {
-        localStorage.setItem("scrollr:lastUpdateDate", update.date);
+        setStore("scrollr:lastUpdateDate", update.date);
       }
 
       setStatus({ step: "ready" });

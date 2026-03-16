@@ -28,6 +28,7 @@ import type { AppPreferences, TickerPosition } from "./preferences";
 import { getAllWidgets } from "./widgets/registry";
 import { useWidgetTickerData } from "./hooks/useWidgetTickerData";
 import { useTheme } from "./hooks/useTheme";
+import { onStoreChange } from "./lib/store";
 
 // ── Constants ────────────────────────────────────────────────────
 
@@ -257,74 +258,62 @@ export default function App() {
 
   // ── Auth sync from app window ──────────────────────────────────
   // When the user logs in/out via the app window, auth tokens change
-  // in localStorage. StorageEvent fires here so we can react.
+  // in the store. onStoreChange fires here so we can react.
 
   useEffect(() => {
-    function onStorage(e: StorageEvent) {
-      // Auth state stored under scrollr:auth (single key with full token set)
-      if (e.key === "scrollr:auth") {
-        const wasAuth = authenticatedRef.current;
-        const isAuth = checkAuth();
-        setAuthenticated(isAuth);
+    return onStoreChange("scrollr:auth", () => {
+      const wasAuth = authenticatedRef.current;
+      const isAuth = checkAuth();
+      setAuthenticated(isAuth);
 
-        if (isAuth && !wasAuth) {
-          // Just logged in — update tier (drives refetchInterval)
-          const newTier = getTier();
-          setTier(newTier);
-          tierRef.current = newTier;
-          queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
-          if (newTier === "uplink_unlimited") startSSE();
-        } else if (!isAuth && wasAuth) {
-          // Just logged out — tear down SSE, reset to free tier
-          if (sseActiveRef.current) stopSSE();
-          setTier("free");
-          tierRef.current = "free";
-          queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
-        }
+      if (isAuth && !wasAuth) {
+        // Just logged in — update tier (drives refetchInterval)
+        const newTier = getTier();
+        setTier(newTier);
+        tierRef.current = newTier;
+        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+        if (newTier === "uplink_unlimited") startSSE();
+      } else if (!isAuth && wasAuth) {
+        // Just logged out — tear down SSE, reset to free tier
+        if (sseActiveRef.current) stopSSE();
+        setTier("free");
+        tierRef.current = "free";
+        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
       }
-    }
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    });
   }, [startSSE, stopSSE, queryClient]);
 
   // ── Cross-window prefs sync ─────────────────────────────────
 
   useEffect(() => {
-    function onStorage(e: StorageEvent) {
-      if (e.key === "scrollr:settings" && e.newValue) {
-        let next: AppPreferences;
-        try {
-          next = JSON.parse(e.newValue) as AppPreferences;
-        } catch {
-          return;
-        }
+    return onStoreChange<AppPreferences>("scrollr:settings", (next) => {
+      if (!next) return;
 
-        const prev = prefsRef.current;
-        setPrefs(next);
+      const prev = prefsRef.current;
+      setPrefs(next);
 
-        // Side effects: pin toggle
-        if (next.window.pinned !== prev.window.pinned) {
-          setPinned(next.window.pinned);
-          savePref("feedPinned", next.window.pinned);
-          invoke("pin_window", { pinned: next.window.pinned }).catch(() => {});
-        }
+      // Side effects: pin toggle
+      if (next.window.pinned !== prev.window.pinned) {
+        setPinned(next.window.pinned);
+        savePref("feedPinned", next.window.pinned);
+        invoke("pin_window", { pinned: next.window.pinned }).catch(() => {});
+      }
 
-        // Side effects: ticker position
-        if (next.window.tickerPosition !== prev.window.tickerPosition) {
-          setTickerPosition(next.window.tickerPosition);
-          savePref("tickerPosition", next.window.tickerPosition);
-          const h = TICKER_HEIGHTS[next.ticker.tickerMode] * next.appearance.tickerRows;
-          invoke("position_ticker", { position: next.window.tickerPosition, height: h }).catch(() => {});
-        }
+      // Side effects: ticker position
+      if (next.window.tickerPosition !== prev.window.tickerPosition) {
+        setTickerPosition(next.window.tickerPosition);
+        savePref("tickerPosition", next.window.tickerPosition);
+        const h = TICKER_HEIGHTS[next.ticker.tickerMode] * next.appearance.tickerRows;
+        invoke("position_ticker", { position: next.window.tickerPosition, height: h }).catch(() => {});
+      }
 
-        // Side effects: ticker visibility
+      // Side effects: ticker visibility
+      if (next.ticker.showTicker !== prev.ticker.showTicker) {
         const nextCollapsed = !next.ticker.showTicker;
         setTickerCollapsed(nextCollapsed);
         savePref("tickerCollapsed", nextCollapsed);
       }
-    }
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    });
   }, []);
 
   // ── Theme + UI scale (shared hook) ────────────────────────────

@@ -15,6 +15,7 @@ import type {
 import { DEFAULT_CLOCK_TICKER, DEFAULT_CLOCK_POMODORO } from "../../preferences";
 import { savePrefs } from "../../preferences";
 import { useWidgetPin } from "../../hooks/useWidgetPin";
+import { getStore, setStore, onStoreChange } from "../../lib/store";
 import { LS_CLOCK_FORMAT, LS_CLOCK_TIMEZONES, PIN_SIDE_OPTIONS } from "../../constants";
 
 type ClockFormat = "12h" | "24h";
@@ -24,17 +25,15 @@ interface ClockConfigPanelProps {
   onPrefsChange: (prefs: AppPreferences) => void;
 }
 
-/** Read the user's configured timezones from widget localStorage. */
+/** Read the user's configured timezones from the store. */
 function loadTimezones(): string[] {
-  try {
-    const raw = localStorage.getItem(LS_CLOCK_TIMEZONES);
-    if (raw) return JSON.parse(raw) as string[];
-  } catch { /* ignore */ }
-  return ["America/New_York", "Europe/London", "Asia/Tokyo"];
+  const tzs = getStore<string[]>(LS_CLOCK_TIMEZONES, ["America/New_York", "Europe/London", "Asia/Tokyo"]);
+  return Array.isArray(tzs) ? tzs : ["America/New_York", "Europe/London", "Asia/Tokyo"];
 }
 
 function loadFormat(): ClockFormat {
-  return (localStorage.getItem(LS_CLOCK_FORMAT) as ClockFormat) ?? "12h";
+  const f = getStore<string>(LS_CLOCK_FORMAT, "12h");
+  return f === "12h" || f === "24h" ? (f as ClockFormat) : "12h";
 }
 
 /** Human-readable label for an IANA timezone. */
@@ -66,14 +65,11 @@ export default function ClockConfigPanel({
 
   const { isPinned, pinSide, togglePin, setPinSide } = useWidgetPin("clock", prefs, onPrefsChange);
 
-  // Re-read timezones when localStorage changes (e.g., user adds a TZ in the widget)
+  // Re-read timezones when store changes (e.g., user adds a TZ in the widget)
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === LS_CLOCK_TIMEZONES) setTimezones(loadTimezones());
-      if (e.key === LS_CLOCK_FORMAT) setFormatState(loadFormat());
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    const unsub1 = onStoreChange(LS_CLOCK_TIMEZONES, () => setTimezones(loadTimezones()));
+    const unsub2 = onStoreChange(LS_CLOCK_FORMAT, () => setFormatState(loadFormat()));
+    return () => { unsub1(); unsub2(); };
   }, []);
 
   const update = useCallback(
@@ -108,7 +104,7 @@ export default function ClockConfigPanel({
   const handleFormatChange = useCallback(
     (v: ClockFormat) => {
       setFormatState(v);
-      localStorage.setItem(LS_CLOCK_FORMAT, v);
+      setStore(LS_CLOCK_FORMAT, v);
     },
     [],
   );
@@ -132,7 +128,7 @@ export default function ClockConfigPanel({
       ticker: { ...DEFAULT_CLOCK_TICKER },
       pomodoro: { ...DEFAULT_CLOCK_POMODORO },
     });
-    localStorage.setItem(LS_CLOCK_FORMAT, "12h");
+    setStore(LS_CLOCK_FORMAT, "12h");
     setFormatState("12h");
   }, [update]);
 

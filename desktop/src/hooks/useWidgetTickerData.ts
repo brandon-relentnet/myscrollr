@@ -4,6 +4,7 @@ import type { TempUnit } from "../preferences";
 import { fetchSysmonData } from "./useSysmonData";
 import type { SystemInfo } from "./useSysmonData";
 import { LS_CLOCK_TIMEZONES, LS_CLOCK_FORMAT, LS_TIMER_STATE, LS_WEATHER_CITIES, LS_WEATHER_UNIT, LS_UPTIME_MONITORS } from "../constants";
+import { getStore } from "../lib/store";
 import { formatBytes, timeAgo } from "../utils/format";
 import { weatherCodeToIcon, weatherCodeToLabel, formatTemp } from "../widgets/weather/types";
 import { findCpuTemp, findGpuTemp, formatComponentTemp } from "../widgets/sysmon/utils";
@@ -104,7 +105,7 @@ export function useWidgetTickerData(
     const cfg = widgetPrefs.clock;
     const chips: ClockChipData[] = [];
     const now = new Date();
-    const format = localStorage.getItem(LS_CLOCK_FORMAT) ?? "12h";
+    const format = getStore<string>(LS_CLOCK_FORMAT, "12h");
 
     // Local time
     if (cfg.ticker.localTime) {
@@ -119,32 +120,26 @@ export function useWidgetTickerData(
 
     // Configured timezones (gated by showTimezones, then filtered by excludedTimezones)
     if (cfg.ticker.showTimezones) {
-      try {
-        const raw = localStorage.getItem(LS_CLOCK_TIMEZONES);
-        const tzs: string[] = raw ? JSON.parse(raw) : [];
-        for (const tz of tzs) {
-          if (cfg.ticker.excludedTimezones.includes(tz)) continue;
-          chips.push({
-            id: `clock-${tz}`,
-            kind: "clock",
-            label: tzShortLabel(tz),
-            value: formatTime(now, tz, format),
-            detail: formatDetail(now, tz),
-          });
-        }
-      } catch { /* ignore corrupt localStorage */ }
+      const tzs = getStore<string[]>(LS_CLOCK_TIMEZONES, []);
+      for (const tz of Array.isArray(tzs) ? tzs : []) {
+        if (cfg.ticker.excludedTimezones.includes(tz)) continue;
+        chips.push({
+          id: `clock-${tz}`,
+          kind: "clock",
+          label: tzShortLabel(tz),
+          value: formatTime(now, tz, format),
+          detail: formatDetail(now, tz),
+        });
+      }
     }
 
     // Active timer
     if (cfg.ticker.activeTimer) {
-      try {
-        const raw = localStorage.getItem(LS_TIMER_STATE);
-        if (raw) {
-          const state = JSON.parse(raw) as TimerState;
-          const chip = getTimerChipData(state);
-          if (chip) chips.push(chip);
-        }
-      } catch { /* ignore */ }
+      const state = getStore<TimerState | null>(LS_TIMER_STATE, null);
+      if (state) {
+        const chip = getTimerChipData(state);
+        if (chip) chips.push(chip);
+      }
     }
 
     return chips;
@@ -155,31 +150,28 @@ export function useWidgetTickerData(
     if (!enabledWidgets.has("weather")) return [];
     const cfg = widgetPrefs.weather;
     const chips: WeatherChipData[] = [];
-    const unit = localStorage.getItem(LS_WEATHER_UNIT) ?? "fahrenheit";
+    const unit = getStore<string>(LS_WEATHER_UNIT, "fahrenheit");
 
-    try {
-      const raw = localStorage.getItem(LS_WEATHER_CITIES);
-      const cities: SavedCity[] = raw ? JSON.parse(raw) : [];
+    const cities = getStore<SavedCity[]>(LS_WEATHER_CITIES, []);
 
-      for (const city of cities) {
-        const name = city.location.name;
-        if (cfg.ticker.excludedCities.includes(name)) continue;
+    for (const city of Array.isArray(cities) ? cities : []) {
+      const name = city.location.name;
+      if (cfg.ticker.excludedCities.includes(name)) continue;
 
-        const w = city.weather;
-        const temp = w?.temperature != null ? formatTemp(w.temperature, unit as TempUnit, true) : "--";
-        const feelsLike = w?.feelsLike != null ? formatTemp(w.feelsLike, unit as TempUnit, true) : "--";
-        const icon = w?.weatherCode != null ? weatherCodeToIcon(w.weatherCode) : "\u2601";
-        const condition = w?.weatherCode != null ? weatherCodeToLabel(w.weatherCode) : "";
+      const w = city.weather;
+      const temp = w?.temperature != null ? formatTemp(w.temperature, unit as TempUnit, true) : "--";
+      const feelsLike = w?.feelsLike != null ? formatTemp(w.feelsLike, unit as TempUnit, true) : "--";
+      const icon = w?.weatherCode != null ? weatherCodeToIcon(w.weatherCode) : "\u2601";
+      const condition = w?.weatherCode != null ? weatherCodeToLabel(w.weatherCode) : "";
 
-        chips.push({
-          id: `weather-${name}`,
-          label: name.length > 12 ? name.slice(0, 10) + "\u2026" : name,
-          temp,
-          icon,
-          detail: condition ? `${condition} \u00B7 Feels ${feelsLike}` : undefined,
-        });
-      }
-    } catch { /* ignore corrupt localStorage */ }
+      chips.push({
+        id: `weather-${name}`,
+        label: name.length > 12 ? name.slice(0, 10) + "\u2026" : name,
+        temp,
+        icon,
+        detail: condition ? `${condition} \u00B7 Feels ${feelsLike}` : undefined,
+      });
+    }
 
     return chips;
   }, [widgetPrefs.weather, enabledWidgets]);
@@ -348,7 +340,7 @@ export function useWidgetTickerData(
       setData((prev) => ({ ...prev, clock: buildClockChips() }));
     }, 1000) : null;
 
-    // Weather: update every 30s (reads cached localStorage data)
+     // Weather: update every 30s (reads cached store data)
     const weatherInterval = hasWeather ? setInterval(() => {
       setData((prev) => ({ ...prev, weather: buildWeatherChips() }));
     }, 30_000) : null;
@@ -362,13 +354,13 @@ export function useWidgetTickerData(
       } catch { /* ignore IPC failures */ }
     }, sysmonMs) : null;
 
-    // Uptime: re-read cached localStorage data at poll cadence (FeedTab does the actual fetching)
+     // Uptime: re-read cached store data at poll cadence (FeedTab does the actual fetching)
     const uptimeMs = (widgetPrefs.uptime.pollInterval || 60) * 1000;
     const uptimeInterval = hasUptime ? setInterval(() => {
       setData((prev) => ({ ...prev, uptime: buildUptimeChips() }));
     }, uptimeMs) : null;
 
-    // GitHub: re-read cached localStorage data at poll cadence (FeedTab does the actual fetching)
+     // GitHub: re-read cached store data at poll cadence (FeedTab does the actual fetching)
     const githubMs = (widgetPrefs.github.pollInterval || 120) * 1000;
     const githubInterval = hasGithub ? setInterval(() => {
       setData((prev) => ({ ...prev, github: buildGithubChips() }));

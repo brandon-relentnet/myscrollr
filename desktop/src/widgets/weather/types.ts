@@ -6,6 +6,7 @@
  */
 import type { TempUnit } from "../../preferences";
 import { LS_WEATHER_CITIES, LS_WEATHER_UNIT } from "../../constants";
+import { getStore, setStore } from "../../lib/store";
 
 export type { TempUnit };
 
@@ -106,34 +107,21 @@ export function formatWind(kmh: number, unit: TempUnit): string {
 export const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 export function loadCities(): SavedCity[] {
-  try {
-    const raw = localStorage.getItem(LS_WEATHER_CITIES);
-    if (raw) {
-      const parsed = JSON.parse(raw) as SavedCity[];
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch {
-    /* ignore */
-  }
-  return [];
+  const cities = getStore<SavedCity[]>(LS_WEATHER_CITIES, []);
+  return Array.isArray(cities) && cities.length > 0 ? cities : [];
 }
 
 export function saveCities(cities: SavedCity[]): void {
-  localStorage.setItem(LS_WEATHER_CITIES, JSON.stringify(cities));
+  setStore(LS_WEATHER_CITIES, cities);
 }
 
 export function loadUnit(): TempUnit {
-  try {
-    const raw = localStorage.getItem(LS_WEATHER_UNIT);
-    if (raw === "celsius" || raw === "fahrenheit") return raw;
-  } catch {
-    /* ignore */
-  }
-  return "fahrenheit";
+  const unit = getStore<string>(LS_WEATHER_UNIT, "fahrenheit");
+  return unit === "celsius" || unit === "fahrenheit" ? unit : "fahrenheit";
 }
 
 export function saveUnit(unit: TempUnit): void {
-  localStorage.setItem(LS_WEATHER_UNIT, unit);
+  setStore(LS_WEATHER_UNIT, unit);
 }
 
 // ── Open-Meteo API ──────────────────────────────────────────────

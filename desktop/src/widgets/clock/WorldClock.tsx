@@ -1,11 +1,11 @@
 /**
  * WorldClock section — displays local + user-selected time zones.
  *
- * Timezone selections and format (12h/24h) are persisted to localStorage.
- * TODO: Phase E — migrate to Tauri store plugin.
+ * Timezone selections and format (12h/24h) are persisted to Tauri store.
  */
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Tooltip from "../../components/Tooltip";
+import { getStore, setStore } from "../../lib/store";
 import type { TimeFormat, TimezoneEntry } from "./types";
 
 // ── Timezone presets ────────────────────────────────────────────
@@ -76,34 +76,21 @@ const TZ_KEY = "scrollr:widget:clock:timezones";
 const FORMAT_KEY = "scrollr:widget:clock:format";
 
 function loadTimezones(): string[] {
-  try {
-    const raw = localStorage.getItem(TZ_KEY);
-    if (raw) {
-      const p = JSON.parse(raw) as string[];
-      if (Array.isArray(p) && p.length > 0) return p;
-    }
-  } catch {
-    /* ignore */
-  }
-  return DEFAULT_TIMEZONES;
+  const tzs = getStore<string[]>(TZ_KEY, DEFAULT_TIMEZONES);
+  return Array.isArray(tzs) && tzs.length > 0 ? tzs : DEFAULT_TIMEZONES;
 }
 
 function saveTimezones(tzs: string[]): void {
-  localStorage.setItem(TZ_KEY, JSON.stringify(tzs));
+  setStore(TZ_KEY, tzs);
 }
 
 function loadFormat(): TimeFormat {
-  try {
-    const r = localStorage.getItem(FORMAT_KEY);
-    if (r === "24h" || r === "12h") return r;
-  } catch {
-    /* ignore */
-  }
-  return "12h";
+  const f = getStore<string>(FORMAT_KEY, "12h");
+  return f === "24h" || f === "12h" ? f : "12h";
 }
 
 function saveFormat(f: TimeFormat): void {
-  localStorage.setItem(FORMAT_KEY, f);
+  setStore(FORMAT_KEY, f);
 }
 
 // ── Formatting helpers ──────────────────────────────────────────

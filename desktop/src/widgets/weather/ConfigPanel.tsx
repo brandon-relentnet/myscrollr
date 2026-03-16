@@ -13,6 +13,7 @@ import type {
 import { DEFAULT_WEATHER_TICKER, savePrefs } from "../../preferences";
 import { useWidgetPin } from "../../hooks/useWidgetPin";
 import { LS_WEATHER_CITIES, LS_WEATHER_UNIT, PIN_SIDE_OPTIONS } from "../../constants";
+import { onStoreChange, setStore } from "../../lib/store";
 import { loadCities, loadUnit } from "./types";
 import type { TempUnit } from "../../preferences";
 import type { SavedCity } from "./types";
@@ -42,14 +43,11 @@ export default function WeatherConfigPanel({
 
   const { isPinned, pinSide, togglePin, setPinSide } = useWidgetPin("weather", prefs, onPrefsChange);
 
-  // Re-read when localStorage changes (user adds/removes city in widget)
+  // Re-read when store changes (user adds/removes city in widget)
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === LS_WEATHER_CITIES) setCities(loadCities());
-      if (e.key === LS_WEATHER_UNIT) setUnitState(loadUnit());
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    const unsub1 = onStoreChange(LS_WEATHER_CITIES, () => setCities(loadCities()));
+    const unsub2 = onStoreChange(LS_WEATHER_UNIT, () => setUnitState(loadUnit()));
+    return () => { unsub1(); unsub2(); };
   }, []);
 
   const update = useCallback(
@@ -90,7 +88,7 @@ export default function WeatherConfigPanel({
 
   const handleUnitChange = useCallback((v: TempUnit) => {
     setUnitState(v);
-    localStorage.setItem(LS_WEATHER_UNIT, v);
+    setStore(LS_WEATHER_UNIT, v);
   }, []);
 
   // Build taskbar city options from configured cities
@@ -104,7 +102,7 @@ export default function WeatherConfigPanel({
       taskbarCity: "",
       ticker: { ...DEFAULT_WEATHER_TICKER },
     });
-    localStorage.setItem(LS_WEATHER_UNIT, "fahrenheit");
+    setStore(LS_WEATHER_UNIT, "fahrenheit");
     setUnitState("fahrenheit");
   }, [update]);
 

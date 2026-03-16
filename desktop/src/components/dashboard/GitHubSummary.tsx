@@ -2,11 +2,12 @@
  * GitHubSummary — dashboard card content for the GitHub widget.
  *
  * Shows CI/Actions status summary: passing/failing counts and
- * per-repo status dots. Reads from localStorage.
+ * per-repo status dots. Reads from the Tauri store.
  */
 import { useState, useEffect } from "react";
 import { loadRepoData } from "../../widgets/github/types";
 import { LS_GITHUB_REPOS } from "../../constants";
+import { onStoreChange } from "../../lib/store";
 import type { GitHubCardPrefs } from "./dashboardPrefs";
 
 interface GitHubSummaryProps {
@@ -24,11 +25,7 @@ export default function GitHubSummary({ prefs }: GitHubSummaryProps) {
   const [repos, setRepos] = useState(loadRepoData);
 
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === LS_GITHUB_REPOS) setRepos(loadRepoData());
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    return onStoreChange(LS_GITHUB_REPOS, () => setRepos(loadRepoData()));
   }, []);
 
   if (repos.length === 0) {

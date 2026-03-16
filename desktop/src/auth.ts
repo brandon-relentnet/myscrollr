@@ -14,6 +14,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { fetch } from "@tauri-apps/plugin-http";
 import { open } from "@tauri-apps/plugin-shell";
+import { getStore, setStore, removeStore } from "./lib/store";
 
 // ── Constants ────────────────────────────────────────────────────
 
@@ -52,20 +53,15 @@ interface AuthCallbackPayload {
 const STORAGE_KEY = "scrollr:auth";
 
 function loadAuth(): AuthState | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as AuthState) : null;
-  } catch {
-    return null;
-  }
+  return getStore<AuthState | null>(STORAGE_KEY, null);
 }
 
 function saveAuth(state: AuthState): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  setStore(STORAGE_KEY, state);
 }
 
 function clearAuth(): void {
-  localStorage.removeItem(STORAGE_KEY);
+  removeStore(STORAGE_KEY);
 }
 
 // ── PKCE helpers ─────────────────────────────────────────────────

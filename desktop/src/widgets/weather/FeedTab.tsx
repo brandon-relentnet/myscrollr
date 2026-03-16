@@ -3,13 +3,11 @@
  *
  * Shows current weather for user-selected cities using the
  * Open-Meteo API (free, no API key required). Cities and unit
- * preference are persisted to localStorage.
+ * preference are persisted to the Tauri store.
  *
  * Weather fetching is managed by TanStack Query (useQueries).
- * Query results are synced back to localStorage so the ticker
- * window can read them via StorageEvent.
- *
- * TODO: Phase E — migrate to Tauri store plugin.
+ * Query results are synced back to the store so the ticker
+ * window can read them via cross-window sync.
  */
 import { useState, useEffect, useCallback } from "react";
 import Tooltip from "../../components/Tooltip";
@@ -51,7 +49,7 @@ function WeatherFeedTab({ mode: feedMode }: FeedTabProps) {
   const compact = feedMode === "compact";
   const queryClient = useQueryClient();
 
-  // City list is local state backed by localStorage
+   // City list is local state backed by Tauri store
   const [cities, setCities] = useState(loadCities);
   const [unit, setUnit] = useState(loadUnit);
   const [showSearch, setShowSearch] = useState(false);
@@ -70,7 +68,7 @@ function WeatherFeedTab({ mode: feedMode }: FeedTabProps) {
     })),
   });
 
-  // Sync query results back to cities (for localStorage persistence)
+   // Sync query results back to cities (for store persistence)
   useEffect(() => {
     let hasUpdates = false;
     const updated = cities.map((city, i) => {

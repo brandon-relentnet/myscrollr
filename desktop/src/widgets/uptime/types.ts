@@ -1,14 +1,14 @@
 /**
- * Uptime Kuma widget types, API response shapes, and localStorage helpers.
+ * Uptime Kuma widget types, API response shapes, and storage helpers.
  *
  * Fetches monitor status from a user-provided Uptime Kuma public
  * status page URL. Uses @tauri-apps/plugin-http to bypass CORS
  * since self-hosted Kuma instances may not set CORS headers.
  *
- * TODO: Phase E — migrate to Tauri store plugin.
  */
 import { fetch } from "@tauri-apps/plugin-http";
 import { LS_UPTIME_MONITORS } from "../../constants";
+import { getStore, setStore } from "../../lib/store";
 
 // ── Uptime Kuma API response types ─────────────────────────────
 
@@ -175,17 +175,12 @@ export async function fetchKumaStatus(statusPageUrl: string): Promise<KumaMonito
   return monitors;
 }
 
-// ── localStorage persistence ───────────────────────────────────
+// ── Store persistence ──────────────────────────────────────────
 
 export function loadMonitors(): KumaMonitor[] {
-  try {
-    const raw = localStorage.getItem(LS_UPTIME_MONITORS);
-    return raw ? (JSON.parse(raw) as KumaMonitor[]) : [];
-  } catch {
-    return [];
-  }
+  return getStore<KumaMonitor[]>(LS_UPTIME_MONITORS, []);
 }
 
 export function saveMonitors(monitors: KumaMonitor[]): void {
-  localStorage.setItem(LS_UPTIME_MONITORS, JSON.stringify(monitors));
+  setStore(LS_UPTIME_MONITORS, monitors);
 }

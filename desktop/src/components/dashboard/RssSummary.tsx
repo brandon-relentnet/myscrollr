@@ -4,7 +4,7 @@
  * Featured article layout: one primary article in a detailed card
  * (title, description snippet, source, time) with remaining articles
  * as compact clickable headlines below. Clicking a compact headline
- * swaps it into the primary slot (pinned via localStorage).
+ * swaps it into the primary slot (pinned via store).
  *
  * Auto-selects the most recent article as primary. Articles published
  * within the last hour get a subtle "new" highlight.

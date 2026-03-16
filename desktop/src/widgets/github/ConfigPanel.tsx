@@ -14,6 +14,7 @@ import type {
 import { DEFAULT_GITHUB_TICKER, savePrefs } from "../../preferences";
 import { useWidgetPin } from "../../hooks/useWidgetPin";
 import { LS_GITHUB_REPOS, PIN_SIDE_OPTIONS } from "../../constants";
+import { onStoreChange } from "../../lib/store";
 import { loadRepoData, repoKey } from "./types";
 import type { GitHubRepo } from "./types";
 
@@ -38,13 +39,9 @@ export default function GitHubConfigPanel({
 
   const { isPinned, pinSide, togglePin, setPinSide } = useWidgetPin("github", prefs, onPrefsChange);
 
-  // Re-read when localStorage changes (FeedTab refreshes data)
+  // Re-read when store changes (FeedTab refreshes data)
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === LS_GITHUB_REPOS) setRepoData(loadRepoData());
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    return onStoreChange(LS_GITHUB_REPOS, () => setRepoData(loadRepoData()));
   }, []);
 
   const update = useCallback(
