@@ -467,6 +467,19 @@ export default function App() {
     savePrefs(updated);
   }, []);
 
+  const handleToggleWindowPin = useCallback(() => {
+    const next = !prefsRef.current.window.pinned;
+    setPinned(next);
+    savePref("feedPinned", next);
+    const updated = {
+      ...prefsRef.current,
+      window: { ...prefsRef.current.window, pinned: next },
+    };
+    setPrefs(updated);
+    savePrefs(updated);
+    invoke("pin_window", { pinned: next }).catch(() => {});
+  }, []);
+
   // ── Right-click → native context menu ──────────────────────────
 
   useEffect(() => {
@@ -526,23 +539,11 @@ export default function App() {
       items.push(await PredefinedMenuItem.new({ item: "Separator" }));
 
       // Pin on Top
-      const isPinned = prefsRef.current.window.pinned;
       items.push(
         await CheckMenuItem.new({
           text: "Pin on Top",
-          checked: isPinned,
-          action: () => {
-            const next = !isPinned;
-            setPinned(next);
-            savePref("feedPinned", next);
-            const updated = {
-              ...prefsRef.current,
-              window: { ...prefsRef.current.window, pinned: next },
-            };
-            setPrefs(updated);
-            savePrefs(updated);
-            invoke("pin_window", { pinned: next }).catch(() => {});
-          },
+          checked: prefsRef.current.window.pinned,
+          action: handleToggleWindowPin,
         }),
       );
 
@@ -550,16 +551,7 @@ export default function App() {
       items.push(
         await MenuItem.new({
           text: "Hide Ticker",
-          action: () => {
-            setTickerCollapsed(true);
-            savePref("tickerCollapsed", true);
-            const updated = {
-              ...prefsRef.current,
-              ticker: { ...prefsRef.current.ticker, showTicker: false },
-            };
-            setPrefs(updated);
-            savePrefs(updated);
-          },
+          action: handleHideTicker,
         }),
       );
 

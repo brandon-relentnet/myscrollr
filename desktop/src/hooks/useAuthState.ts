@@ -17,7 +17,7 @@ import { queryKeys } from "../api/queries";
 import type { SubscriptionTier } from "../auth";
 import type { DashboardResponse } from "../types";
 
-interface AuthState {
+interface UseAuthStateReturn {
   authenticated: boolean;
   tier: SubscriptionTier;
   loggingIn: boolean;
@@ -29,7 +29,7 @@ interface AuthState {
   syncAuthFromDashboard: (dashboard: DashboardResponse | undefined) => void;
 }
 
-export function useAuthState(): AuthState {
+export function useAuthState(): UseAuthStateReturn {
   const queryClient = useQueryClient();
   const [authenticated, setAuthenticated] = useState(() => checkAuth());
   const [tier, setTier] = useState<SubscriptionTier>(() =>

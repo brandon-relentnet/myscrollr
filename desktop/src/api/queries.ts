@@ -6,7 +6,7 @@
  */
 import { queryOptions } from "@tanstack/react-query";
 import { isAuthenticated } from "../auth";
-import { authFetch, request } from "./client";
+import { authFetch, request, rssApi } from "./client";
 import type { TrackedFeed } from "./client";
 import type { DashboardResponse } from "../types";
 
@@ -96,7 +96,7 @@ export function financeCatalogOptions() {
 export function rssCatalogOptions() {
   return queryOptions({
     queryKey: queryKeys.catalogs.rss,
-    queryFn: () => request<Array<TrackedFeed>>("/rss/feeds"),
+    queryFn: () => rssApi.getCatalog(),
     staleTime: 5 * 60 * 1000,
   });
 }
