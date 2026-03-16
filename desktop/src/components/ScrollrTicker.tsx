@@ -124,93 +124,22 @@ export default function ScrollrTicker({
       const bucket: React.ReactNode[] = [];
 
       // ── Widget tabs: consolidated chips (skip if pinned) ────────
-      if (tab === "clock" && widgetData?.clock.length) {
-        if (!pinnedWidgets.clock) {
-          bucket.push(
-            wrap("clk-consolidated",
-              <ConsolidatedChip
-                type="clock"
-                items={widgetData.clock}
-                comfort={comfort}
-                colorMode={chipColorMode}
-                onTogglePin={onTogglePin ? () => onTogglePin("clock") : undefined}
-                onClick={() => onChipClick?.("clock", "clock")}
-              />
-            )
-          );
-          buckets.push(bucket);
-        }
-        continue;
-      }
+      const WIDGET_TYPES = ["clock", "weather", "sysmon", "uptime", "github"] as const;
+      type WidgetType = (typeof WIDGET_TYPES)[number];
 
-      if (tab === "weather" && widgetData?.weather.length) {
-        if (!pinnedWidgets.weather) {
+      if (WIDGET_TYPES.includes(tab as WidgetType)) {
+        const wt = tab as WidgetType;
+        const items = widgetData?.[wt];
+        if (items?.length && !pinnedWidgets[wt]) {
           bucket.push(
-            wrap("wth-consolidated",
+            wrap(`${wt}-consolidated`,
               <ConsolidatedChip
-                type="weather"
-                items={widgetData.weather}
+                type={wt}
+                items={items}
                 comfort={comfort}
                 colorMode={chipColorMode}
-                onTogglePin={onTogglePin ? () => onTogglePin("weather") : undefined}
-                onClick={() => onChipClick?.("weather", "weather")}
-              />
-            )
-          );
-          buckets.push(bucket);
-        }
-        continue;
-      }
-
-      if (tab === "sysmon" && widgetData?.sysmon.length) {
-        if (!pinnedWidgets.sysmon) {
-          bucket.push(
-            wrap("sys-consolidated",
-              <ConsolidatedChip
-                type="sysmon"
-                items={widgetData.sysmon}
-                comfort={comfort}
-                colorMode={chipColorMode}
-                onTogglePin={onTogglePin ? () => onTogglePin("sysmon") : undefined}
-                onClick={() => onChipClick?.("sysmon", "sysmon")}
-              />
-            )
-          );
-          buckets.push(bucket);
-        }
-        continue;
-      }
-
-      if (tab === "uptime" && widgetData?.uptime.length) {
-        if (!pinnedWidgets.uptime) {
-          bucket.push(
-            wrap("upt-consolidated",
-              <ConsolidatedChip
-                type="uptime"
-                items={widgetData.uptime}
-                comfort={comfort}
-                colorMode={chipColorMode}
-                onTogglePin={onTogglePin ? () => onTogglePin("uptime") : undefined}
-                onClick={() => onChipClick?.("uptime", "uptime")}
-              />
-            )
-          );
-          buckets.push(bucket);
-        }
-        continue;
-      }
-
-      if (tab === "github" && widgetData?.github.length) {
-        if (!pinnedWidgets.github) {
-          bucket.push(
-            wrap("ghb-consolidated",
-              <ConsolidatedChip
-                type="github"
-                items={widgetData.github}
-                comfort={comfort}
-                colorMode={chipColorMode}
-                onTogglePin={onTogglePin ? () => onTogglePin("github") : undefined}
-                onClick={() => onChipClick?.("github", "github")}
+                onTogglePin={onTogglePin ? () => onTogglePin(wt) : undefined}
+                onClick={() => onChipClick?.(wt, wt)}
               />
             )
           );
@@ -413,80 +342,31 @@ export default function ScrollrTicker({
   const pinnedLeft: React.ReactNode[] = [];
   const pinnedRight: React.ReactNode[] = [];
 
+  const WIDGET_TYPES = ["clock", "weather", "sysmon", "uptime", "github"] as const;
+  type WidgetType = (typeof WIDGET_TYPES)[number];
+
   for (const tab of activeTabs) {
     const pin = pinnedWidgets[tab];
     if (!pin) continue;
     const target = pin.side === "left" ? pinnedLeft : pinnedRight;
 
-    if (tab === "clock" && widgetData?.clock.length) {
-      target.push(
-        <ConsolidatedChip
-          key="pinned-clock"
-          type="clock"
-          items={widgetData.clock}
-          comfort={comfort}
-          colorMode={chipColorMode}
-          pinned
-          onTogglePin={onTogglePin ? () => onTogglePin("clock") : undefined}
-          onClick={() => onChipClick?.("clock", "clock")}
-        />
-      );
-    }
-    if (tab === "weather" && widgetData?.weather.length) {
-      target.push(
-        <ConsolidatedChip
-          key="pinned-weather"
-          type="weather"
-          items={widgetData.weather}
-          comfort={comfort}
-          colorMode={chipColorMode}
-          pinned
-          onTogglePin={onTogglePin ? () => onTogglePin("weather") : undefined}
-          onClick={() => onChipClick?.("weather", "weather")}
-        />
-      );
-    }
-    if (tab === "sysmon" && widgetData?.sysmon.length) {
-      target.push(
-        <ConsolidatedChip
-          key="pinned-sysmon"
-          type="sysmon"
-          items={widgetData.sysmon}
-          comfort={comfort}
-          colorMode={chipColorMode}
-          pinned
-          onTogglePin={onTogglePin ? () => onTogglePin("sysmon") : undefined}
-          onClick={() => onChipClick?.("sysmon", "sysmon")}
-        />
-      );
-    }
-    if (tab === "uptime" && widgetData?.uptime.length) {
-      target.push(
-        <ConsolidatedChip
-          key="pinned-uptime"
-          type="uptime"
-          items={widgetData.uptime}
-          comfort={comfort}
-          colorMode={chipColorMode}
-          pinned
-          onTogglePin={onTogglePin ? () => onTogglePin("uptime") : undefined}
-          onClick={() => onChipClick?.("uptime", "uptime")}
-        />
-      );
-    }
-    if (tab === "github" && widgetData?.github.length) {
-      target.push(
-        <ConsolidatedChip
-          key="pinned-github"
-          type="github"
-          items={widgetData.github}
-          comfort={comfort}
-          colorMode={chipColorMode}
-          pinned
-          onTogglePin={onTogglePin ? () => onTogglePin("github") : undefined}
-          onClick={() => onChipClick?.("github", "github")}
-        />
-      );
+    if (WIDGET_TYPES.includes(tab as WidgetType)) {
+      const wt = tab as WidgetType;
+      const items = widgetData?.[wt];
+      if (items?.length) {
+        target.push(
+          <ConsolidatedChip
+            key={`pinned-${wt}`}
+            type={wt}
+            items={items}
+            comfort={comfort}
+            colorMode={chipColorMode}
+            pinned
+            onTogglePin={onTogglePin ? () => onTogglePin(wt) : undefined}
+            onClick={() => onChipClick?.(wt, wt)}
+          />
+        );
+      }
     }
   }
 
