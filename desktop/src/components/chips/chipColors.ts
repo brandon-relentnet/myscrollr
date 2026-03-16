@@ -1,10 +1,11 @@
+import { clsx } from "clsx";
 import type { ChipColorMode } from "../../preferences";
 
 // ── Color class sets ────────────────────────────────────────────
 // Each set maps to the Tailwind classes a chip uses for bg, border,
 // hover, and text at various opacities.
 
-interface ChipColors {
+export interface ChipColors {
   bg: string;
   border: string;
   hoverBorder: string;
@@ -135,4 +136,26 @@ export function getChipColors(mode: ChipColorMode, channel: string): ChipColors 
   if (mode === "accent") return PRIMARY;
   if (mode === "muted") return MUTED;
   return CHANNEL_MAP[channel] ?? PURPLE;
+}
+
+// ── Shared chip base classes ────────────────────────────────────
+// Common className construction used by all ticker chip components.
+
+export function chipBaseClasses(
+  comfort: boolean | undefined,
+  colors: ChipColors,
+  extra?: string,
+): string {
+  return clsx(
+    "ticker-chip group",
+    "px-3 rounded-sm border",
+    "transition-colors cursor-pointer",
+    colors.bg,
+    colors.border,
+    colors.hoverBorder,
+    comfort
+      ? "flex flex-col items-start py-1.5 gap-0.5"
+      : "flex items-center gap-2 py-1 text-[13px]",
+    extra,
+  );
 }

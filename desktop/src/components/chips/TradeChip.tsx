@@ -2,7 +2,7 @@ import { memo } from "react";
 import { clsx } from "clsx";
 import type { Trade } from "../../types";
 import type { ChipColorMode } from "../../preferences";
-import { getChipColors } from "./chipColors";
+import { getChipColors, chipBaseClasses } from "./chipColors";
 import { formatPrice, formatChange, formatPriceChange } from "../../utils/format";
 
 interface TradeChipProps {
@@ -20,14 +20,7 @@ const TradeChip = memo(function TradeChip({ trade, comfort, colorMode = "channel
   return (
     <button
       onClick={onClick}
-      className={clsx(
-        "ticker-chip group",
-        "px-3 rounded-sm border",
-        "font-mono whitespace-nowrap",
-        "transition-colors cursor-pointer",
-        c.bg, c.border, c.hoverBorder,
-        comfort ? "flex flex-col items-start py-1.5 gap-0.5" : "flex items-center gap-2 py-1 text-[13px]",
-      )}
+      className={chipBaseClasses(comfort, c, "font-mono whitespace-nowrap")}
     >
       {/* Row 1: symbol, price, change */}
       <div className={clsx("flex items-center gap-2", comfort && "text-[13px]")}>

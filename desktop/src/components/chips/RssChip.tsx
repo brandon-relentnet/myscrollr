@@ -2,7 +2,7 @@ import { memo } from "react";
 import { clsx } from "clsx";
 import type { RssItem } from "../../types";
 import type { ChipColorMode } from "../../preferences";
-import { getChipColors } from "./chipColors";
+import { getChipColors, chipBaseClasses } from "./chipColors";
 import { timeAgo } from "../../utils/format";
 
 interface RssChipProps {
@@ -21,14 +21,7 @@ const RssChip = memo(function RssChip({ item, comfort, colorMode = "channel", on
   return (
     <button
       onClick={onClick}
-      className={clsx(
-        "ticker-chip group",
-        "px-3 rounded-sm border",
-        "whitespace-nowrap",
-        "transition-colors cursor-pointer",
-        c.bg, c.border, c.hoverBorder,
-        comfort ? "flex flex-col items-start py-1.5 gap-0.5" : "flex items-center gap-2 py-1 text-[13px]",
-      )}
+      className={chipBaseClasses(comfort, c, "whitespace-nowrap")}
     >
       {/* Row 1: headline */}
       <span className={clsx("font-medium", c.text, comfort && "text-[13px]")}>{headline}</span>

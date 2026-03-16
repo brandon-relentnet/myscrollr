@@ -7,7 +7,7 @@
 import { clsx } from "clsx";
 import { Pin, PinOff } from "lucide-react";
 import type { ChipColorMode } from "../../preferences";
-import { getChipColors } from "./chipColors";
+import { getChipColors, chipBaseClasses } from "./chipColors";
 import { MONITOR_STATUS_COLORS } from "../../widgets/uptime/types";
 import { CI_STATUS_COLORS } from "../../widgets/github/types";
 import type {
@@ -97,15 +97,10 @@ export default function ConsolidatedChip({
     <button
       onClick={onClick}
       className={clsx(
-        "ticker-chip group relative",
-        "px-3 rounded-sm border",
-        "font-mono whitespace-nowrap",
-        "transition-colors cursor-pointer",
-        c.bg, c.border, c.hoverBorder,
+        chipBaseClasses(comfort, c, "relative font-mono whitespace-nowrap"),
         anyHot && "border-error/30",
         anyDown && "border-down/30",
         anyFailing && "border-down/30",
-        comfort ? "flex flex-col items-start py-1.5 gap-0.5" : "flex items-center gap-2 py-1 text-[13px]",
       )}
     >
       {/* Pin toggle (hover-only) */}
