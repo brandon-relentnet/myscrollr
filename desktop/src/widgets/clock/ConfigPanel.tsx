@@ -4,28 +4,18 @@ import {
   ToggleRow,
   SegmentedRow,
   SliderRow,
-  ResetButton,
 } from "../../components/settings/SettingsControls";
-import type {
-  AppPreferences,
-  ClockWidgetConfig,
-  ClockTickerConfig,
-  ClockPomodoroConfig,
-} from "../../preferences";
-import { DEFAULT_CLOCK_TICKER, DEFAULT_CLOCK_POMODORO } from "../../preferences";
-import { savePrefs } from "../../preferences";
-import { useWidgetPin } from "../../hooks/useWidgetPin";
+import ConfigPanelLayout from "../../components/settings/ConfigPanelLayout";
+import TickerPinSection from "../../components/settings/TickerPinSection";
+import { useWidgetConfig } from "../../hooks/useWidgetConfig";
 import { getStore, setStore, onStoreChange } from "../../lib/store";
-import { LS_CLOCK_FORMAT, LS_CLOCK_TIMEZONES, PIN_SIDE_OPTIONS } from "../../constants";
+import { DEFAULT_CLOCK_TICKER, DEFAULT_CLOCK_POMODORO } from "../../preferences";
+import { LS_CLOCK_FORMAT, LS_CLOCK_TIMEZONES } from "../../constants";
+import type { ClockPomodoroConfig } from "../../preferences";
+import type { WidgetConfigPanelProps } from "../../hooks/useWidgetConfig";
 
 type ClockFormat = "12h" | "24h";
 
-interface ClockConfigPanelProps {
-  prefs: AppPreferences;
-  onPrefsChange: (prefs: AppPreferences) => void;
-}
-
-/** Read the user's configured timezones from the store. */
 function loadTimezones(): string[] {
   const tzs = getStore<string[]>(LS_CLOCK_TIMEZONES, ["America/New_York", "Europe/London", "Asia/Tokyo"]);
   return Array.isArray(tzs) ? tzs : ["America/New_York", "Europe/London", "Asia/Tokyo"];
@@ -36,10 +26,8 @@ function loadFormat(): ClockFormat {
   return f === "12h" || f === "24h" ? (f as ClockFormat) : "12h";
 }
 
-/** Human-readable label for an IANA timezone. */
 function tzLabel(tz: string): string {
-  const city = tz.split("/").pop()?.replace(/_/g, " ") ?? tz;
-  return city;
+  return tz.split("/").pop()?.replace(/_/g, " ") ?? tz;
 }
 
 const FORMAT_OPTIONS: { value: ClockFormat; label: string }[] = [
@@ -58,12 +46,10 @@ const LONG_BREAK_OPTIONS = [
 export default function ClockConfigPanel({
   prefs,
   onPrefsChange,
-}: ClockConfigPanelProps) {
-  const config = prefs.widgets.clock;
+}: WidgetConfigPanelProps) {
+  const { config, update, setTicker } = useWidgetConfig("clock", prefs, onPrefsChange);
   const [format, setFormatState] = useState<ClockFormat>(loadFormat);
   const [timezones, setTimezones] = useState<string[]>(loadTimezones);
-
-  const { isPinned, pinSide, togglePin, setPinSide } = useWidgetPin("clock", prefs, onPrefsChange);
 
   // Re-read timezones when store changes (e.g., user adds a TZ in the widget)
   useEffect(() => {
@@ -71,28 +57,6 @@ export default function ClockConfigPanel({
     const unsub2 = onStoreChange(LS_CLOCK_FORMAT, () => setFormatState(loadFormat()));
     return () => { unsub1(); unsub2(); };
   }, []);
-
-  const update = useCallback(
-    (patch: Partial<ClockWidgetConfig>) => {
-      const next: AppPreferences = {
-        ...prefs,
-        widgets: {
-          ...prefs.widgets,
-          clock: { ...config, ...patch },
-        },
-      };
-      onPrefsChange(next);
-      savePrefs(next);
-    },
-    [prefs, config, onPrefsChange],
-  );
-
-  const setTicker = useCallback(
-    (patch: Partial<ClockTickerConfig>) => {
-      update({ ticker: { ...config.ticker, ...patch } });
-    },
-    [update, config.ticker],
-  );
 
   const setPomodoro = useCallback(
     (patch: Partial<ClockPomodoroConfig>) => {
@@ -132,25 +96,21 @@ export default function ClockConfigPanel({
     setFormatState("12h");
   }, [update]);
 
-  return (
-    <div className="w-full max-w-2xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-6 px-3">
-        <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center"
-          style={{ background: "color-mix(in srgb, var(--color-widget-clock) 15%, transparent)" }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-widget-clock)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <polyline points="12 6 12 12 16 14" />
-          </svg>
-        </div>
-        <div>
-          <h2 className="text-sm font-bold text-fg">Clock Settings</h2>
-          <p className="text-[11px] text-fg-4">World clocks and Pomodoro timer</p>
-        </div>
-      </div>
+  const clockIcon = (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-widget-clock)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  );
 
+  return (
+    <ConfigPanelLayout
+      icon={clockIcon}
+      hex="var(--color-widget-clock)"
+      title="Clock Settings"
+      subtitle="World clocks and Pomodoro timer"
+      onReset={resetAll}
+    >
       {/* Taskbar */}
       <Section title="Toolbar Preview">
         <SegmentedRow
@@ -195,20 +155,7 @@ export default function ClockConfigPanel({
           checked={config.ticker.activeTimer}
           onChange={(v) => setTicker({ activeTimer: v })}
         />
-        <ToggleRow
-          label="Keep in a fixed spot"
-          description="Stay on one side instead of scrolling across"
-          checked={isPinned}
-          onChange={togglePin}
-        />
-        {isPinned && (
-          <SegmentedRow
-            label="Which side"
-            value={pinSide}
-            options={PIN_SIDE_OPTIONS}
-            onChange={setPinSide}
-          />
-        )}
+        <TickerPinSection widgetId="clock" prefs={prefs} onPrefsChange={onPrefsChange} />
       </Section>
 
       {/* Pomodoro */}
@@ -248,11 +195,6 @@ export default function ClockConfigPanel({
           onChange={(v) => setPomodoro({ longBreakEvery: Number(v) })}
         />
       </Section>
-
-      {/* Reset */}
-      <div className="flex items-center justify-end pt-2 px-3">
-        <ResetButton onClick={resetAll} />
-      </div>
-    </div>
+    </ConfigPanelLayout>
   );
 }
