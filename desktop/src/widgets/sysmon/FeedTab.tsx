@@ -2,7 +2,7 @@ import { Activity } from "lucide-react";
 import type { FeedTabProps, WidgetManifest } from "../../types";
 import { useSysmonData } from "../../hooks/useSysmonData";
 import { formatBytes, formatUptime } from "../../utils/format";
-import { findCpuTemp, findGpuTemp, usageColor } from "./utils";
+import { findCpuTemp, findGpuTemp, usageColor, usageColorClass, tempColorClass, formatFreq, formatWatts, formatRate } from "./utils";
 import type { TempReading } from "./utils";
 
 // ── Constants ───────────────────────────────────────────────────
@@ -10,39 +10,6 @@ import type { TempReading } from "./utils";
 const POLL_INTERVAL = 2000;
 
 // ── Helpers ─────────────────────────────────────────────────────
-
-function formatRate(bytesPerInterval: number): string {
-  const bytesPerSec = bytesPerInterval / (POLL_INTERVAL / 1000);
-  if (bytesPerSec < 1024) return `${Math.round(bytesPerSec)} B/s`;
-  const kbps = bytesPerSec / 1024;
-  if (kbps < 1024) return `${kbps.toFixed(1)} KB/s`;
-  const mbps = kbps / 1024;
-  return `${mbps.toFixed(1)} MB/s`;
-}
-
-/** Format MHz as GHz when >= 1000, otherwise MHz. */
-function formatFreq(mhz: number): string {
-  if (mhz >= 1000) return `${(mhz / 1000).toFixed(1)} GHz`;
-  return `${mhz} MHz`;
-}
-
-/** Format watts, rounding to nearest integer. */
-function formatWatts(w: number): string {
-  return `${Math.round(w)}W`;
-}
-
-function usageColorClass(pct: number): string {
-  if (pct < 50) return "text-emerald-400";
-  if (pct < 75) return "text-amber-400";
-  return "text-red-400";
-}
-
-function tempColorClass(temp: number, critical: number | null): string {
-  if (critical && temp >= critical * 0.9) return "text-red-400";
-  if (temp >= 80) return "text-red-400";
-  if (temp >= 60) return "text-amber-400";
-  return "text-emerald-400";
-}
 
 // ── Detail line helper ──────────────────────────────────────────
 
@@ -310,10 +277,10 @@ function SysmonFeedTab({ mode: feedMode }: FeedTabProps) {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-mono text-emerald-400/90 tabular-nums">
-                      {"\u2191"} {formatRate(iface.txBytes)}
+                      {"\u2191"} {formatRate(iface.txBytes, POLL_INTERVAL)}
                     </span>
-                    <span className="text-xs font-mono text-sky-400/90 tabular-nums">
-                      {"\u2193"} {formatRate(iface.rxBytes)}
+                    <span className="text-[10px] font-mono text-fg-3">
+                      {"\u2193"} {formatRate(iface.rxBytes, POLL_INTERVAL)}
                     </span>
                   </div>
                 </div>

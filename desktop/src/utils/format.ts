@@ -117,6 +117,13 @@ export function formatPollInterval(secs: number): string {
 }
 
 /**
+ * Convert Celsius to Fahrenheit.
+ */
+export function toFahrenheit(celsius: number): number {
+  return (celsius * 9) / 5 + 32;
+}
+
+/**
  * Format a byte count as a human-readable string.
  * Handles B, KB, MB, GB, and TB.
  */

@@ -114,6 +114,16 @@ export interface MyLeaguesResponse {
   leagues: LeagueResponse[];
 }
 
+// ── Matchup status helpers ───────────────────────────────────────
+
+export function isMatchupLive(matchup: Matchup): boolean {
+  return matchup.status === "midevent";
+}
+
+export function isMatchupFinal(matchup: Matchup): boolean {
+  return matchup.status === "postevent";
+}
+
 export interface DiscoveredLeague {
   league_key: string;
   name: string;

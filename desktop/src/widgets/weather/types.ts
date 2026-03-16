@@ -81,9 +81,7 @@ export function windDirectionToLabel(deg: number): string {
 
 // ── Formatting ──────────────────────────────────────────────────
 
-function toFahrenheit(celsius: number): number {
-  return (celsius * 9) / 5 + 32;
-}
+import { toFahrenheit } from "../../utils/format";
 
 /**
  * Format a temperature in the given unit.

@@ -2,6 +2,7 @@
  * Matchup score components for compact and comfort display modes.
  */
 import { clsx } from "clsx";
+import { isMatchupLive, isMatchupFinal } from "./types";
 import type { Matchup } from "./types";
 
 // ── Compact matchup ─────────────────────────────────────────────
@@ -19,8 +20,8 @@ export function CompactMatchupScore({
   const oppTeam = matchup.teams.find((t) => t.team_key !== myTeamKey);
   if (!myTeam || !oppTeam) return null;
 
-  const isLive = matchup.status === "midevent";
-  const isFinal = matchup.status === "postevent";
+  const isLive = isMatchupLive(matchup);
+  const isFinal = isMatchupFinal(matchup);
   const myPts = myTeam.points ?? 0;
   const oppPts = oppTeam.points ?? 0;
   const myWinning = myPts > oppPts;
@@ -85,8 +86,8 @@ export function ComfortMatchupHero({
   const oppTeam = matchup.teams.find((t) => t.team_key !== myTeamKey);
   if (!myTeam || !oppTeam) return null;
 
-  const isLive = matchup.status === "midevent";
-  const isFinal = matchup.status === "postevent";
+  const isLive = isMatchupLive(matchup);
+  const isFinal = isMatchupFinal(matchup);
   const myPts = myTeam.points ?? 0;
   const oppPts = oppTeam.points ?? 0;
   const myWinning = myPts > oppPts;

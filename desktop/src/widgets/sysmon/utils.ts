@@ -4,6 +4,7 @@
  * Used by both the sysmon FeedTab and the ticker data hook.
  */
 import type { SystemInfo } from "../../hooks/useSysmonData";
+import { toFahrenheit } from "../../utils/format";
 
 // ── Types ───────────────────────────────────────────────────────
 
@@ -42,6 +43,42 @@ export function usageColor(pct: number): string {
   return "#f87171";
 }
 
+/** Usage color as Tailwind text class — same thresholds as usageColor. */
+export function usageColorClass(pct: number): string {
+  if (pct < 50) return "text-emerald-400";
+  if (pct < 75) return "text-amber-400";
+  return "text-red-400";
+}
+
+/** Temperature color class based on distance from critical threshold. */
+export function tempColorClass(temp: number, critical: number | null): string {
+  if (critical && temp >= critical * 0.9) return "text-red-400";
+  if (temp >= 80) return "text-red-400";
+  if (temp >= 60) return "text-amber-400";
+  return "text-emerald-400";
+}
+
+/** Format MHz as GHz when >= 1000, otherwise MHz. */
+export function formatFreq(mhz: number): string {
+  if (mhz >= 1000) return `${(mhz / 1000).toFixed(1)} GHz`;
+  return `${mhz} MHz`;
+}
+
+/** Format watts, rounding to nearest integer. */
+export function formatWatts(w: number): string {
+  return `${Math.round(w)}W`;
+}
+
+/** Format network throughput from bytes per interval. */
+export function formatRate(bytesPerInterval: number, intervalMs: number): string {
+  const bytesPerSec = bytesPerInterval / (intervalMs / 1000);
+  if (bytesPerSec < 1024) return `${Math.round(bytesPerSec)} B/s`;
+  const kbps = bytesPerSec / 1024;
+  if (kbps < 1024) return `${kbps.toFixed(1)} KB/s`;
+  const mbps = kbps / 1024;
+  return `${mbps.toFixed(1)} MB/s`;
+}
+
 /**
  * Format a component temperature with unit conversion.
  * Returns e.g. "72°C" or "162°F".
@@ -52,7 +89,7 @@ export function formatComponentTemp(
 ): string {
   const temp =
     unit === "fahrenheit"
-      ? Math.round(tempCelsius * 9 / 5 + 32)
+      ? Math.round(toFahrenheit(tempCelsius))
       : Math.round(tempCelsius);
   const suffix = unit === "fahrenheit" ? "\u00B0F" : "\u00B0C";
   return `${temp}${suffix}`;

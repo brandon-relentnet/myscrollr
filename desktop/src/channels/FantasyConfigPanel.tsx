@@ -26,7 +26,7 @@ import {
   queryKeys,
 } from "../api/queries";
 import { getValidToken, decodeJwtPayload } from "../auth";
-import { GAME_CODE_LABELS, SPORT_EMOJI } from "./fantasy/types";
+import { GAME_CODE_LABELS, SPORT_EMOJI, isMatchupLive, isMatchupFinal } from "./fantasy/types";
 import type { Channel } from "../api/client";
 import type {
   LeagueResponse,
@@ -1062,8 +1062,8 @@ function MatchupScoreCard({
   const opponentPoints = opponentTeam.points ?? 0;
   const isWinning = userPoints > opponentPoints;
   const isLosing = userPoints < opponentPoints;
-  const isLive = matchup.status === "midevent";
-  const isDone = matchup.status === "postevent";
+  const isLive = isMatchupLive(matchup);
+  const isDone = isMatchupFinal(matchup);
 
   return (
     <div
