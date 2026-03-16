@@ -106,7 +106,7 @@ export interface FeedTabProps {
    * Per-channel JSONB config from user_channels.config.
    * Each channel decides what goes here (e.g., selected RSS feeds).
    */
-  channelConfig: Record<string, unknown>;
+  feedContext: Record<string, unknown>;
 }
 
 /** Structured info content for the Info tab. */

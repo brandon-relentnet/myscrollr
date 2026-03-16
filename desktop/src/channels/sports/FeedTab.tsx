@@ -37,7 +37,7 @@ export const sportsChannel: ChannelManifest = {
 
 // ── FeedTab ──────────────────────────────────────────────────────
 
-function SportsFeedTab({ mode, channelConfig }: FeedTabProps) {
+function SportsFeedTab({ mode, feedContext }: FeedTabProps) {
   const keyOf = useCallback((g: Game) => String(g.id), []);
   const validate = useCallback(
     (record: Record<string, unknown>) => record.id != null,
@@ -86,8 +86,8 @@ function SportsFeedTab({ mode, channelConfig }: FeedTabProps) {
       <EmptyChannelState
         icon={Trophy}
         noun="leagues"
-        hasConfig={!!channelConfig.__hasConfig}
-        dashboardLoaded={!!channelConfig.__dashboardLoaded}
+        hasConfig={!!feedContext.__hasConfig}
+        dashboardLoaded={!!feedContext.__dashboardLoaded}
         loadingNoun="scores"
         actionHint="pick your leagues"
       />

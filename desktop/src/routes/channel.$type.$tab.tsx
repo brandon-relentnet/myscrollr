@@ -76,14 +76,14 @@ function ChannelFeedTab({
   dashboard: DashboardResponse | undefined;
   channel: NonNullable<ReturnType<typeof getChannel>>;
 }) {
-  const channelConfig = {
+  const feedContext = {
     __dashboardLoaded: dashboard !== undefined,
     __hasConfig: (dashboard?.channels ?? []).some(
       (ch) => ch.channel_type === type && ch.enabled,
     ),
   };
 
-  return <channel.FeedTab mode="comfort" channelConfig={channelConfig} />;
+  return <channel.FeedTab mode="comfort" feedContext={feedContext} />;
 }
 
 function ChannelConfigTab({

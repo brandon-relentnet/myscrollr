@@ -42,8 +42,8 @@ export const rssChannel: ChannelManifest = {
 
 // ── FeedTab ──────────────────────────────────────────────────────
 
-function RssFeedTab({ mode, channelConfig }: FeedTabProps) {
-  const dashboardLoaded = channelConfig.__dashboardLoaded as
+function RssFeedTab({ mode, feedContext }: FeedTabProps) {
+  const dashboardLoaded = feedContext.__dashboardLoaded as
     | boolean
     | undefined;
 
@@ -83,7 +83,7 @@ function RssFeedTab({ mode, channelConfig }: FeedTabProps) {
         <EmptyChannelState
           icon={Rss}
           noun="feeds"
-          hasConfig={!!channelConfig.__hasConfig}
+          hasConfig={!!feedContext.__hasConfig}
           dashboardLoaded={!!dashboardLoaded}
           loadingNoun="articles"
           actionHint="add websites"

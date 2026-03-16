@@ -37,7 +37,7 @@ export const financeChannel: ChannelManifest = {
 
 // ── FeedTab ──────────────────────────────────────────────────────
 
-function FinanceFeedTab({ mode, channelConfig }: FeedTabProps) {
+function FinanceFeedTab({ mode, feedContext }: FeedTabProps) {
   const keyOf = useCallback((t: Trade) => t.symbol, []);
   const validate = useCallback(
     (record: Record<string, unknown>) => typeof record.symbol === "string",
@@ -70,8 +70,8 @@ function FinanceFeedTab({ mode, channelConfig }: FeedTabProps) {
         <EmptyChannelState
           icon={TrendingUp}
           noun="stocks or crypto"
-          hasConfig={!!channelConfig.__hasConfig}
-          dashboardLoaded={!!channelConfig.__dashboardLoaded}
+          hasConfig={!!feedContext.__hasConfig}
+          dashboardLoaded={!!feedContext.__dashboardLoaded}
           loadingNoun="prices"
           actionHint="choose what to track"
         />

@@ -49,11 +49,11 @@ function extractLeagues(data: unknown): LeagueResponse[] {
 
 // ── FeedTab ──────────────────────────────────────────────────────
 
-function FantasyFeedTab({ mode, channelConfig }: FeedTabProps) {
+function FantasyFeedTab({ mode, feedContext }: FeedTabProps) {
   const { data: dashboard } = useQuery(dashboardQueryOptions());
   const fantasyData = dashboard?.data?.fantasy;
   const leagues = useMemo(() => extractLeagues(fantasyData), [fantasyData]);
-  const dashboardLoaded = channelConfig.__dashboardLoaded as
+  const dashboardLoaded = feedContext.__dashboardLoaded as
     | boolean
     | undefined;
 

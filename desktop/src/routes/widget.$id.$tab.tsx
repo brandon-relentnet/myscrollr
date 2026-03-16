@@ -63,10 +63,10 @@ function WidgetFeedTab({
 }: {
   widget: NonNullable<ReturnType<typeof getWidget>>;
 }) {
-  const channelConfig = {
+  const feedContext = {
     __dashboardLoaded: true,
   };
-  return <widget.FeedTab mode="comfort" channelConfig={channelConfig} />;
+  return <widget.FeedTab mode="comfort" feedContext={feedContext} />;
 }
 
 function WidgetConfigTab({ id }: { id: string }) {
