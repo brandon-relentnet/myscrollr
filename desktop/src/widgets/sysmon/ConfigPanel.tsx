@@ -3,23 +3,13 @@ import {
   Section,
   ToggleRow,
   SegmentedRow,
-  ResetButton,
 } from "../../components/settings/SettingsControls";
-import type {
-  AppPreferences,
-  SysmonWidgetConfig,
-  SysmonTickerConfig,
-  TaskbarMetric,
-  TempUnit,
-} from "../../preferences";
-import { DEFAULT_SYSMON_TICKER, savePrefs } from "../../preferences";
-import { useWidgetPin } from "../../hooks/useWidgetPin";
-import { PIN_SIDE_OPTIONS } from "../../constants";
-
-interface SysmonConfigPanelProps {
-  prefs: AppPreferences;
-  onPrefsChange: (prefs: AppPreferences) => void;
-}
+import ConfigPanelLayout from "../../components/settings/ConfigPanelLayout";
+import TickerPinSection from "../../components/settings/TickerPinSection";
+import { useWidgetConfig } from "../../hooks/useWidgetConfig";
+import { DEFAULT_SYSMON_TICKER } from "../../preferences";
+import type { TaskbarMetric, TempUnit } from "../../preferences";
+import type { WidgetConfigPanelProps } from "../../hooks/useWidgetConfig";
 
 const METRIC_OPTIONS: { value: TaskbarMetric; label: string }[] = [
   { value: "cpu", label: "CPU" },
@@ -42,32 +32,8 @@ const TEMP_OPTIONS: { value: TempUnit; label: string }[] = [
 export default function SysmonConfigPanel({
   prefs,
   onPrefsChange,
-}: SysmonConfigPanelProps) {
-  const config = prefs.widgets.sysmon;
-
-  const update = useCallback(
-    (patch: Partial<SysmonWidgetConfig>) => {
-      const next: AppPreferences = {
-        ...prefs,
-        widgets: {
-          ...prefs.widgets,
-          sysmon: { ...config, ...patch },
-        },
-      };
-      onPrefsChange(next);
-      savePrefs(next);
-    },
-    [prefs, config, onPrefsChange],
-  );
-
-  const setTicker = useCallback(
-    (patch: Partial<SysmonTickerConfig>) => {
-      update({ ticker: { ...config.ticker, ...patch } });
-    },
-    [update, config.ticker],
-  );
-
-  const { isPinned, pinSide, togglePin, setPinSide } = useWidgetPin("sysmon", prefs, onPrefsChange);
+}: WidgetConfigPanelProps) {
+  const { config, update, setTicker } = useWidgetConfig("sysmon", prefs, onPrefsChange);
 
   const resetAll = useCallback(() => {
     update({
@@ -78,30 +44,25 @@ export default function SysmonConfigPanel({
     });
   }, [update]);
 
-  return (
-    <div className="w-full max-w-2xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-6 px-3">
-        <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center"
-          style={{ background: "color-mix(in srgb, var(--color-widget-sysmon) 15%, transparent)" }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-widget-sysmon)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="4" y="4" width="16" height="16" rx="2" />
-            <rect x="9" y="9" width="6" height="6" />
-            <path d="M15 2v2" /><path d="M15 20v2" />
-            <path d="M2 15h2" /><path d="M2 9h2" />
-            <path d="M20 15h2" /><path d="M20 9h2" />
-            <path d="M9 2v2" /><path d="M9 20v2" />
-          </svg>
-        </div>
-        <div>
-          <h2 className="text-sm font-bold text-fg">System Monitor Settings</h2>
-          <p className="text-[11px] text-fg-4">CPU, memory, GPU, and network stats</p>
-        </div>
-      </div>
+  const sysmonIcon = (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-widget-sysmon)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="4" width="16" height="16" rx="2" />
+      <rect x="9" y="9" width="6" height="6" />
+      <path d="M15 2v2" /><path d="M15 20v2" />
+      <path d="M2 15h2" /><path d="M2 9h2" />
+      <path d="M20 15h2" /><path d="M20 9h2" />
+      <path d="M9 2v2" /><path d="M9 20v2" />
+    </svg>
+  );
 
-      {/* Taskbar */}
+  return (
+    <ConfigPanelLayout
+      icon={sysmonIcon}
+      hex="var(--color-widget-sysmon)"
+      title="System Monitor Settings"
+      subtitle="CPU, memory, GPU, and network stats"
+      onReset={resetAll}
+    >
       <Section title="Toolbar Preview">
         <SegmentedRow
           label="What to show"
@@ -112,7 +73,6 @@ export default function SysmonConfigPanel({
         />
       </Section>
 
-      {/* Ticker */}
       <Section title="Ticker">
         <ToggleRow
           label="CPU usage"
@@ -138,23 +98,9 @@ export default function SysmonConfigPanel({
           checked={config.ticker.gpuPower}
           onChange={(v) => setTicker({ gpuPower: v })}
         />
-        <ToggleRow
-          label="Keep in a fixed spot"
-          description="Stay on one side instead of scrolling across"
-          checked={isPinned}
-          onChange={togglePin}
-        />
-        {isPinned && (
-          <SegmentedRow
-            label="Which side"
-            value={pinSide}
-            options={PIN_SIDE_OPTIONS}
-            onChange={setPinSide}
-          />
-        )}
+        <TickerPinSection widgetId="sysmon" prefs={prefs} onPrefsChange={onPrefsChange} />
       </Section>
 
-      {/* Display */}
       <Section title="Display">
         <SegmentedRow
           label="Update speed"
@@ -170,11 +116,6 @@ export default function SysmonConfigPanel({
           onChange={(v) => update({ tempUnit: v })}
         />
       </Section>
-
-      {/* Reset */}
-      <div className="flex items-center justify-end pt-2 px-3">
-        <ResetButton onClick={resetAll} />
-      </div>
-    </div>
+    </ConfigPanelLayout>
   );
 }
