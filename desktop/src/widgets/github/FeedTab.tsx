@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { onStoreChange } from "../../lib/store";
 import { Github, Plus, Trash2, ExternalLink, Loader2 } from "lucide-react";
 import type { FeedTabProps, WidgetManifest } from "../../types";
+import QueryErrorBanner from "../../components/QueryErrorBanner";
 import type { GitHubRepo } from "./types";
 import {
   parseRepoUrl,
@@ -209,11 +210,7 @@ function GitHubFeedTab({ mode: feedMode }: FeedTabProps) {
       </div>
 
       {/* Error banner */}
-      {error && (
-        <div className="px-2 py-1.5 text-[11px] font-mono text-error/80 bg-error/5 border border-error/15 rounded">
-          Failed to refresh: {error.message}
-        </div>
-      )}
+      <QueryErrorBanner error={error} />
 
       {/* Add repo input */}
       <div className="flex gap-1.5 px-1">

@@ -14,6 +14,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { onStoreChange } from "../../lib/store";
 import { HeartPulse, RefreshCw, Unlink, Loader2 } from "lucide-react";
 import type { FeedTabProps, WidgetManifest } from "../../types";
+import QueryErrorBanner from "../../components/QueryErrorBanner";
 import type { KumaMonitor } from "./types";
 import { fetchKumaStatus, loadMonitors, saveMonitors, MONITOR_STATUS_LABELS, MONITOR_STATUS_COLORS, MONITOR_STATUS_TEXT } from "./types";
 import { useShell } from "../../shell-context";
@@ -244,11 +245,7 @@ function UptimeFeedTab({ mode: feedMode }: FeedTabProps) {
       </div>
 
       {/* Error banner */}
-      {error && (
-        <div className="px-2 py-1.5 text-[11px] font-mono text-error/80 bg-error/5 border border-error/15 rounded">
-          Failed to refresh: {error.message}
-        </div>
-      )}
+      <QueryErrorBanner error={error} />
 
       {/* Monitor list */}
       <div className={compact ? "space-y-1" : "space-y-1.5"}>
