@@ -7,6 +7,8 @@
 import { loadRepoData, CI_STATUS_COLORS } from "../../widgets/github/types";
 import { useStoreData } from "../../hooks/useStoreData";
 import { LS_GITHUB_REPOS } from "../../constants";
+import StatusListSummary from "./StatusListSummary";
+import type { GitHubRepo } from "../../widgets/github/types";
 import type { GitHubCardPrefs } from "./dashboardPrefs";
 
 interface GitHubSummaryProps {
@@ -16,57 +18,39 @@ interface GitHubSummaryProps {
 export default function GitHubSummary({ prefs }: GitHubSummaryProps) {
   const [repos] = useStoreData(LS_GITHUB_REPOS, loadRepoData);
 
-  if (repos.length === 0) {
-    return (
-      <p className="text-[11px] text-fg-4 italic py-1">
-        No repos configured
-      </p>
-    );
-  }
-
   const passCount = repos.filter((r) => r.status === "success").length;
   const failCount = repos.filter((r) => r.status === "failure").length;
   const allPassing = failCount === 0 && passCount > 0;
 
   return (
-    <div className="space-y-1.5">
-      {/* Overall status */}
-      {prefs.status && (
-        <div className="flex items-center gap-2">
-          <span className={`w-2 h-2 rounded-full ${allPassing ? "bg-up" : failCount > 0 ? "bg-down" : "bg-fg-4"}`} />
-          <span className="text-xs font-mono text-fg">
-            {allPassing ? "All Passing" : failCount > 0 ? `${failCount} failing` : "No data"}
-          </span>
-        </div>
-      )}
-
-      {/* Counts */}
-      {prefs.counts && (
-        <div className="flex items-center gap-3 text-[11px] font-mono text-fg-3">
-          {passCount > 0 && <span className="text-up">{passCount} passing</span>}
-          {failCount > 0 && <span className="text-down">{failCount} failing</span>}
-          <span className="text-fg-4">{repos.length} total</span>
-        </div>
-      )}
-
-      {/* Repos */}
-      {prefs.repos && (
-        <div className="flex flex-wrap gap-x-3 gap-y-1">
-          {repos.slice(0, 6).map((r) => (
-            <div key={`${r.owner}/${r.repo}`} className="flex items-center gap-1.5">
-              <span className={`w-1.5 h-1.5 rounded-full ${CI_STATUS_COLORS[r.status] ?? "bg-fg-4"}`} />
-              <span className="text-[10px] font-mono text-fg-3 truncate max-w-[120px]">
-                {r.repo}
-              </span>
-            </div>
-          ))}
-          {repos.length > 6 && (
-            <span className="text-[10px] font-mono text-fg-4">
-              +{repos.length - 6} more
-            </span>
-          )}
-        </div>
-      )}
-    </div>
+    <StatusListSummary<GitHubRepo>
+      items={repos}
+      emptyMessage="No repos configured"
+      statusColor={(r) => CI_STATUS_COLORS[r.status] ?? "bg-fg-4"}
+      itemName={(r) => r.repo}
+      itemKey={(r) => `${r.owner}/${r.repo}`}
+      overall={
+        prefs.status && repos.length > 0
+          ? {
+              dot: allPassing ? "bg-up" : failCount > 0 ? "bg-down" : "bg-fg-4",
+              label: allPassing
+                ? "All Passing"
+                : failCount > 0
+                  ? `${failCount} failing`
+                  : "No data",
+            }
+          : null
+      }
+      counts={
+        prefs.counts && repos.length > 0 ? (
+          <>
+            {passCount > 0 && <span className="text-up">{passCount} passing</span>}
+            {failCount > 0 && <span className="text-down">{failCount} failing</span>}
+            <span className="text-fg-4">{repos.length} total</span>
+          </>
+        ) : null
+      }
+      showItems={prefs.repos}
+    />
   );
 }
