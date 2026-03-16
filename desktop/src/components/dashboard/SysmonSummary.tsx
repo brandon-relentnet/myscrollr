@@ -9,6 +9,7 @@ import { formatUptime } from "../../utils/format";
 import { usageColor } from "../../widgets/sysmon/utils";
 import clsx from "clsx";
 import type { SysmonCardPrefs } from "./dashboardPrefs";
+import DashboardEmptyState from "./DashboardEmptyState";
 
 interface SysmonSummaryProps {
   prefs: SysmonCardPrefs;
@@ -18,11 +19,7 @@ export default function SysmonSummary({ prefs }: SysmonSummaryProps) {
   const data = useSysmonData(2000);
 
   if (!data) {
-    return (
-      <p className="text-[11px] text-fg-4 italic py-1">
-        Loading system info...
-      </p>
-    );
+    return <DashboardEmptyState message="Loading system info..." />;
   }
 
   const cpuPct = Math.round(data.cpuUsage ?? 0);

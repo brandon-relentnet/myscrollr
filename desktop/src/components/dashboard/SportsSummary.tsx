@@ -17,6 +17,7 @@ import clsx from "clsx";
 import Tooltip from "../Tooltip";
 import type { Game, DashboardResponse } from "../../types";
 import type { SportsCardPrefs } from "./dashboardPrefs";
+import DashboardEmptyState from "./DashboardEmptyState";
 
 // ── Pinned game storage ─────────────────────────────────────────
 
@@ -381,17 +382,11 @@ export default function SportsSummary({ dashboard, prefs, onConfigure }: SportsS
 
   if (items.length === 0) {
     return (
-      <div className="flex flex-col gap-2 py-1">
-        <p className="text-[11px] text-fg-4">No games right now</p>
-        {onConfigure && (
-          <button
-            onClick={onConfigure}
-            className="text-[11px] font-medium text-accent hover:text-accent/80 transition-colors self-start"
-          >
-            Add leagues &rarr;
-          </button>
-        )}
-      </div>
+      <DashboardEmptyState
+        message="No games right now"
+        actionLabel={onConfigure ? "Add leagues \u2192" : undefined}
+        onAction={onConfigure}
+      />
     );
   }
 

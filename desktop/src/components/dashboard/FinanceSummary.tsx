@@ -17,6 +17,7 @@ import Tooltip from "../Tooltip";
 import { formatPrice, formatChange } from "../../utils/format";
 import type { Trade, DashboardResponse } from "../../types";
 import type { FinanceCardPrefs } from "./dashboardPrefs";
+import DashboardEmptyState from "./DashboardEmptyState";
 
 // ── Pinned stock storage ────────────────────────────────────────
 
@@ -226,17 +227,11 @@ export default function FinanceSummary({ dashboard, prefs, onConfigure }: Financ
 
   if (items.length === 0) {
     return (
-      <div className="flex flex-col gap-2 py-1">
-        <p className="text-[11px] text-fg-4">No stocks added yet</p>
-        {onConfigure && (
-          <button
-            onClick={onConfigure}
-            className="text-[11px] font-medium text-accent hover:text-accent/80 transition-colors self-start"
-          >
-            Add stocks &rarr;
-          </button>
-        )}
-      </div>
+      <DashboardEmptyState
+        message="No stocks added yet"
+        actionLabel={onConfigure ? "Add stocks \u2192" : undefined}
+        onAction={onConfigure}
+      />
     );
   }
 

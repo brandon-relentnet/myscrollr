@@ -6,6 +6,7 @@
  *   2. Count breakdown (e.g. "3 up · 1 down · 4 total")
  *   3. Individual item list with status dots (max 6, with overflow)
  */
+import DashboardEmptyState from "./DashboardEmptyState";
 
 interface StatusListSummaryProps<T> {
   items: T[];
@@ -35,11 +36,7 @@ export default function StatusListSummary<T>({
   showItems,
 }: StatusListSummaryProps<T>) {
   if (items.length === 0) {
-    return (
-      <p className="text-[11px] text-fg-4 italic py-1">
-        {emptyMessage}
-      </p>
-    );
+    return <DashboardEmptyState message={emptyMessage} />;
   }
 
   return (

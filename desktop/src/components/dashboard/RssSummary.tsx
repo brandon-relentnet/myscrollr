@@ -17,6 +17,7 @@ import Tooltip from "../Tooltip";
 import { timeAgo, truncate } from "../../utils/format";
 import type { RssItem, DashboardResponse } from "../../types";
 import type { RssCardPrefs } from "./dashboardPrefs";
+import DashboardEmptyState from "./DashboardEmptyState";
 
 // ── Pinned article storage ──────────────────────────────────────
 
@@ -186,17 +187,11 @@ export default function RssSummary({ dashboard, prefs, onConfigure }: RssSummary
 
   if (items.length === 0) {
     return (
-      <div className="flex flex-col gap-2 py-1">
-        <p className="text-[11px] text-fg-4">No feeds added yet</p>
-        {onConfigure && (
-          <button
-            onClick={onConfigure}
-            className="text-[11px] font-medium text-accent hover:text-accent/80 transition-colors self-start"
-          >
-            Add news sources &rarr;
-          </button>
-        )}
-      </div>
+      <DashboardEmptyState
+        message="No feeds added yet"
+        actionLabel={onConfigure ? "Add news sources \u2192" : undefined}
+        onAction={onConfigure}
+      />
     );
   }
 

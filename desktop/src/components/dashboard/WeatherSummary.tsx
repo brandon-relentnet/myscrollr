@@ -14,6 +14,7 @@ import {
   weatherCodeToLabel,
 } from "../../widgets/weather/types";
 import type { WeatherCardPrefs } from "./dashboardPrefs";
+import DashboardEmptyState from "./DashboardEmptyState";
 
 interface WeatherSummaryProps {
   prefs: WeatherCardPrefs;
@@ -25,11 +26,7 @@ export default function WeatherSummary({ prefs }: WeatherSummaryProps) {
   const [unit] = useState(loadUnit);
 
   if (cities.length === 0) {
-    return (
-      <p className="text-[11px] text-fg-4 italic py-1">
-        No cities added
-      </p>
-    );
+    return <DashboardEmptyState message="No cities added" />;
   }
 
   const primary = cities[0];

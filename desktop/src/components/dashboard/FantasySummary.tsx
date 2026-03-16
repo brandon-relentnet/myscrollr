@@ -8,6 +8,7 @@ import { SPORT_EMOJI } from "../../channels/fantasy/types";
 import type { DashboardResponse } from "../../types";
 import type { FantasyCardPrefs } from "./dashboardPrefs";
 import type { LeagueResponse } from "../../channels/fantasy/types";
+import DashboardEmptyState from "./DashboardEmptyState";
 
 interface FantasySummaryProps {
   dashboard: DashboardResponse | undefined;
@@ -25,17 +26,11 @@ export default function FantasySummary({ dashboard, prefs, onConfigure }: Fantas
 
   if (leagues.length === 0) {
     return (
-      <div className="flex flex-col gap-2 py-1">
-        <p className="text-[11px] text-fg-4">No leagues connected</p>
-        {onConfigure && (
-          <button
-            onClick={onConfigure}
-            className="text-[11px] font-medium text-accent hover:text-accent/80 transition-colors self-start"
-          >
-            Connect Yahoo &rarr;
-          </button>
-        )}
-      </div>
+      <DashboardEmptyState
+        message="No leagues connected"
+        actionLabel={onConfigure ? "Connect Yahoo \u2192" : undefined}
+        onAction={onConfigure}
+      />
     );
   }
 
