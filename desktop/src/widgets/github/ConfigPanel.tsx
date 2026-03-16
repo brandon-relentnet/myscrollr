@@ -12,16 +12,9 @@ import { onStoreChange } from "../../lib/store";
 import { DEFAULT_GITHUB_TICKER } from "../../preferences";
 import { formatPollInterval } from "../../utils/format";
 import { LS_GITHUB_REPOS } from "../../constants";
-import { loadRepoData, repoKey } from "./types";
+import { loadRepoData, repoKey, CI_STATUS_LABELS } from "./types";
 import type { GitHubRepo } from "./types";
 import type { WidgetConfigPanelProps } from "../../hooks/useWidgetConfig";
-
-const STATUS_LABELS: Record<string, string> = {
-  success: "Passing",
-  failure: "Failing",
-  in_progress: "Running",
-  unavailable: "Unavailable",
-};
 
 export default function GitHubConfigPanel({
   prefs,
@@ -94,7 +87,7 @@ export default function GitHubConfigPanel({
         {config.repos.map((r) => {
           const key = repoKey(r);
           const rd = repoData.find((d) => repoKey(d) === key);
-          const statusLabel = rd ? STATUS_LABELS[rd.status] ?? "Unknown" : "Loading";
+          const statusLabel = rd ? CI_STATUS_LABELS[rd.status] ?? "Unknown" : "Loading";
           const workflow = rd?.workflowName ? ` \u00B7 ${rd.workflowName}` : "";
           return (
             <ToggleRow

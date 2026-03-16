@@ -54,6 +54,27 @@ export interface KumaHeartbeatResponse {
 
 export type MonitorStatus = "up" | "down" | "pending" | "maintenance";
 
+export const MONITOR_STATUS_LABELS: Record<MonitorStatus, string> = {
+  up: "Up",
+  down: "Down",
+  pending: "Pending",
+  maintenance: "Maintenance",
+};
+
+export const MONITOR_STATUS_COLORS: Record<MonitorStatus, string> = {
+  up: "bg-up",
+  down: "bg-down",
+  pending: "bg-warning",
+  maintenance: "bg-info",
+};
+
+export const MONITOR_STATUS_TEXT: Record<MonitorStatus, string> = {
+  up: "text-up",
+  down: "text-down",
+  pending: "text-warning",
+  maintenance: "text-info",
+};
+
 export interface KumaMonitor {
   /** Numeric ID from the Kuma instance. */
   id: number;

@@ -6,7 +6,7 @@
  * Respects per-card display preferences from the dashboard editor.
  */
 import { useState, useEffect } from "react";
-import { loadMonitors } from "../../widgets/uptime/types";
+import { loadMonitors, MONITOR_STATUS_COLORS } from "../../widgets/uptime/types";
 import { LS_UPTIME_MONITORS } from "../../constants";
 import { onStoreChange } from "../../lib/store";
 import type { UptimeCardPrefs } from "./dashboardPrefs";
@@ -14,13 +14,6 @@ import type { UptimeCardPrefs } from "./dashboardPrefs";
 interface UptimeSummaryProps {
   prefs: UptimeCardPrefs;
 }
-
-const STATUS_DOTS: Record<string, string> = {
-  up: "bg-up",
-  down: "bg-down",
-  pending: "bg-warning",
-  maintenance: "bg-info",
-};
 
 export default function UptimeSummary({ prefs }: UptimeSummaryProps) {
   const [monitors, setMonitors] = useState(loadMonitors);
@@ -68,7 +61,7 @@ export default function UptimeSummary({ prefs }: UptimeSummaryProps) {
         <div className="flex flex-wrap gap-x-3 gap-y-1">
           {monitors.slice(0, 6).map((m) => (
             <div key={m.id} className="flex items-center gap-1.5">
-              <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOTS[m.status] ?? "bg-fg-4"}`} />
+              <span className={`w-1.5 h-1.5 rounded-full ${MONITOR_STATUS_COLORS[m.status] ?? "bg-fg-4"}`} />
               <span className="text-[10px] font-mono text-fg-3 truncate max-w-[120px]">
                 {m.name}
               </span>

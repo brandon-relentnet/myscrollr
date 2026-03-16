@@ -31,6 +31,27 @@ interface GitHubActionsResponse {
 
 export type CIStatus = "success" | "failure" | "in_progress" | "unavailable";
 
+export const CI_STATUS_LABELS: Record<CIStatus, string> = {
+  success: "Passing",
+  failure: "Failing",
+  in_progress: "Running",
+  unavailable: "Unavailable",
+};
+
+export const CI_STATUS_COLORS: Record<CIStatus, string> = {
+  success: "bg-up",
+  failure: "bg-down",
+  in_progress: "bg-warning",
+  unavailable: "bg-fg-4",
+};
+
+export const CI_STATUS_TEXT: Record<CIStatus, string> = {
+  success: "text-up",
+  failure: "text-down",
+  in_progress: "text-warning",
+  unavailable: "text-fg-4",
+};
+
 export interface GitHubRepo {
   owner: string;
   repo: string;

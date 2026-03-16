@@ -5,7 +5,7 @@
  * per-repo status dots. Reads from the Tauri store.
  */
 import { useState, useEffect } from "react";
-import { loadRepoData } from "../../widgets/github/types";
+import { loadRepoData, CI_STATUS_COLORS } from "../../widgets/github/types";
 import { LS_GITHUB_REPOS } from "../../constants";
 import { onStoreChange } from "../../lib/store";
 import type { GitHubCardPrefs } from "./dashboardPrefs";
@@ -13,13 +13,6 @@ import type { GitHubCardPrefs } from "./dashboardPrefs";
 interface GitHubSummaryProps {
   prefs: GitHubCardPrefs;
 }
-
-const STATUS_DOTS: Record<string, string> = {
-  success: "bg-up",
-  failure: "bg-down",
-  in_progress: "bg-warning",
-  unavailable: "bg-fg-4",
-};
 
 export default function GitHubSummary({ prefs }: GitHubSummaryProps) {
   const [repos, setRepos] = useState(loadRepoData);
@@ -66,7 +59,7 @@ export default function GitHubSummary({ prefs }: GitHubSummaryProps) {
         <div className="flex flex-wrap gap-x-3 gap-y-1">
           {repos.slice(0, 6).map((r) => (
             <div key={`${r.owner}/${r.repo}`} className="flex items-center gap-1.5">
-              <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOTS[r.status] ?? "bg-fg-4"}`} />
+              <span className={`w-1.5 h-1.5 rounded-full ${CI_STATUS_COLORS[r.status] ?? "bg-fg-4"}`} />
               <span className="text-[10px] font-mono text-fg-3 truncate max-w-[120px]">
                 {r.repo}
               </span>

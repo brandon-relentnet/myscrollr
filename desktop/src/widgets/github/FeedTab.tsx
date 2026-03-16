@@ -10,13 +10,16 @@ import { useQuery } from "@tanstack/react-query";
 import { onStoreChange } from "../../lib/store";
 import { Github, Plus, Trash2, ExternalLink, Loader2 } from "lucide-react";
 import type { FeedTabProps, WidgetManifest } from "../../types";
-import type { GitHubRepo, CIStatus } from "./types";
+import type { GitHubRepo } from "./types";
 import {
   parseRepoUrl,
   repoKey,
   fetchAllRepos,
   loadRepoData,
   saveRepoData,
+  CI_STATUS_LABELS,
+  CI_STATUS_COLORS,
+  CI_STATUS_TEXT,
 } from "./types";
 import { useShell } from "../../shell-context";
 import { savePrefs } from "../../preferences";
@@ -44,29 +47,6 @@ export const githubWidget: WidgetManifest = {
     ],
   },
   FeedTab: GitHubFeedTab,
-};
-
-// ── Status helpers ──────────────────────────────────────────────
-
-const STATUS_LABELS: Record<CIStatus, string> = {
-  success: "Passing",
-  failure: "Failing",
-  in_progress: "Running",
-  unavailable: "Unavailable",
-};
-
-const STATUS_COLORS: Record<CIStatus, string> = {
-  success: "bg-up",
-  failure: "bg-down",
-  in_progress: "bg-warning",
-  unavailable: "bg-fg-4",
-};
-
-const STATUS_TEXT_COLORS: Record<CIStatus, string> = {
-  success: "text-up",
-  failure: "text-down",
-  in_progress: "text-warning",
-  unavailable: "text-fg-4",
 };
 
 // ── FeedTab ─────────────────────────────────────────────────────
@@ -305,7 +285,7 @@ function RepoRow({
       {isLoading ? (
         <Loader2 size={10} className="animate-spin text-fg-4 shrink-0" />
       ) : (
-        <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_COLORS[status]}${status === "failure" ? " animate-pulse" : ""}`} />
+        <span className={`w-2 h-2 rounded-full shrink-0 ${CI_STATUS_COLORS[status]}${status === "failure" ? " animate-pulse" : ""}`} />
       )}
 
       {/* Repo name + workflow */}
@@ -333,8 +313,8 @@ function RepoRow({
       </div>
 
       {/* Status label */}
-      <span className={`text-[10px] font-mono font-semibold uppercase tracking-wider shrink-0 ${STATUS_TEXT_COLORS[status]}`}>
-        {isLoading ? "" : STATUS_LABELS[status]}
+      <span className={`text-[10px] font-mono font-semibold uppercase tracking-wider shrink-0 ${CI_STATUS_TEXT[status]}`}>
+        {isLoading ? "" : CI_STATUS_LABELS[status]}
       </span>
 
       {/* Remove */}
