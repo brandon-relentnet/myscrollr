@@ -27,6 +27,18 @@ function streakLabel(type: string, value: number): string {
   return `${prefix}${value}`;
 }
 
+function InjuryBadge({ count }: { count: number }) {
+  if (count === 0) return null;
+  return (
+    <div className="flex items-center gap-1">
+      <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-400" />
+      <span className="text-[9px] font-mono text-fg-3">
+        {count} injur{count === 1 ? "y" : "ies"}
+      </span>
+    </div>
+  );
+}
+
 // ── LeagueCard ──────────────────────────────────────────────────
 
 interface LeagueCardProps {
@@ -114,11 +126,8 @@ function LeagueCardCompact({
       )}
 
       {injuryCount > 0 && (
-        <div className="flex items-center gap-1 mt-0.5">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-400" />
-          <span className="text-[9px] font-mono text-fg-3">
-            {injuryCount} injur{injuryCount === 1 ? "y" : "ies"}
-          </span>
+        <div className="mt-0.5">
+          <InjuryBadge count={injuryCount} />
         </div>
       )}
     </div>
@@ -189,14 +198,7 @@ function LeagueCardComfort({
             )}
           </>
         )}
-        {injuryCount > 0 && (
-          <div className="flex items-center gap-1">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-400" />
-            <span className="text-[9px] font-mono text-fg-3">
-              {injuryCount} injur{injuryCount === 1 ? "y" : "ies"}
-            </span>
-          </div>
-        )}
+        {injuryCount > 0 && <InjuryBadge count={injuryCount} />}
       </div>
     </div>
   );

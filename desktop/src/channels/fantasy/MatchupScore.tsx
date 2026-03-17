@@ -5,6 +5,40 @@ import { clsx } from "clsx";
 import { isMatchupLive, isMatchupFinal } from "./types";
 import type { Matchup } from "./types";
 
+// ── Shared status badge ─────────────────────────────────────────
+
+function MatchupStatusBadge({
+  matchup,
+  liveLabel,
+}: {
+  matchup: Matchup;
+  liveLabel?: string;
+}) {
+  const isLive = isMatchupLive(matchup);
+  const isFinal = isMatchupFinal(matchup);
+
+  if (isLive) {
+    return (
+      <span className="flex items-center gap-1">
+        <span className="inline-block w-1 h-1 rounded-full bg-live animate-pulse" />
+        <span className="text-[9px] font-mono text-live font-bold uppercase">
+          {liveLabel ?? "Live"}
+        </span>
+      </span>
+    );
+  }
+  if (isFinal) {
+    return (
+      <span className="text-[9px] font-mono text-fg-4 uppercase">Final</span>
+    );
+  }
+  return (
+    <span className="text-[9px] font-mono text-fg-4 uppercase">
+      Wk{matchup.week}
+    </span>
+  );
+}
+
 // ── Compact matchup ─────────────────────────────────────────────
 
 interface CompactMatchupScoreProps {
@@ -48,24 +82,7 @@ export function CompactMatchupScore({
         {oppTeam.name}
       </span>
       <span className="ml-auto shrink-0">
-        {isLive && (
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-1 h-1 rounded-full bg-live animate-pulse" />
-            <span className="text-[9px] font-mono text-live font-bold uppercase">
-              Wk{matchup.week}
-            </span>
-          </span>
-        )}
-        {isFinal && (
-          <span className="text-[9px] font-mono text-fg-4 uppercase">
-            Final
-          </span>
-        )}
-        {!isLive && !isFinal && (
-          <span className="text-[9px] font-mono text-fg-4 uppercase">
-            Wk{matchup.week}
-          </span>
-        )}
+        <MatchupStatusBadge matchup={matchup} liveLabel={`Wk${matchup.week}`} />
       </span>
     </div>
   );
@@ -168,24 +185,7 @@ export function ComfortMatchupHero({
 
       {/* Status badge */}
       <div className="shrink-0 ml-1">
-        {isLive && (
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-1 h-1 rounded-full bg-live animate-pulse" />
-            <span className="text-[9px] font-mono text-live font-bold uppercase">
-              Live
-            </span>
-          </span>
-        )}
-        {isFinal && (
-          <span className="text-[9px] font-mono text-fg-4 uppercase">
-            Final
-          </span>
-        )}
-        {!isLive && !isFinal && (
-          <span className="text-[9px] font-mono text-fg-4 uppercase">
-            Wk{matchup.week}
-          </span>
-        )}
+        <MatchupStatusBadge matchup={matchup} />
       </div>
     </div>
   );
