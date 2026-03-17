@@ -5,6 +5,7 @@
  * extension/widgets/types, and myscrollr.com/src/channels/types.
  * The desktop is a standalone codebase — no cross-project imports.
  */
+import type { Channel } from "../api/client";
 
 // ── Finance ──────────────────────────────────────────────────────
 
@@ -79,16 +80,7 @@ export interface DashboardResponse {
     subscription_tier?: "anonymous" | "free" | "uplink" | "uplink_unlimited";
     updated_at: string;
   };
-  channels?: Array<{
-    id: number;
-    logto_sub: string;
-    channel_type: "finance" | "sports" | "fantasy" | "rss";
-    enabled: boolean;
-    visible: boolean;
-    config: Record<string, unknown>;
-    created_at: string;
-    updated_at: string;
-  }>;
+  channels?: Array<Channel & { logto_sub: string }>;
 }
 
 // ── Enums ────────────────────────────────────────────────────────
