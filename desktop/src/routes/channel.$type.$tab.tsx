@@ -14,8 +14,8 @@ import SourcePageLayout from "../components/SourcePageLayout";
 import { useQuery } from "@tanstack/react-query";
 import { getChannel, getAllChannels } from "../channels/registry";
 import { dashboardQueryOptions } from "../api/queries";
-import { getTier } from "../auth";
 import ChannelConfigPanel from "../channels/ChannelConfigPanel";
+import { useShell } from "../shell-context";
 import type { Channel } from "../api/client";
 import type { DashboardResponse, DeliveryMode } from "../types";
 import { loadPref } from "../preferences";
@@ -93,6 +93,7 @@ function ChannelConfigTab({
   type: string;
   dashboard: DashboardResponse | undefined;
 }) {
+  const { tier } = useShell();
   const channelData = (dashboard?.channels ?? []).find(
     (ch) => ch.channel_type === type,
   );
@@ -118,7 +119,7 @@ function ChannelConfigTab({
       <ChannelConfigPanel
         channelType={type}
         channel={channelData as unknown as Channel}
-        subscriptionTier={getTier()}
+        subscriptionTier={tier}
         connected={deliveryMode === "sse"}
         hex={manifest?.hex ?? "var(--color-accent)"}
       />

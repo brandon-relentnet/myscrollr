@@ -11,6 +11,11 @@ import RssChip from "./chips/RssChip";
 import FantasyChip from "./chips/FantasyChip";
 import ConsolidatedChip from "./chips/ConsolidatedChip";
 
+// ── Module-level constants ───────────────────────────────────────
+
+const WIDGET_TYPES = ["clock", "weather", "sysmon", "uptime", "github"] as const;
+type WidgetType = (typeof WIDGET_TYPES)[number];
+
 // ── Sport engagement scoring (higher = more prominent in ticker) ─
 
 function gameEngagement(g: Game): number {
@@ -124,9 +129,6 @@ export default function ScrollrTicker({
       const bucket: React.ReactNode[] = [];
 
       // ── Widget tabs: consolidated chips (skip if pinned) ────────
-      const WIDGET_TYPES = ["clock", "weather", "sysmon", "uptime", "github"] as const;
-      type WidgetType = (typeof WIDGET_TYPES)[number];
-
       if (WIDGET_TYPES.includes(tab as WidgetType)) {
         const wt = tab as WidgetType;
         const items = widgetData?.[wt];
@@ -341,9 +343,6 @@ export default function ScrollrTicker({
 
   const pinnedLeft: React.ReactNode[] = [];
   const pinnedRight: React.ReactNode[] = [];
-
-  const WIDGET_TYPES = ["clock", "weather", "sysmon", "uptime", "github"] as const;
-  type WidgetType = (typeof WIDGET_TYPES)[number];
 
   for (const tab of activeTabs) {
     const pin = pinnedWidgets[tab];
