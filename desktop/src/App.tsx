@@ -389,7 +389,8 @@ export default function App() {
   const handleChannelToggle = useCallback(
     async (channelType: ChannelType, visible: boolean) => {
       try {
-        await toggleChannelVisibility(channelType, visible, queryClient);
+        await toggleChannelVisibility(channelType, visible);
+        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
       } catch {
         // Silently fail — will sync on next poll
       }

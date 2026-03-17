@@ -86,7 +86,7 @@ export function formatRate(bytesPerInterval: number, intervalMs: number): string
  */
 export function formatComponentTemp(
   tempCelsius: number,
-  unit: string,
+  unit: "celsius" | "fahrenheit",
 ): string {
   return formatTemp(tempCelsius, unit, true);
 }

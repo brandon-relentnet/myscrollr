@@ -24,7 +24,8 @@ export function useChannelActions(): ChannelActions {
   const handleToggleChannel = useCallback(
     async (channelType: ChannelType, visible: boolean) => {
       try {
-        await toggleChannelVisibility(channelType, visible, queryClient, true);
+        await toggleChannelVisibility(channelType, visible, true);
+        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
       } catch (err) {
         console.error("[Scrollr] Channel toggle failed:", err);
       }
