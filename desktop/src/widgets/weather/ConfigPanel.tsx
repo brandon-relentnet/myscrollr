@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
 import {
   Section,
   ToggleRow,
@@ -7,6 +7,7 @@ import {
 import ConfigPanelLayout from "../../components/settings/ConfigPanelLayout";
 import TickerPinSection from "../../components/settings/TickerPinSection";
 import { useWidgetConfig } from "../../hooks/useWidgetConfig";
+import { useTickerExclusion } from "../../hooks/useTickerExclusion";
 import { useStoreData } from "../../hooks/useStoreData";
 import { setStore } from "../../lib/store";
 import { DEFAULT_WEATHER_TICKER } from "../../preferences";
@@ -32,20 +33,8 @@ export default function WeatherConfigPanel({
   const { config, update, setTicker } = useWidgetConfig("weather", prefs, onPrefsChange);
   const [cities] = useStoreData(LS_WEATHER_CITIES, loadCities);
   const [unit, setUnitState] = useStoreData(LS_WEATHER_UNIT, loadUnit);
-
-  const isCityExcluded = (name: string) =>
-    config.ticker.excludedCities.includes(name);
-
-  const toggleCity = useCallback(
-    (name: string) => {
-      const excluded = config.ticker.excludedCities;
-      const next = excluded.includes(name)
-        ? excluded.filter((c) => c !== name)
-        : [...excluded, name];
-      setTicker({ excludedCities: next });
-    },
-    [config.ticker.excludedCities, setTicker],
-  );
+  const { isExcluded: isCityExcluded, toggle: toggleCity } =
+    useTickerExclusion(config.ticker.excludedCities, "excludedCities", setTicker);
 
   const handleUnitChange = useCallback((v: TempUnit) => {
     setUnitState(v);

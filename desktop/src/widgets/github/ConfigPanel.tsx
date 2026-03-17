@@ -8,6 +8,7 @@ import {
 import ConfigPanelLayout from "../../components/settings/ConfigPanelLayout";
 import TickerPinSection from "../../components/settings/TickerPinSection";
 import { useWidgetConfig } from "../../hooks/useWidgetConfig";
+import { useTickerExclusion } from "../../hooks/useTickerExclusion";
 import { useStoreData } from "../../hooks/useStoreData";
 import { DEFAULT_GITHUB_TICKER } from "../../preferences";
 import { formatPollInterval } from "../../utils/format";
@@ -22,20 +23,8 @@ export default function GitHubConfigPanel({
 }: WidgetConfigPanelProps) {
   const { config, update, setTicker } = useWidgetConfig("github", prefs, onPrefsChange);
   const [repoData] = useStoreData(LS_GITHUB_REPOS, loadRepoData);
-
-  const isRepoExcluded = (key: string) =>
-    config.ticker.excludedRepos.includes(key);
-
-  const toggleRepo = useCallback(
-    (key: string) => {
-      const excluded = config.ticker.excludedRepos;
-      const next = excluded.includes(key)
-        ? excluded.filter((r) => r !== key)
-        : [...excluded, key];
-      setTicker({ excludedRepos: next });
-    },
-    [config.ticker.excludedRepos, setTicker],
-  );
+  const { isExcluded: isRepoExcluded, toggle: toggleRepo } =
+    useTickerExclusion(config.ticker.excludedRepos, "excludedRepos", setTicker);
 
   const resetAll = useCallback(() => {
     update({

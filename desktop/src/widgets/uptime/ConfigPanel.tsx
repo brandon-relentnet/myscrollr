@@ -8,6 +8,7 @@ import {
 import ConfigPanelLayout from "../../components/settings/ConfigPanelLayout";
 import TickerPinSection from "../../components/settings/TickerPinSection";
 import { useWidgetConfig } from "../../hooks/useWidgetConfig";
+import { useTickerExclusion } from "../../hooks/useTickerExclusion";
 import { useStoreData } from "../../hooks/useStoreData";
 import { DEFAULT_UPTIME_TICKER } from "../../preferences";
 import { formatPollInterval } from "../../utils/format";
@@ -22,20 +23,8 @@ export default function UptimeConfigPanel({
 }: WidgetConfigPanelProps) {
   const { config, update, setTicker } = useWidgetConfig("uptime", prefs, onPrefsChange);
   const [monitors] = useStoreData(LS_UPTIME_MONITORS, loadMonitors);
-
-  const isMonitorExcluded = (id: number) =>
-    config.ticker.excludedMonitors.includes(id);
-
-  const toggleMonitor = useCallback(
-    (id: number) => {
-      const excluded = config.ticker.excludedMonitors;
-      const next = excluded.includes(id)
-        ? excluded.filter((m) => m !== id)
-        : [...excluded, id];
-      setTicker({ excludedMonitors: next });
-    },
-    [config.ticker.excludedMonitors, setTicker],
-  );
+  const { isExcluded: isMonitorExcluded, toggle: toggleMonitor } =
+    useTickerExclusion(config.ticker.excludedMonitors, "excludedMonitors", setTicker);
 
   const resetAll = useCallback(() => {
     update({
