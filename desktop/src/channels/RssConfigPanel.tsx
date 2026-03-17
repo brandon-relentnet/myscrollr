@@ -12,6 +12,7 @@ import type { Channel, TrackedFeed, RssChannelConfig } from "../api/client";
 
 interface RssConfigPanelProps {
   channel: Channel;
+  subscriptionTier: string;
   hex: string;
 }
 
@@ -19,6 +20,7 @@ interface RssConfigPanelProps {
 
 export default function RssConfigPanel({
   channel,
+  // subscriptionTier — accepted for consistency; enforcement added in Phase 2
   hex,
 }: RssConfigPanelProps) {
   const queryClient = useQueryClient();

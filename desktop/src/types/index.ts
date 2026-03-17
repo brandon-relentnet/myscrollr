@@ -77,7 +77,7 @@ export interface DashboardResponse {
     feed_enabled: boolean;
     enabled_sites: string[];
     disabled_sites: string[];
-    subscription_tier?: "anonymous" | "free" | "uplink" | "uplink_unlimited";
+    subscription_tier?: "anonymous" | "free" | "uplink" | "uplink_pro" | "uplink_ultimate";
     updated_at: string;
   };
   channels?: Array<Channel & { logto_sub: string }>;

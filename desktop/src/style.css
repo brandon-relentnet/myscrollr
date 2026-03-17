@@ -279,7 +279,7 @@ body {
 
 /* ── Unlimited tier glow animations ─────────────────────────────── */
 /* Copied from myscrollr.com/src/styles.css — used by ChannelHeader
-   and InfoCard in @/channels/shared for uplink_unlimited users. */
+   and InfoCard in @/channels/shared for uplink_ultimate users. */
 
 @keyframes unlimited-glow-pulse {
   0%,

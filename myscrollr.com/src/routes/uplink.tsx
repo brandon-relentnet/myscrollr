@@ -61,13 +61,13 @@ const PRO_PRICE_IDS = {
   annual: import.meta.env.VITE_STRIPE_PRICE_PRO_ANNUAL || '',
 } as const
 
-const UNLIMITED_PRICE_IDS = {
-  monthly: import.meta.env.VITE_STRIPE_PRICE_UNLIMITED_MONTHLY || '',
-  annual: import.meta.env.VITE_STRIPE_PRICE_UNLIMITED_ANNUAL || '',
+const ULTIMATE_PRICE_IDS = {
+  monthly: import.meta.env.VITE_STRIPE_PRICE_ULTIMATE_MONTHLY || '',
+  annual: import.meta.env.VITE_STRIPE_PRICE_ULTIMATE_ANNUAL || '',
 } as const
 
 type PlanKey = 'monthly' | 'annual'
-type TierKey = 'uplink' | 'pro' | 'unlimited'
+type TierKey = 'uplink' | 'pro' | 'ultimate'
 
 export const Route = createFileRoute('/uplink')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -83,11 +83,11 @@ interface ComparisonRow {
   free: string
   uplink: string
   pro: string
-  unlimited: string
+  ultimate: string
   /** Which columns are visually "upgraded" vs free */
   uplinkUp?: boolean
   proUp?: boolean
-  unlimitedUp?: boolean
+  ultimateUp?: boolean
 }
 
 const COMPARISON: Array<ComparisonRow> = [
@@ -96,164 +96,164 @@ const COMPARISON: Array<ComparisonRow> = [
     free: '60s polling',
     uplink: '30s polling',
     pro: '10s polling',
-    unlimited: 'Real-time SSE',
+    ultimate: 'Real-time SSE',
     uplinkUp: true,
     proUp: true,
-    unlimitedUp: true,
+    ultimateUp: true,
   },
   {
     label: 'Tracked Symbols',
     free: '10 symbols',
     uplink: '25 symbols',
     pro: '75 symbols',
-    unlimited: 'Unlimited',
+    ultimate: 'Unlimited',
     uplinkUp: true,
     proUp: true,
-    unlimitedUp: true,
+    ultimateUp: true,
   },
   {
     label: 'RSS Feeds',
     free: '5 feeds',
     uplink: '50 feeds',
     pro: '150 feeds',
-    unlimited: 'Unlimited',
+    ultimate: 'Unlimited',
     uplinkUp: true,
     proUp: true,
-    unlimitedUp: true,
+    ultimateUp: true,
   },
   {
     label: 'Custom RSS Feeds',
     free: 'None',
     uplink: '10 custom',
     pro: '25 custom',
-    unlimited: 'Unlimited',
+    ultimate: 'Unlimited',
     uplinkUp: true,
     proUp: true,
-    unlimitedUp: true,
+    ultimateUp: true,
   },
   {
     label: 'Sports Leagues',
     free: 'Pro only',
     uplink: 'Pro + College',
     pro: 'Pro + College',
-    unlimited: 'Pro + College',
+    ultimate: 'Pro + College',
     uplinkUp: true,
     proUp: true,
-    unlimitedUp: true,
+    ultimateUp: true,
   },
   {
     label: 'Fantasy Leagues',
     free: '1 league',
     uplink: '3 leagues',
     pro: '10 leagues',
-    unlimited: 'Unlimited',
+    ultimate: 'Unlimited',
     uplinkUp: true,
     proUp: true,
-    unlimitedUp: true,
+    ultimateUp: true,
   },
   {
     label: 'Site Filtering',
     free: 'Blacklist',
     uplink: 'Blacklist',
     pro: 'Blacklist + Whitelist',
-    unlimited: 'Blacklist + Whitelist',
+    ultimate: 'Blacklist + Whitelist',
     proUp: true,
-    unlimitedUp: true,
+    ultimateUp: true,
   },
   {
     label: 'Feed Retention',
     free: '25 items',
     uplink: '50 items',
     pro: '200 items',
-    unlimited: 'Unlimited',
+    ultimate: 'Unlimited',
     uplinkUp: true,
     proUp: true,
-    unlimitedUp: true,
+    ultimateUp: true,
   },
   {
     label: 'Custom Alerts',
     free: 'No',
     uplink: 'No',
     pro: 'Yes',
-    unlimited: 'Yes',
+    ultimate: 'Yes',
     proUp: true,
-    unlimitedUp: true,
+    ultimateUp: true,
   },
   {
     label: 'Feed Profiles',
     free: 'No',
     uplink: 'No',
     pro: 'Yes',
-    unlimited: 'Yes',
+    ultimate: 'Yes',
     proUp: true,
-    unlimitedUp: true,
+    ultimateUp: true,
   },
   {
     label: 'Advanced Feed Controls',
     free: 'No',
     uplink: 'No',
     pro: 'Yes',
-    unlimited: 'Yes',
+    ultimate: 'Yes',
     proUp: true,
-    unlimitedUp: true,
+    ultimateUp: true,
   },
   {
     label: 'Priority RSS Refresh',
     free: 'No',
     uplink: 'No',
     pro: 'Yes',
-    unlimited: 'Yes',
+    ultimate: 'Yes',
     proUp: true,
-    unlimitedUp: true,
+    ultimateUp: true,
   },
   {
     label: 'Webhooks & Integrations',
     free: 'No',
     uplink: 'No',
     pro: 'No',
-    unlimited: 'Yes',
-    unlimitedUp: true,
+    ultimate: 'Yes',
+    ultimateUp: true,
   },
   {
     label: 'Data Export',
     free: 'No',
     uplink: 'No',
     pro: 'No',
-    unlimited: 'CSV / JSON',
-    unlimitedUp: true,
+    ultimate: 'CSV / JSON',
+    ultimateUp: true,
   },
   {
     label: 'API Access',
     free: 'No',
     uplink: 'No',
     pro: 'No',
-    unlimited: 'Yes',
-    unlimitedUp: true,
+    ultimate: 'Yes',
+    ultimateUp: true,
   },
   {
     label: 'Early Access',
     free: 'No',
     uplink: 'Yes',
     pro: 'Yes',
-    unlimited: 'Yes',
+    ultimate: 'Yes',
     uplinkUp: true,
     proUp: true,
-    unlimitedUp: true,
+    ultimateUp: true,
   },
   {
     label: 'Priority Support',
     free: 'No',
     uplink: 'No',
     pro: 'No',
-    unlimited: 'Yes',
-    unlimitedUp: true,
+    ultimate: 'Yes',
+    ultimateUp: true,
   },
   {
     label: 'Dashboard Access',
     free: 'Full',
     uplink: 'Full',
     pro: 'Full',
-    unlimited: 'Full',
+    ultimate: 'Full',
   },
 ]
 
@@ -313,9 +313,9 @@ const TIER_SHOWCASES: Array<TierShowcase> = [
     ],
   },
   {
-    tier: 'unlimited',
+    tier: 'ultimate',
     Icon: Crown,
-    name: 'Unlimited',
+    name: 'Uplink Ultimate',
     tagline: 'Everything. Zero limits.',
     hex: '#34d399',
     delivery: 'Real-time SSE',
@@ -362,7 +362,7 @@ const PRICING: Record<TierKey, Record<PlanKey, PricingPlan>> = {
       savings: 'Save ~$100/yr',
     },
   },
-  unlimited: {
+  ultimate: {
     monthly: { price: 49.99, period: '/mo', perMonth: 49.99 },
     annual: {
       price: 399.99,
@@ -739,7 +739,7 @@ function BottomCTA({
             <div className="relative z-10 flex flex-wrap items-center justify-center gap-4">
               <button
                 type="button"
-                onClick={() => handleSelectPlan('annual', 'unlimited')}
+                onClick={() => handleSelectPlan('annual', 'ultimate')}
                 className="btn btn-pulse gap-2 text-base px-8 py-5 shadow-2xl"
               >
                 <Crown size={14} /> Start Free Trial — Unlimited
@@ -926,7 +926,7 @@ function UplinkPage() {
 
   const getSelectedPriceId = (): string => {
     if (!selectedPlan) return ''
-    if (selectedTier === 'unlimited') return UNLIMITED_PRICE_IDS[selectedPlan]
+    if (selectedTier === 'ultimate') return ULTIMATE_PRICE_IDS[selectedPlan]
     if (selectedTier === 'pro') return PRO_PRICE_IDS[selectedPlan]
     return UPLINK_PRICE_IDS[selectedPlan]
   }
@@ -944,7 +944,7 @@ function UplinkPage() {
         >
           <CheckoutForm
             priceId={getSelectedPriceId()}
-            isUnlimited={selectedTier === 'unlimited'}
+            isUltimate={selectedTier === 'ultimate'}
             getToken={getToken}
             onClose={handleCloseCheckout}
           />
@@ -2224,11 +2224,11 @@ function UplinkPage() {
                     role="button"
                     tabIndex={0}
                     aria-label={`Select Unlimited ${BILLING_LABELS[billingPeriod]} plan`}
-                    onClick={() => handleSelectPlan(billingPeriod, 'unlimited')}
+                    onClick={() => handleSelectPlan(billingPeriod, 'ultimate')}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault()
-                        handleSelectPlan(billingPeriod, 'unlimited')
+                        handleSelectPlan(billingPeriod, 'ultimate')
                       }
                     }}
                     className="group relative rounded-xl overflow-hidden cursor-pointer flex flex-col"
@@ -2428,7 +2428,7 @@ function UplinkPage() {
                                   opacity: { duration: 0.15 },
                                 }}
                               >
-                                {PRICING.unlimited[billingPeriod].perMonth}
+                                {PRICING.ultimate[billingPeriod].perMonth}
                               </AnimateNumber>
                             </span>
                             <span className="text-xs font-mono text-base-content/25 ml-1 self-end mb-0.5">
@@ -2443,7 +2443,7 @@ function UplinkPage() {
                                   opacity: billingPeriod === 'annual' ? 1 : 0,
                                 }}
                               >
-                                Billed ${PRICING.unlimited.annual.price}/yr
+                                Billed ${PRICING.ultimate.annual.price}/yr
                               </span>
                               <span
                                 className="col-start-1 row-start-1 transition-opacity duration-200"
@@ -2457,14 +2457,14 @@ function UplinkPage() {
                             <span
                               className="text-[8px] font-bold text-primary/70 bg-primary/10 px-1.5 py-0.5 rounded transition-opacity duration-200"
                               style={{
-                                opacity: PRICING.unlimited[billingPeriod]
+                                opacity: PRICING.ultimate[billingPeriod]
                                   .savings
                                   ? 1
                                   : 0,
                               }}
                             >
-                              {PRICING.unlimited[billingPeriod].savings ??
-                                PRICING.unlimited.annual.savings}
+                              {PRICING.ultimate[billingPeriod].savings ??
+                                PRICING.ultimate.annual.savings}
                             </span>
                           </div>
                         </div>
@@ -2496,7 +2496,7 @@ function UplinkPage() {
                           </div>
                           <span className="text-[9px] text-base-content/20">
                             7 days free, then $
-                            {PRICING.unlimited[billingPeriod].perMonth}/mo
+                            {PRICING.ultimate[billingPeriod].perMonth}/mo
                           </span>
                         </div>
                       </div>
@@ -2899,7 +2899,7 @@ function UplinkPage() {
                 </div>
                 <div className="p-4 flex items-center justify-center border-l border-primary/10 bg-primary/[0.025] relative">
                   {/* Ethereal row glow for unlimited upgrades */}
-                  {row.unlimitedUp && (
+                  {row.ultimateUp && (
                     <motion.div
                       className="absolute inset-0 pointer-events-none"
                       style={{
@@ -2916,7 +2916,7 @@ function UplinkPage() {
                       }}
                     />
                   )}
-                  {row.unlimitedUp ? (
+                  {row.ultimateUp ? (
                     <span className="relative inline-flex items-center gap-1.5 text-[11px] font-bold font-mono text-primary">
                       <motion.span
                         className="shrink-0"
@@ -2930,7 +2930,7 @@ function UplinkPage() {
                       >
                         <Check size={11} className="text-primary" />
                       </motion.span>
-                      {row.unlimited}
+                      {row.ultimate}
                     </span>
                   ) : (
                     <span className="relative inline-flex items-center gap-1.5 text-[11px] font-mono text-base-content/25">
@@ -2938,7 +2938,7 @@ function UplinkPage() {
                         size={9}
                         className="text-base-content/15 shrink-0"
                       />
-                      {row.unlimited}
+                      {row.ultimate}
                     </span>
                   )}
                 </div>
@@ -3006,7 +3006,7 @@ function UplinkPage() {
                   ease: EASE,
                 }}
                 className={`group relative rounded-2xl overflow-hidden ${
-                  tier.tier === 'unlimited'
+                  tier.tier === 'ultimate'
                     ? 'border border-primary/20'
                     : tier.tier === 'pro'
                       ? 'border border-[#a78bfa]/20'
@@ -3014,7 +3014,7 @@ function UplinkPage() {
                 }`}
               >
                 {/* Animated border glow for Unlimited */}
-                {tier.tier === 'unlimited' && (
+                {tier.tier === 'ultimate' && (
                   <motion.div
                     className="absolute -inset-px rounded-2xl bg-gradient-to-b from-primary/25 via-primary/8 to-primary/3 -z-10"
                     animate={{ opacity: [0.6, 1, 0.6] }}
@@ -3028,11 +3028,11 @@ function UplinkPage() {
 
                 <div
                   className={`relative p-7 md:p-8 h-full flex flex-col ${
-                    tier.tier === 'unlimited' ? '' : 'bg-base-200/40'
+                    tier.tier === 'ultimate' ? '' : 'bg-base-200/40'
                   }`}
                 >
                   {/* Background layer — separate for Unlimited so smoke sits above it */}
-                  {tier.tier === 'unlimited' && (
+                  {tier.tier === 'ultimate' && (
                     <div className="absolute inset-0 bg-base-200/60 rounded-2xl pointer-events-none" />
                   )}
 
@@ -3078,7 +3078,7 @@ function UplinkPage() {
                   />
 
                   {/* "Recommended" badge for Unlimited */}
-                  {tier.tier === 'unlimited' && (
+                  {tier.tier === 'ultimate' && (
                     <div
                       className="absolute top-0 right-0"
                       style={{ zIndex: 20 }}
@@ -3090,7 +3090,7 @@ function UplinkPage() {
                   )}
 
                   {/* ── Ethereal smoke (Unlimited only) — above background, below content ── */}
-                  {tier.tier === 'unlimited' && (
+                  {tier.tier === 'ultimate' && (
                     <div
                       className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl"
                       style={{ zIndex: 1 }}
@@ -3314,7 +3314,7 @@ function UplinkPage() {
                         type="button"
                         onClick={() => handleSelectPlan('annual', tier.tier)}
                         className={`w-full py-2.5 text-center text-[10px] font-semibold rounded-lg transition-colors ${
-                          tier.tier === 'unlimited'
+                          tier.tier === 'ultimate'
                             ? 'bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 hover:border-primary/50'
                             : tier.tier === 'pro'
                               ? 'border border-[#a78bfa]/20 text-[#a78bfa]/60 hover:border-[#a78bfa]/40 hover:text-[#a78bfa]/80'
@@ -3324,7 +3324,7 @@ function UplinkPage() {
                         Start Free Trial
                       </button>
                       <p className="text-center mt-1.5 text-[9px] text-base-content/20">
-                        {tier.tier === 'unlimited'
+                        {tier.tier === 'ultimate'
                           ? '7 days free, then $33.33/mo'
                           : tier.tier === 'pro'
                             ? '7 days free, then $16.67/mo'

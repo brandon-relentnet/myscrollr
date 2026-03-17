@@ -38,7 +38,8 @@ import { API_BASE as API_URL } from "./config";
 const POLL_INTERVALS: Record<SubscriptionTier, number> = {
   free: 60_000,
   uplink: 30_000,
-  uplink_unlimited: 30_000,
+  uplink_pro: 10_000,
+  uplink_ultimate: 30_000, // Ultimate uses SSE — polling is just a safety-net fallback
 };
 /** Delay before re-fetching after an SSE config-change event, giving the
  *  backend time to propagate the update before we query. */
@@ -249,7 +250,7 @@ export default function App() {
         setAuthenticated(true);
       }
 
-      if (resolvedTier === "uplink_unlimited") {
+      if (resolvedTier === "uplink_ultimate") {
         startSSE();
       }
     }
@@ -274,7 +275,7 @@ export default function App() {
         setTier(newTier);
         tierRef.current = newTier;
         queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
-        if (newTier === "uplink_unlimited") startSSE();
+        if (newTier === "uplink_ultimate") startSSE();
       } else if (!isAuth && wasAuth) {
         // Just logged out — tear down SSE, reset to free tier
         if (sseActiveRef.current) stopSSE();

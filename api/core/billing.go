@@ -30,22 +30,19 @@ func initStripe() {
 }
 
 // planFromPriceID maps a Stripe price ID to a human-readable plan name.
-// Handles both Uplink and Unlimited tiers, plus grandfathered legacy price IDs.
+// Handles Uplink, Uplink Pro, and Uplink Ultimate tiers.
 func planFromPriceID(priceID string) string {
 	priceMap := map[string]string{
-		// Uplink (mid-tier)
-		os.Getenv("STRIPE_PRICE_MONTHLY"):   "monthly",
-		os.Getenv("STRIPE_PRICE_QUARTERLY"):  "quarterly",
-		os.Getenv("STRIPE_PRICE_ANNUAL"):     "annual",
-		os.Getenv("STRIPE_PRICE_LIFETIME"):   "lifetime",
-		// Uplink Unlimited (top-tier)
-		os.Getenv("STRIPE_PRICE_UNLIMITED_MONTHLY"):  "unlimited_monthly",
-		os.Getenv("STRIPE_PRICE_UNLIMITED_QUARTERLY"): "unlimited_quarterly",
-		os.Getenv("STRIPE_PRICE_UNLIMITED_ANNUAL"):    "unlimited_annual",
-		// Grandfathered legacy prices (old Uplink subscribers → mapped to unlimited)
-		os.Getenv("STRIPE_PRICE_LEGACY_MONTHLY"):  "legacy_monthly",
-		os.Getenv("STRIPE_PRICE_LEGACY_QUARTERLY"): "legacy_quarterly",
-		os.Getenv("STRIPE_PRICE_LEGACY_ANNUAL"):    "legacy_annual",
+		// Uplink (base paid tier)
+		os.Getenv("STRIPE_PRICE_MONTHLY"):  "monthly",
+		os.Getenv("STRIPE_PRICE_ANNUAL"):   "annual",
+		os.Getenv("STRIPE_PRICE_LIFETIME"): "lifetime",
+		// Uplink Pro (mid-tier)
+		os.Getenv("STRIPE_PRICE_PRO_MONTHLY"): "pro_monthly",
+		os.Getenv("STRIPE_PRICE_PRO_ANNUAL"):  "pro_annual",
+		// Uplink Ultimate (top-tier)
+		os.Getenv("STRIPE_PRICE_ULTIMATE_MONTHLY"): "ultimate_monthly",
+		os.Getenv("STRIPE_PRICE_ULTIMATE_ANNUAL"):  "ultimate_annual",
 	}
 
 	// Remove empty-key entry (unset env vars map to "")
@@ -57,12 +54,19 @@ func planFromPriceID(priceID string) string {
 	return "unknown"
 }
 
-// isUnlimitedPlan returns true if the plan name corresponds to the top-tier (Uplink Unlimited).
-// Grandfathered legacy subscribers are also treated as unlimited.
-func isUnlimitedPlan(plan string) bool {
+// isProPlan returns true if the plan name corresponds to the Uplink Pro tier.
+func isProPlan(plan string) bool {
 	switch plan {
-	case "unlimited_monthly", "unlimited_quarterly", "unlimited_annual",
-		"legacy_monthly", "legacy_quarterly", "legacy_annual":
+	case "pro_monthly", "pro_annual":
+		return true
+	}
+	return false
+}
+
+// isUltimatePlan returns true if the plan name corresponds to the top-tier (Uplink Ultimate).
+func isUltimatePlan(plan string) bool {
+	switch plan {
+	case "ultimate_monthly", "ultimate_annual":
 		return true
 	}
 	return false
@@ -159,8 +163,8 @@ func HandleCreateCheckoutSession(c *fiber.Ctx) error {
 	).Scan(&existingPlan, &existingStatus, &isLifetime)
 
 	if err == nil && existingPlan != "free" && existingStatus == "active" {
-		// Lifetime members can add an Unlimited subscription for 50% off
-		if isLifetime && isUnlimitedPlan(plan) {
+		// Lifetime members can add an Ultimate subscription for 50% off
+		if isLifetime && isUltimatePlan(plan) {
 			// Allow through — coupon applied below
 		} else {
 			return c.Status(fiber.StatusConflict).JSON(ErrorResponse{
@@ -197,9 +201,9 @@ func HandleCreateCheckoutSession(c *fiber.Ctx) error {
 	params.AddMetadata("logto_sub", userID)
 	params.AddMetadata("plan", plan)
 
-	// Lifetime members get 50% off Unlimited subscriptions
-	if isLifetime && isUnlimitedPlan(plan) {
-		couponID := os.Getenv("STRIPE_LIFETIME_UNLIMITED_COUPON_ID")
+	// Lifetime members get 50% off Ultimate subscriptions
+	if isLifetime && isUltimatePlan(plan) {
+		couponID := os.Getenv("STRIPE_LIFETIME_ULTIMATE_COUPON_ID")
 		if couponID != "" {
 			params.Discounts = []*stripe.CheckoutSessionDiscountParams{
 				{Coupon: stripe.String(couponID)},

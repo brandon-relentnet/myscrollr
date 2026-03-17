@@ -48,9 +48,9 @@ All paid tiers include a 7-day free trial.
 
 ### Billing & Monetization
 > **Backend role gap:** Pro tier has no backend role — it maps to the same `uplink` role as Uplink. `tierFromRoles()` only knows `free`, `uplink`, `uplink_unlimited`. The backend cannot distinguish Uplink from Pro users. Also: rename `uplink_unlimited` → `uplink_ultimate` everywhere (Logto, Go backend, TypeScript types, DB).
-- [ ] Rename `uplink_unlimited` → `uplink_ultimate` across codebase (Logto role, `tierFromRoles()`, `planFromPriceID()`, TypeScript `SubscriptionTier` type, DB values) and display name to "Uplink Ultimate"
-- [ ] Add `uplink_pro` backend role to Logto and update `tierFromRoles()` / `planFromPriceID()` to distinguish all four tiers
-- [ ] Create Stripe products/prices for Uplink Pro tier (monthly + annual) and wire up `VITE_STRIPE_PRICE_PRO_MONTHLY` / `VITE_STRIPE_PRICE_PRO_ANNUAL` env vars
+- [x] Rename `uplink_unlimited` → `uplink_ultimate` across codebase (Logto role, `tierFromRoles()`, `planFromPriceID()`, TypeScript `SubscriptionTier` type, DB values) and display name to "Uplink Ultimate"
+- [x] Add `uplink_pro` backend role to Logto and update `tierFromRoles()` / `planFromPriceID()` to distinguish all four tiers
+- [x] Create Stripe products/prices for all tiers (Uplink, Pro, Ultimate, Lifetime) and 50% off lifetime coupon in Stripe sandbox
 - [ ] Integrate Stripe Customer Portal (payment method, invoices, plan switching)
 - [ ] Handle Stripe Customer Portal browser handoff from desktop app (can't embed — needs browser redirect)
 - [ ] Add webhook event idempotency (deduplicate redelivered Stripe events)
@@ -86,7 +86,7 @@ All paid tiers include a 7-day free trial.
 > **Currently zero server-side enforcement.** Channel APIs receive `X-User-Sub` but not tier info. Client-side polling intervals are trivially bypassable. The `subscriptionTier` prop already flows into Finance, Sports, and Fantasy config panels but is unused. RSS config panel doesn't receive it at all.
 - [ ] Forward tier info from core API to channel APIs (add `X-User-Tier` header to proxy) — **prerequisite for all enforcement below**
 - [ ] Server-side rate limiting per tier (enforce polling intervals server-side, not just client-side)
-- [ ] Wire `subscriptionTier` into RSS (`NewsConfigPanel`) — currently the only channel missing the prop
+- [x] Wire `subscriptionTier` into RSS (`NewsConfigPanel`) — was the only channel missing the prop
 
 ### Tier Enforcement — Finance
 - [ ] Enforce tracked symbol limit: Free=5, Uplink=25, Pro=75, Ultimate=unlimited

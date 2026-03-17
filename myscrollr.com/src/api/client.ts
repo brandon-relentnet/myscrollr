@@ -11,7 +11,7 @@ export interface UserPreferences {
   feed_enabled: boolean
   enabled_sites: Array<string>
   disabled_sites: Array<string>
-  subscription_tier: 'free' | 'uplink' | 'uplink_unlimited'
+  subscription_tier: 'free' | 'uplink' | 'uplink_pro' | 'uplink_ultimate'
   updated_at: string
 }
 
@@ -208,15 +208,12 @@ export interface SubscriptionStatus {
   plan:
     | 'free'
     | 'monthly'
-    | 'quarterly'
     | 'annual'
     | 'lifetime'
-    | 'unlimited_monthly'
-    | 'unlimited_quarterly'
-    | 'unlimited_annual'
-    | 'legacy_monthly'
-    | 'legacy_quarterly'
-    | 'legacy_annual'
+    | 'pro_monthly'
+    | 'pro_annual'
+    | 'ultimate_monthly'
+    | 'ultimate_annual'
   status: 'none' | 'active' | 'canceling' | 'canceled' | 'past_due'
   current_period_end?: string
   lifetime: boolean

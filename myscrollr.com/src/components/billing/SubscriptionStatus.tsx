@@ -14,9 +14,12 @@ interface SubscriptionStatusProps {
 const PLAN_LABELS: Record<string, string> = {
   free: 'Free',
   monthly: 'Monthly',
-  quarterly: 'Quarterly',
   annual: 'Annual',
   lifetime: 'Lifetime',
+  pro_monthly: 'Monthly',
+  pro_annual: 'Annual',
+  ultimate_monthly: 'Monthly',
+  ultimate_annual: 'Annual',
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -36,7 +39,8 @@ export default function SubscriptionStatus({
   const [canceling, setCanceling] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const isUnlimited = tier === 'uplink_unlimited'
+  const isUltimate = tier === 'uplink_ultimate'
+  const isPro = tier === 'uplink_pro'
 
   useEffect(() => {
     loadSubscription()
@@ -107,7 +111,7 @@ export default function SubscriptionStatus({
           </span>
         </div>
         <p className="text-xs text-base-content/30">
-          Upgrade to Uplink for faster polling, or Unlimited for real-time SSE.
+          Upgrade to Uplink for faster polling, or Uplink Ultimate for real-time SSE.
         </p>
       </div>
     )
@@ -120,9 +124,9 @@ export default function SubscriptionStatus({
 
   return (
     <div
-      className={`space-y-4 ${isUnlimited ? 'unlimited-glow rounded-xl p-4 -m-4' : ''}`}
+      className={`space-y-4 ${isUltimate ? 'unlimited-glow rounded-xl p-4 -m-4' : ''}`}
       style={
-        isUnlimited
+        isUltimate
           ? {
               background: 'rgba(52, 211, 153, 0.03)',
               borderColor: 'rgba(52, 211, 153, 0.15)',
@@ -136,15 +140,15 @@ export default function SubscriptionStatus({
           <Crown
             size={14}
             className={
-              isUnlimited
+              isUltimate
                 ? 'text-primary unlimited-dot-glow rounded-full'
                 : 'text-primary'
             }
           />
           <span
-            className={`text-xs font-semibold text-primary ${isUnlimited ? 'unlimited-text-glow' : ''}`}
+            className={`text-xs font-semibold text-primary ${isUltimate ? 'unlimited-text-glow' : ''}`}
           >
-            {isUnlimited ? 'Uplink Unlimited' : 'Uplink'}{' '}
+            {isUltimate ? 'Uplink Ultimate' : isPro ? 'Uplink Pro' : 'Uplink'}{' '}
             {PLAN_LABELS[subscription.plan] || subscription.plan}
           </span>
         </div>

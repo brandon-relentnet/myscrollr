@@ -237,7 +237,7 @@ function LifetimePage() {
               >
                 50% Off
                 <br />
-                <span className="text-primary">Unlimited.</span>
+                <span className="text-primary">Ultimate.</span>
                 <br />
                 <span className="text-warning">Forever.</span>
               </motion.h1>
@@ -250,7 +250,7 @@ function LifetimePage() {
                 className="text-sm text-base-content/40 leading-relaxed max-w-md mb-10"
               >
                 Lifetime members get permanent Uplink-tier access with a single
-                payment — plus 50% off any Unlimited subscription. Real-time
+                payment — plus 50% off any Uplink Ultimate subscription. Real-time
                 SSE, unlimited symbols, webhooks, API access — all at half
                 price, for as long as you subscribe. Only 128 founding member
                 slots will ever exist.
@@ -264,7 +264,7 @@ function LifetimePage() {
                 className="space-y-3 mb-10"
               >
                 <Feature>
-                  50% off any Unlimited subscription — from $25.00/mo
+                  50% off any Uplink Ultimate subscription — from $25.00/mo
                 </Feature>
                 <Feature>
                   Real-time SSE, unlimited symbols, feeds & leagues
@@ -398,11 +398,11 @@ function LifetimePage() {
                       }}
                     />
                     <div className="relative z-10">
-                      <p className="text-[10px] text-primary/70 font-semibold mb-1">
-                        50% Off Unlimited — From $25.00/mo
+                       <p className="text-[10px] text-primary/70 font-semibold mb-1">
+                        50% Off Uplink Ultimate — From $25.00/mo
                       </p>
                       <p className="text-[10px] text-base-content/35 leading-relaxed">
-                        Lifetime members get half off any Unlimited
+                        Lifetime members get half off any Uplink Ultimate
                         subscription. Real-time SSE, unlimited symbols and
                         feeds, webhooks, API access, and data export — all at
                         half price.

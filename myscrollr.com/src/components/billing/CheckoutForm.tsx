@@ -15,7 +15,7 @@ const stripePromise = loadStripe(
 interface CheckoutFormProps {
   priceId?: string
   isLifetime?: boolean
-  isUnlimited?: boolean
+  isUltimate?: boolean
   getToken: () => Promise<string | null>
   onClose: () => void
   onSuccess?: () => void
@@ -29,7 +29,7 @@ interface CheckoutFormProps {
 export default function CheckoutForm({
   priceId,
   isLifetime = false,
-  isUnlimited = false,
+  isUltimate = false,
   getToken,
   onClose,
 }: CheckoutFormProps) {
@@ -110,35 +110,35 @@ export default function CheckoutForm({
         aria-label={
           isLifetime
             ? 'Lifetime purchase checkout'
-            : isUnlimited
-              ? 'Subscribe to Uplink Unlimited'
+            : isUltimate
+              ? 'Subscribe to Uplink Ultimate'
               : 'Subscribe to Uplink'
         }
         tabIndex={-1}
         className={`relative w-full max-w-lg mx-4 bg-base-200 border rounded-xl overflow-hidden ${
-          isUnlimited
+          isUltimate
             ? 'border-primary/20 unlimited-glow'
             : 'border-base-content/10'
         }`}
       >
         <div
           className={`flex items-center justify-between px-6 py-4 border-b ${
-            isUnlimited
+            isUltimate
               ? 'border-primary/15 bg-primary/[0.03]'
               : 'border-base-content/10'
           }`}
         >
           <h3
             className={`text-xs font-semibold ${
-              isUnlimited
+              isUltimate
                 ? 'text-primary unlimited-text-glow'
                 : 'text-base-content/60'
             }`}
           >
             {isLifetime
               ? 'Lifetime Purchase'
-              : isUnlimited
-                ? 'Subscribe to Uplink Unlimited'
+              : isUltimate
+                ? 'Subscribe to Uplink Ultimate'
                 : 'Subscribe to Uplink'}
           </h3>
           <button

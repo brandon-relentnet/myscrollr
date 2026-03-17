@@ -48,6 +48,7 @@ export default function ChannelConfigPanel({
       return (
         <RssConfigPanel
           channel={channel}
+          subscriptionTier={subscriptionTier}
           hex={hex}
         />
       );
