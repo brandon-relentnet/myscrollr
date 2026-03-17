@@ -26,7 +26,7 @@ import {
   queryKeys,
 } from "../api/queries";
 import { getValidToken, decodeJwtPayload } from "../auth";
-import { GAME_CODE_LABELS, SPORT_EMOJI, isMatchupLive, isMatchupFinal } from "./fantasy/types";
+import { sportLabel, SPORT_EMOJI, isMatchupLive, isMatchupFinal } from "./fantasy/types";
 import type { Channel } from "../api/client";
 import type {
   LeagueResponse,
@@ -502,10 +502,7 @@ export default function FantasyConfigPanel({
                   (l) => l.league_key === key,
                 );
                 const status = importStatuses[key] || "pending";
-                const sportLabel =
-                  GAME_CODE_LABELS[league?.game_code || ""] ||
-                  league?.game_code ||
-                  "Fantasy";
+                const sport = sportLabel(league?.game_code || "");
 
                 return (
                   <motion.div
@@ -539,7 +536,7 @@ export default function FantasyConfigPanel({
                         {league?.name || key}
                       </p>
                       <p className="text-[11px] text-fg-4">
-                        {sportLabel} &middot; {league?.season}
+                        {sport} &middot; {league?.season}
                       </p>
                     </div>
                     <span
@@ -705,8 +702,7 @@ function LeaguePickerRow({
   onToggle: () => void;
   hex: string;
 }) {
-  const sportLabel =
-    GAME_CODE_LABELS[league.game_code] || league.game_code || "Fantasy";
+  const sport = sportLabel(league.game_code);
 
   return (
     <button
@@ -737,7 +733,7 @@ function LeaguePickerRow({
           {league.name}
         </p>
         <p className="text-[11px] text-fg-4">
-          {sportLabel} &middot; {league.num_teams} Teams &middot;{" "}
+          {sport} &middot; {league.num_teams} Teams &middot;{" "}
           {league.season}
         </p>
       </div>
@@ -770,8 +766,7 @@ function LeagueCard({
   >(null);
 
   const isActive = !league.data?.is_finished;
-  const sportLabel =
-    GAME_CODE_LABELS[league.game_code] || league.game_code || "Fantasy";
+  const sport = sportLabel(league.game_code);
   const sportEmoji = SPORT_EMOJI[league.game_code] || "";
   const numTeams = league.data?.num_teams || 0;
   const currentWeek = league.data?.current_week;
@@ -848,7 +843,7 @@ function LeagueCard({
                 {league.name}
               </h3>
               <p className="text-[11px] text-fg-4">
-                {sportLabel} &middot; {numTeams} Teams
+                {sport} &middot; {numTeams} Teams
                 {league.season ? ` \u00b7 ${league.season}` : ""}
                 {currentWeek && isActive ? ` \u00b7 Week ${currentWeek}` : ""}
               </p>

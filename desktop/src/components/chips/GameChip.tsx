@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { clsx } from "clsx";
-import { isLive, isFinal, isPre, isCloseGame, getWinner, gameStatusLabel } from "../../utils/gameHelpers";
+import { isLive, isFinal, isPre, isCloseGame, getWinner, gameStatusLabel, abbreviateTeam } from "../../utils/gameHelpers";
 import { useScoreFlash } from "../../hooks/useScoreFlash";
 import { getChipColors } from "./chipColors";
 import type { Game } from "../../types";
@@ -72,7 +72,7 @@ const GameChip = memo(function GameChip({
             final_ && winner === "home" && "opacity-50",
           )}
         >
-          {game.away_team_name.slice(0, 3).toUpperCase()}
+          {abbreviateTeam(game.away_team_name)}
         </span>
         <span
           className={clsx(
@@ -105,7 +105,7 @@ const GameChip = memo(function GameChip({
             final_ && winner === "away" && "opacity-50",
           )}
         >
-          {game.home_team_name.slice(0, 3).toUpperCase()}
+          {abbreviateTeam(game.home_team_name)}
         </span>
         {game.home_team_logo && (
           <img

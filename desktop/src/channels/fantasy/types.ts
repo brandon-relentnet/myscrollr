@@ -22,6 +22,11 @@ export const GAME_CODE_LABELS: Record<string, string> = {
   mlb: "Baseball",
 };
 
+/** Human-readable sport label from a game code (e.g. "nfl" → "Football"). */
+export function sportLabel(gameCode: string): string {
+  return GAME_CODE_LABELS[gameCode] || gameCode || "Fantasy";
+}
+
 // ── Types ────────────────────────────────────────────────────────
 
 export interface MatchupTeam {

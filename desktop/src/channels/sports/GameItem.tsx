@@ -6,7 +6,7 @@
  */
 import { memo } from "react";
 import { clsx } from "clsx";
-import { isLive, isFinal, getWinner, gameStatusLabel } from "../../utils/gameHelpers";
+import { isLive, isFinal, getWinner, gameStatusLabel, abbreviateTeam } from "../../utils/gameHelpers";
 import { useScoreFlash } from "../../hooks/useScoreFlash";
 import type { Game, FeedMode } from "../../types";
 
@@ -49,7 +49,7 @@ export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
             winner === "away" && "font-bold",
           )}
         >
-          {game.away_team_name.slice(0, 3).toUpperCase()}
+          {abbreviateTeam(game.away_team_name)}
         </span>
         <span
           className={clsx(
@@ -77,7 +77,7 @@ export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
             winner === "home" && "font-bold",
           )}
         >
-          {game.home_team_name.slice(0, 3).toUpperCase()}
+          {abbreviateTeam(game.home_team_name)}
         </span>
         {game.home_team_logo && (
           <img

@@ -59,6 +59,11 @@ export function gameStatusLabel(game: Game): string {
   return "";
 }
 
+/** Abbreviate a team name to 3 uppercase characters (e.g. "Lakers" → "LAK"). */
+export function abbreviateTeam(name: string): string {
+  return name.slice(0, 3).toUpperCase();
+}
+
 export function formatCountdown(startTime: string): string {
   const diff = new Date(startTime).getTime() - Date.now();
   if (diff <= 0) return "Starting";
