@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
 import {
   Section,
   ToggleRow,
@@ -9,27 +9,14 @@ import ConfigPanelLayout from "../../components/settings/ConfigPanelLayout";
 import TickerPinSection from "../../components/settings/TickerPinSection";
 import { useWidgetConfig } from "../../hooks/useWidgetConfig";
 import { useStoreData } from "../../hooks/useStoreData";
-import { getStore, setStore } from "../../lib/store";
+import { setStore } from "../../lib/store";
 import { DEFAULT_CLOCK_TICKER, DEFAULT_CLOCK_POMODORO } from "../../preferences";
 import { LS_CLOCK_FORMAT, LS_CLOCK_TIMEZONES } from "../../constants";
+import { loadTimezones, loadFormat, tzLabel } from "./storage";
 import type { ClockPomodoroConfig } from "../../preferences";
 import type { WidgetConfigPanelProps } from "../../hooks/useWidgetConfig";
 
 type ClockFormat = "12h" | "24h";
-
-function loadTimezones(): string[] {
-  const tzs = getStore<string[]>(LS_CLOCK_TIMEZONES, ["America/New_York", "Europe/London", "Asia/Tokyo"]);
-  return Array.isArray(tzs) ? tzs : ["America/New_York", "Europe/London", "Asia/Tokyo"];
-}
-
-function loadFormat(): ClockFormat {
-  const f = getStore<string>(LS_CLOCK_FORMAT, "12h");
-  return f === "12h" || f === "24h" ? (f as ClockFormat) : "12h";
-}
-
-function tzLabel(tz: string): string {
-  return tz.split("/").pop()?.replace(/_/g, " ") ?? tz;
-}
 
 const FORMAT_OPTIONS: { value: ClockFormat; label: string }[] = [
   { value: "12h", label: "12h" },

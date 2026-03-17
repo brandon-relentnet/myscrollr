@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { X } from "lucide-react";
 import Tooltip from "../../components/Tooltip";
-import { getStore, setStore } from "../../lib/store";
+import { loadTimezones, saveTimezones, loadFormat, saveFormat, DEFAULT_TIMEZONES } from "./storage";
 import type { TimeFormat, TimezoneEntry } from "./types";
 
 // ── Timezone presets ────────────────────────────────────────────
@@ -68,31 +68,6 @@ const TIMEZONE_PRESETS: TimezoneEntry[] = [
   { tz: "Australia/Perth", label: "Perth", region: "Australia" },
   { tz: "Pacific/Auckland", label: "Auckland", region: "New Zealand" },
 ];
-
-const DEFAULT_TIMEZONES = ["America/New_York", "Europe/London", "Asia/Tokyo"];
-
-// ── Storage ─────────────────────────────────────────────────────
-
-const TZ_KEY = "scrollr:widget:clock:timezones";
-const FORMAT_KEY = "scrollr:widget:clock:format";
-
-function loadTimezones(): string[] {
-  const tzs = getStore<string[]>(TZ_KEY, DEFAULT_TIMEZONES);
-  return Array.isArray(tzs) && tzs.length > 0 ? tzs : DEFAULT_TIMEZONES;
-}
-
-function saveTimezones(tzs: string[]): void {
-  setStore(TZ_KEY, tzs);
-}
-
-function loadFormat(): TimeFormat {
-  const f = getStore<string>(FORMAT_KEY, "12h");
-  return f === "24h" || f === "12h" ? f : "12h";
-}
-
-function saveFormat(f: TimeFormat): void {
-  setStore(FORMAT_KEY, f);
-}
 
 // ── Formatting helpers ──────────────────────────────────────────
 

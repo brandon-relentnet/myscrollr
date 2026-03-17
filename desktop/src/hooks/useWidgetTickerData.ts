@@ -8,6 +8,7 @@ import { getStore } from "../lib/store";
 import { formatBytes, timeAgo } from "../utils/format";
 import { weatherCodeToIcon, weatherCodeToLabel, formatTemp } from "../widgets/weather/types";
 import { findCpuTemp, findGpuTemp, formatComponentTemp } from "../widgets/sysmon/utils";
+import { tzLabel } from "../widgets/clock/storage";
 import type { ClockChipData, WeatherChipData, SysmonChipData, UptimeChipData, GitHubChipData, WidgetTickerData } from "../types";
 import type { TimerState } from "../widgets/clock/types";
 import type { SavedCity } from "../widgets/weather/types";
@@ -45,7 +46,7 @@ function formatDetail(date: Date, tz: string | undefined): string {
 }
 
 function tzShortLabel(tz: string): string {
-  const city = tz.split("/").pop()?.replace(/_/g, " ") ?? tz;
+  const city = tzLabel(tz);
   // Abbreviate long city names for compact ticker chips
   if (city.length > 10) {
     const words = city.split(" ");
