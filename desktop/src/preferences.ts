@@ -519,4 +519,21 @@ export function toggleWidgetPin(prefs: AppPreferences, widgetId: string): AppPre
   };
 }
 
+/** Shallow-merge a patch into a widget's config. Returns a new AppPreferences. */
+export function updateWidgetPrefs(
+  prefs: AppPreferences,
+  widgetKey: string,
+  patch: Record<string, unknown>,
+): AppPreferences {
+  const widgets = prefs.widgets as unknown as Record<string, unknown>;
+  const current = widgets[widgetKey];
+  return {
+    ...prefs,
+    widgets: {
+      ...prefs.widgets,
+      [widgetKey]: { ...(current as Record<string, unknown>), ...patch },
+    },
+  };
+}
+
 

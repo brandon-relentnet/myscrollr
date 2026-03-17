@@ -5,9 +5,7 @@
  * GitHub repos. Repos are added individually via URL input. Data is
  * cached in the Tauri store for cross-window ticker sync.
  */
-import { useState, useEffect, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { onStoreChange } from "../../lib/store";
+import { useState, useCallback } from "react";
 import { Github, Plus, Trash2, ExternalLink, Loader2 } from "lucide-react";
 import type { FeedTabProps, WidgetManifest } from "../../types";
 import QueryErrorBanner from "../../components/QueryErrorBanner";
@@ -23,8 +21,8 @@ import {
   CI_STATUS_TEXT,
 } from "./types";
 import { useShell } from "../../shell-context";
-import { savePrefs } from "../../preferences";
-import type { AppPreferences } from "../../preferences";
+import { savePrefs, updateWidgetPrefs } from "../../preferences";
+import { useSyncedQuery } from "../../hooks/useSyncedQuery";
 import { LS_GITHUB_REPOS } from "../../constants";
 
 // ── Widget manifest ─────────────────────────────────────────────
@@ -61,31 +59,17 @@ function GitHubFeedTab({ mode: feedMode }: FeedTabProps) {
   const [inputUrl, setInputUrl] = useState("");
   const [inputError, setInputError] = useState<string | null>(null);
 
-  // Load cached repo data for initial display
-  const [repoData, setRepoData] = useState<GitHubRepo[]>(loadRepoData);
-
-  // Listen for store changes from the other window
-  useEffect(() => {
-    return onStoreChange(LS_GITHUB_REPOS, () => setRepoData(loadRepoData()));
-  }, []);
-
-  // Auto-refresh when repos are configured via TanStack Query
-  const { data, error } = useQuery({
+  // Auto-refresh + cross-window sync via useSyncedQuery
+  const { data: repoData, error } = useSyncedQuery<GitHubRepo>({
+    storeKey: LS_GITHUB_REPOS,
+    loadFn: loadRepoData,
+    saveFn: saveRepoData,
     queryKey: ["github-actions", configRepos.map(repoKey)],
     queryFn: () => fetchAllRepos(configRepos),
     enabled: configRepos.length > 0,
-    refetchInterval: pollInterval * 1000,
-    staleTime: (pollInterval * 1000) / 2,
+    pollInterval,
     retry: 1,
   });
-
-   // Sync query results to store + local state
-  useEffect(() => {
-    if (data) {
-      setRepoData(data);
-      saveRepoData(data);
-    }
-  }, [data]);
 
   // ── Add repo handler ──────────────────────────────────────────
 
@@ -105,13 +89,7 @@ function GitHubFeedTab({ mode: feedMode }: FeedTabProps) {
 
     // Save to prefs
     const nextRepos = [...configRepos, parsed];
-    const next: AppPreferences = {
-      ...shell.prefs,
-      widgets: {
-        ...shell.prefs.widgets,
-        github: { ...shell.prefs.widgets.github, repos: nextRepos },
-      },
-    };
+    const next = updateWidgetPrefs(shell.prefs, "github", { repos: nextRepos });
     shell.onPrefsChange(next);
     savePrefs(next);
 
@@ -125,19 +103,12 @@ function GitHubFeedTab({ mode: feedMode }: FeedTabProps) {
     (owner: string, repo: string) => {
       const key = repoKey({ owner, repo });
       const nextRepos = configRepos.filter((r) => repoKey(r) !== key);
-      const next: AppPreferences = {
-        ...shell.prefs,
-        widgets: {
-          ...shell.prefs.widgets,
-          github: { ...shell.prefs.widgets.github, repos: nextRepos },
-        },
-      };
+      const next = updateWidgetPrefs(shell.prefs, "github", { repos: nextRepos });
       shell.onPrefsChange(next);
       savePrefs(next);
 
       // Also remove from cached data
       const nextData = repoData.filter((r) => repoKey(r) !== key);
-      setRepoData(nextData);
       saveRepoData(nextData);
     },
     [configRepos, repoData, shell],

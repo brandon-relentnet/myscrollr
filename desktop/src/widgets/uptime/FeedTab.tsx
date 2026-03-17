@@ -9,17 +9,16 @@
  * Connected state: auto-refresh via TanStack Query at the configured
  * poll interval, sync results to the store for the ticker.
  */
-import { useState, useEffect, useCallback } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { onStoreChange } from "../../lib/store";
+import { useState, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { HeartPulse, RefreshCw, Unlink, Loader2 } from "lucide-react";
 import type { FeedTabProps, WidgetManifest } from "../../types";
 import QueryErrorBanner from "../../components/QueryErrorBanner";
 import type { KumaMonitor } from "./types";
 import { fetchKumaStatus, loadMonitors, saveMonitors, MONITOR_STATUS_LABELS, MONITOR_STATUS_COLORS, MONITOR_STATUS_TEXT } from "./types";
 import { useShell } from "../../shell-context";
-import { savePrefs } from "../../preferences";
-import type { AppPreferences } from "../../preferences";
+import { savePrefs, updateWidgetPrefs } from "../../preferences";
+import { useSyncedQuery } from "../../hooks/useSyncedQuery";
 import { LS_UPTIME_MONITORS } from "../../constants";
 
 // ── Widget manifest ─────────────────────────────────────────────
@@ -58,31 +57,16 @@ function UptimeFeedTab({ mode: feedMode }: FeedTabProps) {
   const [connectError, setConnectError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
 
-  // Load cached monitors for initial display
-  const [monitors, setMonitors] = useState<KumaMonitor[]>(loadMonitors);
-
-  // Listen for store changes from the other window
-  useEffect(() => {
-    return onStoreChange(LS_UPTIME_MONITORS, () => setMonitors(loadMonitors()));
-  }, []);
-
-  // Auto-refresh when connected via TanStack Query
-  const { data, error, isLoading } = useQuery({
+  // Auto-refresh + cross-window sync via useSyncedQuery
+  const { data: monitors, error, isLoading } = useSyncedQuery<KumaMonitor>({
+    storeKey: LS_UPTIME_MONITORS,
+    loadFn: loadMonitors,
+    saveFn: saveMonitors,
     queryKey: ["uptime-kuma", url],
     queryFn: () => fetchKumaStatus(url),
     enabled: url.length > 0,
-    refetchInterval: pollInterval * 1000,
-    staleTime: (pollInterval * 1000) / 2,
-    retry: 2,
+    pollInterval,
   });
-
-   // Sync query results to store + local state
-  useEffect(() => {
-    if (data) {
-      setMonitors(data);
-      saveMonitors(data);
-    }
-  }, [data]);
 
   // ── Connect handler ───────────────────────────────────────────
 
@@ -103,16 +87,9 @@ function UptimeFeedTab({ mode: feedMode }: FeedTabProps) {
 
        // Save monitors to store
       saveMonitors(result);
-      setMonitors(result);
 
       // Save URL to structured prefs
-      const next: AppPreferences = {
-        ...shell.prefs,
-        widgets: {
-          ...shell.prefs.widgets,
-          uptime: { ...shell.prefs.widgets.uptime, url: trimmed },
-        },
-      };
+      const next = updateWidgetPrefs(shell.prefs, "uptime", { url: trimmed });
       shell.onPrefsChange(next);
       savePrefs(next);
 
@@ -130,16 +107,9 @@ function UptimeFeedTab({ mode: feedMode }: FeedTabProps) {
   const handleDisconnect = useCallback(() => {
     // Clear monitors
     saveMonitors([]);
-    setMonitors([]);
 
     // Clear URL from prefs
-    const next: AppPreferences = {
-      ...shell.prefs,
-      widgets: {
-        ...shell.prefs.widgets,
-        uptime: { ...shell.prefs.widgets.uptime, url: "" },
-      },
-    };
+    const next = updateWidgetPrefs(shell.prefs, "uptime", { url: "" });
     shell.onPrefsChange(next);
     savePrefs(next);
 
