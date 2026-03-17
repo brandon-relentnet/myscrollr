@@ -742,7 +742,7 @@ function BottomCTA({
                 onClick={() => handleSelectPlan('annual', 'ultimate')}
                 className="btn btn-pulse gap-2 text-base px-8 py-5 shadow-2xl"
               >
-                <Crown size={14} /> Start Free Trial — Unlimited
+                <Crown size={14} /> Start Free Trial — Ultimate
               </button>
               <button
                 type="button"

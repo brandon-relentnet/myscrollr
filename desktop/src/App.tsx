@@ -236,7 +236,7 @@ export default function App() {
     [queryClient],
   );
 
-  // ── Initial SSE start for unlimited tier ──────────────────────
+  // ── Initial SSE start for ultimate tier ───────────────────────
 
   useEffect(() => {
     async function init() {

@@ -180,9 +180,15 @@ func handleSubscriptionUpdated(event stripe.Event) {
 		log.Printf("[Stripe Webhook] Failed to update subscription for %s: %v", logtoSub, err)
 	}
 
-	// If subscription is active (not canceling), ensure correct role is assigned
+	// If subscription is active (not canceling), ensure correct role is assigned.
+	// Remove stale roles first to handle plan up/downgrades cleanly.
 	if status == "active" && !sub.CancelAtPeriodEnd {
 		go func() {
+			// Remove all paid roles, then assign only the current one
+			_ = RemoveUplinkRole(logtoSub)
+			_ = RemoveProRole(logtoSub)
+			_ = RemoveUltimateRole(logtoSub)
+
 			if isUltimatePlan(plan) {
 				if err := AssignUltimateRole(logtoSub); err != nil {
 					log.Printf("[Stripe Webhook] Failed to assign uplink_ultimate role to %s: %v", logtoSub, err)

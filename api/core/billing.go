@@ -163,9 +163,10 @@ func HandleCreateCheckoutSession(c *fiber.Ctx) error {
 	).Scan(&existingPlan, &existingStatus, &isLifetime)
 
 	if err == nil && existingPlan != "free" && existingStatus == "active" {
-		// Lifetime members can add an Ultimate subscription for 50% off
-		if isLifetime && isUltimatePlan(plan) {
-			// Allow through — coupon applied below
+		// Lifetime members can add an Ultimate or Pro subscription on top
+		// (Ultimate gets 50% off coupon applied below)
+		if isLifetime && (isUltimatePlan(plan) || isProPlan(plan)) {
+			// Allow through
 		} else {
 			return c.Status(fiber.StatusConflict).JSON(ErrorResponse{
 				Status: "error", Error: "You already have an active subscription",

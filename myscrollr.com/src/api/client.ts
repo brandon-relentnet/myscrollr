@@ -225,7 +225,7 @@ export interface CheckoutReturnStatus {
 }
 
 export const billingApi = {
-  /** Create a subscription checkout session (monthly/quarterly/annual) */
+  /** Create a subscription checkout session (monthly/annual) */
   createCheckoutSession: (
     priceId: string,
     getToken: () => Promise<string | null>,
