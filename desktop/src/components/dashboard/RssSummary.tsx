@@ -9,27 +9,15 @@
  * Auto-selects the most recent article as primary. Articles published
  * within the last hour get a subtle "new" highlight.
  */
-import { useState, useMemo, useCallback } from "react";
+import { useMemo, useCallback } from "react";
 import { useScrollrCDC } from "../../hooks/useScrollrCDC";
-import { loadPref, savePref } from "../../preferences";
+import { useDashboardPin } from "../../hooks/useDashboardPin";
 import clsx from "clsx";
 import Tooltip from "../Tooltip";
 import { timeAgo, truncate } from "../../utils/format";
 import type { RssItem, DashboardResponse } from "../../types";
 import type { RssCardPrefs } from "./dashboardPrefs";
 import DashboardEmptyState from "./DashboardEmptyState";
-
-// ── Pinned article storage ──────────────────────────────────────
-
-const PINNED_KEY = "dashboard:rss:pinnedArticle";
-
-function loadPinnedKey(): string | null {
-  return loadPref<string | null>(PINNED_KEY, null);
-}
-
-function savePinnedKey(key: string | null): void {
-  savePref(PINNED_KEY, key);
-}
 
 // ── Helpers ─────────────────────────────────────────────────────
 
@@ -158,16 +146,12 @@ export default function RssSummary({ dashboard, prefs, onConfigure }: RssSummary
     maxItems: 50,
   });
 
-  const [pinnedKey, setPinnedKey] = useState<string | null>(loadPinnedKey);
+  const [pinnedKey, setPinnedKey] = useDashboardPin<string | null>("dashboard:rss:pinnedArticle", null);
 
   const handlePin = useCallback((key: string) => {
-    setPinnedKey((prev) => {
-      // Toggle off if already pinned
-      const next = prev === key ? null : key;
-      savePinnedKey(next);
-      return next;
-    });
-  }, []);
+    // Toggle off if already pinned
+    setPinnedKey(pinnedKey === key ? null : key);
+  }, [pinnedKey, setPinnedKey]);
 
   // Determine primary article
   const { primary, compactItems } = useMemo(() => {

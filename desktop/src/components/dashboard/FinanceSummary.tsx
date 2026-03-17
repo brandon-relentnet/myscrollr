@@ -9,27 +9,15 @@
  * Auto-fills primary slots with top movers by |% change|. Pinned
  * stocks always stay in primary regardless of movement.
  */
-import { useState, useMemo, useCallback } from "react";
+import { useMemo, useCallback } from "react";
 import { useScrollrCDC } from "../../hooks/useScrollrCDC";
-import { loadPref, savePref } from "../../preferences";
+import { useDashboardPin } from "../../hooks/useDashboardPin";
 import clsx from "clsx";
 import Tooltip from "../Tooltip";
 import { formatPrice, formatChange } from "../../utils/format";
 import type { Trade, DashboardResponse } from "../../types";
 import type { FinanceCardPrefs } from "./dashboardPrefs";
 import DashboardEmptyState from "./DashboardEmptyState";
-
-// ── Pinned stock storage ────────────────────────────────────────
-
-const PINNED_KEY = "dashboard:finance:pinnedStocks";
-
-function loadPinned(): string[] {
-  return loadPref<string[]>(PINNED_KEY, []);
-}
-
-function savePinnedStocks(pinned: string[]): void {
-  savePref(PINNED_KEY, pinned);
-}
 
 function absChange(trade: Trade): number {
   const pct = Number(trade.percentage_change) || 0;
@@ -171,32 +159,24 @@ export default function FinanceSummary({ dashboard, prefs, onConfigure }: Financ
     maxItems: 50,
   });
 
-  const [pinned, setPinned] = useState<string[]>(loadPinned);
+  const [pinned, setPinned] = useDashboardPin<string[]>("dashboard:finance:pinnedStocks", []);
 
   const handlePin = useCallback(
     (symbol: string) => {
-      setPinned((prev) => {
-        if (prev.includes(symbol)) return prev;
-        // Block if at capacity — user must unpin first
-        const activeCount = prev.filter((s) =>
-          items.some((t) => t.symbol === s),
-        ).length;
-        if (activeCount >= prefs.primaryCount) return prev;
-        const next = [...prev, symbol];
-        savePinnedStocks(next);
-        return next;
-      });
+      if (pinned.includes(symbol)) return;
+      // Block if at capacity — user must unpin first
+      const activeCount = pinned.filter((s) =>
+        items.some((t) => t.symbol === s),
+      ).length;
+      if (activeCount >= prefs.primaryCount) return;
+      setPinned([...pinned, symbol]);
     },
-    [prefs.primaryCount, items],
+    [prefs.primaryCount, items, pinned, setPinned],
   );
 
   const handleUnpin = useCallback((symbol: string) => {
-    setPinned((prev) => {
-      const next = prev.filter((s) => s !== symbol);
-      savePinnedStocks(next);
-      return next;
-    });
-  }, []);
+    setPinned(pinned.filter((s) => s !== symbol));
+  }, [pinned, setPinned]);
 
   // Split into primary and compact
   const { primaryTrades, compactTrades } = useMemo(() => {
