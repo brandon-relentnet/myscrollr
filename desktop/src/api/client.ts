@@ -120,6 +120,26 @@ export const channelsApi = {
     ),
 };
 
+// ── Channel visibility toggle ───────────────────────────────────
+
+import type { QueryClient } from "@tanstack/react-query";
+
+/**
+ * Toggle a channel's visibility (and optionally mark it enabled).
+ * Invalidates the dashboard query cache after the update.
+ */
+export async function toggleChannelVisibility(
+  channelType: ChannelType,
+  visible: boolean,
+  queryClient: QueryClient,
+  enabled?: boolean,
+): Promise<void> {
+  const payload: { visible: boolean; enabled?: boolean } = { visible };
+  if (enabled !== undefined) payload.enabled = enabled;
+  await channelsApi.update(channelType, payload);
+  queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+}
+
 // ── RSS Types & API ─────────────────────────────────────────────
 
 export interface TrackedFeed {

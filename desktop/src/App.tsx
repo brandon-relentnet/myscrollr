@@ -12,7 +12,7 @@ import {
   isAuthenticated as checkAuth,
   getTier,
 } from "./auth";
-import { channelsApi } from "./api/client";
+import { channelsApi, toggleChannelVisibility } from "./api/client";
 import {
   loadPref,
   savePref,
@@ -389,8 +389,7 @@ export default function App() {
   const handleChannelToggle = useCallback(
     async (channelType: ChannelType, visible: boolean) => {
       try {
-        await channelsApi.update(channelType, { visible });
-        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+        await toggleChannelVisibility(channelType, visible, queryClient);
       } catch {
         // Silently fail — will sync on next poll
       }
