@@ -10,13 +10,10 @@
  */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import RouteError from "../components/RouteError";
-import SourcePageLayout from "../components/SourcePageLayout";
+import SourcePageLayout, { parseSourceTab, SourceNotFound } from "../components/SourcePageLayout";
 import { getWidget } from "../widgets/registry";
 import WidgetConfigPanel from "../widgets/WidgetConfigPanel";
 import { useShell } from "../shell-context";
-
-const VALID_TABS = ["feed", "configuration"] as const;
-type WidgetTab = (typeof VALID_TABS)[number];
 
 export const Route = createFileRoute("/widget/$id/$tab")({
   component: WidgetRoute,
@@ -26,21 +23,12 @@ export const Route = createFileRoute("/widget/$id/$tab")({
 function WidgetRoute() {
   const { id, tab: rawTab } = Route.useParams();
   const navigate = useNavigate();
-  const tab: WidgetTab = (VALID_TABS as readonly string[]).includes(rawTab)
-    ? (rawTab as WidgetTab)
-    : "feed";
+  const tab = parseSourceTab(rawTab);
 
   const widget = getWidget(id);
 
   if (!widget) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto gap-3 p-6">
-        <h2 className="text-base font-semibold text-fg">Widget not found</h2>
-        <p className="text-sm text-fg-3">
-          The widget &ldquo;{id}&rdquo; is not installed.
-        </p>
-      </div>
-    );
+    return <SourceNotFound kind="Widget" name={id} />;
   }
 
   return (
