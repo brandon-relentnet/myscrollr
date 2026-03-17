@@ -124,6 +124,16 @@ export function toFahrenheit(celsius: number): number {
 }
 
 /**
+ * Format a temperature in the given unit.
+ * @param showUnit  Append the unit letter (e.g. "72°F" vs "72°").
+ */
+export function formatTemp(celsius: number, unit: string, showUnit = false): string {
+  const val = unit === "fahrenheit" ? toFahrenheit(celsius) : celsius;
+  const suffix = showUnit ? (unit === "fahrenheit" ? "F" : "C") : "";
+  return `${Math.round(val)}\u00B0${suffix}`;
+}
+
+/**
  * Format a byte count as a human-readable string.
  * Handles B, KB, MB, GB, and TB.
  */

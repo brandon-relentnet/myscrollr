@@ -81,17 +81,7 @@ export function windDirectionToLabel(deg: number): string {
 
 // ── Formatting ──────────────────────────────────────────────────
 
-import { toFahrenheit } from "../../utils/format";
-
-/**
- * Format a temperature in the given unit.
- * @param showUnit  Append the unit letter (e.g. "72°F" vs "72°").
- */
-export function formatTemp(celsius: number, unit: TempUnit, showUnit = false): string {
-  const val = unit === "fahrenheit" ? toFahrenheit(celsius) : celsius;
-  const suffix = showUnit ? (unit === "fahrenheit" ? "F" : "C") : "";
-  return `${Math.round(val)}\u00B0${suffix}`;
-}
+export { formatTemp } from "../../utils/format";
 
 export function formatWind(kmh: number, unit: TempUnit): string {
   if (unit === "fahrenheit") {

@@ -4,7 +4,7 @@
  * Used by both the sysmon FeedTab and the ticker data hook.
  */
 import type { SystemInfo } from "../../hooks/useSysmonData";
-import { toFahrenheit } from "../../utils/format";
+import { formatTemp } from "../../utils/format";
 
 // ── Types ───────────────────────────────────────────────────────
 
@@ -82,15 +82,11 @@ export function formatRate(bytesPerInterval: number, intervalMs: number): string
 /**
  * Format a component temperature with unit conversion.
  * Returns e.g. "72°C" or "162°F".
+ * @deprecated Use `formatTemp(celsius, unit, true)` from `utils/format` instead.
  */
 export function formatComponentTemp(
   tempCelsius: number,
   unit: string,
 ): string {
-  const temp =
-    unit === "fahrenheit"
-      ? Math.round(toFahrenheit(tempCelsius))
-      : Math.round(tempCelsius);
-  const suffix = unit === "fahrenheit" ? "\u00B0F" : "\u00B0C";
-  return `${temp}${suffix}`;
+  return formatTemp(tempCelsius, unit, true);
 }
