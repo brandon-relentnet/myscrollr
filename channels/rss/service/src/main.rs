@@ -3,7 +3,7 @@ use dotenvy::dotenv;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
-use rss_service::{start_rss_service, RssHealth, log::init_async_logger, database::{initialize_pool, create_tables}};
+use rss_service::{start_rss_service, RssHealth, log::init_async_logger, database::initialize_pool};
 
 #[derive(Clone)]
 struct AppState {
@@ -29,11 +29,6 @@ async fn main() {
             }
         }
     };
-    // Run table creation once at startup (not every cycle)
-    if let Err(e) = create_tables(&pool).await {
-        panic!("Failed to create database tables: {}", e);
-    }
-
     // Build HTTP client once and reuse across all cycles for connection pooling
     let http_client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(15))

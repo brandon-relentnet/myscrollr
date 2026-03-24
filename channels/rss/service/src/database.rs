@@ -1,10 +1,12 @@
 use std::{env, time::Duration, sync::Arc};
 use anyhow::{Context, Result};
-use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
+use sqlx::postgres::PgPoolOptions;
 pub use sqlx::PgPool;
 use sqlx::{FromRow, query, query_as};
 use serde::Deserialize;
 use chrono::{DateTime, Utc};
+
+const MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
 
 pub async fn initialize_pool() -> Result<PgPool> {
     let pool_options = PgPoolOptions::new()
@@ -13,32 +15,35 @@ pub async fn initialize_pool() -> Result<PgPool> {
         .acquire_timeout(Duration::from_secs(10))
         .idle_timeout(Duration::from_millis(30_000));
 
-    if let Ok(mut database_url) = env::var("DATABASE_URL") {
-        database_url = database_url.trim().trim_matches('"').trim_matches('\'').to_string();
-        if database_url.starts_with("postgres:") && !database_url.starts_with("postgres://") {
-            database_url = database_url.replacen("postgres:", "postgres://", 1);
-        } else if database_url.starts_with("postgresql:") && !database_url.starts_with("postgresql://") {
-            database_url = database_url.replacen("postgresql:", "postgresql://", 1);
+    let database_url = if let Ok(url) = env::var("DATABASE_URL") {
+        let mut url = url.trim().trim_matches('"').trim_matches('\'').to_string();
+        if url.starts_with("postgres:") && !url.starts_with("postgres://") {
+            url = url.replacen("postgres:", "postgres://", 1);
+        } else if url.starts_with("postgresql:") && !url.starts_with("postgresql://") {
+            url = url.replacen("postgresql:", "postgresql://", 1);
         }
-        let pool = pool_options.connect(&database_url).await.context("Failed to connect to the PostgreSQL database via DATABASE_URL")?;
-        return Ok(pool);
-    }
+        url
+    } else {
+        let get_env_var = |key: &str| -> Result<String> {
+            env::var(key).with_context(|| format!("Missing environment variable: {}", key))
+        };
 
-    let get_env_var = |key: &str| -> Result<String> {
-        env::var(key).with_context(|| format!("Missing environment variable: {}", key))
+        let raw_host = get_env_var("DB_HOST")?;
+        let port_str = get_env_var("DB_PORT")?;
+        let user = get_env_var("DB_USER")?;
+        let password = get_env_var("DB_PASSWORD")?;
+        let database = get_env_var("DB_DATABASE")?;
+
+        let host = if let Some(fixed) = raw_host.strip_prefix("db.") { fixed } else { &raw_host };
+        let port: u16 = port_str.parse().context("DB_PORT must be a valid u16 integer")?;
+
+        format!("postgres://{}:{}@{}:{}/{}", user, password, host, port, database)
     };
 
-    let raw_host = get_env_var("DB_HOST")?;
-    let port_str = get_env_var("DB_PORT")?;
-    let user = get_env_var("DB_USER")?;
-    let password = get_env_var("DB_PASSWORD")?;
-    let database = get_env_var("DB_DATABASE")?;
+    let pool = pool_options.connect(&database_url).await.context("Failed to connect to the PostgreSQL database")?;
 
-    let host = if let Some(fixed) = raw_host.strip_prefix("db.") { fixed } else { &raw_host };
-    let port: u16 = port_str.parse().context("DB_PORT must be a valid u16 integer")?;
+    MIGRATOR.run(&pool).await.context("Failed to run migrations")?;
 
-    let connect_options = PgConnectOptions::new().host(host).port(port).username(&user).password(&password).database(&database);
-    let pool = pool_options.connect_with(connect_options).await.context("Failed to connect to the PostgreSQL database")?;
     Ok(pool)
 }
 
@@ -71,58 +76,6 @@ pub struct ParsedArticle {
     pub description: String,
     pub source_name: String,
     pub published_at: Option<DateTime<Utc>>,
-}
-
-// ── Table creation ───────────────────────────────────────────────
-
-pub async fn create_tables(pool: &Arc<PgPool>) -> Result<()> {
-    let tracked_feeds_statement = "
-        CREATE TABLE IF NOT EXISTS tracked_feeds (
-            url             TEXT PRIMARY KEY,
-            name            TEXT NOT NULL,
-            category        TEXT NOT NULL DEFAULT 'General',
-            is_default      BOOLEAN NOT NULL DEFAULT false,
-            is_enabled      BOOLEAN NOT NULL DEFAULT true,
-            created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-    ";
-
-    let rss_items_statement = "
-        CREATE TABLE IF NOT EXISTS rss_items (
-            id              SERIAL PRIMARY KEY,
-            feed_url        TEXT NOT NULL REFERENCES tracked_feeds(url) ON DELETE CASCADE,
-            guid            TEXT NOT NULL,
-            title           TEXT NOT NULL,
-            link            TEXT NOT NULL DEFAULT '',
-            description     TEXT NOT NULL DEFAULT '',
-            source_name     TEXT NOT NULL DEFAULT '',
-            published_at    TIMESTAMPTZ,
-            created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(feed_url, guid)
-        );
-    ";
-
-    let mut connection = pool.acquire().await?;
-    query(tracked_feeds_statement).execute(&mut *connection).await?;
-    query(rss_items_statement).execute(&mut *connection).await?;
-
-    // Idempotent schema migrations
-    let migrations = [
-        "ALTER TABLE tracked_feeds ADD COLUMN IF NOT EXISTS consecutive_failures INT NOT NULL DEFAULT 0",
-        "ALTER TABLE tracked_feeds ADD COLUMN IF NOT EXISTS last_error TEXT",
-        "ALTER TABLE tracked_feeds ADD COLUMN IF NOT EXISTS last_error_at TIMESTAMPTZ",
-        "ALTER TABLE tracked_feeds ADD COLUMN IF NOT EXISTS last_success_at TIMESTAMPTZ",
-        // Track who added custom feeds for authorization on delete
-        "ALTER TABLE tracked_feeds ADD COLUMN IF NOT EXISTS added_by TEXT",
-        // Index for cleanup queries and ORDER BY published_at in dashboard queries
-        "CREATE INDEX IF NOT EXISTS idx_rss_items_published_at ON rss_items (published_at DESC NULLS LAST)",
-    ];
-    for migration in &migrations {
-        query(migration).execute(&mut *connection).await?;
-    }
-
-    Ok(())
 }
 
 // ── Seed default feeds from config file (batched) ───────────────

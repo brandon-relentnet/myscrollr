@@ -66,7 +66,7 @@ All paid tiers include a 7-day free trial.
 - [ ] Billing UI in desktop app (browse tiers, current plan display, manage subscription link — purchases can redirect to website)
 
 ### Database & Infrastructure
-- [ ] Database migrations strategy (`CREATE TABLE IF NOT EXISTS` on startup won't handle schema changes in production — adopt golang-migrate, goose, or atlas)
+- [x] Database migrations strategy (`CREATE TABLE IF NOT EXISTS` on startup won't handle schema changes in production — adopt golang-migrate, goose, or atlas)
 
 ### Legal Doc Sync
 > **Pricing page and legal documents are out of sync.** Legal docs reference old pricing and quarterly billing that no longer exists.

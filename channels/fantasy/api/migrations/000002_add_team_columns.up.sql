@@ -1,0 +1,2 @@
+-- team_key and team_name columns were added to yahoo_user_leagues in 000001_init
+-- This migration is kept for idempotency with existing deployments

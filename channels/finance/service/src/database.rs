@@ -1,9 +1,11 @@
 use std::{env, time::Duration, sync::Arc};
 use anyhow::{Context, Result};
-use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
+use sqlx::postgres::PgPoolOptions;
 pub use sqlx::PgPool;
 use sqlx::{FromRow, query, query_as};
 pub use chrono::Utc;
+
+const MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
 
 pub async fn initialize_pool() -> Result<PgPool> {
     let pool_options = PgPoolOptions::new()
@@ -12,32 +14,35 @@ pub async fn initialize_pool() -> Result<PgPool> {
         .acquire_timeout(Duration::from_secs(10))
         .idle_timeout(Duration::from_millis(30_000));
 
-    if let Ok(mut database_url) = env::var("DATABASE_URL") {
-        database_url = database_url.trim().trim_matches('"').trim_matches('\'').to_string();
-        if database_url.starts_with("postgres:") && !database_url.starts_with("postgres://") {
-            database_url = database_url.replacen("postgres:", "postgres://", 1);
-        } else if database_url.starts_with("postgresql:") && !database_url.starts_with("postgresql://") {
-            database_url = database_url.replacen("postgresql:", "postgresql://", 1);
+    let database_url = if let Ok(url) = env::var("DATABASE_URL") {
+        let mut url = url.trim().trim_matches('"').trim_matches('\'').to_string();
+        if url.starts_with("postgres:") && !url.starts_with("postgres://") {
+            url = url.replacen("postgres:", "postgres://", 1);
+        } else if url.starts_with("postgresql:") && !url.starts_with("postgresql://") {
+            url = url.replacen("postgresql:", "postgresql://", 1);
         }
-        let pool = pool_options.connect(&database_url).await.context("Failed to connect to the PostgreSQL database via DATABASE_URL")?;
-        return Ok(pool);
-    }
+        url
+    } else {
+        let get_env_var = |key: &str| -> Result<String> {
+            env::var(key).with_context(|| format!("Missing environment variable: {}", key))
+        };
 
-    let get_env_var = |key: &str| -> Result<String> {
-        env::var(key).with_context(|| format!("Missing environment variable: {}", key))
+        let raw_host = get_env_var("DB_HOST")?;
+        let port_str = get_env_var("DB_PORT")?;
+        let user = get_env_var("DB_USER")?;
+        let password = get_env_var("DB_PASSWORD")?;
+        let database = get_env_var("DB_DATABASE")?;
+
+        let host = if let Some(fixed) = raw_host.strip_prefix("db.") { fixed } else { &raw_host };
+        let port: u16 = port_str.parse().context("DB_PORT must be a valid u16 integer")?;
+
+        format!("postgres://{}:{}@{}:{}/{}", user, password, host, port, database)
     };
 
-    let raw_host = get_env_var("DB_HOST")?;
-    let port_str = get_env_var("DB_PORT")?;
-    let user = get_env_var("DB_USER")?;
-    let password = get_env_var("DB_PASSWORD")?;
-    let database = get_env_var("DB_DATABASE")?;
+    let pool = pool_options.connect(&database_url).await.context("Failed to connect to the PostgreSQL database")?;
 
-    let host = if let Some(fixed) = raw_host.strip_prefix("db.") { fixed } else { &raw_host };
-    let port: u16 = port_str.parse().context("DB_PORT must be a valid u16 integer")?;
+    MIGRATOR.run(&pool).await.context("Failed to run migrations")?;
 
-    let connect_options = PgConnectOptions::new().host(host).port(port).username(&user).password(&password).database(&database);
-    let pool = pool_options.connect_with(connect_options).await.context("Failed to connect to the PostgreSQL database")?;
     Ok(pool)
 }
 
@@ -50,59 +55,6 @@ pub struct DatabaseTradeData {
     pub percentage_change: f64,
     pub direction: String,
     pub last_updated: chrono::DateTime<Utc>
-}
-
-pub async fn create_tables(pool: Arc<PgPool>) -> Result<()> {
-    let trades_statement = "
-        CREATE TABLE IF NOT EXISTS trades (
-            id SERIAL PRIMARY KEY,
-            symbol VARCHAR(30) UNIQUE NOT NULL,
-            price DECIMAL(10,2) NOT NULL DEFAULT 0,
-            previous_close DECIMAL(10,2) NOT NULL DEFAULT 0,
-            price_change DECIMAL(10,2) NOT NULL DEFAULT 0,
-            percentage_change DECIMAL(5,2) NOT NULL DEFAULT 0,
-            direction VARCHAR(10) NOT NULL DEFAULT 'flat',
-            last_updated TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );
-    ";
-
-    let config_statement = "
-        CREATE TABLE IF NOT EXISTS tracked_symbols (
-            id SERIAL PRIMARY KEY,
-            symbol VARCHAR(30) UNIQUE NOT NULL,
-            is_enabled BOOLEAN DEFAULT TRUE,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );
-    ";
-
-    // Idempotent column additions for name and category
-    let add_name_col = "ALTER TABLE tracked_symbols ADD COLUMN IF NOT EXISTS name VARCHAR(100);";
-    let add_category_col = "ALTER TABLE tracked_symbols ADD COLUMN IF NOT EXISTS category VARCHAR(50);";
-
-    let mut connection = pool.acquire().await?;
-    query(trades_statement).execute(&mut *connection).await?;
-    query(config_statement).execute(&mut *connection).await?;
-
-    // Backfill any NULL values from before defaults were added.
-    // SQLx requires one statement per execute call.
-    query("UPDATE trades SET price = 0 WHERE price IS NULL").execute(&mut *connection).await?;
-    query("UPDATE trades SET previous_close = 0 WHERE previous_close IS NULL").execute(&mut *connection).await?;
-    query("UPDATE trades SET price_change = 0 WHERE price_change IS NULL").execute(&mut *connection).await?;
-    query("UPDATE trades SET percentage_change = 0 WHERE percentage_change IS NULL").execute(&mut *connection).await?;
-    query("UPDATE trades SET direction = 'flat' WHERE direction IS NULL").execute(&mut *connection).await?;
-
-    // Set column defaults and NOT NULL constraints for the existing table
-    // (CREATE TABLE IF NOT EXISTS won't alter existing columns).
-    query("ALTER TABLE trades ALTER COLUMN price SET DEFAULT 0, ALTER COLUMN price SET NOT NULL").execute(&mut *connection).await?;
-    query("ALTER TABLE trades ALTER COLUMN previous_close SET DEFAULT 0, ALTER COLUMN previous_close SET NOT NULL").execute(&mut *connection).await?;
-    query("ALTER TABLE trades ALTER COLUMN price_change SET DEFAULT 0, ALTER COLUMN price_change SET NOT NULL").execute(&mut *connection).await?;
-    query("ALTER TABLE trades ALTER COLUMN percentage_change SET DEFAULT 0, ALTER COLUMN percentage_change SET NOT NULL").execute(&mut *connection).await?;
-    query("ALTER TABLE trades ALTER COLUMN direction SET DEFAULT 'flat', ALTER COLUMN direction SET NOT NULL").execute(&mut *connection).await?;
-
-    query(add_name_col).execute(&mut *connection).await?;
-    query(add_category_col).execute(&mut *connection).await?;
-    Ok(())
 }
 
 pub async fn get_tracked_symbols(pool: Arc<PgPool>) -> Vec<String> {

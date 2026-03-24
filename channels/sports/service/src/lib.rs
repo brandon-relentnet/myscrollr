@@ -4,7 +4,7 @@ use tokio::sync::Mutex;
 use chrono::{DateTime, Datelike, Duration, NaiveDate, NaiveDateTime, Utc};
 use crate::log::{error, info, warn};
 use crate::database::{
-    PgPool, create_tables, run_migrations, truncate_games,
+    PgPool, truncate_games,
     get_tracked_leagues, seed_tracked_leagues, disable_stale_leagues,
     cleanup_old_games, LeagueConfig, TrackedLeague, upsert_game, CleanedData, Team,
 };
@@ -26,17 +26,6 @@ const SCHEDULE_DAYS_AHEAD: i64 = 0;
 /// leagues, or None if initialization failed.
 pub async fn init_sports_service(pool: &Arc<PgPool>) -> Option<(Client, Vec<TrackedLeague>)> {
     info!("Starting sports service...");
-
-    // Create tables (idempotent)
-    if let Err(e) = create_tables(pool).await {
-        error!("Failed to create database tables: {}", e);
-        return None;
-    }
-
-    // Run additive migrations for existing tables
-    if let Err(e) = run_migrations(pool).await {
-        warn!("Migration warnings: {}", e);
-    }
 
     // Seed from JSON config — always upsert to pick up new leagues
     if let Ok(file_contents) = fs::read_to_string("./configs/leagues.json") {

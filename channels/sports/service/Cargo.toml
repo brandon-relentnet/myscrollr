@@ -14,4 +14,4 @@ axum = { version = "0.8", features = ["macros", "json"] }
 dotenv = "0.15"
 log = "0.4"
 anyhow = "1.0"
-sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "macros", "chrono"] }
+sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "macros", "chrono", "migrate"] }

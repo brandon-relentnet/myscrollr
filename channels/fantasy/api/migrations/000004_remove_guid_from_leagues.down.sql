@@ -1,0 +1,1 @@
+-- guid column was removed; cannot be restored via down migration (data loss)

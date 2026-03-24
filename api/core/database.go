@@ -8,13 +8,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // DBPool is the global PostgreSQL connection pool.
 var DBPool *pgxpool.Pool
 
-// ConnectDB initialises the PostgreSQL connection pool and creates core tables.
+// ConnectDB initialises the PostgreSQL connection pool and runs migrations.
 func ConnectDB() {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
@@ -62,90 +65,26 @@ func ConnectDB() {
 	DBPool = pool
 	log.Println("Successfully connected to PostgreSQL database")
 
-	// Create core tables (user_channels, user_preferences)
-	_, err = DBPool.Exec(context.Background(), `
-		CREATE TABLE IF NOT EXISTS user_channels (
-			id              SERIAL PRIMARY KEY,
-			logto_sub       TEXT NOT NULL,
-			channel_type    TEXT NOT NULL,
-			enabled         BOOLEAN NOT NULL DEFAULT true,
-			visible         BOOLEAN NOT NULL DEFAULT true,
-			config          JSONB NOT NULL DEFAULT '{}',
-			created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-			updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-			UNIQUE(logto_sub, channel_type)
-		);
-	`)
+	m, err := migrate.New(
+		"file://migrations",
+		databaseURL,
+	)
 	if err != nil {
-		log.Printf("Warning: Failed to create user_channels table: %v", err)
+		log.Fatalf("Failed to create migrator: %v", err)
 	}
 
-	_, err = DBPool.Exec(context.Background(), `
-		CREATE TABLE IF NOT EXISTS user_preferences (
-			logto_sub         TEXT PRIMARY KEY,
-			feed_mode         TEXT NOT NULL DEFAULT 'comfort',
-			feed_position     TEXT NOT NULL DEFAULT 'bottom',
-			feed_behavior     TEXT NOT NULL DEFAULT 'overlay',
-			feed_enabled      BOOLEAN NOT NULL DEFAULT true,
-			enabled_sites     JSONB NOT NULL DEFAULT '[]',
-			disabled_sites    JSONB NOT NULL DEFAULT '[]',
-			subscription_tier TEXT NOT NULL DEFAULT 'free',
-			updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
-		);
-	`)
-	if err != nil {
-		log.Printf("Warning: Failed to create user_preferences table: %v", err)
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		m.Close()
+		log.Fatalf("Migration failed: %v", err)
 	}
+	m.Close()
+	log.Println("Database migrations applied")
 
-	// Add subscription_tier column if it doesn't exist (for existing tables)
-	_, err = DBPool.Exec(context.Background(), `
-		ALTER TABLE user_preferences
-		ADD COLUMN IF NOT EXISTS subscription_tier TEXT NOT NULL DEFAULT 'free';
-	`)
-	if err != nil {
-		log.Printf("Warning: Failed to add subscription_tier column: %v", err)
-	}
+	pruneWebhookEvents()
+}
 
-	// Stripe billing table — maps Logto users to Stripe customers + subscriptions
-	_, err = DBPool.Exec(context.Background(), `
-		CREATE TABLE IF NOT EXISTS stripe_customers (
-			logto_sub              TEXT PRIMARY KEY,
-			stripe_customer_id     TEXT UNIQUE NOT NULL,
-			stripe_subscription_id TEXT,
-			plan                   TEXT NOT NULL DEFAULT 'free',
-			status                 TEXT NOT NULL DEFAULT 'active',
-			current_period_end     TIMESTAMPTZ,
-			lifetime               BOOLEAN NOT NULL DEFAULT false,
-			created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
-			updated_at             TIMESTAMPTZ NOT NULL DEFAULT now()
-		);
-	`)
-	if err != nil {
-		log.Printf("Warning: Failed to create stripe_customers table: %v", err)
-	}
-
-	// Add lifetime column if it doesn't exist (for existing tables)
-	_, err = DBPool.Exec(context.Background(), `
-		ALTER TABLE stripe_customers
-		ADD COLUMN IF NOT EXISTS lifetime BOOLEAN NOT NULL DEFAULT false;
-	`)
-	if err != nil {
-		log.Printf("Warning: Failed to add lifetime column: %v", err)
-	}
-
-	// Stripe webhook idempotency — tracks processed event IDs to skip redeliveries
-	_, err = DBPool.Exec(context.Background(), `
-		CREATE TABLE IF NOT EXISTS stripe_webhook_events (
-			event_id   TEXT PRIMARY KEY,
-			created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-		);
-	`)
-	if err != nil {
-		log.Printf("Warning: Failed to create stripe_webhook_events table: %v", err)
-	}
-
-	// Prune old webhook events (only need to dedup within Stripe's retry window)
-	_, err = DBPool.Exec(context.Background(), `
+func pruneWebhookEvents() {
+	_, err := DBPool.Exec(context.Background(), `
 		DELETE FROM stripe_webhook_events WHERE created_at < now() - interval '7 days';
 	`)
 	if err != nil {

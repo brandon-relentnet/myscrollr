@@ -4,7 +4,7 @@ use futures_util::future::join_all;
 use reqwest::Client;
 use tokio::{sync::Mutex, time::{self, sleep}};
 use crate::log::{error, info, warn};
-use crate::database::{PgPool, create_tables, insert_symbol, update_previous_close, update_trade, get_tracked_symbols, seed_tracked_symbols};
+use crate::database::{PgPool, insert_symbol, update_previous_close, update_trade, get_tracked_symbols, seed_tracked_symbols};
 
 use crate::{types::{FinanceHealth, FinanceState, QuoteResponse, TrackedSymbolConfig}, websocket::connect};
 
@@ -15,10 +15,6 @@ pub mod database;
 
 pub async fn start_finance_services(pool: Arc<PgPool>, health_state: Arc<Mutex<FinanceHealth>>) {
     info!("Starting finance service...");
-    if let Err(e) = create_tables(pool.clone()).await {
-        error!("Failed to create database tables: {}", e);
-        return;
-    }
 
     // Seed from JSON if database is empty, or update name/category for existing symbols
     let existing = get_tracked_symbols(pool.clone()).await;

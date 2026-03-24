@@ -12,6 +12,9 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
@@ -167,11 +170,22 @@ func main() {
 	}
 
 	// -------------------------------------------------------------------------
-	// Create/migrate database tables
+	// Run database migrations
 	// -------------------------------------------------------------------------
-	if err := createTables(context.Background(), pool); err != nil {
-		log.Fatalf("[Fantasy] Failed to create tables: %v", err)
+	m, err := migrate.New(
+		"file://migrations",
+		dbURL,
+	)
+	if err != nil {
+		log.Fatalf("[Fantasy] Failed to create migrator: %v", err)
 	}
+
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		m.Close()
+		log.Fatalf("[Fantasy] Migration failed: %v", err)
+	}
+	m.Close()
+	log.Println("[Fantasy] Database migrations applied")
 
 	// -------------------------------------------------------------------------
 	// Start Redis self-registration heartbeat

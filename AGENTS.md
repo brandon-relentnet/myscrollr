@@ -127,8 +127,61 @@ Two sub-projects with divergent conventions:
 2. **Channel isolation is absolute.** Each channel owns its Go API, ingestion service, configs, and Docker Compose.
 3. **HTTP-only contract.** No shared Go interfaces or types. Core proxies `/{name}/*` with `X-User-Sub` header. Channels never validate JWTs.
 4. **Topic-based CDC PubSub**: Core dispatches CDC events via Redis topic-based PubSub (O(1) per event).
-5. **No migration framework.** Tables created via `CREATE TABLE IF NOT EXISTS` on startup.
-6. **Desktop is the primary product.** The website serves marketing, auth, and billing only.
+5. **Desktop is the primary product.** The website serves marketing, auth, and billing only.
+
+## Database Migrations
+
+All systems use formal migrations. Inline `CREATE TABLE IF NOT EXISTS` / `ALTER TABLE` blocks have been replaced.
+
+| System | Tool | Driver |
+|--------|------|--------|
+| Core API (`api/`) | golang-migrate v4 | postgres |
+| Fantasy API (`channels/fantasy/api/`) | golang-migrate v4 | postgres |
+| Finance service (`channels/finance/service/`) | sqlx::migrate | postgres |
+| Sports service (`channels/sports/service/`) | sqlx::migrate | postgres |
+| RSS service (`channels/rss/service/`) | sqlx::migrate | postgres |
+
+**Migrations run on startup** — no manual steps or CI scripts required. A failed migration calls `log.Fatalf` / propagates the error, preventing the app from serving traffic with a half-applied schema.
+
+### Go APIs (golang-migrate)
+
+Migration files live in `{module}/migrations/` with naming convention `000NNN_description.up.sql` / `000NNN_description.down.sql`. The migrator is initialized in `ConnectDB()` (Core) and `main()` (Fantasy):
+
+```go
+m, err := migrate.New("file://migrations", databaseURL)
+if err != nil { log.Fatalf("create migrator: %v", err) }
+if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+    m.Close()
+    log.Fatalf("migration failed: %v", err)
+}
+m.Close()
+```
+
+### Rust Services (sqlx::migrate)
+
+Migration files live in `{crate}/migrations/` with naming convention `YYYYMMDDHHMMSS_description.up.sql` / `YYYYMMDDHHMMSS_description.down.sql`. The migrator is defined as a module-level constant and run inside `initialize_pool()`:
+
+```rust
+const MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
+
+// inside initialize_pool():
+MIGRATOR.run(&pool).await.context("Failed to run migrations")?;
+```
+
+### Adding a New Migration
+
+**Go**: Create `000NNN_description.up.sql` and `000NNN_description.down.sql` in the module's `migrations/` directory. Test with `migrate -path migrations -database "$DATABASE_URL" up` locally, then commit.
+
+**Rust**: Create `YYYYMMDDHHMMSS_description.up.sql` and `YYYYMMDDHHMMSS_description.down.sql` in the crate's `migrations/` directory. The `cargo build` will verify compilation.
+
+### Rules
+
+- **Never mix inline SQL and migration files.** All schema changes go through migrations.
+- **Initial migration uses `CREATE TABLE IF NOT EXISTS`** for idempotency — existing tables are preserved, new ones are created.
+- **Catch-up migrations** use `ADD COLUMN IF NOT EXISTS` / `DO $$` blocks to handle existing deployments safely.
+- **Down migrations** are written for development/testing. Down migrations that drop tables are documented but rarely needed in production.
+- **Data-only operations** (e.g., cleanup, pruning) stay as inline code — they don't need versioning.
+- **Coordinated changes** that touch both a Go API and a Rust service need matching migrations in both systems.
 
 ## Docker & Deployment
 

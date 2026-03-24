@@ -1,10 +1,12 @@
 use std::{env, time::Duration, sync::Arc};
 use anyhow::{Context, Result};
-use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
+use sqlx::postgres::PgPoolOptions;
 pub use sqlx::PgPool;
 use sqlx::{FromRow, query, query_as};
 use chrono::Utc;
 use serde::Deserialize;
+
+const MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
 
 pub async fn initialize_pool() -> Result<PgPool> {
     let pool_options = PgPoolOptions::new()
@@ -13,32 +15,35 @@ pub async fn initialize_pool() -> Result<PgPool> {
         .acquire_timeout(Duration::from_secs(10))
         .idle_timeout(Duration::from_millis(30_000));
 
-    if let Ok(mut database_url) = env::var("DATABASE_URL") {
-        database_url = database_url.trim().trim_matches('"').trim_matches('\'').to_string();
-        if database_url.starts_with("postgres:") && !database_url.starts_with("postgres://") {
-            database_url = database_url.replacen("postgres:", "postgres://", 1);
-        } else if database_url.starts_with("postgresql:") && !database_url.starts_with("postgresql://") {
-            database_url = database_url.replacen("postgresql:", "postgresql://", 1);
+    let database_url = if let Ok(url) = env::var("DATABASE_URL") {
+        let mut url = url.trim().trim_matches('"').trim_matches('\'').to_string();
+        if url.starts_with("postgres:") && !url.starts_with("postgres://") {
+            url = url.replacen("postgres:", "postgres://", 1);
+        } else if url.starts_with("postgresql:") && !url.starts_with("postgresql://") {
+            url = url.replacen("postgresql:", "postgresql://", 1);
         }
-        let pool = pool_options.connect(&database_url).await.context("Failed to connect to the PostgreSQL database via DATABASE_URL")?;
-        return Ok(pool);
-    }
+        url
+    } else {
+        let get_env_var = |key: &str| -> Result<String> {
+            env::var(key).with_context(|| format!("Missing environment variable: {}", key))
+        };
 
-    let get_env_var = |key: &str| -> Result<String> {
-        env::var(key).with_context(|| format!("Missing environment variable: {}", key))
+        let raw_host = get_env_var("DB_HOST")?;
+        let port_str = get_env_var("DB_PORT")?;
+        let user = get_env_var("DB_USER")?;
+        let password = get_env_var("DB_PASSWORD")?;
+        let database = get_env_var("DB_DATABASE")?;
+
+        let host = if let Some(fixed) = raw_host.strip_prefix("db.") { fixed } else { &raw_host };
+        let port: u16 = port_str.parse().context("DB_PORT must be a valid u16 integer")?;
+
+        format!("postgres://{}:{}@{}:{}/{}", user, password, host, port, database)
     };
 
-    let raw_host = get_env_var("DB_HOST")?;
-    let port_str = get_env_var("DB_PORT")?;
-    let user = get_env_var("DB_USER")?;
-    let password = get_env_var("DB_PASSWORD")?;
-    let database = get_env_var("DB_DATABASE")?;
+    let pool = pool_options.connect(&database_url).await.context("Failed to connect to the PostgreSQL database")?;
 
-    let host = if let Some(fixed) = raw_host.strip_prefix("db.") { fixed } else { &raw_host };
-    let port: u16 = port_str.parse().context("DB_PORT must be a valid u16 integer")?;
+    MIGRATOR.run(&pool).await.context("Failed to run migrations")?;
 
-    let connect_options = PgConnectOptions::new().host(host).port(port).username(&user).password(&password).database(&database);
-    let pool = pool_options.connect_with(connect_options).await.context("Failed to connect to the PostgreSQL database")?;
     Ok(pool)
 }
 
@@ -107,103 +112,6 @@ pub struct Team {
     pub name: String,
     pub logo: Option<String>,
     pub score: Option<i32>,
-}
-
-// =============================================================================
-// Table creation
-// =============================================================================
-
-pub async fn create_tables(pool: &Arc<PgPool>) -> Result<()> {
-    let games_statement = "
-        CREATE TABLE IF NOT EXISTS games (
-            id SERIAL PRIMARY KEY,
-            league VARCHAR(50) NOT NULL,
-            sport VARCHAR(50) NOT NULL DEFAULT '',
-            external_game_id VARCHAR(100) NOT NULL,
-            link VARCHAR(500),
-            home_team_name VARCHAR(100) NOT NULL,
-            home_team_logo VARCHAR(500),
-            home_team_score INTEGER,
-            away_team_name VARCHAR(100) NOT NULL,
-            away_team_logo VARCHAR(500),
-            away_team_score INTEGER,
-            start_time TIMESTAMP WITH TIME ZONE NOT NULL,
-            short_detail VARCHAR(200),
-            state VARCHAR(50) NOT NULL,
-            status_short VARCHAR(20),
-            status_long VARCHAR(100),
-            timer VARCHAR(20),
-            venue VARCHAR(200),
-            season VARCHAR(20),
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(league, external_game_id)
-        );
-    ";
-
-    let config_statement = "
-        CREATE TABLE IF NOT EXISTS tracked_leagues (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(50) UNIQUE NOT NULL,
-            sport_api VARCHAR(50) NOT NULL,
-            api_host VARCHAR(200) NOT NULL,
-            league_id INTEGER NOT NULL,
-            category VARCHAR(50) NOT NULL DEFAULT 'Other',
-            country VARCHAR(100),
-            logo_url VARCHAR(500),
-            season VARCHAR(20),
-            season_format VARCHAR(20),
-            offseason_months INTEGER[],
-            is_enabled BOOLEAN DEFAULT TRUE,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );
-    ";
-
-    let mut connection = pool.acquire().await?;
-    query(games_statement).execute(&mut *connection).await?;
-    query(config_statement).execute(&mut *connection).await?;
-    Ok(())
-}
-
-// =============================================================================
-// Migrations — add new columns to existing tables
-// =============================================================================
-
-/// Run safe additive migrations for tables that may already exist from the
-/// previous ESPN-based schema. Each ALTER uses IF NOT EXISTS / catches
-/// duplicate-column errors so it is idempotent.
-pub async fn run_migrations(pool: &Arc<PgPool>) -> Result<()> {
-    let migrations = vec![
-        // games table — new columns
-        "ALTER TABLE games ADD COLUMN IF NOT EXISTS sport VARCHAR(50) NOT NULL DEFAULT ''",
-        "ALTER TABLE games ADD COLUMN IF NOT EXISTS status_short VARCHAR(20)",
-        "ALTER TABLE games ADD COLUMN IF NOT EXISTS status_long VARCHAR(100)",
-        "ALTER TABLE games ADD COLUMN IF NOT EXISTS timer VARCHAR(20)",
-        "ALTER TABLE games ADD COLUMN IF NOT EXISTS venue VARCHAR(200)",
-        "ALTER TABLE games ADD COLUMN IF NOT EXISTS season VARCHAR(20)",
-        // tracked_leagues table — make old slug column nullable so new seeds work
-        "ALTER TABLE tracked_leagues ALTER COLUMN slug DROP NOT NULL",
-        // tracked_leagues table — new columns (replacing old slug-only schema)
-        "ALTER TABLE tracked_leagues ADD COLUMN IF NOT EXISTS sport_api VARCHAR(50) NOT NULL DEFAULT ''",
-        "ALTER TABLE tracked_leagues ADD COLUMN IF NOT EXISTS api_host VARCHAR(200) NOT NULL DEFAULT ''",
-        "ALTER TABLE tracked_leagues ADD COLUMN IF NOT EXISTS league_id INTEGER NOT NULL DEFAULT 0",
-        "ALTER TABLE tracked_leagues ADD COLUMN IF NOT EXISTS category VARCHAR(50) NOT NULL DEFAULT 'Other'",
-        "ALTER TABLE tracked_leagues ADD COLUMN IF NOT EXISTS country VARCHAR(100)",
-        "ALTER TABLE tracked_leagues ADD COLUMN IF NOT EXISTS logo_url VARCHAR(500)",
-        "ALTER TABLE tracked_leagues ADD COLUMN IF NOT EXISTS season VARCHAR(20)",
-        "ALTER TABLE tracked_leagues ADD COLUMN IF NOT EXISTS season_format VARCHAR(20)",
-        "ALTER TABLE tracked_leagues ADD COLUMN IF NOT EXISTS offseason_months INTEGER[]",
-    ];
-
-    let mut connection = pool.acquire().await?;
-    for migration in migrations {
-        if let Err(e) = query(migration).execute(&mut *connection).await {
-            // Log but don't fail — some migrations may error if the old table
-            // has incompatible constraints. The TRUNCATE + re-seed will fix it.
-            log::warn!("Migration warning (non-fatal): {}: {}", migration, e);
-        }
-    }
-    Ok(())
 }
 
 // =============================================================================
