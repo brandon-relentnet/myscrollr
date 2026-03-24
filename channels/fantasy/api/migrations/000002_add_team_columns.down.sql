@@ -1,2 +1,2 @@
-ALTER TABLE yahoo_user_leagues DROP COLUMN IF EXISTS team_name;
-ALTER TABLE yahoo_user_leagues DROP COLUMN IF EXISTS team_key;
+-- team_key and team_name columns cannot be dropped via down migration
+-- as they are part of the 000001_init schema
