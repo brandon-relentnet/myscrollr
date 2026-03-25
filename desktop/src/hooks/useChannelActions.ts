@@ -7,9 +7,17 @@
 import { useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { channelsApi, toggleChannelVisibility } from "../api/client";
 import { queryKeys } from "../api/queries";
 import type { ChannelType } from "../api/client";
+
+const channelName: Record<string, string> = {
+  finance: "Finance",
+  sports: "Sports",
+  fantasy: "Fantasy",
+  rss: "RSS",
+};
 
 interface ChannelActions {
   handleToggleChannel: (channelType: ChannelType, visible: boolean) => Promise<void>;
@@ -28,6 +36,7 @@ export function useChannelActions(): ChannelActions {
         queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
       } catch (err) {
         console.error("[Scrollr] Channel toggle failed:", err);
+        toast.error(`Couldn't ${visible ? "show" : "hide"} ${channelName[channelType] ?? channelType}`);
       }
     },
     [queryClient],
@@ -42,8 +51,10 @@ export function useChannelActions(): ChannelActions {
           to: "/channel/$type/$tab",
           params: { type: channelType, tab: "feed" },
         });
+        toast.success(`${channelName[channelType] ?? channelType} channel added`);
       } catch (err) {
         console.error("[Scrollr] Channel add failed:", err);
+        toast.error(`Couldn't add ${channelName[channelType] ?? channelType} channel`);
       }
     },
     [queryClient, navigate],
@@ -55,8 +66,10 @@ export function useChannelActions(): ChannelActions {
         await channelsApi.delete(channelType);
         await queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
         navigate({ to: "/feed" });
+        toast.success(`${channelName[channelType] ?? channelType} channel removed`);
       } catch (err) {
         console.error("[Scrollr] Channel delete failed:", err);
+        toast.error(`Couldn't remove ${channelName[channelType] ?? channelType} channel`);
       }
     },
     [queryClient, navigate],

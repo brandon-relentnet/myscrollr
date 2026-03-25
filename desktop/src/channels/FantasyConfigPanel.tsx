@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { clsx } from "clsx";
+import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Section,
@@ -210,6 +211,16 @@ export default function FantasyConfigPanel({
       setImportStatuses({ ...statuses });
     }
 
+    const doneCount = Object.values(statuses).filter((s) => s === "done").length;
+    const errorCount = Object.values(statuses).filter((s) => s === "error").length;
+    if (errorCount === 0) {
+      toast.success(`${doneCount} league${doneCount === 1 ? "" : "s"} imported`);
+    } else if (doneCount > 0) {
+      toast.info(`${doneCount} imported, ${errorCount} failed`);
+    } else {
+      toast.error("League import failed");
+    }
+
     await queryClient.invalidateQueries({ queryKey: queryKeys.fantasy.leagues });
     await queryClient.invalidateQueries({ queryKey: queryKeys.fantasy.status });
     setPhase("connected");
@@ -252,9 +263,11 @@ export default function FantasyConfigPanel({
       queryClient.setQueryData(queryKeys.fantasy.leagues, { leagues: [] });
       setPhase("disconnected");
       phaseInitRef.current = false;
+      toast.success("Yahoo account disconnected");
     },
     onError: (err) => {
       console.error("[Fantasy] disconnect failed:", err);
+      toast.error("Couldn't disconnect Yahoo account");
     },
   });
 

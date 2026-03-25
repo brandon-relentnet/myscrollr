@@ -16,6 +16,7 @@ import type { FeedTabProps, WidgetManifest } from "../../types";
 import QueryErrorBanner from "../../components/QueryErrorBanner";
 import type { KumaMonitor } from "./types";
 import { fetchKumaStatus, loadMonitors, saveMonitors, MONITOR_STATUS_LABELS, MONITOR_STATUS_COLORS, MONITOR_STATUS_TEXT } from "./types";
+import { toast } from "sonner";
 import { useShell } from "../../shell-context";
 import { savePrefs, updateWidgetPrefs } from "../../preferences";
 import { useSyncedQuery } from "../../hooks/useSyncedQuery";
@@ -94,6 +95,7 @@ function UptimeFeedTab({ mode: feedMode }: FeedTabProps) {
       savePrefs(next);
 
       setInputUrl("");
+      toast.success("Connected to Uptime Kuma");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err ?? "Failed to connect");
       setConnectError(msg);

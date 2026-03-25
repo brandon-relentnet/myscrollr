@@ -4,6 +4,7 @@ import Tooltip from "../components/Tooltip";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SetupBrowser } from "../components/settings/SetupBrowser";
 import { rssApi } from "../api/client";
+import { toast } from "sonner";
 import { useChannelConfig } from "../hooks/useChannelConfig";
 import { rssCatalogOptions, queryKeys } from "../api/queries";
 import type { Channel, TrackedFeed, RssChannelConfig } from "../api/client";
@@ -74,6 +75,7 @@ export default function RssConfigPanel({
         if (feedUrlSet.has(feed.url)) {
           updateItems(feeds.filter((f) => f.url !== feed.url));
         }
+        toast.success("Feed removed from catalog");
       } catch {
         // onError in mutation config handles the UI
       }
