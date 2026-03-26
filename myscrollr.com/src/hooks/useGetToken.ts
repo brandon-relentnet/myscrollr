@@ -3,8 +3,7 @@ import { useScrollrAuth } from '@/hooks/useScrollrAuth'
 
 /**
  * Returns a stable `getToken` function that fetches (and caches) a JWT
- * access token from the unified auth provider (Logto SDK or extension
- * bridge tokens).  The cached token is reused as long as it has more than
+ * access token from the auth provider (Logto SDK).  The cached token is reused as long as it has more than
  * 60 s of lifetime remaining, which avoids triggering Logto's internal
  * `setIsLoading` on every call.
  *

@@ -10,6 +10,7 @@ import {
 import { AnimateNumber } from 'motion-plus/react'
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
 import {
+  AlertTriangle,
   BarChart3,
   Bell,
   Check,
@@ -32,16 +33,15 @@ import {
   Sparkles,
   TrendingUp,
   Trophy,
-  AlertTriangle,
   Zap,
 } from 'lucide-react'
 
 import type { FAQItem } from '@/components/landing/FAQSection'
+import type { SubscriptionStatus } from '@/api/client'
 import { usePageMeta } from '@/lib/usePageMeta'
 import { useScrollrAuth } from '@/hooks/useScrollrAuth'
 import { useGetToken } from '@/hooks/useGetToken'
 import { billingApi } from '@/api/client'
-import type { SubscriptionStatus } from '@/api/client'
 import { FAQSection } from '@/components/landing/FAQSection'
 
 const CheckoutForm = lazy(() => import('@/components/billing/CheckoutForm'))
@@ -382,7 +382,8 @@ const TIER_RANK: Record<TierKey, number> = { uplink: 1, pro: 2, ultimate: 3 }
 function tierFromPlan(plan: string): TierKey | null {
   if (plan === 'monthly' || plan === 'annual') return 'uplink'
   if (plan === 'pro_monthly' || plan === 'pro_annual') return 'pro'
-  if (plan === 'ultimate_monthly' || plan === 'ultimate_annual') return 'ultimate'
+  if (plan === 'ultimate_monthly' || plan === 'ultimate_annual')
+    return 'ultimate'
   return null
 }
 
@@ -465,7 +466,7 @@ const UPLINK_FAQ: Array<FAQItem> = [
     highlight:
       'Set price targets, score thresholds, and keyword triggers — Pro and Unlimited only.',
     answer:
-      'Custom alerts let you define conditions that trigger notifications: a stock hitting a target price, a game entering the 4th quarter, or an RSS item matching a keyword. Alerts are evaluated in the extension background — no server round-trip needed. Available on Pro and Unlimited tiers.',
+      'Custom alerts let you define conditions that trigger notifications: a stock hitting a target price, a game entering the 4th quarter, or an RSS item matching a keyword. Alerts are evaluated in the app background — no server round-trip needed. Available on Pro and Unlimited tiers.',
     accent: 'sky',
   },
   {
@@ -483,7 +484,7 @@ const UPLINK_FAQ: Array<FAQItem> = [
     highlight:
       'Control which websites show the Scrollr feed bar, from blocklists to allowlists.',
     answer:
-      'Site filtering controls where the extension feed bar appears. Every tier includes blacklist filtering — hide the bar on specific sites like work tools or video players. Pro and Unlimited add whitelist mode on top, so you can restrict the bar to only the sites you choose.',
+      'Site filtering controls where the feed bar appears. Every tier includes blacklist filtering — hide the bar on specific displays. Pro and Unlimited add whitelist mode on top, so you can restrict the bar to only the displays you choose.',
     accent: 'cyan',
   },
   {
@@ -917,7 +918,10 @@ function UplinkPage() {
       setCurrentSub(null)
       return
     }
-    billingApi.getSubscription(getToken).then(setCurrentSub).catch(() => {})
+    billingApi
+      .getSubscription(getToken)
+      .then(setCurrentSub)
+      .catch(() => {})
   }, [isAuthenticated, getToken, checkoutSuccess])
 
   // Handle return from Stripe checkout via ?session_id=
@@ -2701,8 +2705,7 @@ function UplinkPage() {
                             <span
                               className="text-[8px] font-bold text-primary/70 bg-primary/10 px-1.5 py-0.5 rounded transition-opacity duration-200"
                               style={{
-                                opacity: PRICING.ultimate[billingPeriod]
-                                  .savings
+                                opacity: PRICING.ultimate[billingPeriod].savings
                                   ? 1
                                   : 0,
                               }}
@@ -3733,15 +3736,15 @@ function UplinkPage() {
                       Gentle Nudges
                     </h3>
                     <p className="text-[10px] text-base-content/35">
-                      In-extension prompts at your limits
+                      In-app prompts at your limits
                     </p>
                   </div>
                 </div>
                 <p className="text-xs text-base-content/45 leading-relaxed">
                   When you hit a free tier cap — like trying to add an 11th
-                  symbol or 6th RSS feed — the extension shows a quiet prompt
-                  with what the next tier unlocks. No pop-ups, no dark patterns.
-                  Just context when it matters.
+                  symbol or 6th RSS feed — the app shows a quiet prompt with
+                  what the next tier unlocks. No pop-ups, no dark patterns. Just
+                  context when it matters.
                 </p>
               </div>
             </motion.div>

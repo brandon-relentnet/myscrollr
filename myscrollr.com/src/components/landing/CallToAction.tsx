@@ -7,7 +7,7 @@ import {
   useTransform,
 } from 'motion/react'
 import { GitFork, Github, Globe, MessageSquare, Star, Zap } from 'lucide-react'
-import InstallButton from '@/components/InstallButton'
+import { DownloadButton } from '@/components/DownloadButton'
 
 import { useGitHubStats } from '@/hooks/useGitHubStats'
 
@@ -337,7 +337,7 @@ export function CallToAction() {
               }}
             />
 
-            <InstallButton className="relative z-10 text-lg px-10 py-5 shadow-2xl" />
+            <DownloadButton />
           </motion.div>
 
           {/* Browser support line */}

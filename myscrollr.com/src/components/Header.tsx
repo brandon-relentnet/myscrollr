@@ -37,7 +37,7 @@ export default function Header() {
   }
 
   const handleSignOut = () => {
-    // signOut() in ScrollrAuthProvider notifies extension + calls Logto signOut
+    // signOut() calls Logto signOut
     signOut(`${window.location.origin}`)
   }
 

@@ -11,6 +11,7 @@
   "bundle": {
     "active": true,
     "createUpdaterArtifacts": true,
+    "resources": ["../../LICENSE"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -58,6 +59,7 @@
       }
     ],
     "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*; img-src 'self' data: blob:; worker-src 'self' blob:",
       "capabilities": ["main-capability", "ticker-capability"]
     }
   }

@@ -95,38 +95,38 @@ All paid tiers include a 7-day free trial.
 - [ ] Link to GitHub releases as fallback
 
 ### Landing Page Rewrites
-- [ ] Delete `src/components/InstallButton.tsx`
-- [ ] Create `DownloadButton.tsx` component (replaces InstallButton across the site)
+- [x] Delete `src/components/InstallButton.tsx`
+- [x] Create `DownloadButton.tsx` component (OS detection, GitHub releases link — replaces InstallButton across the site)
 - [ ] Rewrite `HeroBrowserStack.tsx` → Desktop Workspace visual (animated desktop with app windows + ticker at bottom edge)
-- [ ] Rewrite `HowItWorks.tsx` → "Download → Choose Your Data → Work as Usual" (new visuals for steps 1 + 3)
-- [ ] Update `HeroSection.tsx` (copy: "bottom of your browser" → desktop language; swap InstallButton for DownloadButton)
+- [ ] Rewrite `HowItWorks.tsx` → "Download → Choose Your Data → Work as Usual" (new visuals for steps 1 + 3) *(import swapped to DownloadButton)*
+- [ ] Update `HeroSection.tsx` (copy: "bottom of your browser" → desktop language) *(import swapped to DownloadButton)*
 - [ ] Update `FAQSection.tsx` (every answer references browser/extension — reframe all for desktop)
-- [ ] Update `CallToAction.tsx` (swap button + copy; replace browser list with platform list: macOS / Windows / Linux)
-- [ ] Update `ChannelsShowcase.tsx` ("every tab" → "your desktop", 3 lines)
+- [ ] Update `CallToAction.tsx` (copy + replace browser list with platform list: macOS / Windows / Linux) *(import swapped to DownloadButton)*
+- [x] Update `ChannelsShowcase.tsx` ("every tab" → "your desktop/screen", 4 edits)
 - [ ] Update `BenefitsSection.tsx` ("specific sites" + browser-tab illustration → desktop)
-- [ ] Update `TrustSection.tsx` ("Your browser, your data" → "Your device, your data")
-- [ ] Update `Footer.tsx` (remove Chrome/Firefox store links; add Download link; update tagline)
-- [ ] Update `routes/index.tsx` meta description
-- [ ] Update `routes/architecture.tsx` (Extension tech stack card → Desktop: Tauri v2, React, Rust)
-- [ ] Update `routes/uplink.tsx` (4 FAQ lines referencing "extension")
-- [ ] Update `index.html` (3 meta tags: description, og:description, twitter:description)
-- [ ] Update `Header.tsx` comment (1 line)
-- [ ] Update `useGetToken.ts` comment (1 line)
+- [x] Update `TrustSection.tsx` ("Your browser, your data" → "Your device, your data"; "Extension component" → "Desktop component")
+- [x] Update `Footer.tsx` (Chrome/Firefox store links → Download link; "every tab" tagline → desktop)
+- [x] Update `routes/index.tsx` (title + meta description → desktop)
+- [x] Update `routes/architecture.tsx` (Extension tech stack → Desktop: Tauri v2, React 19, SSE + Polling; "browser" → "desktop")
+- [x] Update `routes/uplink.tsx` (4 FAQ lines: "extension" → "app")
+- [x] Update `index.html` (3 meta tags → desktop)
+- [x] Update `Header.tsx` comment (removed extension reference)
+- [x] Update `useGetToken.ts` comment (removed bridge reference)
 
 ### Dead Code Removal
-- [ ] Evaluate `useScrollrAuth.tsx` bridge auth system (extension relay via CustomEvents — likely dead code if desktop doesn't use it)
-- [ ] Remove bridge auth if confirmed dead; simplify to Logto-only auth
+- [x] Evaluate `useScrollrAuth.tsx` bridge auth system — confirmed dead (no code dispatches bridge events)
+- [x] Remove bridge auth; simplified to Logto-only wrapper (248 → 102 lines)
 
 ### Legal Documents (`documents.ts`)
-- [ ] Delete or replace "Browser Extension Privacy" document (#6, lines 399-456)
+- [x] Delete "Browser Extension Privacy" document (#6) — removed entirely
 - [ ] Create "Desktop Application Privacy" document (local storage: `scrollr.json` with 16+ keys, log files, system info access, auto-update endpoint)
-- [ ] Add "Desktop Application" section to Terms of Service (parallel to existing "Browser Extension" section)
-- [ ] Update Privacy Policy body: "browser extension and web dashboard" → include desktop app data handling
-- [ ] Update Cookie & Storage Policy: add "Desktop Application Storage" section
-- [ ] Update Security Policy scope: add desktop application
-- [ ] Update Accessibility Statement: add desktop app section
-- [ ] Update Acceptable Use Policy scope: add desktop application
-- [ ] **Fix Finnhub → TwelveData** (9 occurrences across Privacy Policy, Financial Disclaimer, Third-Party Attribution — material inaccuracy)
+- [ ] Add "Desktop Application" section to Terms of Service (existing "Browser Extension" section renamed to "Desktop Application" — may need expanded content)
+- [x] Update Privacy Policy body: "browser extension" → "desktop application"
+- [x] Update Cookie & Storage Policy scope: "browser extension" → "desktop application"
+- [x] Update Security Policy scope: "browser extension" → "desktop application"
+- [x] Update Accessibility Statement: "Browser Extension" section → "Desktop Application" (Shadow Root → native ticker window)
+- [x] Update Acceptable Use Policy scope: "browser extension" → "desktop application"
+- [x] **Fix Finnhub → TwelveData** (all 9 occurrences replaced, including `finnhub.io` → `twelvedata.com` URLs)
 - [ ] Disclose desktop local data: auth tokens, preferences, widget configs, log files, system info access (CPU/GPU/memory/temps/network)
 
 ---
@@ -143,17 +143,17 @@ All paid tiers include a 7-day free trial.
 - [ ] Fantasy: enforce league import limit (Uplink=1, Pro=3, Ultimate=10)
 - [ ] Usage indicators in all config panels ("12/25 symbols tracked")
 - [ ] Shared `UpgradePrompt` component reused across all channels
-- [ ] Server-side SSE access gating (restrict `/events` endpoint to `uplink_ultimate` role only — currently any authenticated user can connect, bypassing tier model)
+- [x] Server-side SSE access gating (`/events` endpoint now extracts roles from JWT claims and returns 403 for non-`uplink_ultimate` users)
 
 ---
 
 ## Track 5 — Ship Readiness
 
 ### Security
-- [ ] Configure CSP headers in Tauri webview (restrict script-src, connect-src to known domains — currently no explicit CSP)
+- [x] Configure CSP headers in Tauri webview (`script-src 'self'`, Google Fonts allowlisted, `connect-src https://*` for user-provided Kuma URLs)
 
 ### Legal
-- [ ] Bundle AGPL license with binary (add `LICENSE` to `tauri.conf.json` `bundle.resources`)
+- [x] Bundle AGPL license with binary (`"resources": ["../../LICENSE"]` in `tauri.conf.json`)
 - [ ] Final legal review pass after Track 3 legal doc updates
 
 ### Testing & Release

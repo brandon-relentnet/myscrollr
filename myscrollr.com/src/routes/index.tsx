@@ -14,9 +14,9 @@ export const Route = createFileRoute('/')({
 
 function HomePage() {
   usePageMeta({
-    title: 'Scrollr — Live Data, Every Tab',
+    title: 'Scrollr — Live Data on Your Desktop',
     description:
-      'Pin live sports scores, crypto prices, news, and fantasy updates to every browser tab. Open source, private by design, and free.',
+      'Live sports scores, crypto prices, news, and fantasy updates on your desktop. Open source, private by design, and free.',
     canonicalUrl: 'https://myscrollr.com/',
   })
 
