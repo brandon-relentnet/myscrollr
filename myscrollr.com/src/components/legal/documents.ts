@@ -7,7 +7,6 @@ import {
   GitPullRequest,
   Link2,
   Lock,
-  Puzzle,
   RotateCcw,
   Scale,
   Shield,
@@ -64,7 +63,7 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
       {
         heading: 'Acceptance of Terms',
         content: [
-          'By accessing or using Scrollr ("the Platform"), including the website at myscrollr.com, the Scrollr desktop application, the Scrollr browser extension, and any associated APIs or services, you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, do not use the Platform.',
+          'By accessing or using Scrollr ("the Platform"), including the website at myscrollr.com, the Scrollr desktop application, and any associated APIs or services, you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, do not use the Platform.',
           'We may update these Terms from time to time. Continued use of the Platform after changes constitutes acceptance of the revised Terms. We will indicate the date of the most recent revision at the top of this page.',
         ],
       },
@@ -89,10 +88,10 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
         ],
       },
       {
-        heading: 'Browser Extension',
+        heading: 'Desktop Application',
         content: [
-          'The Scrollr browser extension operates by injecting a scrollbar feed overlay onto web pages you visit. The extension communicates with our servers to receive real-time data updates via Server-Sent Events (SSE). The extension does not read, collect, or transmit the content of web pages you visit.',
-          'By installing the extension, you grant it the permissions listed in the extension manifest, which include storage access and communication with our API servers.',
+          'The Scrollr desktop application displays a real-time ticker overlay on your screen. The application communicates with our servers to receive real-time data updates via Server-Sent Events (SSE). The application does not read, collect, or transmit the content of other applications or web pages.',
+          'By installing the application, you grant it the permissions required for operation, which include network access for communication with our API servers and local storage for your preferences.',
         ],
       },
       {
@@ -148,7 +147,7 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
         heading: 'Overview',
         content: [
           'Scrollr ("we," "our," or "the Platform") respects your privacy. This Privacy Policy describes what information we collect, how we use it, and your rights regarding that information.',
-          'This policy applies to the Scrollr website (myscrollr.com), the Scrollr desktop application, the Scrollr browser extension, and all associated APIs and services.',
+          'This policy applies to the Scrollr website (myscrollr.com), the Scrollr desktop application, and all associated APIs and services.',
         ],
       },
       {
@@ -164,7 +163,7 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
       {
         heading: 'How We Use Your Information',
         content: [
-          'We use your information to provide and operate the Platform, including delivering real-time data to your browser extension and web dashboard, synchronizing your preferences across devices, and maintaining your third-party account connections.',
+          'We use your information to provide and operate the Platform, including delivering real-time data to your desktop application and web dashboard, synchronizing your preferences across devices, and maintaining your third-party account connections.',
           'We do not sell, rent, or share your personal information with third parties for marketing purposes. We do not serve advertisements.',
         ],
       },
@@ -180,7 +179,7 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
         heading: 'Third-Party Services',
         content: [
           'The Platform integrates with several third-party services. Each has its own privacy policy that we encourage you to review:',
-          'Logto (authentication) handles your login credentials and identity verification. Finnhub provides financial market data. ESPN provides sports scores and game data. Yahoo provides fantasy sports data when you authorize your account. RSS feed publishers provide news content through their public feeds.',
+          'Logto (authentication) handles your login credentials and identity verification. TwelveData provides financial market data. ESPN provides sports scores and game data. Yahoo provides fantasy sports data when you authorize your account. RSS feed publishers provide news content through their public feeds.',
           'We send your user identifier to our channel APIs via internal HTTP headers (X-User-Sub) to route data to your account. Third-party data providers do not receive your personal information directly from us.',
         ],
       },
@@ -234,7 +233,7 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
       {
         heading: 'Overview',
         content: [
-          'This policy explains how Scrollr uses cookies, browser storage, and similar technologies across the website and browser extension.',
+          'This policy explains how Scrollr uses cookies, local storage, and similar technologies across the website and desktop application.',
         ],
       },
       {
@@ -245,9 +244,9 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
         ],
       },
       {
-        heading: 'Browser Extension Storage',
+        heading: 'Desktop Application Storage',
         content: [
-          "The Scrollr browser extension uses the browser's built-in extension storage API (browser.storage.local) to store the following data locally on your device:",
+          'The Scrollr desktop application uses local storage to store the following data on your device:',
           'Authentication tokens: Your access token and refresh token for communicating with our API. Feed preferences: Your display settings (position, mode, behavior, visibility). Dashboard state: Cached dashboard data for faster loading. Connection state: SSE connection status and subscription information.',
           "This data is stored locally on your device and is not transmitted to third parties. It is only sent to Scrollr's API servers to authenticate requests and retrieve your personalized data.",
         ],
@@ -295,9 +294,9 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
       {
         heading: 'Data Accuracy and Timeliness',
         content: [
-          'Financial market data is sourced from Finnhub, a third-party data provider. While we strive to display accurate and timely information, we cannot guarantee that the data shown is accurate, complete, or current at any given moment.',
+          'Financial market data is sourced from TwelveData, a third-party data provider. While we strive to display accurate and timely information, we cannot guarantee that the data shown is accurate, complete, or current at any given moment.',
           'Data may be delayed, interrupted, or incorrect due to network latency, API rate limits, service outages, data provider errors, or other technical factors. Real-time data may not reflect the most recent market activity. Historical data, price changes, and percentage calculations are derived from the data we receive and may not match values from other sources.',
-          'The "previous close" values and calculated price changes displayed are based on data provided by Finnhub and may differ from official exchange closing prices.',
+          'The "previous close" values and calculated price changes displayed are based on data provided by TwelveData and may differ from official exchange closing prices.',
         ],
       },
       {
@@ -317,14 +316,14 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
       {
         heading: 'Cryptocurrency Disclaimer',
         content: [
-          'Cryptocurrency data displayed through the Platform (sourced via Binance through Finnhub) is subject to high volatility and additional risks. Cryptocurrency markets operate 24/7 and prices can change rapidly. The data displayed may not reflect the most current prices across all exchanges.',
+          'Cryptocurrency data displayed through the Platform (sourced via Binance through TwelveData) is subject to high volatility and additional risks. Cryptocurrency markets operate 24/7 and prices can change rapidly. The data displayed may not reflect the most current prices across all exchanges.',
           'Cryptocurrency investments carry a high degree of risk, including the risk of total loss. We do not endorse or recommend any particular cryptocurrency.',
         ],
       },
       {
         heading: 'Third-Party Data Provider',
         content: [
-          "Financial data is provided by Finnhub (finnhub.io). Finnhub's terms of service and data usage policies apply to the data we display. We are not responsible for the accuracy, availability, or completeness of data provided by Finnhub or any other third-party data source.",
+          "Financial data is provided by TwelveData (twelvedata.com). TwelveData's terms of service and data usage policies apply to the data we display. We are not responsible for the accuracy, availability, or completeness of data provided by TwelveData or any other third-party data source.",
         ],
       },
     ],
@@ -349,9 +348,9 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
         ],
       },
       {
-        heading: 'Financial Market Data — Finnhub',
+        heading: 'Financial Market Data — TwelveData',
         content: [
-          "Real-time and historical market data is provided by Finnhub (finnhub.io). This includes stock prices, cryptocurrency prices, trade data, and derived calculations. Finnhub's data is sourced from various exchanges and data providers. Use of this data is subject to Finnhub's terms of service.",
+          "Real-time and historical market data is provided by TwelveData (twelvedata.com). This includes stock prices, cryptocurrency prices, trade data, and derived calculations. TwelveData's data is sourced from various exchanges and data providers. Use of this data is subject to TwelveData's terms of service.",
           'We track approximately 50 symbols including 45 stocks and 5 cryptocurrency pairs. Data is received via WebSocket connection for real-time updates.',
         ],
       },
@@ -388,68 +387,6 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
         heading: 'No Endorsement',
         content: [
           'The display of data from any third-party source does not constitute an endorsement of, sponsorship by, or affiliation with that source. All third-party trademarks, service marks, and logos are the property of their respective owners.',
-        ],
-      },
-    ],
-  },
-
-  // ─────────────────────────────────────────────────────────────
-  // 6. BROWSER EXTENSION PRIVACY
-  // ─────────────────────────────────────────────────────────────
-  {
-    slug: 'extension',
-    title: 'Browser Extension Privacy',
-    shortTitle: 'Extension',
-    icon: Puzzle,
-    category: 'data',
-    lastUpdated: 'February 2026',
-    effectiveDate: 'February 11, 2026',
-    sections: [
-      {
-        heading: 'Overview',
-        content: [
-          'The Scrollr browser extension is available for Chrome and Firefox. This document describes exactly what the extension can and cannot access, how it communicates with our servers, and what data it stores on your device.',
-        ],
-      },
-      {
-        heading: 'What the Extension Can Access',
-        content: [
-          'The extension requests the following permissions: "storage" (to save your preferences and authentication tokens locally), "identity" (to handle the OAuth authentication flow), and "alarms" (for periodic background tasks like token refresh).',
-          'The extension also has host permissions to communicate with our API server (api.myscrollr.relentnet.dev) and authentication server (auth.myscrollr.relentnet.dev). These are the only external servers the extension communicates with.',
-        ],
-      },
-      {
-        heading: 'What the Extension Cannot Access',
-        content: [
-          'The extension does NOT read the content of web pages you visit. It does NOT collect your browsing history. It does NOT monitor your keystrokes or form inputs. It does NOT inject advertisements. It does NOT access your bookmarks, downloads, or other browser data.',
-          "The extension uses a Shadow Root to render its UI, which is a browser technology that creates an isolated DOM tree. This means the extension's interface is completely isolated from the web page content, and the web page cannot access the extension's internal state.",
-        ],
-      },
-      {
-        heading: 'Data Communication',
-        content: [
-          'The extension maintains a Server-Sent Events (SSE) connection to our API server to receive real-time data updates. This connection is authenticated using your access token.',
-          'The extension uses a message-passing protocol between its background script and content scripts. Messages include: CDC (Change Data Capture) records for real-time updates, subscription management commands, connection and authentication status updates, and dashboard data snapshots.',
-          'All communication between the extension and our servers is encrypted via HTTPS/TLS.',
-        ],
-      },
-      {
-        heading: 'Local Data Storage',
-        content: [
-          'The extension stores the following data locally using browser.storage.local: access and refresh tokens (for API authentication), user preferences (feed position, mode, behavior, visibility), dashboard cache (for faster initial loads), feed subscriptions (which data channels you are subscribed to), and connection state.',
-          "This data never leaves your device except when sent to Scrollr's API servers for authentication and data retrieval. It is not shared with any third party.",
-        ],
-      },
-      {
-        heading: 'Permissions Justification',
-        content: [
-          '"storage": Required to persist your authentication tokens and preferences between browser sessions. "identity": Required to complete the OAuth 2.0 PKCE authentication flow for signing in. "alarms": Required for scheduling periodic token refresh and background maintenance tasks. Host permissions: Required to communicate with Scrollr\'s API and authentication servers.',
-        ],
-      },
-      {
-        heading: 'Uninstallation',
-        content: [
-          'When you uninstall the extension, all locally stored data (tokens, preferences, cache) is automatically deleted by the browser. No data persists on your device after uninstallation. Your server-side account data (preferences, channel configurations) remains on our servers and can be accessed if you reinstall the extension and sign in again.',
         ],
       },
     ],
@@ -559,7 +496,7 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
       {
         heading: 'Non-Refundable Circumstances',
         content: [
-          'Refunds will not be granted for: requests made after the applicable refund window; dissatisfaction with third-party data accuracy (we do not control data from Finnhub, ESPN, Yahoo, or RSS publishers); temporary service outages or maintenance periods; or features that are clearly documented as not included in Uplink.',
+          'Refunds will not be granted for: requests made after the applicable refund window; dissatisfaction with third-party data accuracy (we do not control data from TwelveData, ESPN, Yahoo, or RSS publishers); temporary service outages or maintenance periods; or features that are clearly documented as not included in Uplink.',
         ],
       },
       {
@@ -693,19 +630,19 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
       {
         heading: 'Overview',
         content: [
-          'This Acceptable Use Policy ("AUP") governs your use of the Scrollr platform, including the website, browser extension, and API services. Violations of this policy may result in suspension or termination of your account.',
+          'This Acceptable Use Policy ("AUP") governs your use of the Scrollr platform, including the website, desktop application, and API services. Violations of this policy may result in suspension or termination of your account.',
         ],
       },
       {
         heading: 'Prohibited Activities',
         content: [
-          "You may not use the Platform to: scrape, crawl, or systematically download data from our APIs or website beyond normal personal use; redistribute, resell, or commercially exploit data obtained through the Platform; attempt to circumvent rate limits, authentication mechanisms, or access controls; interfere with or disrupt the Platform's infrastructure, including denial-of-service attacks; impersonate other users or misrepresent your identity; use the browser extension to inject malicious code, advertisements, or unauthorized content into web pages; access or attempt to access other users' accounts or data; or use automated tools (bots, scripts) to interact with the Platform in ways not explicitly supported by our APIs.",
+          "You may not use the Platform to: scrape, crawl, or systematically download data from our APIs or website beyond normal personal use; redistribute, resell, or commercially exploit data obtained through the Platform; attempt to circumvent rate limits, authentication mechanisms, or access controls; interfere with or disrupt the Platform's infrastructure, including denial-of-service attacks; impersonate other users or misrepresent your identity; use the desktop application to inject malicious code, advertisements, or unauthorized content; access or attempt to access other users' accounts or data; or use automated tools (bots, scripts) to interact with the Platform in ways not explicitly supported by our APIs.",
         ],
       },
       {
         heading: 'API Usage',
         content: [
-          'The Scrollr API is intended for use by the official Scrollr website and browser extension. While the source code is open and you may operate your own instance, you may not use our hosted API endpoints (api.myscrollr.relentnet.dev) for unauthorized third-party applications without permission.',
+          'The Scrollr API is intended for use by the official Scrollr website and desktop application. While the source code is open and you may operate your own instance, you may not use our hosted API endpoints (api.myscrollr.relentnet.dev) for unauthorized third-party applications without permission.',
           'Excessive API requests that degrade service for other users may be rate-limited or blocked.',
         ],
       },
@@ -799,7 +736,7 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
         content: [
           'Scrollr takes the security of its platform and user data seriously. We implement multiple layers of security across our infrastructure:',
           'Encryption: All API communication is encrypted via HTTPS/TLS. Yahoo OAuth refresh tokens are encrypted at rest using AES-256-GCM with a 256-bit key. OAuth state parameters use Redis-backed CSRF tokens with a 10-minute TTL.',
-          'Authentication: User authentication is handled by Logto, a self-hosted OIDC provider. Access tokens are validated using JWKS with automatic key rotation. The browser extension uses PKCE (Proof Key for Code Exchange) for its OAuth flow. Channel APIs never validate JWTs directly — they receive trusted user identity from the core API via internal HTTP headers.',
+          'Authentication: User authentication is handled by Logto, a self-hosted OIDC provider. Access tokens are validated using JWKS with automatic key rotation. The desktop application uses PKCE (Proof Key for Code Exchange) for its OAuth flow. Channel APIs never validate JWTs directly — they receive trusted user identity from the core API via internal HTTP headers.',
           'Infrastructure: The platform is deployed on self-hosted infrastructure (Coolify) with network isolation between services. Database connections use connection pooling with parameterized queries to prevent SQL injection.',
         ],
       },
@@ -813,8 +750,8 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
       {
         heading: 'Scope',
         content: [
-          'The following are in scope for security reports: the Scrollr web application (myscrollr.com), the Scrollr browser extension, the core API and channel APIs, authentication and authorization flows, and data storage and encryption implementations.',
-          'The following are out of scope: third-party services we integrate with (Finnhub, ESPN, Yahoo, Logto itself), denial-of-service attacks, social engineering of Scrollr maintainers, and any testing against production systems without permission.',
+          'The following are in scope for security reports: the Scrollr web application (myscrollr.com), the Scrollr desktop application, the core API and channel APIs, authentication and authorization flows, and data storage and encryption implementations.',
+          'The following are out of scope: third-party services we integrate with (TwelveData, ESPN, Yahoo, Logto itself), denial-of-service attacks, social engineering of Scrollr maintainers, and any testing against production systems without permission.',
         ],
       },
       {
@@ -860,13 +797,13 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
       {
         heading: 'Current Status',
         content: [
-          "We recognize that our platform is in active development and may not yet fully meet all WCAG 2.1 AA criteria. Known areas for improvement include: ensuring all interactive elements have sufficient color contrast ratios, providing complete keyboard navigation support across all features, adding comprehensive ARIA labels to dynamic content (especially the real-time data feed), and ensuring screen reader compatibility with the browser extension's shadow root UI.",
+          "We recognize that our platform is in active development and may not yet fully meet all WCAG 2.1 AA criteria. Known areas for improvement include: ensuring all interactive elements have sufficient color contrast ratios, providing complete keyboard navigation support across all features, adding comprehensive ARIA labels to dynamic content (especially the real-time data feed), and ensuring screen reader compatibility with the desktop application's ticker UI.",
         ],
       },
       {
-        heading: 'Browser Extension',
+        heading: 'Desktop Application',
         content: [
-          "The Scrollr browser extension renders its UI within a Shadow Root DOM, which presents unique accessibility challenges. We are working to ensure that the extension's feed overlay is navigable via keyboard and compatible with screen readers.",
+          'The Scrollr desktop application renders its ticker UI in a separate native window. We are working to ensure that the ticker is navigable via keyboard and compatible with screen readers.',
         ],
       },
       {

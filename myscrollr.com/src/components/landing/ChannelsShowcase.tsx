@@ -74,7 +74,7 @@ const CHANNELS: Array<ChannelInfo> = [
     scenarioIcon: Timer,
     scenarioTitle: 'Never miss the final score',
     scenarioBody:
-      "NFL, NBA, NHL, MLB. Live scores tick along the bottom of every tab. You'll know the second the game ends.",
+      "NFL, NBA, NHL, MLB. Live scores tick along the bottom of your screen. You'll know the second the game ends.",
     stat: '5',
     statLabel: 'major leagues',
   },
@@ -104,11 +104,11 @@ const CHANNELS: Array<ChannelInfo> = [
     border: 'border-accent/20',
     activeBg: 'bg-accent',
     activeText: 'text-accent-content',
-    tagline: 'League intel on every tab',
+    tagline: 'League intel on your desktop',
     scenarioIcon: Swords,
     scenarioTitle: 'Matchup updates, zero effort',
     scenarioBody:
-      'Connect your Yahoo account and see standings, matchups, and live scoring across all your leagues without leaving your current tab.',
+      'Connect your Yahoo account and see standings, matchups, and live scoring across all your leagues without switching apps.',
     stat: '∞',
     statLabel: 'leagues supported',
   },
@@ -529,7 +529,7 @@ export function ChannelsShowcase() {
           <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
         </span>
         <span className="text-[11px] text-base-content/30 font-medium">
-          Your browser, right now — hover to slow, click to explore.
+          Your desktop, right now — hover to slow, click to explore.
         </span>
       </motion.div>
 

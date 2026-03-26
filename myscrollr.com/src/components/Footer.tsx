@@ -17,12 +17,8 @@ export default function Footer() {
     product: [
       { label: 'Channels', href: '/channels' },
       {
-        label: 'Chrome Extension',
-        href: 'https://chromewebstore.google.com/detail/scrollr/pjeafpgbpfbcaddipkcbacohhbfakclb',
-      },
-      {
-        label: 'Firefox Add-on',
-        href: 'https://addons.mozilla.org/en-US/firefox/addon/scrollr/',
+        label: 'Download',
+        href: 'https://github.com/brandon-relentnet/myscrollr/releases/latest',
       },
       { label: 'Uplink', href: '/uplink' },
     ],
@@ -97,8 +93,8 @@ export default function Footer() {
             </div>
 
             <p className="text-sm text-base-content/60 leading-relaxed max-w-sm pb-2">
-              Live scores, prices, and headlines pinned to every tab. The ticker
-              that follows you everywhere.
+              Live scores, prices, and headlines on your desktop. The ticker
+              that's always there when you need it.
             </p>
 
             {/* Status Indicators */}

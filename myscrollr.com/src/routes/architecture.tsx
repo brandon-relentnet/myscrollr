@@ -138,7 +138,7 @@ const CDC_FLOW: Array<CdcStep> = [
   },
   {
     label: 'SSE → Client',
-    detail: 'Frontend / Extension',
+    detail: 'Desktop App',
     Icon: MonitorSmartphone,
     hex: HEX.primary,
   },
@@ -187,7 +187,7 @@ const PRINCIPLES: Array<Principle> = [
     Icon: Workflow,
     title: 'Convention-based UI',
     description:
-      'Frontend and extension discover channel components at build time via import.meta.glob. Drop a file in the right folder and it appears.',
+      'Desktop app discovers channel components at build time via import.meta.glob. Drop a file in the right folder and it appears.',
     hex: HEX.accent,
     Watermark: Workflow,
   },
@@ -242,13 +242,13 @@ const TECH_STACK: Array<TechGroup> = [
     Watermark: MonitorSmartphone,
   },
   {
-    category: 'Extension',
+    category: 'Desktop',
     Icon: Globe,
     hex: HEX.secondary,
     items: [
-      { name: 'WXT v0.20', detail: 'Chrome MV3 / Firefox MV2' },
-      { name: 'Shadow DOM', detail: 'Isolated feed bar UI' },
-      { name: 'Background SSE', detail: 'CDC pass-through routing' },
+      { name: 'Tauri v2', detail: 'Cross-platform native shell' },
+      { name: 'React 19', detail: 'Multi-window UI' },
+      { name: 'SSE + Polling', detail: 'Real-time data delivery' },
     ],
     Watermark: Globe,
   },
@@ -282,7 +282,7 @@ function ArchitecturePage() {
   usePageMeta({
     title: 'Architecture — Scrollr',
     description:
-      'How Scrollr works: real-time data pipeline from source APIs through CDC to your browser, powered by Go, Rust, React, and Redis.',
+      'How Scrollr works: real-time data pipeline from source APIs through CDC to your desktop, powered by Go, Rust, React, and Redis.',
     canonicalUrl: 'https://myscrollr.com/architecture',
   })
 
@@ -344,7 +344,7 @@ function ArchitecturePage() {
             transition={{ duration: 0.6, delay: 0.3, ease: EASE }}
             className="text-base text-base-content/45 max-w-xl mx-auto leading-relaxed"
           >
-            From source API to your browser in milliseconds. A decoupled,
+            From source API to your desktop in milliseconds. A decoupled,
             CDC-driven pipeline built on Go, Rust, React, and Redis.
           </motion.p>
         </div>

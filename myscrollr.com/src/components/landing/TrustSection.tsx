@@ -329,7 +329,7 @@ export function TrustSection() {
             Transparent by <span className="text-gradient-primary">Design</span>
           </h2>
           <p className="text-base text-base-content/45 leading-relaxed max-w-lg">
-            Open source, zero analytics, no accounts. Your browser, your data —
+            Open source, zero analytics, no accounts. Your device, your data —
             we never see it.
           </p>
         </motion.div>
@@ -429,7 +429,7 @@ export function TrustSection() {
                     { label: 'Go API', desc: 'HTTP endpoints' },
                     { label: 'Rust Service', desc: 'Data ingestion' },
                     { label: 'Dashboard Tab', desc: 'Web UI component' },
-                    { label: 'Feed Tab', desc: 'Extension component' },
+                    { label: 'Feed Tab', desc: 'Desktop component' },
                   ].map((item, i) => (
                     <motion.div
                       key={item.label}
