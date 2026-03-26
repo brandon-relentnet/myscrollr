@@ -28,7 +28,8 @@ const (
 	CacheKeySportsCatalog = "cache:sports:catalog"
 
 	// SportsCacheTTL is how long game data is cached.
-	SportsCacheTTL = 30 * time.Second
+	// Reduced from 30s to 10s for faster score updates.
+	SportsCacheTTL = 10 * time.Second
 
 	// SportsCatalogCacheTTL is how long the league catalog is cached.
 	// Reduced from 5min to 60s because game activity status changes frequently.

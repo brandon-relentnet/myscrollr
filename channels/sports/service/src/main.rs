@@ -96,7 +96,7 @@ async fn main() {
                         if h.leagues_live > 0 {
                             30  // 30s when live games are happening
                         } else {
-                            180 // 3 min when no live games
+                            60  // 1 min when no live games (was 3 min)
                         }
                     };
 

@@ -45,6 +45,7 @@ RUN apk --no-cache add curl
 # Copy the Pre-built binary from the previous stage
 COPY --from=builder /app/main .
 COPY --from=builder /app/docs ./docs
+COPY --from=builder /app/migrations ./migrations
 
 # Expose port 8080 to the outside world
 EXPOSE 8080
