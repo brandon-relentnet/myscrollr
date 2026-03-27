@@ -8,6 +8,7 @@ use crate::database::{
     get_tracked_leagues, seed_tracked_leagues, disable_stale_leagues,
     cleanup_old_games, get_live_yesterday_leagues,
     LeagueConfig, TrackedLeague, upsert_game, CleanedData, Team,
+    StandingData, upsert_standing, TeamData, upsert_team,
 };
 pub use crate::types::{SportsHealth, RateLimiter};
 
@@ -252,6 +253,206 @@ pub async fn poll_schedule(
         }
         Err(e) => warn!("Failed to clean up old games: {}", e),
     }
+}
+
+// =============================================================================
+// Standings polling (daily — every 24 hours)
+// =============================================================================
+
+/// Poll standings for all enabled leagues. Runs daily.
+pub async fn poll_standings(
+    pool: &Arc<PgPool>,
+    client: &Client,
+    leagues: &[TrackedLeague],
+    rate_limiter: &Arc<RateLimiter>,
+) {
+    info!("Starting standings poll for {} leagues", leagues.len());
+    for league in leagues {
+        // F1 and MMA don't have traditional standings
+        if league.sport_api == "formula-1" || league.sport_api == "mma" {
+            continue;
+        }
+        if !rate_limiter.has_budget(&league.sport_api) {
+            warn!("[{}] Skipping standings poll — budget low", league.name);
+            continue;
+        }
+
+        let format_str = league.season_format.as_deref().unwrap_or("calendar");
+        let default_season = compute_current_season(format_str);
+        let season = league.season.as_deref().unwrap_or(&default_season).to_string();
+
+        let (base, is_mock) = match std::env::var("API_SPORTS_BASE_URL") {
+            Ok(override_url) => (override_url.trim_end_matches('/').to_string(), true),
+            Err(_) => (format!("https://{}", league.api_host), false),
+        };
+        let mut url = format!(
+            "{}/standings?league={}&season={}",
+            base, league.league_id, season
+        );
+        if is_mock {
+            url = format!("{}&sport={}", url, league.sport_api);
+        }
+
+        match client.get(&url).send().await {
+            Ok(resp) => {
+                if let Some(remaining) = resp.headers()
+                    .get("x-ratelimit-requests-remaining")
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(|v| v.parse::<u32>().ok())
+                {
+                    rate_limiter.update(&league.sport_api, remaining);
+                }
+                if !resp.status().is_success() {
+                    warn!("[{}] Standings API returned {}", league.name, resp.status());
+                    continue;
+                }
+                match resp.json::<serde_json::Value>().await {
+                    Ok(body) => {
+                        let response = body.get("response").and_then(|r| r.as_array()).cloned().unwrap_or_default();
+                        parse_and_upsert_standings(pool, &league.name, &season, &response).await;
+                    }
+                    Err(e) => warn!("[{}] Failed to parse standings JSON: {}", league.name, e),
+                }
+            }
+            Err(e) => error!("[{}] Standings request failed: {}", league.name, e),
+        }
+    }
+    info!("Standings poll complete");
+}
+
+async fn parse_and_upsert_standings(
+    pool: &Arc<PgPool>,
+    league_name: &str,
+    season: &str,
+    response: &[serde_json::Value],
+) {
+    for entry in response {
+        // Football has nested league.standings arrays
+        // Other sports return flat standings arrays
+        let standings_arrays = if let Some(league_obj) = entry.get("league") {
+            league_obj.get("standings").and_then(|s| s.as_array()).cloned().unwrap_or_default()
+        } else {
+            vec![entry.clone()]
+        };
+
+        for group in &standings_arrays {
+            let items = if group.is_array() {
+                group.as_array().cloned().unwrap_or_default()
+            } else {
+                vec![group.clone()]
+            };
+
+            for item in &items {
+                let team = match item.get("team") {
+                    Some(t) => t,
+                    None => continue,
+                };
+                let all = item.get("all").or_else(|| item.get("games"));
+                let standing = StandingData {
+                    league: league_name.to_string(),
+                    team_name: team.get("name").and_then(|n| n.as_str()).unwrap_or("").to_string(),
+                    team_code: team.get("code").and_then(|c| c.as_str()).map(|s| s.to_string()),
+                    team_logo: team.get("logo").and_then(|l| l.as_str()).map(|s| s.to_string()),
+                    rank: item.get("rank").and_then(|r| r.as_i64()).map(|r| r as i32),
+                    wins: all.and_then(|a| a.get("win")).and_then(|w| w.as_i64()).unwrap_or(0) as i32,
+                    losses: all.and_then(|a| a.get("lose")).and_then(|l| l.as_i64()).unwrap_or(0) as i32,
+                    draws: all.and_then(|a| a.get("draw")).and_then(|d| d.as_i64()).unwrap_or(0) as i32,
+                    points: item.get("points").and_then(|p| p.as_i64()).map(|p| p as i32),
+                    games_played: all.and_then(|a| a.get("played")).and_then(|p| p.as_i64()).unwrap_or(0) as i32,
+                    goal_diff: item.get("goalsDiff").and_then(|g| g.as_i64()).map(|g| g as i32),
+                    description: item.get("description").and_then(|d| d.as_str()).map(|s| s.to_string()),
+                    form: item.get("form").and_then(|f| f.as_str()).map(|s| s.to_string()),
+                    group_name: item.get("group").and_then(|g| g.as_str()).map(|s| s.to_string()),
+                    season: Some(season.to_string()),
+                };
+                if let Err(e) = upsert_standing(pool, standing).await {
+                    error!("[{}] Failed to upsert standing: {}", league_name, e);
+                }
+            }
+        }
+    }
+}
+
+// =============================================================================
+// Teams polling (weekly — every 7 days)
+// =============================================================================
+
+/// Poll teams for all enabled leagues. Runs weekly.
+pub async fn poll_teams(
+    pool: &Arc<PgPool>,
+    client: &Client,
+    leagues: &[TrackedLeague],
+    rate_limiter: &Arc<RateLimiter>,
+) {
+    info!("Starting teams poll for {} leagues", leagues.len());
+    for league in leagues {
+        if league.sport_api == "formula-1" || league.sport_api == "mma" {
+            continue;
+        }
+        if !rate_limiter.has_budget(&league.sport_api) {
+            warn!("[{}] Skipping teams poll — budget low", league.name);
+            continue;
+        }
+
+        let format_str = league.season_format.as_deref().unwrap_or("calendar");
+        let default_season = compute_current_season(format_str);
+        let season = league.season.as_deref().unwrap_or(&default_season).to_string();
+
+        let (base, is_mock) = match std::env::var("API_SPORTS_BASE_URL") {
+            Ok(override_url) => (override_url.trim_end_matches('/').to_string(), true),
+            Err(_) => (format!("https://{}", league.api_host), false),
+        };
+        let mut url = format!(
+            "{}/teams?league={}&season={}",
+            base, league.league_id, season
+        );
+        if is_mock {
+            url = format!("{}&sport={}", url, league.sport_api);
+        }
+
+        match client.get(&url).send().await {
+            Ok(resp) => {
+                if let Some(remaining) = resp.headers()
+                    .get("x-ratelimit-requests-remaining")
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(|v| v.parse::<u32>().ok())
+                {
+                    rate_limiter.update(&league.sport_api, remaining);
+                }
+                if !resp.status().is_success() {
+                    warn!("[{}] Teams API returned {}", league.name, resp.status());
+                    continue;
+                }
+                match resp.json::<serde_json::Value>().await {
+                    Ok(body) => {
+                        let response = body.get("response").and_then(|r| r.as_array()).cloned().unwrap_or_default();
+                        for item in &response {
+                            let team = item.get("team").or(Some(item));
+                            if let Some(t) = team {
+                                let ext_id = t.get("id").and_then(|i| i.as_i64()).unwrap_or(0) as i32;
+                                if ext_id == 0 { continue; }
+                                let data = TeamData {
+                                    league: league.name.clone(),
+                                    external_id: ext_id,
+                                    name: t.get("name").and_then(|n| n.as_str()).unwrap_or("").to_string(),
+                                    code: t.get("code").and_then(|c| c.as_str()).map(|s| s.to_string()),
+                                    logo: t.get("logo").and_then(|l| l.as_str()).map(|s| s.to_string()),
+                                    country: t.get("country").and_then(|c| c.as_str()).map(|s| s.to_string()),
+                                    season: Some(season.clone()),
+                                };
+                                if let Err(e) = upsert_team(pool, data).await {
+                                    error!("[{}] Failed to upsert team: {}", league.name, e);
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => warn!("[{}] Failed to parse teams JSON: {}", league.name, e),
+                }
+            }
+            Err(e) => error!("[{}] Teams request failed: {}", league.name, e),
+        }
+    }
+    info!("Teams poll complete");
 }
 
 // =============================================================================

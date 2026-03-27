@@ -4,7 +4,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 use sports_service::{
-    init_sports_service, poll_live, poll_schedule,
+    init_sports_service, poll_live, poll_schedule, poll_standings, poll_teams,
     SportsHealth, RateLimiter,
     log::init_async_logger, database::initialize_pool,
 };
@@ -125,6 +125,52 @@ async fn main() {
                 _ = async {
                     tokio::time::sleep(std::time::Duration::from_secs(SCHEDULE_POLL_SECS)).await;
                     poll_schedule(&pool_sched, &client_sched, &leagues_sched, &rl_sched).await;
+                } => {}
+            }
+        }
+    });
+
+    // ── Daily poll: standings (every 24 hours) ───────────────────────
+    let pool_standings = pool.clone();
+    let client_standings = client.clone();
+    let leagues_standings = leagues.clone();
+    let rl_standings = rate_limiter.clone();
+    let cancel_standings = cancel.clone();
+    tokio::spawn(async move {
+        println!("Starting standings poll loop (daily)...");
+        poll_standings(&pool_standings, &client_standings, &leagues_standings, &rl_standings).await;
+        loop {
+            tokio::select! {
+                _ = cancel_standings.cancelled() => {
+                    println!("Standings poll loop shutting down...");
+                    break;
+                }
+                _ = async {
+                    tokio::time::sleep(std::time::Duration::from_secs(86400)).await;
+                    poll_standings(&pool_standings, &client_standings, &leagues_standings, &rl_standings).await;
+                } => {}
+            }
+        }
+    });
+
+    // ── Weekly poll: teams (every 7 days) ────────────────────────────
+    let pool_teams = pool.clone();
+    let client_teams = client.clone();
+    let leagues_teams = leagues.clone();
+    let rl_teams = rate_limiter.clone();
+    let cancel_teams = cancel.clone();
+    tokio::spawn(async move {
+        println!("Starting teams poll loop (weekly)...");
+        poll_teams(&pool_teams, &client_teams, &leagues_teams, &rl_teams).await;
+        loop {
+            tokio::select! {
+                _ = cancel_teams.cancelled() => {
+                    println!("Teams poll loop shutting down...");
+                    break;
+                }
+                _ = async {
+                    tokio::time::sleep(std::time::Duration::from_secs(604800)).await;
+                    poll_teams(&pool_teams, &client_teams, &leagues_teams, &rl_teams).await;
                 } => {}
             }
         }

@@ -302,3 +302,79 @@ pub async fn upsert_game(pool: Arc<PgPool>, game: CleanedData) -> Result<()> {
         .await?;
     Ok(())
 }
+
+// =============================================================================
+// Standings
+// =============================================================================
+
+#[derive(Debug)]
+pub struct StandingData {
+    pub league: String,
+    pub team_name: String,
+    pub team_code: Option<String>,
+    pub team_logo: Option<String>,
+    pub rank: Option<i32>,
+    pub wins: i32,
+    pub losses: i32,
+    pub draws: i32,
+    pub points: Option<i32>,
+    pub games_played: i32,
+    pub goal_diff: Option<i32>,
+    pub description: Option<String>,
+    pub form: Option<String>,
+    pub group_name: Option<String>,
+    pub season: Option<String>,
+}
+
+pub async fn upsert_standing(pool: &Arc<PgPool>, s: StandingData) -> Result<()> {
+    let mut conn = pool.acquire().await?;
+    query(
+        "INSERT INTO standings (league, team_name, team_code, team_logo, rank, wins, losses, draws, points, games_played, goal_diff, description, form, group_name, season)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+         ON CONFLICT (league, team_name, season) DO UPDATE SET
+            team_code = EXCLUDED.team_code, team_logo = EXCLUDED.team_logo,
+            rank = EXCLUDED.rank, wins = EXCLUDED.wins, losses = EXCLUDED.losses,
+            draws = EXCLUDED.draws, points = EXCLUDED.points,
+            games_played = EXCLUDED.games_played, goal_diff = EXCLUDED.goal_diff,
+            description = EXCLUDED.description, form = EXCLUDED.form,
+            group_name = EXCLUDED.group_name, updated_at = CURRENT_TIMESTAMP"
+    )
+    .bind(&s.league).bind(&s.team_name).bind(&s.team_code).bind(&s.team_logo)
+    .bind(s.rank).bind(s.wins).bind(s.losses).bind(s.draws).bind(s.points)
+    .bind(s.games_played).bind(s.goal_diff).bind(&s.description).bind(&s.form)
+    .bind(&s.group_name).bind(&s.season)
+    .execute(&mut *conn)
+    .await?;
+    Ok(())
+}
+
+// =============================================================================
+// Teams
+// =============================================================================
+
+#[derive(Debug)]
+pub struct TeamData {
+    pub league: String,
+    pub external_id: i32,
+    pub name: String,
+    pub code: Option<String>,
+    pub logo: Option<String>,
+    pub country: Option<String>,
+    pub season: Option<String>,
+}
+
+pub async fn upsert_team(pool: &Arc<PgPool>, t: TeamData) -> Result<()> {
+    let mut conn = pool.acquire().await?;
+    query(
+        "INSERT INTO teams (league, external_id, name, code, logo, country, season)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         ON CONFLICT (league, external_id, season) DO UPDATE SET
+            name = EXCLUDED.name, code = EXCLUDED.code, logo = EXCLUDED.logo,
+            country = EXCLUDED.country, updated_at = CURRENT_TIMESTAMP"
+    )
+    .bind(&t.league).bind(t.external_id).bind(&t.name).bind(&t.code)
+    .bind(&t.logo).bind(&t.country).bind(&t.season)
+    .execute(&mut *conn)
+    .await?;
+    Ok(())
+}
