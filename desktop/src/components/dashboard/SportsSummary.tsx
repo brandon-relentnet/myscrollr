@@ -13,11 +13,12 @@ import { useMemo, useCallback } from "react";
 import { useScrollrCDC } from "../../hooks/useScrollrCDC";
 import { isLive, isFinal, isPre, isCloseGame, getWinner, gameStatusLabel, formatCountdown, displayTeamCode } from "../../utils/gameHelpers";
 import { useDashboardPin } from "../../hooks/useDashboardPin";
+import { useSportsConfig } from "../../hooks/useSportsConfig";
 import clsx from "clsx";
 import Tooltip from "../Tooltip";
 import TeamLogo from "../TeamLogo";
 import type { Game, DashboardResponse } from "../../types";
-import type { SportsCardPrefs } from "./dashboardPrefs";
+import type { SportsDisplayPrefs } from "../../hooks/useSportsConfig";
 import DashboardEmptyState from "./DashboardEmptyState";
 
 type PinnedMap = Record<string, string>;
@@ -67,7 +68,7 @@ function autoSelectPrimary(games: Game[]): Game {
 
 interface PrimaryGameProps {
   game: Game;
-  prefs: SportsCardPrefs;
+  prefs: SportsDisplayPrefs;
 }
 
 function PrimaryGame({ game, prefs }: PrimaryGameProps) {
@@ -255,7 +256,7 @@ function CompactChip({ game, onPromote, showFinals, showUpcoming }: CompactChipP
 interface LeagueSectionProps {
   league: string;
   games: Game[];
-  prefs: SportsCardPrefs;
+  prefs: SportsDisplayPrefs;
   pinnedId: string | undefined;
   onPin: (gameId: string) => void;
 }
@@ -298,8 +299,8 @@ function LeagueSection({ league, games, prefs, pinnedId, onPin }: LeagueSectionP
               key={String(game.id)}
               game={game}
               onPromote={() => onPin(String(game.id))}
-              showFinals={prefs.final}
-              showUpcoming={prefs.upcoming}
+              showFinals={prefs.showFinal}
+              showUpcoming={prefs.showUpcoming}
             />
           ))}
         </div>
@@ -312,11 +313,11 @@ function LeagueSection({ league, games, prefs, pinnedId, onPin }: LeagueSectionP
 
 interface SportsSummaryProps {
   dashboard: DashboardResponse | undefined;
-  prefs: SportsCardPrefs;
   onConfigure?: () => void;
 }
 
-export default function SportsSummary({ dashboard, prefs, onConfigure }: SportsSummaryProps) {
+export default function SportsSummary({ dashboard, onConfigure }: SportsSummaryProps) {
+  const { display: prefs } = useSportsConfig();
   const { items } = useScrollrCDC<Game>({
     table: "games",
     dataKey: "sports",
