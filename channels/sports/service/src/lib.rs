@@ -726,13 +726,15 @@ fn parse_baseball_game(item: &serde_json::Value, league: &TrackedLeague) -> Opti
     let home = teams.get("home")?;
     let away = teams.get("away")?;
 
-    // Baseball scores: scores.home.total / scores.away.total or top-level integer
+    // Baseball scores: sum per-inning runs for real-time accuracy (total lags behind)
     let home_score = scores.get("home")
-        .and_then(|s| s.get("total").and_then(|t| t.as_i64()).or_else(|| s.as_i64()))
-        .map(|s| s as i32);
+        .and_then(|s| s.get("innings"))
+        .and_then(|inn| inn.as_object())
+        .map(|obj| obj.values().filter_map(|v| v.as_i64()).sum::<i64>() as i32);
     let away_score = scores.get("away")
-        .and_then(|s| s.get("total").and_then(|t| t.as_i64()).or_else(|| s.as_i64()))
-        .map(|s| s as i32);
+        .and_then(|s| s.get("innings"))
+        .and_then(|inn| inn.as_object())
+        .map(|obj| obj.values().filter_map(|v| v.as_i64()).sum::<i64>() as i32);
 
     // Baseball uses inning info in status
     let inning = status.get("inning").and_then(|i| i.as_i64());
