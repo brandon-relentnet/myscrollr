@@ -28,7 +28,6 @@ import {
   loadCardOrder,
   saveCardOrder,
   FINANCE_SCHEMA,
-  SPORTS_SCHEMA,
   RSS_SCHEMA,
   FANTASY_SCHEMA,
   CLOCK_SCHEMA,
@@ -53,7 +52,7 @@ function renderChannelSummary(
     case "finance":
       return <FinanceSummary dashboard={dashboard} prefs={cardPrefs.finance} onConfigure={onConfigure} />;
     case "sports":
-      return <SportsSummary dashboard={dashboard} prefs={cardPrefs.sports} onConfigure={onConfigure} />;
+      return <SportsSummary dashboard={dashboard} onConfigure={onConfigure} />;
     case "rss":
       return <RssSummary dashboard={dashboard} prefs={cardPrefs.rss} onConfigure={onConfigure} />;
     case "fantasy":
@@ -87,7 +86,6 @@ function renderWidgetSummary(
 
 const CHANNEL_SCHEMAS: Record<string, EditorField[]> = {
   finance: FINANCE_SCHEMA,
-  sports: SPORTS_SCHEMA,
   rss: RSS_SCHEMA,
   fantasy: FANTASY_SCHEMA,
 };
@@ -102,7 +100,6 @@ const WIDGET_SCHEMAS: Record<string, EditorField[]> = {
 
 const CHANNEL_PREFS_KEY: Record<string, keyof DashboardCardPrefs> = {
   finance: "finance",
-  sports: "sports",
   rss: "rss",
   fantasy: "fantasy",
 };

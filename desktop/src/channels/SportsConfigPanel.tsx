@@ -1,18 +1,15 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Trophy } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import clsx from "clsx";
 import { SetupBrowser } from "../components/settings/SetupBrowser";
-import { useChannelConfig } from "../hooks/useChannelConfig";
+import { useSportsConfig } from "../hooks/useSportsConfig";
 import { formatCountdown } from "../utils/gameHelpers";
 import { sportsCatalogOptions } from "../api/queries";
 import type { TrackedLeague } from "../api/queries";
 import type { Channel } from "../api/client";
 
 // ── Types ────────────────────────────────────────────────────────
-
-interface SportsChannelConfig {
-  leagues?: string[];
-}
 
 interface SportsConfigPanelProps {
   channel: Channel;
@@ -24,13 +21,12 @@ interface SportsConfigPanelProps {
 // ── Component ────────────────────────────────────────────────────
 
 export default function SportsConfigPanel({
-  channel,
   hex,
 }: SportsConfigPanelProps) {
-  const { error, setError, saving, updateItems } = useChannelConfig<string[]>("sports", "leagues");
+  const { leagues, display, setLeagues, setDisplay, saving } =
+    useSportsConfig();
+  const [error, setError] = useState<string | null>(null);
 
-  const config = channel.config as SportsChannelConfig;
-  const leagues = Array.isArray(config?.leagues) ? config.leagues : [];
   const leagueSet = useMemo(() => new Set(leagues), [leagues]);
 
   // ── Catalog query ──────────────────────────────────────────────
@@ -54,16 +50,16 @@ export default function SportsConfigPanel({
   const addLeague = useCallback(
     (name: string) => {
       if (leagueSet.has(name)) return;
-      updateItems([...leagues, name]);
+      setLeagues([...leagues, name]);
     },
-    [leagues, leagueSet, updateItems],
+    [leagues, leagueSet, setLeagues],
   );
 
   const removeLeague = useCallback(
     (name: string) => {
-      updateItems(leagues.filter((l) => l !== name));
+      setLeagues(leagues.filter((l) => l !== name));
     },
-    [leagues, updateItems],
+    [leagues, setLeagues],
   );
 
   return (
@@ -125,7 +121,7 @@ export default function SportsConfigPanel({
               className="text-[10px] font-medium shrink-0"
               style={isSelected ? { color: hex } : undefined}
             >
-              {isSelected ? "✓ Added" : "+ Add"}
+              {isSelected ? "\u2713 Added" : "+ Add"}
             </span>
           </>
         )}
@@ -137,13 +133,56 @@ export default function SportsConfigPanel({
         saving={saving}
         onAdd={addLeague}
         onRemove={removeLeague}
-        onBulkAdd={(keys: string[]) => updateItems([...leagues, ...keys])}
+        onBulkAdd={(keys: string[]) => setLeagues([...leagues, ...keys])}
         onBulkRemove={(keys: string[]) => {
           const toRemove = new Set(keys);
-          updateItems(leagues.filter((l) => !toRemove.has(l)));
+          setLeagues(leagues.filter((l) => !toRemove.has(l)));
         }}
-        onClearAll={() => updateItems([])}
+        onClearAll={() => setLeagues([])}
       />
+
+      {/* Display preferences */}
+      <div className="mt-6 border-t border-edge pt-4">
+        <h3 className="text-[11px] font-bold uppercase tracking-wider text-fg-3 mb-3">
+          Display
+        </h3>
+        <div className="space-y-2">
+          {([
+            { key: "showLogos" as const, label: "Show team logos" },
+            { key: "showTimer" as const, label: "Show game clock" },
+            { key: "compact" as const, label: "Show other games" },
+            { key: "showUpcoming" as const, label: "Show upcoming games" },
+            { key: "showFinal" as const, label: "Show final scores" },
+            { key: "stats" as const, label: "Show stats footer" },
+          ]).map(({ key, label }) => (
+            <label
+              key={key}
+              className="flex items-center justify-between px-3 py-2 rounded-lg bg-surface-hover/50 cursor-pointer"
+            >
+              <span className="text-xs text-fg-2">{label}</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={display[key]}
+                onClick={() => setDisplay({ [key]: !display[key] })}
+                className={clsx(
+                  "relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors",
+                  display[key] ? "bg-primary" : "bg-edge-2",
+                )}
+              >
+                <span
+                  className={clsx(
+                    "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform mt-0.5",
+                    display[key]
+                      ? "translate-x-4 ml-0.5"
+                      : "translate-x-0 ml-0.5",
+                  )}
+                />
+              </button>
+            </label>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

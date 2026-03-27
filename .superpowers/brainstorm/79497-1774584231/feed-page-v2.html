@@ -1,0 +1,231 @@
+<h2>Sports Feed Page — Tabbed Layout</h2>
+<p class="subtitle">The feed page when you click into the sports channel. Now with Scores | Schedule | Standings tabs per league.</p>
+
+<div class="mockup">
+  <div class="mockup-header">Sports Feed — Desktop App (Main Window)</div>
+  <div class="mockup-body" style="background: #0f1019; padding: 0; font-family: 'IBM Plex Mono', 'SF Mono', monospace; color: #e2e8f0;">
+
+    <!-- Sub-tabs -->
+    <div style="display: flex; border-bottom: 1px solid rgba(100,116,139,0.2); background: rgba(30,31,51,0.5);">
+      <button style="background: none; border: none; color: #34d399; padding: 10px 16px; font-size: 12px; font-weight: 600; cursor: pointer; border-bottom: 2px solid #34d399; font-family: inherit; letter-spacing: 0.02em;">Scores</button>
+      <button style="background: none; border: none; color: #64748b; padding: 10px 16px; font-size: 12px; cursor: pointer; border-bottom: 2px solid transparent; font-family: inherit;">Schedule</button>
+      <button style="background: none; border: none; color: #64748b; padding: 10px 16px; font-size: 12px; cursor: pointer; border-bottom: 2px solid transparent; font-family: inherit;">Standings</button>
+    </div>
+
+    <!-- Scores tab content -->
+    <div style="padding: 12px;">
+
+      <!-- NBA league section -->
+      <div style="margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 0 2px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 20px; height: 20px; background: #334155; border-radius: 3px;"></div>
+            <span style="font-size: 13px; font-weight: 700; color: #cbd5e1; letter-spacing: 0.02em;">NBA</span>
+            <span style="font-size: 10px; color: #64748b;">4 games</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 4px;">
+            <span style="width: 6px; height: 6px; background: #22c55e; border-radius: 50%; display: inline-block;"></span>
+            <span style="font-size: 10px; color: #22c55e; font-weight: 600;">2 Live</span>
+          </div>
+        </div>
+
+        <!-- Game cards grid -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+          <!-- Live game -->
+          <div style="background: rgba(255,71,87,0.05); border: 1px solid rgba(255,71,87,0.12); border-radius: 8px; padding: 10px 12px; cursor: pointer; transition: background 0.15s;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 20px; height: 20px; background: #334155; border-radius: 4px;"></div>
+                <div>
+                  <div style="font-size: 12px; color: #94a3b8;">BOS</div>
+                  <div style="font-size: 10px; color: #475569;">Boston Celtics</div>
+                </div>
+              </div>
+              <span style="font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; color: #cbd5e1;">98</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 20px; height: 20px; background: #334155; border-radius: 4px;"></div>
+                <div>
+                  <div style="font-size: 12px; font-weight: 700; color: #e2e8f0;">LAL</div>
+                  <div style="font-size: 10px; color: #475569;">Los Angeles Lakers</div>
+                </div>
+              </div>
+              <span style="font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums;">102</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,71,87,0.1);">
+              <div style="display: flex; align-items: center; gap: 5px;">
+                <span style="width: 6px; height: 6px; background: #22c55e; border-radius: 50%; display: inline-block;"></span>
+                <span style="font-size: 10px; text-transform: uppercase; color: #ff4757; font-weight: 700; letter-spacing: 0.05em;">Q3 &middot; 4:32</span>
+              </div>
+              <span style="font-size: 9px; color: rgba(255,71,87,0.7); background: rgba(255,71,87,0.1); padding: 1px 6px; border-radius: 3px; font-weight: 600;">Close</span>
+            </div>
+          </div>
+
+          <!-- Another live -->
+          <div style="background: rgba(255,71,87,0.05); border: 1px solid rgba(255,71,87,0.12); border-radius: 8px; padding: 10px 12px; cursor: pointer;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 20px; height: 20px; background: #334155; border-radius: 4px;"></div>
+                <div>
+                  <div style="font-size: 12px; color: #94a3b8;">GSW</div>
+                  <div style="font-size: 10px; color: #475569;">Golden State Warriors</div>
+                </div>
+              </div>
+              <span style="font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; color: #cbd5e1;">87</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 20px; height: 20px; background: #334155; border-radius: 4px;"></div>
+                <div>
+                  <div style="font-size: 12px; font-weight: 700; color: #e2e8f0;">MIA</div>
+                  <div style="font-size: 10px; color: #475569;">Miami Heat</div>
+                </div>
+              </div>
+              <span style="font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums;">91</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 5px; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,71,87,0.1);">
+              <span style="width: 6px; height: 6px; background: #22c55e; border-radius: 50%; display: inline-block;"></span>
+              <span style="font-size: 10px; text-transform: uppercase; color: #ff4757; font-weight: 700; letter-spacing: 0.05em;">Q2 &middot; 8:15</span>
+            </div>
+          </div>
+
+          <!-- Final -->
+          <div style="background: rgba(30,31,51,0.6); border: 1px solid rgba(100,116,139,0.12); border-radius: 8px; padding: 10px 12px; cursor: pointer;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 20px; height: 20px; background: #334155; border-radius: 4px;"></div>
+                <div>
+                  <div style="font-size: 12px; font-weight: 700; color: #e2e8f0;">NYK</div>
+                  <div style="font-size: 10px; color: #475569;">New York Knicks</div>
+                </div>
+              </div>
+              <span style="font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; color: #e2e8f0;">112</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 20px; height: 20px; background: #334155; border-radius: 4px;"></div>
+                <div>
+                  <div style="font-size: 12px; color: #64748b;">CHI</div>
+                  <div style="font-size: 10px; color: #3b3f4a;">Chicago Bulls</div>
+                </div>
+              </div>
+              <span style="font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; color: #64748b;">98</span>
+            </div>
+            <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(100,116,139,0.08);">
+              <span style="font-size: 10px; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em;">Final</span>
+            </div>
+          </div>
+
+          <!-- Upcoming -->
+          <div style="background: rgba(30,31,51,0.6); border: 1px solid rgba(100,116,139,0.12); border-radius: 8px; padding: 10px 12px; cursor: pointer;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 20px; height: 20px; background: #334155; border-radius: 4px;"></div>
+                <div>
+                  <div style="font-size: 12px; color: #64748b;">DEN</div>
+                  <div style="font-size: 10px; color: #3b3f4a;">Denver Nuggets</div>
+                </div>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 20px; height: 20px; background: #334155; border-radius: 4px;"></div>
+                <div>
+                  <div style="font-size: 12px; color: #64748b;">PHX</div>
+                  <div style="font-size: 10px; color: #3b3f4a;">Phoenix Suns</div>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(100,116,139,0.08);">
+              <span style="font-size: 10px; color: #64748b;">Today &middot; 7:30 PM</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Premier League section -->
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 0 2px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 20px; height: 20px; background: #334155; border-radius: 3px;"></div>
+            <span style="font-size: 13px; font-weight: 700; color: #cbd5e1;">Premier League</span>
+            <span style="font-size: 10px; color: #64748b;">2 games</span>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+          <div style="background: rgba(30,31,51,0.6); border: 1px solid rgba(100,116,139,0.12); border-radius: 8px; padding: 10px 12px; cursor: pointer;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 20px; height: 20px; background: #334155; border-radius: 4px;"></div>
+                <div>
+                  <div style="font-size: 12px; font-weight: 700; color: #e2e8f0;">MUN</div>
+                  <div style="font-size: 10px; color: #475569;">Manchester United</div>
+                </div>
+              </div>
+              <span style="font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; color: #e2e8f0;">2</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 20px; height: 20px; background: #334155; border-radius: 4px;"></div>
+                <div>
+                  <div style="font-size: 12px; color: #64748b;">ARS</div>
+                  <div style="font-size: 10px; color: #3b3f4a;">Arsenal</div>
+                </div>
+              </div>
+              <span style="font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; color: #64748b;">1</span>
+            </div>
+            <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(100,116,139,0.08);">
+              <span style="font-size: 10px; text-transform: uppercase; color: #64748b;">Full Time</span>
+            </div>
+          </div>
+          <div style="background: rgba(30,31,51,0.6); border: 1px solid rgba(100,116,139,0.12); border-radius: 8px; padding: 10px 12px; cursor: pointer;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 20px; height: 20px; background: #334155; border-radius: 4px;"></div>
+                <div>
+                  <div style="font-size: 12px; color: #64748b;">LIV</div>
+                  <div style="font-size: 10px; color: #3b3f4a;">Liverpool</div>
+                </div>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 20px; height: 20px; background: #334155; border-radius: 4px;"></div>
+                <div>
+                  <div style="font-size: 12px; color: #64748b;">CHE</div>
+                  <div style="font-size: 10px; color: #3b3f4a;">Chelsea</div>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(100,116,139,0.08);">
+              <span style="font-size: 10px; color: #64748b;">Tomorrow &middot; 3:00 PM</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <h3>What each tab shows:</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 12px;">
+    <div style="background: var(--card-bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+      <h3 style="font-size: 13px; margin-bottom: 4px;">Scores</h3>
+      <p style="font-size: 12px; opacity: 0.7;">Live + recently finished games. Card grid with team codes, logos, full names, scores, game clock. Real-time CDC updates. This is shown above.</p>
+    </div>
+    <div style="background: var(--card-bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+      <h3 style="font-size: 13px; margin-bottom: 4px;">Schedule</h3>
+      <p style="font-size: 12px; opacity: 0.7;">Upcoming games grouped by date. Compact rows: team codes + logos + start time. "Today", "Tomorrow", then date headers. Same data, filtered to state='pre'.</p>
+    </div>
+    <div style="background: var(--card-bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+      <h3 style="font-size: 13px; margin-bottom: 4px;">Standings</h3>
+      <p style="font-size: 12px; opacity: 0.7;">League table per league. Rank, team, W-L, win%, points for/against. Grouped by conference/division where applicable. Fetched daily from api-sports.io.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 16px;">
+  <p class="subtitle">This mockup shows the Scores tab. Each game card has: team logo, team code (bold), full team name (dimmed), score, game status. 2-column grid. Live games get red tint. Does this direction feel right?</p>
+</div>

@@ -12,9 +12,11 @@ type Game struct {
 	HomeTeamName   string    `json:"home_team_name"`
 	HomeTeamLogo   string    `json:"home_team_logo"`
 	HomeTeamScore  string    `json:"home_team_score"`
+	HomeTeamCode   string    `json:"home_team_code"`
 	AwayTeamName   string    `json:"away_team_name"`
 	AwayTeamLogo   string    `json:"away_team_logo"`
 	AwayTeamScore  string    `json:"away_team_score"`
+	AwayTeamCode   string    `json:"away_team_code"`
 	StartTime      time.Time `json:"start_time"`
 	ShortDetail    string    `json:"short_detail"`
 	State          string    `json:"state"`
@@ -55,4 +57,32 @@ type CDCRecord struct {
 type ErrorResponse struct {
 	Status string `json:"status"`
 	Error  string `json:"error"`
+}
+
+// Standing represents a league standing entry.
+type Standing struct {
+	League      string `json:"league"`
+	TeamName    string `json:"team_name"`
+	TeamCode    string `json:"team_code"`
+	TeamLogo    string `json:"team_logo"`
+	Rank        int    `json:"rank"`
+	Wins        int    `json:"wins"`
+	Losses      int    `json:"losses"`
+	Draws       int    `json:"draws"`
+	Points      int    `json:"points"`
+	GamesPlayed int    `json:"games_played"`
+	GoalDiff    int    `json:"goal_diff"`
+	Description string `json:"description,omitempty"`
+	Form        string `json:"form,omitempty"`
+	GroupName   string `json:"group_name,omitempty"`
+}
+
+// TeamInfo represents a team entry from the teams table.
+type TeamInfo struct {
+	League     string `json:"league"`
+	ExternalID int    `json:"external_id"`
+	Name       string `json:"name"`
+	Code       string `json:"code"`
+	Logo       string `json:"logo"`
+	Country    string `json:"country,omitempty"`
 }

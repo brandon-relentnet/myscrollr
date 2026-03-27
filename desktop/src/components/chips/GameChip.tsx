@@ -1,23 +1,11 @@
-import { memo, useState } from "react";
+import { memo } from "react";
 import { clsx } from "clsx";
-import { isLive, isFinal, isPre, isCloseGame, getWinner, gameStatusLabel, abbreviateTeam } from "../../utils/gameHelpers";
+import { isLive, isFinal, isPre, isCloseGame, getWinner, gameStatusLabel, displayTeamCode } from "../../utils/gameHelpers";
 import { useScoreFlash } from "../../hooks/useScoreFlash";
 import { getChipColors } from "./chipColors";
+import TeamLogo from "../TeamLogo";
 import type { Game } from "../../types";
 import type { ChipColorMode } from "../../preferences";
-
-function ChipLogo({ src, alt, size }: { src: string; alt: string; size: string }) {
-  const [err, setErr] = useState(false);
-  if (err || !src) return null;
-  return (
-    <img
-      src={src}
-      alt={alt}
-      className={`${size} object-contain shrink-0`}
-      onError={() => setErr(true)}
-    />
-  );
-}
 
 // ── Props ───────────────────────────────────────────────────────
 
@@ -25,6 +13,7 @@ interface GameChipProps {
   game: Game;
   comfort?: boolean;
   colorMode?: ChipColorMode;
+  showLogos?: boolean;
   onClick?: () => void;
 }
 
@@ -34,6 +23,7 @@ const GameChip = memo(function GameChip({
   game,
   comfort,
   colorMode = "channel",
+  showLogos = true,
   onClick,
 }: GameChipProps) {
   const c = getChipColors(colorMode, "sports");
@@ -68,11 +58,13 @@ const GameChip = memo(function GameChip({
         className={clsx("flex items-center gap-1.5", comfort && "text-[13px]")}
       >
         {/* Away team */}
-        <ChipLogo
-          src={game.away_team_logo}
-          alt={game.away_team_name}
-          size={comfort ? "w-3.5 h-3.5" : "w-3 h-3"}
-        />
+        {showLogos && (
+          <TeamLogo
+            src={game.away_team_logo}
+            alt={game.away_team_name}
+            size={comfort ? "sm" : "xs"}
+          />
+        )}
         <span
           className={clsx(
             c.text,
@@ -80,7 +72,7 @@ const GameChip = memo(function GameChip({
             final_ && winner === "home" && "opacity-50",
           )}
         >
-          {abbreviateTeam(game.away_team_name)}
+          {displayTeamCode(game.away_team_code, game.away_team_name)}
         </span>
         <span
           className={clsx(
@@ -113,13 +105,15 @@ const GameChip = memo(function GameChip({
             final_ && winner === "away" && "opacity-50",
           )}
         >
-          {abbreviateTeam(game.home_team_name)}
+          {displayTeamCode(game.home_team_code, game.home_team_name)}
         </span>
-        <ChipLogo
-          src={game.home_team_logo}
-          alt={game.home_team_name}
-          size={comfort ? "w-3.5 h-3.5" : "w-3 h-3"}
-        />
+        {showLogos && (
+          <TeamLogo
+            src={game.home_team_logo}
+            alt={game.home_team_name}
+            size={comfort ? "sm" : "xs"}
+          />
+        )}
 
         {/* Status (compact only) */}
         {!comfort && status && (
@@ -177,6 +171,7 @@ const GameChip = memo(function GameChip({
 }, (prev, next) =>
   prev.comfort === next.comfort &&
   prev.colorMode === next.colorMode &&
+  prev.showLogos === next.showLogos &&
   prev.onClick === next.onClick &&
   prev.game.id === next.game.id &&
   prev.game.sport === next.game.sport &&
@@ -187,6 +182,8 @@ const GameChip = memo(function GameChip({
   prev.game.home_team_name === next.game.home_team_name &&
   prev.game.home_team_logo === next.game.home_team_logo &&
   prev.game.home_team_score === next.game.home_team_score &&
+  prev.game.home_team_code === next.game.home_team_code &&
+  prev.game.away_team_code === next.game.away_team_code &&
   prev.game.state === next.game.state &&
   prev.game.timer === next.game.timer &&
   prev.game.status_short === next.game.status_short &&

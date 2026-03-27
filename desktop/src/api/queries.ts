@@ -23,6 +23,7 @@ export const queryKeys = {
     status: ["fantasy", "status"] as const,
     leagues: ["fantasy", "leagues"] as const,
   },
+  standings: (league: string) => ["standings", league] as const,
 };
 
 // ── Dashboard Query ──────────────────────────────────────────────
@@ -76,6 +77,32 @@ export interface TrackedSymbol {
   symbol: string;
   name: string;
   category: string;
+}
+
+export interface Standing {
+  league: string;
+  team_name: string;
+  team_code: string;
+  team_logo: string;
+  rank: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  points: number;
+  games_played: number;
+  goal_diff: number;
+  description?: string;
+  form?: string;
+  group_name?: string;
+}
+
+export function standingsOptions(league: string) {
+  return queryOptions({
+    queryKey: queryKeys.standings(league),
+    queryFn: () => request<{ standings: Standing[] }>(`/sports/standings?league=${encodeURIComponent(league)}`),
+    staleTime: 60 * 60 * 1000, // 1 hour
+    enabled: !!league,
+  });
 }
 
 export function sportsCatalogOptions() {

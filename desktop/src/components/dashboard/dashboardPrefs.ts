@@ -18,15 +18,6 @@ export interface FinanceCardPrefs {
   stats: boolean;
 }
 
-export interface SportsCardPrefs {
-  showLogos: boolean;
-  showTimer: boolean;
-  compact: boolean;
-  upcoming: boolean;
-  final: boolean;
-  stats: boolean;
-}
-
 export interface RssCardPrefs {
   headlines: boolean;
   itemCount: number;
@@ -73,7 +64,6 @@ export interface GitHubCardPrefs {
 
 export interface DashboardCardPrefs {
   finance: FinanceCardPrefs;
-  sports: SportsCardPrefs;
   rss: RssCardPrefs;
   fantasy: FantasyCardPrefs;
   clock: ClockCardPrefs;
@@ -87,7 +77,6 @@ export interface DashboardCardPrefs {
 
 export const DEFAULT_CARD_PREFS: DashboardCardPrefs = {
   finance: { primaryCount: 5, showPrice: true, showChange: true, showBadges: true, stats: true },
-  sports: { showLogos: true, showTimer: true, compact: true, upcoming: true, final: true, stats: true },
   rss: { headlines: true, itemCount: 3, showSource: true, showTime: true, stats: true },
   fantasy: { matchup: true, standings: true },
   clock: { date: true, timer: true, worldClocks: true },
@@ -107,7 +96,6 @@ export function loadCardPrefs(): DashboardCardPrefs {
   // Deep-merge each card's prefs with defaults so new fields get defaults
   return {
     finance: { ...DEFAULT_CARD_PREFS.finance, ...saved.finance },
-    sports: { ...DEFAULT_CARD_PREFS.sports, ...saved.sports },
     rss: { ...DEFAULT_CARD_PREFS.rss, ...saved.rss },
     fantasy: { ...DEFAULT_CARD_PREFS.fantasy, ...saved.fantasy },
     clock: { ...DEFAULT_CARD_PREFS.clock, ...saved.clock },
@@ -205,15 +193,6 @@ export const FINANCE_SCHEMA: EditorField[] = [
   { type: "toggle", key: "showPrice", label: "Price" },
   { type: "toggle", key: "showChange", label: "% Change" },
   { type: "toggle", key: "showBadges", label: "Other Stocks" },
-  { type: "toggle", key: "stats", label: "Stats" },
-];
-
-export const SPORTS_SCHEMA: EditorField[] = [
-  { type: "toggle", key: "showLogos", label: "Team Logos" },
-  { type: "toggle", key: "showTimer", label: "Game Clock" },
-  { type: "toggle", key: "compact", label: "Other Games" },
-  { type: "toggle", key: "upcoming", label: "Upcoming" },
-  { type: "toggle", key: "final", label: "Final Scores" },
   { type: "toggle", key: "stats", label: "Stats" },
 ];
 

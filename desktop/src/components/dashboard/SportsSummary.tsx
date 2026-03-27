@@ -9,14 +9,16 @@
  * Auto-selects the most exciting live game per league (closest
  * score) or the next upcoming game when nothing is live.
  */
-import { useState, useMemo, useCallback } from "react";
+import { useMemo, useCallback } from "react";
 import { useScrollrCDC } from "../../hooks/useScrollrCDC";
-import { isLive, isFinal, isPre, isCloseGame, getWinner, gameStatusLabel, formatCountdown, abbreviateTeam } from "../../utils/gameHelpers";
+import { isLive, isFinal, isPre, isCloseGame, getWinner, gameStatusLabel, formatCountdown, displayTeamCode } from "../../utils/gameHelpers";
 import { useDashboardPin } from "../../hooks/useDashboardPin";
+import { useSportsConfig } from "../../hooks/useSportsConfig";
 import clsx from "clsx";
 import Tooltip from "../Tooltip";
+import TeamLogo from "../TeamLogo";
 import type { Game, DashboardResponse } from "../../types";
-import type { SportsCardPrefs } from "./dashboardPrefs";
+import type { SportsDisplayPrefs } from "../../hooks/useSportsConfig";
 import DashboardEmptyState from "./DashboardEmptyState";
 
 type PinnedMap = Record<string, string>;
@@ -62,27 +64,11 @@ function autoSelectPrimary(games: Game[]): Game {
   return games[0];
 }
 
-// ── Team logo (error-resilient) ─────────────────────────────────
-
-function TeamLogo({ src, alt }: { src: string; alt: string }) {
-  const [err, setErr] = useState(false);
-  if (err || !src) return null;
-  return (
-    <img
-      src={src}
-      alt={alt}
-      className="w-4 h-4 object-contain shrink-0"
-      loading="lazy"
-      onError={() => setErr(true)}
-    />
-  );
-}
-
 // ── Primary game (detailed two-row card) ────────────────────────
 
 interface PrimaryGameProps {
   game: Game;
-  prefs: SportsCardPrefs;
+  prefs: SportsDisplayPrefs;
 }
 
 function PrimaryGame({ game, prefs }: PrimaryGameProps) {
@@ -113,7 +99,7 @@ function PrimaryGame({ game, prefs }: PrimaryGameProps) {
               winner === "away" && "font-bold",
             )}
           >
-            {game.away_team_name}
+            {displayTeamCode(game.away_team_code, game.away_team_name)}
           </span>
         </div>
         {!pre && (
@@ -141,7 +127,7 @@ function PrimaryGame({ game, prefs }: PrimaryGameProps) {
               winner === "home" && "font-bold",
             )}
           >
-            {game.home_team_name}
+            {displayTeamCode(game.home_team_code, game.home_team_name)}
           </span>
         </div>
         {!pre && (
@@ -242,7 +228,7 @@ function CompactChip({ game, onPromote, showFinals, showUpcoming }: CompactChipP
           <span className="w-1 h-1 rounded-full bg-live shrink-0 animate-pulse" />
         )}
         <span className={live ? "font-semibold" : ""}>
-          {abbreviateTeam(game.away_team_name)}
+          {displayTeamCode(game.away_team_code, game.away_team_name)}
         </span>
         {pre ? (
           <span className="text-fg-4">vs</span>
@@ -256,7 +242,7 @@ function CompactChip({ game, onPromote, showFinals, showUpcoming }: CompactChipP
           </>
         )}
         <span className={live ? "font-semibold" : ""}>
-          {abbreviateTeam(game.home_team_name)}
+          {displayTeamCode(game.home_team_code, game.home_team_name)}
         </span>
         {final && <span className="text-fg-4 text-[9px]">F</span>}
         {pre && <span className="text-fg-4 text-[9px]">{formatCountdown(game.start_time)}</span>}
@@ -270,7 +256,7 @@ function CompactChip({ game, onPromote, showFinals, showUpcoming }: CompactChipP
 interface LeagueSectionProps {
   league: string;
   games: Game[];
-  prefs: SportsCardPrefs;
+  prefs: SportsDisplayPrefs;
   pinnedId: string | undefined;
   onPin: (gameId: string) => void;
 }
@@ -313,8 +299,8 @@ function LeagueSection({ league, games, prefs, pinnedId, onPin }: LeagueSectionP
               key={String(game.id)}
               game={game}
               onPromote={() => onPin(String(game.id))}
-              showFinals={prefs.final}
-              showUpcoming={prefs.upcoming}
+              showFinals={prefs.showFinal}
+              showUpcoming={prefs.showUpcoming}
             />
           ))}
         </div>
@@ -327,11 +313,11 @@ function LeagueSection({ league, games, prefs, pinnedId, onPin }: LeagueSectionP
 
 interface SportsSummaryProps {
   dashboard: DashboardResponse | undefined;
-  prefs: SportsCardPrefs;
   onConfigure?: () => void;
 }
 
-export default function SportsSummary({ dashboard, prefs, onConfigure }: SportsSummaryProps) {
+export default function SportsSummary({ dashboard, onConfigure }: SportsSummaryProps) {
+  const { display: prefs } = useSportsConfig();
   const { items } = useScrollrCDC<Game>({
     table: "games",
     dataKey: "sports",

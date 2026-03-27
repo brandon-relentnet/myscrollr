@@ -11,6 +11,8 @@
   "cdc_tables": ["games"],
   "routes": [
     { "method": "GET", "path": "/sports", "auth": true },
+    { "method": "GET", "path": "/sports/standings", "auth": true },
+    { "method": "GET", "path": "/sports/teams", "auth": true },
     { "method": "GET", "path": "/sports/health", "auth": false },
     { "method": "GET", "path": "/sports/leagues", "auth": false }
   ]
