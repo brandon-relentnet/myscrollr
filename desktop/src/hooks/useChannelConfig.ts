@@ -6,6 +6,7 @@
  */
 import { useState, useEffect, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { channelsApi } from "../api/client";
 import { queryKeys } from "../api/queries";
 import type { ChannelType } from "../api/client";
@@ -38,7 +39,7 @@ export function useChannelConfig<T>(
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
     },
     onError: () => {
-      setError("Failed to save \u2014 try again");
+      toast.error("Failed to save \u2014 try again");
     },
   });
 

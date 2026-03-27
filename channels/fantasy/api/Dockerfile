@@ -20,8 +20,9 @@ WORKDIR /root/
 # Install curl for health checks
 RUN apk --no-cache add curl
 
-# Copy the binary from the builder
+# Copy the binary and migrations from the builder
 COPY --from=builder /app/fantasy-api .
+COPY --from=builder /app/migrations ./migrations
 
 EXPOSE 8084
 

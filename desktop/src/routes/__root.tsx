@@ -20,6 +20,7 @@ import {
 } from "@tauri-apps/plugin-autostart";
 import { getVersion } from "@tauri-apps/api/app";
 import clsx from "clsx";
+import { Toaster, toast } from "sonner";
 
 // Shell components
 import TitleBar from "../components/TitleBar";
@@ -309,6 +310,7 @@ function RootLayout() {
       setAutostartOn(enabled);
     } catch (err) {
       console.error("[Scrollr] Autostart toggle failed:", err);
+      toast.error("Couldn't update startup settings");
     }
   }, []);
 
@@ -413,6 +415,8 @@ function RootLayout() {
               </ShellDataContext.Provider>
             </ShellContext.Provider>
           </div>
+
+          <Toaster theme="dark" richColors position="bottom-right" />
 
           {auth.loggingIn && (
             <div

@@ -7,6 +7,7 @@
 import { useState, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   login as authLogin,
   logout as authLogout,
@@ -49,6 +50,8 @@ export function useAuthState(): UseAuthStateReturn {
         setAuthenticated(true);
         setTier(getTier());
         queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+      } else {
+        toast.error("Sign-in failed — please try again");
       }
     } finally {
       setLoggingIn(false);

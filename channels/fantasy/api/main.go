@@ -172,9 +172,20 @@ func main() {
 	// -------------------------------------------------------------------------
 	// Run database migrations
 	// -------------------------------------------------------------------------
+	// golang-migrate uses lib/pq which requires explicit sslmode parameter
+	// Append sslmode=disable if not already specified (internal Docker network)
+	migrateURL := dbURL
+	if !strings.Contains(migrateURL, "sslmode=") {
+		if strings.Contains(migrateURL, "?") {
+			migrateURL += "&sslmode=disable"
+		} else {
+			migrateURL += "?sslmode=disable"
+		}
+	}
+
 	m, err := migrate.New(
 		"file://migrations",
-		dbURL,
+		migrateURL,
 	)
 	if err != nil {
 		log.Fatalf("[Fantasy] Failed to create migrator: %v", err)

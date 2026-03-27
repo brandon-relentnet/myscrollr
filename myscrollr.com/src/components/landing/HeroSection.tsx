@@ -3,7 +3,7 @@ import { motion } from 'motion/react'
 import { wrap } from 'motion'
 import HeroTextSwap, { WORDS } from '@/components/Typewriter'
 import { HeroBrowserStack } from '@/components/landing/HeroBrowserStack'
-import InstallButton from '@/components/InstallButton'
+import { DownloadButton } from '@/components/DownloadButton'
 
 const CYCLE_MS = 4000
 
@@ -151,7 +151,7 @@ export function HeroSection() {
               transition={{ duration: 0.5, delay: 1.2 }}
               className="flex flex-wrap gap-4 mt-10"
             >
-              <InstallButton />
+              <DownloadButton />
               <motion.button
                 type="button"
                 whileHover={{

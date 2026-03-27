@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { clsx } from "clsx";
+import { toast } from "sonner";
+import { open } from "@tauri-apps/plugin-shell";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Section,
@@ -80,9 +82,13 @@ export default function FantasyConfigPanel({
 }: FantasyConfigPanelProps) {
 
   const queryClient = useQueryClient();
+  const [phase, setPhase] = useState<Phase>("disconnected");
+  const [awaitingYahoo, setAwaitingYahoo] = useState(false);
+  const phaseInitRef = useRef(false);
 
   const { data: statusData } = useQuery({
     ...fantasyStatusOptions(),
+    refetchInterval: awaitingYahoo ? 2000 : false,
   });
 
   const { data: leaguesData } = useQuery({
@@ -97,9 +103,6 @@ export default function FantasyConfigPanel({
     (): Phase => (statusData && yahooConnected ? "connected" : "disconnected"),
     [statusData, yahooConnected],
   );
-
-  const [phase, setPhase] = useState<Phase>("disconnected");
-  const phaseInitRef = useRef(false);
 
   // Sync phase from query data on initial load
   useEffect(() => {
@@ -210,38 +213,66 @@ export default function FantasyConfigPanel({
       setImportStatuses({ ...statuses });
     }
 
+    const doneCount = Object.values(statuses).filter((s) => s === "done").length;
+    const errorCount = Object.values(statuses).filter((s) => s === "error").length;
+    if (errorCount === 0) {
+      toast.success(`${doneCount} league${doneCount === 1 ? "" : "s"} imported`);
+    } else if (doneCount > 0) {
+      toast.info(`${doneCount} imported, ${errorCount} failed`);
+    } else {
+      toast.error("League import failed");
+    }
+
     await queryClient.invalidateQueries({ queryKey: queryKeys.fantasy.leagues });
     await queryClient.invalidateQueries({ queryKey: queryKeys.fantasy.status });
     setPhase("connected");
   }, [selectedKeys, discoveredLeagues, queryClient, importLeagueMutation]);
 
-  // ── Listen for Yahoo auth popup completion ─────────────────────
+  // ── Detect Yahoo connection via polling ─────────────────────────
 
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === "yahoo-auth-complete") {
-        queryClient.invalidateQueries({ queryKey: queryKeys.fantasy.status });
-        queryClient.invalidateQueries({ queryKey: queryKeys.fantasy.leagues });
-        startDiscovery();
-      }
-    };
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, [queryClient, startDiscovery]);
+    if (awaitingYahoo && statusData?.connected) {
+      setAwaitingYahoo(false);
+      toast.success("Yahoo account connected");
+      queryClient.invalidateQueries({ queryKey: queryKeys.fantasy.leagues });
+      startDiscovery();
+    }
+  }, [awaitingYahoo, statusData, queryClient, startDiscovery]);
+
+  // ── Timeout if Yahoo sign-in takes too long ───────────────────
+
+  useEffect(() => {
+    if (!awaitingYahoo) return;
+    const timeout = setTimeout(() => {
+      setAwaitingYahoo(false);
+      toast.error("Yahoo sign-in timed out — try again");
+    }, 5 * 60 * 1000);
+    return () => clearTimeout(timeout);
+  }, [awaitingYahoo]);
 
   // ── Yahoo connect / disconnect ─────────────────────────────────
 
   const handleYahooConnect = useCallback(async () => {
     const token = await getValidToken();
-    if (!token) return;
+    if (!token) {
+      toast.error("Sign in to your account first");
+      return;
+    }
 
-    let sub: string | undefined;
     const payload = decodeJwtPayload(token);
-    sub = payload?.sub as string | undefined;
-    if (!sub) return;
+    const sub = payload?.sub as string | undefined;
+    if (!sub) {
+      toast.error("Couldn't verify your identity — try signing in again");
+      return;
+    }
 
     const popupUrl = `${API_BASE}/yahoo/start?logto_sub=${sub}`;
-    window.open(popupUrl, "yahoo-auth", "width=600,height=700");
+    try {
+      await open(popupUrl);
+      setAwaitingYahoo(true);
+    } catch {
+      toast.error("Couldn't open Yahoo sign-in");
+    }
   }, []);
 
   const disconnectMutation = useMutation({
@@ -252,9 +283,11 @@ export default function FantasyConfigPanel({
       queryClient.setQueryData(queryKeys.fantasy.leagues, { leagues: [] });
       setPhase("disconnected");
       phaseInitRef.current = false;
+      toast.success("Yahoo account disconnected");
     },
     onError: (err) => {
       console.error("[Fantasy] disconnect failed:", err);
+      toast.error("Couldn't disconnect Yahoo account");
     },
   });
 
@@ -352,11 +385,21 @@ export default function FantasyConfigPanel({
           )}
           <button
             onClick={handleYahooConnect}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-medium text-white transition-colors cursor-pointer"
+            disabled={awaitingYahoo}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-medium text-white transition-colors cursor-pointer disabled:opacity-60"
             style={{ background: hex }}
           >
-            <Link2 size={14} />
-            Connect Yahoo Account
+            {awaitingYahoo ? (
+              <>
+                <Loader2 size={14} className="animate-spin" />
+                Waiting for Yahoo sign-in…
+              </>
+            ) : (
+              <>
+                <Link2 size={14} />
+                Connect Yahoo Account
+              </>
+            )}
           </button>
         </motion.div>
       )}

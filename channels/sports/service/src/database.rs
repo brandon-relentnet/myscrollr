@@ -196,13 +196,13 @@ pub async fn truncate_games(pool: &Arc<PgPool>) -> Result<()> {
     Ok(())
 }
 
-/// Delete stale games. Final/postponed games older than 12h, and live games
-/// not seen in 4h (API stopped returning them).
+/// Delete stale games. Final/postponed/pre games older than 12h past start time,
+/// and live games not seen in 4h (API stopped returning them).
 pub async fn cleanup_old_games(pool: &Arc<PgPool>) -> Result<u64> {
     let mut connection = pool.acquire().await?;
     let result = query(
         "DELETE FROM games WHERE
-            (state IN ('final', 'postponed') AND start_time < NOW() - INTERVAL '12 hours')
+            (state IN ('final', 'postponed', 'pre') AND start_time < NOW() - INTERVAL '12 hours')
             OR (state = 'in' AND updated_at < NOW() - INTERVAL '4 hours')"
     )
     .execute(&mut *connection)

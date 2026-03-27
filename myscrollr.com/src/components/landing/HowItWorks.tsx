@@ -10,7 +10,7 @@ import {
   Trophy,
   Zap,
 } from 'lucide-react'
-import InstallButton from '@/components/InstallButton'
+import { DownloadButton } from '@/components/DownloadButton'
 import ScrollrSVG from '@/components/ScrollrSVG'
 
 // ── Constants ────────────────────────────────────────────────────
@@ -234,7 +234,7 @@ function InstallVisual() {
           transition={{ delay: 0.85, duration: 0.4, ease: VISUAL_EASE }}
           className="flex justify-center"
         >
-          <InstallButton className="w-full sm:w-auto sm:min-w-[240px] text-center" />
+          <DownloadButton />
         </motion.div>
       </div>
     </motion.div>
@@ -244,7 +244,9 @@ function InstallVisual() {
 // ── Step 2 Visual: Choose Channels ───────────────────────────────
 
 function ChooseVisual() {
-  const [toggled, setToggled] = useState<Array<boolean>>(CHANNELS.map(() => false))
+  const [toggled, setToggled] = useState<Array<boolean>>(
+    CHANNELS.map(() => false),
+  )
 
   useEffect(() => {
     const timeouts: Array<ReturnType<typeof setTimeout>> = []

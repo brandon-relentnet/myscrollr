@@ -29,160 +29,180 @@ All paid tiers include a 7-day free trial.
 
 ---
 
-## Phase 1 — Foundation
+## Verified Complete
+
+> Confirmed done by codebase audit (March 2026). Kept for reference.
+
+- [x] Stripe webhook signature verification
+- [x] Tauri capability scoping (main vs ticker window split)
+- [x] Tighten Tauri HTTP scope (ticker locked to API + auth only; main keeps `https://*/*` for Uptime Kuma widget)
+- [x] Dependency audit in CI (`npm audit` + `cargo audit` in release workflow, `continue-on-error`)
+- [x] Database migrations (golang-migrate for Go APIs, sqlx::migrate for Rust services; run on startup)
+- [x] Tier rename: `uplink_unlimited` → `uplink_ultimate`, added `uplink_pro` (Logto roles, Stripe products, Go + TS types, DB values)
+- [x] Upgrade/downgrade flows (immediate proration for upgrades, Subscription Schedules for downgrades, preview modals, frontend fully wired)
+- [x] Account page billing info (price, cadence, renewal date, pending downgrade notice, Change Plan link)
+- [x] Handle deleted Stripe customers in `getOrCreateStripeCustomer`
+- [x] Webhook event idempotency (`stripe_webhook_events` table, dedup before processing, 7-day TTL cleanup)
+- [x] Legal doc sync (pricing matches current tiers, quarterly billing references fully removed)
+- [x] Pricing page rewrite (tier names, limits, "Coming Soon" labels, removed feed retention + referral program)
+- [x] Auto-updater (state machine UI: check → download with progress → restart; minisign updater signing; same-version patch detection)
+- [x] Toast notification system (Sonner, dark theme, 30+ toast calls across 7 files covering all key user actions)
+- [x] Auth token refresh (silent refresh with 60s buffer, mutex for concurrent safety, SSE reconnect on 401, session-expired banner)
+- [x] `X-User-Tier` header forwarding (core proxy sets it at `proxy.go:162` — channels don't read it yet, that's Track 4)
+- [x] SSE delivery for Uplink Ultimate (Rust client → Hub → Sequin CDC pipeline)
+- [x] Error boundaries (`RouteError` on all 6 routes + `QueryErrorBanner` for widget data)
+- [x] Empty states (`DashboardEmptyState` + `EmptyChannelState` covering all channels and dashboard cards)
+- [x] Wire `subscriptionTier` prop into all config panels (plumbed through ChannelConfigPanel — unused until enforcement)
+
+---
+
+## Track 1 — Code Signing & Distribution
+
+> Start day 1. External wait times (Apple review ~24-48h, certificate issuance varies). Hard gate on shipping — Gatekeeper and SmartScreen block unsigned binaries.
+
+- [ ] Apple Developer Program enrollment ($99/yr) + Developer ID Application certificate
+- [ ] Configure macOS notarization in CI (`notarytool submit` + `stapler staple`)
+- [ ] Windows Authenticode code signing certificate (EV or OV)
+- [ ] Configure Windows signing in CI (`signtool sign`)
+- [ ] Test auto-updater end-to-end (install old version → push update → verify download + install + restart)
+
+---
+
+## Track 2 — Billing
+
+> Free trial is a compliance risk — pricing page promises "7-day free trial" but checkout charges immediately. Stripe Customer Portal is the only way users can update payment methods or view invoices.
+
+- [ ] Implement 7-day free trial (add `subscription_data.trial_period_days: 7` to `billing.go:HandleCreateCheckoutSession`)
+- [ ] Integrate Stripe Customer Portal (new endpoint to create portal session; link from website billing UI + desktop app)
+- [ ] Handle Customer Portal browser handoff from desktop app (open portal URL in default browser via Tauri `shell:open`)
+- [ ] Failed payment dunning: add "Update payment method" CTA in `past_due` UI state + user notification (webhook already sets `past_due` in DB)
+- [ ] Test resubscribe after cancel (full lifecycle: subscribe → cancel → wait for period end → resubscribe)
+- [ ] Desktop billing UI on Account page:
+  - [ ] "Manage Subscription" button (opens Stripe Customer Portal in browser)
+  - [ ] Current plan with tier limits summary
+  - [ ] Upgrade prompt linking to website pricing page
+
+---
+
+## Track 3 — Website Pivot
+
+> Full pivot from browser extension to desktop app. 18 files affected. Hero visual: "Desktop Workspace" concept (animated desktop with real app windows + ticker at bottom edge). HowItWorks: "Download → Choose Your Data → Work as Usual."
+
+### Download Page (new route)
+- [ ] Create `/download` route with OS detection (`navigator.platform` / `navigator.userAgent`)
+- [ ] Download buttons: macOS (Apple Silicon), macOS (Intel), Windows (x64), Linux (AppImage)
+- [ ] System requirements + unsigned binary instructions (until code signing is done)
+- [ ] Link to GitHub releases as fallback
+
+### Landing Page Rewrites
+- [x] Delete `src/components/InstallButton.tsx`
+- [x] Create `DownloadButton.tsx` component (OS detection, GitHub releases link — replaces InstallButton across the site)
+- [ ] Rewrite `HeroBrowserStack.tsx` → Desktop Workspace visual (animated desktop with app windows + ticker at bottom edge)
+- [ ] Rewrite `HowItWorks.tsx` → "Download → Choose Your Data → Work as Usual" (new visuals for steps 1 + 3) *(import swapped to DownloadButton)*
+- [ ] Update `HeroSection.tsx` (copy: "bottom of your browser" → desktop language) *(import swapped to DownloadButton)*
+- [ ] Update `FAQSection.tsx` (every answer references browser/extension — reframe all for desktop)
+- [ ] Update `CallToAction.tsx` (copy + replace browser list with platform list: macOS / Windows / Linux) *(import swapped to DownloadButton)*
+- [x] Update `ChannelsShowcase.tsx` ("every tab" → "your desktop/screen", 4 edits)
+- [ ] Update `BenefitsSection.tsx` ("specific sites" + browser-tab illustration → desktop)
+- [x] Update `TrustSection.tsx` ("Your browser, your data" → "Your device, your data"; "Extension component" → "Desktop component")
+- [x] Update `Footer.tsx` (Chrome/Firefox store links → Download link; "every tab" tagline → desktop)
+- [x] Update `routes/index.tsx` (title + meta description → desktop)
+- [x] Update `routes/architecture.tsx` (Extension tech stack → Desktop: Tauri v2, React 19, SSE + Polling; "browser" → "desktop")
+- [x] Update `routes/uplink.tsx` (4 FAQ lines: "extension" → "app")
+- [x] Update `index.html` (3 meta tags → desktop)
+- [x] Update `Header.tsx` comment (removed extension reference)
+- [x] Update `useGetToken.ts` comment (removed bridge reference)
+
+### Dead Code Removal
+- [x] Evaluate `useScrollrAuth.tsx` bridge auth system — confirmed dead (no code dispatches bridge events)
+- [x] Remove bridge auth; simplified to Logto-only wrapper (248 → 102 lines)
+
+### Legal Documents (`documents.ts`)
+- [x] Delete "Browser Extension Privacy" document (#6) — removed entirely
+- [ ] Create "Desktop Application Privacy" document (local storage: `scrollr.json` with 16+ keys, log files, system info access, auto-update endpoint)
+- [ ] Add "Desktop Application" section to Terms of Service (existing "Browser Extension" section renamed to "Desktop Application" — may need expanded content)
+- [x] Update Privacy Policy body: "browser extension" → "desktop application"
+- [x] Update Cookie & Storage Policy scope: "browser extension" → "desktop application"
+- [x] Update Security Policy scope: "browser extension" → "desktop application"
+- [x] Update Accessibility Statement: "Browser Extension" section → "Desktop Application" (Shadow Root → native ticker window)
+- [x] Update Acceptable Use Policy scope: "browser extension" → "desktop application"
+- [x] **Fix Finnhub → TwelveData** (all 9 occurrences replaced, including `finnhub.io` → `twelvedata.com` URLs)
+- [ ] Disclose desktop local data: auth tokens, preferences, widget configs, log files, system info access (CPU/GPU/memory/temps/network)
+
+---
+
+## Track 4 — Tier Enforcement
+
+> Client-side enforcement in the desktop app config panels. The `subscriptionTier` prop already flows into every config panel — it just needs to be used. Server-side enforcement deferred to v1.1.
+
+- [ ] Finance: enforce symbol limit (Free=5, Uplink=25, Pro=75, Ultimate=unlimited)
+- [ ] RSS: enforce feed count limit (Free=1, Uplink=25, Pro=100, Ultimate=unlimited)
+- [ ] RSS: enforce custom feed limit (Free=0, Uplink=1, Pro=3, Ultimate=10); block "Add Custom Feed" for Free
+- [ ] Sports: enforce league count limit (Free=1, Uplink=8, Pro=20, Ultimate=unlimited)
+- [ ] Fantasy: gate channel entirely for Free tier (upgrade prompt instead of Yahoo connect flow)
+- [ ] Fantasy: enforce league import limit (Uplink=1, Pro=3, Ultimate=10)
+- [ ] Usage indicators in all config panels ("12/25 symbols tracked")
+- [ ] Shared `UpgradePrompt` component reused across all channels
+- [x] Server-side SSE access gating (`/events` endpoint now extracts roles from JWT claims and returns 403 for non-`uplink_ultimate` users)
+
+---
+
+## Track 5 — Ship Readiness
 
 ### Security
-- [x] Confirm Stripe webhook signature verification is implemented
-- [x] Tauri capability scoping (main vs ticker split)
-- [x] Tighten Tauri HTTP scope (removed `http://*:*` from both capabilities; main window keeps `https://*/*` for Uptime Kuma widget; ticker locked to API + auth only)
-- [ ] Review / add CSP headers in Tauri webview
-- [ ] CORS configuration review (channel APIs have no CORS — relies on core proxy, but verify; extension auth CORS fixed: `*` → env-configurable origins with `Vary: Origin`)
-- [ ] Input validation audit across all API endpoints (currently ad-hoc field checks, no schema validation)
-- [x] Dependency audit (`npm audit` + `cargo audit` added to CI release workflow with `continue-on-error`)
+- [x] Configure CSP headers in Tauri webview (`script-src 'self'`, Google Fonts allowlisted, `connect-src https://*` for user-provided Kuma URLs)
 
-### Distribution & Signing
-> **Highest-risk items on the list.** Gatekeeper and SmartScreen block unsigned binaries. Hard gate on shipping.
-- [ ] Apple Developer certificate + notarization setup
-- [ ] Windows Authenticode code signing certificate
-- [ ] Update CI workflow to use OS-level signing credentials (currently only has minisign for updater artifacts)
+### Legal
+- [x] Bundle AGPL license with binary (`"resources": ["../../LICENSE"]` in `tauri.conf.json`)
+- [ ] Final legal review pass after Track 3 legal doc updates
 
-### Billing & Monetization
-> Resolved: all four tiers (free / uplink / uplink_pro / uplink_ultimate) now have distinct backend roles, Stripe products, and frontend types. Upgrade/downgrade/cancel flows work end-to-end on the website.
-- [x] Rename `uplink_unlimited` → `uplink_ultimate` across codebase (Logto role, `tierFromRoles()`, `planFromPriceID()`, TypeScript `SubscriptionTier` type, DB values) and display name to "Uplink Ultimate"
-- [x] Add `uplink_pro` backend role to Logto and update `tierFromRoles()` / `planFromPriceID()` to distinguish all four tiers
-- [x] Create Stripe products/prices for all tiers (Uplink, Pro, Ultimate, Lifetime) and 50% off lifetime coupon in Stripe sandbox
-- [x] Plan upgrade with immediate prorated charge (`always_invoice` + proration preview with exact dollar amount)
-- [x] Plan downgrade via Stripe Subscription Schedule (keeps current tier until period end, switches at renewal)
-- [x] Confirmation modal with exact proration amount (upgrade) or scheduled date (downgrade)
-- [x] Pricing page shows Current Plan / Upgrade / Downgrade / Downgrade Scheduled labels based on active subscription
-- [x] Account page shows billing price, cadence, renewal date, pending downgrade notice, and Change Plan link
-- [x] Handle deleted Stripe customers in `getOrCreateStripeCustomer` (Stripe returns 200 with `Deleted=true`)
-- [ ] Integrate Stripe Customer Portal (update payment method, view invoice history)
-- [ ] Handle Stripe Customer Portal browser handoff from desktop app (can't embed — needs browser redirect)
-- [x] Add webhook event idempotency (deduplicate redelivered Stripe events — `stripe_webhook_events` table with 7-day TTL cleanup)
-- [ ] Handle failed payments / dunning (grace period + user notification — `invoice.payment_failed` currently sets `past_due` but does nothing else)
-- [ ] Implement 7-day free trial in Stripe checkout flow (not currently active — Stripe charges immediately; needs `subscription_data.trial_period_days` in checkout session params)
-- [ ] Test full billing lifecycle: resubscribe after cancel (subscribe, upgrade, downgrade, and cancel are all verified)
-- [ ] Billing UI in desktop app (browse tiers, current plan display, manage subscription link — purchases can redirect to website)
-
-### Database & Infrastructure
-- [x] Database migrations strategy (`CREATE TABLE IF NOT EXISTS` on startup won't handle schema changes in production — adopt golang-migrate, goose, or atlas)
-
-### Legal Doc Sync
-> **Pricing page and legal documents are out of sync.** Legal docs reference old pricing and quarterly billing that no longer exists.
-- [x] Update legal documents to match current pricing and tier names (Terms of Service, Privacy Policy)
-- [x] Remove quarterly billing references from `SubscriptionStatus` type and `planFromPriceID` (removed in tier rename PR)
-- [x] Remove quarterly billing references from legal docs text
-
-### Phase 1 Validation
-- [x] Auto-updater implemented with progress UI and GitHub releases endpoint
-- [ ] Test auto-updater end-to-end (install old version → push update → verify install)
-
----
-
-## Phase 2 — Product
-
-### Crash Reporting
-> Moved from Phase 3 — capturing bugs during active development is more valuable than waiting until pre-launch.
-- [ ] Integrate crash reporting (Sentry or equivalent) across desktop app, Go APIs, and Rust services
-
-### Toast Notification System
-- [ ] Implement toast notification system (success, error, info feedback across the app)
-
-### Tier Enforcement — Infrastructure
-> **Currently zero server-side enforcement.** Channel APIs receive `X-User-Sub` but not tier info. Client-side polling intervals are trivially bypassable. The `subscriptionTier` prop already flows into Finance, Sports, and Fantasy config panels but is unused. RSS config panel doesn't receive it at all.
-- [ ] Forward tier info from core API to channel APIs (add `X-User-Tier` header to proxy) — **prerequisite for all enforcement below**
-- [ ] Server-side rate limiting per tier (enforce polling intervals server-side, not just client-side)
-- [x] Wire `subscriptionTier` into RSS (`NewsConfigPanel`) — was the only channel missing the prop
-
-### Tier Enforcement — Finance
-- [ ] Enforce tracked symbol limit: Free=5, Uplink=25, Pro=75, Ultimate=unlimited
-- [ ] Show usage indicator in config panel (e.g. "12/25 symbols tracked")
-- [ ] Block symbol additions beyond limit with upgrade prompt
-
-### Tier Enforcement — News (RSS)
-- [ ] Enforce news feed count limit: Free=1, Uplink=25, Pro=100, Ultimate=unlimited
-- [ ] Enforce custom news feed limit: Free=0, Uplink=1, Pro=3, Ultimate=10
-- [ ] Block "Add Custom Feed" form for Free tier
-- [ ] Show usage indicator and upgrade prompt at limit
-
-### Tier Enforcement — Sports
-- [ ] Enforce sports league count limit: Free=1, Uplink=8, Pro=20, Ultimate=unlimited
-- [ ] Show usage indicator and upgrade prompt at limit
-
-### Tier Enforcement — Fantasy
-- [ ] Gate Fantasy channel entirely for Free tier (0 leagues — show upgrade prompt instead of Yahoo connect flow)
-- [ ] Enforce fantasy league count limit: Uplink=1, Pro=3, Ultimate=10
-- [ ] Block league import beyond limit with upgrade prompt
-
-### Tier Enforcement — Data Delivery
-- [x] SSE delivery implemented for Uplink Ultimate (Rust client → Hub → Sequin CDC pipeline)
-- [ ] Enforce polling intervals server-side: Free=60s, Uplink=30s, Pro=10s, Ultimate=SSE
-- [ ] Enforce server-side SSE access: only `uplink_ultimate` should open `/events` (currently client-side gate only in `App.tsx`)
-
-### Tier Enforcement — UX
-- [ ] Graceful upgrade prompts when users hit a limit (nudge, not hard error)
-- [ ] Consistent upgrade prompt component reused across all channels
-
-### Pricing Page
-> **No "Coming Soon" labels exist on the pricing page.** Unbuilt features are presented as included. Pricing page also needs to reflect the new tier names, limits, and structure.
-- [x] Rewrite pricing page to reflect new tier names (Uplink / Uplink Pro / Uplink Ultimate), limits, and structure
-- [x] Mark post-v1 features as "Coming Soon": Custom alerts, Feed profiles, Webhooks, Data export, API access
-- [x] Remove feed retention from pricing page (internal concern, not a user-facing feature)
-- [x] Remove referral program from pricing page (no backend support exists)
-- [x] Verify lifetime deal page reflects correct tier name (Uplink Ultimate) and current pricing
-
-### Stability & Error Handling
-- [ ] Test and fix auth token expiry / silent refresh behavior
-- [ ] Offline detection + graceful degradation (show last-known data, not a blank screen)
-- [ ] API connection recovery / automatic retry with backoff
-- [ ] Handle rate limit (429) responses gracefully on the frontend
-- [ ] Stale data indicators (if data is old, make it visible)
-- [ ] Window state persistence (remember size and position across restarts — currently only saves ticker position preference, not actual window geometry)
-
-### Core UX
-- [x] Error boundaries (`RouteError.tsx` across all 6 route groups)
-- [x] Empty states (`DashboardEmptyState` and `EmptyChannelState` implemented)
-- [ ] First-run onboarding flow (guide new users through initial setup — currently only a basic welcome state)
-- [ ] Channel/widget discovery catalog (browsable UI to find and enable sources)
-- [ ] Fix flashing on configure page when adding items from catalog
-- [ ] Flesh out Account tab (profile info, billing summary, usage stats, connected accounts)
-- [ ] Audit all loading states (no layout shift, no blank screens)
-
----
-
-## Phase 3 — Pre-launch
-
-### Bug Reporting & Support
-- [ ] Add in-app "Report a Bug" link (pre-filled GitHub issue or form)
-- [ ] Create GitHub issue templates (bug report, feature request)
-- [ ] Changelog / "What's New" display after updates
-- [ ] Basic help docs or FAQ accessible from the app
-
-### Legal & Compliance
-- [ ] Update Privacy Policy to cover desktop app (local storage, network requests, data handling)
-- [ ] Update Terms of Service for desktop distribution
-- [ ] Ensure AGPL license is bundled with the binary
-- [ ] Review data collection disclosure (even if it's "we collect nothing")
-
-### Website Overhaul
-> **Site is deeply extension-oriented.** `InstallButton`, `HeroBrowserStack`, `HowItWorks`, `CallToAction`, and more reference Chrome/Firefox stores. The download page with OS detection is a meaningful feature build on its own.
-- [ ] Remove all extension references (~15+ files: InstallButton, HeroBrowserStack, FAQs, HowItWorks, CallToAction, Footer)
-- [ ] Build download page with OS detection (macOS / Windows / Linux, handle unsigned binary warnings)
-- [ ] Update hero section with desktop app visuals
-- [ ] Update "How It Works" section for desktop flow
-- [ ] Update all FAQs for desktop context
-- [ ] Update footer links (remove Chrome Web Store / Firefox Add-ons)
-- [ ] Add desktop screenshots or preview video
-
----
-
-## Phase 4 — Ship It
-
-### Launch Preparation
-- [ ] Cross-platform testing pass (macOS arm64, Windows x64, Linux x64)
+### Testing & Release
+- [ ] Cross-platform testing (macOS arm64, Windows x64, Linux x64 — all three CI targets)
 - [ ] Performance baseline (startup time, idle memory usage, no memory leaks on long runs)
 - [ ] Verify rollback plan (unpublish GitHub release + push hotfix via auto-updater if critical bug found)
-- [ ] Update project README to reflect desktop as primary product
-- [ ] Prepare release notes template
+- [ ] Create root README.md (none exists — only `myscrollr.com/README.md` which still says "Chrome extension")
+- [ ] Prepare release notes
 - [ ] Draft launch announcement
+
+---
+
+## v1.1 Backlog
+
+> Deferred items. Important but not launch-blocking.
+
+### Enforcement
+- [ ] Server-side item count limits (channel APIs read `X-User-Tier` and validate counts on add — ~2-3 hours)
+- [ ] Server-side polling rate enforcement (Free=60s, Uplink=30s, Pro=10s, Ultimate=SSE — separate half-day)
+- [ ] ~~Server-side SSE access gating~~ *(promoted to Track 4)*
+
+### Stability & Polish
+- [ ] Crash reporting (Sentry or equivalent — desktop + Go APIs + Rust services)
+- [ ] Offline detection + graceful degradation (show cached data, pause queries)
+- [ ] Window state persistence (main window size/position across restarts)
+- [ ] API retry with custom backoff (currently TanStack Query `retry:1` default only)
+- [ ] 429 rate limit handling on frontend
+- [ ] Stale data visual indicators in UI
+- [ ] Loading state audit (skeleton/shimmer components — currently text-based only)
+- [ ] Fix configure page flash when adding items from catalog
+
+### Features
+- [ ] First-run onboarding wizard (beyond current welcome empty state + ghost cards)
+- [ ] Channel/widget discovery catalog (browsable UI)
+- [ ] Full Account tab (profile, billing summary, usage stats, connected accounts)
+
+### Support & Docs
+- [ ] In-app "Report a Bug" link (pre-filled GitHub issue)
+- [ ] GitHub issue templates (bug report, feature request)
+- [ ] Changelog / "What's New" display after updates
+- [ ] Help docs / FAQ accessible from app
+
+### Security Hardening
+- [ ] ~~CSP headers~~ *(promoted to Track 5)*
+- [ ] Tighten main window HTTP scope (currently `https://*/*` — evaluate restricting to known domains)
+- [ ] CORS configuration review
+- [ ] Input validation audit (currently ad-hoc `if field == ""` across all APIs)
+- [ ] Config JSONB schema validation (channel config accepted with no shape validation)
+
+### Website
+- [ ] Desktop screenshots or preview video on landing page
+- [ ] Update sitemap.xml (stale routes: /discover, /integrations, /onboard)

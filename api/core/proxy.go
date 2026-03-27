@@ -153,12 +153,13 @@ func proxyRequest(c *fiber.Ctx, intg *ChannelInfo, route ChannelRoute, targetPat
 		req.Header.Set("Cookie", cookie)
 	}
 
-	// Add user identity for authenticated routes
+	// Add user identity and tier for authenticated routes
 	if route.Auth {
 		userID := GetUserID(c)
 		if userID != "" {
 			req.Header.Set("X-User-Sub", userID)
 		}
+		req.Header.Set("X-User-Tier", tierFromRoles(GetUserRoles(c)))
 	}
 
 	// Execute the proxy request
