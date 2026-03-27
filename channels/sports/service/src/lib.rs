@@ -15,7 +15,9 @@ pub mod database;
 pub mod types;
 
 /// Number of days ahead to poll in the schedule task.
-const SCHEDULE_DAYS_AHEAD: i64 = 0;
+/// Set to 1 to capture midnight crossover games (games that are evening local
+/// time but fall on the next UTC date).
+const SCHEDULE_DAYS_AHEAD: i64 = 1;
 
 // =============================================================================
 // Service initialization (runs once on startup)
@@ -139,6 +141,11 @@ pub async fn poll_live(
 
 /// Poll today's games to populate the upcoming schedule.
 /// Also cleans up finished games older than 12 hours.
+///
+/// When querying future dates (tomorrow), games are filtered to only include
+/// those starting within 12 hours from now. This captures midnight crossover
+/// games (evening US time that falls on the next UTC date) without prematurely
+/// fetching mid-day tomorrow games.
 pub async fn poll_schedule(
     pool: &Arc<PgPool>,
     client: &Client,
@@ -146,8 +153,10 @@ pub async fn poll_schedule(
     rate_limiter: &Arc<RateLimiter>,
 ) {
     let now = Utc::now();
+    let today = now.format("%Y-%m-%d").to_string();
+    let cutoff = now + Duration::hours(12);
 
-    // Build list of dates: today, +1 ... +7
+    // Build list of dates: today, +1 ... +SCHEDULE_DAYS_AHEAD
     let mut dates = Vec::with_capacity((SCHEDULE_DAYS_AHEAD + 1) as usize);
     for offset in 0..=SCHEDULE_DAYS_AHEAD {
         dates.push((now + Duration::days(offset)).format("%Y-%m-%d").to_string());
@@ -174,7 +183,13 @@ pub async fn poll_schedule(
 
             match poll_league(client, league, date, rate_limiter).await {
                 Ok(games) => {
-                    let (upserted, failed, _) = upsert_games(pool, league, games).await;
+                    // Filter future dates to only include games within 12 hours
+                    let filtered = if date != &today {
+                        games.into_iter().filter(|g| g.start_time <= cutoff).collect()
+                    } else {
+                        games
+                    };
+                    let (upserted, failed, _) = upsert_games(pool, league, filtered).await;
                     total_upserted += upserted;
                     total_failed += failed;
                 }

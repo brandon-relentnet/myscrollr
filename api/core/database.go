@@ -65,8 +65,7 @@ func ConnectDB() {
 	DBPool = pool
 	log.Println("Successfully connected to PostgreSQL database")
 
-	// golang-migrate uses lib/pq which requires explicit sslmode parameter
-	// Append sslmode=disable if not already specified (internal Docker network)
+	// golang-migrate uses pq driver which requires sslmode to be explicit
 	migrateURL := databaseURL
 	if !strings.Contains(migrateURL, "sslmode=") {
 		if strings.Contains(migrateURL, "?") {
