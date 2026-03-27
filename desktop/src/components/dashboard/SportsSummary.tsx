@@ -11,7 +11,7 @@
  */
 import { useMemo, useCallback } from "react";
 import { useScrollrCDC } from "../../hooks/useScrollrCDC";
-import { isLive, isFinal, isPre, isCloseGame, getWinner, gameStatusLabel, formatCountdown, abbreviateTeam } from "../../utils/gameHelpers";
+import { isLive, isFinal, isPre, isCloseGame, getWinner, gameStatusLabel, formatCountdown, displayTeamCode } from "../../utils/gameHelpers";
 import { useDashboardPin } from "../../hooks/useDashboardPin";
 import clsx from "clsx";
 import Tooltip from "../Tooltip";
@@ -227,7 +227,7 @@ function CompactChip({ game, onPromote, showFinals, showUpcoming }: CompactChipP
           <span className="w-1 h-1 rounded-full bg-live shrink-0 animate-pulse" />
         )}
         <span className={live ? "font-semibold" : ""}>
-          {abbreviateTeam(game.away_team_name)}
+          {displayTeamCode(game.away_team_code, game.away_team_name)}
         </span>
         {pre ? (
           <span className="text-fg-4">vs</span>
@@ -241,7 +241,7 @@ function CompactChip({ game, onPromote, showFinals, showUpcoming }: CompactChipP
           </>
         )}
         <span className={live ? "font-semibold" : ""}>
-          {abbreviateTeam(game.home_team_name)}
+          {displayTeamCode(game.home_team_code, game.home_team_name)}
         </span>
         {final && <span className="text-fg-4 text-[9px]">F</span>}
         {pre && <span className="text-fg-4 text-[9px]">{formatCountdown(game.start_time)}</span>}

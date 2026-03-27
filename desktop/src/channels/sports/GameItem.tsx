@@ -6,7 +6,7 @@
  */
 import { memo } from "react";
 import { clsx } from "clsx";
-import { isLive, isFinal, getWinner, gameStatusLabel, abbreviateTeam } from "../../utils/gameHelpers";
+import { isLive, isFinal, getWinner, gameStatusLabel, displayTeamCode } from "../../utils/gameHelpers";
 import TeamLogo from "../../components/TeamLogo";
 import { useScoreFlash } from "../../hooks/useScoreFlash";
 import type { Game, FeedMode } from "../../types";
@@ -45,7 +45,7 @@ export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
             winner === "away" && "font-bold",
           )}
         >
-          {abbreviateTeam(game.away_team_name)}
+          {displayTeamCode(game.away_team_code, game.away_team_name)}
         </span>
         <span
           className={clsx(
@@ -73,7 +73,7 @@ export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
             winner === "home" && "font-bold",
           )}
         >
-          {abbreviateTeam(game.home_team_name)}
+          {displayTeamCode(game.home_team_code, game.home_team_name)}
         </span>
         <TeamLogo src={game.home_team_logo} alt={game.home_team_name} size="md" />
         <span
@@ -172,6 +172,8 @@ export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
   prev.game.home_team_name === next.game.home_team_name &&
   prev.game.home_team_logo === next.game.home_team_logo &&
   prev.game.home_team_score === next.game.home_team_score &&
+  prev.game.home_team_code === next.game.home_team_code &&
+  prev.game.away_team_code === next.game.away_team_code &&
   prev.game.state === next.game.state &&
   prev.game.timer === next.game.timer &&
   prev.game.status_long === next.game.status_long &&

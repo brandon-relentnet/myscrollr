@@ -31,9 +31,11 @@ export interface Game {
   home_team_name: string;
   home_team_logo: string;
   home_team_score: number | string;
+  home_team_code: string;
   away_team_name: string;
   away_team_logo: string;
   away_team_score: number | string;
+  away_team_code: string;
   start_time: string;
   short_detail?: string;
   state?: string;

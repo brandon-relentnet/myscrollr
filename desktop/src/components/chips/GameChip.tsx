@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { clsx } from "clsx";
-import { isLive, isFinal, isPre, isCloseGame, getWinner, gameStatusLabel, abbreviateTeam } from "../../utils/gameHelpers";
+import { isLive, isFinal, isPre, isCloseGame, getWinner, gameStatusLabel, displayTeamCode } from "../../utils/gameHelpers";
 import { useScoreFlash } from "../../hooks/useScoreFlash";
 import { getChipColors } from "./chipColors";
 import TeamLogo from "../TeamLogo";
@@ -68,7 +68,7 @@ const GameChip = memo(function GameChip({
             final_ && winner === "home" && "opacity-50",
           )}
         >
-          {abbreviateTeam(game.away_team_name)}
+          {displayTeamCode(game.away_team_code, game.away_team_name)}
         </span>
         <span
           className={clsx(
@@ -101,7 +101,7 @@ const GameChip = memo(function GameChip({
             final_ && winner === "away" && "opacity-50",
           )}
         >
-          {abbreviateTeam(game.home_team_name)}
+          {displayTeamCode(game.home_team_code, game.home_team_name)}
         </span>
         <TeamLogo
           src={game.home_team_logo}
@@ -175,6 +175,8 @@ const GameChip = memo(function GameChip({
   prev.game.home_team_name === next.game.home_team_name &&
   prev.game.home_team_logo === next.game.home_team_logo &&
   prev.game.home_team_score === next.game.home_team_score &&
+  prev.game.home_team_code === next.game.home_team_code &&
+  prev.game.away_team_code === next.game.away_team_code &&
   prev.game.state === next.game.state &&
   prev.game.timer === next.game.timer &&
   prev.game.status_short === next.game.status_short &&

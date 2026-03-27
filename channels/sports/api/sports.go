@@ -376,8 +376,8 @@ func (a *App) onSyncSubscriptions(ctx context.Context, userSub string, config ma
 func (a *App) queryGames(ctx context.Context, limit int) ([]Game, error) {
 	rows, err := a.db.Query(ctx, fmt.Sprintf(`
 		SELECT id, league, COALESCE(sport, ''), external_game_id, COALESCE(link, ''),
-			home_team_name, COALESCE(home_team_logo, ''), COALESCE(home_team_score::text, ''),
-			away_team_name, COALESCE(away_team_logo, ''), COALESCE(away_team_score::text, ''),
+			home_team_name, COALESCE(home_team_logo, ''), COALESCE(home_team_score::text, ''), COALESCE(home_team_code, ''),
+			away_team_name, COALESCE(away_team_logo, ''), COALESCE(away_team_score::text, ''), COALESCE(away_team_code, ''),
 			start_time, COALESCE(short_detail, ''), state,
 			COALESCE(status_short, ''), COALESCE(status_long, ''),
 			COALESCE(timer, ''), COALESCE(venue, ''), COALESCE(season, '')
@@ -397,8 +397,8 @@ func (a *App) queryGames(ctx context.Context, limit int) ([]Game, error) {
 		var g Game
 		if err := rows.Scan(
 			&g.ID, &g.League, &g.Sport, &g.ExternalGameID, &g.Link,
-			&g.HomeTeamName, &g.HomeTeamLogo, &g.HomeTeamScore,
-			&g.AwayTeamName, &g.AwayTeamLogo, &g.AwayTeamScore,
+			&g.HomeTeamName, &g.HomeTeamLogo, &g.HomeTeamScore, &g.HomeTeamCode,
+			&g.AwayTeamName, &g.AwayTeamLogo, &g.AwayTeamScore, &g.AwayTeamCode,
 			&g.StartTime, &g.ShortDetail, &g.State,
 			&g.StatusShort, &g.StatusLong, &g.Timer, &g.Venue, &g.Season,
 		); err != nil {
@@ -419,8 +419,8 @@ func (a *App) queryGamesByLeagues(ctx context.Context, leagues []string, limit i
 
 	rows, err := a.db.Query(ctx, fmt.Sprintf(`
 		SELECT id, league, COALESCE(sport, ''), external_game_id, COALESCE(link, ''),
-			home_team_name, COALESCE(home_team_logo, ''), COALESCE(home_team_score::text, ''),
-			away_team_name, COALESCE(away_team_logo, ''), COALESCE(away_team_score::text, ''),
+			home_team_name, COALESCE(home_team_logo, ''), COALESCE(home_team_score::text, ''), COALESCE(home_team_code, ''),
+			away_team_name, COALESCE(away_team_logo, ''), COALESCE(away_team_score::text, ''), COALESCE(away_team_code, ''),
 			start_time, COALESCE(short_detail, ''), state,
 			COALESCE(status_short, ''), COALESCE(status_long, ''),
 			COALESCE(timer, ''), COALESCE(venue, ''), COALESCE(season, '')
@@ -441,8 +441,8 @@ func (a *App) queryGamesByLeagues(ctx context.Context, leagues []string, limit i
 		var g Game
 		if err := rows.Scan(
 			&g.ID, &g.League, &g.Sport, &g.ExternalGameID, &g.Link,
-			&g.HomeTeamName, &g.HomeTeamLogo, &g.HomeTeamScore,
-			&g.AwayTeamName, &g.AwayTeamLogo, &g.AwayTeamScore,
+			&g.HomeTeamName, &g.HomeTeamLogo, &g.HomeTeamScore, &g.HomeTeamCode,
+			&g.AwayTeamName, &g.AwayTeamLogo, &g.AwayTeamScore, &g.AwayTeamCode,
 			&g.StartTime, &g.ShortDetail, &g.State,
 			&g.StatusShort, &g.StatusLong, &g.Timer, &g.Venue, &g.Season,
 		); err != nil {

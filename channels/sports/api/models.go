@@ -12,9 +12,11 @@ type Game struct {
 	HomeTeamName   string    `json:"home_team_name"`
 	HomeTeamLogo   string    `json:"home_team_logo"`
 	HomeTeamScore  string    `json:"home_team_score"`
+	HomeTeamCode   string    `json:"home_team_code"`
 	AwayTeamName   string    `json:"away_team_name"`
 	AwayTeamLogo   string    `json:"away_team_logo"`
 	AwayTeamScore  string    `json:"away_team_score"`
+	AwayTeamCode   string    `json:"away_team_code"`
 	StartTime      time.Time `json:"start_time"`
 	ShortDetail    string    `json:"short_detail"`
 	State          string    `json:"state"`
