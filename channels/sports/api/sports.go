@@ -229,6 +229,13 @@ func (a *App) handleInternalCDC(c *fiber.Ctx) error {
 		}
 	}
 
+	// Bust caches so the next request serves fresh data instead of stale scores.
+	// Without this, CDC notifies clients of changes but re-fetches return cached data.
+	DeleteCache(a.rdb, CacheKeySports) // public cache
+	for sub := range userSet {
+		DeleteCache(a.rdb, CacheKeySportsPrefix+sub) // per-user cache
+	}
+
 	users := make([]string, 0, len(userSet))
 	for sub := range userSet {
 		users = append(users, sub)

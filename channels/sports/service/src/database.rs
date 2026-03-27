@@ -196,6 +196,35 @@ pub async fn truncate_games(pool: &Arc<PgPool>) -> Result<()> {
     Ok(())
 }
 
+/// Return distinct league names that have live games from yesterday (UTC).
+/// Used by poll_live to decide whether to also query yesterday's date.
+pub async fn get_live_yesterday_leagues(pool: &Arc<PgPool>) -> Vec<String> {
+    let today_start = Utc::now()
+        .date_naive()
+        .and_hms_opt(0, 0, 0)
+        .expect("valid midnight timestamp");
+    let today_utc = today_start.and_utc();
+
+    let result: Result<Vec<(String,)>, sqlx::Error> = async {
+        let mut conn = pool.acquire().await?;
+        let rows = sqlx::query_as(
+            "SELECT DISTINCT league FROM games WHERE state = 'in' AND start_time < $1"
+        )
+        .bind(today_utc)
+        .fetch_all(&mut *conn)
+        .await?;
+        Ok(rows)
+    }.await;
+
+    match result {
+        Ok(rows) => rows.into_iter().map(|(league,)| league).collect(),
+        Err(e) => {
+            log::warn!("Failed to query live-yesterday leagues, skipping yesterday poll: {}", e);
+            Vec::new()
+        }
+    }
+}
+
 /// Delete stale games. Final/postponed/pre games older than 12h past start time,
 /// and live games not seen in 4h (API stopped returning them).
 pub async fn cleanup_old_games(pool: &Arc<PgPool>) -> Result<u64> {

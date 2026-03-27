@@ -32,8 +32,14 @@ const CLOSE_THRESHOLDS: Record<string, number> = {
   "football": 1,
 };
 
+/** Check if a score value is present and numeric (not null, undefined, or empty). */
+function hasScore(score: number | string | null | undefined): boolean {
+  return score != null && score !== "";
+}
+
 export function isCloseGame(game: Game): boolean {
   if (!isLive(game)) return false;
+  if (!hasScore(game.away_team_score) || !hasScore(game.home_team_score)) return false;
   const away = Number(game.away_team_score);
   const home = Number(game.home_team_score);
   if (isNaN(away) || isNaN(home)) return false;
@@ -42,6 +48,7 @@ export function isCloseGame(game: Game): boolean {
 
 export function getWinner(game: Game): "home" | "away" | null {
   if (!isFinal(game)) return null;
+  if (!hasScore(game.away_team_score) || !hasScore(game.home_team_score)) return null;
   const a = Number(game.away_team_score);
   const h = Number(game.home_team_score);
   if (isNaN(a) || isNaN(h) || a === h) return null;
