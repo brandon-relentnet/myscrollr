@@ -1,16 +1,19 @@
 /**
  * Sports FeedTab — desktop-native.
  *
- * Renders a grid of game scoreboard cards with real-time score
- * updates via the desktop CDC/SSE pipeline. Shows live indicators,
- * team logos, and flash animations on score changes.
+ * Tabbed container with Scores, Schedule, and Standings views.
+ * Scores shows real-time game scoreboard cards via CDC/SSE.
+ * Schedule filters upcoming pre-games by date.
+ * Standings fetches league standings from the API.
  */
-import { useMemo, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { clsx } from "clsx";
 import { Trophy } from "lucide-react";
 import { useScrollrCDC } from "../../hooks/useScrollrCDC";
-import { isLive } from "../../utils/gameHelpers";
-import { GameItem } from "./GameItem";
+import { useSportsConfig } from "../../hooks/useSportsConfig";
+import { ScoresTab } from "./ScoresTab";
+import { ScheduleTab } from "./ScheduleTab";
+import { StandingsTab } from "./StandingsTab";
 import EmptyChannelState from "../../components/EmptyChannelState";
 import type { Game, FeedTabProps, ChannelManifest } from "../../types";
 
@@ -36,9 +39,16 @@ export const sportsChannel: ChannelManifest = {
   FeedTab: SportsFeedTab,
 };
 
+// ── Tab type ─────────────────────────────────────────────────────
+
+type SportsTab = "scores" | "schedule" | "standings";
+
 // ── FeedTab ──────────────────────────────────────────────────────
 
 function SportsFeedTab({ mode, feedContext }: FeedTabProps) {
+  const [tab, setTab] = useState<SportsTab>("scores");
+  const { leagues, display } = useSportsConfig();
+
   const keyOf = useCallback((g: Game) => String(g.id), []);
   const validate = useCallback(
     (record: Record<string, unknown>) => record.id != null,
@@ -52,33 +62,7 @@ function SportsFeedTab({ mode, feedContext }: FeedTabProps) {
     validate,
   });
 
-  // Group games by league, live games first within each group
-  const grouped = useMemo(() => {
-    const map = new Map<string, Game[]>();
-    for (const g of games) {
-      const league = g.league || "Other";
-      if (!map.has(league)) map.set(league, []);
-      map.get(league)!.push(g);
-    }
-    // Sort each league's games: live first, then by start time
-    for (const [, leagueGames] of map) {
-      leagueGames.sort((a, b) => {
-        const aLive = isLive(a) ? 1 : 0;
-        const bLive = isLive(b) ? 1 : 0;
-        if (aLive !== bLive) return bLive - aLive;
-        return 0;
-      });
-    }
-    // Sort leagues: leagues with live games first, then alphabetical
-    return Array.from(map.entries()).sort(([aKey, aGames], [bKey, bGames]) => {
-      const aHasLive = aGames.some(isLive);
-      const bHasLive = bGames.some(isLive);
-      if (aHasLive !== bHasLive) return bHasLive ? 1 : -1;
-      return aKey.localeCompare(bKey);
-    });
-  }, [games]);
-
-  if (games.length === 0) {
+  if (games.length === 0 && leagues.length === 0) {
     return (
       <EmptyChannelState
         icon={Trophy}
@@ -92,34 +76,29 @@ function SportsFeedTab({ mode, feedContext }: FeedTabProps) {
   }
 
   return (
-    <div className="bg-edge">
-      {grouped.map(([league, leagueGames]) => (
-        <div key={league}>
-          {/* League header */}
-          <div className="px-3 py-1.5 bg-surface-hover border-b border-edge">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-fg-3">
-              {league}
-            </span>
-            <span className="text-[10px] text-fg-4 ml-2">
-              {leagueGames.length}{" "}
-              {leagueGames.length === 1 ? "game" : "games"}
-            </span>
-          </div>
-          {/* Games */}
-          <div
+    <div>
+      {/* Tab bar */}
+      <div className="flex border-b border-edge bg-surface">
+        {(["scores", "schedule", "standings"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
             className={clsx(
-              "grid gap-px bg-edge",
-              mode === "compact"
-                ? "grid-cols-1"
-                : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
+              "flex-1 px-3 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors",
+              tab === t
+                ? "text-fg border-b-2 border-primary"
+                : "text-fg-3 hover:text-fg-2",
             )}
           >
-            {leagueGames.map((game) => (
-              <GameItem key={String(game.id)} game={game} mode={mode} />
-            ))}
-          </div>
-        </div>
-      ))}
+            {t === "scores" ? "Scores" : t === "schedule" ? "Schedule" : "Standings"}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      {tab === "scores" && <ScoresTab games={games} mode={mode} display={display} />}
+      {tab === "schedule" && <ScheduleTab games={games} />}
+      {tab === "standings" && <StandingsTab leagues={leagues} />}
     </div>
   );
 }
