@@ -35,6 +35,12 @@ const (
 	// Reduced from 5min to 60s because game activity status changes frequently.
 	SportsCatalogCacheTTL = 60 * time.Second
 
+	// StandingsCacheTTL is how long standings data is cached.
+	StandingsCacheTTL = 1 * time.Hour
+
+	// TeamsCacheTTL is how long teams data is cached.
+	TeamsCacheTTL = 24 * time.Hour
+
 	// SportsLeagueSubscribersPrefix is the per-league subscriber set prefix.
 	// Keys: sports:subscribers:league:{NFL}, sports:subscribers:league:{NBA}, etc.
 	SportsLeagueSubscribersPrefix = "sports:subscribers:league:"
@@ -494,6 +500,100 @@ func (a *App) getUserSportsLeagues(logtoSub string) []string {
 		return nil
 	}
 	return extractLeaguesFromConfig(configJSON)
+}
+
+// =============================================================================
+// Standings & Teams
+// =============================================================================
+
+// getStandings returns league standings filtered by league query param.
+func (a *App) getStandings(c *fiber.Ctx) error {
+	league := c.Query("league")
+	if league == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+			Status: "error", Error: "league query parameter is required",
+		})
+	}
+
+	cacheKey := "cache:sports:standings:" + league
+	var standings []Standing
+	if GetCache(a.rdb, cacheKey, &standings) {
+		return c.JSON(fiber.Map{"standings": standings})
+	}
+
+	rows, err := a.db.Query(c.Context(), `
+		SELECT league, team_name, COALESCE(team_code, ''), COALESCE(team_logo, ''),
+			COALESCE(rank, 0), wins, losses, draws, COALESCE(points, 0),
+			games_played, COALESCE(goal_diff, 0),
+			COALESCE(description, ''), COALESCE(form, ''), COALESCE(group_name, '')
+		FROM standings
+		WHERE league = $1
+		ORDER BY COALESCE(rank, 9999) ASC`, league)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Status: "error", Error: "failed to query standings",
+		})
+	}
+	defer rows.Close()
+
+	standings = make([]Standing, 0)
+	for rows.Next() {
+		var s Standing
+		if err := rows.Scan(
+			&s.League, &s.TeamName, &s.TeamCode, &s.TeamLogo,
+			&s.Rank, &s.Wins, &s.Losses, &s.Draws, &s.Points,
+			&s.GamesPlayed, &s.GoalDiff, &s.Description, &s.Form, &s.GroupName,
+		); err != nil {
+			log.Printf("[Sports] Standing row scan failed: %v", err)
+			continue
+		}
+		standings = append(standings, s)
+	}
+
+	SetCache(a.rdb, cacheKey, standings, StandingsCacheTTL)
+	return c.JSON(fiber.Map{"standings": standings})
+}
+
+// getTeams returns teams for a given league.
+func (a *App) getTeams(c *fiber.Ctx) error {
+	league := c.Query("league")
+	if league == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+			Status: "error", Error: "league query parameter is required",
+		})
+	}
+
+	cacheKey := "cache:sports:teams:" + league
+	var teams []TeamInfo
+	if GetCache(a.rdb, cacheKey, &teams) {
+		return c.JSON(fiber.Map{"teams": teams})
+	}
+
+	rows, err := a.db.Query(c.Context(), `
+		SELECT league, external_id, name, COALESCE(code, ''), COALESCE(logo, ''),
+			COALESCE(country, '')
+		FROM teams
+		WHERE league = $1
+		ORDER BY name ASC`, league)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Status: "error", Error: "failed to query teams",
+		})
+	}
+	defer rows.Close()
+
+	teams = make([]TeamInfo, 0)
+	for rows.Next() {
+		var t TeamInfo
+		if err := rows.Scan(&t.League, &t.ExternalID, &t.Name, &t.Code, &t.Logo, &t.Country); err != nil {
+			log.Printf("[Sports] Team row scan failed: %v", err)
+			continue
+		}
+		teams = append(teams, t)
+	}
+
+	SetCache(a.rdb, cacheKey, teams, TeamsCacheTTL)
+	return c.JSON(fiber.Map{"teams": teams})
 }
 
 // =============================================================================

@@ -128,6 +128,8 @@ func main() {
 	fiberApp.Get("/sports", app.getSports)
 	fiberApp.Get("/sports/public", app.getSports) // Unauthenticated: returns all games (same handler, public path)
 	fiberApp.Get("/sports/leagues", app.getLeagueCatalog)
+	fiberApp.Get("/sports/standings", app.getStandings)
+	fiberApp.Get("/sports/teams", app.getTeams)
 	fiberApp.Get("/sports/health", app.healthHandler)
 
 	// -------------------------------------------------------------------------
@@ -182,6 +184,8 @@ func startRegistration(ctx context.Context, rdb *redis.Client) {
 			{Method: "GET", Path: "/sports", Auth: true},
 			{Method: "GET", Path: "/sports/public", Auth: false},
 			{Method: "GET", Path: "/sports/leagues", Auth: false},
+			{Method: "GET", Path: "/sports/standings", Auth: true},
+			{Method: "GET", Path: "/sports/teams", Auth: true},
 			{Method: "GET", Path: "/sports/health", Auth: false},
 		},
 	}
