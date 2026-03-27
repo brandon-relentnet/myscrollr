@@ -6,7 +6,7 @@ import type { DashboardResponse, Trade, Game, RssItem, WidgetTickerData } from "
 import type { MixMode, ChipColorMode, TickerDirection, ScrollMode, WidgetPinConfig } from "../preferences";
 import TradeChip from "./chips/TradeChip";
 import GameChip from "./chips/GameChip";
-import { isLive, isCloseGame } from "../utils/gameHelpers";
+import { isLive, isCloseGame, isFinal, isPre } from "../utils/gameHelpers";
 import RssChip from "./chips/RssChip";
 import FantasyChip from "./chips/FantasyChip";
 import ConsolidatedChip from "./chips/ConsolidatedChip";
@@ -171,8 +171,26 @@ export default function ScrollrTicker({
           break;
 
         case "sports": {
-          // Sort by engagement: close live > live > starting soon > recent final > rest
-          const sorted = (data as Game[]).slice().sort((a, b) => gameEngagement(b) - gameEngagement(a));
+          // Read sports display prefs from dashboard channel config
+          const sportsChannel = dashboard?.channels?.find(
+            (c) => c.channel_type === "sports",
+          );
+          const sportsDisplay = (sportsChannel?.config?.display ?? {}) as {
+            showUpcoming?: boolean;
+            showFinal?: boolean;
+            showLogos?: boolean;
+          };
+          const showUpcoming = sportsDisplay.showUpcoming ?? true;
+          const showFinal = sportsDisplay.showFinal ?? true;
+          const showLogos = sportsDisplay.showLogos ?? true;
+
+          // Filter by display prefs, then sort by engagement
+          const filtered = (data as Game[]).filter((g) => {
+            if (!showUpcoming && isPre(g)) return false;
+            if (!showFinal && isFinal(g)) return false;
+            return true;
+          });
+          const sorted = filtered.sort((a, b) => gameEngagement(b) - gameEngagement(a));
           for (const game of sorted) {
             bucket.push(
               wrap(`spo-${game.id}`,
@@ -180,6 +198,7 @@ export default function ScrollrTicker({
                   game={game}
                   comfort={comfort}
                   colorMode={chipColorMode}
+                  showLogos={showLogos}
                   onClick={() => onChipClick?.("sports", game.id)}
                 />
               )

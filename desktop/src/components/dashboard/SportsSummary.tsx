@@ -99,7 +99,7 @@ function PrimaryGame({ game, prefs }: PrimaryGameProps) {
               winner === "away" && "font-bold",
             )}
           >
-            {game.away_team_name}
+            {displayTeamCode(game.away_team_code, game.away_team_name)}
           </span>
         </div>
         {!pre && (
@@ -127,7 +127,7 @@ function PrimaryGame({ game, prefs }: PrimaryGameProps) {
               winner === "home" && "font-bold",
             )}
           >
-            {game.home_team_name}
+            {displayTeamCode(game.home_team_code, game.home_team_name)}
           </span>
         </div>
         {!pre && (
