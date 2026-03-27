@@ -25,8 +25,12 @@ type PinnedMap = Record<string, string>;
 
 
 
-/** Score difference — lower = closer = more exciting. */
+/** Score difference — lower = closer = more exciting. Returns Infinity for games without valid scores. */
 function scoreDiff(g: Game): number {
+  if (g.away_team_score == null || g.away_team_score === "" ||
+      g.home_team_score == null || g.home_team_score === "") {
+    return Infinity;
+  }
   return Math.abs(Number(g.away_team_score) - Number(g.home_team_score));
 }
 
@@ -119,7 +123,7 @@ function PrimaryGame({ game, prefs }: PrimaryGameProps) {
               winner === "home" ? "text-fg-4" : "text-fg",
             )}
           >
-            {game.away_team_score}
+            {game.away_team_score == null || game.away_team_score === "" ? "-" : game.away_team_score}
           </span>
         )}
       </div>
@@ -147,7 +151,7 @@ function PrimaryGame({ game, prefs }: PrimaryGameProps) {
               winner === "away" ? "text-fg-4" : "text-fg",
             )}
           >
-            {game.home_team_score}
+            {game.home_team_score == null || game.home_team_score === "" ? "-" : game.home_team_score}
           </span>
         )}
       </div>
@@ -245,7 +249,9 @@ function CompactChip({ game, onPromote, showFinals, showUpcoming }: CompactChipP
         ) : (
           <>
             <span className="tabular-nums">
-              {game.away_team_score}-{game.home_team_score}
+              {game.away_team_score == null || game.away_team_score === "" ? "-" : game.away_team_score}
+              -
+              {game.home_team_score == null || game.home_team_score === "" ? "-" : game.home_team_score}
             </span>
           </>
         )}

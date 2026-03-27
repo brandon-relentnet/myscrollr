@@ -15,7 +15,8 @@ interface GameItemProps {
   mode: FeedMode;
 }
 
-function formatScore(score: number | string): string {
+function formatScore(score: number | string | null | undefined): string {
+  if (score == null || score === "") return "-";
   return String(score);
 }
 

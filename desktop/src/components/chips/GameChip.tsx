@@ -82,7 +82,7 @@ const GameChip = memo(function GameChip({
             pre_ && "opacity-30",
           )}
         >
-          {pre_ ? "_" : String(game.away_team_score)}
+          {pre_ ? "_" : (game.away_team_score == null || game.away_team_score === "" ? "-" : String(game.away_team_score))}
         </span>
 
         <span className="text-fg-4">-</span>
@@ -96,7 +96,7 @@ const GameChip = memo(function GameChip({
             pre_ && "opacity-30",
           )}
         >
-          {pre_ ? "_" : String(game.home_team_score)}
+          {pre_ ? "_" : (game.home_team_score == null || game.home_team_score === "" ? "-" : String(game.home_team_score))}
         </span>
         <span
           className={clsx(

@@ -6,7 +6,8 @@ use crate::log::{error, info, warn};
 use crate::database::{
     PgPool, truncate_games,
     get_tracked_leagues, seed_tracked_leagues, disable_stale_leagues,
-    cleanup_old_games, LeagueConfig, TrackedLeague, upsert_game, CleanedData, Team,
+    cleanup_old_games, get_live_yesterday_leagues,
+    LeagueConfig, TrackedLeague, upsert_game, CleanedData, Team,
 };
 pub use crate::types::{SportsHealth, RateLimiter};
 
@@ -86,10 +87,13 @@ pub async fn init_sports_service(pool: &Arc<PgPool>) -> Option<(Client, Vec<Trac
 }
 
 // =============================================================================
-// Live polling (fast — today only, every 30s-3min)
+// Live polling (fast — today + yesterday when needed, every 30s-1min)
 // =============================================================================
 
 /// Poll today's games for live score updates. Called on the fast interval.
+/// Also polls yesterday's date for leagues that still have live games from
+/// yesterday (handles UTC midnight boundary — US evening games that started
+/// on the previous UTC date).
 pub async fn poll_live(
     pool: &Arc<PgPool>,
     client: &Client,
@@ -97,7 +101,21 @@ pub async fn poll_live(
     health_state: &Arc<Mutex<SportsHealth>>,
     rate_limiter: &Arc<RateLimiter>,
 ) {
-    let today = Utc::now().format("%Y-%m-%d").to_string();
+    let now = Utc::now();
+    let today = now.format("%Y-%m-%d").to_string();
+    let yesterday = (now - Duration::days(1)).format("%Y-%m-%d").to_string();
+
+    // Check which leagues still have live games from yesterday's UTC date.
+    // On DB error this returns empty — we only poll today (fail safe).
+    let yesterday_leagues = get_live_yesterday_leagues(pool).await;
+    let has_yesterday = !yesterday_leagues.is_empty();
+    let yesterday_set: std::collections::HashSet<&str> =
+        yesterday_leagues.iter().map(|s| s.as_str()).collect();
+
+    if has_yesterday {
+        info!("Yesterday live games detected for {} league(s): {}",
+            yesterday_leagues.len(), yesterday_leagues.join(", "));
+    }
 
     let mut total_upserted = 0u32;
     let mut total_failed = 0u32;
@@ -110,6 +128,7 @@ pub async fn poll_live(
             continue;
         }
 
+        // Always poll today
         match poll_league(client, league, &today, rate_limiter).await {
             Ok(games) => {
                 let (upserted, failed, has_live) = upsert_games(pool, league, games).await;
@@ -122,6 +141,28 @@ pub async fn poll_live(
             Err(e) => {
                 error!("[{}] Live poll error: {}", league.name, e);
                 health_state.lock().await.record_error(e.to_string());
+            }
+        }
+
+        // Also poll yesterday if this league has live games from yesterday
+        if yesterday_set.contains(league.name.as_str()) {
+            if !rate_limiter.has_budget(&league.sport_api) {
+                warn!("[{}] Skipping yesterday poll — rate limit budget low", league.name);
+                continue;
+            }
+            match poll_league(client, league, &yesterday, rate_limiter).await {
+                Ok(games) => {
+                    let (upserted, failed, has_live) = upsert_games(pool, league, games).await;
+                    if has_live {
+                        leagues_with_live += 1;
+                    }
+                    total_upserted += upserted;
+                    total_failed += failed;
+                }
+                Err(e) => {
+                    error!("[{}] Yesterday poll error: {}", league.name, e);
+                    health_state.lock().await.record_error(e.to_string());
+                }
             }
         }
     }
