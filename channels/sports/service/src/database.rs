@@ -112,6 +112,7 @@ pub struct Team {
     pub name: String,
     pub logo: Option<String>,
     pub score: Option<i32>,
+    pub code: Option<String>,
 }
 
 // =============================================================================
@@ -247,12 +248,12 @@ pub async fn upsert_game(pool: Arc<PgPool>, game: CleanedData) -> Result<()> {
     let statement = "
         INSERT INTO games (
             league, sport, external_game_id, link,
-            home_team_name, home_team_logo, home_team_score,
-            away_team_name, away_team_logo, away_team_score,
+            home_team_name, home_team_logo, home_team_score, home_team_code,
+            away_team_name, away_team_logo, away_team_score, away_team_code,
             start_time, short_detail, state,
             status_short, status_long, timer, venue, season
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
         ON CONFLICT (league, external_game_id)
         DO UPDATE SET
             sport = EXCLUDED.sport,
@@ -260,9 +261,11 @@ pub async fn upsert_game(pool: Arc<PgPool>, game: CleanedData) -> Result<()> {
             home_team_name = EXCLUDED.home_team_name,
             home_team_logo = EXCLUDED.home_team_logo,
             home_team_score = EXCLUDED.home_team_score,
+            home_team_code = EXCLUDED.home_team_code,
             away_team_name = EXCLUDED.away_team_name,
             away_team_logo = EXCLUDED.away_team_logo,
             away_team_score = EXCLUDED.away_team_score,
+            away_team_code = EXCLUDED.away_team_code,
             start_time = EXCLUDED.start_time,
             short_detail = EXCLUDED.short_detail,
             state = EXCLUDED.state,
@@ -282,9 +285,11 @@ pub async fn upsert_game(pool: Arc<PgPool>, game: CleanedData) -> Result<()> {
         .bind(game.home_team.name)
         .bind(game.home_team.logo)
         .bind(game.home_team.score)
+        .bind(game.home_team.code)
         .bind(game.away_team.name)
         .bind(game.away_team.logo)
         .bind(game.away_team.score)
+        .bind(game.away_team.code)
         .bind(game.start_time)
         .bind(game.short_detail)
         .bind(game.state)
