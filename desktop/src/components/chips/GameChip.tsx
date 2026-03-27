@@ -1,10 +1,23 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import { clsx } from "clsx";
 import { isLive, isFinal, isPre, isCloseGame, getWinner, gameStatusLabel, abbreviateTeam } from "../../utils/gameHelpers";
 import { useScoreFlash } from "../../hooks/useScoreFlash";
 import { getChipColors } from "./chipColors";
 import type { Game } from "../../types";
 import type { ChipColorMode } from "../../preferences";
+
+function ChipLogo({ src, alt, size }: { src: string; alt: string; size: string }) {
+  const [err, setErr] = useState(false);
+  if (err || !src) return null;
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={`${size} object-contain shrink-0`}
+      onError={() => setErr(true)}
+    />
+  );
+}
 
 // ── Props ───────────────────────────────────────────────────────
 
@@ -55,16 +68,11 @@ const GameChip = memo(function GameChip({
         className={clsx("flex items-center gap-1.5", comfort && "text-[13px]")}
       >
         {/* Away team */}
-        {game.away_team_logo && (
-          <img
-            src={game.away_team_logo}
-            alt={game.away_team_name}
-            className={clsx(
-              "object-contain shrink-0",
-              comfort ? "w-3.5 h-3.5" : "w-3 h-3",
-            )}
-          />
-        )}
+        <ChipLogo
+          src={game.away_team_logo}
+          alt={game.away_team_name}
+          size={comfort ? "w-3.5 h-3.5" : "w-3 h-3"}
+        />
         <span
           className={clsx(
             c.text,
@@ -107,16 +115,11 @@ const GameChip = memo(function GameChip({
         >
           {abbreviateTeam(game.home_team_name)}
         </span>
-        {game.home_team_logo && (
-          <img
-            src={game.home_team_logo}
-            alt={game.home_team_name}
-            className={clsx(
-              "object-contain shrink-0",
-              comfort ? "w-3.5 h-3.5" : "w-3 h-3",
-            )}
-          />
-        )}
+        <ChipLogo
+          src={game.home_team_logo}
+          alt={game.home_team_name}
+          size={comfort ? "w-3.5 h-3.5" : "w-3 h-3"}
+        />
 
         {/* Status (compact only) */}
         {!comfort && status && (
