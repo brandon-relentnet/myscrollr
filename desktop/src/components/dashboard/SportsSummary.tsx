@@ -9,12 +9,13 @@
  * Auto-selects the most exciting live game per league (closest
  * score) or the next upcoming game when nothing is live.
  */
-import { useState, useMemo, useCallback } from "react";
+import { useMemo, useCallback } from "react";
 import { useScrollrCDC } from "../../hooks/useScrollrCDC";
 import { isLive, isFinal, isPre, isCloseGame, getWinner, gameStatusLabel, formatCountdown, abbreviateTeam } from "../../utils/gameHelpers";
 import { useDashboardPin } from "../../hooks/useDashboardPin";
 import clsx from "clsx";
 import Tooltip from "../Tooltip";
+import TeamLogo from "../TeamLogo";
 import type { Game, DashboardResponse } from "../../types";
 import type { SportsCardPrefs } from "./dashboardPrefs";
 import DashboardEmptyState from "./DashboardEmptyState";
@@ -60,22 +61,6 @@ function autoSelectPrimary(games: Game[]): Game {
   if (finals.length > 0) return finals[0];
   // Fallback
   return games[0];
-}
-
-// ── Team logo (error-resilient) ─────────────────────────────────
-
-function TeamLogo({ src, alt }: { src: string; alt: string }) {
-  const [err, setErr] = useState(false);
-  if (err || !src) return null;
-  return (
-    <img
-      src={src}
-      alt={alt}
-      className="w-4 h-4 object-contain shrink-0"
-      loading="lazy"
-      onError={() => setErr(true)}
-    />
-  );
 }
 
 // ── Primary game (detailed two-row card) ────────────────────────

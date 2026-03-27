@@ -9,6 +9,7 @@ import { useMemo, useCallback } from "react";
 import { clsx } from "clsx";
 import { Trophy } from "lucide-react";
 import { useScrollrCDC } from "../../hooks/useScrollrCDC";
+import { isLive } from "../../utils/gameHelpers";
 import { GameItem } from "./GameItem";
 import EmptyChannelState from "../../components/EmptyChannelState";
 import type { Game, FeedTabProps, ChannelManifest } from "../../types";
@@ -62,20 +63,16 @@ function SportsFeedTab({ mode, feedContext }: FeedTabProps) {
     // Sort each league's games: live first, then by start time
     for (const [, leagueGames] of map) {
       leagueGames.sort((a, b) => {
-        const aLive = a.state === "in_progress" || a.state === "in" ? 1 : 0;
-        const bLive = b.state === "in_progress" || b.state === "in" ? 1 : 0;
+        const aLive = isLive(a) ? 1 : 0;
+        const bLive = isLive(b) ? 1 : 0;
         if (aLive !== bLive) return bLive - aLive;
         return 0;
       });
     }
     // Sort leagues: leagues with live games first, then alphabetical
     return Array.from(map.entries()).sort(([aKey, aGames], [bKey, bGames]) => {
-      const aHasLive = aGames.some(
-        (g) => g.state === "in_progress" || g.state === "in",
-      );
-      const bHasLive = bGames.some(
-        (g) => g.state === "in_progress" || g.state === "in",
-      );
+      const aHasLive = aGames.some(isLive);
+      const bHasLive = bGames.some(isLive);
       if (aHasLive !== bHasLive) return bHasLive ? 1 : -1;
       return aKey.localeCompare(bKey);
     });

@@ -10,6 +10,7 @@
   --color-surface: #141420;
   --color-surface-2: #1c1c2a;
   --color-surface-hover: #21212e;
+  --color-surface-3: #1e1e2c;
 
   /* Website base palette (for parity) */
   --color-base-100: #141420;
@@ -81,6 +82,7 @@
   --color-surface: #ffffff;
   --color-surface-2: #f6f7fb;
   --color-surface-hover: #eef0f6;
+  --color-surface-3: #f0f2f8;
 
   --color-base-100: #ffffff;
   --color-base-150: #f6f7fb;

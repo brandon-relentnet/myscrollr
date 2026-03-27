@@ -4,9 +4,10 @@
  * Supports compact (single-row) and comfort (two-row with team logos)
  * display modes. Flashes briefly when scores update via CDC.
  */
-import { memo, useState } from "react";
+import { memo } from "react";
 import { clsx } from "clsx";
 import { isLive, isFinal, getWinner, gameStatusLabel, abbreviateTeam } from "../../utils/gameHelpers";
+import TeamLogo from "../../components/TeamLogo";
 import { useScoreFlash } from "../../hooks/useScoreFlash";
 import type { Game, FeedMode } from "../../types";
 
@@ -18,19 +19,6 @@ interface GameItemProps {
 function formatScore(score: number | string | null | undefined): string {
   if (score == null || score === "") return "-";
   return String(score);
-}
-
-function TeamLogo({ src, alt, size = "w-4 h-4" }: { src: string; alt: string; size?: string }) {
-  const [err, setErr] = useState(false);
-  if (err || !src) return null;
-  return (
-    <img
-      src={src}
-      alt={alt}
-      className={`${size} object-contain`}
-      onError={() => setErr(true)}
-    />
-  );
 }
 
 // ── Component ───────────────────────────────────────────────────
@@ -49,7 +37,7 @@ export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
           flash && "bg-live/10",
         )}
       >
-        <TeamLogo src={game.away_team_logo} alt={game.away_team_name} />
+        <TeamLogo src={game.away_team_logo} alt={game.away_team_name} size="md" />
         <span
           className={clsx(
             "font-mono font-medium min-w-[28px]",
@@ -87,7 +75,7 @@ export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
         >
           {abbreviateTeam(game.home_team_name)}
         </span>
-        <TeamLogo src={game.home_team_logo} alt={game.home_team_name} />
+        <TeamLogo src={game.home_team_logo} alt={game.home_team_name} size="md" />
         <span
           className={clsx(
             "ml-auto text-[9px] font-mono uppercase tracking-wider",
@@ -115,7 +103,7 @@ export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <TeamLogo src={game.away_team_logo} alt={game.away_team_name} size="w-5 h-5" />
+          <TeamLogo src={game.away_team_logo} alt={game.away_team_name} size="lg" />
           <span
             className={clsx(
               "text-sm",
@@ -138,7 +126,7 @@ export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
 
       <div className="flex items-center justify-between mt-0.5">
         <div className="flex items-center gap-2">
-          <TeamLogo src={game.home_team_logo} alt={game.home_team_name} size="w-5 h-5" />
+          <TeamLogo src={game.home_team_logo} alt={game.home_team_name} size="lg" />
           <span
             className={clsx(
               "text-sm",
