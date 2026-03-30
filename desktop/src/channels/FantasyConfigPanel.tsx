@@ -21,6 +21,7 @@ import {
   ActionRow,
   SegmentedRow,
 } from "../components/settings/SettingsControls";
+import UpgradePrompt from "../components/UpgradePrompt";
 import { authFetch, API_BASE } from "../api/client";
 import {
   fantasyStatusOptions,
@@ -28,8 +29,10 @@ import {
   queryKeys,
 } from "../api/queries";
 import { getValidToken, decodeJwtPayload } from "../auth";
+import { getLimit } from "../tierLimits";
 import { sportLabel, SPORT_EMOJI, isMatchupLive, isMatchupFinal } from "./fantasy/types";
 import type { Channel } from "../api/client";
+import type { SubscriptionTier } from "../auth";
 import type {
   LeagueResponse,
   MyLeaguesResponse,
@@ -69,7 +72,7 @@ const LEAGUES_PER_PAGE = 5;
 
 interface FantasyConfigPanelProps {
   channel: Channel;
-  subscriptionTier: string;
+  subscriptionTier: SubscriptionTier;
   connected: boolean;
   hex: string;
 }
@@ -78,6 +81,7 @@ interface FantasyConfigPanelProps {
 
 export default function FantasyConfigPanel({
   channel: _channel,
+  subscriptionTier,
   hex,
 }: FantasyConfigPanelProps) {
 
@@ -97,6 +101,10 @@ export default function FantasyConfigPanel({
 
   const yahooConnected = statusData?.connected ?? false;
   const leagues: LeagueResponse[] = (leaguesData?.leagues ?? []) as LeagueResponse[];
+
+  const maxFantasy = getLimit(subscriptionTier, "fantasy");
+  const remainingCapacity = Math.max(0, maxFantasy - leagues.length);
+  const atLeagueLimit = leagues.length >= maxFantasy;
 
   // Determine initial phase from query data
   const initialPhase = useMemo(
@@ -149,7 +157,10 @@ export default function FantasyConfigPanel({
         return;
       }
       const preSelected = new Set(
-        newLeagues.filter((l) => !l.is_finished).map((l) => l.league_key),
+        newLeagues
+          .filter((l) => !l.is_finished)
+          .map((l) => l.league_key)
+          .slice(0, remainingCapacity),
       );
       setSelectedKeys(preSelected);
       setPhase("picking");
@@ -188,7 +199,7 @@ export default function FantasyConfigPanel({
   });
 
   const importSelected = useCallback(async () => {
-    const keys = Array.from(selectedKeys);
+    const keys = Array.from(selectedKeys).slice(0, remainingCapacity);
     if (keys.length === 0) return;
 
     setPhase("importing");
@@ -226,7 +237,7 @@ export default function FantasyConfigPanel({
     await queryClient.invalidateQueries({ queryKey: queryKeys.fantasy.leagues });
     await queryClient.invalidateQueries({ queryKey: queryKeys.fantasy.status });
     setPhase("connected");
-  }, [selectedKeys, discoveredLeagues, queryClient, importLeagueMutation]);
+  }, [selectedKeys, discoveredLeagues, queryClient, importLeagueMutation, remainingCapacity]);
 
   // ── Detect Yahoo connection via polling ─────────────────────────
 
@@ -325,13 +336,22 @@ export default function FantasyConfigPanel({
   const toggleLeague = (key: string) => {
     setSelectedKeys((prev) => {
       const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
+      if (next.has(key)) {
+        next.delete(key);
+      } else if (next.size < remainingCapacity) {
+        next.add(key);
+      }
       return next;
     });
   };
   const selectAll = () =>
-    setSelectedKeys(new Set(pickableLeagues.map((l) => l.league_key)));
+    setSelectedKeys(
+      new Set(
+        pickableLeagues
+          .map((l) => l.league_key)
+          .slice(0, remainingCapacity),
+      ),
+    );
   const deselectAll = () => setSelectedKeys(new Set());
 
   const totalLeagues = leagues.length;
@@ -363,8 +383,31 @@ export default function FantasyConfigPanel({
         </div>
       </div>
 
+      {/* ── FREE TIER GATE ────────────────────────────────────── */}
+      {maxFantasy === 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center py-10 space-y-4 px-3"
+        >
+          <Ghost size={40} className="mx-auto text-fg-4/30" />
+          <div className="space-y-2">
+            <p className="text-sm font-bold text-fg-2">Fantasy Sports</p>
+            <p className="text-[12px] text-fg-3 max-w-xs mx-auto">
+              Track your Yahoo Fantasy leagues with live scores, standings,
+              and rosters.
+            </p>
+          </div>
+          <UpgradePrompt
+            max={0}
+            noun="Fantasy leagues"
+            tier={subscriptionTier}
+          />
+        </motion.div>
+      )}
+
       {/* ── DISCONNECTED ──────────────────────────────────────── */}
-      {phase === "disconnected" && (
+      {maxFantasy > 0 && phase === "disconnected" && (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -453,6 +496,20 @@ export default function FantasyConfigPanel({
         >
           <Section title={`Select Leagues (${pickableLeagues.length} found)`}>
             <div className="px-3 space-y-3">
+              {atLeagueLimit ? (
+                <UpgradePrompt
+                  current={leagues.length}
+                  max={maxFantasy}
+                  noun="Fantasy leagues"
+                  tier={subscriptionTier}
+                />
+              ) : maxFantasy < Infinity ? (
+                <p className="text-[11px] text-fg-4">
+                  {leagues.length}/{maxFantasy} leagues used
+                  {" · "}
+                  {remainingCapacity} remaining
+                </p>
+              ) : null}
               <div className="flex items-center justify-end gap-3">
                 <button
                   onClick={selectAll}
@@ -507,7 +564,7 @@ export default function FantasyConfigPanel({
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={importSelected}
-                  disabled={selectedKeys.size === 0}
+                  disabled={selectedKeys.size === 0 || atLeagueLimit}
                   className="flex-1 px-4 py-2 rounded-lg text-[12px] font-medium text-white transition-colors disabled:opacity-30 cursor-pointer"
                   style={{
                     background:
@@ -620,6 +677,17 @@ export default function FantasyConfigPanel({
             value={String(totalActiveMatchups)}
           />
         </Section>
+      )}
+
+      {phase === "connected" && atLeagueLimit && (
+        <div className="px-3 mb-4">
+          <UpgradePrompt
+            current={leagues.length}
+            max={maxFantasy}
+            noun="Fantasy leagues"
+            tier={subscriptionTier}
+          />
+        </div>
       )}
 
       {/* ── CONNECTED — Filter toggle ─────────────────────────── */}

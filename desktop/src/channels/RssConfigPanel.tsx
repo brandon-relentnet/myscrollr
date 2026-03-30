@@ -1,19 +1,22 @@
 import { useState, useCallback, useMemo } from "react";
 import { Plus, Rss, Trash2 } from "lucide-react";
 import Tooltip from "../components/Tooltip";
+import UpgradePrompt from "../components/UpgradePrompt";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SetupBrowser } from "../components/settings/SetupBrowser";
 import { rssApi } from "../api/client";
 import { toast } from "sonner";
 import { useChannelConfig } from "../hooks/useChannelConfig";
 import { rssCatalogOptions, queryKeys } from "../api/queries";
+import { getLimit, maxItemsForBrowser } from "../tierLimits";
 import type { Channel, TrackedFeed, RssChannelConfig } from "../api/client";
+import type { SubscriptionTier } from "../auth";
 
 // ── Types ────────────────────────────────────────────────────────
 
 interface RssConfigPanelProps {
   channel: Channel;
-  subscriptionTier: string;
+  subscriptionTier: SubscriptionTier;
   hex: string;
 }
 
@@ -21,11 +24,11 @@ interface RssConfigPanelProps {
 
 export default function RssConfigPanel({
   channel,
-  // subscriptionTier — accepted for consistency; enforcement added in Phase 2
+  subscriptionTier,
   hex,
 }: RssConfigPanelProps) {
   const queryClient = useQueryClient();
-  const { error, setError, saving, updateItems } = useChannelConfig<Array<{ name: string; url: string }>>("rss", "feeds");
+  const { error, setError, saving, updateItems } = useChannelConfig<Array<{ name: string; url: string; is_custom?: boolean }>>("rss", "feeds");
   const [newFeedName, setNewFeedName] = useState("");
   const [newFeedUrl, setNewFeedUrl] = useState("");
   const [urlError, setUrlError] = useState<string | null>(null);
@@ -33,6 +36,12 @@ export default function RssConfigPanel({
   const rssConfig = channel.config as RssChannelConfig;
   const feeds = Array.isArray(rssConfig?.feeds) ? rssConfig.feeds : [];
   const feedUrlSet = useMemo(() => new Set(feeds.map((f) => f.url)), [feeds]);
+
+  const maxFeeds = getLimit(subscriptionTier, "feeds");
+  const maxCustomFeeds = getLimit(subscriptionTier, "customFeeds");
+  const customFeedCount = useMemo(() => feeds.filter((f) => f.is_custom).length, [feeds]);
+  const atFeedLimit = feeds.length >= maxFeeds;
+  const atCustomLimit = customFeedCount >= maxCustomFeeds;
 
   // ── Catalog query ──────────────────────────────────────────────
   const {
@@ -51,11 +60,12 @@ export default function RssConfigPanel({
 
   const addCatalogFeed = useCallback(
     (url: string) => {
+      if (feeds.length >= maxFeeds) return;
       const feed = catalog.find((f) => f.url === url);
       if (!feed || feedUrlSet.has(url)) return;
       updateItems([...feeds, { name: feed.name, url: feed.url }]);
     },
-    [catalog, feeds, feedUrlSet, updateItems],
+    [catalog, feeds, feedUrlSet, updateItems, maxFeeds],
   );
 
   const removeFeed = useCallback(
@@ -87,19 +97,31 @@ export default function RssConfigPanel({
     const name = newFeedName.trim();
     const url = newFeedUrl.trim();
     if (!name || !url) return;
+    if (feeds.length >= maxFeeds) return;
+    if (feeds.filter((f) => f.is_custom).length >= maxCustomFeeds) return;
     if (!/^https?:\/\/.+/.test(url)) {
       setUrlError("Please enter a full web address (starting with http:// or https://)");
       return;
     }
     setUrlError(null);
     if (feedUrlSet.has(url)) return;
-    updateItems([...feeds, { name, url }]);
+    updateItems([...feeds, { name, url, is_custom: true }]);
     setNewFeedName("");
     setNewFeedUrl("");
-  }, [newFeedName, newFeedUrl, feeds, feedUrlSet, updateItems]);
+  }, [newFeedName, newFeedUrl, feeds, feedUrlSet, updateItems, maxFeeds, maxCustomFeeds]);
 
   return (
     <div className="w-full max-w-2xl mx-auto">
+      {atFeedLimit && (
+        <div className="mb-4 px-3">
+          <UpgradePrompt
+            current={feeds.length}
+            max={maxFeeds}
+            noun="feeds"
+            tier={subscriptionTier}
+          />
+        </div>
+      )}
       <SetupBrowser
         title="News"
         subtitle="News and articles from your favorite sites"
@@ -153,12 +175,17 @@ export default function RssConfigPanel({
           </>
         )}
         searchPlaceholder="Search feeds..."
+        maxItems={maxItemsForBrowser(subscriptionTier, "feeds")}
         renderBeforeList={() => (
           <AddCustomFeed
             name={newFeedName}
             url={newFeedUrl}
             urlError={urlError}
             saving={saving}
+            disabled={atCustomLimit || atFeedLimit}
+            customCount={customFeedCount}
+            maxCustom={maxCustomFeeds}
+            tier={subscriptionTier}
             onNameChange={setNewFeedName}
             onUrlChange={setNewFeedUrl}
             onSubmit={addCustomFeed}
@@ -184,6 +211,10 @@ interface AddCustomFeedProps {
   url: string;
   urlError: string | null;
   saving: boolean;
+  disabled: boolean;
+  customCount: number;
+  maxCustom: number;
+  tier: SubscriptionTier;
   onNameChange: (v: string) => void;
   onUrlChange: (v: string) => void;
   onSubmit: () => void;
@@ -194,44 +225,66 @@ function AddCustomFeed({
   url,
   urlError,
   saving,
+  disabled,
+  customCount,
+  maxCustom,
+  tier,
   onNameChange,
   onUrlChange,
   onSubmit,
 }: AddCustomFeedProps) {
   return (
     <div className="space-y-2">
-      <h3 className="text-[10px] uppercase tracking-wider font-bold text-fg-4">
-        Add your own feed
-      </h3>
-      <div className="flex flex-col sm:flex-row gap-2">
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => onNameChange(e.target.value)}
-          placeholder="Feed name"
-          className="flex-1 px-3 py-2 rounded-lg bg-base-200 border border-edge/30 text-[12px] font-mono text-fg-2 placeholder:text-fg-4 focus:outline-none focus:border-accent/40 transition-colors"
-        />
-        <input
-          type="url"
-          value={url}
-          onChange={(e) => onUrlChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") onSubmit();
-          }}
-          placeholder="https://..."
-          className="flex-[2] px-3 py-2 rounded-lg bg-base-200 border border-edge/30 text-[12px] font-mono text-fg-2 placeholder:text-fg-4 focus:outline-none focus:border-accent/40 transition-colors"
-        />
-        <button
-          onClick={onSubmit}
-          disabled={saving || !name.trim() || !url.trim()}
-          className="px-3 py-2 rounded-lg bg-base-250 border border-edge/30 text-fg-3 hover:text-accent hover:border-accent/30 transition-colors flex items-center gap-1.5 disabled:opacity-30 cursor-pointer"
-        >
-          <Plus size={13} />
-          <span className="text-[11px] font-medium">Add</span>
-        </button>
+      <div className="flex items-center justify-between">
+        <h3 className="text-[10px] uppercase tracking-wider font-bold text-fg-4">
+          Add your own feed
+        </h3>
+        {maxCustom > 0 && maxCustom !== Infinity && (
+          <span className="text-[10px] text-fg-4 tabular-nums">
+            {customCount}/{maxCustom} custom
+          </span>
+        )}
       </div>
-      {urlError && (
-        <p className="text-[11px] text-error/70">{urlError}</p>
+      {disabled ? (
+        <UpgradePrompt
+          current={customCount}
+          max={maxCustom}
+          noun="custom feeds"
+          tier={tier}
+        />
+      ) : (
+        <>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => onNameChange(e.target.value)}
+              placeholder="Feed name"
+              className="flex-1 px-3 py-2 rounded-lg bg-base-200 border border-edge/30 text-[12px] font-mono text-fg-2 placeholder:text-fg-4 focus:outline-none focus:border-accent/40 transition-colors"
+            />
+            <input
+              type="url"
+              value={url}
+              onChange={(e) => onUrlChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") onSubmit();
+              }}
+              placeholder="https://..."
+              className="flex-[2] px-3 py-2 rounded-lg bg-base-200 border border-edge/30 text-[12px] font-mono text-fg-2 placeholder:text-fg-4 focus:outline-none focus:border-accent/40 transition-colors"
+            />
+            <button
+              onClick={onSubmit}
+              disabled={saving || !name.trim() || !url.trim()}
+              className="px-3 py-2 rounded-lg bg-base-250 border border-edge/30 text-fg-3 hover:text-accent hover:border-accent/30 transition-colors flex items-center gap-1.5 disabled:opacity-30 cursor-pointer"
+            >
+              <Plus size={13} />
+              <span className="text-[11px] font-medium">Add</span>
+            </button>
+          </div>
+          {urlError && (
+            <p className="text-[11px] text-error/70">{urlError}</p>
+          )}
+        </>
       )}
     </div>
   );

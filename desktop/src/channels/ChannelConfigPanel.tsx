@@ -1,4 +1,5 @@
 import type { Channel } from "../api/client";
+import type { SubscriptionTier } from "../auth";
 import FinanceConfigPanel from "./FinanceConfigPanel";
 import SportsConfigPanel from "./SportsConfigPanel";
 import RssConfigPanel from "./RssConfigPanel";
@@ -9,7 +10,7 @@ import FantasyConfigPanel from "./FantasyConfigPanel";
 interface ChannelConfigPanelProps {
   channelType: string;
   channel: Channel;
-  subscriptionTier: string;
+  subscriptionTier: SubscriptionTier;
   /** SSE delivery mode active */
   connected: boolean;
   /** Channel accent hex color */

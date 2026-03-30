@@ -83,7 +83,7 @@ export interface Channel {
 }
 
 export interface RssChannelConfig {
-  feeds?: Array<{ name: string; url: string }>;
+  feeds?: Array<{ name: string; url: string; is_custom?: boolean }>;
 }
 
 // ── Channels API ────────────────────────────────────────────────
