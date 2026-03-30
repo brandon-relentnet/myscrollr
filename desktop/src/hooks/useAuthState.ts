@@ -70,7 +70,13 @@ export function useAuthState(): UseAuthStateReturn {
     (dashboard: DashboardResponse | undefined) => {
       if (dashboard) {
         const isAuth = checkAuth();
-        if (isAuth !== authenticatedRef.current) setAuthenticated(isAuth);
+        if (isAuth !== authenticatedRef.current) {
+          // Was authenticated and now isn't — show session expired banner
+          if (authenticatedRef.current && !isAuth) {
+            setSessionExpired(true);
+          }
+          setAuthenticated(isAuth);
+        }
         if (isAuth) setTier(getTier());
       }
     },

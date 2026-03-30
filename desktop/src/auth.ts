@@ -58,9 +58,14 @@ function loadAuth(): AuthState | null {
 
 function saveAuth(state: AuthState): void {
   setStore(STORAGE_KEY, state);
+  scheduleRefresh();
 }
 
 function clearAuth(): void {
+  if (refreshTimer !== null) {
+    clearTimeout(refreshTimer);
+    refreshTimer = null;
+  }
   removeStore(STORAGE_KEY);
 }
 
@@ -180,6 +185,40 @@ export function getTier(): SubscriptionTier {
 // ── Concurrency guard ────────────────────────────────────────────
 
 let refreshPromise: Promise<string | null> | null = null;
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Proactively refresh the access token before it expires.
+ * Self-sustaining: on success, saveAuth() re-schedules the next refresh.
+ * On network failure, retries every 30s until auth is cleared or refresh succeeds.
+ */
+function scheduleRefresh(): void {
+  if (refreshTimer !== null) {
+    clearTimeout(refreshTimer);
+    refreshTimer = null;
+  }
+
+  const auth = loadAuth();
+  if (!auth || !auth.refreshToken) return;
+
+  const msUntilRefresh = auth.expiresAt - Date.now() - REFRESH_BUFFER_MS;
+
+  const performRefresh = async () => {
+    const token = await getValidToken();
+    // If refresh failed but we still have a refresh token (network error), retry in 30s
+    if (!token && loadAuth()?.refreshToken) {
+      refreshTimer = setTimeout(performRefresh, 30_000);
+    }
+    // If succeeded, saveAuth() → scheduleRefresh() was already called with new expiry
+  };
+
+  if (msUntilRefresh <= 0) {
+    // Already past the refresh point — refresh immediately
+    performRefresh();
+  } else {
+    refreshTimer = setTimeout(performRefresh, msUntilRefresh);
+  }
+}
 
 // ── Public API ───────────────────────────────────────────────────
 
@@ -277,12 +316,12 @@ export async function login(): Promise<AuthState | null> {
  * Get a valid access token, refreshing silently if near expiry.
  * Returns null if not authenticated or refresh fails.
  */
-export async function getValidToken(): Promise<string | null> {
+export async function getValidToken(forceRefresh = false): Promise<string | null> {
   const auth = loadAuth();
   if (!auth) return null;
 
-  // Token still valid (with buffer)
-  if (auth.expiresAt - Date.now() > REFRESH_BUFFER_MS) {
+  // Token still valid (with buffer) — skip if forced
+  if (!forceRefresh && auth.expiresAt - Date.now() > REFRESH_BUFFER_MS) {
     return auth.accessToken;
   }
 
@@ -314,8 +353,13 @@ async function doRefresh(refreshToken: string): Promise<string | null> {
 
     saveAuth(authState);
     return authState.accessToken;
-  } catch {
-    clearAuth();
+  } catch (err) {
+    // Only clear auth if the refresh token was explicitly rejected (4xx).
+    // Network errors preserve state so the proactive timer can retry.
+    const message = (err as Error).message ?? "";
+    if (/Token refresh failed: 4\d\d/.test(message)) {
+      clearAuth();
+    }
     return null;
   }
 }
@@ -349,3 +393,18 @@ export function getUserIdentity(): { email: string | null; name: string | null }
 export function logout(): void {
   clearAuth();
 }
+
+/**
+ * Check if a refresh token exists (even if access token is expired).
+ * Used by fetchDashboard to try the authenticated path when a refresh
+ * could restore the session.
+ */
+export function hasRefreshToken(): boolean {
+  const auth = loadAuth();
+  return auth !== null && auth.refreshToken !== null;
+}
+
+// ── Initialize proactive refresh on module load ──────────────────
+// If the app restarts with existing auth, this ensures the refresh
+// timer is set up immediately rather than waiting for the first API call.
+scheduleRefresh();

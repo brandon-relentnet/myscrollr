@@ -5,7 +5,7 @@
  * Every remote data fetch uses this layer — no manual fetch + useState.
  */
 import { queryOptions } from "@tanstack/react-query";
-import { isAuthenticated } from "../auth";
+import { isAuthenticated, hasRefreshToken } from "../auth";
 import { authFetch, request, rssApi } from "./client";
 import type { TrackedFeed } from "./client";
 import type { DashboardResponse } from "../types";
@@ -29,7 +29,10 @@ export const queryKeys = {
 // ── Dashboard Query ──────────────────────────────────────────────
 
 async function fetchDashboard(): Promise<DashboardResponse> {
-  if (isAuthenticated()) {
+  // Try authenticated path if token is valid OR a refresh token can restore the session.
+  // This prevents the deadlock where an expired access token blocked the only code path
+  // that could trigger a refresh via getValidToken().
+  if (isAuthenticated() || hasRefreshToken()) {
     try {
       const data = await authFetch<{
         data: DashboardResponse["data"];
