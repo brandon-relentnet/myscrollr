@@ -97,9 +97,9 @@ export default function SourcePageLayout({
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div>
       {/* Breadcrumb header */}
-      <header className="flex items-center justify-between px-5 h-12 border-b border-edge shrink-0">
+      <header className="flex items-center justify-between px-5 h-12 border-b border-edge sticky top-0 z-10 bg-surface">
         <div className="flex items-center gap-1.5 min-w-0 text-sm">
           <button
             onClick={onBack}
@@ -168,7 +168,7 @@ export default function SourcePageLayout({
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto scrollbar-thin">
+      <div>
         {children}
       </div>
 

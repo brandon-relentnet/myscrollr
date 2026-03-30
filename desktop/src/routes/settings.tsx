@@ -59,36 +59,37 @@ function SettingsRoute() {
   };
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto scrollbar-thin">
-      {/* ── Header + Tabs ──────────────────────────────────────── */}
-      <div className="px-6 pt-6 pb-0">
-        <h2 className="text-[13px] font-mono font-semibold text-fg-4 uppercase tracking-wider mb-4">
+    <div className="p-5 max-w-6xl mx-auto">
+      {/* ── Header ─────────────────────────────────────────────── */}
+      <div className="mb-5">
+        <h1 className="text-[11px] font-mono font-semibold text-fg-4 uppercase tracking-wider mb-1">
           Settings
-        </h2>
+        </h1>
+        <p className="text-xs text-fg-4">
+          Appearance, ticker, and account preferences
+        </p>
+      </div>
 
-        <div className="flex gap-1 border-b border-edge/30">
-          {VALID_TABS.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={clsx(
-                "px-3 py-2 text-[12px] font-medium transition-colors relative cursor-pointer",
-                tab === t
-                  ? "text-fg"
-                  : "text-fg-3 hover:text-fg-2",
-              )}
-            >
-              {TAB_LABELS[t]}
-              {tab === t && (
-                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-accent rounded-full" />
-              )}
-            </button>
-          ))}
-        </div>
+      {/* ── Tabs ───────────────────────────────────────────────── */}
+      <div className="flex gap-1 mb-5">
+        {VALID_TABS.map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={clsx(
+              "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer",
+              tab === t
+                ? "bg-accent/10 text-accent"
+                : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
+            )}
+          >
+            {TAB_LABELS[t]}
+          </button>
+        ))}
       </div>
 
       {/* ── Tab content ────────────────────────────────────────── */}
-      <div className="px-6 py-6 max-w-2xl w-full mx-auto">
+      <div className="max-w-2xl">
         {tab === "general" && (
           <GeneralSettings
             appearance={prefs.appearance}

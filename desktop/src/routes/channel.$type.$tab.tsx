@@ -179,7 +179,7 @@ function FinanceDisplay() {
   }
 
   return (
-    <div className="p-4 max-w-lg">
+    <div className="p-4 max-w-2xl mx-auto">
       <Section title="Feed & Ticker">
         <ToggleRow label="Show % change" checked={dp.showChange} onChange={() => toggle("showChange")} />
         <ToggleRow label="Show previous close" checked={dp.showPrevClose} onChange={() => toggle("showPrevClose")} />
@@ -207,7 +207,7 @@ function SportsDisplay() {
   }
 
   return (
-    <div className="p-4 max-w-lg">
+    <div className="p-4 max-w-2xl mx-auto">
       <Section title="Feed & Ticker">
         <ToggleRow label="Show team logos" checked={display.showLogos} onChange={() => toggle("showLogos")} />
         <ToggleRow label="Show game clock" checked={display.showTimer} onChange={() => toggle("showTimer")} />
@@ -244,7 +244,7 @@ function RssDisplay() {
   }
 
   return (
-    <div className="p-4 max-w-lg">
+    <div className="p-4 max-w-2xl mx-auto">
       <Section title="Feed & Ticker">
         <ToggleRow label="Show description" checked={dp.showDescription} onChange={() => toggle("showDescription")} />
         <ToggleRow label="Show source name" checked={dp.showSource} onChange={() => toggle("showSource")} />
@@ -280,7 +280,7 @@ function FantasyDisplay() {
   }
 
   return (
-    <div className="p-4 max-w-lg">
+    <div className="p-4 max-w-2xl mx-auto">
       <Section title="Feed">
         <ToggleRow label="Show standings" checked={dp.showStandings} onChange={() => toggle("showStandings")} />
         <ToggleRow label="Show injury count" checked={dp.showInjuryCount} onChange={() => toggle("showInjuryCount")} />

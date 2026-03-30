@@ -9,7 +9,7 @@ import { useState } from "react";
 import { Home, LayoutGrid, Settings, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import clsx from "clsx";
 import Tooltip from "./Tooltip";
-import type { DeliveryMode } from "../types";
+import type { DeliveryMode, ChannelManifest, WidgetManifest } from "../types";
 import { loadPref, savePref } from "../preferences";
 
 // ── Scroll S logo ───────────────────────────────────────────────
@@ -70,6 +70,14 @@ function ScrollLogo({ alive }: { alive: boolean }) {
 
 // ── Props ───────────────────────────────────────────────────────
 
+interface PinnedSource {
+  id: string;
+  name: string;
+  hex: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  kind: "channel" | "widget";
+}
+
 interface SidebarProps {
   /** Whether the home/dashboard page is active. */
   isFeed: boolean;
@@ -77,6 +85,11 @@ interface SidebarProps {
   isSettings: boolean;
   /** Whether the catalog page is active. */
   isMarketplace: boolean;
+  /** Currently active channel or widget ID (for pinned item highlighting). */
+  activeItem: string;
+
+  /** Resolved pinned sources with manifest data. */
+  pinnedSources: PinnedSource[];
 
   /** Current data delivery mode for status footer. */
   deliveryMode: DeliveryMode;
@@ -89,6 +102,8 @@ interface SidebarProps {
   onNavigateToSettings: () => void;
   /** Navigate to the catalog page. */
   onNavigateToMarketplace: () => void;
+  /** Navigate to a specific source (channel or widget) feed. */
+  onSelectItem: (id: string, kind: "channel" | "widget") => void;
 }
 
 // ── Component ───────────────────────────────────────────────────
@@ -97,11 +112,14 @@ export default function Sidebar({
   isFeed,
   isSettings,
   isMarketplace,
+  activeItem,
+  pinnedSources,
   deliveryMode,
   tickerAlive,
   onNavigateToFeed,
   onNavigateToSettings,
   onNavigateToMarketplace,
+  onSelectItem,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(() =>
     loadPref("sidebarCollapsed", false),
@@ -165,6 +183,22 @@ export default function Sidebar({
           collapsed={collapsed}
           onClick={onNavigateToMarketplace}
         />
+
+        {/* Pinned sources */}
+        {pinnedSources.length > 0 && (
+          <div className="mt-2 pt-2 border-t border-edge/20 space-y-0.5">
+            {pinnedSources.map((source) => (
+              <NavItem
+                key={source.id}
+                icon={<span style={{ color: source.hex }}><source.icon size={15} /></span>}
+                label={source.name}
+                active={activeItem === source.id}
+                collapsed={collapsed}
+                onClick={() => onSelectItem(source.id, source.kind)}
+              />
+            ))}
+          </div>
+        )}
       </nav>
 
       {/* Footer — settings, collapse toggle, status */}

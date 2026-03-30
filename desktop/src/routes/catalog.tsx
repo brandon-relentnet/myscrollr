@@ -126,14 +126,13 @@ function CatalogPage() {
   // ── Render ──────────────────────────────────────────────────
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-5 max-w-6xl mx-auto">
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-1">
-          <LayoutGrid size={20} className="text-fg-3" />
-          <h1 className="text-lg font-bold text-fg">Catalog</h1>
-        </div>
-        <p className="text-xs text-fg-4 ml-8">
+      <div className="mb-5">
+        <h1 className="text-[11px] font-mono font-semibold text-fg-4 uppercase tracking-wider mb-1">
+          Catalog
+        </h1>
+        <p className="text-xs text-fg-4">
           Add channels and widgets to your ticker
         </p>
       </div>
@@ -146,16 +145,16 @@ function CatalogPage() {
       )}
 
       {/* Category filter tabs */}
-      <div className="flex items-center gap-1 mb-5 border-b border-edge/20 pb-px">
+      <div className="flex items-center gap-1 mb-5">
         {FILTER_TABS.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setFilter(tab.key)}
             className={clsx(
-              "px-3 py-1.5 text-xs font-medium rounded-t transition-colors",
+              "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
               filter === tab.key
-                ? "text-fg border-b-2 border-accent"
-                : "text-fg-4 hover:text-fg-3",
+                ? "bg-accent/10 text-accent"
+                : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
             )}
           >
             {tab.label}

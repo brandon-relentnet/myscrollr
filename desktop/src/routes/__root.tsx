@@ -226,6 +226,34 @@ function RootLayout() {
   const handleNavigateToSettings = useCallback(() => navigate({ to: "/settings", search: { tab: "general" } }), [navigate]);
   const handleNavigateToMarketplace = useCallback(() => navigate({ to: "/catalog" }), [navigate]);
 
+  const handleSelectPinned = useCallback(
+    (id: string, kind: "channel" | "widget") => {
+      if (kind === "channel") {
+        navigate({ to: "/channel/$type/$tab", params: { type: id, tab: "feed" } });
+      } else {
+        navigate({ to: "/widget/$id/$tab", params: { id, tab: "feed" } });
+      }
+    },
+    [navigate],
+  );
+
+  // Resolve pinned source IDs to manifest data for the sidebar
+  const resolvedPinnedSources = useMemo(() => {
+    return prefs.pinnedSources
+      .map((id) => {
+        const chManifest = allChannelManifests.find((m) => m.id === id);
+        if (chManifest) {
+          return { id, name: chManifest.name, hex: chManifest.hex, icon: chManifest.icon, kind: "channel" as const };
+        }
+        const wManifest = allWidgets.find((w) => w.id === id);
+        if (wManifest) {
+          return { id, name: wManifest.name, hex: wManifest.hex, icon: wManifest.icon, kind: "widget" as const };
+        }
+        return null;
+      })
+      .filter(Boolean) as Array<{ id: string; name: string; hex: string; icon: React.ComponentType<{ size?: number; className?: string }>; kind: "channel" | "widget" }>;
+  }, [prefs.pinnedSources, allChannelManifests, allWidgets]);
+
   // ── Keyboard shortcuts ──────────────────────────────────────
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -361,11 +389,14 @@ function RootLayout() {
           isFeed={route.isFeed}
           isSettings={route.isSettings}
           isMarketplace={route.isMarketplace}
+          activeItem={route.activeItem}
+          pinnedSources={resolvedPinnedSources}
           deliveryMode={deliveryMode}
           tickerAlive={prefs.ticker.showTicker}
           onNavigateToFeed={handleNavigateToFeed}
           onNavigateToSettings={handleNavigateToSettings}
           onNavigateToMarketplace={handleNavigateToMarketplace}
+          onSelectItem={handleSelectPinned}
         />
 
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
@@ -392,7 +423,7 @@ function RootLayout() {
             </div>
           )}
 
-          <div className="flex-1 overflow-y-auto scrollbar-thin">
+          <div className="flex-1 overflow-y-auto scrollbar-thin" style={{ scrollbarGutter: "stable" }}>
             <ShellContext.Provider value={shellStableValue}>
               <ShellDataContext.Provider value={shellDataValue}>
                 <Outlet />

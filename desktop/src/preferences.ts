@@ -193,6 +193,8 @@ export interface AppPreferences {
   taskbar: TaskbarPrefs;
   widgets: WidgetPrefs;
   channelDisplay: ChannelDisplayPrefs;
+  /** Channel/widget IDs pinned to the sidebar for quick access. */
+  pinnedSources: string[];
 }
 
 // ── Defaults ────────────────────────────────────────────────────
@@ -316,6 +318,7 @@ const DEFAULT_PREFS: AppPreferences = {
   taskbar: DEFAULT_TASKBAR,
   widgets: DEFAULT_WIDGETS,
   channelDisplay: DEFAULT_CHANNEL_DISPLAY,
+  pinnedSources: [],
 };
 
 // ── Storage helpers ─────────────────────────────────────────────
@@ -461,6 +464,7 @@ export function loadPrefs(): AppPreferences {
         rss: { ...DEFAULT_CHANNEL_DISPLAY.rss, ...savedDisplay?.rss },
         fantasy: { ...DEFAULT_CHANNEL_DISPLAY.fantasy, ...savedDisplay?.fantasy },
       },
+      pinnedSources: Array.isArray(source.pinnedSources) ? source.pinnedSources : [],
     };
 
     // If migrated from v1, persist the new format
@@ -496,6 +500,7 @@ export function resetAll(): AppPreferences {
     taskbar: { ...DEFAULT_TASKBAR },
     widgets: { ...DEFAULT_WIDGETS },
     channelDisplay: { ...DEFAULT_CHANNEL_DISPLAY },
+    pinnedSources: [],
   };
   savePrefs(defaults);
   return defaults;

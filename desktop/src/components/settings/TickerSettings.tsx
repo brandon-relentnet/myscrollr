@@ -411,7 +411,7 @@ export default function TickerSettings({ prefs, onPrefsChange }: TickerSettingsP
         </div>
 
         {/* ── Reset ─────────────────────────────────────────── */}
-        <div className="flex justify-end pt-1">
+        <div className="flex items-center justify-end pt-2">
           <ResetButton label="Reset to defaults" onClick={handleReset} />
         </div>
       </motion.div>
@@ -596,7 +596,7 @@ function sleep(ms: number): Promise<void> {
 function SettingGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <h3 className="text-[11px] font-mono font-semibold uppercase tracking-[0.12em] text-fg-4 mb-2.5">
+      <h3 className="text-[11px] font-mono font-semibold uppercase tracking-wider text-fg-4 mb-3">
         {label}
       </h3>
       {children}

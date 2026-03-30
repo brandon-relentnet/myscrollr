@@ -1,70 +1,21 @@
 /**
- * Home route — source list overview.
+ * Home route — source card grid.
  *
- * Clean list of active channels and widgets with live preview text,
- * ticker visibility toggle, and click-to-navigate. Discovery happens
- * in the Catalog (/catalog).
+ * Cards show a brief description of what each source does, plus a
+ * small config indicator (e.g. "5 symbols", "3 leagues"). When
+ * nothing is configured yet the card says so and links to the
+ * configure page. Discovery happens in the Catalog (/catalog).
  */
 import { useMemo } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Eye, EyeOff, ChevronRight } from "lucide-react";
+import { Eye, EyeOff, Pin, PinOff } from "lucide-react";
 import clsx from "clsx";
 import RouteError from "../components/RouteError";
 import { useShell, useShellData } from "../shell-context";
 import { CHANNEL_ORDER } from "../channels/registry";
 import { WIDGET_ORDER } from "../widgets/registry";
-import type { ChannelType } from "../api/client";
+import type { ChannelType, Channel } from "../api/client";
 import type { ChannelManifest, WidgetManifest, DashboardResponse } from "../types";
-import type { Trade, Game, RssItem } from "../types";
-
-// ── Channel preview helpers ────────────────────────────────────
-
-function financePreview(dashboard: DashboardResponse | undefined): string {
-  const trades = dashboard?.data?.finance as Trade[] | undefined;
-  if (!trades?.length) return "No data yet";
-  const top = trades.slice(0, 3);
-  return top
-    .map((t) => {
-      const pct = Number(t.percentage_change) || 0;
-      const dir = pct >= 0 ? "+" : "";
-      return `${t.symbol} ${dir}${pct.toFixed(1)}%`;
-    })
-    .join(", ");
-}
-
-function sportsPreview(dashboard: DashboardResponse | undefined): string {
-  const games = dashboard?.data?.sports as Game[] | undefined;
-  if (!games?.length) return "No games";
-  const live = games.filter((g) => g.state === "in").length;
-  const upcoming = games.filter((g) => g.state === "pre").length;
-  const parts: string[] = [];
-  if (live > 0) parts.push(`${live} live`);
-  if (upcoming > 0) parts.push(`${upcoming} upcoming`);
-  if (parts.length === 0) parts.push(`${games.length} games`);
-  return parts.join(", ");
-}
-
-function rssPreview(dashboard: DashboardResponse | undefined): string {
-  const items = dashboard?.data?.rss as RssItem[] | undefined;
-  if (!items?.length) return "No articles";
-  return items[0].title.slice(0, 60) + (items[0].title.length > 60 ? "..." : "");
-}
-
-function fantasyPreview(dashboard: DashboardResponse | undefined): string {
-  const data = dashboard?.data?.fantasy;
-  if (!Array.isArray(data) || !data.length) return "No leagues";
-  return `${data.length} league${data.length === 1 ? "" : "s"}`;
-}
-
-function channelPreview(type: string, dashboard: DashboardResponse | undefined): string {
-  switch (type) {
-    case "finance": return financePreview(dashboard);
-    case "sports": return sportsPreview(dashboard);
-    case "rss": return rssPreview(dashboard);
-    case "fantasy": return fantasyPreview(dashboard);
-    default: return "";
-  }
-}
 
 // ── Route ───────────────────────────────────────────────────────
 
@@ -88,6 +39,14 @@ function HomePage() {
 
   const enabledWidgets = shell.prefs.widgets.enabledWidgets;
   const widgetsOnTicker = shell.prefs.widgets.widgetsOnTicker;
+  const pinnedSources = shell.prefs.pinnedSources;
+
+  function togglePin(id: string) {
+    const next = pinnedSources.includes(id)
+      ? pinnedSources.filter((s) => s !== id)
+      : [...pinnedSources, id];
+    shell.onPrefsChange({ ...shell.prefs, pinnedSources: next });
+  }
 
   const orderedChannels = useMemo(
     () =>
@@ -97,7 +56,7 @@ function HomePage() {
           const manifest = allChannelManifests.find((m) => m.id === id);
           return ch && manifest ? { ch, manifest } : null;
         })
-        .filter(Boolean) as { ch: (typeof channels)[0]; manifest: ChannelManifest }[],
+        .filter(Boolean) as { ch: Channel; manifest: ChannelManifest }[],
     [channels, allChannelManifests],
   );
 
@@ -115,7 +74,17 @@ function HomePage() {
   const hasAnySources = orderedChannels.length > 0 || orderedWidgets.length > 0;
 
   return (
-    <div className="p-5 max-w-2xl mx-auto">
+    <div className="p-5 max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="mb-5">
+        <h1 className="text-[11px] font-mono font-semibold text-fg-4 uppercase tracking-wider mb-1">
+          Home
+        </h1>
+        <p className="text-xs text-fg-4">
+          Your active channels and widgets
+        </p>
+      </div>
+
       {/* Empty state */}
       {!hasAnySources && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -139,29 +108,40 @@ function HomePage() {
       {/* Channels section */}
       {orderedChannels.length > 0 && (
         <section className="mb-6">
-          <h3 className="text-[11px] font-mono font-semibold text-fg-4 uppercase tracking-wider mb-2 px-1">
+          <h3 className="text-[11px] font-mono font-semibold text-fg-4 uppercase tracking-wider mb-3">
             Channels
           </h3>
-          <div className="flex flex-col gap-1">
-            {orderedChannels.map(({ ch, manifest }) => (
-              <SourceRow
-                key={ch.channel_type}
-                icon={manifest.icon}
-                name={manifest.name}
-                hex={manifest.hex}
-                preview={channelPreview(ch.channel_type, dashboard)}
-                tickerEnabled={ch.visible}
-                onToggleTicker={() =>
-                  onToggleChannelTicker(ch.channel_type as ChannelType, !ch.visible)
-                }
-                onClick={() =>
-                  navigate({
-                    to: "/channel/$type/$tab",
-                    params: { type: ch.channel_type, tab: "feed" },
-                  })
-                }
-              />
-            ))}
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            {orderedChannels.map(({ ch, manifest }) => {
+              const indicator = getChannelIndicator(ch, dashboard);
+              const hasConfig = indicator.count > 0;
+              return (
+                <SourceCard
+                  key={ch.channel_type}
+                  icon={manifest.icon}
+                  name={manifest.name}
+                  hex={manifest.hex}
+                  description={manifest.description}
+                  indicator={hasConfig ? indicator.label : undefined}
+                  emptyHint={!hasConfig ? "Nothing configured yet" : undefined}
+                  tickerEnabled={ch.visible}
+                  onToggleTicker={() =>
+                    onToggleChannelTicker(ch.channel_type as ChannelType, !ch.visible)
+                  }
+                  pinned={pinnedSources.includes(ch.channel_type)}
+                  onTogglePin={() => togglePin(ch.channel_type)}
+                  onClick={() =>
+                    navigate({
+                      to: "/channel/$type/$tab",
+                      params: {
+                        type: ch.channel_type,
+                        tab: hasConfig ? "feed" : "configuration",
+                      },
+                    })
+                  }
+                />
+              );
+            })}
           </div>
         </section>
       )}
@@ -169,19 +149,21 @@ function HomePage() {
       {/* Widgets section */}
       {orderedWidgets.length > 0 && (
         <section>
-          <h3 className="text-[11px] font-mono font-semibold text-fg-4 uppercase tracking-wider mb-2 px-1">
+          <h3 className="text-[11px] font-mono font-semibold text-fg-4 uppercase tracking-wider mb-3">
             Widgets
           </h3>
-          <div className="flex flex-col gap-1">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
             {orderedWidgets.map((widget) => (
-              <SourceRow
+              <SourceCard
                 key={widget.id}
                 icon={widget.icon}
                 name={widget.name}
                 hex={widget.hex}
-                preview={widget.description}
+                description={widget.description}
                 tickerEnabled={widgetsOnTicker.includes(widget.id)}
                 onToggleTicker={() => onToggleWidgetTicker(widget.id)}
+                pinned={pinnedSources.includes(widget.id)}
+                onTogglePin={() => togglePin(widget.id)}
                 onClick={() =>
                   navigate({
                     to: "/widget/$id/$tab",
@@ -197,77 +179,158 @@ function HomePage() {
   );
 }
 
-// ── Source row ──────────────────────────────────────────────────
+// ── Source card ────────────────────────────────────────────────
 
-interface SourceRowProps {
+interface SourceCardProps {
   icon: React.ComponentType<{ size?: number; className?: string }>;
   name: string;
   hex: string;
-  preview: string;
+  description: string;
+  indicator?: string;
+  emptyHint?: string;
   tickerEnabled: boolean;
   onToggleTicker: () => void;
+  pinned: boolean;
+  onTogglePin: () => void;
   onClick: () => void;
 }
 
-function SourceRow({
+function SourceCard({
   icon: Icon,
   name,
   hex,
-  preview,
+  description,
+  indicator,
+  emptyHint,
   tickerEnabled,
   onToggleTicker,
+  pinned,
+  onTogglePin,
   onClick,
-}: SourceRowProps) {
+}: SourceCardProps) {
   return (
     <button
       onClick={onClick}
-      className="group flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-surface-hover/50 transition-colors w-full text-left cursor-pointer"
+      className="group rounded-lg border bg-base-200/40 border-edge/20 hover:bg-base-200/60 p-4 transition-colors text-left cursor-pointer w-full flex flex-col"
     >
-      {/* Icon */}
-      <div
-        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-        style={{ backgroundColor: `${hex}15`, color: hex }}
-      >
-        <Icon size={16} />
-      </div>
+      {/* Header: icon + name + actions */}
+      <div className="flex items-center gap-3 mb-2">
+        <div
+          className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+          style={{ backgroundColor: `${hex}15`, color: hex }}
+        >
+          <Icon size={20} />
+        </div>
+        <span className="text-sm font-semibold text-fg truncate flex-1">{name}</span>
 
-      {/* Name + preview */}
-      <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium text-fg truncate">{name}</div>
-        <div className="text-xs text-fg-4 truncate">{preview}</div>
-      </div>
-
-      {/* Ticker toggle */}
-      <div
-        role="switch"
-        aria-checked={tickerEnabled}
-        aria-label={tickerEnabled ? `Hide ${name} from ticker` : `Show ${name} on ticker`}
-        tabIndex={0}
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggleTicker();
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
+        {/* Ticker toggle */}
+        <div
+          role="switch"
+          aria-checked={tickerEnabled}
+          aria-label={tickerEnabled ? `Hide ${name} from ticker` : `Show ${name} on ticker`}
+          tabIndex={0}
+          onClick={(e) => {
             e.stopPropagation();
             onToggleTicker();
-          }
-        }}
-        className={clsx(
-          "w-7 h-7 flex items-center justify-center rounded-lg transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100",
-          tickerEnabled
-            ? "text-fg-3 hover:text-fg hover:bg-surface-hover"
-            : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover",
-        )}
-      >
-        {tickerEnabled ? <Eye size={14} /> : <EyeOff size={14} />}
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              e.stopPropagation();
+              onToggleTicker();
+            }
+          }}
+          className={clsx(
+            "w-7 h-7 flex items-center justify-center rounded-lg transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 shrink-0",
+            tickerEnabled
+              ? "text-fg-3 hover:text-fg hover:bg-surface-hover"
+              : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover",
+          )}
+        >
+          {tickerEnabled ? <Eye size={14} /> : <EyeOff size={14} />}
+        </div>
+
+        {/* Pin to sidebar */}
+        <div
+          role="switch"
+          aria-checked={pinned}
+          aria-label={pinned ? `Unpin ${name} from sidebar` : `Pin ${name} to sidebar`}
+          tabIndex={0}
+          onClick={(e) => {
+            e.stopPropagation();
+            onTogglePin();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              e.stopPropagation();
+              onTogglePin();
+            }
+          }}
+          className={clsx(
+            "w-7 h-7 flex items-center justify-center rounded-lg transition-colors shrink-0",
+            pinned
+              ? "text-accent"
+              : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover opacity-0 group-hover:opacity-100 focus:opacity-100",
+          )}
+        >
+          {pinned ? <Pin size={14} /> : <PinOff size={14} />}
+        </div>
       </div>
 
-      {/* Arrow */}
-      <div className="w-6 h-6 flex items-center justify-center text-fg-4 opacity-0 group-hover:opacity-100 transition-opacity">
-        <ChevronRight size={14} />
-      </div>
+      {/* Description */}
+      <p className="text-xs text-fg-3 leading-relaxed mb-2">{description}</p>
+
+      {/* Indicator or empty hint */}
+      {indicator && (
+        <span className="text-[10px] font-medium text-fg-4">{indicator}</span>
+      )}
+      {emptyHint && (
+        <span className="text-[10px] font-medium text-accent/70">{emptyHint}</span>
+      )}
     </button>
   );
+}
+
+// ── Channel config indicators ─────────────────────────────────
+
+function getChannelIndicator(
+  ch: Channel,
+  dashboard: DashboardResponse | undefined,
+): { count: number; label: string } {
+  const config = ch.config as Record<string, unknown>;
+
+  switch (ch.channel_type) {
+    case "finance": {
+      const symbols = Array.isArray(config.symbols) ? config.symbols : [];
+      return {
+        count: symbols.length,
+        label: `${symbols.length} symbol${symbols.length === 1 ? "" : "s"} tracked`,
+      };
+    }
+    case "sports": {
+      const leagues = Array.isArray(config.leagues) ? config.leagues : [];
+      return {
+        count: leagues.length,
+        label: `${leagues.length} league${leagues.length === 1 ? "" : "s"} selected`,
+      };
+    }
+    case "rss": {
+      const feeds = Array.isArray(config.feeds) ? config.feeds : [];
+      return {
+        count: feeds.length,
+        label: `${feeds.length} feed${feeds.length === 1 ? "" : "s"} subscribed`,
+      };
+    }
+    case "fantasy": {
+      const data = dashboard?.data?.fantasy;
+      const leagues = Array.isArray(data) ? data : [];
+      return {
+        count: leagues.length,
+        label: `${leagues.length} league${leagues.length === 1 ? "" : "s"} connected`,
+      };
+    }
+    default:
+      return { count: 0, label: "" };
+  }
 }

@@ -11,7 +11,7 @@ interface SectionProps {
 export function Section({ title, children }: SectionProps) {
   return (
     <div className="mb-6 pb-5 border-b border-edge/30 last:border-b-0 last:mb-0 last:pb-0">
-      <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-fg-3 mb-3 px-3">
+      <h3 className="text-[11px] font-mono font-semibold uppercase tracking-wider text-fg-4 mb-3 px-3">
         {title}
       </h3>
       <div className="space-y-0.5">{children}</div>
