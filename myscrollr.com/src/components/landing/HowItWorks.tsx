@@ -19,10 +19,10 @@ const CYCLE_MS = 5000
 
 const STEPS = [
   {
-    id: 'install',
-    title: 'Add to Chrome',
+    id: 'download',
+    title: 'Download the App',
     description:
-      'One click from the Chrome Web Store. No sign-up, no account, nothing else.',
+      'Grab the installer for macOS, Windows, or Linux. No sign-up, no account, nothing else.',
   },
   {
     id: 'choose',
@@ -31,10 +31,10 @@ const STEPS = [
       'Toggle on sports, markets, news, or fantasy. Whatever matters to you.',
   },
   {
-    id: 'browse',
-    title: 'Browse as Usual',
+    id: 'work',
+    title: 'Work as Usual',
     description:
-      'A quiet ticker at the bottom of every tab. Always there, never in the way.',
+      'A quiet ticker at the edge of your screen. Always there, never in the way.',
   },
 ]
 
@@ -106,9 +106,9 @@ const chipStyle: Record<
 
 const VISUAL_EASE = [0.22, 1, 0.36, 1] as const
 
-// ── Step 1 Visual: Install ───────────────────────────────────────
+// ── Step 1 Visual: Download ──────────────────────────────────────
 
-function InstallVisual() {
+function DownloadVisual() {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.97 }}
@@ -117,16 +117,16 @@ function InstallVisual() {
       transition={{ duration: 0.35, ease: VISUAL_EASE }}
       className="flex flex-col h-full"
     >
-      {/* Store-style listing card */}
+      {/* App listing card */}
       <div className="flex-1 flex flex-col justify-center px-6 sm:px-10 py-8 sm:py-10">
-        {/* Top: Extension info row */}
+        {/* Top: App info row */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.45, ease: VISUAL_EASE }}
           className="flex items-start gap-4 sm:gap-5 mb-6 sm:mb-8"
         >
-          {/* Extension icon */}
+          {/* App icon */}
           <motion.div
             initial={{ scale: 0, rotate: -10 }}
             animate={{ scale: 1, rotate: 0 }}
@@ -149,7 +149,7 @@ function InstallVisual() {
               Scrollr
             </h4>
             <p className="text-xs sm:text-sm text-base-content/40 leading-relaxed mb-2.5">
-              Live finance, sports &amp; news in a quiet ticker on every tab.
+              Live finance, sports &amp; news in a quiet desktop ticker.
             </p>
 
             {/* Rating + meta row */}
@@ -182,7 +182,7 @@ function InstallVisual() {
               <div className="flex items-center gap-1.5">
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary/70 bg-primary/[0.07] border border-primary/10 rounded-md px-1.5 py-0.5">
                   <Zap size={9} />
-                  Free
+                  Free tier
                 </span>
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-base-content/30 bg-base-300/10 border border-base-300/15 rounded-md px-1.5 py-0.5">
                   <Shield size={9} />
@@ -201,9 +201,9 @@ function InstallVisual() {
           className="grid grid-cols-3 gap-3 mb-7 sm:mb-8"
         >
           {[
-            { icon: Zap, label: 'Lightweight', sub: '<1MB' },
+            { icon: Zap, label: 'Native app', sub: 'Fast & light' },
             { icon: Shield, label: 'No tracking', sub: 'Zero analytics' },
-            { icon: Download, label: 'Instant setup', sub: 'No account' },
+            { icon: Download, label: 'Instant setup', sub: 'No sign-up' },
           ].map((feat, i) => (
             <motion.div
               key={feat.label}
@@ -227,7 +227,7 @@ function InstallVisual() {
           ))}
         </motion.div>
 
-        {/* Actual install button */}
+        {/* Download button */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -325,16 +325,16 @@ function ChooseVisual() {
           transition={{ delay: 1.2, duration: 0.5, ease: VISUAL_EASE }}
           className="text-[11px] text-base-content/25 text-center pt-2"
         >
-          Change anytime from the extension popup
+          Change anytime from the app settings
         </motion.p>
       </div>
     </motion.div>
   )
 }
 
-// ── Step 3 Visual: Browse ────────────────────────────────────────
+// ── Step 3 Visual: Work ──────────────────────────────────────────
 
-function BrowseVisual() {
+function WorkVisual() {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.97 }}
@@ -343,26 +343,26 @@ function BrowseVisual() {
       transition={{ duration: 0.35, ease: VISUAL_EASE }}
       className="flex flex-col h-full"
     >
-      {/* Browser frame — full bleed within container */}
+      {/* Desktop workspace — app window with Scrollr ticker */}
       <div className="flex-1 flex flex-col bg-base-100/40">
-        {/* Tab / URL bar */}
+        {/* Application title bar */}
         <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-base-300/20 bg-base-200/50">
           <div className="flex gap-1.5">
             <div className="w-2 h-2 rounded-full bg-error/25" />
             <div className="w-2 h-2 rounded-full bg-warning/25" />
             <div className="w-2 h-2 rounded-full bg-success/25" />
           </div>
-          <div className="flex-1 mx-2 px-3 py-1 rounded-md bg-base-100/50 border border-base-300/20">
+          <div className="flex-1 mx-2">
             <span className="text-[10px] text-base-content/20">
-              reddit.com/r/nba
+              Your workspace
             </span>
           </div>
         </div>
 
-        {/* Content skeleton — fills remaining space */}
+        {/* Content skeleton — represents any application */}
         <div className="flex-1 p-5 space-y-3">
           <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-full bg-base-300/12 shrink-0" />
+            <div className="w-7 h-7 rounded bg-base-300/12 shrink-0" />
             <div className="space-y-1.5 flex-1">
               <div className="h-2 bg-base-300/10 rounded w-3/4" />
               <div className="h-1.5 bg-base-300/7 rounded w-1/2" />
@@ -374,9 +374,8 @@ function BrowseVisual() {
             <div className="h-1.5 bg-base-300/6 rounded w-5/6" />
             <div className="h-1.5 bg-base-300/5 rounded w-2/3" />
           </div>
-          {/* Extra skeleton rows to fill taller containers */}
           <div className="flex items-center gap-3 pt-2">
-            <div className="w-7 h-7 rounded-full bg-base-300/8 shrink-0" />
+            <div className="w-7 h-7 rounded bg-base-300/8 shrink-0" />
             <div className="space-y-1.5 flex-1">
               <div className="h-2 bg-base-300/7 rounded w-2/3" />
               <div className="h-1.5 bg-base-300/5 rounded w-2/5" />
@@ -385,7 +384,7 @@ function BrowseVisual() {
           <div className="h-10 bg-base-300/4 rounded-lg border border-base-300/6" />
         </div>
 
-        {/* Ticker bar — pinned to bottom, slides up */}
+        {/* Scrollr ticker — pinned to bottom edge, slides up */}
         <motion.div
           initial={{ y: 40, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -393,7 +392,7 @@ function BrowseVisual() {
           className="mt-auto border-t border-primary/15 bg-base-100/95 px-3 py-2"
         >
           <div className="flex items-center gap-2 overflow-hidden">
-            {/* Scrollr badge */}
+            {/* Scrollr live indicator */}
             <div className="flex items-center gap-1.5 pr-2 border-r border-base-300/20 shrink-0">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
@@ -434,7 +433,7 @@ function BrowseVisual() {
 
 // ── Visual lookup ────────────────────────────────────────────────
 
-const VISUALS = [InstallVisual, ChooseVisual, BrowseVisual]
+const VISUALS = [DownloadVisual, ChooseVisual, WorkVisual]
 
 // ── Main Component ───────────────────────────────────────────────
 
@@ -529,7 +528,7 @@ export function HowItWorks() {
             <span className="text-gradient-primary">Under a Minute</span>
           </h2>
           <p className="text-base text-base-content/50 leading-relaxed text-center max-w-lg">
-            Three steps between you and live data in your browser.
+            Three steps between you and live data on your desktop.
           </p>
         </motion.div>
 

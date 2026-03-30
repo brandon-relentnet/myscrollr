@@ -50,7 +50,7 @@ const BENEFITS: Array<Benefit> = [
     icon: SlidersHorizontal,
     title: 'It Gets Out of the Way',
     headline: 'Quiet when you need quiet',
-    body: "Resize it, reposition it, hide it on specific sites, or collapse it entirely. When you need deep focus, one click and it's gone.",
+    body: "Resize it, reposition it, minimize it, or collapse it entirely. When you need deep focus, one click and it's gone.",
     accent: 'text-accent',
     accentBg: 'bg-accent/8',
     accentBorder: 'border-accent/15',
@@ -474,10 +474,7 @@ function IllustrationOutOfWay() {
 
       {/* Ticker bar — animates from expanded to collapsed */}
       <motion.g
-        animate={{
-          scaleY: [1, 1, 0.15, 0.15, 1],
-          opacity: [1, 1, 0.5, 0.5, 1],
-        }}
+        animate={{ scaleY: [1, 1, 0.15, 0.15, 1], opacity: [1, 1, 0.5, 0.5, 1] }}
         transition={{
           duration: 5,
           repeat: Infinity,
@@ -518,10 +515,7 @@ function IllustrationOutOfWay() {
 
       {/* Collapse/expand arrow indicator */}
       <motion.g
-        animate={{
-          y: [0, 0, -3, -3, 0],
-          rotate: [0, 0, 180, 180, 0],
-        }}
+        animate={{ y: [0, 0, -3, -3, 0], rotate: [0, 0, 180, 180, 0] }}
         transition={{
           duration: 5,
           repeat: Infinity,
@@ -676,9 +670,9 @@ export function BenefitsSection() {
         style={{
           width: 500,
           height: 500,
-          right: 0,
-          top: '25%',
-          opacity: 0.07,
+          right: -100,
+          top: '20%',
+          opacity: 0.1,
           backgroundColor: `var(--color-${BENEFITS[activeIndex].accentRaw})`,
         }}
       />

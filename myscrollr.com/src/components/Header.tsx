@@ -1,6 +1,7 @@
 import { Link, useLocation } from '@tanstack/react-router'
 import {
   ChevronRight,
+  Download,
   House,
   LogOut,
   Menu,
@@ -69,7 +70,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 px-6 flex items-center bg-base-100/80 backdrop-blur-2xl border-b border-base-300/50 h-20 will-change-transform">
+      <header className="fixed top-0 left-0 right-0 z-50 px-6 flex items-center bg-base-100/80 backdrop-blur-2xl will-change-transform border-b border-base-300/50 h-20">
         {/* Brand */}
         <div className="flex-1 flex items-center gap-4">
           <Link to="/" className="flex items-center gap-3 group">
@@ -106,6 +107,11 @@ export default function Header() {
             <NavLink to="/uplink" activeOn="/uplink">
               <Satellite size={14} />
               Uplink
+            </NavLink>
+
+            <NavLink to="/download" activeOn="/download">
+              <Download size={14} />
+              Download
             </NavLink>
 
             {isAuthenticated && (
@@ -248,6 +254,14 @@ export default function Header() {
                   onClick={() => setIsOpen(false)}
                 >
                   Uplink
+                </MobileNavLink>
+
+                <MobileNavLink
+                  to="/download"
+                  icon={<ChevronRight size={18} />}
+                  onClick={() => setIsOpen(false)}
+                >
+                  Download
                 </MobileNavLink>
 
                 {isAuthenticated && (

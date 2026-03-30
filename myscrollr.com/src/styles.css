@@ -593,7 +593,7 @@ pre,
      ========================================================================== */
 
   .input {
-    @apply h-10 w-full rounded-lg border border-base-300 bg-base-200/50 backdrop-blur-md px-4 py-2 text-sm transition-colors duration-200;
+    @apply h-10 w-full rounded-lg border border-base-300 bg-base-200/80 backdrop-blur-md px-4 py-2 text-sm transition-colors duration-200;
     font-family: var(--font-display);
   }
 
@@ -616,7 +616,7 @@ pre,
 
   /* Select */
   .select {
-    @apply h-10 w-full rounded-lg border border-base-300 bg-base-200/50 backdrop-blur-md px-4 py-2 text-sm transition-colors duration-200 appearance-none cursor-pointer;
+    @apply h-10 w-full rounded-lg border border-base-300 bg-base-200/80 backdrop-blur-md px-4 py-2 text-sm transition-colors duration-200 appearance-none cursor-pointer;
     font-family: var(--font-display);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239598a8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat;

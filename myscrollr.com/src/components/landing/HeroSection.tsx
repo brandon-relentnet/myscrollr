@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
 import { wrap } from 'motion'
 import HeroTextSwap, { WORDS } from '@/components/Typewriter'
-import { HeroBrowserStack } from '@/components/landing/HeroBrowserStack'
+import { HeroDesktopPreview } from '@/components/landing/HeroBrowserStack'
 import { DownloadButton } from '@/components/DownloadButton'
 
 const CYCLE_MS = 4000
@@ -76,9 +76,9 @@ export function HeroSection() {
     <section className="relative min-h-dvh flex items-center overflow-hidden">
       <div className="container relative">
         <div className="flex lg:flex-row flex-col justify-center items-center gap-12 lg:gap-12 xl:gap-16">
-          {/* Stacked Browser Mockups */}
+          {/* Desktop App Preview */}
           <div className="relative order-2 lg:order-1">
-            <HeroBrowserStack
+            <HeroDesktopPreview
               activeIndex={activeWordIndex}
               onSelect={handleSelect}
             />
@@ -140,9 +140,9 @@ export function HeroSection() {
               transition={{ duration: 0.5, delay: 1 }}
               className="text-base text-base-content/50 max-w-md leading-relaxed"
             >
-              A quiet ticker at the bottom of your browser. Scores update,
-              prices move, headlines arrive &mdash; all while you stay on the
-              page you&rsquo;re already on.
+              A quiet ticker at the edge of your screen. Scores update,
+              prices move, headlines arrive &mdash; all while you stay
+              focused on whatever you&rsquo;re working on.
             </motion.p>
 
             <motion.div

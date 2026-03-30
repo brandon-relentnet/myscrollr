@@ -191,7 +191,7 @@ export function CallToAction() {
 
       {/* Ambient gradient orb — follows mouse */}
       <motion.div
-        className="absolute pointer-events-none"
+        className="absolute rounded-full pointer-events-none"
         style={{
           width: 600,
           height: 600,
@@ -292,7 +292,7 @@ export function CallToAction() {
           >
             <span className="block">Stop</span>
             <span className="block mt-2 text-gradient-primary">
-              Tab-Switching.
+              Context-Switching.
             </span>
           </motion.h2>
 
@@ -309,7 +309,7 @@ export function CallToAction() {
             }}
             className="block mt-6 text-lg sm:text-xl text-base-content/50 max-w-lg leading-relaxed"
           >
-            Install once. Open a tab. That's it — updates are already rolling.
+            Download once. It runs quietly at the edge of your screen.
           </motion.span>
 
           {/* ── CTA button area with orbiting icons ─────────────────────── */}
@@ -340,7 +340,7 @@ export function CallToAction() {
             <DownloadButton />
           </motion.div>
 
-          {/* Browser support line */}
+          {/* Platform support line */}
           <motion.div
             style={{ opacity: 0 }}
             initial={{ opacity: 0 }}
@@ -349,10 +349,10 @@ export function CallToAction() {
             transition={{ delay: 0.6, duration: 0.5, ease: EASE }}
             className="mt-6 flex items-center gap-4 text-xs text-base-content/30"
           >
-            {['Chrome', 'Firefox', 'Edge', 'Brave', 'Safari'].map((browser) => (
-              <span key={browser} className="flex items-center gap-1.5">
+            {['macOS', 'Windows', 'Linux'].map((platform) => (
+              <span key={platform} className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary/40" />
-                {browser}
+                {platform}
               </span>
             ))}
           </motion.div>
