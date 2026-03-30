@@ -11,7 +11,9 @@ import { TrendingUp } from "lucide-react";
 import { useScrollrCDC } from "../../hooks/useScrollrCDC";
 import { formatPrice, formatChange, timeAgo } from "../../utils/format";
 import EmptyChannelState from "../../components/EmptyChannelState";
+import { useShell } from "../../shell-context";
 import type { Trade, FeedTabProps, ChannelManifest } from "../../types";
+import type { FinanceDisplayPrefs } from "../../preferences";
 
 // ── Channel manifest ─────────────────────────────────────────────
 
@@ -38,6 +40,9 @@ export const financeChannel: ChannelManifest = {
 // ── FeedTab ──────────────────────────────────────────────────────
 
 function FinanceFeedTab({ mode, feedContext }: FeedTabProps) {
+  const { prefs } = useShell();
+  const dp = prefs.channelDisplay.finance;
+
   const keyOf = useCallback((t: Trade) => t.symbol, []);
   const validate = useCallback(
     (record: Record<string, unknown>) => typeof record.symbol === "string",
@@ -77,7 +82,7 @@ function FinanceFeedTab({ mode, feedContext }: FeedTabProps) {
         />
       )}
       {trades.map((trade) => (
-        <TradeItem key={trade.symbol} trade={trade} mode={mode} />
+        <TradeItem key={trade.symbol} trade={trade} mode={mode} display={dp} />
       ))}
     </div>
   );
@@ -88,6 +93,7 @@ function FinanceFeedTab({ mode, feedContext }: FeedTabProps) {
 interface TradeItemProps {
   trade: Trade;
   mode: "comfort" | "compact";
+  display: FinanceDisplayPrefs;
 }
 
 /** Build a Google Finance URL for a symbol. Strips exchange prefixes like "BINANCE:". */
@@ -96,7 +102,7 @@ function googleFinanceUrl(symbol: string): string {
   return `https://www.google.com/finance/quote/${encodeURIComponent(clean)}`;
 }
 
-const TradeItem = memo(function TradeItem({ trade, mode }: TradeItemProps) {
+const TradeItem = memo(function TradeItem({ trade, mode, display }: TradeItemProps) {
   const isUp = trade.direction === "up";
   const isDown = trade.direction === "down";
 
@@ -149,9 +155,11 @@ const TradeItem = memo(function TradeItem({ trade, mode }: TradeItemProps) {
         <span className="text-fg-2 tabular-nums">
           {formatPrice(trade.price)}
         </span>
-        <span className={clsx("tabular-nums", dirColor)}>
-          {formatChange(trade.percentage_change)}
-        </span>
+        {display.showChange && (
+          <span className={clsx("tabular-nums", dirColor)}>
+            {formatChange(trade.percentage_change)}
+          </span>
+        )}
       </a>
     );
   }
@@ -175,7 +183,7 @@ const TradeItem = memo(function TradeItem({ trade, mode }: TradeItemProps) {
         <span className="font-mono font-bold text-sm text-fg tracking-wide">
           {trade.symbol}
         </span>
-        {trade.previous_close != null && Number(trade.previous_close) > 0 && (
+        {display.showPrevClose && trade.previous_close != null && Number(trade.previous_close) > 0 && (
           <span className="text-[10px] font-mono text-fg-3 tabular-nums">
             Prev close {formatPrice(trade.previous_close)}
           </span>
@@ -187,15 +195,17 @@ const TradeItem = memo(function TradeItem({ trade, mode }: TradeItemProps) {
           {formatPrice(trade.price)}
         </span>
         <div className="flex items-center gap-2">
-          <span
-            className={clsx(
-              "text-[11px] font-mono font-medium tabular-nums",
-              dirColor,
-            )}
-          >
-            {formatChange(trade.percentage_change)}
-          </span>
-          {trade.last_updated && (
+          {display.showChange && (
+            <span
+              className={clsx(
+                "text-[11px] font-mono font-medium tabular-nums",
+                dirColor,
+              )}
+            >
+              {formatChange(trade.percentage_change)}
+            </span>
+          )}
+          {display.showLastUpdated && trade.last_updated && (
             <span className="text-[9px] font-mono text-fg-4 tabular-nums">
               {timeAgo(trade.last_updated, { includeSeconds: true })}
             </span>
@@ -206,6 +216,7 @@ const TradeItem = memo(function TradeItem({ trade, mode }: TradeItemProps) {
   );
 }, (prev, next) =>
   prev.mode === next.mode &&
+  prev.display === next.display &&
   prev.trade.symbol === next.trade.symbol &&
   prev.trade.price === next.trade.price &&
   prev.trade.percentage_change === next.trade.percentage_change &&

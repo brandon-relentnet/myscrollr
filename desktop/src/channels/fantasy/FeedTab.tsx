@@ -11,6 +11,7 @@ import { Swords } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { LeagueCard } from "./LeagueCard";
 import { dashboardQueryOptions } from "../../api/queries";
+import { useShell } from "../../shell-context";
 import type { FeedTabProps, ChannelManifest } from "../../types";
 import type { LeagueResponse, MyLeaguesResponse } from "./types";
 
@@ -50,6 +51,9 @@ function extractLeagues(data: unknown): LeagueResponse[] {
 // ── FeedTab ──────────────────────────────────────────────────────
 
 function FantasyFeedTab({ mode, feedContext }: FeedTabProps) {
+  const { prefs } = useShell();
+  const dp = prefs.channelDisplay.fantasy;
+
   const { data: dashboard } = useQuery(dashboardQueryOptions());
   const fantasyData = dashboard?.data?.fantasy;
   const leagues = useMemo(() => extractLeagues(fantasyData), [fantasyData]);
@@ -80,7 +84,13 @@ function FantasyFeedTab({ mode, feedContext }: FeedTabProps) {
   return (
     <div className="grid gap-px bg-edge grid-cols-1">
       {leagues.map((league) => (
-        <LeagueCard key={league.league_key} league={league} mode={mode} />
+        <LeagueCard
+          key={league.league_key}
+          league={league}
+          mode={mode}
+          showStandings={dp.showStandings}
+          showInjuryCount={dp.showInjuryCount}
+        />
       ))}
     </div>
   );

@@ -1,23 +1,19 @@
 /**
- * Ticker route — dedicated page for ticker presentation settings.
+ * Ticker settings — presentation controls for the ticker strip.
  *
- * Features a live preview strip at the top that responds to every
- * setting change in real-time, visual card selectors for layout and
- * style options, and a collapsible advanced section for rarely-used
- * controls.
+ * Features a live preview that responds to every setting change in
+ * real-time, visual card selectors for layout and style options,
+ * and a collapsible advanced section.
  *
- * Replaces the old Ticker tab inside /settings.
+ * Extracted from routes/ticker.tsx for use inside the tabbed Settings page.
  */
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { createFileRoute } from "@tanstack/react-router";
 import { Ticker } from "motion-plus/react";
 import { motion, AnimatePresence, useMotionValue, animate } from "motion/react";
 import { clsx } from "clsx";
 import { ChevronDown } from "lucide-react";
-import RouteError from "../components/RouteError";
-import { useShell } from "../shell-context";
-import { resetCategory } from "../preferences";
-import { ResetButton } from "../components/settings/SettingsControls";
+import { resetCategory } from "../../preferences";
+import { ResetButton } from "./SettingsControls";
 import type {
   AppPreferences,
   AppearancePrefs,
@@ -29,14 +25,14 @@ import type {
   ChipColorMode,
   TickerDirection,
   ScrollMode,
-} from "../preferences";
+} from "../../preferences";
 
-// ── Route ───────────────────────────────────────────────────────
+// ── Props ───────────────────────────────────────────────────────
 
-export const Route = createFileRoute("/ticker")({
-  component: TickerRoute,
-  errorComponent: RouteError,
-});
+interface TickerSettingsProps {
+  prefs: AppPreferences;
+  onPrefsChange: (prefs: AppPreferences) => void;
+}
 
 // ── Sample chip data for the live preview ───────────────────────
 
@@ -136,9 +132,7 @@ const MIX_OPTIONS: { value: MixMode; label: string }[] = [
 
 // ── Component ───────────────────────────────────────────────────
 
-function TickerRoute() {
-  const shell = useShell();
-  const { prefs, onPrefsChange } = shell;
+export default function TickerSettings({ prefs, onPrefsChange }: TickerSettingsProps) {
   const { appearance, ticker } = prefs;
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
@@ -151,24 +145,19 @@ function TickerRoute() {
   }, [prefs, appearance, onPrefsChange]);
 
   const handleReset = useCallback(() => {
-    let next: AppPreferences = resetCategory(prefs, "ticker");
-    next = resetCategory(next, "appearance");
+    const next = resetCategory(prefs, "ticker");
     onPrefsChange(next);
   }, [prefs, onPrefsChange]);
 
   // Compute preview params — reflect all settings
-  const velocity = ticker.tickerDirection === "right" ? ticker.tickerSpeed : -ticker.tickerSpeed;
   const gapPx = ticker.tickerGap === "tight" ? 8 : ticker.tickerGap === "spacious" ? 20 : 12;
   const comfort = ticker.tickerMode === "comfort";
-  // Row height is dynamic — let content size naturally, no fixed height.
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto scrollbar-thin">
-      {/* ── Header ──────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-6 pt-6 pb-4">
-        <h2 className="text-[13px] font-mono font-semibold text-fg-4 uppercase tracking-wider">
-          Ticker
-        </h2>
+    <div>
+      {/* ── Header with on/off toggle ─────────────────────────── */}
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-[12px] font-mono text-fg-3">Enable ticker</span>
         <button
           onClick={() => setTicker("showTicker", !ticker.showTicker)}
           className={clsx(
@@ -188,8 +177,8 @@ function TickerRoute() {
         </button>
       </div>
 
-      {/* ── Live Preview ────────────────────────────────────────── */}
-      <div className="px-6 pb-5">
+      {/* ── Live Preview ──────────────────────────────────────── */}
+      <div className="pb-5">
         <motion.div
           layout="size"
           transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
@@ -241,10 +230,10 @@ function TickerRoute() {
         </motion.div>
       </div>
 
-      {/* ── Settings ────────────────────────────────────────────── */}
-      <motion.div layout="position" transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }} className="px-6 pb-6 space-y-6 max-w-2xl mx-auto w-full">
+      {/* ── Settings ──────────────────────────────────────────── */}
+      <motion.div layout="position" transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }} className="space-y-6">
 
-        {/* ── Layout ──────────────────────────────────────────── */}
+        {/* ── Layout ────────────────────────────────────────── */}
         <SettingGroup label="Layout">
           {/* Rows */}
           <div className="flex gap-2">
@@ -296,7 +285,7 @@ function TickerRoute() {
           </div>
         </SettingGroup>
 
-        {/* ── Speed ───────────────────────────────────────────── */}
+        {/* ── Speed ─────────────────────────────────────────── */}
         <SettingGroup label="Speed">
           <SpeedSlider
             value={ticker.tickerSpeed}
@@ -304,7 +293,7 @@ function TickerRoute() {
           />
         </SettingGroup>
 
-        {/* ── Style ───────────────────────────────────────────── */}
+        {/* ── Style ─────────────────────────────────────────── */}
         <SettingGroup label="Style">
           {/* Spacing */}
           <div className="flex gap-2">
@@ -374,7 +363,7 @@ function TickerRoute() {
           </div>
         </SettingGroup>
 
-        {/* ── Advanced ────────────────────────────────────────── */}
+        {/* ── Advanced ──────────────────────────────────────── */}
         <div className="border-t border-edge/30 pt-4">
           <button
             onClick={() => setAdvancedOpen(!advancedOpen)}
@@ -421,8 +410,8 @@ function TickerRoute() {
           )}
         </div>
 
-        {/* ── Reset ───────────────────────────────────────────── */}
-        <div className="flex justify-end pt-1">
+        {/* ── Reset ─────────────────────────────────────────── */}
+        <div className="flex items-center justify-end pt-2">
           <ResetButton label="Reset to defaults" onClick={handleReset} />
         </div>
       </motion.div>
@@ -607,7 +596,7 @@ function sleep(ms: number): Promise<void> {
 function SettingGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <h3 className="text-[11px] font-mono font-semibold uppercase tracking-[0.12em] text-fg-4 mb-2.5">
+      <h3 className="text-[11px] font-mono font-semibold uppercase tracking-wider text-fg-4 mb-3">
         {label}
       </h3>
       {children}

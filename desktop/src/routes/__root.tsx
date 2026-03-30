@@ -83,48 +83,41 @@ function parseRoute(pathname: string) {
     return {
       activeItem: "",
       isChannel: false, isWidget: false, isFeed: true,
-      isTicker: false, isSettings: false, isAccount: false,
+      isSettings: false, isMarketplace: false,
     };
   }
   if (kind === "channel" && itemId) {
     return {
       activeItem: itemId,
       isChannel: true, isWidget: false, isFeed: false,
-      isTicker: false, isSettings: false, isAccount: false,
+      isSettings: false, isMarketplace: false,
     };
   }
   if (kind === "widget" && itemId) {
     return {
       activeItem: itemId,
       isChannel: false, isWidget: true, isFeed: false,
-      isTicker: false, isSettings: false, isAccount: false,
+      isSettings: false, isMarketplace: false,
     };
   }
-  if (kind === "ticker") {
+  if (kind === "catalog") {
     return {
-      activeItem: "ticker",
+      activeItem: "",
       isChannel: false, isWidget: false, isFeed: false,
-      isTicker: true, isSettings: false, isAccount: false,
+      isSettings: false, isMarketplace: true,
     };
   }
   if (kind === "settings") {
     return {
       activeItem: "settings",
       isChannel: false, isWidget: false, isFeed: false,
-      isTicker: false, isSettings: true, isAccount: false,
-    };
-  }
-  if (kind === "account") {
-    return {
-      activeItem: "",
-      isChannel: false, isWidget: false, isFeed: false,
-      isTicker: false, isSettings: false, isAccount: true,
+      isSettings: true, isMarketplace: false,
     };
   }
   return {
     activeItem: "",
     isChannel: false, isWidget: false, isFeed: true,
-    isTicker: false, isSettings: false, isAccount: false,
+    isSettings: false, isMarketplace: false,
   };
 }
 
@@ -213,7 +206,7 @@ function RootLayout() {
   const handleSelectItem = useCallback(
     (id: string) => {
       if (id === "settings") {
-        navigate({ to: "/settings" });
+        navigate({ to: "/settings", search: { tab: "general" } });
         return;
       }
       if (channelsRef.current.some((ch) => ch.channel_type === id)) {
@@ -230,9 +223,36 @@ function RootLayout() {
   );
 
   const handleNavigateToFeed = useCallback(() => navigate({ to: "/feed" }), [navigate]);
-  const handleNavigateToTicker = useCallback(() => navigate({ to: "/ticker" }), [navigate]);
-  const handleNavigateToSettings = useCallback(() => navigate({ to: "/settings" }), [navigate]);
-  const handleNavigateToAccount = useCallback(() => navigate({ to: "/account" }), [navigate]);
+  const handleNavigateToSettings = useCallback(() => navigate({ to: "/settings", search: { tab: "general" } }), [navigate]);
+  const handleNavigateToMarketplace = useCallback(() => navigate({ to: "/catalog" }), [navigate]);
+
+  const handleSelectPinned = useCallback(
+    (id: string, kind: "channel" | "widget") => {
+      if (kind === "channel") {
+        navigate({ to: "/channel/$type/$tab", params: { type: id, tab: "feed" } });
+      } else {
+        navigate({ to: "/widget/$id/$tab", params: { id, tab: "feed" } });
+      }
+    },
+    [navigate],
+  );
+
+  // Resolve pinned source IDs to manifest data for the sidebar
+  const resolvedPinnedSources = useMemo(() => {
+    return prefs.pinnedSources
+      .map((id) => {
+        const chManifest = allChannelManifests.find((m) => m.id === id);
+        if (chManifest) {
+          return { id, name: chManifest.name, hex: chManifest.hex, icon: chManifest.icon, kind: "channel" as const };
+        }
+        const wManifest = allWidgets.find((w) => w.id === id);
+        if (wManifest) {
+          return { id, name: wManifest.name, hex: wManifest.hex, icon: wManifest.icon, kind: "widget" as const };
+        }
+        return null;
+      })
+      .filter(Boolean) as Array<{ id: string; name: string; hex: string; icon: React.ComponentType<{ size?: number; className?: string }>; kind: "channel" | "widget" }>;
+  }, [prefs.pinnedSources, allChannelManifests, allWidgets]);
 
   // ── Keyboard shortcuts ──────────────────────────────────────
   useEffect(() => {
@@ -240,7 +260,7 @@ function RootLayout() {
       // Ctrl+, → open settings
       if ((e.ctrlKey || e.metaKey) && e.key === ",") {
         e.preventDefault();
-        navigate({ to: "/settings" });
+        navigate({ to: "/settings", search: { tab: "general" } });
         return;
       }
 
@@ -287,7 +307,7 @@ function RootLayout() {
           navigate({ to: "/feed" });
           return;
         }
-        if (route.isSettings || route.isAccount) {
+        if (route.isSettings) {
           navigate({ to: "/feed" });
         }
       }
@@ -366,22 +386,17 @@ function RootLayout() {
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
         <Sidebar
-          activeItem={route.activeItem}
           isFeed={route.isFeed}
-          isTicker={route.isTicker}
           isSettings={route.isSettings}
-          isAccount={route.isAccount}
-          channels={enabledChannels}
-          enabledWidgets={enabledWidgets}
-          allChannelManifests={allChannelManifests}
-          allWidgets={allWidgets}
+          isMarketplace={route.isMarketplace}
+          activeItem={route.activeItem}
+          pinnedSources={resolvedPinnedSources}
           deliveryMode={deliveryMode}
           tickerAlive={prefs.ticker.showTicker}
-          onSelectItem={handleSelectItem}
           onNavigateToFeed={handleNavigateToFeed}
-          onNavigateToTicker={handleNavigateToTicker}
           onNavigateToSettings={handleNavigateToSettings}
-          onNavigateToAccount={handleNavigateToAccount}
+          onNavigateToMarketplace={handleNavigateToMarketplace}
+          onSelectItem={handleSelectPinned}
         />
 
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
@@ -408,7 +423,7 @@ function RootLayout() {
             </div>
           )}
 
-          <div className="flex-1 overflow-y-auto scrollbar-thin">
+          <div className="flex-1 overflow-y-auto scrollbar-thin" style={{ scrollbarGutter: "stable" }}>
             <ShellContext.Provider value={shellStableValue}>
               <ShellDataContext.Provider value={shellDataValue}>
                 <Outlet />

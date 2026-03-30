@@ -1,14 +1,19 @@
 /**
  * SourcePageLayout — shared page shell for channel and widget routes.
  *
- * Renders the breadcrumb header, tab bar, and scrollable content area
- * common to both /channel/:type/:tab and /widget/:id/:tab routes.
+ * Renders the breadcrumb header, tab bar, source-level actions
+ * (ticker toggle, remove), and scrollable content area common to
+ * both /channel/:type/:tab and /widget/:id/:tab routes.
  */
+import { useState } from "react";
+import { Eye, EyeOff, Trash2 } from "lucide-react";
 import clsx from "clsx";
+import Tooltip from "./Tooltip";
+import ConfirmDialog from "./ConfirmDialog";
 
 // ── Shared tab constants ────────────────────────────────────────
 
-export const VALID_TABS = ["feed", "configuration"] as const;
+export const VALID_TABS = ["feed", "configuration", "display"] as const;
 export type SourceTab = (typeof VALID_TABS)[number];
 
 /** Parse a raw tab parameter into a valid SourceTab, defaulting to "feed". */
@@ -43,7 +48,13 @@ interface Tab {
   label: string;
 }
 
-const TABS: Tab[] = [
+const CHANNEL_TABS: Tab[] = [
+  { key: "feed", label: "Feed" },
+  { key: "configuration", label: "Configure" },
+  { key: "display", label: "Display" },
+];
+
+const WIDGET_TABS: Tab[] = [
   { key: "feed", label: "Feed" },
   { key: "configuration", label: "Configure" },
 ];
@@ -54,6 +65,13 @@ interface SourcePageLayoutProps {
   onTabChange: (tab: string) => void;
   onBack: () => void;
   children: React.ReactNode;
+
+  /** Source-level actions (optional — omit to hide action buttons). */
+  tickerEnabled?: boolean;
+  onToggleTicker?: () => void;
+  onRemove?: () => void;
+  /** "channel" triggers a ConfirmDialog before removal; "widget" removes immediately. */
+  sourceKind?: "channel" | "widget";
 }
 
 export default function SourcePageLayout({
@@ -62,43 +80,111 @@ export default function SourcePageLayout({
   onTabChange,
   onBack,
   children,
+  tickerEnabled,
+  onToggleTicker,
+  onRemove,
+  sourceKind,
 }: SourcePageLayoutProps) {
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const tabs = sourceKind === "widget" ? WIDGET_TABS : CHANNEL_TABS;
+
+  function handleRemove() {
+    if (sourceKind === "channel") {
+      setConfirmRemove(true);
+    } else {
+      onRemove?.();
+    }
+  }
+
   return (
-    <div className="flex flex-col h-full">
+    <div>
       {/* Breadcrumb header */}
-      <header className="flex items-center justify-between px-5 h-12 border-b border-edge shrink-0">
+      <header className="flex items-center justify-between px-5 h-12 border-b border-edge sticky top-0 z-10 bg-surface">
         <div className="flex items-center gap-1.5 min-w-0 text-sm">
           <button
             onClick={onBack}
-            aria-label="Back to dashboard"
+            aria-label="Back to home"
             className="text-fg-3 hover:text-fg-2 transition-colors shrink-0"
           >
-            Dashboard
+            Home
           </button>
           <span className="text-fg-4">/</span>
           <span className="font-medium truncate">{name}</span>
         </div>
-        <div className="flex gap-1 shrink-0">
-          {TABS.map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => onTabChange(key)}
-              className={clsx(
-                "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
-                activeTab === key
-                  ? "bg-accent/10 text-accent"
-                  : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
-              )}
-            >
-              {label}
-            </button>
-          ))}
+
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Source-level actions */}
+          {onToggleTicker && tickerEnabled !== undefined && (
+            <Tooltip content={tickerEnabled ? "Visible on ticker" : "Hidden from ticker"}>
+              <button
+                onClick={onToggleTicker}
+                aria-label={tickerEnabled ? `Hide ${name} from ticker` : `Show ${name} on ticker`}
+                className={clsx(
+                  "w-7 h-7 flex items-center justify-center rounded-lg transition-colors",
+                  tickerEnabled
+                    ? "text-fg-3 hover:text-fg hover:bg-surface-hover"
+                    : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover",
+                )}
+              >
+                {tickerEnabled ? <Eye size={14} /> : <EyeOff size={14} />}
+              </button>
+            </Tooltip>
+          )}
+
+          {onRemove && (
+            <Tooltip content="Remove">
+              <button
+                onClick={handleRemove}
+                aria-label={`Remove ${name}`}
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-fg-4 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+              >
+                <Trash2 size={14} />
+              </button>
+            </Tooltip>
+          )}
+
+          {/* Divider between actions and tabs */}
+          {(onToggleTicker || onRemove) && (
+            <div className="w-px h-5 bg-edge/50" />
+          )}
+
+          {/* Tab bar */}
+          <div className="flex gap-1">
+            {tabs.map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => onTabChange(key)}
+                className={clsx(
+                  "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                  activeTab === key
+                    ? "bg-accent/10 text-accent"
+                    : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto scrollbar-thin">
+      <div>
         {children}
       </div>
+
+      {/* Channel removal confirmation */}
+      <ConfirmDialog
+        open={confirmRemove}
+        title={`Remove ${name}?`}
+        description={`This will delete your ${name} configuration and remove it from the dashboard. You can re-add it from the Catalog.`}
+        confirmLabel="Remove"
+        destructive
+        onConfirm={() => {
+          setConfirmRemove(false);
+          onRemove?.();
+        }}
+        onCancel={() => setConfirmRemove(false)}
+      />
     </div>
   );
 }

@@ -2,11 +2,11 @@
  * Widget route — renders widget feed or configuration.
  *
  * URL: /widget/:id/:tab
- *   - id: "clock" | "weather" | "sysmon"
+ *   - id: "clock" | "weather" | "sysmon" | "uptime" | "github"
  *   - tab: "feed" | "configuration"
  *
- * Management actions (ticker toggle, remove) live on the dashboard
- * card, not here. This route is for viewing data and configuring.
+ * Source-level actions (ticker toggle, remove) are in the header bar.
+ * Widgets have no Display tab — their Configure tab already has display settings.
  */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import RouteError from "../components/RouteError";
@@ -26,10 +26,13 @@ function WidgetRoute() {
   const tab = parseSourceTab(rawTab);
 
   const widget = getWidget(id);
+  const { onToggleWidgetTicker, onToggleWidget, prefs } = useShell();
 
   if (!widget) {
     return <SourceNotFound kind="Widget" name={id} />;
   }
+
+  const tickerEnabled = prefs.widgets.widgetsOnTicker.includes(id);
 
   return (
     <SourcePageLayout
@@ -39,6 +42,13 @@ function WidgetRoute() {
         navigate({ to: "/widget/$id/$tab", params: { id, tab: t } })
       }
       onBack={() => navigate({ to: "/feed" })}
+      tickerEnabled={tickerEnabled}
+      onToggleTicker={() => onToggleWidgetTicker(id)}
+      onRemove={() => {
+        onToggleWidget(id);
+        navigate({ to: "/feed" });
+      }}
+      sourceKind="widget"
     >
       {tab === "feed" && <WidgetFeedTab widget={widget} />}
       {tab === "configuration" && <WidgetConfigTab id={id} />}

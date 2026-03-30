@@ -3,7 +3,7 @@ import clsx from "clsx";
 import { Ticker } from "motion-plus/react";
 import { useMotionValue, animate, AnimatePresence, motion } from "motion/react";
 import type { DashboardResponse, Trade, Game, RssItem, WidgetTickerData } from "../types";
-import type { MixMode, ChipColorMode, TickerDirection, ScrollMode, WidgetPinConfig } from "../preferences";
+import type { MixMode, ChipColorMode, TickerDirection, ScrollMode, WidgetPinConfig, ChannelDisplayPrefs } from "../preferences";
 import TradeChip from "./chips/TradeChip";
 import GameChip from "./chips/GameChip";
 import { isLive, isCloseGame, isFinal, isPre } from "../utils/gameHelpers";
@@ -60,6 +60,8 @@ interface ScrollrTickerProps {
   mixMode?: MixMode;
   /** Chip color scheme */
   chipColorMode?: ChipColorMode;
+  /** Per-channel display preferences (controls what data chips show) */
+  channelDisplay?: ChannelDisplayPrefs;
   /** Which row this ticker represents (0-indexed, for multi-row splitting) */
   rowIndex?: number;
   /** Total number of ticker rows (items distributed round-robin) */
@@ -107,6 +109,7 @@ export default function ScrollrTicker({
   hoverSpeed = 0.3,
   mixMode = "grouped",
   chipColorMode = "channel",
+  channelDisplay,
   comfort = false,
   rowIndex = 0,
   totalRows = 1,
@@ -163,6 +166,7 @@ export default function ScrollrTicker({
                   trade={trade}
                   comfort={comfort}
                   colorMode={chipColorMode}
+                  showChange={channelDisplay?.finance?.showChange ?? true}
                   onClick={() => onChipClick?.("finance", trade.symbol)}
                 />
               )
@@ -215,6 +219,8 @@ export default function ScrollrTicker({
                   item={item}
                   comfort={comfort}
                   colorMode={chipColorMode}
+                  showSource={channelDisplay?.rss?.showSource ?? true}
+                  showTimestamps={channelDisplay?.rss?.showTimestamps ?? true}
                   onClick={() => onChipClick?.("rss", item.id)}
                 />
               )
@@ -252,7 +258,7 @@ export default function ScrollrTicker({
     // When multiple rows, distribute items round-robin
     if (totalRows <= 1) return allItems;
     return allItems.filter((_, i) => i % totalRows === rowIndex);
-  }, [dashboard, activeTabs, widgetData, onChipClick, onTogglePin, pinnedWidgets, comfort, mixMode, chipColorMode, rowIndex, totalRows]);
+  }, [dashboard, activeTabs, widgetData, onChipClick, onTogglePin, pinnedWidgets, comfort, mixMode, chipColorMode, channelDisplay, rowIndex, totalRows]);
 
   // ── Shared refs ─────────────────────────────────────────────────
   const containerRef = useRef<HTMLDivElement>(null);

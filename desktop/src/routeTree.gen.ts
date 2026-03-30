@@ -9,19 +9,13 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TickerRouteImport } from './routes/ticker'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as FeedRouteImport } from './routes/feed'
-import { Route as AccountRouteImport } from './routes/account'
+import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WidgetIdTabRouteImport } from './routes/widget.$id.$tab'
 import { Route as ChannelTypeTabRouteImport } from './routes/channel.$type.$tab'
 
-const TickerRoute = TickerRouteImport.update({
-  id: '/ticker',
-  path: '/ticker',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -32,9 +26,9 @@ const FeedRoute = FeedRouteImport.update({
   path: '/feed',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AccountRoute = AccountRouteImport.update({
-  id: '/account',
-  path: '/account',
+const CatalogRoute = CatalogRouteImport.update({
+  id: '/catalog',
+  path: '/catalog',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -55,29 +49,26 @@ const ChannelTypeTabRoute = ChannelTypeTabRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/account': typeof AccountRoute
+  '/catalog': typeof CatalogRoute
   '/feed': typeof FeedRoute
   '/settings': typeof SettingsRoute
-  '/ticker': typeof TickerRoute
   '/channel/$type/$tab': typeof ChannelTypeTabRoute
   '/widget/$id/$tab': typeof WidgetIdTabRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/account': typeof AccountRoute
+  '/catalog': typeof CatalogRoute
   '/feed': typeof FeedRoute
   '/settings': typeof SettingsRoute
-  '/ticker': typeof TickerRoute
   '/channel/$type/$tab': typeof ChannelTypeTabRoute
   '/widget/$id/$tab': typeof WidgetIdTabRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/account': typeof AccountRoute
+  '/catalog': typeof CatalogRoute
   '/feed': typeof FeedRoute
   '/settings': typeof SettingsRoute
-  '/ticker': typeof TickerRoute
   '/channel/$type/$tab': typeof ChannelTypeTabRoute
   '/widget/$id/$tab': typeof WidgetIdTabRoute
 }
@@ -85,51 +76,40 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/account'
+    | '/catalog'
     | '/feed'
     | '/settings'
-    | '/ticker'
     | '/channel/$type/$tab'
     | '/widget/$id/$tab'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/account'
+    | '/catalog'
     | '/feed'
     | '/settings'
-    | '/ticker'
     | '/channel/$type/$tab'
     | '/widget/$id/$tab'
   id:
     | '__root__'
     | '/'
-    | '/account'
+    | '/catalog'
     | '/feed'
     | '/settings'
-    | '/ticker'
     | '/channel/$type/$tab'
     | '/widget/$id/$tab'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AccountRoute: typeof AccountRoute
+  CatalogRoute: typeof CatalogRoute
   FeedRoute: typeof FeedRoute
   SettingsRoute: typeof SettingsRoute
-  TickerRoute: typeof TickerRoute
   ChannelTypeTabRoute: typeof ChannelTypeTabRoute
   WidgetIdTabRoute: typeof WidgetIdTabRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/ticker': {
-      id: '/ticker'
-      path: '/ticker'
-      fullPath: '/ticker'
-      preLoaderRoute: typeof TickerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -144,11 +124,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FeedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/account': {
-      id: '/account'
-      path: '/account'
-      fullPath: '/account'
-      preLoaderRoute: typeof AccountRouteImport
+    '/catalog': {
+      id: '/catalog'
+      path: '/catalog'
+      fullPath: '/catalog'
+      preLoaderRoute: typeof CatalogRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -177,10 +157,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AccountRoute: AccountRoute,
+  CatalogRoute: CatalogRoute,
   FeedRoute: FeedRoute,
   SettingsRoute: SettingsRoute,
-  TickerRoute: TickerRoute,
   ChannelTypeTabRoute: ChannelTypeTabRoute,
   WidgetIdTabRoute: WidgetIdTabRoute,
 }

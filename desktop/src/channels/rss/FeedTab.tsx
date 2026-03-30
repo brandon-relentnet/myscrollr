@@ -11,12 +11,14 @@ import { clsx } from "clsx";
 import { useScrollrCDC } from "../../hooks/useScrollrCDC";
 import { timeAgo, truncate } from "../../utils/format";
 import EmptyChannelState from "../../components/EmptyChannelState";
+import { useShell } from "../../shell-context";
 import type {
   RssItem as RssItemType,
   FeedTabProps,
   FeedMode,
   ChannelManifest,
 } from "../../types";
+import type { RssDisplayPrefs } from "../../preferences";
 
 // ── Channel manifest ─────────────────────────────────────────────
 
@@ -43,6 +45,9 @@ export const rssChannel: ChannelManifest = {
 // ── FeedTab ──────────────────────────────────────────────────────
 
 function RssFeedTab({ mode, feedContext }: FeedTabProps) {
+  const { prefs } = useShell();
+  const dp = prefs.channelDisplay.rss;
+
   const dashboardLoaded = feedContext.__dashboardLoaded as
     | boolean
     | undefined;
@@ -94,6 +99,7 @@ function RssFeedTab({ mode, feedContext }: FeedTabProps) {
           key={`${item.feed_url}:${item.guid}`}
           item={item}
           mode={mode}
+          display={dp}
         />
       ))}
     </div>
@@ -105,10 +111,11 @@ function RssFeedTab({ mode, feedContext }: FeedTabProps) {
 interface RssArticleProps {
   item: RssItemType;
   mode: FeedMode;
+  display: RssDisplayPrefs;
 }
 
-const RssArticle = memo(function RssArticle({ item, mode }: RssArticleProps) {
-  const ago = timeAgo(item.published_at);
+const RssArticle = memo(function RssArticle({ item, mode, display }: RssArticleProps) {
+  const ago = display.showTimestamps ? timeAgo(item.published_at) : null;
 
   if (mode === "compact") {
     return (
@@ -118,9 +125,11 @@ const RssArticle = memo(function RssArticle({ item, mode }: RssArticleProps) {
         rel="noopener noreferrer"
         className="flex items-center gap-2 px-3 py-1.5 bg-surface text-xs hover:bg-surface-hover transition-colors cursor-pointer"
       >
-        <span className="font-mono text-[9px] text-accent/70 shrink-0 min-w-[56px] max-w-[80px] truncate uppercase tracking-wider font-bold">
-          {item.source_name}
-        </span>
+        {display.showSource && (
+          <span className="font-mono text-[9px] text-accent/70 shrink-0 min-w-[56px] max-w-[80px] truncate uppercase tracking-wider font-bold">
+            {item.source_name}
+          </span>
+        )}
         <span className="text-fg truncate flex-1">{item.title}</span>
         {ago && (
           <span className="text-fg-4 shrink-0 text-[9px] font-mono tabular-nums">
@@ -142,25 +151,30 @@ const RssArticle = memo(function RssArticle({ item, mode }: RssArticleProps) {
       <span className="text-sm font-medium text-fg leading-snug line-clamp-2">
         {item.title}
       </span>
-      {item.description && (
+      {display.showDescription && item.description && (
         <p className="mt-1 text-xs text-fg-2 leading-relaxed line-clamp-2">
           {truncate(item.description, 160)}
         </p>
       )}
-      <div className="flex items-center gap-2 mt-1.5">
-        <span className="text-[9px] font-mono font-bold text-accent/60 uppercase tracking-wider">
-          {item.source_name}
-        </span>
-        {ago && (
-          <span className="text-[9px] font-mono text-fg-4 tabular-nums">
-            {ago}
-          </span>
-        )}
-      </div>
+      {(display.showSource || ago) && (
+        <div className="flex items-center gap-2 mt-1.5">
+          {display.showSource && (
+            <span className="text-[9px] font-mono font-bold text-accent/60 uppercase tracking-wider">
+              {item.source_name}
+            </span>
+          )}
+          {ago && (
+            <span className="text-[9px] font-mono text-fg-4 tabular-nums">
+              {ago}
+            </span>
+          )}
+        </div>
+      )}
     </a>
   );
 }, (prev, next) =>
   prev.mode === next.mode &&
+  prev.display === next.display &&
   prev.item.guid === next.item.guid &&
   prev.item.feed_url === next.item.feed_url &&
   prev.item.title === next.item.title &&

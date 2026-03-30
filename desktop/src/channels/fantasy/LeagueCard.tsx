@@ -44,9 +44,11 @@ function InjuryBadge({ count }: { count: number }) {
 interface LeagueCardProps {
   league: LeagueResponse;
   mode: FeedMode;
+  showStandings?: boolean;
+  showInjuryCount?: boolean;
 }
 
-export function LeagueCard({ league, mode }: LeagueCardProps) {
+export function LeagueCard({ league, mode, showStandings = true, showInjuryCount = true }: LeagueCardProps) {
   const myTeamKey = league.team_key ?? "";
   const currentWeek = league.data?.current_week ?? 0;
 
@@ -75,8 +77,8 @@ export function LeagueCard({ league, mode }: LeagueCardProps) {
       <LeagueCardCompact
         league={league}
         myMatchup={myMatchup}
-        myStanding={myStanding}
-        injuryCount={injuryCount}
+        myStanding={showStandings ? myStanding : undefined}
+        injuryCount={showInjuryCount ? injuryCount : 0}
       />
     );
   }
@@ -85,8 +87,8 @@ export function LeagueCard({ league, mode }: LeagueCardProps) {
     <LeagueCardComfort
       league={league}
       myMatchup={myMatchup}
-      myStanding={myStanding}
-      injuryCount={injuryCount}
+      myStanding={showStandings ? myStanding : undefined}
+      injuryCount={showInjuryCount ? injuryCount : 0}
     />
   );
 }

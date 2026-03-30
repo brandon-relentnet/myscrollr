@@ -602,6 +602,7 @@ export default function App() {
               hoverSpeed={prefs.ticker.hoverSpeed}
               mixMode={prefs.ticker.mixMode}
               chipColorMode={prefs.ticker.chipColors}
+              channelDisplay={prefs.channelDisplay}
               comfort={prefs.ticker.tickerMode === "comfort"}
               rowIndex={i}
               totalRows={prefs.appearance.tickerRows}
