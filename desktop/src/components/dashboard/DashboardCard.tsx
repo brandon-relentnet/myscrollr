@@ -2,20 +2,15 @@
  * DashboardCard — wrapper for dashboard summary cards.
  *
  * Renders a consistent card with hex-colored accent border, icon,
- * name, and hover-revealed action controls. All management actions
- * (ticker toggle, reorder, configure, remove) are inline on the card.
- *
- * Card display preferences (what data the summary shows) are edited
- * via a per-card inline expansion — click the sliders icon to toggle.
+ * name, and hover-revealed action controls. Source-level management
+ * (ticker toggle, remove, configure) are inline on the card.
  *
  * All cards use header-click navigation (click name → source feed).
  */
 import { useState, useRef, useEffect } from "react";
-import { Settings, SlidersHorizontal, ChevronUp, ChevronDown, ArrowRight, X, Eye, EyeOff } from "lucide-react";
+import { Settings, ArrowRight, X, Eye, EyeOff } from "lucide-react";
 import clsx from "clsx";
 import Tooltip from "../Tooltip";
-import CardEditor from "./CardEditor";
-import type { EditorField } from "./dashboardPrefs";
 
 interface DashboardCardProps {
   /** Source name (e.g., "Finance", "Clock"). */
@@ -35,19 +30,8 @@ interface DashboardCardProps {
   tickerEnabled: boolean;
   /** Toggle ticker visibility for this source. */
   onToggleTicker: () => void;
-  /** Move this card up in the order (undefined = first, disabled). */
-  onMoveUp?: () => void;
-  /** Move this card down in the order (undefined = last, disabled). */
-  onMoveDown?: () => void;
   /** Remove this source. */
   onRemove: () => void;
-
-  /** Editor schema for card display prefs. */
-  schema?: EditorField[];
-  /** Current card display pref values. */
-  editorValues?: Record<string, boolean | number>;
-  /** Callback when a card display pref changes. */
-  onEditorChange?: (key: string, value: boolean | number) => void;
 }
 
 export default function DashboardCard({
@@ -59,17 +43,8 @@ export default function DashboardCard({
   children,
   tickerEnabled,
   onToggleTicker,
-  onMoveUp,
-  onMoveDown,
   onRemove,
-  schema,
-  editorValues,
-  onEditorChange,
 }: DashboardCardProps) {
-  // ── Per-card customize expansion ─────────────────────────────
-  const [customizing, setCustomizing] = useState(false);
-  const hasEditor = schema && editorValues && onEditorChange;
-
   // ── Two-click delete confirmation ────────────────────────────
   const [deleteArmed, setDeleteArmed] = useState(false);
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -97,7 +72,6 @@ export default function DashboardCard({
       className={clsx(
         "group/card relative flex flex-col rounded-xl border border-edge/60",
         "bg-surface-2/50 hover:bg-surface-2 transition-colors overflow-hidden",
-        customizing && "ring-1 ring-accent/15",
       )}
     >
       {/* Left accent bar — reflects ticker state */}
@@ -138,12 +112,12 @@ export default function DashboardCard({
         <div
           className={clsx(
             "absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-0.5 rounded-lg px-1 py-0.5 transition-opacity",
-            deleteArmed || customizing
+            deleteArmed
               ? "opacity-100 bg-surface-2"
               : "opacity-0 pointer-events-none group-hover/card:opacity-100 group-hover/card:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto bg-surface-2",
           )}
         >
-          {/* Ticker visibility toggle (hover-revealed) */}
+          {/* Ticker visibility toggle */}
           <Tooltip content={tickerEnabled ? "Visible on ticker" : "Hidden from ticker"}>
             <button
               onClick={(e) => {
@@ -163,29 +137,7 @@ export default function DashboardCard({
             </button>
           </Tooltip>
 
-          {/* Customize card display (hover-revealed, toggles inline editor) */}
-          {hasEditor && (
-            <Tooltip content={customizing ? "Done customizing" : "Customize card"}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCustomizing((p) => !p);
-                }}
-                aria-label={customizing ? "Close card customization" : "Customize card display"}
-                className={clsx(
-                  "w-6 h-6 flex items-center justify-center rounded-md transition-all shrink-0",
-                  customizing
-                    ? "text-accent bg-accent/10"
-                    : "text-fg-4 hover:text-fg-2 hover:bg-surface-hover",
-                  "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40",
-                )}
-              >
-                <SlidersHorizontal size={12} />
-              </button>
-            </Tooltip>
-          )}
-
-          {/* Gear — configure source (hover-revealed) */}
+          {/* Gear — configure source */}
           <Tooltip content="Configure">
             <button
               onClick={(e) => {
@@ -199,47 +151,7 @@ export default function DashboardCard({
             </button>
           </Tooltip>
 
-          {/* Reorder arrows (hover-revealed) */}
-          <div className="flex items-center">
-            <Tooltip content="Move up">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onMoveUp?.();
-                }}
-                disabled={!onMoveUp}
-                className={clsx(
-                  "w-5 h-5 flex items-center justify-center rounded transition-colors",
-                  onMoveUp
-                    ? "text-fg-4 hover:text-fg-2 hover:bg-surface-hover"
-                    : "text-fg-4/20 cursor-default",
-                )}
-                aria-label={`Move ${name} up`}
-              >
-                <ChevronUp size={13} />
-              </button>
-            </Tooltip>
-            <Tooltip content="Move down">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onMoveDown?.();
-                }}
-                disabled={!onMoveDown}
-                className={clsx(
-                  "w-5 h-5 flex items-center justify-center rounded transition-colors",
-                  onMoveDown
-                    ? "text-fg-4 hover:text-fg-2 hover:bg-surface-hover"
-                    : "text-fg-4/20 cursor-default",
-                )}
-                aria-label={`Move ${name} down`}
-              >
-                <ChevronDown size={13} />
-              </button>
-            </Tooltip>
-          </div>
-
-          {/* Remove (hover-revealed, two-click confirm) */}
+          {/* Remove (two-click confirm) */}
           <Tooltip content={deleteArmed ? "Click again to confirm" : "Remove"}>
             <button
               onClick={handleDeleteClick}
@@ -265,48 +177,6 @@ export default function DashboardCard({
       <div className="px-4 pb-3.5 flex-1 min-h-0">
         {children}
       </div>
-
-      {/* Inline card editor — per-card expansion */}
-      {customizing && hasEditor && (
-        <div className="px-4 pb-3.5 pt-2 border-t border-edge/40">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-fg-4 mb-1.5">
-            Card display
-          </p>
-          <CardEditor
-            schema={schema}
-            values={editorValues}
-            onChange={onEditorChange}
-          />
-        </div>
-      )}
     </div>
-  );
-}
-
-// ── Ghost card for un-added sources ─────────────────────────────
-
-interface GhostCardProps {
-  name: string;
-  description: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-  hex: string;
-  onClick: () => void;
-}
-
-export function GhostCard({ name, description, icon: Icon, hex, onClick }: GhostCardProps) {
-  return (
-    <button
-      onClick={onClick}
-      aria-label={`Add ${name}`}
-      className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-edge/40 hover:border-edge bg-transparent hover:bg-surface-2/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:border-accent/30 transition-all p-5 cursor-pointer min-h-[120px]"
-    >
-      <span style={{ color: hex }} className="opacity-40">
-        <Icon size={20} />
-      </span>
-      <span className="text-[12px] font-medium text-fg-3">{name}</span>
-      <span className="text-[10px] text-fg-4 text-center leading-snug max-w-[160px]">
-        {description}
-      </span>
-    </button>
   );
 }

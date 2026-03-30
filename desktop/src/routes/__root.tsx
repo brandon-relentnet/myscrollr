@@ -83,63 +83,41 @@ function parseRoute(pathname: string) {
     return {
       activeItem: "",
       isChannel: false, isWidget: false, isFeed: true,
-      isTicker: false, isSettings: false, isAccount: false,
-      isMarketplace: false,
+      isSettings: false, isMarketplace: false,
     };
   }
   if (kind === "channel" && itemId) {
     return {
       activeItem: itemId,
       isChannel: true, isWidget: false, isFeed: false,
-      isTicker: false, isSettings: false, isAccount: false,
-      isMarketplace: false,
+      isSettings: false, isMarketplace: false,
     };
   }
   if (kind === "widget" && itemId) {
     return {
       activeItem: itemId,
       isChannel: false, isWidget: true, isFeed: false,
-      isTicker: false, isSettings: false, isAccount: false,
-      isMarketplace: false,
-    };
-  }
-  if (kind === "ticker") {
-    return {
-      activeItem: "ticker",
-      isChannel: false, isWidget: false, isFeed: false,
-      isTicker: true, isSettings: false, isAccount: false,
-      isMarketplace: false,
+      isSettings: false, isMarketplace: false,
     };
   }
   if (kind === "catalog") {
     return {
       activeItem: "",
       isChannel: false, isWidget: false, isFeed: false,
-      isTicker: false, isSettings: false, isAccount: false,
-      isMarketplace: true,
+      isSettings: false, isMarketplace: true,
     };
   }
   if (kind === "settings") {
     return {
       activeItem: "settings",
       isChannel: false, isWidget: false, isFeed: false,
-      isTicker: false, isSettings: true, isAccount: false,
-      isMarketplace: false,
-    };
-  }
-  if (kind === "account") {
-    return {
-      activeItem: "",
-      isChannel: false, isWidget: false, isFeed: false,
-      isTicker: false, isSettings: false, isAccount: true,
-      isMarketplace: false,
+      isSettings: true, isMarketplace: false,
     };
   }
   return {
     activeItem: "",
     isChannel: false, isWidget: false, isFeed: true,
-    isTicker: false, isSettings: false, isAccount: false,
-    isMarketplace: false,
+    isSettings: false, isMarketplace: false,
   };
 }
 
@@ -228,7 +206,7 @@ function RootLayout() {
   const handleSelectItem = useCallback(
     (id: string) => {
       if (id === "settings") {
-        navigate({ to: "/settings" });
+        navigate({ to: "/settings", search: { tab: "general" } });
         return;
       }
       if (channelsRef.current.some((ch) => ch.channel_type === id)) {
@@ -245,9 +223,7 @@ function RootLayout() {
   );
 
   const handleNavigateToFeed = useCallback(() => navigate({ to: "/feed" }), [navigate]);
-  const handleNavigateToTicker = useCallback(() => navigate({ to: "/ticker" }), [navigate]);
-  const handleNavigateToSettings = useCallback(() => navigate({ to: "/settings" }), [navigate]);
-  const handleNavigateToAccount = useCallback(() => navigate({ to: "/account" }), [navigate]);
+  const handleNavigateToSettings = useCallback(() => navigate({ to: "/settings", search: { tab: "general" } }), [navigate]);
   const handleNavigateToMarketplace = useCallback(() => navigate({ to: "/catalog" }), [navigate]);
 
   // ── Keyboard shortcuts ──────────────────────────────────────
@@ -256,7 +232,7 @@ function RootLayout() {
       // Ctrl+, → open settings
       if ((e.ctrlKey || e.metaKey) && e.key === ",") {
         e.preventDefault();
-        navigate({ to: "/settings" });
+        navigate({ to: "/settings", search: { tab: "general" } });
         return;
       }
 
@@ -303,7 +279,7 @@ function RootLayout() {
           navigate({ to: "/feed" });
           return;
         }
-        if (route.isSettings || route.isAccount) {
+        if (route.isSettings) {
           navigate({ to: "/feed" });
         }
       }
@@ -384,9 +360,7 @@ function RootLayout() {
         <Sidebar
           activeItem={route.activeItem}
           isFeed={route.isFeed}
-          isTicker={route.isTicker}
           isSettings={route.isSettings}
-          isAccount={route.isAccount}
           isMarketplace={route.isMarketplace}
           channels={enabledChannels}
           enabledWidgets={enabledWidgets}
@@ -396,9 +370,7 @@ function RootLayout() {
           tickerAlive={prefs.ticker.showTicker}
           onSelectItem={handleSelectItem}
           onNavigateToFeed={handleNavigateToFeed}
-          onNavigateToTicker={handleNavigateToTicker}
           onNavigateToSettings={handleNavigateToSettings}
-          onNavigateToAccount={handleNavigateToAccount}
           onNavigateToMarketplace={handleNavigateToMarketplace}
         />
 

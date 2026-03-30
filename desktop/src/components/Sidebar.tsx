@@ -6,7 +6,7 @@
  * Collapses to a 48px icon-only rail with tooltips.
  */
 import { useState, useMemo } from "react";
-import { LayoutDashboard, Rows3, LayoutGrid, Settings, User, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { LayoutDashboard, LayoutGrid, Settings, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import clsx from "clsx";
 import Tooltip from "./Tooltip";
 import type { ChannelManifest, WidgetManifest, DeliveryMode } from "../types";
@@ -78,12 +78,8 @@ interface SidebarProps {
   activeItem: string;
   /** Whether the feed dashboard is active. */
   isFeed: boolean;
-  /** Whether the ticker settings page is active. */
-  isTicker: boolean;
   /** Whether the settings page is active. */
   isSettings: boolean;
-  /** Whether the account page is active. */
-  isAccount: boolean;
   /** Whether the marketplace page is active. */
   isMarketplace: boolean;
 
@@ -105,12 +101,8 @@ interface SidebarProps {
   onSelectItem: (id: string) => void;
   /** Navigate to the feed dashboard. */
   onNavigateToFeed: () => void;
-  /** Navigate to the ticker settings page. */
-  onNavigateToTicker: () => void;
   /** Navigate to the settings page. */
   onNavigateToSettings: () => void;
-  /** Navigate to the account page. */
-  onNavigateToAccount: () => void;
   /** Navigate to the marketplace page. */
   onNavigateToMarketplace: () => void;
 }
@@ -120,9 +112,7 @@ interface SidebarProps {
 export default function Sidebar({
   activeItem,
   isFeed,
-  isTicker,
   isSettings,
-  isAccount,
   isMarketplace,
   channels,
   enabledWidgets,
@@ -132,9 +122,7 @@ export default function Sidebar({
   tickerAlive,
   onSelectItem,
   onNavigateToFeed,
-  onNavigateToTicker,
   onNavigateToSettings,
-  onNavigateToAccount,
   onNavigateToMarketplace,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(() =>
@@ -216,15 +204,6 @@ export default function Sidebar({
           active={isFeed}
           collapsed={collapsed}
           onClick={onNavigateToFeed}
-        />
-
-        {/* Ticker */}
-        <NavItem
-          icon={<Rows3 size={15} />}
-          label="Ticker"
-          active={isTicker}
-          collapsed={collapsed}
-          onClick={onNavigateToTicker}
         />
 
         {/* Catalog */}
@@ -313,13 +292,6 @@ export default function Sidebar({
           active={isSettings}
           collapsed={collapsed}
           onClick={onNavigateToSettings}
-        />
-        <NavItem
-          icon={<User size={15} />}
-          label="Account"
-          active={isAccount}
-          collapsed={collapsed}
-          onClick={onNavigateToAccount}
         />
 
         {/* Collapse toggle */}

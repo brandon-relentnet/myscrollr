@@ -2,15 +2,15 @@
  * Feed route — the dashboard.
  *
  * Two-panel layout: channels on the left (responsive 1–2 column grid),
- * widgets stacked on the right (240px). Management actions (ticker toggle,
- * reorder, remove) are inline on each card. No edit mode.
+ * widgets stacked on the right (240px). Cards use canonical order.
+ * Source-level actions (ticker toggle, configure, remove) are inline
+ * on each card. Discovery happens in the Catalog (/catalog).
  */
-import { useState, useCallback, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import RouteError from "../components/RouteError";
-import { ChevronDown, ChevronRight } from "lucide-react";
 import { useShell, useShellData } from "../shell-context";
-import DashboardCard, { GhostCard } from "../components/dashboard/DashboardCard";
+import DashboardCard from "../components/dashboard/DashboardCard";
 import FinanceSummary from "../components/dashboard/FinanceSummary";
 import SportsSummary from "../components/dashboard/SportsSummary";
 import RssSummary from "../components/dashboard/RssSummary";
@@ -20,25 +20,12 @@ import WeatherSummary from "../components/dashboard/WeatherSummary";
 import SysmonSummary from "../components/dashboard/SysmonSummary";
 import UptimeSummary from "../components/dashboard/UptimeSummary";
 import GitHubSummary from "../components/dashboard/GitHubSummary";
-import {
-  loadCardPrefs,
-  saveCardPrefs,
-  loadShowAddMore,
-  saveShowAddMore,
-  loadCardOrder,
-  saveCardOrder,
-  FINANCE_SCHEMA,
-  RSS_SCHEMA,
-  FANTASY_SCHEMA,
-  CLOCK_SCHEMA,
-  WEATHER_SCHEMA,
-  SYSMON_SCHEMA,
-  UPTIME_SCHEMA,
-  GITHUB_SCHEMA,
-} from "../components/dashboard/dashboardPrefs";
+import { loadCardPrefs } from "../components/dashboard/dashboardPrefs";
+import { CHANNEL_ORDER } from "../channels/registry";
+import { WIDGET_ORDER } from "../widgets/registry";
 import type { ChannelType } from "../api/client";
 import type { ChannelManifest, WidgetManifest, DashboardResponse } from "../types";
-import type { DashboardCardPrefs, CardOrder, EditorField } from "../components/dashboard/dashboardPrefs";
+import type { DashboardCardPrefs } from "../components/dashboard/dashboardPrefs";
 
 // ── Summary renderers (type-safe, no casts) ────────────────────
 
@@ -82,36 +69,6 @@ function renderWidgetSummary(
   }
 }
 
-// ── Schema + prefs key maps ─────────────────────────────────────
-
-const CHANNEL_SCHEMAS: Record<string, EditorField[]> = {
-  finance: FINANCE_SCHEMA,
-  rss: RSS_SCHEMA,
-  fantasy: FANTASY_SCHEMA,
-};
-
-const WIDGET_SCHEMAS: Record<string, EditorField[]> = {
-  clock: CLOCK_SCHEMA,
-  weather: WEATHER_SCHEMA,
-  sysmon: SYSMON_SCHEMA,
-  uptime: UPTIME_SCHEMA,
-  github: GITHUB_SCHEMA,
-};
-
-const CHANNEL_PREFS_KEY: Record<string, keyof DashboardCardPrefs> = {
-  finance: "finance",
-  rss: "rss",
-  fantasy: "fantasy",
-};
-
-const WIDGET_PREFS_KEY: Record<string, keyof DashboardCardPrefs> = {
-  clock: "clock",
-  weather: "weather",
-  sysmon: "sysmon",
-  uptime: "uptime",
-  github: "github",
-};
-
 // ── Route ───────────────────────────────────────────────────────
 
 export const Route = createFileRoute("/feed")({
@@ -127,7 +84,6 @@ function FeedDashboard() {
     allChannelManifests,
     allWidgets,
     authenticated,
-    onAddChannel,
     onDeleteChannel,
     onToggleChannelTicker,
     onToggleWidgetTicker,
@@ -138,123 +94,32 @@ function FeedDashboard() {
   const enabledWidgets = shell.prefs.widgets.enabledWidgets;
   const widgetsOnTicker = shell.prefs.widgets.widgetsOnTicker;
 
-  // ── Card display prefs (editable inline via per-card expansion) ──
-  const [cardPrefs, setCardPrefs] = useState<DashboardCardPrefs>(loadCardPrefs);
+  // ── Card display prefs (read-only here; edited on Display tab) ──
+  const [cardPrefs] = useState<DashboardCardPrefs>(loadCardPrefs);
 
-  const handleCardPrefChange = useCallback(
-    (cardKey: keyof DashboardCardPrefs, fieldKey: string, value: boolean | number) => {
-      setCardPrefs((prev) => {
-        const next = {
-          ...prev,
-          [cardKey]: { ...prev[cardKey], [fieldKey]: value },
-        };
-        saveCardPrefs(next);
-        return next;
-      });
-    },
-    [],
-  );
-
-  // ── Ghost section collapse ──────────────────────────────────
-  const [showAddMore, setShowAddMore] = useState(loadShowAddMore);
-
-  const toggleAddMore = useCallback(() => {
-    setShowAddMore((prev) => {
-      const next = !prev;
-      saveShowAddMore(next);
-      return next;
-    });
-  }, []);
-
-  // ── Card order ──────────────────────────────────────────────
-  const activeChannelIds = useMemo(
-    () => channels.map((ch) => ch.channel_type),
-    [channels],
-  );
-  const activeWidgetIds = enabledWidgets;
-
-  const [cardOrder, setCardOrder] = useState<CardOrder>(() =>
-    loadCardOrder(activeChannelIds, activeWidgetIds),
-  );
-
-  // Re-merge when active sources change (channel added/removed)
-  const mergedOrder = useMemo(
-    () => loadCardOrder(activeChannelIds, activeWidgetIds),
-    [activeChannelIds, activeWidgetIds],
-  );
-
-  // Keep order in sync — only update if the set of active IDs changed
-  const channelOrder = useMemo(() => {
-    const activeSet: Set<string> = new Set(activeChannelIds);
-    const current = cardOrder.channels.filter((id) => activeSet.has(id));
-    const merged = mergedOrder.channels;
-    return current.length === merged.length &&
-      current.every((id) => activeSet.has(id))
-      ? current
-      : merged;
-  }, [cardOrder.channels, mergedOrder.channels, activeChannelIds]);
-
-  const widgetOrder = useMemo(() => {
-    const activeSet = new Set(activeWidgetIds);
-    const current = cardOrder.widgets.filter((id) => activeSet.has(id));
-    const merged = mergedOrder.widgets;
-    return current.length === merged.length &&
-      current.every((id) => activeSet.has(id))
-      ? current
-      : merged;
-  }, [cardOrder.widgets, mergedOrder.widgets, activeWidgetIds]);
-
-  // Reorder helper
-  const moveItem = useCallback(
-    (list: string[], index: number, direction: -1 | 1, isChannel: boolean) => {
-      const newIndex = index + direction;
-      if (newIndex < 0 || newIndex >= list.length) return;
-      const next = [...list];
-      [next[index], next[newIndex]] = [next[newIndex], next[index]];
-      const updated = isChannel
-        ? { channels: next, widgets: widgetOrder }
-        : { channels: channelOrder, widgets: next };
-      setCardOrder(updated);
-      saveCardOrder(updated);
-    },
-    [channelOrder, widgetOrder],
-  );
-
-  // ── Resolve ordered sources ─────────────────────────────────
+  // ── Canonical-ordered sources ───────────────────────────────
   const orderedChannels = useMemo(
     () =>
-      channelOrder
+      CHANNEL_ORDER
         .map((id) => {
           const ch = channels.find((c) => c.channel_type === id);
           const manifest = allChannelManifests.find((m) => m.id === id);
           return ch && manifest ? { ch, manifest } : null;
         })
         .filter(Boolean) as { ch: (typeof channels)[0]; manifest: ChannelManifest }[],
-    [channelOrder, channels, allChannelManifests],
+    [channels, allChannelManifests],
   );
 
   const orderedWidgets = useMemo(
     () =>
-      widgetOrder
-        .map((id) => allWidgets.find((w) => w.id === id))
+      WIDGET_ORDER
+        .map((id) => {
+          if (!enabledWidgets.includes(id)) return null;
+          return allWidgets.find((w) => w.id === id) ?? null;
+        })
         .filter(Boolean) as WidgetManifest[],
-    [widgetOrder, allWidgets],
+    [enabledWidgets, allWidgets],
   );
-
-  // ── Ghost cards ─────────────────────────────────────────────
-  const availableChannels = useMemo(() => {
-    const addedTypes = new Set(channels.map((ch) => ch.channel_type));
-    return allChannelManifests.filter(
-      (m) => !addedTypes.has(m.id as ChannelType),
-    );
-  }, [channels, allChannelManifests]);
-
-  const availableWidgets = useMemo(() => {
-    const enabledSet = new Set(enabledWidgets);
-    return allWidgets.filter((w) => !enabledSet.has(w.id));
-  }, [enabledWidgets, allWidgets]);
-
-  const hasGhosts = availableChannels.length > 0 || availableWidgets.length > 0;
 
   const hasAnySources =
     orderedChannels.length > 0 || orderedWidgets.length > 0;
@@ -268,7 +133,7 @@ function FeedDashboard() {
             Welcome to Scrollr
           </h2>
           <p className="text-sm text-fg-3 mb-6 max-w-sm">
-            Add channels and widgets below to build your personalized dashboard.
+            Add channels and widgets from the Catalog to build your personalized dashboard.
           </p>
           {!authenticated && (
             <button
@@ -296,9 +161,7 @@ function FeedDashboard() {
           {/* Left panel — channels */}
           {orderedChannels.length > 0 && (
             <div className="flex-1 min-w-0 grid gap-3 grid-cols-1 lg:grid-cols-2">
-              {orderedChannels.map(({ ch, manifest }, index) => {
-                const prefsKey = CHANNEL_PREFS_KEY[ch.channel_type];
-                return (
+              {orderedChannels.map(({ ch, manifest }) => (
                 <DashboardCard
                   key={ch.channel_type}
                   name={manifest.name}
@@ -320,20 +183,7 @@ function FeedDashboard() {
                   onToggleTicker={() =>
                     onToggleChannelTicker(ch.channel_type as ChannelType, !ch.visible)
                   }
-                  onMoveUp={
-                    index > 0
-                      ? () => moveItem(channelOrder, index, -1, true)
-                      : undefined
-                  }
-                  onMoveDown={
-                    index < orderedChannels.length - 1
-                      ? () => moveItem(channelOrder, index, 1, true)
-                      : undefined
-                  }
                   onRemove={() => onDeleteChannel(ch.channel_type as ChannelType)}
-                  schema={CHANNEL_SCHEMAS[ch.channel_type]}
-                  editorValues={prefsKey ? cardPrefs[prefsKey] as unknown as Record<string, boolean | number> : undefined}
-                  onEditorChange={prefsKey ? (key, value) => handleCardPrefChange(prefsKey, key, value) : undefined}
                 >
                   {renderChannelSummary(
                     ch.channel_type,
@@ -348,17 +198,14 @@ function FeedDashboard() {
                     <p className="text-[11px] text-fg-4 italic">No preview</p>
                   )}
                 </DashboardCard>
-                );
-              })}
+              ))}
             </div>
           )}
 
           {/* Right panel — widgets */}
           {orderedWidgets.length > 0 && (
             <div className="w-full md:w-[240px] shrink-0 flex flex-col gap-3">
-              {orderedWidgets.map((widget, index) => {
-                const prefsKey = WIDGET_PREFS_KEY[widget.id];
-                return (
+              {orderedWidgets.map((widget) => (
                 <DashboardCard
                   key={widget.id}
                   name={widget.name}
@@ -378,85 +225,16 @@ function FeedDashboard() {
                   }
                   tickerEnabled={widgetsOnTicker.includes(widget.id)}
                   onToggleTicker={() => onToggleWidgetTicker(widget.id)}
-                  onMoveUp={
-                    index > 0
-                      ? () => moveItem(widgetOrder, index, -1, false)
-                      : undefined
-                  }
-                  onMoveDown={
-                    index < orderedWidgets.length - 1
-                      ? () => moveItem(widgetOrder, index, 1, false)
-                      : undefined
-                  }
                   onRemove={() => onToggleWidget(widget.id)}
-                  schema={WIDGET_SCHEMAS[widget.id]}
-                  editorValues={prefsKey ? cardPrefs[prefsKey] as unknown as Record<string, boolean | number> : undefined}
-                  onEditorChange={prefsKey ? (key, value) => handleCardPrefChange(prefsKey, key, value) : undefined}
                 >
                   {renderWidgetSummary(widget.id, cardPrefs) ?? (
                     <p className="text-[11px] text-fg-4 italic">No preview</p>
                   )}
                 </DashboardCard>
-                );
-              })}
+              ))}
             </div>
           )}
         </div>
-      )}
-
-      {/* Ghost cards — available to add */}
-      {hasGhosts && (
-        <>
-          <button
-            onClick={toggleAddMore}
-            className="flex items-center gap-1.5 mb-3 group/add"
-          >
-            {showAddMore ? (
-              <ChevronDown size={12} className="text-fg-4 group-hover/add:text-fg-3 transition-colors" />
-            ) : (
-              <ChevronRight size={12} className="text-fg-4 group-hover/add:text-fg-3 transition-colors" />
-            )}
-            <span className="text-[11px] font-mono font-semibold text-fg-4 uppercase tracking-wider group-hover/add:text-fg-3 transition-colors">
-              Add more
-            </span>
-            {!showAddMore && (
-              <span className="text-[10px] text-fg-4 font-normal normal-case tracking-normal">
-                ({availableChannels.length + availableWidgets.length} available)
-              </span>
-            )}
-          </button>
-
-          {showAddMore && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {availableChannels.map((manifest) => (
-                <GhostCard
-                  key={manifest.id}
-                  name={manifest.name}
-                  description={manifest.description}
-                  icon={manifest.icon}
-                  hex={manifest.hex}
-                  onClick={() => {
-                    if (!authenticated) {
-                      onLogin();
-                      return;
-                    }
-                    onAddChannel(manifest.id as ChannelType);
-                  }}
-                />
-              ))}
-              {availableWidgets.map((widget) => (
-                <GhostCard
-                  key={widget.id}
-                  name={widget.name}
-                  description={widget.description}
-                  icon={widget.icon}
-                  hex={widget.hex}
-                  onClick={() => onToggleWidget(widget.id)}
-                />
-              ))}
-            </div>
-          )}
-        </>
       )}
     </div>
   );

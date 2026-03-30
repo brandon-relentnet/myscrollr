@@ -3,10 +3,11 @@
  *
  * Controls what data each summary card shows on the dashboard.
  * Stored via loadPref/savePref (Tauri store-backed).
+ *
+ * Also exports schema maps and prefs-key maps consumed by both
+ * the dashboard (feed.tsx) and the per-source Display tab.
  */
 import { loadPref, savePref } from "../../preferences";
-import { CHANNEL_ORDER } from "../../channels/registry";
-import { WIDGET_ORDER } from "../../widgets/registry";
 
 // ── Per-card preference types ───────────────────────────────────
 
@@ -89,7 +90,6 @@ export const DEFAULT_CARD_PREFS: DashboardCardPrefs = {
 // ── Storage ─────────────────────────────────────────────────────
 
 const PREFS_KEY = "dashboard:cardPrefs";
-const GHOSTS_KEY = "dashboard:showAddMore";
 
 export function loadCardPrefs(): DashboardCardPrefs {
   const saved = loadPref<Partial<DashboardCardPrefs>>(PREFS_KEY, {});
@@ -110,62 +110,7 @@ export function saveCardPrefs(prefs: DashboardCardPrefs): void {
   savePref(PREFS_KEY, prefs);
 }
 
-export function loadShowAddMore(): boolean {
-  return loadPref<boolean>(GHOSTS_KEY, true);
-}
-
-export function saveShowAddMore(show: boolean): void {
-  savePref(GHOSTS_KEY, show);
-}
-
-// ── Card order ──────────────────────────────────────────────────
-
-const ORDER_KEY = "dashboard:cardOrder";
-
-const DEFAULT_CHANNEL_ORDER = [...CHANNEL_ORDER];
-const DEFAULT_WIDGET_ORDER = [...WIDGET_ORDER];
-
-export interface CardOrder {
-  channels: string[];
-  widgets: string[];
-}
-
-/**
- * Load persisted card order, merging with current sources.
- *
- * - Removes stale IDs no longer present in activeChannels/activeWidgets
- * - Appends newly-added IDs at the end (in canonical order among themselves)
- */
-export function loadCardOrder(
-  activeChannels: string[],
-  activeWidgets: string[],
-): CardOrder {
-  const saved = loadPref<Partial<CardOrder>>(ORDER_KEY, {});
-
-  function merge(saved: string[] | undefined, active: string[], defaults: string[]): string[] {
-    const activeSet = new Set(active);
-    // Filter stale entries from saved order
-    const kept = (saved ?? defaults).filter((id) => activeSet.has(id));
-    // Find new IDs not in saved order, sorted by canonical position
-    const keptSet = new Set(kept);
-    const added = defaults
-      .filter((id) => activeSet.has(id) && !keptSet.has(id));
-    // Any active IDs not in defaults at all go last
-    const remaining = active.filter((id) => !keptSet.has(id) && !added.includes(id));
-    return [...kept, ...added, ...remaining];
-  }
-
-  return {
-    channels: merge(saved.channels, activeChannels, DEFAULT_CHANNEL_ORDER),
-    widgets: merge(saved.widgets, activeWidgets, DEFAULT_WIDGET_ORDER),
-  };
-}
-
-export function saveCardOrder(order: CardOrder): void {
-  savePref(ORDER_KEY, order);
-}
-
-// ── Toggle schema (used by CardEditor) ──────────────────────────
+// ── Display-pref field schema ───────────────────────────────────
 
 export interface ToggleField {
   key: string;
@@ -239,3 +184,33 @@ export const GITHUB_SCHEMA: EditorField[] = [
   { type: "toggle", key: "counts", label: "Pass/Fail Counts" },
   { type: "toggle", key: "repos", label: "Repo List" },
 ];
+
+// ── Schema + prefs key maps (shared by feed.tsx + Display tab) ──
+
+export const CHANNEL_SCHEMAS: Record<string, EditorField[]> = {
+  finance: FINANCE_SCHEMA,
+  rss: RSS_SCHEMA,
+  fantasy: FANTASY_SCHEMA,
+};
+
+export const WIDGET_SCHEMAS: Record<string, EditorField[]> = {
+  clock: CLOCK_SCHEMA,
+  weather: WEATHER_SCHEMA,
+  sysmon: SYSMON_SCHEMA,
+  uptime: UPTIME_SCHEMA,
+  github: GITHUB_SCHEMA,
+};
+
+export const CHANNEL_PREFS_KEY: Record<string, keyof DashboardCardPrefs> = {
+  finance: "finance",
+  rss: "rss",
+  fantasy: "fantasy",
+};
+
+export const WIDGET_PREFS_KEY: Record<string, keyof DashboardCardPrefs> = {
+  clock: "clock",
+  weather: "weather",
+  sysmon: "sysmon",
+  uptime: "uptime",
+  github: "github",
+};
