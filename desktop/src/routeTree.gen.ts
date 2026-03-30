@@ -11,8 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TickerRouteImport } from './routes/ticker'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as MarketplaceRouteImport } from './routes/marketplace'
 import { Route as FeedRouteImport } from './routes/feed'
+import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WidgetIdTabRouteImport } from './routes/widget.$id.$tab'
@@ -28,14 +28,14 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MarketplaceRoute = MarketplaceRouteImport.update({
-  id: '/marketplace',
-  path: '/marketplace',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const FeedRoute = FeedRouteImport.update({
   id: '/feed',
   path: '/feed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CatalogRoute = CatalogRouteImport.update({
+  id: '/catalog',
+  path: '/catalog',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AccountRoute = AccountRouteImport.update({
@@ -62,8 +62,8 @@ const ChannelTypeTabRoute = ChannelTypeTabRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/catalog': typeof CatalogRoute
   '/feed': typeof FeedRoute
-  '/marketplace': typeof MarketplaceRoute
   '/settings': typeof SettingsRoute
   '/ticker': typeof TickerRoute
   '/channel/$type/$tab': typeof ChannelTypeTabRoute
@@ -72,8 +72,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/catalog': typeof CatalogRoute
   '/feed': typeof FeedRoute
-  '/marketplace': typeof MarketplaceRoute
   '/settings': typeof SettingsRoute
   '/ticker': typeof TickerRoute
   '/channel/$type/$tab': typeof ChannelTypeTabRoute
@@ -83,8 +83,8 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/catalog': typeof CatalogRoute
   '/feed': typeof FeedRoute
-  '/marketplace': typeof MarketplaceRoute
   '/settings': typeof SettingsRoute
   '/ticker': typeof TickerRoute
   '/channel/$type/$tab': typeof ChannelTypeTabRoute
@@ -95,8 +95,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/account'
+    | '/catalog'
     | '/feed'
-    | '/marketplace'
     | '/settings'
     | '/ticker'
     | '/channel/$type/$tab'
@@ -105,8 +105,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/account'
+    | '/catalog'
     | '/feed'
-    | '/marketplace'
     | '/settings'
     | '/ticker'
     | '/channel/$type/$tab'
@@ -115,8 +115,8 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/account'
+    | '/catalog'
     | '/feed'
-    | '/marketplace'
     | '/settings'
     | '/ticker'
     | '/channel/$type/$tab'
@@ -126,8 +126,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRoute
+  CatalogRoute: typeof CatalogRoute
   FeedRoute: typeof FeedRoute
-  MarketplaceRoute: typeof MarketplaceRoute
   SettingsRoute: typeof SettingsRoute
   TickerRoute: typeof TickerRoute
   ChannelTypeTabRoute: typeof ChannelTypeTabRoute
@@ -150,18 +150,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/marketplace': {
-      id: '/marketplace'
-      path: '/marketplace'
-      fullPath: '/marketplace'
-      preLoaderRoute: typeof MarketplaceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/feed': {
       id: '/feed'
       path: '/feed'
       fullPath: '/feed'
       preLoaderRoute: typeof FeedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/catalog': {
+      id: '/catalog'
+      path: '/catalog'
+      fullPath: '/catalog'
+      preLoaderRoute: typeof CatalogRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/account': {
@@ -198,8 +198,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
+  CatalogRoute: CatalogRoute,
   FeedRoute: FeedRoute,
-  MarketplaceRoute: MarketplaceRoute,
   SettingsRoute: SettingsRoute,
   TickerRoute: TickerRoute,
   ChannelTypeTabRoute: ChannelTypeTabRoute,

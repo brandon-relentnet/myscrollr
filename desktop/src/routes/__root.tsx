@@ -111,7 +111,7 @@ function parseRoute(pathname: string) {
       isMarketplace: false,
     };
   }
-  if (kind === "marketplace") {
+  if (kind === "catalog") {
     return {
       activeItem: "",
       isChannel: false, isWidget: false, isFeed: false,
@@ -248,7 +248,7 @@ function RootLayout() {
   const handleNavigateToTicker = useCallback(() => navigate({ to: "/ticker" }), [navigate]);
   const handleNavigateToSettings = useCallback(() => navigate({ to: "/settings" }), [navigate]);
   const handleNavigateToAccount = useCallback(() => navigate({ to: "/account" }), [navigate]);
-  const handleNavigateToMarketplace = useCallback(() => navigate({ to: "/marketplace" }), [navigate]);
+  const handleNavigateToMarketplace = useCallback(() => navigate({ to: "/catalog" }), [navigate]);
 
   // ── Keyboard shortcuts ──────────────────────────────────────
   useEffect(() => {

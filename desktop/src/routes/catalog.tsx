@@ -16,7 +16,7 @@ import { WIDGET_ORDER } from "../widgets/registry";
 import CatalogCard from "../components/marketplace/CatalogCard";
 import QueryErrorBanner from "../components/QueryErrorBanner";
 
-export const Route = createFileRoute("/marketplace")({
+export const Route = createFileRoute("/catalog")({
   component: CatalogPage,
 });
 
