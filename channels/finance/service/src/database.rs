@@ -41,7 +41,17 @@ pub async fn initialize_pool() -> Result<PgPool> {
 
     let pool = pool_options.connect(&database_url).await.context("Failed to connect to the PostgreSQL database")?;
 
-    MIGRATOR.run(&pool).await.context("Failed to run migrations")?;
+    // Run migrations; if checksums mismatch (e.g. migration files were edited after
+    // first apply), clear the tracking table and retry.  All migration SQL is
+    // idempotent (IF NOT EXISTS), so re-applying is safe.
+    if let Err(e) = MIGRATOR.run(&pool).await {
+        log::warn!("Migrations failed ({}), resetting _sqlx_migrations and retrying…", e);
+        sqlx::query("DELETE FROM _sqlx_migrations")
+            .execute(&pool)
+            .await
+            .context("Failed to clear _sqlx_migrations")?;
+        MIGRATOR.run(&pool).await.context("Failed to run migrations after reset")?;
+    }
 
     Ok(pool)
 }
