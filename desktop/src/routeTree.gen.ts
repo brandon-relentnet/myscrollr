@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TickerRouteImport } from './routes/ticker'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as MarketplaceRouteImport } from './routes/marketplace'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
@@ -25,6 +26,11 @@ const TickerRoute = TickerRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketplaceRoute = MarketplaceRouteImport.update({
+  id: '/marketplace',
+  path: '/marketplace',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FeedRoute = FeedRouteImport.update({
@@ -57,6 +63,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/feed': typeof FeedRoute
+  '/marketplace': typeof MarketplaceRoute
   '/settings': typeof SettingsRoute
   '/ticker': typeof TickerRoute
   '/channel/$type/$tab': typeof ChannelTypeTabRoute
@@ -66,6 +73,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/feed': typeof FeedRoute
+  '/marketplace': typeof MarketplaceRoute
   '/settings': typeof SettingsRoute
   '/ticker': typeof TickerRoute
   '/channel/$type/$tab': typeof ChannelTypeTabRoute
@@ -76,6 +84,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/feed': typeof FeedRoute
+  '/marketplace': typeof MarketplaceRoute
   '/settings': typeof SettingsRoute
   '/ticker': typeof TickerRoute
   '/channel/$type/$tab': typeof ChannelTypeTabRoute
@@ -87,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account'
     | '/feed'
+    | '/marketplace'
     | '/settings'
     | '/ticker'
     | '/channel/$type/$tab'
@@ -96,6 +106,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account'
     | '/feed'
+    | '/marketplace'
     | '/settings'
     | '/ticker'
     | '/channel/$type/$tab'
@@ -105,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account'
     | '/feed'
+    | '/marketplace'
     | '/settings'
     | '/ticker'
     | '/channel/$type/$tab'
@@ -115,6 +127,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRoute
   FeedRoute: typeof FeedRoute
+  MarketplaceRoute: typeof MarketplaceRoute
   SettingsRoute: typeof SettingsRoute
   TickerRoute: typeof TickerRoute
   ChannelTypeTabRoute: typeof ChannelTypeTabRoute
@@ -135,6 +148,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marketplace': {
+      id: '/marketplace'
+      path: '/marketplace'
+      fullPath: '/marketplace'
+      preLoaderRoute: typeof MarketplaceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/feed': {
@@ -179,6 +199,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
   FeedRoute: FeedRoute,
+  MarketplaceRoute: MarketplaceRoute,
   SettingsRoute: SettingsRoute,
   TickerRoute: TickerRoute,
   ChannelTypeTabRoute: ChannelTypeTabRoute,

@@ -84,6 +84,7 @@ function parseRoute(pathname: string) {
       activeItem: "",
       isChannel: false, isWidget: false, isFeed: true,
       isTicker: false, isSettings: false, isAccount: false,
+      isMarketplace: false,
     };
   }
   if (kind === "channel" && itemId) {
@@ -91,6 +92,7 @@ function parseRoute(pathname: string) {
       activeItem: itemId,
       isChannel: true, isWidget: false, isFeed: false,
       isTicker: false, isSettings: false, isAccount: false,
+      isMarketplace: false,
     };
   }
   if (kind === "widget" && itemId) {
@@ -98,6 +100,7 @@ function parseRoute(pathname: string) {
       activeItem: itemId,
       isChannel: false, isWidget: true, isFeed: false,
       isTicker: false, isSettings: false, isAccount: false,
+      isMarketplace: false,
     };
   }
   if (kind === "ticker") {
@@ -105,6 +108,15 @@ function parseRoute(pathname: string) {
       activeItem: "ticker",
       isChannel: false, isWidget: false, isFeed: false,
       isTicker: true, isSettings: false, isAccount: false,
+      isMarketplace: false,
+    };
+  }
+  if (kind === "marketplace") {
+    return {
+      activeItem: "",
+      isChannel: false, isWidget: false, isFeed: false,
+      isTicker: false, isSettings: false, isAccount: false,
+      isMarketplace: true,
     };
   }
   if (kind === "settings") {
@@ -112,6 +124,7 @@ function parseRoute(pathname: string) {
       activeItem: "settings",
       isChannel: false, isWidget: false, isFeed: false,
       isTicker: false, isSettings: true, isAccount: false,
+      isMarketplace: false,
     };
   }
   if (kind === "account") {
@@ -119,12 +132,14 @@ function parseRoute(pathname: string) {
       activeItem: "",
       isChannel: false, isWidget: false, isFeed: false,
       isTicker: false, isSettings: false, isAccount: true,
+      isMarketplace: false,
     };
   }
   return {
     activeItem: "",
     isChannel: false, isWidget: false, isFeed: true,
     isTicker: false, isSettings: false, isAccount: false,
+    isMarketplace: false,
   };
 }
 
@@ -233,6 +248,7 @@ function RootLayout() {
   const handleNavigateToTicker = useCallback(() => navigate({ to: "/ticker" }), [navigate]);
   const handleNavigateToSettings = useCallback(() => navigate({ to: "/settings" }), [navigate]);
   const handleNavigateToAccount = useCallback(() => navigate({ to: "/account" }), [navigate]);
+  const handleNavigateToMarketplace = useCallback(() => navigate({ to: "/marketplace" }), [navigate]);
 
   // ── Keyboard shortcuts ──────────────────────────────────────
   useEffect(() => {
@@ -371,6 +387,7 @@ function RootLayout() {
           isTicker={route.isTicker}
           isSettings={route.isSettings}
           isAccount={route.isAccount}
+          isMarketplace={route.isMarketplace}
           channels={enabledChannels}
           enabledWidgets={enabledWidgets}
           allChannelManifests={allChannelManifests}
@@ -382,6 +399,7 @@ function RootLayout() {
           onNavigateToTicker={handleNavigateToTicker}
           onNavigateToSettings={handleNavigateToSettings}
           onNavigateToAccount={handleNavigateToAccount}
+          onNavigateToMarketplace={handleNavigateToMarketplace}
         />
 
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">

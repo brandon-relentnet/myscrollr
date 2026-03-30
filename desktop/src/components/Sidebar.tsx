@@ -6,7 +6,7 @@
  * Collapses to a 48px icon-only rail with tooltips.
  */
 import { useState, useMemo } from "react";
-import { LayoutDashboard, Rows3, Settings, User, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { LayoutDashboard, Rows3, Store, Settings, User, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import clsx from "clsx";
 import Tooltip from "./Tooltip";
 import type { ChannelManifest, WidgetManifest, DeliveryMode } from "../types";
@@ -84,6 +84,8 @@ interface SidebarProps {
   isSettings: boolean;
   /** Whether the account page is active. */
   isAccount: boolean;
+  /** Whether the marketplace page is active. */
+  isMarketplace: boolean;
 
   /** User's configured channels from the API. */
   channels: Channel[];
@@ -109,6 +111,8 @@ interface SidebarProps {
   onNavigateToSettings: () => void;
   /** Navigate to the account page. */
   onNavigateToAccount: () => void;
+  /** Navigate to the marketplace page. */
+  onNavigateToMarketplace: () => void;
 }
 
 // ── Component ───────────────────────────────────────────────────
@@ -119,6 +123,7 @@ export default function Sidebar({
   isTicker,
   isSettings,
   isAccount,
+  isMarketplace,
   channels,
   enabledWidgets,
   allChannelManifests,
@@ -130,6 +135,7 @@ export default function Sidebar({
   onNavigateToTicker,
   onNavigateToSettings,
   onNavigateToAccount,
+  onNavigateToMarketplace,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(() =>
     loadPref("sidebarCollapsed", false),
@@ -219,6 +225,15 @@ export default function Sidebar({
           active={isTicker}
           collapsed={collapsed}
           onClick={onNavigateToTicker}
+        />
+
+        {/* Marketplace */}
+        <NavItem
+          icon={<Store size={15} />}
+          label="Marketplace"
+          active={isMarketplace}
+          collapsed={collapsed}
+          onClick={onNavigateToMarketplace}
         />
 
         {/* Channels section */}

@@ -104,7 +104,7 @@ export interface FeedTabProps {
 }
 
 /** Structured info content for the Info tab. */
-interface SourceInfo {
+export interface SourceInfo {
   /** What this source is and what it does. */
   about: string;
   /** How to use it (rendered as bullet points). */
