@@ -169,6 +169,7 @@ func (s *Server) setupRoutes() {
 	s.App.Get("/users/me/subscription/preview", LogtoAuth, HandlePreviewPlanChange)
 	s.App.Put("/users/me/subscription/plan", LogtoAuth, HandleChangePlan)
 	s.App.Post("/users/me/subscription/cancel", LogtoAuth, HandleCancelSubscription)
+	s.App.Post("/users/me/subscription/portal", LogtoAuth, HandleCreatePortalSession)
 
 	// User Routes — specific /users/me/* paths BEFORE parameterized /users/:username
 	s.App.Get("/users/me/preferences", LogtoAuth, HandleGetPreferences)

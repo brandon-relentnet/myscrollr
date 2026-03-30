@@ -9,6 +9,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/stripe/stripe-go/v82"
+	billingportalsession "github.com/stripe/stripe-go/v82/billingportal/session"
 	checkoutsession "github.com/stripe/stripe-go/v82/checkout/session"
 	stripecustomer "github.com/stripe/stripe-go/v82/customer"
 	stripeinvoice "github.com/stripe/stripe-go/v82/invoice"
@@ -226,6 +227,9 @@ func HandleCreateCheckoutSession(c *fiber.Ctx) error {
 			},
 		},
 		ReturnURL: stripe.String(frontendURL + "/uplink?session_id={CHECKOUT_SESSION_ID}"),
+		SubscriptionData: &stripe.CheckoutSessionSubscriptionDataParams{
+			TrialPeriodDays: stripe.Int64(7),
+		},
 	}
 	params.AddMetadata("logto_sub", userID)
 	params.AddMetadata("plan", plan)
@@ -777,4 +781,48 @@ func HandlePreviewPlanChange(c *fiber.Ctx) error {
 		ProrationDate: prorationDate,
 		IsDowngrade:   false,
 	})
+}
+
+// =============================================================================
+// Stripe Customer Portal
+// =============================================================================
+
+// HandleCreatePortalSession creates a Stripe Customer Portal session so users
+// can manage payment methods, view invoices, and update billing details.
+func HandleCreatePortalSession(c *fiber.Ctx) error {
+	userID := GetUserID(c)
+	if userID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Status: "unauthorized", Error: "Authentication required",
+		})
+	}
+
+	var customerID string
+	err := DBPool.QueryRow(context.Background(),
+		`SELECT stripe_customer_id FROM stripe_customers WHERE logto_sub = $1`,
+		userID,
+	).Scan(&customerID)
+	if err != nil {
+		log.Printf("[Billing] No Stripe customer found for %s: %v", userID, err)
+		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{
+			Status: "error", Error: "No billing account found",
+		})
+	}
+
+	frontendURL := getFrontendURL(c)
+
+	params := &stripe.BillingPortalSessionParams{
+		Customer:  stripe.String(customerID),
+		ReturnURL: stripe.String(frontendURL + "/account"),
+	}
+
+	session, err := billingportalsession.New(params)
+	if err != nil {
+		log.Printf("[Billing] Failed to create portal session for %s: %v", userID, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Status: "error", Error: "Failed to create billing portal session",
+		})
+	}
+
+	return c.JSON(fiber.Map{"url": session.URL})
 }

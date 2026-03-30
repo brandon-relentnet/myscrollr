@@ -56,6 +56,7 @@ export default function SubscriptionStatus({
   const [tier, setTier] = useState<string>('free')
   const [loading, setLoading] = useState(true)
   const [canceling, setCanceling] = useState(false)
+  const [openingPortal, setOpeningPortal] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Derive tier from both JWT-based preferences AND the plan string directly
@@ -86,6 +87,17 @@ export default function SubscriptionStatus({
       setError('Failed to load subscription')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleOpenPortal() {
+    try {
+      setOpeningPortal(true)
+      const { url } = await billingApi.createPortalSession(getToken)
+      window.location.href = url
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to open billing portal')
+      setOpeningPortal(false)
     }
   }
 
@@ -244,10 +256,40 @@ export default function SubscriptionStatus({
           </div>
         )}
 
+      {/* Past Due Warning */}
+      {subscription.status === 'past_due' && (
+        <div className="flex items-center gap-2 p-2.5 rounded-lg bg-error/10 border border-error/20">
+          <AlertTriangle size={14} className="text-error shrink-0" />
+          <span className="text-[10px] text-error/80">
+            Your payment failed. Update your payment method to avoid service interruption.
+          </span>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="flex gap-2">
+        {subscription.status === 'past_due' && !subscription.lifetime && (
+          <button
+            onClick={handleOpenPortal}
+            disabled={openingPortal}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-[10px] font-semibold border border-error/30 rounded-lg
+                       text-error hover:bg-error/10 transition-colors disabled:opacity-50"
+          >
+            <CreditCard size={10} />
+            {openingPortal ? 'Opening...' : 'Update Payment Method'}
+          </button>
+        )}
         {subscription.status === 'active' && !subscription.lifetime && (
           <>
+            <button
+              onClick={handleOpenPortal}
+              disabled={openingPortal}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 text-[10px] font-semibold border border-base-content/10 rounded-lg
+                         text-base-content/40 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-50"
+            >
+              <CreditCard size={10} />
+              {openingPortal ? 'Opening...' : 'Manage Subscription'}
+            </button>
             <Link
               to="/uplink"
               search={{ session_id: undefined }}

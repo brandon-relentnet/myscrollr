@@ -72,15 +72,15 @@ All paid tiers include a 7-day free trial.
 
 > Free trial is a compliance risk — pricing page promises "7-day free trial" but checkout charges immediately. Stripe Customer Portal is the only way users can update payment methods or view invoices.
 
-- [ ] Implement 7-day free trial (add `subscription_data.trial_period_days: 7` to `billing.go:HandleCreateCheckoutSession`)
-- [ ] Integrate Stripe Customer Portal (new endpoint to create portal session; link from website billing UI + desktop app)
-- [ ] Handle Customer Portal browser handoff from desktop app (open portal URL in default browser via Tauri `shell:open`)
-- [ ] Failed payment dunning: add "Update payment method" CTA in `past_due` UI state + user notification (webhook already sets `past_due` in DB)
+- [x] Implement 7-day free trial (`SubscriptionData.TrialPeriodDays: 7` in `billing.go:230-232`)
+- [x] Integrate Stripe Customer Portal (`HandleCreatePortalSession` at `billing.go:786-828`; route `POST /users/me/subscription/portal` at `server.go:172`)
+- [x] Handle Customer Portal browser handoff from desktop app (`AccountSettings.tsx` opens portal URL via `shell:open`)
+- [x] Failed payment dunning: `past_due` warning banner + "Update Payment Method" CTA in website `SubscriptionStatus.tsx`; desktop opens portal
 - [ ] Test resubscribe after cancel (full lifecycle: subscribe → cancel → wait for period end → resubscribe)
-- [ ] Desktop billing UI on Account page:
-  - [ ] "Manage Subscription" button (opens Stripe Customer Portal in browser)
-  - [ ] Current plan with tier limits summary
-  - [ ] Upgrade prompt linking to website pricing page
+- [x] Desktop billing UI on Account page:
+  - [x] "Manage Subscription" button (opens Stripe Customer Portal in browser)
+  - [x] Current plan with tier limits summary (`TierLimitsTable` component)
+  - [x] Upgrade prompt linking to website pricing page
 
 ---
 
@@ -89,21 +89,21 @@ All paid tiers include a 7-day free trial.
 > Full pivot from browser extension to desktop app. 18 files affected. Hero visual: "Desktop Workspace" concept (animated desktop with real app windows + ticker at bottom edge). HowItWorks: "Download → Choose Your Data → Work as Usual."
 
 ### Download Page (new route)
-- [ ] Create `/download` route with OS detection (`navigator.platform` / `navigator.userAgent`)
-- [ ] Download buttons: macOS (Apple Silicon), macOS (Intel), Windows (x64), Linux (AppImage)
-- [ ] System requirements + unsigned binary instructions (until code signing is done)
-- [ ] Link to GitHub releases as fallback
+- [x] Create `/download` route with OS detection (`navigator.platform` / `navigator.userAgent`)
+- [x] Download buttons: macOS (Apple Silicon), Windows (x64), Linux (AppImage) — Intel Mac not built by CI
+- [x] System requirements + unsigned binary instructions (until code signing is done)
+- [x] Link to GitHub releases as fallback
 
 ### Landing Page Rewrites
 - [x] Delete `src/components/InstallButton.tsx`
 - [x] Create `DownloadButton.tsx` component (OS detection, GitHub releases link — replaces InstallButton across the site)
-- [ ] Rewrite `HeroBrowserStack.tsx` → Desktop Workspace visual (animated desktop with app windows + ticker at bottom edge)
-- [ ] Rewrite `HowItWorks.tsx` → "Download → Choose Your Data → Work as Usual" (new visuals for steps 1 + 3) *(import swapped to DownloadButton)*
-- [ ] Update `HeroSection.tsx` (copy: "bottom of your browser" → desktop language) *(import swapped to DownloadButton)*
-- [ ] Update `FAQSection.tsx` (every answer references browser/extension — reframe all for desktop)
-- [ ] Update `CallToAction.tsx` (copy + replace browser list with platform list: macOS / Windows / Linux) *(import swapped to DownloadButton)*
+- [x] Rewrite `HeroBrowserStack.tsx` → `HeroDesktopPreview.tsx` (macOS traffic lights, app title bar, 4 desktop contexts)
+- [x] Rewrite `HowItWorks.tsx` → "Download → Choose Your Data → Work as Usual" (DownloadVisual + WorkVisual)
+- [x] Update `HeroSection.tsx` (copy: "bottom of your browser" → "edge of your screen")
+- [x] Update `FAQSection.tsx` (all 8 answers reframed for desktop)
+- [x] Update `CallToAction.tsx` (copy + browser list → platform list: macOS / Windows / Linux)
 - [x] Update `ChannelsShowcase.tsx` ("every tab" → "your desktop/screen", 4 edits)
-- [ ] Update `BenefitsSection.tsx` ("specific sites" + browser-tab illustration → desktop)
+- [x] Update `BenefitsSection.tsx` ("specific sites" → "minimize it")
 - [x] Update `TrustSection.tsx` ("Your browser, your data" → "Your device, your data"; "Extension component" → "Desktop component")
 - [x] Update `Footer.tsx` (Chrome/Firefox store links → Download link; "every tab" tagline → desktop)
 - [x] Update `routes/index.tsx` (title + meta description → desktop)
@@ -119,15 +119,15 @@ All paid tiers include a 7-day free trial.
 
 ### Legal Documents (`documents.ts`)
 - [x] Delete "Browser Extension Privacy" document (#6) — removed entirely
-- [ ] Create "Desktop Application Privacy" document (local storage: `scrollr.json` with 16+ keys, log files, system info access, auto-update endpoint)
-- [ ] Add "Desktop Application" section to Terms of Service (existing "Browser Extension" section renamed to "Desktop Application" — may need expanded content)
+- [x] Create "Desktop Application Privacy" document (7 sections: local data, network, what's NOT accessed, auto updates, third-party, data deletion)
+- [x] Add "Desktop Application" section to Terms of Service (confirmed present at `documents.ts:91-96`)
 - [x] Update Privacy Policy body: "browser extension" → "desktop application"
 - [x] Update Cookie & Storage Policy scope: "browser extension" → "desktop application"
 - [x] Update Security Policy scope: "browser extension" → "desktop application"
 - [x] Update Accessibility Statement: "Browser Extension" section → "Desktop Application" (Shadow Root → native ticker window)
 - [x] Update Acceptable Use Policy scope: "browser extension" → "desktop application"
 - [x] **Fix Finnhub → TwelveData** (all 9 occurrences replaced, including `finnhub.io` → `twelvedata.com` URLs)
-- [ ] Disclose desktop local data: auth tokens, preferences, widget configs, log files, system info access (CPU/GPU/memory/temps/network)
+- [x] Disclose desktop local data: auth tokens, preferences, widget configs, log files, window state (updated Cookie & Storage Policy + new Desktop Privacy doc)
 
 ---
 
@@ -135,14 +135,14 @@ All paid tiers include a 7-day free trial.
 
 > Client-side enforcement in the desktop app config panels. The `subscriptionTier` prop already flows into every config panel — it just needs to be used. Server-side enforcement deferred to v1.1.
 
-- [ ] Finance: enforce symbol limit (Free=5, Uplink=25, Pro=75, Ultimate=unlimited)
-- [ ] RSS: enforce feed count limit (Free=1, Uplink=25, Pro=100, Ultimate=unlimited)
-- [ ] RSS: enforce custom feed limit (Free=0, Uplink=1, Pro=3, Ultimate=10); block "Add Custom Feed" for Free
-- [ ] Sports: enforce league count limit (Free=1, Uplink=8, Pro=20, Ultimate=unlimited)
-- [ ] Fantasy: gate channel entirely for Free tier (upgrade prompt instead of Yahoo connect flow)
-- [ ] Fantasy: enforce league import limit (Uplink=1, Pro=3, Ultimate=10)
-- [ ] Usage indicators in all config panels ("12/25 symbols tracked")
-- [ ] Shared `UpgradePrompt` component reused across all channels
+- [x] Finance: enforce symbol limit (Free=5, Uplink=25, Pro=75, Ultimate=unlimited)
+- [x] RSS: enforce feed count limit (Free=1, Uplink=25, Pro=100, Ultimate=unlimited)
+- [x] RSS: enforce custom feed limit (Free=0, Uplink=1, Pro=3, Ultimate=10); block "Add Custom Feed" for Free
+- [x] Sports: enforce league count limit (Free=1, Uplink=8, Pro=20, Ultimate=unlimited)
+- [x] Fantasy: gate channel entirely for Free tier (upgrade prompt instead of Yahoo connect flow)
+- [x] Fantasy: enforce league import limit (Uplink=1, Pro=3, Ultimate=10)
+- [x] Usage indicators in all config panels ("5/25 symbols tracked")
+- [x] Shared `UpgradePrompt` component reused across all channels
 - [x] Server-side SSE access gating (`/events` endpoint now extracts roles from JWT claims and returns 403 for non-`uplink_ultimate` users)
 
 ---
