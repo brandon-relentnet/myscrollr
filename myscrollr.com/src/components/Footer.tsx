@@ -16,10 +16,7 @@ export default function Footer() {
   const links = {
     product: [
       { label: 'Channels', href: '/channels' },
-      {
-        label: 'Download',
-        href: 'https://github.com/brandon-relentnet/myscrollr/releases/latest',
-      },
+      { label: 'Download', href: '/download' },
       { label: 'Uplink', href: '/uplink' },
     ],
     resources: [

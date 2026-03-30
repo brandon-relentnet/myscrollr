@@ -7,6 +7,7 @@ import {
   GitPullRequest,
   Link2,
   Lock,
+  Monitor,
   RotateCcw,
   Scale,
   Shield,
@@ -219,6 +220,73 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
   },
 
   // ─────────────────────────────────────────────────────────────
+  // 2b. DESKTOP APPLICATION PRIVACY
+  // ─────────────────────────────────────────────────────────────
+  {
+    slug: 'desktop-privacy',
+    title: 'Desktop Application Privacy',
+    shortTitle: 'Desktop Privacy',
+    icon: Monitor,
+    category: 'data',
+    lastUpdated: 'March 2026',
+    effectiveDate: 'March 30, 2026',
+    badge: 'New',
+    sections: [
+      {
+        heading: 'Overview',
+        content: [
+          'This document describes the privacy practices specific to the Scrollr desktop application. It supplements our general Privacy Policy with details about what the desktop app stores on your device, what it transmits, and what it does not access.',
+        ],
+      },
+      {
+        heading: 'Data Stored Locally',
+        content: [
+          'The Scrollr desktop application stores the following data on your device:',
+          'Authentication tokens: Your access token and refresh token for authenticating with our API servers. These are stored in the application data directory and are not shared with any third party.',
+          'Channel and widget configurations: Your selected data sources (stock symbols, RSS feeds, sports leagues, fantasy leagues), ticker layout preferences, and per-channel display settings.',
+          'Feed preferences: Display settings including ticker position, mode, behavior, visibility, scroll speed, and appearance customizations.',
+          'Dashboard state: Cached dashboard data for faster loading between sessions.',
+          'Application logs: Diagnostic log files are written to a local logs directory within the application data folder. These logs contain operational information (connection status, errors, data sync events) and do not contain personal data, browsing activity, or content from other applications.',
+          'Window state: Window position, size, and display information used to restore your ticker and main window layout between sessions.',
+        ],
+      },
+      {
+        heading: 'Network Communication',
+        content: [
+          'The desktop application communicates exclusively with Scrollr API servers (api.myscrollr.relentnet.dev) to retrieve real-time data via Server-Sent Events (SSE) and to synchronize your configuration.',
+          'All network communication uses HTTPS encryption. The application sends your authentication token and subscription tier with each request. It does not transmit any data about other applications, files, or activity on your device.',
+        ],
+      },
+      {
+        heading: 'What the Application Does Not Access',
+        content: [
+          'The Scrollr desktop application does not read, collect, or transmit: the content of other applications or windows on your screen; your browsing history, bookmarks, or browser data; files, documents, or media on your device; clipboard contents; keystrokes or input to other applications; your location, contacts, calendar, or other personal data; or screenshots or screen recordings.',
+          'The application renders its own ticker window as a native overlay. It does not inject code into, modify, or interact with any other application.',
+        ],
+      },
+      {
+        heading: 'Automatic Updates',
+        content: [
+          'The application checks for updates by downloading a manifest file (latest.json) from our GitHub releases. Update checks transmit only the request for the manifest file. If an update is available, you are prompted before downloading. Update artifacts are cryptographically signed to ensure integrity.',
+        ],
+      },
+      {
+        heading: 'Third-Party Services',
+        content: [
+          'Yahoo Fantasy Sports: If you connect your Yahoo account, the desktop application opens your default browser for the OAuth authorization flow. The application stores an encrypted refresh token locally and on our servers to maintain the connection. See our Privacy Policy for details on Yahoo data handling.',
+          'The application does not include any analytics SDKs, telemetry services, crash reporters, or advertising frameworks.',
+        ],
+      },
+      {
+        heading: 'Data Deletion',
+        content: [
+          'You can delete all locally stored data by uninstalling the application or by using the "Reset all settings" option on the Account page. Server-side data (channel configurations, account preferences) can be deleted by contacting us through our GitHub repository or community Discord.',
+        ],
+      },
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────
   // 3. COOKIE & STORAGE POLICY
   // ─────────────────────────────────────────────────────────────
   {
@@ -247,7 +315,7 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
         heading: 'Desktop Application Storage',
         content: [
           'The Scrollr desktop application uses local storage to store the following data on your device:',
-          'Authentication tokens: Your access token and refresh token for communicating with our API. Feed preferences: Your display settings (position, mode, behavior, visibility). Dashboard state: Cached dashboard data for faster loading. Connection state: SSE connection status and subscription information.',
+          'Authentication tokens: Your access token and refresh token for communicating with our API. Feed preferences: Your display settings (position, mode, behavior, visibility). Channel and widget configurations: Your selected data sources, ticker layout, and per-channel settings. Dashboard state: Cached dashboard data for faster loading. Connection state: SSE connection status and subscription information. Application logs: Diagnostic log files written locally for troubleshooting. Window state: Window position, size, and display information used to manage the ticker and main windows.',
           "This data is stored locally on your device and is not transmitted to third parties. It is only sent to Scrollr's API servers to authenticate requests and retrieve your personalized data.",
         ],
       },
@@ -262,7 +330,7 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
         heading: 'Managing Storage',
         content: [
           'Website cookies: You can clear cookies through your browser settings. Note that clearing authentication cookies will sign you out of the Platform.',
-          "Extension storage: You can clear extension data by removing and re-installing the extension, or through your browser's extension management page. You can also manage your preferences through the extension's settings panel or the web dashboard.",
+          'Desktop application: You can clear application data by uninstalling and re-installing the app, or by using the "Reset all settings" option in the Account page. You can also manage your preferences through the app settings.',
           'Disabling cookies entirely may prevent you from using authenticated features of the Platform.',
         ],
       },
@@ -647,9 +715,9 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
         ],
       },
       {
-        heading: 'Extension Modifications',
+        heading: 'Application Modifications',
         content: [
-          'You may modify the Scrollr extension source code under the terms of the AGPL-3.0 license. However, modified extensions that connect to our hosted infrastructure must comply with this AUP. We reserve the right to block connections from modified clients that abuse our services.',
+          'You may modify the Scrollr source code under the terms of the AGPL-3.0 license. However, modified applications that connect to our hosted infrastructure must comply with this AUP. We reserve the right to block connections from modified clients that abuse our services.',
         ],
       },
       {

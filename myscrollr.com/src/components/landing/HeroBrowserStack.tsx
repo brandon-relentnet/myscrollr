@@ -71,10 +71,9 @@ type Accent = keyof typeof accentMap
 
 interface MockupConfig {
   word: string
-  url: string
-  tabTitle: string
-  tabIconBg: string
-  tabIconDot: string
+  appTitle: string
+  appIconBg: string
+  appIconDot: string
   accent: Accent
   tickerChips: Array<{ label: string; value: string }>
 }
@@ -82,10 +81,9 @@ interface MockupConfig {
 const MOCKUPS: Array<MockupConfig> = [
   {
     word: 'Scores',
-    url: 'youtube.com/watch?v=dQw4w9W',
-    tabTitle: 'lofi hip hop radio ☕ - YouTube',
-    tabIconBg: 'bg-secondary/15',
-    tabIconDot: 'bg-secondary',
+    appTitle: 'Music — Chill Mix',
+    appIconBg: 'bg-secondary/15',
+    appIconDot: 'bg-secondary',
     accent: 'secondary',
     tickerChips: [
       { label: 'LAL 112', value: 'BOS 108' },
@@ -95,10 +93,9 @@ const MOCKUPS: Array<MockupConfig> = [
   },
   {
     word: 'Markets',
-    url: 'github.com/acme/app/pull/412',
-    tabTitle: 'fix: auth token · PR #412',
-    tabIconBg: 'bg-base-content/8',
-    tabIconDot: 'bg-base-content/50',
+    appTitle: 'Code — acme-project',
+    appIconBg: 'bg-base-content/8',
+    appIconDot: 'bg-base-content/50',
     accent: 'primary',
     tickerChips: [
       { label: 'BTC', value: '+2.47%' },
@@ -108,10 +105,9 @@ const MOCKUPS: Array<MockupConfig> = [
   },
   {
     word: 'Headlines',
-    url: 'docs.google.com/document/d/1xQ...',
-    tabTitle: 'Q4 Planning Notes - Google Docs',
-    tabIconBg: 'bg-info/15',
-    tabIconDot: 'bg-info',
+    appTitle: 'Notes — Q4 Planning',
+    appIconBg: 'bg-info/15',
+    appIconDot: 'bg-info',
     accent: 'info',
     tickerChips: [
       { label: 'Fed holds rates', value: 'Reuters' },
@@ -121,10 +117,9 @@ const MOCKUPS: Array<MockupConfig> = [
   },
   {
     word: 'Leagues',
-    url: 'x.com/home',
-    tabTitle: 'Home / X',
-    tabIconBg: 'bg-base-content/8',
-    tabIconDot: 'bg-base-content/50',
+    appTitle: 'Chat — #general',
+    appIconBg: 'bg-base-content/8',
+    appIconDot: 'bg-base-content/50',
     accent: 'accent',
     tickerChips: [
       { label: 'P. Mahomes', value: '28.4 pts' },
@@ -134,96 +129,124 @@ const MOCKUPS: Array<MockupConfig> = [
   },
 ]
 
-// ── Fake page content — each is an unrelated site ────────────────
-// The ticker shows integration data (scores, markets, etc.)
-// while the PAGE shows a totally different website — proving
-// that Scrollr works on any tab.
+// ── Desktop app content ──────────────────────────────────────────
+// Each shows a different desktop app the user might be working in.
+// The ticker at the bottom shows live data (scores, markets, etc.)
+// regardless of which app is in focus — proving Scrollr works
+// across your entire desktop.
 
-function YouTubePageContent() {
+function MusicPlayerContent() {
   return (
     <div className="space-y-2">
-      {/* Video player */}
+      {/* Album art */}
       <div className="h-16 rounded-sm bg-base-300/30 flex items-center justify-center relative overflow-hidden">
-        {/* Fake video gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-base-content/4 to-base-content/8" />
-        {/* Play button */}
-        <div className="relative w-8 h-5.5 rounded bg-secondary/90 flex items-center justify-center">
-          <span className="text-white text-[8px] ml-0.5">▶</span>
+        <div className="absolute inset-0 bg-gradient-to-br from-secondary/8 to-secondary/15" />
+        <div className="relative flex flex-col items-center">
+          <span className="text-[16px]">&#9835;</span>
+          <span className="text-[7px] text-base-content/30 mt-0.5">
+            Now Playing
+          </span>
         </div>
-        {/* Timestamp */}
-        <span className="absolute bottom-1 right-1.5 text-[7px] font-mono bg-base-content/60 text-white px-1 rounded-sm">
-          2:34:17
-        </span>
       </div>
-      {/* Title + channel */}
-      <div className="px-0.5">
+      {/* Track info */}
+      <div className="px-0.5 text-center">
         <p className="text-[11px] font-semibold text-base-content/65 leading-snug">
-          lofi hip hop radio ☕ beats to relax/study to
+          Midnight Drift
         </p>
-        <div className="flex items-center gap-1 mt-0.5">
-          <div className="w-3.5 h-3.5 rounded-full bg-base-300/30 shrink-0" />
-          <span className="text-[9px] text-base-content/30">
-            Lofi Girl · 42M views
-          </span>
-        </div>
+        <p className="text-[9px] text-base-content/30 mt-0.5">
+          Chillhop Essentials
+        </p>
       </div>
-      {/* Top comment — the hint */}
-      <div className="flex items-start gap-2 px-0.5 pt-1.5 border-t border-base-300/10">
-        <div className="w-4 h-4 rounded-full bg-base-300/20 shrink-0 mt-0.5" />
-        <div>
-          <span className="text-[8px] font-medium text-base-content/35">
-            @chillvibes42
-          </span>
-          <p className="text-[9px] text-base-content/30 leading-snug">
-            finally watching this without checking ESPN every 5 min 😌🏀
-          </p>
+      {/* Progress bar */}
+      <div className="flex items-center gap-2 px-0.5">
+        <span className="text-[7px] font-mono text-base-content/20">2:34</span>
+        <div className="flex-1 h-1 rounded-full bg-base-300/20 relative overflow-hidden">
+          <div className="absolute inset-y-0 left-0 w-3/5 rounded-full bg-secondary/40" />
         </div>
+        <span className="text-[7px] font-mono text-base-content/20">4:12</span>
+      </div>
+      {/* Playback controls */}
+      <div className="flex items-center justify-center gap-4">
+        <span className="text-[10px] text-base-content/20">&#9198;</span>
+        <div className="w-6 h-6 rounded-full bg-base-content/8 flex items-center justify-center">
+          <span className="text-[10px] text-base-content/40 ml-0.5">
+            &#9654;
+          </span>
+        </div>
+        <span className="text-[10px] text-base-content/20">&#9197;</span>
+      </div>
+      {/* Up Next — the hint */}
+      <div className="px-0.5 pt-1 border-t border-base-300/10">
+        <span className="text-[8px] text-base-content/20 uppercase tracking-wider">
+          Up Next
+        </span>
+        <p className="text-[9px] text-base-content/30 leading-snug mt-0.5">
+          game day focus — scores live at the bottom &#127936;
+        </p>
       </div>
     </div>
   )
 }
 
-function GitHubPageContent() {
+function CodeEditorContent() {
+  const lines = [
+    { num: 1, code: "import { fetchData } from", cls: 'text-info/50' },
+    { num: 2, code: "  './api'", cls: 'text-primary/50' },
+    { num: 3, code: '', cls: '' },
+    {
+      num: 4,
+      code: '// prices in the ticker — focus here',
+      cls: 'text-base-content/20',
+    },
+    {
+      num: 5,
+      code: 'async function syncPortfolio() {',
+      cls: 'text-accent/50',
+    },
+    {
+      num: 6,
+      code: '  const data = await fetchData()',
+      cls: 'text-base-content/40',
+    },
+    {
+      num: 7,
+      code: '  return data.filter(active)',
+      cls: 'text-base-content/40',
+    },
+    { num: 8, code: '}', cls: 'text-accent/50' },
+  ]
+
   return (
-    <div className="space-y-2">
-      {/* PR header */}
-      <div className="flex items-center gap-2">
-        <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary font-semibold">
-          Open
-        </span>
-        <span className="text-[11px] font-semibold text-base-content/60 truncate">
-          fix: auth token refresh flow
-        </span>
-      </div>
-      <div className="text-[8px] text-base-content/25">
-        acme/app #412 · opened 2h ago · 3 files changed
-      </div>
-      {/* Diff — the hint is the deleted TODO */}
-      <div className="rounded-sm border border-base-300/10 overflow-hidden font-mono text-[9px] leading-relaxed">
-        <div className="bg-secondary/5 px-2 py-1 text-secondary/50 border-b border-base-300/6">
-          <span className="text-secondary/30 select-none mr-1">−</span>
-          {'// TODO: stop alt-tabbing to check AAPL'}
+    <div className="space-y-0">
+      {/* File tabs */}
+      <div className="flex items-center gap-0 mb-2">
+        <div className="px-2.5 py-1 rounded-t-sm bg-base-100/50 border border-b-0 border-base-300/10 text-[9px] text-base-content/40">
+          app.ts
         </div>
-        <div className="bg-primary/5 px-2 py-1 text-primary/50 border-b border-base-300/6">
-          <span className="text-primary/30 select-none mr-1">+</span>
-          {'const token = await refreshAuth()'}
-        </div>
-        <div className="bg-primary/5 px-2 py-1 text-primary/50">
-          <span className="text-primary/30 select-none mr-1">+</span>
-          {'// no need — prices live in toolbar 📈'}
+        <div className="px-2.5 py-1 text-[9px] text-base-content/20">
+          utils.ts
         </div>
       </div>
-      {/* Merge button */}
-      <div className="flex justify-end pt-0.5">
-        <div className="text-[9px] px-3 py-1 rounded-md bg-primary/80 text-white font-medium">
-          Merge pull request
-        </div>
+      {/* Code lines */}
+      <div className="font-mono text-[9px] leading-relaxed">
+        {lines.map((line) => (
+          <div key={line.num} className="flex">
+            <span className="w-5 text-right pr-2 text-base-content/15 select-none shrink-0">
+              {line.num}
+            </span>
+            <span className={line.cls}>{line.code}</span>
+          </div>
+        ))}
+      </div>
+      {/* Cursor */}
+      <div className="pl-5 mt-0.5">
+        <span className="inline-block w-0.5 h-3 bg-primary/40 animate-pulse" />
       </div>
     </div>
   )
 }
 
-function DocsPageContent() {
+function NotesContent() {
   return (
     <div className="space-y-2">
       {/* Mini toolbar */}
@@ -232,8 +255,8 @@ function DocsPageContent() {
         <span className="text-[10px] italic text-base-content/25">I</span>
         <span className="text-[10px] underline text-base-content/25">U</span>
         <span className="text-base-content/10">|</span>
-        <span className="text-[10px] text-base-content/20">≡</span>
-        <span className="text-[10px] text-base-content/20">⋮≡</span>
+        <span className="text-[10px] text-base-content/20">&equiv;</span>
+        <span className="text-[10px] text-base-content/20">&#8942;&equiv;</span>
       </div>
       {/* Document content */}
       <div className="px-1">
@@ -241,11 +264,13 @@ function DocsPageContent() {
           Q4 Planning Notes
         </p>
         <div className="space-y-1.5 text-[10px] text-base-content/35 leading-relaxed">
-          <p>• Review product launch timeline</p>
-          <p>• Finalize Q1 budget allocation</p>
+          <p>&bull; Review product launch timeline</p>
+          <p>&bull; Finalize Q1 budget allocation</p>
           {/* The hint — natural meeting note */}
-          <p>• No more tab-switching for news — feed is live below ↓</p>
-          <p className="text-base-content/15">• Assign design review owners</p>
+          <p>&bull; Headlines streaming in the ticker &mdash; stay in flow ↓</p>
+          <p className="text-base-content/15">
+            &bull; Assign design review owners
+          </p>
         </div>
       </div>
       {/* Cursor blink */}
@@ -256,59 +281,46 @@ function DocsPageContent() {
   )
 }
 
-function XPageContent() {
-  const tweets = [
+function ChatContent() {
+  const messages = [
     {
-      handle: '@devjordan',
-      time: '24m',
-      text: 'just mass-deployed to prod on a Friday. pray for me 🫡',
-      likes: '2.4k',
-      retweets: '891',
-    },
-    {
-      handle: '@ballerSZN',
+      name: 'Alex',
       time: '12m',
-      // The hint — natural sports-fan tweet
-      text: 'Mahomes is going OFF and I don\u2019t even have to leave this timeline to check 🏆🔥',
-      likes: '892',
-      retweets: '214',
+      text: 'standup notes pushed — reviews welcome',
     },
     {
-      handle: '@designr_',
-      time: '1h',
-      text: 'new portfolio just dropped. roast me.',
-      likes: '1.2k',
-      retweets: '445',
+      name: 'Jordan',
+      time: '8m',
+      // The hint — natural chat about fantasy scores
+      text: 'Mahomes going OFF today \u{1F3C6} can see it right in the ticker',
+    },
+    {
+      name: 'Sam',
+      time: '3m',
+      text: 'merging the auth PR now, looks good',
     },
   ]
+
   return (
     <div className="space-y-0">
-      {tweets.map((t) => (
+      {messages.map((m) => (
         <div
-          key={t.handle}
+          key={m.name}
           className="flex items-start gap-2 px-3 py-2 border-b border-base-300/10"
         >
           <div className="w-5 h-5 rounded-full bg-base-300/25 shrink-0 mt-0.5" />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] font-bold text-base-content/50">
-                {t.handle}
+                {m.name}
               </span>
               <span className="text-[8px] text-base-content/20">
-                · {t.time}
+                &middot; {m.time} ago
               </span>
             </div>
             <p className="text-[10px] text-base-content/45 leading-snug mt-0.5">
-              {t.text}
+              {m.text}
             </p>
-            <div className="flex items-center gap-4 mt-1">
-              <span className="text-[8px] text-base-content/20">
-                ♡ {t.likes}
-              </span>
-              <span className="text-[8px] text-base-content/20">
-                ↻ {t.retweets}
-              </span>
-            </div>
           </div>
         </div>
       ))}
@@ -317,13 +329,13 @@ function XPageContent() {
 }
 
 const CONTENT_RENDERERS: Record<string, React.FC> = {
-  Scores: YouTubePageContent,
-  Markets: GitHubPageContent,
-  Headlines: DocsPageContent,
-  Leagues: XPageContent,
+  Scores: MusicPlayerContent,
+  Markets: CodeEditorContent,
+  Headlines: NotesContent,
+  Leagues: ChatContent,
 }
 
-// ── Content carousel (FAQ-style spring + motion blur) ────────────
+// ── Content carousel (spring + motion blur) ──────────────────────
 
 function calculateViewX(difference: number, containerWidth: number) {
   return difference * containerWidth * 0.75 * -1
@@ -382,15 +394,15 @@ function ContentView({
 
 // ── Main Component ───────────────────────────────────────────────
 
-interface HeroBrowserStackProps {
+interface HeroDesktopPreviewProps {
   activeIndex: number
   onSelect?: (index: number) => void
 }
 
-export function HeroBrowserStack({
+export function HeroDesktopPreview({
   activeIndex,
   onSelect,
-}: HeroBrowserStackProps) {
+}: HeroDesktopPreviewProps) {
   const contentRef = useRef<HTMLDivElement>(null)
   const [contentWidth, setContentWidth] = useState(0)
   const [isMounted, setIsMounted] = useState(false)
@@ -427,7 +439,7 @@ export function HeroBrowserStack({
         style={{ backgroundColor: styles.glow }}
       />
 
-      {/* ── Single browser frame ── */}
+      {/* ── Desktop window frame ── */}
       <div
         className="relative h-full rounded-xl overflow-hidden flex flex-col border bg-base-200/80 backdrop-blur-sm transition-[border-color,box-shadow] duration-500"
         style={{
@@ -435,11 +447,19 @@ export function HeroBrowserStack({
           boxShadow: styles.shadow,
         }}
       >
-        {/* ── Tab strip — all 4 tabs visible ── */}
+        {/* ── Title bar — traffic lights + app tabs ── */}
         <div
           className="shrink-0 flex items-end px-2 pt-2 bg-base-200/95 border-b border-base-300/20"
           role="tablist"
         >
+          {/* macOS traffic lights */}
+          <div className="flex items-center gap-1.5 pl-1 pr-2 pb-2 shrink-0">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F57]/80" />
+            <div className="w-2.5 h-2.5 rounded-full bg-[#FEBC2E]/80" />
+            <div className="w-2.5 h-2.5 rounded-full bg-[#28C840]/80" />
+          </div>
+
+          {/* App tabs — each represents a different desktop app */}
           {MOCKUPS.map((mockup, i) => {
             const isActive = i === activeIndex
 
@@ -469,77 +489,28 @@ export function HeroBrowserStack({
                 {/* Tab content */}
                 <div className="relative z-10 flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 py-1.5">
                   <div
-                    className={`w-3 h-3 rounded-sm ${mockup.tabIconBg} flex items-center justify-center shrink-0`}
+                    className={`w-3 h-3 rounded-sm ${mockup.appIconBg} flex items-center justify-center shrink-0`}
                   >
                     <div
-                      className={`w-1.5 h-1.5 rounded-full ${mockup.tabIconDot}`}
+                      className={`w-1.5 h-1.5 rounded-full ${mockup.appIconDot}`}
                     />
                   </div>
                   <span
                     className={`text-[10px] truncate transition-colors duration-300 ${
-                      isActive ? 'text-base-content/50' : 'text-base-content/25'
+                      isActive
+                        ? 'text-base-content/50'
+                        : 'text-base-content/25'
                     }`}
                   >
-                    {mockup.tabTitle}
+                    {mockup.appTitle}
                   </span>
-                  {isActive && (
-                    <span className="text-[9px] text-base-content/20 ml-auto shrink-0 hidden sm:inline">
-                      ×
-                    </span>
-                  )}
                 </div>
               </button>
             )
           })}
-
-          {/* New tab button */}
-          <div className="flex items-center justify-center w-6 h-6 mb-0.5 ml-1 shrink-0 rounded-sm text-base-content/20">
-            <span className="text-[11px] leading-none">+</span>
-          </div>
         </div>
 
-        {/* ── Toolbar ── */}
-        <div className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-base-200/90">
-          {/* Nav buttons */}
-          <div className="flex items-center gap-1 shrink-0">
-            <span className="text-[10px] text-base-content/15 w-4 text-center">
-              ←
-            </span>
-            <span className="text-[10px] text-base-content/15 w-4 text-center">
-              →
-            </span>
-            <span className="text-[10px] text-base-content/15 w-4 text-center">
-              ↻
-            </span>
-          </div>
-
-          {/* URL bar — crossfades between URLs */}
-          <div className="flex-1 flex items-center gap-2 px-2.5 py-1 rounded-full bg-base-100/50 border border-base-300/15 overflow-hidden">
-            <div className="w-2.5 h-2.5 rounded-full bg-success/25 shrink-0" />
-            <AnimatePresence mode="wait">
-              <motion.span
-                key={activeMockup.url}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.15 }}
-                className="text-[10px] font-mono text-base-content/25 truncate"
-              >
-                {activeMockup.url}
-              </motion.span>
-            </AnimatePresence>
-          </div>
-
-          {/* Scrollr extension icon — always primary/green */}
-          <div className="flex items-center justify-center w-6 h-6 rounded-sm bg-primary/8 shrink-0">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
-            </span>
-          </div>
-        </div>
-
-        {/* ── Page content — spring-animated vertical carousel ── */}
+        {/* ── App content — spring-animated carousel ── */}
         <div
           ref={contentRef}
           className="relative flex-1 min-h-0 overflow-hidden bg-base-100/30"
@@ -580,7 +551,7 @@ export function HeroBrowserStack({
             </span>
           </div>
 
-          {/* Ticker chips — crossfade per active tab */}
+          {/* Ticker chips — crossfade per active app */}
           <AnimatePresence mode="wait">
             <motion.div
               key={activeMockup.word}

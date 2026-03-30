@@ -33,43 +33,43 @@ export interface FAQItem {
 const FAQ_ITEMS: Array<FAQItem> = [
   {
     icon: Gift,
-    question: 'Is Scrollr really free?',
-    highlight: 'Completely free with no trials, ads, or paywalls. Ever.',
+    question: 'Is Scrollr free?',
+    highlight: 'A generous free tier with no ads or tracking. Upgrade anytime.',
     answer:
-      'Completely free, no strings attached. There are no trials, no premium gates on core features, and no ads. The entire codebase is open source under the AGPL-3.0 license, so you can inspect every line.',
+      'The free tier gives you real-time data across all four channels with no ads or tracking. Uplink plans unlock higher limits, faster polling, custom RSS feeds, and fantasy league tracking. The entire codebase is open source under the AGPL-3.0 license.',
     accent: 'emerald',
   },
   {
     icon: Zap,
-    question: 'Does it slow down my browser?',
+    question: 'Does it affect performance?',
     highlight:
       'A single background connection handles everything. Lightweight by design.',
     answer:
-      'Not noticeably. All data flows through a single connection in the background, not one per tab. The feed bar runs in an isolated Shadow DOM with at most 50 items in memory, and nothing gets written to disk.',
+      'Not noticeably. All data flows through a single connection in the background. The ticker overlay is hardware-accelerated with minimal CPU and memory usage, and it never interferes with your other applications.',
     accent: 'amber',
   },
   {
     icon: ShieldCheck,
-    question: 'Is my browsing data private?',
+    question: 'Is my data private?',
     highlight: 'No analytics, no tracking pixels, and no telemetry. Period.',
     answer:
-      "The extension contains zero analytics, zero tracking pixels, and zero telemetry. Your preferences are stored in your browser's local extension storage and never transmitted anywhere. The only network requests go to the Scrollr API to fetch your feed data.",
+      'Scrollr contains zero analytics, zero tracking pixels, and zero telemetry. Your preferences are stored locally on your device and never transmitted anywhere. The only network requests go to the Scrollr API to fetch your feed data.',
     accent: 'sky',
   },
   {
     icon: Globe,
-    question: 'What browsers are supported?',
-    highlight: 'Works on every major browser right out of the box.',
+    question: 'What platforms are supported?',
+    highlight: 'Runs natively on macOS, Windows, and Linux.',
     answer:
-      'Any Chromium-based browser works out of the box. Scrollr is available on the Chrome Web Store and Firefox Add-ons, covering virtually every modern desktop browser.',
+      'Scrollr runs natively on macOS (Apple Silicon), Windows (x64), and Linux (x64). Download the app for your platform from our download page.',
     accent: 'violet',
   },
   {
     icon: UserX,
     question: 'Do I need an account?',
-    highlight: 'Just install and go. No sign-up required to start.',
+    highlight: 'Just download and go. No sign-up required to start.',
     answer:
-      "Install the extension and you'll immediately receive live stock and sports data with no sign-up. Creating a free account unlocks all four channels (finance, sports, news, and fantasy), the web dashboard, and cross-device preference sync.",
+      "Download the app and you'll immediately receive live stock and sports data with no sign-up. Creating a free account unlocks all four channels (finance, sports, news, and fantasy), the web dashboard, and preference sync across devices.",
     accent: 'rose',
   },
   {
@@ -85,9 +85,9 @@ const FAQ_ITEMS: Array<FAQItem> = [
     icon: SlidersHorizontal,
     question: 'Can I customize the feed?',
     highlight:
-      'Adjust everything from position and size to per-site visibility.',
+      'Adjust everything from position and size to display behavior.',
     answer:
-      'Position the bar at the top or bottom of your screen, drag to resize the height, switch between comfort and compact modes, choose overlay or push behavior, pick which channels appear as tabs, and choose which websites show or hide the feed.',
+      'Position the ticker at the top or bottom of your screen, drag to resize, switch between comfort and compact modes, choose overlay or push behavior, and pick which channels appear as tabs.',
     accent: 'orange',
   },
   {
@@ -95,7 +95,7 @@ const FAQ_ITEMS: Array<FAQItem> = [
     question: 'Is Scrollr open source?',
     highlight: 'Every line of code is public. Inspect, fork, or contribute.',
     answer:
-      'Every component, from the browser extension and web app to the API and integration services, is publicly available on GitHub under the GNU Affero General Public License v3.0. You can inspect, fork, or contribute to any part of it.',
+      'Every component, from the desktop application and web dashboard to the API and integration services, is publicly available on GitHub under the GNU Affero General Public License v3.0. You can inspect, fork, or contribute to any part of it.',
     accent: 'fuchsia',
   },
 ]
@@ -430,7 +430,7 @@ interface FAQSectionProps {
 export function FAQSection({
   items = FAQ_ITEMS,
   title = 'Before You',
-  titleHighlight = 'Install',
+  titleHighlight = 'Download',
   subtitle = 'Quick answers, no fluff.',
 }: FAQSectionProps = {}) {
   const [activeIndex, setActiveIndex] = useState(0)

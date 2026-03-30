@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as UplinkRouteImport } from './routes/uplink'
 import { Route as StatusRouteImport } from './routes/status'
 import { Route as LegalRouteImport } from './routes/legal'
+import { Route as DownloadRouteImport } from './routes/download'
 import { Route as ChannelsRouteImport } from './routes/channels'
 import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as ArchitectureRouteImport } from './routes/architecture'
@@ -33,6 +34,11 @@ const StatusRoute = StatusRouteImport.update({
 const LegalRoute = LegalRouteImport.update({
   id: '/legal',
   path: '/legal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DownloadRoute = DownloadRouteImport.update({
+  id: '/download',
+  path: '/download',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChannelsRoute = ChannelsRouteImport.update({
@@ -77,6 +83,7 @@ export interface FileRoutesByFullPath {
   '/architecture': typeof ArchitectureRoute
   '/callback': typeof CallbackRoute
   '/channels': typeof ChannelsRoute
+  '/download': typeof DownloadRoute
   '/legal': typeof LegalRoute
   '/status': typeof StatusRoute
   '/uplink': typeof UplinkRoute
@@ -89,6 +96,7 @@ export interface FileRoutesByTo {
   '/architecture': typeof ArchitectureRoute
   '/callback': typeof CallbackRoute
   '/channels': typeof ChannelsRoute
+  '/download': typeof DownloadRoute
   '/legal': typeof LegalRoute
   '/status': typeof StatusRoute
   '/uplink': typeof UplinkRoute
@@ -102,6 +110,7 @@ export interface FileRoutesById {
   '/architecture': typeof ArchitectureRoute
   '/callback': typeof CallbackRoute
   '/channels': typeof ChannelsRoute
+  '/download': typeof DownloadRoute
   '/legal': typeof LegalRoute
   '/status': typeof StatusRoute
   '/uplink': typeof UplinkRoute
@@ -116,6 +125,7 @@ export interface FileRouteTypes {
     | '/architecture'
     | '/callback'
     | '/channels'
+    | '/download'
     | '/legal'
     | '/status'
     | '/uplink'
@@ -128,6 +138,7 @@ export interface FileRouteTypes {
     | '/architecture'
     | '/callback'
     | '/channels'
+    | '/download'
     | '/legal'
     | '/status'
     | '/uplink'
@@ -140,6 +151,7 @@ export interface FileRouteTypes {
     | '/architecture'
     | '/callback'
     | '/channels'
+    | '/download'
     | '/legal'
     | '/status'
     | '/uplink'
@@ -153,6 +165,7 @@ export interface RootRouteChildren {
   ArchitectureRoute: typeof ArchitectureRoute
   CallbackRoute: typeof CallbackRoute
   ChannelsRoute: typeof ChannelsRoute
+  DownloadRoute: typeof DownloadRoute
   LegalRoute: typeof LegalRoute
   StatusRoute: typeof StatusRoute
   UplinkRoute: typeof UplinkRoute
@@ -181,6 +194,13 @@ declare module '@tanstack/react-router' {
       path: '/legal'
       fullPath: '/legal'
       preLoaderRoute: typeof LegalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/download': {
+      id: '/download'
+      path: '/download'
+      fullPath: '/download'
+      preLoaderRoute: typeof DownloadRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/channels': {
@@ -241,6 +261,7 @@ const rootRouteChildren: RootRouteChildren = {
   ArchitectureRoute: ArchitectureRoute,
   CallbackRoute: CallbackRoute,
   ChannelsRoute: ChannelsRoute,
+  DownloadRoute: DownloadRoute,
   LegalRoute: LegalRoute,
   StatusRoute: StatusRoute,
   UplinkRoute: UplinkRoute,
