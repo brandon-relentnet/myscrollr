@@ -46,6 +46,8 @@ export async function request<T>(
 /**
  * Authenticated request — resolves a valid token via getValidToken()
  * (handles silent refresh) and attaches it as a Bearer header.
+ *
+ * On 401, forces a token refresh and retries the request once.
  */
 export async function authFetch<T>(
   path: string,
@@ -64,6 +66,18 @@ export async function authFetch<T>(
     ...options,
     headers,
   });
+
+  // 401 retry: force a token refresh and retry the request once
+  if (response.status === 401 && token) {
+    const newToken = await getValidToken(true);
+    if (newToken && newToken !== token) {
+      const retryResponse = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers: { ...options.headers, Authorization: `Bearer ${newToken}` },
+      });
+      return handleResponse<T>(retryResponse);
+    }
+  }
 
   return handleResponse<T>(response);
 }
