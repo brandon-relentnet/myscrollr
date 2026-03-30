@@ -4,10 +4,13 @@ import { clsx } from "clsx";
 import { getStore, setStore } from "../lib/store";
 import { useQuery } from "@tanstack/react-query";
 import { SetupBrowser } from "../components/settings/SetupBrowser";
+import UpgradePrompt from "../components/UpgradePrompt";
 import { useChannelConfig } from "../hooks/useChannelConfig";
 import { financeCatalogOptions } from "../api/queries";
+import { getLimit, maxItemsForBrowser } from "../tierLimits";
 import type { TrackedSymbol } from "../api/queries";
 import type { Channel } from "../api/client";
+import type { SubscriptionTier } from "../auth";
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -17,7 +20,7 @@ interface FinanceChannelConfig {
 
 interface FinanceConfigPanelProps {
   channel: Channel;
-  subscriptionTier: string;
+  subscriptionTier: SubscriptionTier;
   connected: boolean;
   hex: string;
 }
@@ -43,6 +46,7 @@ const POPULAR_SYMBOLS = [
 
 export default function FinanceConfigPanel({
   channel,
+  subscriptionTier,
   hex,
 }: FinanceConfigPanelProps) {
   const { error, setError, saving, updateItems } = useChannelConfig<string[]>("finance", "symbols");
@@ -53,6 +57,9 @@ export default function FinanceConfigPanel({
   const config = channel.config as FinanceChannelConfig;
   const symbols = Array.isArray(config?.symbols) ? config.symbols : [];
   const symbolSet = useMemo(() => new Set(symbols), [symbols]);
+
+  const maxSymbols = getLimit(subscriptionTier, "symbols");
+  const atLimit = symbols.length >= maxSymbols;
 
   // ── Catalog query ──────────────────────────────────────────────
   const {
@@ -69,9 +76,10 @@ export default function FinanceConfigPanel({
   const addSymbol = useCallback(
     (sym: string) => {
       if (symbolSet.has(sym)) return;
+      if (symbols.length >= maxSymbols) return;
       updateItems([...symbols, sym]);
     },
-    [symbols, symbolSet, updateItems],
+    [symbols, symbolSet, updateItems, maxSymbols],
   );
 
   const removeSymbol = useCallback(
@@ -90,6 +98,16 @@ export default function FinanceConfigPanel({
 
   return (
     <div className="w-full max-w-2xl mx-auto">
+      {atLimit && (
+        <div className="mb-4 px-3">
+          <UpgradePrompt
+            current={symbols.length}
+            max={maxSymbols}
+            noun="symbols"
+            tier={subscriptionTier}
+          />
+        </div>
+      )}
       <SetupBrowser
         title="Finance"
         subtitle="Stocks, ETFs, and crypto prices"
@@ -146,9 +164,14 @@ export default function FinanceConfigPanel({
         loading={catalogLoading}
         catalogError={catalogError}
         saving={saving}
+        maxItems={maxItemsForBrowser(subscriptionTier, "symbols")}
         onAdd={addSymbol}
         onRemove={removeSymbol}
-        onBulkAdd={(keys: string[]) => updateItems([...symbols, ...keys])}
+        onBulkAdd={(keys: string[]) => {
+          const capacity = maxSymbols - symbols.length;
+          if (capacity <= 0) return;
+          updateItems([...symbols, ...keys.slice(0, capacity)]);
+        }}
         onBulkRemove={(keys: string[]) => {
           const toRemove = new Set(keys);
           updateItems(symbols.filter((s) => !toRemove.has(s)));

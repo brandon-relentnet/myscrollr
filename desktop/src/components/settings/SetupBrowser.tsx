@@ -67,6 +67,8 @@ interface SetupBrowserProps<T> {
   onBulkRemove?: (keys: string[]) => void;
   /** Clear all selections */
   onClearAll?: () => void;
+  /** When set, caps selections and shows "N/max" in header instead of "N selected" */
+  maxItems?: number;
 }
 
 // ── Tabs ─────────────────────────────────────────────────────────
@@ -101,6 +103,7 @@ export function SetupBrowser<T>({
   onBulkAdd,
   onBulkRemove,
   onClearAll,
+  maxItems,
 }: SetupBrowserProps<T>) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState(ALL);
@@ -149,6 +152,8 @@ export function SetupBrowser<T>({
     [tabItemKeys, selectedKeys],
   );
   const tabAvailableCount = tabItemKeys.length - tabAddedCount;
+  const atLimit = maxItems != null && selectedKeys.size >= maxItems;
+  const remaining_capacity = maxItems != null ? maxItems - selectedKeys.size : Infinity;
 
   // Reset visible count when switching tabs or searching
   const handleTabChange = (tab: string) => {
@@ -185,7 +190,9 @@ export function SetupBrowser<T>({
           )}
         </div>
         <span className="text-[11px] text-fg-3 tabular-nums shrink-0">
-          {selectedKeys.size} selected
+          {maxItems != null
+            ? `${selectedKeys.size}/${maxItems}`
+            : `${selectedKeys.size} selected`}
         </span>
       </div>
 
@@ -309,16 +316,18 @@ export function SetupBrowser<T>({
       {/* ── Bulk actions ────────────────────────────────────── */}
       {activeTab !== MY_PICKS && (onBulkAdd || onBulkRemove) && (
         <div className="flex items-center justify-end gap-2 px-3">
-          {onBulkAdd && tabAvailableCount > 0 && (
+          {onBulkAdd && tabAvailableCount > 0 && !atLimit && (
             <button
               onClick={() => {
-                const toAdd = tabItemKeys.filter((k) => !selectedKeys.has(k));
+                const toAdd = tabItemKeys
+                  .filter((k) => !selectedKeys.has(k))
+                  .slice(0, remaining_capacity);
                 onBulkAdd(toAdd);
               }}
               disabled={saving}
               className="text-[11px] font-medium text-fg-3 hover:text-accent px-2 py-1 rounded-md hover:bg-base-250/50 transition-colors disabled:opacity-30 cursor-pointer"
             >
-              + Add all ({tabAvailableCount})
+              + Add all ({Math.min(tabAvailableCount, remaining_capacity)})
             </button>
           )}
           {onBulkRemove && tabAddedCount > 0 && (
@@ -385,7 +394,7 @@ export function SetupBrowser<T>({
                 <button
                   type="button"
                   onClick={() => (isSelected ? onRemove(key) : onAdd(key))}
-                  disabled={saving}
+                  disabled={saving || (!isSelected && atLimit)}
                   className={clsx(
                     "w-full flex items-center justify-between p-2.5 rounded-lg border transition-colors text-left cursor-pointer disabled:opacity-30",
                     isSelected
