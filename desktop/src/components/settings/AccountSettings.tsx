@@ -1,8 +1,11 @@
 import { useState, useCallback, useRef } from "react";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
+import { open } from "@tauri-apps/plugin-shell";
 import { TIER_LABELS, getUserIdentity } from "../../auth";
 import { getStore, setStore } from "../../lib/store";
+import { authFetch } from "../../api/client";
+import { TIER_LIMITS, isUnlimited } from "../../tierLimits";
 import type { SubscriptionTier } from "../../auth";
 import { Section, DisplayRow, ActionRow, ResetButton } from "./SettingsControls";
 import ConfirmDialog from "../ConfirmDialog";
@@ -41,8 +44,26 @@ export default function AccountSettings({
   const [status, setStatus] = useState<UpdateStatus>({ step: "idle" });
   const pendingUpdate = useRef<Update | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [openingPortal, setOpeningPortal] = useState(false);
+  const [portalError, setPortalError] = useState<string | null>(null);
   const identity = authenticated ? getUserIdentity() : null;
   const userLabel = identity?.email ?? identity?.name ?? null;
+
+  const handleOpenPortal = useCallback(async () => {
+    try {
+      setOpeningPortal(true);
+      setPortalError(null);
+      const { url } = await authFetch<{ url: string }>(
+        "/users/me/subscription/portal",
+        { method: "POST" }
+      );
+      await open(url);
+    } catch (err) {
+      setPortalError(err instanceof Error ? err.message : "Failed to open billing portal");
+    } finally {
+      setOpeningPortal(false);
+    }
+  }, []);
 
   const handleCheckForUpdates = useCallback(async () => {
     setStatus({ step: "checking" });
@@ -169,6 +190,38 @@ export default function AccountSettings({
           />
         )}
       </Section>
+
+      {authenticated && tier !== "free" && (
+        <Section title="Subscription">
+          <div className="px-3 py-2 space-y-2">
+            <ActionRow
+              label="Manage billing, invoices & payment"
+              action={openingPortal ? "Opening..." : "Manage Subscription"}
+              actionClass="bg-accent/10 text-accent font-semibold hover:bg-accent/20"
+              onClick={handleOpenPortal}
+            />
+            {portalError && (
+              <span className="text-[11px] text-error px-1">{portalError}</span>
+            )}
+          </div>
+        </Section>
+      )}
+
+      {authenticated && (
+        <Section title="Your Plan">
+          <TierLimitsTable tier={tier} />
+          {tier !== "uplink_ultimate" && (
+            <div className="px-3 pb-2">
+              <button
+                onClick={() => open("https://myscrollr.com/uplink")}
+                className="w-full py-2 text-[11px] font-semibold rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+              >
+                {tier === "free" ? "Upgrade to Uplink" : "Upgrade Plan"}
+              </button>
+            </div>
+          )}
+        </Section>
+      )}
 
       <Section title="About">
         <DisplayRow label="Version" value={appVersion ? `v${appVersion}` : "\u2014"} />
@@ -362,4 +415,30 @@ function UpdateRow({ status, onCheck, onDownload, onRelaunch }: UpdateRowProps) 
         </div>
       );
   }
+}
+
+// ── Tier limits table ───────────────────────────────────────────
+
+const LIMIT_ROWS: { label: string; key: keyof typeof TIER_LIMITS.free }[] = [
+  { label: "Finance symbols", key: "symbols" },
+  { label: "News feeds", key: "feeds" },
+  { label: "Custom feeds", key: "customFeeds" },
+  { label: "Sports leagues", key: "leagues" },
+  { label: "Fantasy leagues", key: "fantasy" },
+];
+
+function TierLimitsTable({ tier }: { tier: SubscriptionTier }) {
+  const limits = TIER_LIMITS[tier];
+  return (
+    <div className="px-3 py-1.5 space-y-1">
+      {LIMIT_ROWS.map(({ label, key }) => (
+        <div key={key} className="flex items-center justify-between py-1">
+          <span className="text-[11px] text-fg-3">{label}</span>
+          <span className="text-[11px] font-medium text-fg-2 tabular-nums">
+            {isUnlimited(tier, key) ? "Unlimited" : limits[key]}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
 }

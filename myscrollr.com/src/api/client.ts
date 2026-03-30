@@ -312,4 +312,12 @@ export const billingApi = {
       current_period_end: string
       message: string
     }>('/users/me/subscription/cancel', { method: 'POST' }, getToken),
+
+  /** Create a Stripe Customer Portal session */
+  createPortalSession: (getToken: () => Promise<string | null>) =>
+    authenticatedFetch<{ url: string }>(
+      '/users/me/subscription/portal',
+      { method: 'POST' },
+      getToken,
+    ),
 }
