@@ -7,7 +7,6 @@
  *
  * Source-level actions (ticker toggle, remove) are in the header bar.
  */
-import { useState, useCallback } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import RouteError from "../components/RouteError";
 import SourcePageLayout, { parseSourceTab, SourceNotFound } from "../components/SourcePageLayout";
@@ -16,18 +15,12 @@ import { getChannel, getAllChannels } from "../channels/registry";
 import { dashboardQueryOptions } from "../api/queries";
 import ChannelConfigPanel from "../channels/ChannelConfigPanel";
 import { useShell, useShellData } from "../shell-context";
-import { Section, ToggleRow, SliderRow, ResetButton } from "../components/settings/SettingsControls";
-import {
-  CHANNEL_SCHEMAS,
-  CHANNEL_PREFS_KEY,
-  DEFAULT_CARD_PREFS,
-  loadCardPrefs,
-  saveCardPrefs,
-} from "../components/dashboard/dashboardPrefs";
+import { Section, ToggleRow, ResetButton } from "../components/settings/SettingsControls";
+import { useSportsConfig } from "../hooks/useSportsConfig";
+import { loadPref } from "../preferences";
 import type { Channel, ChannelType } from "../api/client";
 import type { DashboardResponse, DeliveryMode } from "../types";
-import type { DashboardCardPrefs, EditorField } from "../components/dashboard/dashboardPrefs";
-import { loadPref } from "../preferences";
+import type { FinanceDisplayPrefs, RssDisplayPrefs, FantasyDisplayPrefs } from "../preferences";
 
 export const Route = createFileRoute("/channel/$type/$tab")({
   loader: ({ context: { queryClient } }) =>
@@ -140,103 +133,160 @@ function ChannelConfigTab({
 }
 
 function ChannelDisplayTab({ type }: { type: string }) {
-  const schema = CHANNEL_SCHEMAS[type];
-  const prefsKey = CHANNEL_PREFS_KEY[type];
+  switch (type) {
+    case "finance":
+      return <FinanceDisplay />;
+    case "sports":
+      return <SportsDisplay />;
+    case "rss":
+      return <RssDisplay />;
+    case "fantasy":
+      return <FantasyDisplay />;
+    default:
+      return (
+        <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto gap-3 p-6">
+          <h2 className="text-base font-semibold text-fg">No display settings</h2>
+          <p className="text-sm text-fg-3 leading-relaxed">
+            This channel does not have customizable display preferences.
+          </p>
+        </div>
+      );
+  }
+}
 
-  const [cardPrefs, setCardPrefs] = useState<DashboardCardPrefs>(loadCardPrefs);
+function FinanceDisplay() {
+  const { prefs, onPrefsChange } = useShell();
+  const dp = prefs.channelDisplay.finance;
 
-  const handleChange = useCallback(
-    (key: string, value: boolean | number) => {
-      if (!prefsKey) return;
-      setCardPrefs((prev) => {
-        const next = {
-          ...prev,
-          [prefsKey]: { ...prev[prefsKey], [key]: value },
-        };
-        saveCardPrefs(next);
-        return next;
-      });
-    },
-    [prefsKey],
-  );
-
-  const handleReset = useCallback(() => {
-    if (!prefsKey) return;
-    setCardPrefs((prev) => {
-      const next = { ...prev, [prefsKey]: DEFAULT_CARD_PREFS[prefsKey] };
-      saveCardPrefs(next);
-      return next;
+  function toggle(key: keyof FinanceDisplayPrefs) {
+    onPrefsChange({
+      ...prefs,
+      channelDisplay: {
+        ...prefs.channelDisplay,
+        finance: { ...dp, [key]: !dp[key] },
+      },
     });
-  }, [prefsKey]);
-
-  if (!schema || !prefsKey) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto gap-3 p-6">
-        <h2 className="text-base font-semibold text-fg">No display settings</h2>
-        <p className="text-sm text-fg-3 leading-relaxed">
-          This channel does not have customizable display preferences.
-        </p>
-      </div>
-    );
   }
 
-  const values = cardPrefs[prefsKey] as unknown as Record<string, boolean | number>;
+  function handleReset() {
+    onPrefsChange({
+      ...prefs,
+      channelDisplay: {
+        ...prefs.channelDisplay,
+        finance: { showChange: true, showPrevClose: true, showLastUpdated: true },
+      },
+    });
+  }
 
   return (
     <div className="p-4 max-w-lg">
-      <Section title="Dashboard Card">
-        <DisplayFields schema={schema} values={values} onChange={handleChange} />
+      <Section title="Feed & Ticker">
+        <ToggleRow label="Show % change" checked={dp.showChange} onChange={() => toggle("showChange")} />
+        <ToggleRow label="Show previous close" checked={dp.showPrevClose} onChange={() => toggle("showPrevClose")} />
+        <ToggleRow label="Show last updated" checked={dp.showLastUpdated} onChange={() => toggle("showLastUpdated")} />
       </Section>
       <ResetButton label="Reset display settings" onClick={handleReset} />
     </div>
   );
 }
 
-/** Render schema fields using SettingsControls. Shared by channel + widget Display tabs. */
-function DisplayFields({
-  schema,
-  values,
-  onChange,
-}: {
-  schema: EditorField[];
-  values: Record<string, boolean | number>;
-  onChange: (key: string, value: boolean | number) => void;
-}) {
+function SportsDisplay() {
+  const { display, setDisplay } = useSportsConfig();
+
+  function toggle(key: keyof typeof display) {
+    setDisplay({ [key]: !display[key] });
+  }
+
+  function handleReset() {
+    setDisplay({
+      showUpcoming: true,
+      showFinal: true,
+      showLogos: true,
+      showTimer: true,
+    });
+  }
+
   return (
-    <>
-      {schema.map((field) => {
-        const parentOff = field.parent ? !values[field.parent] : false;
+    <div className="p-4 max-w-lg">
+      <Section title="Feed & Ticker">
+        <ToggleRow label="Show team logos" checked={display.showLogos} onChange={() => toggle("showLogos")} />
+        <ToggleRow label="Show game clock" checked={display.showTimer} onChange={() => toggle("showTimer")} />
+        <ToggleRow label="Show upcoming games" checked={display.showUpcoming} onChange={() => toggle("showUpcoming")} />
+        <ToggleRow label="Show final scores" checked={display.showFinal} onChange={() => toggle("showFinal")} />
+      </Section>
+      <ResetButton label="Reset display settings" onClick={handleReset} />
+    </div>
+  );
+}
 
-        if (field.type === "toggle") {
-          return (
-            <div key={field.key} className={parentOff ? "opacity-40 pointer-events-none" : ""}>
-              <ToggleRow
-                label={field.label}
-                checked={Boolean(values[field.key])}
-                onChange={(checked) => onChange(field.key, checked)}
-              />
-            </div>
-          );
-        }
+function RssDisplay() {
+  const { prefs, onPrefsChange } = useShell();
+  const dp = prefs.channelDisplay.rss;
 
-        if (field.type === "stepper") {
-          return (
-            <div key={field.key} className={parentOff ? "opacity-40 pointer-events-none" : ""}>
-              <SliderRow
-                label={field.label}
-                value={Number(values[field.key]) || field.min}
-                min={field.min}
-                max={field.max}
-                step={1}
-                onChange={(v) => onChange(field.key, v)}
-              />
-            </div>
-          );
-        }
+  function toggle(key: keyof RssDisplayPrefs) {
+    onPrefsChange({
+      ...prefs,
+      channelDisplay: {
+        ...prefs.channelDisplay,
+        rss: { ...dp, [key]: !dp[key] },
+      },
+    });
+  }
 
-        return null;
-      })}
-    </>
+  function handleReset() {
+    onPrefsChange({
+      ...prefs,
+      channelDisplay: {
+        ...prefs.channelDisplay,
+        rss: { showDescription: true, showSource: true, showTimestamps: true },
+      },
+    });
+  }
+
+  return (
+    <div className="p-4 max-w-lg">
+      <Section title="Feed & Ticker">
+        <ToggleRow label="Show description" checked={dp.showDescription} onChange={() => toggle("showDescription")} />
+        <ToggleRow label="Show source name" checked={dp.showSource} onChange={() => toggle("showSource")} />
+        <ToggleRow label="Show timestamps" checked={dp.showTimestamps} onChange={() => toggle("showTimestamps")} />
+      </Section>
+      <ResetButton label="Reset display settings" onClick={handleReset} />
+    </div>
+  );
+}
+
+function FantasyDisplay() {
+  const { prefs, onPrefsChange } = useShell();
+  const dp = prefs.channelDisplay.fantasy;
+
+  function toggle(key: keyof FantasyDisplayPrefs) {
+    onPrefsChange({
+      ...prefs,
+      channelDisplay: {
+        ...prefs.channelDisplay,
+        fantasy: { ...dp, [key]: !dp[key] },
+      },
+    });
+  }
+
+  function handleReset() {
+    onPrefsChange({
+      ...prefs,
+      channelDisplay: {
+        ...prefs.channelDisplay,
+        fantasy: { showStandings: true, showInjuryCount: true },
+      },
+    });
+  }
+
+  return (
+    <div className="p-4 max-w-lg">
+      <Section title="Feed">
+        <ToggleRow label="Show standings" checked={dp.showStandings} onChange={() => toggle("showStandings")} />
+        <ToggleRow label="Show injury count" checked={dp.showInjuryCount} onChange={() => toggle("showInjuryCount")} />
+      </Section>
+      <ResetButton label="Reset display settings" onClick={handleReset} />
+    </div>
   );
 }
 

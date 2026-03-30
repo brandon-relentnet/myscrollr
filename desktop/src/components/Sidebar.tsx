@@ -1,18 +1,15 @@
 /**
- * Sidebar — collapsible labeled navigation sidebar.
+ * Sidebar — collapsible minimal navigation sidebar.
  *
- * Replaces IconRail + TopNav + AppTaskbar. Single navigation system
- * with text labels, clear sections, and a status footer.
+ * Three nav items: Home, Catalog, Settings.
+ * Channels and widgets are accessed from the dashboard cards.
  * Collapses to a 48px icon-only rail with tooltips.
  */
-import { useState, useMemo } from "react";
-import { LayoutDashboard, LayoutGrid, Settings, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { useState } from "react";
+import { Home, LayoutGrid, Settings, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import clsx from "clsx";
 import Tooltip from "./Tooltip";
-import type { ChannelManifest, WidgetManifest, DeliveryMode } from "../types";
-import type { Channel } from "../api/client";
-import { CHANNEL_ORDER } from "../channels/registry";
-import { WIDGET_ORDER } from "../widgets/registry";
+import type { DeliveryMode } from "../types";
 import { loadPref, savePref } from "../preferences";
 
 // ── Scroll S logo ───────────────────────────────────────────────
@@ -74,53 +71,34 @@ function ScrollLogo({ alive }: { alive: boolean }) {
 // ── Props ───────────────────────────────────────────────────────
 
 interface SidebarProps {
-  /** Currently selected channel/widget ID, or empty string. */
-  activeItem: string;
-  /** Whether the feed dashboard is active. */
+  /** Whether the home/dashboard page is active. */
   isFeed: boolean;
   /** Whether the settings page is active. */
   isSettings: boolean;
-  /** Whether the marketplace page is active. */
+  /** Whether the catalog page is active. */
   isMarketplace: boolean;
-
-  /** User's configured channels from the API. */
-  channels: Channel[];
-  /** IDs of widgets the user has enabled. */
-  enabledWidgets: string[];
-  /** All registered channel manifests (static). */
-  allChannelManifests: ChannelManifest[];
-  /** All registered widget manifests (static). */
-  allWidgets: WidgetManifest[];
 
   /** Current data delivery mode for status footer. */
   deliveryMode: DeliveryMode;
   /** Whether the standalone ticker window is alive. */
   tickerAlive: boolean;
 
-  /** Navigate to a specific channel or widget by ID. */
-  onSelectItem: (id: string) => void;
-  /** Navigate to the feed dashboard. */
+  /** Navigate to the home dashboard. */
   onNavigateToFeed: () => void;
   /** Navigate to the settings page. */
   onNavigateToSettings: () => void;
-  /** Navigate to the marketplace page. */
+  /** Navigate to the catalog page. */
   onNavigateToMarketplace: () => void;
 }
 
 // ── Component ───────────────────────────────────────────────────
 
 export default function Sidebar({
-  activeItem,
   isFeed,
   isSettings,
   isMarketplace,
-  channels,
-  enabledWidgets,
-  allChannelManifests,
-  allWidgets,
   deliveryMode,
   tickerAlive,
-  onSelectItem,
   onNavigateToFeed,
   onNavigateToSettings,
   onNavigateToMarketplace,
@@ -135,31 +113,6 @@ export default function Sidebar({
     savePref("sidebarCollapsed", next);
   }
 
-  // Sort channels by canonical order, only show enabled
-  const sortedChannels = useMemo(
-    () =>
-      [...channels]
-        .filter((ch) => ch.enabled)
-        .sort(
-          (a, b) =>
-            CHANNEL_ORDER.indexOf(a.channel_type) -
-            CHANNEL_ORDER.indexOf(b.channel_type),
-        ),
-    [channels],
-  );
-
-  // Sort widgets by canonical order
-  const sortedWidgets = useMemo(
-    () =>
-      enabledWidgets
-        .map((id) => allWidgets.find((w) => w.id === id))
-        .filter((w): w is WidgetManifest => w != null)
-        .sort(
-          (a, b) => WIDGET_ORDER.indexOf(a.id) - WIDGET_ORDER.indexOf(b.id),
-        ),
-    [enabledWidgets, allWidgets],
-  );
-
   return (
     <aside
       className={clsx(
@@ -168,10 +121,10 @@ export default function Sidebar({
       )}
     >
       {/* App header — logo + name */}
-      <Tooltip content={collapsed ? "Dashboard" : undefined} side="right">
+      <Tooltip content={collapsed ? "Home" : undefined} side="right">
         <button
           onClick={onNavigateToFeed}
-          aria-label="Scrollr — go to dashboard"
+          aria-label="Scrollr — go to home"
           className={clsx(
             "flex items-center w-full h-12 shrink-0 transition-colors",
             collapsed ? "justify-center px-0" : "gap-2.5 px-4",
@@ -197,16 +150,14 @@ export default function Sidebar({
           collapsed ? "px-1" : "px-2",
         )}
       >
-        {/* Dashboard */}
         <NavItem
-          icon={<LayoutDashboard size={15} />}
-          label="Dashboard"
+          icon={<Home size={15} />}
+          label="Home"
           active={isFeed}
           collapsed={collapsed}
           onClick={onNavigateToFeed}
         />
 
-        {/* Catalog */}
         <NavItem
           icon={<LayoutGrid size={15} />}
           label="Catalog"
@@ -214,72 +165,9 @@ export default function Sidebar({
           collapsed={collapsed}
           onClick={onNavigateToMarketplace}
         />
-
-        {/* Channels section */}
-        {sortedChannels.length > 0 && (
-          <>
-            {!collapsed && <SectionHeader label="Channels" />}
-            {collapsed && <Divider />}
-            {sortedChannels.map((ch) => {
-              const manifest = allChannelManifests.find(
-                (m) => m.id === ch.channel_type,
-              );
-              const isActive = activeItem === ch.channel_type;
-              const Icon = manifest?.icon;
-              return (
-                <NavItem
-                  key={ch.channel_type}
-                  icon={
-                    Icon ? (
-                      <span style={{ color: manifest!.hex }}>
-                        <Icon size={15} />
-                      </span>
-                    ) : (
-                      <div
-                        className="w-2.5 h-2.5 rounded-full"
-                        style={{ background: manifest?.hex ?? "var(--color-fg-4)" }}
-                      />
-                    )
-                  }
-                  label={manifest?.name ?? ch.channel_type}
-                  active={isActive}
-                  accentColor={manifest?.hex}
-                  collapsed={collapsed}
-                  onClick={() => onSelectItem(ch.channel_type)}
-                />
-              );
-            })}
-          </>
-        )}
-
-        {/* Widgets section */}
-        {sortedWidgets.length > 0 && (
-          <>
-            {!collapsed && <SectionHeader label="Widgets" />}
-            {collapsed && <Divider />}
-            {sortedWidgets.map((widget) => {
-              const isActive = activeItem === widget.id;
-              return (
-                <NavItem
-                  key={widget.id}
-                  icon={
-                    <span style={{ color: widget.hex }}>
-                      <widget.icon size={15} />
-                    </span>
-                  }
-                  label={widget.name}
-                  active={isActive}
-                  accentColor={widget.hex}
-                  collapsed={collapsed}
-                  onClick={() => onSelectItem(widget.id)}
-                />
-              );
-            })}
-          </>
-        )}
       </nav>
 
-      {/* Footer — settings, account, collapse toggle, status */}
+      {/* Footer — settings, collapse toggle, status */}
       <div
         className={clsx(
           "shrink-0 border-t border-edge py-2 space-y-0.5",
@@ -362,36 +250,18 @@ export default function Sidebar({
   );
 }
 
-// ── Section header ──────────────────────────────────────────────
-
-function SectionHeader({ label }: { label: string }) {
-  return (
-    <h3 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-fg-4 mt-4 mb-1 px-2.5">
-      {label}
-    </h3>
-  );
-}
-
-// ── Divider (collapsed mode separator) ──────────────────────────
-
-function Divider() {
-  return <div className="w-5 h-px bg-edge mx-auto my-2 shrink-0" />;
-}
-
 // ── Nav item ────────────────────────────────────────────────────
 
 function NavItem({
   icon,
   label,
   active,
-  accentColor,
   collapsed,
   onClick,
 }: {
   icon: React.ReactNode;
   label: string;
   active: boolean;
-  accentColor?: string;
   collapsed?: boolean;
   onClick: () => void;
 }) {
@@ -414,8 +284,7 @@ function NavItem({
         {/* Active indicator — left accent bar */}
         {active && (
           <span
-            className="absolute left-0 top-1.5 bottom-1.5 w-[2.5px] rounded-full"
-            style={{ background: accentColor ?? "var(--color-accent)" }}
+            className="absolute left-0 top-1.5 bottom-1.5 w-[2.5px] rounded-full bg-accent"
           />
         )}
         <span className="shrink-0 flex items-center justify-center w-5 h-5">

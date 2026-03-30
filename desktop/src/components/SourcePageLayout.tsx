@@ -48,10 +48,15 @@ interface Tab {
   label: string;
 }
 
-const TABS: Tab[] = [
+const CHANNEL_TABS: Tab[] = [
   { key: "feed", label: "Feed" },
   { key: "configuration", label: "Configure" },
   { key: "display", label: "Display" },
+];
+
+const WIDGET_TABS: Tab[] = [
+  { key: "feed", label: "Feed" },
+  { key: "configuration", label: "Configure" },
 ];
 
 interface SourcePageLayoutProps {
@@ -81,6 +86,7 @@ export default function SourcePageLayout({
   sourceKind,
 }: SourcePageLayoutProps) {
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const tabs = sourceKind === "widget" ? WIDGET_TABS : CHANNEL_TABS;
 
   function handleRemove() {
     if (sourceKind === "channel") {
@@ -97,10 +103,10 @@ export default function SourcePageLayout({
         <div className="flex items-center gap-1.5 min-w-0 text-sm">
           <button
             onClick={onBack}
-            aria-label="Back to dashboard"
+            aria-label="Back to home"
             className="text-fg-3 hover:text-fg-2 transition-colors shrink-0"
           >
-            Dashboard
+            Home
           </button>
           <span className="text-fg-4">/</span>
           <span className="font-medium truncate">{name}</span>
@@ -144,7 +150,7 @@ export default function SourcePageLayout({
 
           {/* Tab bar */}
           <div className="flex gap-1">
-            {TABS.map(({ key, label }) => (
+            {tabs.map(({ key, label }) => (
               <button
                 key={key}
                 onClick={() => onTabChange(key)}

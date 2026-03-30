@@ -158,6 +158,33 @@ export interface WidgetPrefs {
   github: GitHubWidgetConfig;
 }
 
+// ── Channel display preferences ─────────────────────────────────
+// Controls what data is shown in FeedTabs and ticker chips.
+// Sports display prefs live server-side (useSportsConfig), not here.
+
+export interface FinanceDisplayPrefs {
+  showChange: boolean;
+  showPrevClose: boolean;
+  showLastUpdated: boolean;
+}
+
+export interface RssDisplayPrefs {
+  showDescription: boolean;
+  showSource: boolean;
+  showTimestamps: boolean;
+}
+
+export interface FantasyDisplayPrefs {
+  showStandings: boolean;
+  showInjuryCount: boolean;
+}
+
+export interface ChannelDisplayPrefs {
+  finance: FinanceDisplayPrefs;
+  rss: RssDisplayPrefs;
+  fantasy: FantasyDisplayPrefs;
+}
+
 export interface AppPreferences {
   appearance: AppearancePrefs;
   ticker: TickerPrefs;
@@ -165,6 +192,7 @@ export interface AppPreferences {
   window: WindowPrefs;
   taskbar: TaskbarPrefs;
   widgets: WidgetPrefs;
+  channelDisplay: ChannelDisplayPrefs;
 }
 
 // ── Defaults ────────────────────────────────────────────────────
@@ -244,6 +272,12 @@ export const DEFAULT_GITHUB_TICKER: GitHubTickerConfig = {
   excludedRepos: [],
 };
 
+const DEFAULT_CHANNEL_DISPLAY: ChannelDisplayPrefs = {
+  finance: { showChange: true, showPrevClose: true, showLastUpdated: true },
+  rss: { showDescription: true, showSource: true, showTimestamps: true },
+  fantasy: { showStandings: true, showInjuryCount: true },
+};
+
 const DEFAULT_WIDGETS: WidgetPrefs = {
   enabledWidgets: [],
   widgetsOnTicker: [],
@@ -281,6 +315,7 @@ const DEFAULT_PREFS: AppPreferences = {
   window: DEFAULT_WINDOW,
   taskbar: DEFAULT_TASKBAR,
   widgets: DEFAULT_WIDGETS,
+  channelDisplay: DEFAULT_CHANNEL_DISPLAY,
 };
 
 // ── Storage helpers ─────────────────────────────────────────────
@@ -413,6 +448,7 @@ export function loadPrefs(): AppPreferences {
     const source = isV1 ? migrateV1(saved) : (saved as Partial<AppPreferences>);
 
     // Deep merge with defaults so new keys are always present
+    const savedDisplay = source.channelDisplay as Partial<ChannelDisplayPrefs> | undefined;
     const merged: AppPreferences = {
       appearance: { ...DEFAULT_APPEARANCE, ...source.appearance },
       ticker: { ...DEFAULT_TICKER, ...source.ticker },
@@ -420,6 +456,11 @@ export function loadPrefs(): AppPreferences {
       window: { ...DEFAULT_WINDOW, ...source.window },
       taskbar: { ...DEFAULT_TASKBAR, ...source.taskbar },
       widgets: mergeWidgetPrefs(source.widgets as Partial<WidgetPrefs> | undefined),
+      channelDisplay: {
+        finance: { ...DEFAULT_CHANNEL_DISPLAY.finance, ...savedDisplay?.finance },
+        rss: { ...DEFAULT_CHANNEL_DISPLAY.rss, ...savedDisplay?.rss },
+        fantasy: { ...DEFAULT_CHANNEL_DISPLAY.fantasy, ...savedDisplay?.fantasy },
+      },
     };
 
     // If migrated from v1, persist the new format
@@ -454,6 +495,7 @@ export function resetAll(): AppPreferences {
     window: { ...DEFAULT_WINDOW },
     taskbar: { ...DEFAULT_TASKBAR },
     widgets: { ...DEFAULT_WIDGETS },
+    channelDisplay: { ...DEFAULT_CHANNEL_DISPLAY },
   };
   savePrefs(defaults);
   return defaults;

@@ -9,14 +9,20 @@ interface RssChipProps {
   item: RssItem;
   comfort?: boolean;
   colorMode?: ChipColorMode;
+  /** Hide source name label (default: shown) */
+  showSource?: boolean;
+  /** Hide published timestamp (default: shown) */
+  showTimestamps?: boolean;
   onClick?: () => void;
 }
 
-const RssChip = memo(function RssChip({ item, comfort, colorMode = "channel", onClick }: RssChipProps) {
+const RssChip = memo(function RssChip({ item, comfort, colorMode = "channel", showSource = true, showTimestamps = true, onClick }: RssChipProps) {
   const c = getChipColors(colorMode, "rss");
   const maxLen = comfort ? 60 : 40;
   const headline =
     item.title.length > maxLen ? item.title.slice(0, maxLen) + "\u2026" : item.title;
+  const hasSource = showSource && item.source_name;
+  const hasTime = showTimestamps && item.published_at;
 
   return (
     <button
@@ -27,17 +33,15 @@ const RssChip = memo(function RssChip({ item, comfort, colorMode = "channel", on
       <span className={clsx("font-medium", c.text, comfort && "text-[13px]")}>{headline}</span>
       {/* Row 2: source + time (comfort) / inline source (compact) */}
       {comfort ? (
-        <div className={clsx("flex items-center gap-1.5 text-[10px] font-mono", c.textFaint)}>
-          {item.source_name && <span>{item.source_name}</span>}
-          {item.published_at && (
-            <>
-              <span className="text-fg-4">&middot;</span>
-              <span>{timeAgo(item.published_at, { suffix: true })}</span>
-            </>
-          )}
-        </div>
+        (hasSource || hasTime) && (
+          <div className={clsx("flex items-center gap-1.5 text-[10px] font-mono", c.textFaint)}>
+            {hasSource && <span>{item.source_name}</span>}
+            {hasSource && hasTime && <span className="text-fg-4">&middot;</span>}
+            {hasTime && <span>{timeAgo(item.published_at, { suffix: true })}</span>}
+          </div>
+        )
       ) : (
-        item.source_name && (
+        hasSource && (
           <>
             <span className="text-fg-4">&middot;</span>
             <span className={clsx("font-mono text-[12px]", c.textDim)}>
@@ -51,6 +55,8 @@ const RssChip = memo(function RssChip({ item, comfort, colorMode = "channel", on
 }, (prev, next) =>
   prev.comfort === next.comfort &&
   prev.colorMode === next.colorMode &&
+  prev.showSource === next.showSource &&
+  prev.showTimestamps === next.showTimestamps &&
   prev.onClick === next.onClick &&
   prev.item.guid === next.item.guid &&
   prev.item.feed_url === next.item.feed_url &&

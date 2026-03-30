@@ -9,13 +9,15 @@ interface TradeChipProps {
   trade: Trade;
   comfort?: boolean;
   colorMode?: ChipColorMode;
+  /** Hide percentage change indicator (default: shown) */
+  showChange?: boolean;
   onClick?: () => void;
 }
 
-const TradeChip = memo(function TradeChip({ trade, comfort, colorMode = "channel", onClick }: TradeChipProps) {
+const TradeChip = memo(function TradeChip({ trade, comfort, colorMode = "channel", showChange = true, onClick }: TradeChipProps) {
   const c = getChipColors(colorMode, "finance");
   const isUp = trade.direction === "up";
-  const changeStr = formatChange(trade.percentage_change);
+  const changeStr = showChange ? formatChange(trade.percentage_change) : null;
 
   return (
     <button
@@ -59,6 +61,7 @@ const TradeChip = memo(function TradeChip({ trade, comfort, colorMode = "channel
 }, (prev, next) =>
   prev.comfort === next.comfort &&
   prev.colorMode === next.colorMode &&
+  prev.showChange === next.showChange &&
   prev.onClick === next.onClick &&
   prev.trade.symbol === next.trade.symbol &&
   prev.trade.price === next.trade.price &&

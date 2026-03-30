@@ -358,17 +358,11 @@ function RootLayout() {
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
         <Sidebar
-          activeItem={route.activeItem}
           isFeed={route.isFeed}
           isSettings={route.isSettings}
           isMarketplace={route.isMarketplace}
-          channels={enabledChannels}
-          enabledWidgets={enabledWidgets}
-          allChannelManifests={allChannelManifests}
-          allWidgets={allWidgets}
           deliveryMode={deliveryMode}
           tickerAlive={prefs.ticker.showTicker}
-          onSelectItem={handleSelectItem}
           onNavigateToFeed={handleNavigateToFeed}
           onNavigateToSettings={handleNavigateToSettings}
           onNavigateToMarketplace={handleNavigateToMarketplace}
