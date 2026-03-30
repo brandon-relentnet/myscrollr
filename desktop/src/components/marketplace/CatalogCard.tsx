@@ -2,7 +2,7 @@ import { useState } from "react";
 import clsx from "clsx";
 import { Check, ExternalLink, Loader2 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-shell";
-import type { MarketplaceItem, MarketplaceCategory } from "../../marketplace";
+import type { CatalogItem, CatalogCategory } from "../../marketplace";
 import type { SubscriptionTier } from "../../auth";
 import { TIER_LABELS } from "../../auth";
 import ConfirmDialog from "../ConfirmDialog";
@@ -16,28 +16,28 @@ const CHANNEL_NOUNS: Record<string, string> = {
   fantasy: "leagues",
 };
 
-const CATEGORY_BADGE: Record<MarketplaceCategory, string> = {
-  "data-feed": "Data Feed",
-  "utility": "Utility",
+const CATEGORY_BADGE: Record<CatalogCategory, string> = {
+  channel: "Channel",
+  widget: "Widget",
 };
 
 // ── Props ───────────────────────────────────────────────────────
 
-interface MarketplaceCardProps {
-  item: MarketplaceItem;
+interface CatalogCardProps {
+  item: CatalogItem;
   enabled: boolean;
   tier: SubscriptionTier;
   authenticated: boolean;
   /** Disable Add button while dashboard is loading (channels enabled state unknown). */
   dashboardLoading: boolean;
-  onAdd: (item: MarketplaceItem) => Promise<void>;
-  onRemove: (item: MarketplaceItem) => Promise<void>;
+  onAdd: (item: CatalogItem) => Promise<void>;
+  onRemove: (item: CatalogItem) => Promise<void>;
   onLogin: () => void;
 }
 
 // ── Component ───────────────────────────────────────────────────
 
-export default function MarketplaceCard({
+export default function CatalogCard({
   item,
   enabled,
   tier,
@@ -46,7 +46,7 @@ export default function MarketplaceCard({
   onAdd,
   onRemove,
   onLogin,
-}: MarketplaceCardProps) {
+}: CatalogCardProps) {
   const [loading, setLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 

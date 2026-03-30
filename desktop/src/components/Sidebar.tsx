@@ -6,7 +6,7 @@
  * Collapses to a 48px icon-only rail with tooltips.
  */
 import { useState, useMemo } from "react";
-import { LayoutDashboard, Rows3, Store, Settings, User, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { LayoutDashboard, Rows3, LayoutGrid, Settings, User, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import clsx from "clsx";
 import Tooltip from "./Tooltip";
 import type { ChannelManifest, WidgetManifest, DeliveryMode } from "../types";
@@ -227,10 +227,10 @@ export default function Sidebar({
           onClick={onNavigateToTicker}
         />
 
-        {/* Marketplace */}
+        {/* Catalog */}
         <NavItem
-          icon={<Store size={15} />}
-          label="Marketplace"
+          icon={<LayoutGrid size={15} />}
+          label="Catalog"
           active={isMarketplace}
           collapsed={collapsed}
           onClick={onNavigateToMarketplace}

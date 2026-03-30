@@ -1,40 +1,40 @@
 import { useState, useMemo, useCallback } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { Store } from "lucide-react";
+import { LayoutGrid } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
 
-import { getMarketplaceItems, CATEGORY_LABELS } from "../marketplace";
-import type { MarketplaceCategory, MarketplaceItem } from "../marketplace";
+import { getCatalogItems, CATEGORY_LABELS } from "../marketplace";
+import type { CatalogCategory, CatalogItem } from "../marketplace";
 import { channelsApi } from "../api/client";
 import type { ChannelType } from "../api/client";
 import { dashboardQueryOptions, queryKeys } from "../api/queries";
 import { useShell, useShellData } from "../shell-context";
 import { CHANNEL_ORDER } from "../channels/registry";
 import { WIDGET_ORDER } from "../widgets/registry";
-import MarketplaceCard from "../components/marketplace/MarketplaceCard";
+import CatalogCard from "../components/marketplace/CatalogCard";
 import QueryErrorBanner from "../components/QueryErrorBanner";
 
 export const Route = createFileRoute("/marketplace")({
-  component: MarketplacePage,
+  component: CatalogPage,
 });
 
 // ── Category filter options ─────────────────────────────────────
 
-type FilterTab = "all" | MarketplaceCategory;
+type FilterTab = "all" | CatalogCategory;
 
 const FILTER_TABS: { key: FilterTab; label: string }[] = [
   { key: "all", label: "All" },
-  { key: "data-feed", label: CATEGORY_LABELS["data-feed"] },
-  { key: "utility", label: CATEGORY_LABELS["utility"] },
+  { key: "channel", label: CATEGORY_LABELS["channel"] },
+  { key: "widget", label: CATEGORY_LABELS["widget"] },
 ];
 
 // ── Sort order: enabled first, then canonical order ─────────────
 
 const CANONICAL_ORDER = [...CHANNEL_ORDER, ...WIDGET_ORDER];
 
-function sortItems(items: MarketplaceItem[], enabledIds: Set<string>): MarketplaceItem[] {
+function sortItems(items: CatalogItem[], enabledIds: Set<string>): CatalogItem[] {
   return [...items].sort((a, b) => {
     const aEnabled = enabledIds.has(a.id) ? 0 : 1;
     const bEnabled = enabledIds.has(b.id) ? 0 : 1;
@@ -45,7 +45,7 @@ function sortItems(items: MarketplaceItem[], enabledIds: Set<string>): Marketpla
 
 // ── Page component ──────────────────────────────────────────────
 
-function MarketplacePage() {
+function CatalogPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { prefs, onPrefsChange, authenticated, tier, onLogin } = useShell();
@@ -54,8 +54,8 @@ function MarketplacePage() {
 
   const [filter, setFilter] = useState<FilterTab>("all");
 
-  // All marketplace items (static, computed once)
-  const allItems = useMemo(() => getMarketplaceItems(), []);
+  // All catalog items (static, computed once)
+  const allItems = useMemo(() => getCatalogItems(), []);
 
   // Enabled IDs
   const enabledChannelIds = useMemo(
@@ -82,7 +82,7 @@ function MarketplacePage() {
   // ── Add handler ─────────────────────────────────────────────
 
   const handleAdd = useCallback(
-    async (item: MarketplaceItem) => {
+    async (item: CatalogItem) => {
       if (item.kind === "channel") {
         await channelsApi.create(item.id as ChannelType);
         await queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
@@ -105,7 +105,7 @@ function MarketplacePage() {
   // ── Remove handler ──────────────────────────────────────────
 
   const handleRemove = useCallback(
-    async (item: MarketplaceItem) => {
+    async (item: CatalogItem) => {
       if (item.kind === "channel") {
         await channelsApi.delete(item.id as ChannelType);
         await queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
@@ -130,11 +130,11 @@ function MarketplacePage() {
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-1">
-          <Store size={20} className="text-fg-3" />
-          <h1 className="text-lg font-bold text-fg">Marketplace</h1>
+          <LayoutGrid size={20} className="text-fg-3" />
+          <h1 className="text-lg font-bold text-fg">Catalog</h1>
         </div>
         <p className="text-xs text-fg-4 ml-8">
-          Add data feeds and utilities to your ticker
+          Add channels and widgets to your ticker
         </p>
       </div>
 
@@ -166,7 +166,7 @@ function MarketplacePage() {
       {/* Card grid */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         {visibleItems.map((item) => (
-          <MarketplaceCard
+          <CatalogCard
             key={item.id}
             item={item}
             enabled={allEnabledIds.has(item.id)}

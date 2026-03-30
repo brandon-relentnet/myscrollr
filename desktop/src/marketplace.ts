@@ -10,23 +10,23 @@ import { getAllWidgets } from "./widgets/registry";
 
 type IconProps = { size?: number; className?: string };
 
-export type MarketplaceCategory = "data-feed" | "utility";
+export type CatalogCategory = "channel" | "widget";
 
-export interface MarketplaceItem {
+export interface CatalogItem {
   id: string;
   name: string;
   description: string;
   icon: ComponentType<IconProps>;
   hex: string;
-  category: MarketplaceCategory;
+  category: CatalogCategory;
   kind: "channel" | "widget";
   info: SourceInfo;
   requiredTier: SubscriptionTier;
 }
 
-export const CATEGORY_LABELS: Record<MarketplaceCategory, string> = {
-  "data-feed": "Data Feeds",
-  "utility": "Utilities",
+export const CATEGORY_LABELS: Record<CatalogCategory, string> = {
+  channel: "Channels",
+  widget: "Widgets",
 };
 
 // ── Tier requirements per source ────────────────────────────────
@@ -40,26 +40,26 @@ const CHANNEL_TIERS: Record<string, SubscriptionTier> = {
 
 // ── Builder ─────────────────────────────────────────────────────
 
-export function getMarketplaceItems(): MarketplaceItem[] {
-  const channels: MarketplaceItem[] = getAllChannels().map((ch) => ({
+export function getCatalogItems(): CatalogItem[] {
+  const channels: CatalogItem[] = getAllChannels().map((ch) => ({
     id: ch.id,
     name: ch.name,
     description: ch.description,
     icon: ch.icon,
     hex: ch.hex,
-    category: "data-feed" as const,
+    category: "channel" as const,
     kind: "channel" as const,
     info: ch.info,
     requiredTier: CHANNEL_TIERS[ch.id] ?? "free",
   }));
 
-  const widgets: MarketplaceItem[] = getAllWidgets().map((w) => ({
+  const widgets: CatalogItem[] = getAllWidgets().map((w) => ({
     id: w.id,
     name: w.name,
     description: w.description,
     icon: w.icon,
     hex: w.hex,
-    category: "utility" as const,
+    category: "widget" as const,
     kind: "widget" as const,
     info: w.info,
     requiredTier: "free",
