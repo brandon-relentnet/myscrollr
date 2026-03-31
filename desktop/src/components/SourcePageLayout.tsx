@@ -6,7 +6,7 @@
  * both /channel/:type/:tab and /widget/:id/:tab routes.
  */
 import { useState } from "react";
-import { Eye, EyeOff, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import clsx from "clsx";
 import Tooltip from "./Tooltip";
 import ConfirmDialog from "./ConfirmDialog";
@@ -67,8 +67,6 @@ interface SourcePageLayoutProps {
   children: React.ReactNode;
 
   /** Source-level actions (optional — omit to hide action buttons). */
-  tickerEnabled?: boolean;
-  onToggleTicker?: () => void;
   onRemove?: () => void;
   /** "channel" triggers a ConfirmDialog before removal; "widget" removes immediately. */
   sourceKind?: "channel" | "widget";
@@ -80,8 +78,6 @@ export default function SourcePageLayout({
   onTabChange,
   onBack,
   children,
-  tickerEnabled,
-  onToggleTicker,
   onRemove,
   sourceKind,
 }: SourcePageLayoutProps) {
@@ -114,23 +110,6 @@ export default function SourcePageLayout({
 
         <div className="flex items-center gap-2 shrink-0">
           {/* Source-level actions */}
-          {onToggleTicker && tickerEnabled !== undefined && (
-            <Tooltip content={tickerEnabled ? "Visible on ticker" : "Hidden from ticker"}>
-              <button
-                onClick={onToggleTicker}
-                aria-label={tickerEnabled ? `Hide ${name} from ticker` : `Show ${name} on ticker`}
-                className={clsx(
-                  "w-7 h-7 flex items-center justify-center rounded-lg transition-colors",
-                  tickerEnabled
-                    ? "text-fg-3 hover:text-fg hover:bg-surface-hover"
-                    : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover",
-                )}
-              >
-                {tickerEnabled ? <Eye size={14} /> : <EyeOff size={14} />}
-              </button>
-            </Tooltip>
-          )}
-
           {onRemove && (
             <Tooltip content="Remove">
               <button
@@ -144,7 +123,7 @@ export default function SourcePageLayout({
           )}
 
           {/* Divider between actions and tabs */}
-          {(onToggleTicker || onRemove) && (
+          {onRemove && (
             <div className="w-px h-5 bg-edge/50" />
           )}
 

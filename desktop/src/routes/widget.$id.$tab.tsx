@@ -26,13 +26,11 @@ function WidgetRoute() {
   const tab = parseSourceTab(rawTab);
 
   const widget = getWidget(id);
-  const { onToggleWidgetTicker, onToggleWidget, prefs } = useShell();
+  const { onToggleWidget } = useShell();
 
   if (!widget) {
     return <SourceNotFound kind="Widget" name={id} />;
   }
-
-  const tickerEnabled = prefs.widgets.widgetsOnTicker.includes(id);
 
   return (
     <SourcePageLayout
@@ -42,8 +40,6 @@ function WidgetRoute() {
         navigate({ to: "/widget/$id/$tab", params: { id, tab: t } })
       }
       onBack={() => navigate({ to: "/feed" })}
-      tickerEnabled={tickerEnabled}
-      onToggleTicker={() => onToggleWidgetTicker(id)}
       onRemove={() => {
         onToggleWidget(id);
         navigate({ to: "/feed" });

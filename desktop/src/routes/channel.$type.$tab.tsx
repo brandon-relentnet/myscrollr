@@ -37,15 +37,11 @@ function ChannelRoute() {
 
   const channel = getChannel(type);
   const { data: dashboard } = useQuery(dashboardQueryOptions());
-  const { onToggleChannelTicker, onDeleteChannel } = useShell();
-  const { channels } = useShellData();
+  const { onDeleteChannel } = useShell();
 
   if (!channel) {
     return <SourceNotFound kind="Channel" name={type} />;
   }
-
-  const channelData = channels.find((ch) => ch.channel_type === type);
-  const tickerEnabled = channelData?.visible ?? false;
 
   return (
     <SourcePageLayout
@@ -55,10 +51,6 @@ function ChannelRoute() {
         navigate({ to: "/channel/$type/$tab", params: { type, tab: t } })
       }
       onBack={() => navigate({ to: "/feed" })}
-      tickerEnabled={tickerEnabled}
-      onToggleTicker={() =>
-        onToggleChannelTicker(type as ChannelType, !tickerEnabled)
-      }
       onRemove={() => {
         onDeleteChannel(type as ChannelType);
         navigate({ to: "/feed" });

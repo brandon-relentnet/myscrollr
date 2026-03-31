@@ -14,6 +14,7 @@ export const LS_WEATHER_CITIES = "scrollr:widget:weather:cities";
 export const LS_WEATHER_UNIT = "scrollr:widget:weather:unit";
 export const LS_UPTIME_MONITORS = "scrollr:widget:uptime:monitors";
 export const LS_GITHUB_REPOS = "scrollr:widget:github:repos";
+export const LS_SYSMON_DATA = "scrollr:widget:sysmon:data";
 
 // ── Widget pin options ──────────────────────────────────────────
 

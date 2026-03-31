@@ -10,6 +10,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { setStore } from "../lib/store";
+import { LS_SYSMON_DATA } from "../constants";
 
 // ── Shared SystemInfo type ──────────────────────────────────────
 
@@ -57,6 +59,7 @@ export async function fetchSysmonData(): Promise<SystemInfo> {
       .then((data) => {
         cachedData = data;
         cachedAt = Date.now();
+        setStore(LS_SYSMON_DATA, data);
         return data;
       })
       .finally(() => {
