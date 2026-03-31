@@ -1,21 +1,50 @@
 /**
- * Home route — source card grid.
+ * Home route — live status dashboard.
  *
- * Cards show a brief description of what each source does, plus a
- * small config indicator (e.g. "5 symbols", "3 leagues"). When
- * nothing is configured yet the card says so and links to the
- * configure page. Discovery happens in the Catalog (/catalog).
+ * Shows a glanceable overview of live data from each active channel,
+ * plus a compact widget status strip. Discovery and add/remove happen
+ * in the Catalog (/catalog), not here.
  */
-import { useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Eye, EyeOff, Pin, PinOff } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Pin,
+  PinOff,
+  Pencil,
+  Check,
+  ChevronRight,
+} from "lucide-react";
 import clsx from "clsx";
 import RouteError from "../components/RouteError";
 import { useShell, useShellData } from "../shell-context";
 import { CHANNEL_ORDER } from "../channels/registry";
 import { WIDGET_ORDER } from "../widgets/registry";
+import { getStore } from "../lib/store";
+import { timeAgo } from "../utils/format";
+import { formatTemp, weatherCodeToIcon } from "../widgets/weather/types";
+import { loadMonitors } from "../widgets/uptime/types";
+import { loadRepoData } from "../widgets/github/types";
+import {
+  LS_CLOCK_FORMAT,
+  LS_WEATHER_CITIES,
+  LS_WEATHER_UNIT,
+  LS_SYSMON_DATA,
+} from "../constants";
 import type { ChannelType, Channel } from "../api/client";
-import type { ChannelManifest, WidgetManifest, DashboardResponse } from "../types";
+import type {
+  ChannelManifest,
+  WidgetManifest,
+  Trade,
+  Game,
+  RssItem,
+} from "../types";
+import type { TempUnit, HomePreview } from "../preferences";
+import type { SystemInfo } from "../hooks/useSysmonData";
+import type { SavedCity } from "../widgets/weather/types";
+
+const MAX_PREVIEW = 5;
 
 // ── Route ───────────────────────────────────────────────────────
 
@@ -40,6 +69,7 @@ function HomePage() {
   const enabledWidgets = shell.prefs.widgets.enabledWidgets;
   const widgetsOnTicker = shell.prefs.widgets.widgetsOnTicker;
   const pinnedSources = shell.prefs.pinnedSources;
+  const homePreview = shell.prefs.homePreview;
 
   function togglePin(id: string) {
     const next = pinnedSources.includes(id)
@@ -48,26 +78,30 @@ function HomePage() {
     shell.onPrefsChange({ ...shell.prefs, pinnedSources: next });
   }
 
+  const setHomePreview = useCallback(
+    (channelType: string, keys: string[]) => {
+      const next: HomePreview = { ...homePreview, [channelType]: keys };
+      shell.onPrefsChange({ ...shell.prefs, homePreview: next });
+    },
+    [homePreview, shell],
+  );
+
   const orderedChannels = useMemo(
     () =>
-      CHANNEL_ORDER
-        .map((id) => {
-          const ch = channels.find((c) => c.channel_type === id);
-          const manifest = allChannelManifests.find((m) => m.id === id);
-          return ch && manifest ? { ch, manifest } : null;
-        })
-        .filter(Boolean) as { ch: Channel; manifest: ChannelManifest }[],
+      CHANNEL_ORDER.map((id) => {
+        const ch = channels.find((c) => c.channel_type === id);
+        const manifest = allChannelManifests.find((m) => m.id === id);
+        return ch && manifest ? { ch, manifest } : null;
+      }).filter(Boolean) as { ch: Channel; manifest: ChannelManifest }[],
     [channels, allChannelManifests],
   );
 
   const orderedWidgets = useMemo(
     () =>
-      WIDGET_ORDER
-        .map((id) => {
-          if (!enabledWidgets.includes(id)) return null;
-          return allWidgets.find((w) => w.id === id) ?? null;
-        })
-        .filter(Boolean) as WidgetManifest[],
+      WIDGET_ORDER.map((id) => {
+        if (!enabledWidgets.includes(id)) return null;
+        return allWidgets.find((w) => w.id === id) ?? null;
+      }).filter(Boolean) as WidgetManifest[],
     [enabledWidgets, allWidgets],
   );
 
@@ -80,9 +114,7 @@ function HomePage() {
         <h1 className="text-[11px] font-mono font-semibold text-fg-4 uppercase tracking-wider mb-1">
           Home
         </h1>
-        <p className="text-xs text-fg-4">
-          Your active channels and widgets
-        </p>
+        <p className="text-xs text-fg-4">Your live feed at a glance</p>
       </div>
 
       {/* Empty state */}
@@ -92,7 +124,8 @@ function HomePage() {
             Welcome to Scrollr
           </h2>
           <p className="text-sm text-fg-3 mb-6 max-w-sm">
-            Add channels and widgets from the Catalog to build your personalized ticker.
+            Add channels and widgets from the Catalog to build your
+            personalized ticker.
           </p>
           {!authenticated && (
             <button
@@ -105,89 +138,574 @@ function HomePage() {
         </div>
       )}
 
-      {/* Channels section */}
-      {orderedChannels.length > 0 && (
-        <section className="mb-6">
-          <h3 className="text-[11px] font-mono font-semibold text-fg-4 uppercase tracking-wider mb-3">
-            Channels
-          </h3>
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-            {orderedChannels.map(({ ch, manifest }) => {
-              const indicator = getChannelIndicator(ch, dashboard);
-              const hasConfig = indicator.count > 0;
-              return (
-                <SourceCard
-                  key={ch.channel_type}
-                  icon={manifest.icon}
-                  name={manifest.name}
-                  hex={manifest.hex}
-                  description={manifest.description}
-                  indicator={hasConfig ? indicator.label : undefined}
-                  emptyHint={!hasConfig ? "Nothing configured yet" : undefined}
-                  tickerEnabled={ch.visible}
-                  onToggleTicker={() =>
-                    onToggleChannelTicker(ch.channel_type as ChannelType, !ch.visible)
-                  }
-                  pinned={pinnedSources.includes(ch.channel_type)}
-                  onTogglePin={() => togglePin(ch.channel_type)}
-                  onClick={() =>
-                    navigate({
-                      to: "/channel/$type/$tab",
-                      params: {
-                        type: ch.channel_type,
-                        tab: hasConfig ? "feed" : "configuration",
-                      },
-                    })
-                  }
-                />
-              );
-            })}
-          </div>
-        </section>
-      )}
+      {/* Channel sections */}
+      {orderedChannels.map(({ ch, manifest }) => {
+        const channelData = dashboard?.data?.[ch.channel_type];
+        const hasData = Array.isArray(channelData) && channelData.length > 0;
+        const targetTab = hasData ? "feed" : "configuration";
+        return (
+          <ChannelSection
+            key={ch.channel_type}
+            channel={ch}
+            manifest={manifest}
+            data={dashboard?.data}
+            tickerEnabled={ch.visible}
+            onToggleTicker={() =>
+              onToggleChannelTicker(
+                ch.channel_type as ChannelType,
+                !ch.visible,
+              )
+            }
+            pinned={pinnedSources.includes(ch.channel_type)}
+            onTogglePin={() => togglePin(ch.channel_type)}
+            selectedKeys={homePreview[ch.channel_type] ?? []}
+            onSelectionChange={(keys) =>
+              setHomePreview(ch.channel_type, keys)
+            }
+            onViewAll={() =>
+              navigate({
+                to: "/channel/$type/$tab",
+                params: { type: ch.channel_type, tab: "feed" },
+              })
+            }
+            onRowClick={() =>
+              navigate({
+                to: "/channel/$type/$tab",
+                params: { type: ch.channel_type, tab: targetTab },
+              })
+            }
+          />
+        );
+      })}
 
-      {/* Widgets section */}
+      {/* Widget strip */}
       {orderedWidgets.length > 0 && (
-        <section>
-          <h3 className="text-[11px] font-mono font-semibold text-fg-4 uppercase tracking-wider mb-3">
-            Widgets
-          </h3>
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-            {orderedWidgets.map((widget) => (
-              <SourceCard
-                key={widget.id}
-                icon={widget.icon}
-                name={widget.name}
-                hex={widget.hex}
-                description={widget.description}
-                tickerEnabled={widgetsOnTicker.includes(widget.id)}
-                onToggleTicker={() => onToggleWidgetTicker(widget.id)}
-                pinned={pinnedSources.includes(widget.id)}
-                onTogglePin={() => togglePin(widget.id)}
-                onClick={() =>
-                  navigate({
-                    to: "/widget/$id/$tab",
-                    params: { id: widget.id, tab: "feed" },
-                  })
-                }
-              />
-            ))}
-          </div>
-        </section>
+        <WidgetStrip
+          widgets={orderedWidgets}
+          widgetsOnTicker={widgetsOnTicker}
+          onToggleTicker={onToggleWidgetTicker}
+          pinnedSources={pinnedSources}
+          onTogglePin={togglePin}
+          onNavigate={(id) =>
+            navigate({
+              to: "/widget/$id/$tab",
+              params: { id, tab: "feed" },
+            })
+          }
+        />
       )}
     </div>
   );
 }
 
-// ── Source card ────────────────────────────────────────────────
+// ── Group key extractors ────────────────────────────────────────
 
-interface SourceCardProps {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-  name: string;
-  hex: string;
-  description: string;
-  indicator?: string;
-  emptyHint?: string;
+function getGroups(type: string, data: unknown): string[] {
+  const arr = Array.isArray(data) ? data : [];
+  switch (type) {
+    case "finance":
+      return [...new Set((arr as Trade[]).map((t) => t.symbol))];
+    case "sports":
+      return [...new Set((arr as Game[]).map((g) => g.league))];
+    case "rss":
+      return [...new Set((arr as RssItem[]).map((i) => i.source_name))];
+    case "fantasy":
+      return [...new Set(
+        arr.map((l: Record<string, unknown>) =>
+          String(l.league_key ?? l.league_name ?? l.name ?? ""),
+        ).filter(Boolean),
+      )];
+    default:
+      return [];
+  }
+}
+
+function getGroupLabel(type: string, key: string, data: unknown): string {
+  if (type !== "fantasy") return key;
+  const arr = Array.isArray(data) ? data : [];
+  const league = arr.find(
+    (l: Record<string, unknown>) =>
+      String(l.league_key ?? "") === key || String(l.league_name ?? "") === key,
+  ) as Record<string, unknown> | undefined;
+  return league
+    ? String(league.league_name ?? league.name ?? key)
+    : key;
+}
+
+// ── Channel section ─────────────────────────────────────────────
+
+interface ChannelSectionProps {
+  channel: Channel;
+  manifest: ChannelManifest;
+  data: Record<string, unknown> | undefined;
+  tickerEnabled: boolean;
+  onToggleTicker: () => void;
+  pinned: boolean;
+  onTogglePin: () => void;
+  selectedKeys: string[];
+  onSelectionChange: (keys: string[]) => void;
+  onViewAll: () => void;
+  onRowClick: () => void;
+}
+
+function ChannelSection({
+  channel,
+  manifest,
+  data,
+  tickerEnabled,
+  onToggleTicker,
+  pinned,
+  onTogglePin,
+  selectedKeys,
+  onSelectionChange,
+  onViewAll,
+  onRowClick,
+}: ChannelSectionProps) {
+  const [editing, setEditing] = useState(false);
+  const Icon = manifest.icon;
+  const type = channel.channel_type;
+  const channelData = data?.[type];
+  const groups = useMemo(() => getGroups(type, channelData), [type, channelData]);
+  const hasSelections = selectedKeys.length > 0;
+
+  function toggleGroup(key: string) {
+    if (selectedKeys.includes(key)) {
+      onSelectionChange(selectedKeys.filter((k) => k !== key));
+    } else if (selectedKeys.length < MAX_PREVIEW) {
+      onSelectionChange([...selectedKeys, key]);
+    }
+  }
+
+  return (
+    <section className="mb-6">
+      {/* Section header */}
+      <div className="flex items-center gap-3 mb-3">
+        <div
+          className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
+          style={{ backgroundColor: `${manifest.hex}15`, color: manifest.hex }}
+        >
+          <Icon size={16} />
+        </div>
+        <span className="text-sm font-semibold text-fg flex-1">
+          {manifest.name}
+        </span>
+
+        {/* Edit toggle */}
+        {groups.length > 0 && (
+          <button
+            onClick={() => setEditing(!editing)}
+            aria-label={editing ? "Done editing" : `Edit ${manifest.name} preview`}
+            className={clsx(
+              "w-7 h-7 flex items-center justify-center rounded-lg transition-colors",
+              editing
+                ? "text-accent bg-accent/10"
+                : hasSelections
+                  ? "text-accent hover:bg-surface-hover"
+                  : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover",
+            )}
+          >
+            {editing ? <Check size={14} /> : <Pencil size={14} />}
+          </button>
+        )}
+
+        {/* Eye toggle */}
+        <button
+          onClick={onToggleTicker}
+          aria-label={
+            tickerEnabled
+              ? `Hide ${manifest.name} from ticker`
+              : `Show ${manifest.name} on ticker`
+          }
+          className={clsx(
+            "w-7 h-7 flex items-center justify-center rounded-lg transition-colors",
+            tickerEnabled
+              ? "text-fg-3 hover:text-fg hover:bg-surface-hover"
+              : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover",
+          )}
+        >
+          {tickerEnabled ? <Eye size={14} /> : <EyeOff size={14} />}
+        </button>
+
+        {/* Pin toggle */}
+        <button
+          onClick={onTogglePin}
+          aria-label={
+            pinned
+              ? `Unpin ${manifest.name}`
+              : `Pin ${manifest.name} to sidebar`
+          }
+          className={clsx(
+            "w-7 h-7 flex items-center justify-center rounded-lg transition-colors",
+            pinned
+              ? "text-accent"
+              : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover",
+          )}
+        >
+          {pinned ? <Pin size={14} /> : <PinOff size={14} />}
+        </button>
+
+        {/* View all */}
+        {!editing && (
+          <button
+            onClick={onViewAll}
+            className="flex items-center gap-1 text-[11px] font-medium text-fg-4 hover:text-fg-2 transition-colors"
+          >
+            View all
+            <ChevronRight size={12} />
+          </button>
+        )}
+      </div>
+
+      {/* Edit mode: group picker */}
+      {editing && (
+        <div className="rounded-lg border border-accent/20 bg-accent/[0.03] overflow-hidden divide-y divide-edge/10 mb-3">
+          <div className="px-4 py-2 flex items-center justify-between">
+            <span className="text-[11px] font-medium text-fg-3">
+              Choose up to {MAX_PREVIEW} to show on Home
+            </span>
+            {hasSelections && (
+              <button
+                onClick={() => onSelectionChange([])}
+                className="text-[11px] font-medium text-fg-4 hover:text-fg-2 transition-colors"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
+          {groups.map((key) => {
+            const isSelected = selectedKeys.includes(key);
+            const atLimit = selectedKeys.length >= MAX_PREVIEW && !isSelected;
+            return (
+              <button
+                key={key}
+                onClick={() => toggleGroup(key)}
+                disabled={atLimit}
+                className={clsx(
+                  "flex items-center gap-3 px-4 py-2.5 w-full text-left transition-colors",
+                  atLimit
+                    ? "opacity-40 cursor-not-allowed"
+                    : "hover:bg-accent/[0.04] cursor-pointer",
+                )}
+              >
+                <span
+                  className={clsx(
+                    "w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors",
+                    isSelected
+                      ? "bg-accent border-accent"
+                      : "border-edge/40",
+                  )}
+                >
+                  {isSelected && (
+                    <Check size={10} className="text-surface" strokeWidth={3} />
+                  )}
+                </span>
+                <span className="text-xs text-fg truncate flex-1">
+                  {getGroupLabel(type, key, channelData)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Data rows */}
+      {!editing && (
+        <div
+          className="rounded-lg border border-edge/20 overflow-hidden divide-y divide-edge/10 cursor-pointer hover:bg-base-200/30 transition-colors"
+          onClick={onRowClick}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onRowClick();
+          }}
+        >
+          {type === "finance" && (
+            <FinanceRows data={channelData} filter={selectedKeys} />
+          )}
+          {type === "sports" && (
+            <SportsRows data={channelData} filter={selectedKeys} />
+          )}
+          {type === "rss" && (
+            <RssRows data={channelData} filter={selectedKeys} />
+          )}
+          {type === "fantasy" && (
+            <FantasyRows data={channelData} filter={selectedKeys} />
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ── Finance rows ────────────────────────────────────────────────
+
+function FinanceRows({ data, filter }: { data: unknown; filter: string[] }) {
+  const trades = Array.isArray(data) ? (data as Trade[]) : [];
+  if (trades.length === 0) return <EmptyDataRow channelType="finance" />;
+
+  const filtered =
+    filter.length > 0
+      ? trades.filter((t) => filter.includes(t.symbol))
+      : trades;
+
+  const sorted = [...filtered]
+    .sort(
+      (a, b) =>
+        Math.abs(Number(b.percentage_change ?? 0)) -
+        Math.abs(Number(a.percentage_change ?? 0)),
+    )
+    .slice(0, MAX_PREVIEW);
+
+  if (sorted.length === 0)
+    return <EmptyDataRow channelType="finance" />;
+
+  return (
+    <>
+      {sorted.map((t) => {
+        const pct = Number(t.percentage_change ?? 0);
+        const isUp = pct >= 0;
+        return (
+          <div key={t.symbol} className="flex items-center px-4 py-2.5 gap-4">
+            <span className="text-xs font-mono font-semibold text-fg w-20 truncate">
+              {t.symbol}
+            </span>
+            <span className="text-xs text-fg-2 tabular-nums">
+              $
+              {Number(t.price).toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </span>
+            <span
+              className={clsx(
+                "text-xs font-medium tabular-nums ml-auto",
+                isUp ? "text-green-400" : "text-red-400",
+              )}
+            >
+              {isUp ? "▲" : "▼"} {Math.abs(pct).toFixed(2)}%
+            </span>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+// ── Sports rows ─────────────────────────────────────────────────
+
+function SportsRows({ data, filter }: { data: unknown; filter: string[] }) {
+  const games = Array.isArray(data) ? (data as Game[]) : [];
+  if (games.length === 0) return <EmptyDataRow channelType="sports" />;
+
+  const filtered =
+    filter.length > 0
+      ? games.filter((g) => filter.includes(g.league))
+      : games;
+
+  const priority: Record<string, number> = { in: 0, pre: 1, post: 2 };
+  const sorted = [...filtered]
+    .sort(
+      (a, b) =>
+        (priority[a.state ?? "post"] ?? 3) -
+        (priority[b.state ?? "post"] ?? 3),
+    )
+    .slice(0, MAX_PREVIEW);
+
+  if (sorted.length === 0)
+    return <EmptyDataRow channelType="sports" />;
+
+  return (
+    <>
+      {sorted.map((g) => {
+        const isLive = g.state === "in";
+        return (
+          <div key={g.id} className="flex items-center px-4 py-2.5 gap-3">
+            {isLive && (
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
+            )}
+            <span className="text-[10px] font-mono font-semibold text-fg-4 uppercase w-10 shrink-0 truncate">
+              {g.league}
+            </span>
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              {g.away_team_logo && (
+                <img
+                  src={g.away_team_logo}
+                  alt=""
+                  className="w-4 h-4 shrink-0 object-contain"
+                />
+              )}
+              <span className="text-xs text-fg-2 truncate">
+                {g.away_team_name || g.away_team_code}
+              </span>
+              <span className="text-xs text-fg-3 tabular-nums shrink-0">
+                {g.away_team_score} – {g.home_team_score}
+              </span>
+              <span className="text-xs text-fg-2 truncate">
+                {g.home_team_name || g.home_team_code}
+              </span>
+              {g.home_team_logo && (
+                <img
+                  src={g.home_team_logo}
+                  alt=""
+                  className="w-4 h-4 shrink-0 object-contain"
+                />
+              )}
+            </div>
+            <span className="text-[10px] text-fg-4 shrink-0 truncate max-w-24">
+              {g.short_detail ?? g.status_short ?? ""}
+            </span>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+// ── RSS rows ────────────────────────────────────────────────────
+
+function RssRows({ data, filter }: { data: unknown; filter: string[] }) {
+  const items = Array.isArray(data) ? (data as RssItem[]) : [];
+  if (items.length === 0) return <EmptyDataRow channelType="rss" />;
+
+  const filtered =
+    filter.length > 0
+      ? items.filter((i) => filter.includes(i.source_name))
+      : items;
+
+  const sorted = [...filtered]
+    .sort((a, b) => {
+      const aTime = a.published_at ? new Date(a.published_at).getTime() : 0;
+      const bTime = b.published_at ? new Date(b.published_at).getTime() : 0;
+      return bTime - aTime;
+    })
+    .slice(0, MAX_PREVIEW);
+
+  if (sorted.length === 0)
+    return <EmptyDataRow channelType="rss" />;
+
+  return (
+    <>
+      {sorted.map((item) => (
+        <div key={item.id} className="flex items-center px-4 py-2.5 gap-3">
+          <span className="text-xs text-fg flex-1 truncate">{item.title}</span>
+          <span className="text-[10px] text-fg-4 shrink-0">
+            {item.source_name}
+          </span>
+          <span className="text-[10px] text-fg-4/60 shrink-0 w-8 text-right">
+            {timeAgo(item.published_at)}
+          </span>
+        </div>
+      ))}
+    </>
+  );
+}
+
+// ── Fantasy rows ────────────────────────────────────────────────
+
+function FantasyRows({ data, filter }: { data: unknown; filter: string[] }) {
+  const leagues = Array.isArray(data) ? data : [];
+  if (leagues.length === 0) return <EmptyDataRow channelType="fantasy" />;
+
+  const filtered =
+    filter.length > 0
+      ? leagues.filter((l: Record<string, unknown>) => {
+          const key = String(l.league_key ?? l.league_name ?? l.name ?? "");
+          return filter.includes(key);
+        })
+      : leagues;
+
+  const preview = filtered.slice(0, MAX_PREVIEW);
+
+  if (preview.length === 0)
+    return <EmptyDataRow channelType="fantasy" />;
+
+  return (
+    <>
+      {preview.map((league: Record<string, unknown>, i: number) => {
+        const name = (league.league_name ?? league.name ?? "League") as string;
+        const myScore = league.my_score ?? league.team_points;
+        const oppScore = league.opp_score ?? league.opponent_points;
+        const hasMatchup = myScore != null && oppScore != null;
+
+        return (
+          <div key={i} className="flex items-center px-4 py-2.5 gap-3">
+            <span className="text-xs text-fg flex-1 truncate">{name}</span>
+            {hasMatchup && (
+              <span className="text-xs text-fg-3 tabular-nums">
+                {String(myScore)} – {String(oppScore)}
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+// ── Empty data row ──────────────────────────────────────────────
+
+function EmptyDataRow({ channelType }: { channelType?: string }) {
+  const messages: Record<string, string> = {
+    finance: "No market data right now",
+    sports: "No scores right now",
+    rss: "No articles right now",
+    fantasy: "No league data right now",
+  };
+  const msg =
+    (channelType && messages[channelType]) || "Nothing to show";
+  return (
+    <div className="px-4 py-4 text-center">
+      <p className="text-xs text-fg-4">{msg}</p>
+    </div>
+  );
+}
+
+// ── Widget strip ────────────────────────────────────────────────
+
+interface WidgetStripProps {
+  widgets: WidgetManifest[];
+  widgetsOnTicker: string[];
+  onToggleTicker: (id: string) => void;
+  pinnedSources: string[];
+  onTogglePin: (id: string) => void;
+  onNavigate: (id: string) => void;
+}
+
+function WidgetStrip({
+  widgets,
+  widgetsOnTicker,
+  onToggleTicker,
+  pinnedSources,
+  onTogglePin,
+  onNavigate,
+}: WidgetStripProps) {
+  return (
+    <section className="mb-6">
+      <div className="flex items-center gap-3 mb-3">
+        <h3 className="text-[11px] font-mono font-semibold text-fg-4 uppercase tracking-wider flex-1">
+          Widgets
+        </h3>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        {widgets.map((widget) => (
+          <WidgetChip
+            key={widget.id}
+            widget={widget}
+            tickerEnabled={widgetsOnTicker.includes(widget.id)}
+            onToggleTicker={() => onToggleTicker(widget.id)}
+            pinned={pinnedSources.includes(widget.id)}
+            onTogglePin={() => onTogglePin(widget.id)}
+            onClick={() => onNavigate(widget.id)}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+interface WidgetChipProps {
+  widget: WidgetManifest;
   tickerEnabled: boolean;
   onToggleTicker: () => void;
   pinned: boolean;
@@ -195,39 +713,34 @@ interface SourceCardProps {
   onClick: () => void;
 }
 
-function SourceCard({
-  icon: Icon,
-  name,
-  hex,
-  description,
-  indicator,
-  emptyHint,
+function WidgetChip({
+  widget,
   tickerEnabled,
   onToggleTicker,
   pinned,
   onTogglePin,
   onClick,
-}: SourceCardProps) {
+}: WidgetChipProps) {
+  const Icon = widget.icon;
+  const value = getWidgetValue(widget.id);
+
   return (
     <button
       onClick={onClick}
-      className="group rounded-lg border bg-base-200/40 border-edge/20 hover:bg-base-200/60 p-4 transition-colors text-left cursor-pointer w-full flex flex-col"
+      className="group rounded-lg border bg-base-200/40 border-edge/20 hover:bg-base-200/60 p-3 transition-colors text-left cursor-pointer w-full"
     >
-      {/* Header: icon + name + actions */}
-      <div className="flex items-center gap-3 mb-2">
-        <div
-          className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-          style={{ backgroundColor: `${hex}15`, color: hex }}
-        >
-          <Icon size={20} />
-        </div>
-        <span className="text-sm font-semibold text-fg truncate flex-1">{name}</span>
+      <div className="flex items-center gap-2 mb-1.5">
+        <span style={{ color: widget.hex }} className="shrink-0">
+          <Icon size={14} />
+        </span>
+        <span className="text-xs font-medium text-fg truncate flex-1">
+          {widget.tabLabel}
+        </span>
 
-        {/* Ticker toggle */}
+        {/* Eye toggle */}
         <div
           role="switch"
           aria-checked={tickerEnabled}
-          aria-label={tickerEnabled ? `Hide ${name} from ticker` : `Show ${name} on ticker`}
           tabIndex={0}
           onClick={(e) => {
             e.stopPropagation();
@@ -241,20 +754,19 @@ function SourceCard({
             }
           }}
           className={clsx(
-            "w-7 h-7 flex items-center justify-center rounded-lg transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 shrink-0",
+            "w-6 h-6 flex items-center justify-center rounded transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 shrink-0",
             tickerEnabled
               ? "text-fg-3 hover:text-fg hover:bg-surface-hover"
               : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover",
           )}
         >
-          {tickerEnabled ? <Eye size={14} /> : <EyeOff size={14} />}
+          {tickerEnabled ? <Eye size={12} /> : <EyeOff size={12} />}
         </div>
 
-        {/* Pin to sidebar */}
+        {/* Pin toggle */}
         <div
           role="switch"
           aria-checked={pinned}
-          aria-label={pinned ? `Unpin ${name} from sidebar` : `Pin ${name} to sidebar`}
           tabIndex={0}
           onClick={(e) => {
             e.stopPropagation();
@@ -268,69 +780,75 @@ function SourceCard({
             }
           }}
           className={clsx(
-            "w-7 h-7 flex items-center justify-center rounded-lg transition-colors shrink-0",
+            "w-6 h-6 flex items-center justify-center rounded transition-colors shrink-0",
             pinned
               ? "text-accent"
               : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover opacity-0 group-hover:opacity-100 focus:opacity-100",
           )}
         >
-          {pinned ? <Pin size={14} /> : <PinOff size={14} />}
+          {pinned ? <Pin size={12} /> : <PinOff size={12} />}
         </div>
       </div>
 
-      {/* Description */}
-      <p className="text-xs text-fg-3 leading-relaxed mb-2">{description}</p>
-
-      {/* Indicator or empty hint */}
-      {indicator && (
-        <span className="text-[10px] font-medium text-fg-4">{indicator}</span>
-      )}
-      {emptyHint && (
-        <span className="text-[10px] font-medium text-accent/70">{emptyHint}</span>
-      )}
+      <p className="text-sm font-medium text-fg-2 tabular-nums truncate">
+        {value}
+      </p>
     </button>
   );
 }
 
-// ── Channel config indicators ─────────────────────────────────
+// ── Widget cached values ────────────────────────────────────────
 
-function getChannelIndicator(
-  ch: Channel,
-  dashboard: DashboardResponse | undefined,
-): { count: number; label: string } {
-  const config = ch.config as Record<string, unknown>;
-
-  switch (ch.channel_type) {
-    case "finance": {
-      const symbols = Array.isArray(config.symbols) ? config.symbols : [];
-      return {
-        count: symbols.length,
-        label: `${symbols.length} symbol${symbols.length === 1 ? "" : "s"} tracked`,
-      };
+function getWidgetValue(id: string): string {
+  switch (id) {
+    case "clock": {
+      const format = getStore<string>(LS_CLOCK_FORMAT, "12h");
+      return new Intl.DateTimeFormat("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: format === "12h",
+      }).format(new Date());
     }
-    case "sports": {
-      const leagues = Array.isArray(config.leagues) ? config.leagues : [];
-      return {
-        count: leagues.length,
-        label: `${leagues.length} league${leagues.length === 1 ? "" : "s"} selected`,
-      };
+    case "weather": {
+      const cities = getStore<SavedCity[]>(LS_WEATHER_CITIES, []);
+      const unit = getStore<string>(LS_WEATHER_UNIT, "fahrenheit") as TempUnit;
+      if (cities.length === 0) return "No cities";
+      const first = cities[0];
+      if (!first.weather) return first.location.name;
+      const temp = formatTemp(first.weather.temperature, unit, true);
+      const icon = weatherCodeToIcon(first.weather.weatherCode);
+      return `${icon} ${temp}`;
     }
-    case "rss": {
-      const feeds = Array.isArray(config.feeds) ? config.feeds : [];
-      return {
-        count: feeds.length,
-        label: `${feeds.length} feed${feeds.length === 1 ? "" : "s"} subscribed`,
-      };
+    case "sysmon": {
+      const info = getStore<SystemInfo | null>(LS_SYSMON_DATA, null);
+      if (!info) return "Waiting for data";
+      const parts = [`CPU ${Math.round(info.cpuUsage)}%`];
+      if (info.memTotal > 0) {
+        const ramPct = Math.round((info.memUsed / info.memTotal) * 100);
+        parts.push(`RAM ${ramPct}%`);
+      }
+      if (info.gpuUsage != null) {
+        parts.push(`GPU ${Math.round(info.gpuUsage)}%`);
+      }
+      return parts.join("  ·  ");
     }
-    case "fantasy": {
-      const data = dashboard?.data?.fantasy;
-      const leagues = Array.isArray(data) ? data : [];
-      return {
-        count: leagues.length,
-        label: `${leagues.length} league${leagues.length === 1 ? "" : "s"} connected`,
-      };
+    case "uptime": {
+      const monitors = loadMonitors();
+      if (monitors.length === 0) return "No monitors";
+      const up = monitors.filter((m) => m.status === "up").length;
+      const down = monitors.filter((m) => m.status !== "up").length;
+      if (down > 0) return `${up} up / ${down} down`;
+      return `${up} up`;
+    }
+    case "github": {
+      const repos = loadRepoData();
+      if (repos.length === 0) return "No repos";
+      const passing = repos.filter((r) => r.status === "success").length;
+      const failing = repos.filter((r) => r.status === "failure").length;
+      if (failing > 0) return `${passing} passing / ${failing} failing`;
+      return `${passing} passing`;
     }
     default:
-      return { count: 0, label: "" };
+      return "";
   }
 }
