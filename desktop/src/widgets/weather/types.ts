@@ -92,8 +92,6 @@ export function formatWind(kmh: number, unit: TempUnit): string {
 
 // ── Storage ─────────────────────────────────────────────────────
 
-export const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
-
 export function loadCities(): SavedCity[] {
   const cities = getStore<SavedCity[]>(LS_WEATHER_CITIES, []);
   return Array.isArray(cities) && cities.length > 0 ? cities : [];

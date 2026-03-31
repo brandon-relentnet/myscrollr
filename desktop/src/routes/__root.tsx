@@ -50,6 +50,7 @@ import { useTheme } from "../hooks/useTheme";
 import { useAuthState } from "../hooks/useAuthState";
 import { useChannelActions } from "../hooks/useChannelActions";
 import { useWidgetActions } from "../hooks/useWidgetActions";
+import { useWeatherData } from "../hooks/useWeatherData";
 
 // Shell context
 import { ShellContext, ShellDataContext } from "../shell-context";
@@ -165,6 +166,9 @@ function RootLayout() {
   const auth = useAuthState();
   const channelActions = useChannelActions();
   const widgetActions = useWidgetActions(prefs, setPrefs, route.activeItem);
+
+  // Shell-level weather polling — keeps data fresh regardless of which page is visible
+  useWeatherData(enabledWidgets.includes("weather"));
 
   // Apply theme + UI scale
   useTheme("app-shell", prefs.appearance.theme, prefs.appearance.uiScale);

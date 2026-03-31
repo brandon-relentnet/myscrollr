@@ -182,20 +182,7 @@ export function fantasyLeaguesOptions() {
 
 // ── Weather Queries ──────────────────────────────────────────────
 
-import { searchCities, fetchWeather } from "../widgets/weather/types";
-import type { WeatherLocation, CurrentWeather } from "../widgets/weather/types";
-
-export type { WeatherLocation, CurrentWeather };
-
-export function weatherQueryOptions(lat: number, lon: number) {
-  return queryOptions({
-    queryKey: ["weather", lat, lon] as const,
-    queryFn: () => fetchWeather(lat, lon),
-    staleTime: 10 * 60 * 1000, // 10 min
-    gcTime: 30 * 60 * 1000,
-    refetchInterval: 10 * 60 * 1000, // auto-refetch every 10 min
-  });
-}
+import { searchCities } from "../widgets/weather/types";
 
 export function citySearchOptions(query: string) {
   return queryOptions({
