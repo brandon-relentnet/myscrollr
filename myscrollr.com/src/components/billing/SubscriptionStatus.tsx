@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { AlertTriangle, ArrowRight, Calendar, CreditCard, Crown, Infinity, Loader2, Zap } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Calendar, CreditCard, Crown, Infinity, Loader2, ShieldAlert, Zap } from 'lucide-react'
 import type { SubscriptionStatus as SubStatus } from '@/api/client'
 import {
   billingApi,
@@ -59,6 +59,7 @@ export default function SubscriptionStatus({
   const [canceling, setCanceling] = useState(false)
   const [openingPortal, setOpeningPortal] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showCancelModal, setShowCancelModal] = useState(false)
 
   const isUltimate =
     tier === 'uplink_ultimate' ||
@@ -100,16 +101,10 @@ export default function SubscriptionStatus({
     }
   }
 
-  async function handleCancel() {
-    if (
-      !confirm(
-        'Are you sure you want to cancel? You will keep access until the end of your billing period.',
-      )
-    ) {
-      return
-    }
+  async function handleConfirmCancel() {
     try {
       setCanceling(true)
+      setShowCancelModal(false)
       await billingApi.cancelSubscription(getToken)
       await loadSubscription()
     } catch (err) {
@@ -118,6 +113,8 @@ export default function SubscriptionStatus({
       setCanceling(false)
     }
   }
+
+  const isTrialing = subscription?.status === 'trialing'
 
   if (loading) {
     return (
@@ -331,12 +328,12 @@ export default function SubscriptionStatus({
               Change Plan <ArrowRight size={12} />
             </Link>
             <button
-              onClick={handleCancel}
+              onClick={() => setShowCancelModal(true)}
               disabled={canceling}
               className="flex-1 py-2.5 text-xs font-semibold border border-base-content/10 rounded-lg
                          text-base-content/30 hover:text-error hover:border-error/30 transition-colors disabled:opacity-50"
             >
-              {canceling ? 'Canceling...' : 'Cancel Subscription'}
+              {canceling ? 'Canceling...' : isTrialing ? 'Cancel Trial' : 'Cancel Subscription'}
             </button>
           </>
         )}
@@ -377,6 +374,68 @@ export default function SubscriptionStatus({
           </Link>
         )}
       </div>
+
+      {/* ── Cancel Retention Modal ──────────────────────────── */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="relative w-full max-w-sm mx-4 bg-base-200 border border-base-content/10 rounded-xl p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-error/10 flex items-center justify-center">
+                <ShieldAlert size={20} className="text-error" />
+              </div>
+              <h3 className="text-sm font-semibold text-base-content/80">
+                {isTrialing ? 'Cancel your free trial?' : 'Cancel your subscription?'}
+              </h3>
+            </div>
+
+            <div className="space-y-3 text-xs text-base-content/50 leading-relaxed">
+              {isTrialing ? (
+                <>
+                  <p>
+                    If you cancel now, you&apos;ll lose access to all premium features
+                    immediately &mdash; including real-time data, higher limits, and
+                    Uplink Ultimate access.
+                  </p>
+                  <p className="font-semibold text-base-content/70">
+                    This is the only free trial offered per account. Once canceled,
+                    you&apos;ll need to purchase a paid plan to access premium features
+                    again.
+                  </p>
+                  <p>Your card has not been charged and won&apos;t be if you cancel.</p>
+                </>
+              ) : (
+                <>
+                  <p>
+                    You&apos;ll keep access until the end of your current billing period,
+                    then your account will revert to the Free plan.
+                  </p>
+                  <p>
+                    On the Free plan, you&apos;ll have reduced limits and 60-second polling
+                    instead of real-time data.
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setShowCancelModal(false)}
+                className="flex-1 py-2.5 text-xs font-semibold border border-primary/30 rounded-lg
+                           text-primary hover:bg-primary/10 transition-colors"
+              >
+                {isTrialing ? 'Keep My Trial' : 'Keep My Plan'}
+              </button>
+              <button
+                onClick={handleConfirmCancel}
+                className="flex-1 py-2.5 text-xs font-semibold border border-error/30 rounded-lg
+                           text-error/60 hover:text-error hover:bg-error/10 transition-colors"
+              >
+                {isTrialing ? 'Cancel Trial' : 'Cancel Subscription'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
