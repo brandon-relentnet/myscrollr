@@ -18,6 +18,7 @@ export interface Trade {
   percentage_change?: number | string;
   direction?: "up" | "down";
   last_updated?: string;
+  link?: string;
 }
 
 // ── Sports ───────────────────────────────────────────────────────

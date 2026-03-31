@@ -142,3 +142,57 @@ pub async fn get_trades(pool: Arc<PgPool>) -> Vec<DatabaseTradeData> {
         }
     }
 }
+
+/// Returns symbols where exchange is NULL (need metadata fetch).
+pub async fn get_symbols_without_exchange(pool: Arc<PgPool>) -> Vec<String> {
+    let statement = "SELECT symbol FROM tracked_symbols WHERE exchange IS NULL AND is_enabled = TRUE";
+    let res: Result<Vec<(String,)>, sqlx::Error> = async {
+        let mut connection = pool.acquire().await?;
+        let data = query_as(statement).fetch_all(&mut *connection).await?;
+        Ok(data)
+    }.await;
+
+    match res {
+        Ok(data) => data.into_iter().map(|(s,)| s).collect(),
+        Err(e) => {
+            log::error!("Failed to get symbols without exchange: {}", e);
+            Vec::new()
+        }
+    }
+}
+
+/// Returns all enabled symbols (for background verification).
+pub async fn get_all_enabled_symbols(pool: Arc<PgPool>) -> Vec<String> {
+    let statement = "SELECT symbol FROM tracked_symbols WHERE is_enabled = TRUE";
+    let res: Result<Vec<(String,)>, sqlx::Error> = async {
+        let mut connection = pool.acquire().await?;
+        let data = query_as(statement).fetch_all(&mut *connection).await?;
+        Ok(data)
+    }.await;
+
+    match res {
+        Ok(data) => data.into_iter().map(|(s,)| s).collect(),
+        Err(e) => {
+            log::error!("Failed to get all enabled symbols: {}", e);
+            Vec::new()
+        }
+    }
+}
+
+/// Updates exchange and link for a symbol.
+pub async fn update_symbol_exchange_link(
+    pool: Arc<PgPool>,
+    symbol: &str,
+    exchange: Option<&str>,
+    link: &str,
+) -> Result<()> {
+    let statement = "UPDATE tracked_symbols SET exchange = $1, link = $2 WHERE symbol = $3";
+    let mut connection = pool.acquire().await?;
+    query(statement)
+        .bind(exchange)
+        .bind(link)
+        .bind(symbol)
+        .execute(&mut *connection)
+        .await?;
+    Ok(())
+}

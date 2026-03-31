@@ -96,12 +96,6 @@ interface TradeItemProps {
   display: FinanceDisplayPrefs;
 }
 
-/** Build a Google Finance URL for a symbol. Strips exchange prefixes like "BINANCE:". */
-function googleFinanceUrl(symbol: string): string {
-  const clean = symbol.includes(":") ? symbol.split(":").pop()! : symbol;
-  return `https://www.google.com/finance/quote/${encodeURIComponent(clean)}`;
-}
-
 const TradeItem = memo(function TradeItem({ trade, mode, display }: TradeItemProps) {
   const isUp = trade.direction === "up";
   const isDown = trade.direction === "down";
@@ -140,7 +134,7 @@ const TradeItem = memo(function TradeItem({ trade, mode, display }: TradeItemPro
   if (mode === "compact") {
     return (
       <a
-        href={googleFinanceUrl(trade.symbol)}
+        href={trade.link}
         target="_blank"
         rel="noopener noreferrer"
         className={clsx(
@@ -167,7 +161,7 @@ const TradeItem = memo(function TradeItem({ trade, mode, display }: TradeItemPro
   // Comfort mode
   return (
     <a
-      href={googleFinanceUrl(trade.symbol)}
+      href={trade.link}
       target="_blank"
       rel="noopener noreferrer"
       className={clsx(

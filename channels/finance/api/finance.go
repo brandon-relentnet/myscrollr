@@ -40,7 +40,20 @@ const (
 	// TradesQuery is the SQL used to fetch all trades.
 	// COALESCE guards against NULL columns for rows that have been inserted
 	// but not yet updated by the Rust ingestion service.
-	TradesQuery = `SELECT symbol, COALESCE(price, 0), COALESCE(previous_close, 0), COALESCE(price_change, 0), COALESCE(percentage_change, 0), COALESCE(direction, 'flat'), COALESCE(last_updated, created_at) FROM trades ORDER BY symbol ASC`
+	// JOINs with tracked_symbols to include the link field.
+	TradesQuery = `
+		SELECT 
+			t.symbol, 
+			COALESCE(t.price, 0), 
+			COALESCE(t.previous_close, 0), 
+			COALESCE(t.price_change, 0), 
+			COALESCE(t.percentage_change, 0), 
+			COALESCE(t.direction, 'flat'), 
+			COALESCE(t.last_updated, t.created_at),
+			COALESCE(ts.link, 'https://www.google.com/search?q=' || t.symbol || '+stock')
+		FROM trades t
+		LEFT JOIN tracked_symbols ts ON t.symbol = ts.symbol
+		ORDER BY t.symbol ASC`
 )
 
 // =============================================================================
@@ -309,7 +322,7 @@ func (a *App) queryTrades(ctx context.Context) ([]Trade, error) {
 	trades := make([]Trade, 0)
 	for rows.Next() {
 		var t Trade
-		if err := rows.Scan(&t.Symbol, &t.Price, &t.PreviousClose, &t.PriceChange, &t.PercentageChange, &t.Direction, &t.LastUpdated); err != nil {
+		if err := rows.Scan(&t.Symbol, &t.Price, &t.PreviousClose, &t.PriceChange, &t.PercentageChange, &t.Direction, &t.LastUpdated, &t.Link); err != nil {
 			log.Printf("[Finance] Row scan failed: %v", err)
 			continue
 		}
@@ -326,11 +339,19 @@ func (a *App) queryTradesBySymbols(symbols []string) []Trade {
 	}
 
 	rows, err := a.db.Query(context.Background(), `
-		SELECT symbol, COALESCE(price, 0), COALESCE(previous_close, 0), COALESCE(price_change, 0),
-			COALESCE(percentage_change, 0), COALESCE(direction, 'flat'), COALESCE(last_updated, created_at)
-		FROM trades
-		WHERE symbol = ANY($1)
-		ORDER BY symbol ASC
+		SELECT 
+			t.symbol, 
+			COALESCE(t.price, 0), 
+			COALESCE(t.previous_close, 0), 
+			COALESCE(t.price_change, 0),
+			COALESCE(t.percentage_change, 0), 
+			COALESCE(t.direction, 'flat'), 
+			COALESCE(t.last_updated, t.created_at),
+			COALESCE(ts.link, 'https://www.google.com/search?q=' || t.symbol || '+stock')
+		FROM trades t
+		LEFT JOIN tracked_symbols ts ON t.symbol = ts.symbol
+		WHERE t.symbol = ANY($1)
+		ORDER BY t.symbol ASC
 	`, symbols)
 	if err != nil {
 		log.Printf("[Finance] Trades by symbols query failed: %v", err)
@@ -341,7 +362,7 @@ func (a *App) queryTradesBySymbols(symbols []string) []Trade {
 	trades := make([]Trade, 0)
 	for rows.Next() {
 		var t Trade
-		if err := rows.Scan(&t.Symbol, &t.Price, &t.PreviousClose, &t.PriceChange, &t.PercentageChange, &t.Direction, &t.LastUpdated); err != nil {
+		if err := rows.Scan(&t.Symbol, &t.Price, &t.PreviousClose, &t.PriceChange, &t.PercentageChange, &t.Direction, &t.LastUpdated, &t.Link); err != nil {
 			log.Printf("[Finance] Row scan failed: %v", err)
 			continue
 		}

@@ -11,6 +11,7 @@ type Trade struct {
 	PercentageChange float64   `json:"percentage_change"`
 	Direction        string    `json:"direction"`
 	LastUpdated      time.Time `json:"last_updated"`
+	Link             string    `json:"link"`
 }
 
 // CDCRecord represents a Change Data Capture record from Sequin.

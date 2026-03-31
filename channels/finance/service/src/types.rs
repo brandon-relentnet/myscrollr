@@ -13,6 +13,22 @@ pub struct TrackedSymbolConfig {
     pub category: String,
 }
 
+/// TwelveData /stocks endpoint response.
+#[derive(Debug, Deserialize)]
+pub(crate) struct TwelveDataStocksResponse {
+    pub data: Vec<TwelveDataStock>,
+    #[allow(dead_code)]
+    pub status: String,
+}
+
+/// A single stock entry from TwelveData /stocks endpoint.
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub(crate) struct TwelveDataStock {
+    pub symbol: String,
+    pub exchange: String,
+}
+
 /// TwelveData WebSocket price event.
 ///
 /// ```json
