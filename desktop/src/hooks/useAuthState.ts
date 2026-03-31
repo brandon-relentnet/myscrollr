@@ -28,6 +28,7 @@ interface UseAuthStateReturn {
   handleLogin: () => Promise<void>;
   handleLogout: () => Promise<void>;
   syncAuthFromDashboard: (dashboard: DashboardResponse | undefined) => void;
+  refreshTier: () => void;
 }
 
 export function useAuthState(): UseAuthStateReturn {
@@ -83,6 +84,11 @@ export function useAuthState(): UseAuthStateReturn {
     [],
   );
 
+  /** Re-read tier from the current JWT (call after a forced token refresh). */
+  const refreshTier = useCallback(() => {
+    if (checkAuth()) setTier(getTier());
+  }, []);
+
   return {
     authenticated,
     tier,
@@ -93,5 +99,6 @@ export function useAuthState(): UseAuthStateReturn {
     handleLogin,
     handleLogout,
     syncAuthFromDashboard,
+    refreshTier,
   };
 }

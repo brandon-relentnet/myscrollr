@@ -52,6 +52,7 @@ import { useChannelActions } from "../hooks/useChannelActions";
 import { useWidgetActions } from "../hooks/useWidgetActions";
 import { weatherQueryOptions } from "../api/queries";
 import { fetchSubscription } from "../api/client";
+import { getValidToken } from "../auth";
 
 // Shell context
 import { ShellContext, ShellDataContext } from "../shell-context";
@@ -180,12 +181,29 @@ function RootLayout() {
   // ── Subscription info — fetched for billing UI in Account tab + banner ──
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null);
 
-  const refreshSubscription = useCallback(() => {
+  const refreshSubscription = useCallback(async () => {
     if (!auth.authenticated) { setSubscriptionInfo(null); return; }
-    fetchSubscription()
-      .then(setSubscriptionInfo)
-      .catch(() => setSubscriptionInfo(null));
-  }, [auth.authenticated]);
+    try {
+      const sub = await fetchSubscription();
+      setSubscriptionInfo(sub);
+
+      // Detect tier mismatch: the JWT may still carry stale roles after a
+      // subscription change.  Force a token refresh so the new Logto roles
+      // propagate to the JWT, which updates tier / SSE / enforcement.
+      const expected = sub.status === "trialing"
+        ? "uplink_ultimate"
+        : sub.plan.startsWith("ultimate") ? "uplink_ultimate"
+        : sub.plan.startsWith("pro") ? "uplink_pro"
+        : sub.plan === "free" || sub.status === "none" ? "free"
+        : "uplink";
+      if (auth.tier !== expected) {
+        await getValidToken(true);   // force refresh — writes new auth to store
+        auth.refreshTier();          // re-read tier from the fresh JWT
+      }
+    } catch {
+      setSubscriptionInfo(null);
+    }
+  }, [auth.authenticated, auth.tier, auth.refreshTier]);
 
   // Fetch on auth change + periodic refresh every 5 minutes
   useEffect(() => {

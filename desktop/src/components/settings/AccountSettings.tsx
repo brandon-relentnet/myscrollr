@@ -92,6 +92,10 @@ export default function AccountSettings({
   const hasSub = sub && sub.plan !== "free" && status !== "none";
   const isLifetime = sub?.lifetime === true;
 
+  // During trial, always show Uplink Ultimate (the JWT tier may lag behind)
+  const displayTier: SubscriptionTier =
+    status === "trialing" ? "uplink_ultimate" : tier;
+
   // Compute trial days once
   const trialDays =
     status === "trialing" && sub?.trial_end
@@ -113,7 +117,7 @@ export default function AccountSettings({
             )}
             <DisplayRow
               label="Plan"
-              value={TIER_LABELS[tier]}
+              value={TIER_LABELS[displayTier]}
               valueClass="text-xs text-accent font-semibold"
             />
             <ActionRow
