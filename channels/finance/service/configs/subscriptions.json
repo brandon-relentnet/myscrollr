@@ -1,471 +1,2628 @@
 [
-  { "symbol": "NVDA", "name": "NVIDIA Corp.", "category": "Technology" },
-  { "symbol": "AAPL", "name": "Apple Inc.", "category": "Technology" },
-  { "symbol": "MSFT", "name": "Microsoft Corp.", "category": "Technology" },
-  { "symbol": "AMZN", "name": "Amazon.com Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "GOOGL", "name": "Alphabet Inc. (Class A)", "category": "Communication Services" },
-  { "symbol": "META", "name": "Meta Platforms Inc.", "category": "Communication Services" },
-  { "symbol": "TSLA", "name": "Tesla Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "AVGO", "name": "Broadcom Inc.", "category": "Technology" },
-  { "symbol": "TSM", "name": "Taiwan Semiconductor", "category": "Technology" },
-  { "symbol": "BRK.B", "name": "Berkshire Hathaway (Class B)", "category": "Financial Services" },
-  { "symbol": "WMT", "name": "Walmart Inc.", "category": "Consumer Defensive" },
-  { "symbol": "LLY", "name": "Eli Lilly & Co.", "category": "Healthcare" },
-  { "symbol": "JPM", "name": "JPMorgan Chase & Co.", "category": "Financial Services" },
-  { "symbol": "V", "name": "Visa Inc.", "category": "Financial Services" },
-  { "symbol": "JNJ", "name": "Johnson & Johnson", "category": "Healthcare" },
-  { "symbol": "MA", "name": "Mastercard Inc.", "category": "Financial Services" },
-  { "symbol": "ORCL", "name": "Oracle Corp.", "category": "Technology" },
-  { "symbol": "COST", "name": "Costco Wholesale Corp.", "category": "Consumer Defensive" },
-  { "symbol": "ABBV", "name": "AbbVie Inc.", "category": "Healthcare" },
-  { "symbol": "BAC", "name": "Bank of America Corp.", "category": "Financial Services" },
-  { "symbol": "HD", "name": "Home Depot Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "PG", "name": "Procter & Gamble Co.", "category": "Consumer Defensive" },
-  { "symbol": "CVX", "name": "Chevron Corp.", "category": "Energy" },
-  { "symbol": "XOM", "name": "Exxon Mobil Corp.", "category": "Energy" },
-  { "symbol": "KO", "name": "Coca-Cola Co.", "category": "Consumer Defensive" },
-  { "symbol": "AMD", "name": "Advanced Micro Devices", "category": "Technology" },
-  { "symbol": "NFLX", "name": "Netflix Inc.", "category": "Communication Services" },
-  { "symbol": "ADBE", "name": "Adobe Inc.", "category": "Technology" },
-  { "symbol": "CRM", "name": "Salesforce Inc.", "category": "Technology" },
-  { "symbol": "MRK", "name": "Merck & Co.", "category": "Healthcare" },
-  { "symbol": "PEP", "name": "PepsiCo Inc.", "category": "Consumer Defensive" },
-  { "symbol": "LIN", "name": "Linde plc", "category": "Materials" },
-  { "symbol": "TMO", "name": "Thermo Fisher Scientific", "category": "Healthcare" },
-  { "symbol": "ACN", "name": "Accenture plc", "category": "Technology" },
-  { "symbol": "ABT", "name": "Abbott Laboratories", "category": "Healthcare" },
-  { "symbol": "DIS", "name": "Walt Disney Co.", "category": "Communication Services" },
-  { "symbol": "PM", "name": "Philip Morris International", "category": "Consumer Defensive" },
-  { "symbol": "CSCO", "name": "Cisco Systems Inc.", "category": "Technology" },
-  { "symbol": "MCD", "name": "McDonald's Corp.", "category": "Consumer Cyclical" },
-  { "symbol": "DHR", "name": "Danaher Corp.", "category": "Healthcare" },
-  { "symbol": "INTU", "name": "Intuit Inc.", "category": "Technology" },
-  { "symbol": "INTC", "name": "Intel Corp.", "category": "Technology" },
-  { "symbol": "IBM", "name": "IBM Corp.", "category": "Technology" },
-  { "symbol": "TXN", "name": "Texas Instruments Inc.", "category": "Technology" },
-  { "symbol": "VZ", "name": "Verizon Communications", "category": "Communication Services" },
-  { "symbol": "AMAT", "name": "Applied Materials Inc.", "category": "Technology" },
-  { "symbol": "QCOM", "name": "Qualcomm Inc.", "category": "Technology" },
-  { "symbol": "PFE", "name": "Pfizer Inc.", "category": "Healthcare" },
-  { "symbol": "CAT", "name": "Caterpillar Inc.", "category": "Industrials" },
-  { "symbol": "GE", "name": "GE Aerospace", "category": "Industrials" },
-  { "symbol": "UNP", "name": "Union Pacific Corp.", "category": "Industrials" },
-  { "symbol": "AXP", "name": "American Express Co.", "category": "Financial Services" },
-  { "symbol": "HON", "name": "Honeywell International", "category": "Industrials" },
-  { "symbol": "LOW", "name": "Lowe's Companies Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "NEE", "name": "NextEra Energy Inc.", "category": "Utilities" },
-  { "symbol": "SPGI", "name": "S&P Global Inc.", "category": "Financial Services" },
-  { "symbol": "COP", "name": "ConocoPhillips", "category": "Energy" },
-  { "symbol": "RTX", "name": "RTX Corp.", "category": "Industrials" },
-  { "symbol": "GS", "name": "Goldman Sachs Group", "category": "Financial Services" },
-  { "symbol": "ISRG", "name": "Intuitive Surgical Inc.", "category": "Healthcare" },
-  { "symbol": "PLD", "name": "Prologis Inc.", "category": "Real Estate" },
-  { "symbol": "ELV", "name": "Elevance Health Inc.", "category": "Healthcare" },
-  { "symbol": "BKNG", "name": "Booking Holdings Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "TJX", "name": "TJX Companies Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "DE", "name": "Deere & Company", "category": "Industrials" },
-  { "symbol": "LMT", "name": "Lockheed Martin Corp.", "category": "Industrials" },
-  { "symbol": "ADP", "name": "Automatic Data Processing", "category": "Industrials" },
-  { "symbol": "SYK", "name": "Stryker Corp.", "category": "Healthcare" },
-  { "symbol": "NKE", "name": "Nike Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "AMGN", "name": "Amgen Inc.", "category": "Healthcare" },
-  { "symbol": "MMC", "name": "Marsh & McLennan Cos.", "category": "Financial Services" },
-  { "symbol": "VRTX", "name": "Vertex Pharmaceuticals", "category": "Healthcare" },
-  { "symbol": "MDLZ", "name": "Mondelez International", "category": "Consumer Defensive" },
-  { "symbol": "REGN", "name": "Regeneron Pharmaceuticals", "category": "Healthcare" },
-  { "symbol": "LRCX", "name": "Lam Research Corp.", "category": "Technology" },
-  { "symbol": "ADI", "name": "Analog Devices Inc.", "category": "Technology" },
-  { "symbol": "BLK", "name": "BlackRock Inc.", "category": "Financial Services" },
-  { "symbol": "CB", "name": "Chubb Ltd.", "category": "Financial Services" },
-  { "symbol": "BSX", "name": "Boston Scientific Corp.", "category": "Healthcare" },
-  { "symbol": "CI", "name": "Cigna Group", "category": "Healthcare" },
-  { "symbol": "MU", "name": "Micron Technology Inc.", "category": "Technology" },
-  { "symbol": "BA", "name": "Boeing Co.", "category": "Industrials" },
-  { "symbol": "GILD", "name": "Gilead Sciences Inc.", "category": "Healthcare" },
-  { "symbol": "AMT", "name": "American Tower Corp.", "category": "Real Estate" },
-  { "symbol": "ETN", "name": "Eaton Corp.", "category": "Industrials" },
-  { "symbol": "PANW", "name": "Palo Alto Networks", "category": "Technology" },
-  { "symbol": "SNPS", "name": "Synopsys Inc.", "category": "Technology" },
-  { "symbol": "CDNS", "name": "Cadence Design Systems", "category": "Technology" },
-  { "symbol": "WM", "name": "Waste Management Inc.", "category": "Industrials" },
-  { "symbol": "SBUX", "name": "Starbucks Corp.", "category": "Consumer Cyclical" },
-  { "symbol": "CVS", "name": "CVS Health Corp.", "category": "Healthcare" },
-  { "symbol": "EQIX", "name": "Equinix Inc.", "category": "Real Estate" },
-  { "symbol": "FI", "name": "Fiserv Inc.", "category": "Financial Services" },
-  { "symbol": "ICE", "name": "Intercontinental Exchange", "category": "Financial Services" },
-  { "symbol": "MO", "name": "Altria Group Inc.", "category": "Consumer Defensive" },
-  { "symbol": "ZTS", "name": "Zoetis Inc.", "category": "Healthcare" },
-  { "symbol": "MDT", "name": "Medtronic plc", "category": "Healthcare" },
-  { "symbol": "C", "name": "Citigroup Inc.", "category": "Financial Services" },
-  { "symbol": "KLAC", "name": "KLA Corp.", "category": "Technology" },
-  { "symbol": "MPC", "name": "Marathon Petroleum Corp.", "category": "Energy" },
-  { "symbol": "WELL", "name": "Welltower Inc.", "category": "Real Estate" },
-  { "symbol": "PH", "name": "Parker-Hannifin Corp.", "category": "Industrials" },
-  { "symbol": "MCK", "name": "McKesson Corp.", "category": "Healthcare" },
-  { "symbol": "APH", "name": "Amphenol Corp.", "category": "Technology" },
-  { "symbol": "ORLY", "name": "O'Reilly Automotive Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "SHW", "name": "Sherwin-Williams Co.", "category": "Materials" },
-  { "symbol": "GD", "name": "General Dynamics Corp.", "category": "Industrials" },
-  { "symbol": "AIG", "name": "American International Group", "category": "Financial Services" },
-  { "symbol": "EOG", "name": "EOG Resources Inc.", "category": "Energy" },
-  { "symbol": "PGR", "name": "Progressive Corp.", "category": "Financial Services" },
-  { "symbol": "HCA", "name": "HCA Healthcare Inc.", "category": "Healthcare" },
-  { "symbol": "USB", "name": "U.S. Bancorp", "category": "Financial Services" },
-  { "symbol": "NXPI", "name": "NXP Semiconductors NV", "category": "Technology" },
-  { "symbol": "ITW", "name": "Illinois Tool Works Inc.", "category": "Industrials" },
-  { "symbol": "EMR", "name": "Emerson Electric Co.", "category": "Industrials" },
-  { "symbol": "NSC", "name": "Norfolk Southern Corp.", "category": "Industrials" },
-  { "symbol": "T", "name": "AT&T Inc.", "category": "Communication Services" },
-  { "symbol": "MAR", "name": "Marriott International", "category": "Consumer Cyclical" },
-  { "symbol": "CARR", "name": "Carrier Global Corp.", "category": "Industrials" },
-  { "symbol": "DXCM", "name": "DexCom Inc.", "category": "Healthcare" },
-  { "symbol": "F", "name": "Ford Motor Co.", "category": "Consumer Cyclical" },
-  { "symbol": "BDX", "name": "Becton Dickinson & Co.", "category": "Healthcare" },
-  { "symbol": "FCX", "name": "Freeport-McMoRan Inc.", "category": "Materials" },
-  { "symbol": "HUM", "name": "Humana Inc.", "category": "Healthcare" },
-  { "symbol": "ECL", "name": "Ecolab Inc.", "category": "Materials" },
-  { "symbol": "MET", "name": "MetLife Inc.", "category": "Financial Services" },
-  { "symbol": "D", "name": "Dominion Energy Inc.", "category": "Utilities" },
-  { "symbol": "PSX", "name": "Phillips 66", "category": "Energy" },
-  { "symbol": "FDX", "name": "FedEx Corp.", "category": "Industrials" },
-  { "symbol": "RCL", "name": "Royal Caribbean Cruises", "category": "Consumer Cyclical" },
-  { "symbol": "WFC", "name": "Wells Fargo & Co.", "category": "Financial Services" },
-  { "symbol": "KMB", "name": "Kimberly-Clark Corp.", "category": "Consumer Defensive" },
-  { "symbol": "MS", "name": "Morgan Stanley", "category": "Financial Services" },
-  { "symbol": "MCO", "name": "Moody's Corp.", "category": "Financial Services" },
-  { "symbol": "AON", "name": "Aon plc", "category": "Financial Services" },
-  { "symbol": "AJG", "name": "Arthur J. Gallagher & Co.", "category": "Financial Services" },
-  { "symbol": "O", "name": "Realty Income Corp.", "category": "Real Estate" },
-  { "symbol": "VLO", "name": "Valero Energy Corp.", "category": "Energy" },
-  { "symbol": "DOW", "name": "Dow Inc.", "category": "Materials" },
-  { "symbol": "ADSK", "name": "Autodesk Inc.", "category": "Technology" },
-  { "symbol": "OKE", "name": "ONEOK Inc.", "category": "Energy" },
-  { "symbol": "E", "name": "Eni S.p.A.", "category": "Energy" },
-  { "symbol": "DFS", "name": "Discover Financial Services", "category": "Financial Services" },
-  { "symbol": "KMI", "name": "Kinder Morgan Inc.", "category": "Energy" },
-  { "symbol": "PRU", "name": "Prudential Financial Inc.", "category": "Financial Services" },
-  { "symbol": "BK", "name": "Bank of New York Mellon", "category": "Financial Services" },
-  { "symbol": "CTAS", "name": "Cintas Corp.", "category": "Industrials" },
-  { "symbol": "PCAR", "name": "PACCAR Inc.", "category": "Industrials" },
-  { "symbol": "GPN", "name": "Global Payments Inc.", "category": "Financial Services" },
-  { "symbol": "PAYX", "name": "Paychex Inc.", "category": "Industrials" },
-  { "symbol": "TRV", "name": "Travelers Companies Inc.", "category": "Financial Services" },
-  { "symbol": "ALL", "name": "Allstate Corp.", "category": "Financial Services" },
-  { "symbol": "TEL", "name": "TE Connectivity Ltd.", "category": "Technology" },
-  { "symbol": "A", "name": "Agilent Technologies Inc.", "category": "Healthcare" },
-  { "symbol": "IDXX", "name": "IDEXX Laboratories Inc.", "category": "Healthcare" },
-  { "symbol": "IQV", "name": "IQVIA Holdings Inc.", "category": "Healthcare" },
-  { "symbol": "CMI", "name": "Cummins Inc.", "category": "Industrials" },
-  { "symbol": "OTIS", "name": "Otis Worldwide Corp.", "category": "Industrials" },
-  { "symbol": "FAST", "name": "Fastenal Co.", "category": "Industrials" },
-  { "symbol": "EXC", "name": "Exelon Corp.", "category": "Utilities" },
-  { "symbol": "CNC", "name": "Centene Corp.", "category": "Healthcare" },
-  { "symbol": "STZ", "name": "Constellation Brands Inc.", "category": "Consumer Defensive" },
-  { "symbol": "HLT", "name": "Hilton Worldwide Holdings", "category": "Consumer Cyclical" },
-  { "symbol": "VRSK", "name": "Verisk Analytics Inc.", "category": "Industrials" },
-  { "symbol": "CPRT", "name": "Copart Inc.", "category": "Industrials" },
-  { "symbol": "AME", "name": "AMETEK Inc.", "category": "Industrials" },
-  { "symbol": "KR", "name": "Kroger Co.", "category": "Consumer Defensive" },
-  { "symbol": "KDP", "name": "Keurig Dr Pepper Inc.", "category": "Consumer Defensive" },
-  { "symbol": "LUV", "name": "Southwest Airlines Co.", "category": "Industrials" },
-  { "symbol": "ED", "name": "Consolidated Edison Inc.", "category": "Utilities" },
-  { "symbol": "CEG", "name": "Constellation Energy Corp.", "category": "Utilities" },
-  { "symbol": "ODFL", "name": "Old Dominion Freight Line", "category": "Industrials" },
-  { "symbol": "GEHC", "name": "GE HealthCare Technologies", "category": "Healthcare" },
-  { "symbol": "DLTR", "name": "Dollar Tree Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "URI", "name": "United Rentals Inc.", "category": "Industrials" },
-  { "symbol": "MNST", "name": "Monster Beverage Corp.", "category": "Consumer Defensive" },
-  { "symbol": "WBD", "name": "Warner Bros. Discovery", "category": "Communication Services" },
-  { "symbol": "MOH", "name": "Molina Healthcare Inc.", "category": "Healthcare" },
-  { "symbol": "KEYS", "name": "Keysight Technologies Inc.", "category": "Technology" },
-  { "symbol": "SYY", "name": "Sysco Corp.", "category": "Consumer Defensive" },
-  { "symbol": "VICI", "name": "VICI Properties Inc.", "category": "Real Estate" },
-  { "symbol": "ANET", "name": "Arista Networks Inc.", "category": "Technology" },
-  { "symbol": "ACGL", "name": "Arch Capital Group Ltd.", "category": "Financial Services" },
-  { "symbol": "NDAQ", "name": "Nasdaq Inc.", "category": "Financial Services" },
-  { "symbol": "BKR", "name": "Baker Hughes Co.", "category": "Energy" },
-  { "symbol": "K", "name": "Kellanova", "category": "Consumer Defensive" },
-  { "symbol": "YUM", "name": "Yum! Brands Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "HPQ", "name": "HP Inc.", "category": "Technology" },
-  { "symbol": "CTSH", "name": "Cognizant Technology Solutions", "category": "Technology" },
-  { "symbol": "GLW", "name": "Corning Inc.", "category": "Technology" },
-  { "symbol": "CSX", "name": "CSX Corp.", "category": "Industrials" },
-  { "symbol": "DLR", "name": "Digital Realty Trust", "category": "Real Estate" },
-  { "symbol": "EFX", "name": "Equifax Inc.", "category": "Industrials" },
-  { "symbol": "STT", "name": "State Street Corp.", "category": "Financial Services" },
-  { "symbol": "HWM", "name": "Howmet Aerospace Inc.", "category": "Industrials" },
-  { "symbol": "TT", "name": "Trane Technologies plc", "category": "Industrials" },
-  { "symbol": "ZBH", "name": "Zimmer Biomet Holdings", "category": "Healthcare" },
-  { "symbol": "DD", "name": "DuPont de Nemours Inc.", "category": "Materials" },
-  { "symbol": "AWK", "name": "American Water Works Co.", "category": "Utilities" },
-  { "symbol": "BBY", "name": "Best Buy Co. Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "WST", "name": "West Pharmaceutical Services", "category": "Healthcare" },
-  { "symbol": "EBAY", "name": "eBay Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "RMD", "name": "ResMed Inc.", "category": "Healthcare" },
-  { "symbol": "GRMN", "name": "Garmin Ltd.", "category": "Technology" },
-  { "symbol": "CHD", "name": "Church & Dwight Co.", "category": "Consumer Defensive" },
-  { "symbol": "GWW", "name": "W.W. Grainger Inc.", "category": "Industrials" },
-  { "symbol": "VMC", "name": "Vulcan Materials Co.", "category": "Materials" },
-  { "symbol": "MPWR", "name": "Monolithic Power Systems", "category": "Technology" },
-  { "symbol": "FITB", "name": "Fifth Third Bancorp", "category": "Financial Services" },
-  { "symbol": "CBRE", "name": "CBRE Group Inc.", "category": "Real Estate" },
-  { "symbol": "FSLR", "name": "First Solar Inc.", "category": "Technology" },
-  { "symbol": "FTV", "name": "Fortive Corp.", "category": "Industrials" },
-  { "symbol": "MTB", "name": "M&T Bank Corp.", "category": "Financial Services" },
-  { "symbol": "ALGN", "name": "Align Technology Inc.", "category": "Healthcare" },
-  { "symbol": "WDC", "name": "Western Digital Corp.", "category": "Technology" },
-  { "symbol": "AVB", "name": "AvalonBay Communities", "category": "Real Estate" },
-  { "symbol": "IRM", "name": "Iron Mountain Inc.", "category": "Real Estate" },
-  { "symbol": "CDW", "name": "CDW Corp.", "category": "Technology" },
-  { "symbol": "HUBB", "name": "Hubbell Inc.", "category": "Industrials" },
-  { "symbol": "EXPD", "name": "Expeditors International", "category": "Industrials" },
-  { "symbol": "BALL", "name": "Ball Corp.", "category": "Materials" },
-  { "symbol": "TSCO", "name": "Tractor Supply Co.", "category": "Consumer Cyclical" },
-  { "symbol": "CBOE", "name": "Cboe Global Markets", "category": "Financial Services" },
-  { "symbol": "ES", "name": "Eversource Energy", "category": "Utilities" },
-  { "symbol": "MGM", "name": "MGM Resorts International", "category": "Consumer Cyclical" },
-  { "symbol": "BRO", "name": "Brown & Brown Inc.", "category": "Financial Services" },
-  { "symbol": "ARE", "name": "Alexandria Real Estate Equities", "category": "Real Estate" },
-  { "symbol": "LDOS", "name": "Leidos Holdings Inc.", "category": "Industrials" },
-  { "symbol": "NVR", "name": "NVR Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "SWKS", "name": "Skyworks Solutions Inc.", "category": "Technology" },
-  { "symbol": "BXP", "name": "BXP Inc.", "category": "Real Estate" },
-  { "symbol": "PFG", "name": "Principal Financial Group", "category": "Financial Services" },
-  { "symbol": "GEN", "name": "Gen Digital Inc.", "category": "Technology" },
-  { "symbol": "PARA", "name": "Paramount Global", "category": "Communication Services" },
-  { "symbol": "WY", "name": "Weyerhaeuser Co.", "category": "Real Estate" },
-  { "symbol": "STE", "name": "STERIS plc", "category": "Healthcare" },
-  { "symbol": "POOL", "name": "Pool Corp.", "category": "Consumer Cyclical" },
-  { "symbol": "TER", "name": "Teradyne Inc.", "category": "Technology" },
-  { "symbol": "CNP", "name": "CenterPoint Energy Inc.", "category": "Utilities" },
-  { "symbol": "CLX", "name": "Clorox Co.", "category": "Consumer Defensive" },
-  { "symbol": "COO", "name": "CooperCompanies Inc.", "category": "Healthcare" },
-  { "symbol": "MAS", "name": "Masco Corp.", "category": "Industrials" },
-  { "symbol": "FMC", "name": "FMC Corp.", "category": "Materials" },
-  { "symbol": "LW", "name": "Lamb Weston Holdings", "category": "Consumer Defensive" },
-  { "symbol": "SRE", "name": "Sempra", "category": "Utilities" },
-  { "symbol": "ZBRA", "name": "Zebra Technologies Corp.", "category": "Technology" },
-  { "symbol": "HST", "name": "Host Hotels & Resorts", "category": "Real Estate" },
-  { "symbol": "UDR", "name": "UDR Inc.", "category": "Real Estate" },
-  { "symbol": "CHRW", "name": "C.H. Robinson Worldwide", "category": "Industrials" },
-  { "symbol": "TRMB", "name": "Trimble Inc.", "category": "Technology" },
-  { "symbol": "HAS", "name": "Hasbro Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "ALLE", "name": "Allegion plc", "category": "Industrials" },
-  { "symbol": "VTR", "name": "Ventas Inc.", "category": "Real Estate" },
-  { "symbol": "PNW", "name": "Pinnacle West Capital", "category": "Utilities" },
-  { "symbol": "NI", "name": "NiSource Inc.", "category": "Utilities" },
-  { "symbol": "MKTX", "name": "MarketAxess Holdings", "category": "Financial Services" },
-  { "symbol": "TAP", "name": "Molson Coors Beverage Co.", "category": "Consumer Defensive" },
-  { "symbol": "EMN", "name": "Eastman Chemical Co.", "category": "Materials" },
-  { "symbol": "LNT", "name": "Alliant Energy Corp.", "category": "Utilities" },
-  { "symbol": "CPB", "name": "Campbell Soup Co.", "category": "Consumer Defensive" },
-  { "symbol": "FOXA", "name": "Fox Corp. (Class A)", "category": "Communication Services" },
-  { "symbol": "AAL", "name": "American Airlines Group", "category": "Industrials" },
-  { "symbol": "L", "name": "Loews Corp.", "category": "Financial Services" },
-  { "symbol": "UHS", "name": "Universal Health Services", "category": "Healthcare" },
-  { "symbol": "AIZ", "name": "Assurant Inc.", "category": "Financial Services" },
-  { "symbol": "FFIV", "name": "F5 Inc.", "category": "Technology" },
-  { "symbol": "WHR", "name": "Whirlpool Corp.", "category": "Consumer Cyclical" },
-  { "symbol": "RL", "name": "Ralph Lauren Corp.", "category": "Consumer Cyclical" },
-  { "symbol": "AOS", "name": "A.O. Smith Corp.", "category": "Industrials" },
-  { "symbol": "MOS", "name": "Mosaic Co.", "category": "Materials" },
-  { "symbol": "BEN", "name": "Franklin Resources Inc.", "category": "Financial Services" },
-  { "symbol": "IVZ", "name": "Invesco Ltd.", "category": "Financial Services" },
-  { "symbol": "DXC", "name": "DXC Technology Co.", "category": "Technology" },
-  { "symbol": "NWL", "name": "Newell Brands Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "BWA", "name": "BorgWarner Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "ALK", "name": "Alaska Air Group Inc.", "category": "Industrials" },
-  { "symbol": "NRG", "name": "NRG Energy Inc.", "category": "Utilities" },
-  { "symbol": "SEE", "name": "Sealed Air Corp.", "category": "Materials" },
-  { "symbol": "WYNN", "name": "Wynn Resorts Ltd.", "category": "Consumer Cyclical" },
-  { "symbol": "GPS", "name": "Gap Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "KSS", "name": "Kohl's Corp.", "category": "Consumer Cyclical" },
-  { "symbol": "M", "name": "Macy's Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "TPR", "name": "Tapestry Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "UA", "name": "Under Armour Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "PVH", "name": "PVH Corp.", "category": "Consumer Cyclical" },
-  { "symbol": "LNC", "name": "Lincoln National Corp.", "category": "Financial Services" },
-  { "symbol": "KMX", "name": "CarMax Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "WU", "name": "Western Union Co.", "category": "Financial Services" },
-  { "symbol": "CINF", "name": "Cincinnati Financial Corp.", "category": "Financial Services" },
-  { "symbol": "RE", "name": "Everest Group Ltd.", "category": "Financial Services" },
-  { "symbol": "FDS", "name": "FactSet Research Systems", "category": "Financial Services" },
-  { "symbol": "JKHY", "name": "Jack Henry & Associates", "category": "Technology" },
-  { "symbol": "PAYC", "name": "Paycom Software Inc.", "category": "Technology" },
-  { "symbol": "TYL", "name": "Tyler Technologies Inc.", "category": "Technology" },
-  { "symbol": "TRGP", "name": "Targa Resources Corp.", "category": "Energy" },
-  { "symbol": "TROW", "name": "T. Rowe Price Group", "category": "Financial Services" },
-  { "symbol": "CME", "name": "CME Group Inc.", "category": "Financial Services" },
-  { "symbol": "NTRS", "name": "Northern Trust Corp.", "category": "Financial Services" },
-  { "symbol": "KEY", "name": "KeyCorp", "category": "Financial Services" },
-  { "symbol": "RF", "name": "Regions Financial Corp.", "category": "Financial Services" },
-  { "symbol": "HBAN", "name": "Huntington Bancshares", "category": "Financial Services" },
-  { "symbol": "CFG", "name": "Citizens Financial Group", "category": "Financial Services" },
-  { "symbol": "TFC", "name": "Truist Financial Corp.", "category": "Financial Services" },
-  { "symbol": "PNC", "name": "PNC Financial Services", "category": "Financial Services" },
-  { "symbol": "SYF", "name": "Synchrony Financial", "category": "Financial Services" },
-  { "symbol": "COF", "name": "Capital One Financial Corp.", "category": "Financial Services" },
-  { "symbol": "PYPL", "name": "PayPal Holdings Inc.", "category": "Financial Services" },
-  { "symbol": "SQ", "name": "Block Inc.", "category": "Technology" },
-  { "symbol": "FIS", "name": "Fidelity National Info Services", "category": "Financial Services" },
-  { "symbol": "FTNT", "name": "Fortinet Inc.", "category": "Technology" },
-  { "symbol": "AKAM", "name": "Akamai Technologies Inc.", "category": "Technology" },
-  { "symbol": "PTC", "name": "PTC Inc.", "category": "Technology" },
-  { "symbol": "QRVO", "name": "Qorvo Inc.", "category": "Technology" },
-  { "symbol": "MCHP", "name": "Microchip Technology Inc.", "category": "Technology" },
-  { "symbol": "GOOG", "name": "Alphabet Inc. (Class C)", "category": "Communication Services" },
-  { "symbol": "FOX", "name": "Fox Corp. (Class B)", "category": "Communication Services" },
-  { "symbol": "LYV", "name": "Live Nation Entertainment", "category": "Communication Services" },
-  { "symbol": "EA", "name": "Electronic Arts Inc.", "category": "Communication Services" },
-  { "symbol": "TTWO", "name": "Take-Two Interactive", "category": "Communication Services" },
-  { "symbol": "RBLX", "name": "Roblox Corp.", "category": "Communication Services" },
-  { "symbol": "UBER", "name": "Uber Technologies Inc.", "category": "Technology" },
-  { "symbol": "LYFT", "name": "Lyft Inc.", "category": "Technology" },
-  { "symbol": "DASH", "name": "DoorDash Inc.", "category": "Technology" },
-  { "symbol": "ABNB", "name": "Airbnb Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "EXPE", "name": "Expedia Group Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "CCL", "name": "Carnival Corp.", "category": "Consumer Cyclical" },
-  { "symbol": "NCLH", "name": "Norwegian Cruise Line Holdings", "category": "Consumer Cyclical" },
-  { "symbol": "LVS", "name": "Las Vegas Sands Corp.", "category": "Consumer Cyclical" },
-  { "symbol": "RIVN", "name": "Rivian Automotive Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "LCID", "name": "Lucid Group Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "GM", "name": "General Motors Co.", "category": "Consumer Cyclical" },
-  { "symbol": "STLA", "name": "Stellantis NV", "category": "Consumer Cyclical" },
-  { "symbol": "HMC", "name": "Honda Motor Co.", "category": "Consumer Cyclical" },
-  { "symbol": "TM", "name": "Toyota Motor Corp.", "category": "Consumer Cyclical" },
-  { "symbol": "NIO", "name": "NIO Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "LI", "name": "Li Auto Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "XPEV", "name": "XPeng Inc.", "category": "Consumer Cyclical" },
-  { "symbol": "BYDDY", "name": "BYD Co. Ltd.", "category": "Consumer Cyclical" },
-  { "symbol": "SPY", "name": "SPDR S&P 500 ETF Trust", "category": "ETF" },
-  { "symbol": "QQQ", "name": "Invesco QQQ Trust", "category": "ETF" },
-  { "symbol": "IWM", "name": "iShares Russell 2000 ETF", "category": "ETF" },
-  { "symbol": "DIA", "name": "SPDR Dow Jones Industrial Average ETF", "category": "ETF" },
-  { "symbol": "VOO", "name": "Vanguard S&P 500 ETF", "category": "ETF" },
-  { "symbol": "VTI", "name": "Vanguard Total Stock Market ETF", "category": "ETF" },
-  { "symbol": "VEU", "name": "Vanguard FTSE All-World ex-US ETF", "category": "ETF" },
-  { "symbol": "VWO", "name": "Vanguard FTSE Emerging Markets ETF", "category": "ETF" },
-  { "symbol": "BND", "name": "Vanguard Total Bond Market ETF", "category": "ETF" },
-  { "symbol": "AGG", "name": "iShares Core U.S. Aggregate Bond ETF", "category": "ETF" },
-  { "symbol": "XLF", "name": "Financial Select Sector SPDR Fund", "category": "ETF" },
-  { "symbol": "XLK", "name": "Technology Select Sector SPDR Fund", "category": "ETF" },
-  { "symbol": "XLV", "name": "Health Care Select Sector SPDR Fund", "category": "ETF" },
-  { "symbol": "XLE", "name": "Energy Select Sector SPDR Fund", "category": "ETF" },
-  { "symbol": "XLI", "name": "Industrial Select Sector SPDR Fund", "category": "ETF" },
-  { "symbol": "XLY", "name": "Consumer Discretionary Select Sector SPDR Fund", "category": "ETF" },
-  { "symbol": "XLP", "name": "Consumer Staples Select Sector SPDR Fund", "category": "ETF" },
-  { "symbol": "XLB", "name": "Materials Select Sector SPDR Fund", "category": "ETF" },
-  { "symbol": "XLU", "name": "Utilities Select Sector SPDR Fund", "category": "ETF" },
-  { "symbol": "XLRE", "name": "Real Estate Select Sector SPDR Fund", "category": "ETF" },
-  { "symbol": "SMH", "name": "VanEck Semiconductor ETF", "category": "ETF" },
-  { "symbol": "SOXX", "name": "iShares Semiconductor ETF", "category": "ETF" },
-  { "symbol": "GDX", "name": "VanEck Gold Miners ETF", "category": "ETF" },
-  { "symbol": "GDXJ", "name": "VanEck Junior Gold Miners ETF", "category": "ETF" },
-  { "symbol": "GLD", "name": "SPDR Gold Shares", "category": "ETF" },
-  { "symbol": "SLV", "name": "iShares Silver Trust", "category": "ETF" },
-  { "symbol": "USO", "name": "United States Oil Fund", "category": "ETF" },
-  { "symbol": "UNG", "name": "United States Natural Gas Fund", "category": "ETF" },
-  { "symbol": "TLT", "name": "iShares 20+ Year Treasury Bond ETF", "category": "ETF" },
-  { "symbol": "IEF", "name": "iShares 7-10 Year Treasury Bond ETF", "category": "ETF" },
-  { "symbol": "LQD", "name": "iShares iBoxx $ Investment Grade Corp Bond ETF", "category": "ETF" },
-  { "symbol": "HYG", "name": "iShares iBoxx $ High Yield Corp Bond ETF", "category": "ETF" },
-  { "symbol": "EEM", "name": "iShares MSCI Emerging Markets ETF", "category": "ETF" },
-  { "symbol": "EFA", "name": "iShares MSCI EAFE ETF", "category": "ETF" },
-  { "symbol": "EWJ", "name": "iShares MSCI Japan ETF", "category": "ETF" },
-  { "symbol": "FXI", "name": "iShares China Large-Cap ETF", "category": "ETF" },
-  { "symbol": "VGK", "name": "Vanguard FTSE Europe ETF", "category": "ETF" },
-  { "symbol": "ACWI", "name": "iShares MSCI ACWI ETF", "category": "ETF" },
-  { "symbol": "VT", "name": "Vanguard Total World Stock ETF", "category": "ETF" },
-  { "symbol": "VIG", "name": "Vanguard Dividend Appreciation ETF", "category": "ETF" },
-  { "symbol": "DVY", "name": "iShares Select Dividend ETF", "category": "ETF" },
-  { "symbol": "SDY", "name": "SPDR S&P Dividend ETF", "category": "ETF" },
-  { "symbol": "VYM", "name": "Vanguard High Dividend Yield ETF", "category": "ETF" },
-  { "symbol": "SCHD", "name": "Schwab U.S. Dividend Equity ETF", "category": "ETF" },
-  { "symbol": "ARKK", "name": "ARK Innovation ETF", "category": "ETF" },
-  { "symbol": "ARKW", "name": "ARK Next Generation Internet ETF", "category": "ETF" },
-  { "symbol": "ARKG", "name": "ARK Genomic Revolution ETF", "category": "ETF" },
-  { "symbol": "ARKF", "name": "ARK Fintech Innovation ETF", "category": "ETF" },
-  { "symbol": "ARKX", "name": "ARK Space Exploration & Innovation ETF", "category": "ETF" },
-  { "symbol": "TQQQ", "name": "ProShares UltraPro QQQ", "category": "ETF" },
-  { "symbol": "SQQQ", "name": "ProShares UltraPro Short QQQ", "category": "ETF" },
-  { "symbol": "SOXL", "name": "Direxion Daily Semiconductor Bull 3X", "category": "ETF" },
-  { "symbol": "SOXS", "name": "Direxion Daily Semiconductor Bear 3X", "category": "ETF" },
-  { "symbol": "LABU", "name": "Direxion Daily S&P Biotech Bull 3X", "category": "ETF" },
-  { "symbol": "BTC/USD", "name": "Bitcoin", "category": "Crypto" },
-  { "symbol": "ETH/USD", "name": "Ethereum", "category": "Crypto" },
-  { "symbol": "USDT/USD", "name": "Tether", "category": "Crypto" },
-  { "symbol": "XRP/USD", "name": "XRP", "category": "Crypto" },
-  { "symbol": "BNB/USD", "name": "BNB", "category": "Crypto" },
-  { "symbol": "USDC/USD", "name": "USD Coin", "category": "Crypto" },
-  { "symbol": "SOL/USD", "name": "Solana", "category": "Crypto" },
-  { "symbol": "TRX/USD", "name": "TRON", "category": "Crypto" },
-  { "symbol": "STETH/USD", "name": "Lido Staked Ether", "category": "Crypto" },
-  { "symbol": "DOGE/USD", "name": "Dogecoin", "category": "Crypto" },
-  { "symbol": "BCH/USD", "name": "Bitcoin Cash", "category": "Crypto" },
-  { "symbol": "ADA/USD", "name": "Cardano", "category": "Crypto" },
-  { "symbol": "LEOu/USD", "name": "UNUS SED LEO", "category": "Crypto" },
-  { "symbol": "WBTC/USD", "name": "Wrapped Bitcoin", "category": "Crypto" },
-  { "symbol": "USDE/USD", "name": "USDe", "category": "Crypto" },
-  { "symbol": "XMR/USD", "name": "Monero", "category": "Crypto" },
-  { "symbol": "LINK/USD", "name": "Chainlink", "category": "Crypto" },
-  { "symbol": "XLM/USD", "name": "Stellar", "category": "Crypto" },
-  { "symbol": "ZEC/USD", "name": "Zcash", "category": "Crypto" },
-  { "symbol": "DAI/USD", "name": "Dai", "category": "Crypto" },
-  { "symbol": "HBAR/USD", "name": "Hedera", "category": "Crypto" },
-  { "symbol": "LTC/USD", "name": "Litecoin", "category": "Crypto" },
-  { "symbol": "AVAX/USD", "name": "Avalanche", "category": "Crypto" },
-  { "symbol": "SHIB/USD", "name": "Shiba Inu", "category": "Crypto" },
-  { "symbol": "SUI/USD", "name": "Sui", "category": "Crypto" },
-  { "symbol": "TON/USD", "name": "Toncoin", "category": "Crypto" },
-  { "symbol": "CRO/USD", "name": "Cronos", "category": "Crypto" },
-  { "symbol": "XAUT/USD", "name": "Tether Gold", "category": "Crypto" },
-  { "symbol": "PAXG/USD", "name": "PAX Gold", "category": "Crypto" },
-  { "symbol": "DOT/USD", "name": "Polkadot", "category": "Crypto" },
-  { "symbol": "UNI/USD", "name": "Uniswap", "category": "Crypto" },
-  { "symbol": "MNT/USD", "name": "Mantle", "category": "Crypto" },
-  { "symbol": "TAO/USD", "name": "Bittensor", "category": "Crypto" },
-  { "symbol": "PEPE/USD", "name": "Pepe", "category": "Crypto" },
-  { "symbol": "OKB/USD", "name": "OKB", "category": "Crypto" },
-  { "symbol": "NEAR/USD", "name": "NEAR Protocol", "category": "Crypto" },
-  { "symbol": "ICP/USD", "name": "Internet Computer", "category": "Crypto" },
-  { "symbol": "FIL/USD", "name": "Filecoin", "category": "Crypto" },
-  { "symbol": "ARB/USD", "name": "Arbitrum", "category": "Crypto" },
-  { "symbol": "APT/USD", "name": "Aptos", "category": "Crypto" },
-  { "symbol": "LDO/USD", "name": "Lido DAO", "category": "Crypto" },
-  { "symbol": "INJ/USD", "name": "Injective", "category": "Crypto" },
-  { "symbol": "RENDER/USD", "name": "Render", "category": "Crypto" },
-  { "symbol": "VET/USD", "name": "VeChain", "category": "Crypto" },
-  { "symbol": "FET/USD", "name": "Fetch.ai", "category": "Crypto" },
-  { "symbol": "RUNE/USD", "name": "THORChain", "category": "Crypto" },
-  { "symbol": "TIA/USD", "name": "Celestia", "category": "Crypto" },
-  { "symbol": "SEI/USD", "name": "Sei", "category": "Crypto" },
-  { "symbol": "GRT/USD", "name": "The Graph", "category": "Crypto" },
-  { "symbol": "THETA/USD", "name": "Theta Network", "category": "Crypto" },
-  { "symbol": "XDC/USD", "name": "XDC Network", "category": "Crypto" },
-  { "symbol": "SKY/USD", "name": "Sky", "category": "Crypto" },
-  { "symbol": "KAVA/USD", "name": "Kava", "category": "Crypto" },
-  { "symbol": "GALA/USD", "name": "Gala", "category": "Crypto" },
-  { "symbol": "FLOW/USD", "name": "Flow", "category": "Crypto" },
-  { "symbol": "EGLD/USD", "name": "MultiversX", "category": "Crypto" },
-  { "symbol": "ALGO/USD", "name": "Algorand", "category": "Crypto" },
-  { "symbol": "QNT/USD", "name": "Quant", "category": "Crypto" },
-  { "symbol": "SAND/USD", "name": "The Sandbox", "category": "Crypto" },
-  { "symbol": "MANA/USD", "name": "Decentraland", "category": "Crypto" },
-  { "symbol": "APE/USD", "name": "ApeCoin", "category": "Crypto" },
-  { "symbol": "AXS/USD", "name": "Axie Infinity", "category": "Crypto" },
-  { "symbol": "CHZ/USD", "name": "Chiliz", "category": "Crypto" },
-  { "symbol": "IOTA/USD", "name": "IOTA", "category": "Crypto" },
-  { "symbol": "NEO/USD", "name": "Neo", "category": "Crypto" },
-  { "symbol": "CRV/USD", "name": "Curve DAO", "category": "Crypto" },
-  { "symbol": "SNX/USD", "name": "Synthetix", "category": "Crypto" },
-  { "symbol": "COMP/USD", "name": "Compound", "category": "Crypto" },
-  { "symbol": "ZRX/USD", "name": "0x Protocol", "category": "Crypto" },
-  { "symbol": "ENJ/USD", "name": "Enjin Coin", "category": "Crypto" },
-  { "symbol": "BAT/USD", "name": "Basic Attention Token", "category": "Crypto" },
-  { "symbol": "KNC/USD", "name": "Kyber Network Crystal", "category": "Crypto" },
-  { "symbol": "LRC/USD", "name": "Loopring", "category": "Crypto" },
-  { "symbol": "1INCH/USD", "name": "1inch", "category": "Crypto" },
-  { "symbol": "DYDX/USD", "name": "dYdX", "category": "Crypto" },
-  { "symbol": "GMX/USD", "name": "GMX", "category": "Crypto" },
-  { "symbol": "PENDLE/USD", "name": "Pendle", "category": "Crypto" }
+  {
+    "symbol": "NVDA",
+    "name": "NVIDIA Corp.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "AAPL",
+    "name": "Apple Inc.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "MSFT",
+    "name": "Microsoft Corp.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "AMZN",
+    "name": "Amazon.com Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "GOOGL",
+    "name": "Alphabet Inc. (Class A)",
+    "category": "Communication Services",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "META",
+    "name": "Meta Platforms Inc.",
+    "category": "Communication Services",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "TSLA",
+    "name": "Tesla Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "AVGO",
+    "name": "Broadcom Inc.",
+    "category": "Technology"
+  },
+  {
+    "symbol": "TSM",
+    "name": "Taiwan Semiconductor",
+    "category": "Technology"
+  },
+  {
+    "symbol": "BRK.B",
+    "name": "Berkshire Hathaway (Class B)",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "WMT",
+    "name": "Walmart Inc.",
+    "category": "Consumer Defensive"
+  },
+  {
+    "symbol": "LLY",
+    "name": "Eli Lilly & Co.",
+    "category": "Healthcare"
+  },
+  {
+    "symbol": "JPM",
+    "name": "JPMorgan Chase & Co.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "V",
+    "name": "Visa Inc.",
+    "category": "Financial Services"
+  },
+  {
+    "symbol": "JNJ",
+    "name": "Johnson & Johnson",
+    "category": "Healthcare"
+  },
+  {
+    "symbol": "MA",
+    "name": "Mastercard Inc.",
+    "category": "Financial Services"
+  },
+  {
+    "symbol": "ORCL",
+    "name": "Oracle Corp.",
+    "category": "Technology"
+  },
+  {
+    "symbol": "COST",
+    "name": "Costco Wholesale Corp.",
+    "category": "Consumer Defensive"
+  },
+  {
+    "symbol": "ABBV",
+    "name": "AbbVie Inc.",
+    "category": "Healthcare"
+  },
+  {
+    "symbol": "BAC",
+    "name": "Bank of America Corp.",
+    "category": "Financial Services"
+  },
+  {
+    "symbol": "HD",
+    "name": "Home Depot Inc.",
+    "category": "Consumer Cyclical"
+  },
+  {
+    "symbol": "PG",
+    "name": "Procter & Gamble Co.",
+    "category": "Consumer Defensive"
+  },
+  {
+    "symbol": "CVX",
+    "name": "Chevron Corp.",
+    "category": "Energy"
+  },
+  {
+    "symbol": "XOM",
+    "name": "Exxon Mobil Corp.",
+    "category": "Energy"
+  },
+  {
+    "symbol": "KO",
+    "name": "Coca-Cola Co.",
+    "category": "Consumer Defensive"
+  },
+  {
+    "symbol": "AMD",
+    "name": "Advanced Micro Devices",
+    "category": "Technology"
+  },
+  {
+    "symbol": "NFLX",
+    "name": "Netflix Inc.",
+    "category": "Communication Services"
+  },
+  {
+    "symbol": "ADBE",
+    "name": "Adobe Inc.",
+    "category": "Technology"
+  },
+  {
+    "symbol": "CRM",
+    "name": "Salesforce Inc.",
+    "category": "Technology"
+  },
+  {
+    "symbol": "MRK",
+    "name": "Merck & Co.",
+    "category": "Healthcare"
+  },
+  {
+    "symbol": "PEP",
+    "name": "PepsiCo Inc.",
+    "category": "Consumer Defensive"
+  },
+  {
+    "symbol": "LIN",
+    "name": "Linde plc",
+    "category": "Materials"
+  },
+  {
+    "symbol": "TMO",
+    "name": "Thermo Fisher Scientific",
+    "category": "Healthcare"
+  },
+  {
+    "symbol": "ACN",
+    "name": "Accenture plc",
+    "category": "Technology"
+  },
+  {
+    "symbol": "ABT",
+    "name": "Abbott Laboratories",
+    "category": "Healthcare"
+  },
+  {
+    "symbol": "DIS",
+    "name": "Walt Disney Co.",
+    "category": "Communication Services"
+  },
+  {
+    "symbol": "PM",
+    "name": "Philip Morris International",
+    "category": "Consumer Defensive",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "CSCO",
+    "name": "Cisco Systems Inc.",
+    "category": "Technology"
+  },
+  {
+    "symbol": "MCD",
+    "name": "McDonald's Corp.",
+    "category": "Consumer Cyclical"
+  },
+  {
+    "symbol": "DHR",
+    "name": "Danaher Corp.",
+    "category": "Healthcare",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "INTU",
+    "name": "Intuit Inc.",
+    "category": "Technology"
+  },
+  {
+    "symbol": "INTC",
+    "name": "Intel Corp.",
+    "category": "Technology"
+  },
+  {
+    "symbol": "IBM",
+    "name": "IBM Corp.",
+    "category": "Technology",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "TXN",
+    "name": "Texas Instruments Inc.",
+    "category": "Technology"
+  },
+  {
+    "symbol": "VZ",
+    "name": "Verizon Communications",
+    "category": "Communication Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "AMAT",
+    "name": "Applied Materials Inc.",
+    "category": "Technology"
+  },
+  {
+    "symbol": "QCOM",
+    "name": "Qualcomm Inc.",
+    "category": "Technology"
+  },
+  {
+    "symbol": "PFE",
+    "name": "Pfizer Inc.",
+    "category": "Healthcare"
+  },
+  {
+    "symbol": "CAT",
+    "name": "Caterpillar Inc.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "GE",
+    "name": "GE Aerospace",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "UNP",
+    "name": "Union Pacific Corp.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "AXP",
+    "name": "American Express Co.",
+    "category": "Financial Services"
+  },
+  {
+    "symbol": "HON",
+    "name": "Honeywell International",
+    "category": "Industrials",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "LOW",
+    "name": "Lowe's Companies Inc.",
+    "category": "Consumer Cyclical"
+  },
+  {
+    "symbol": "NEE",
+    "name": "NextEra Energy Inc.",
+    "category": "Utilities",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "SPGI",
+    "name": "S&P Global Inc.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "COP",
+    "name": "ConocoPhillips",
+    "category": "Energy"
+  },
+  {
+    "symbol": "RTX",
+    "name": "RTX Corp.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "GS",
+    "name": "Goldman Sachs Group",
+    "category": "Financial Services"
+  },
+  {
+    "symbol": "ISRG",
+    "name": "Intuitive Surgical Inc.",
+    "category": "Healthcare"
+  },
+  {
+    "symbol": "PLD",
+    "name": "Prologis Inc.",
+    "category": "Real Estate",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "ELV",
+    "name": "Elevance Health Inc.",
+    "category": "Healthcare",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "BKNG",
+    "name": "Booking Holdings Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "TJX",
+    "name": "TJX Companies Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "DE",
+    "name": "Deere & Company",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "LMT",
+    "name": "Lockheed Martin Corp.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "ADP",
+    "name": "Automatic Data Processing",
+    "category": "Industrials",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "SYK",
+    "name": "Stryker Corp.",
+    "category": "Healthcare",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "NKE",
+    "name": "Nike Inc.",
+    "category": "Consumer Cyclical"
+  },
+  {
+    "symbol": "AMGN",
+    "name": "Amgen Inc.",
+    "category": "Healthcare"
+  },
+  {
+    "symbol": "MMC",
+    "name": "Marsh & McLennan Cos.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "VRTX",
+    "name": "Vertex Pharmaceuticals",
+    "category": "Healthcare",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "MDLZ",
+    "name": "Mondelez International",
+    "category": "Consumer Defensive",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "REGN",
+    "name": "Regeneron Pharmaceuticals",
+    "category": "Healthcare",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "LRCX",
+    "name": "Lam Research Corp.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "ADI",
+    "name": "Analog Devices Inc.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "BLK",
+    "name": "BlackRock Inc.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "CB",
+    "name": "Chubb Ltd.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "BSX",
+    "name": "Boston Scientific Corp.",
+    "category": "Healthcare",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "CI",
+    "name": "Cigna Group",
+    "category": "Healthcare",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "MU",
+    "name": "Micron Technology Inc.",
+    "category": "Technology"
+  },
+  {
+    "symbol": "BA",
+    "name": "Boeing Co.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "GILD",
+    "name": "Gilead Sciences Inc.",
+    "category": "Healthcare",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "AMT",
+    "name": "American Tower Corp.",
+    "category": "Real Estate",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "ETN",
+    "name": "Eaton Corp.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "PANW",
+    "name": "Palo Alto Networks",
+    "category": "Technology"
+  },
+  {
+    "symbol": "SNPS",
+    "name": "Synopsys Inc.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "CDNS",
+    "name": "Cadence Design Systems",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "WM",
+    "name": "Waste Management Inc.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "SBUX",
+    "name": "Starbucks Corp.",
+    "category": "Consumer Cyclical"
+  },
+  {
+    "symbol": "CVS",
+    "name": "CVS Health Corp.",
+    "category": "Healthcare",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "EQIX",
+    "name": "Equinix Inc.",
+    "category": "Real Estate",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "FI",
+    "name": "Fiserv Inc.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "ICE",
+    "name": "Intercontinental Exchange",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "MO",
+    "name": "Altria Group Inc.",
+    "category": "Consumer Defensive",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "ZTS",
+    "name": "Zoetis Inc.",
+    "category": "Healthcare",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "MDT",
+    "name": "Medtronic plc",
+    "category": "Healthcare",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "C",
+    "name": "Citigroup Inc.",
+    "category": "Financial Services"
+  },
+  {
+    "symbol": "KLAC",
+    "name": "KLA Corp.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "MPC",
+    "name": "Marathon Petroleum Corp.",
+    "category": "Energy",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "WELL",
+    "name": "Welltower Inc.",
+    "category": "Real Estate",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "PH",
+    "name": "Parker-Hannifin Corp.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "MCK",
+    "name": "McKesson Corp.",
+    "category": "Healthcare",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "APH",
+    "name": "Amphenol Corp.",
+    "category": "Technology",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "ORLY",
+    "name": "O'Reilly Automotive Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "SHW",
+    "name": "Sherwin-Williams Co.",
+    "category": "Materials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "GD",
+    "name": "General Dynamics Corp.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "AIG",
+    "name": "American International Group",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "EOG",
+    "name": "EOG Resources Inc.",
+    "category": "Energy"
+  },
+  {
+    "symbol": "PGR",
+    "name": "Progressive Corp.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "HCA",
+    "name": "HCA Healthcare Inc.",
+    "category": "Healthcare",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "USB",
+    "name": "U.S. Bancorp",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "NXPI",
+    "name": "NXP Semiconductors NV",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "ITW",
+    "name": "Illinois Tool Works Inc.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "EMR",
+    "name": "Emerson Electric Co.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "NSC",
+    "name": "Norfolk Southern Corp.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "T",
+    "name": "AT&T Inc.",
+    "category": "Communication Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "MAR",
+    "name": "Marriott International",
+    "category": "Consumer Cyclical",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "CARR",
+    "name": "Carrier Global Corp.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "DXCM",
+    "name": "DexCom Inc.",
+    "category": "Healthcare",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "F",
+    "name": "Ford Motor Co.",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "BDX",
+    "name": "Becton Dickinson & Co.",
+    "category": "Healthcare",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "FCX",
+    "name": "Freeport-McMoRan Inc.",
+    "category": "Materials"
+  },
+  {
+    "symbol": "HUM",
+    "name": "Humana Inc.",
+    "category": "Healthcare",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "ECL",
+    "name": "Ecolab Inc.",
+    "category": "Materials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "MET",
+    "name": "MetLife Inc.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "D",
+    "name": "Dominion Energy Inc.",
+    "category": "Utilities",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "PSX",
+    "name": "Phillips 66",
+    "category": "Energy",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "FDX",
+    "name": "FedEx Corp.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "RCL",
+    "name": "Royal Caribbean Cruises",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "WFC",
+    "name": "Wells Fargo & Co.",
+    "category": "Financial Services"
+  },
+  {
+    "symbol": "KMB",
+    "name": "Kimberly-Clark Corp.",
+    "category": "Consumer Defensive",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "MS",
+    "name": "Morgan Stanley",
+    "category": "Financial Services"
+  },
+  {
+    "symbol": "MCO",
+    "name": "Moody's Corp.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "AON",
+    "name": "Aon plc",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "AJG",
+    "name": "Arthur J. Gallagher & Co.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "O",
+    "name": "Realty Income Corp.",
+    "category": "Real Estate",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "VLO",
+    "name": "Valero Energy Corp.",
+    "category": "Energy",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "DOW",
+    "name": "Dow Inc.",
+    "category": "Materials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "ADSK",
+    "name": "Autodesk Inc.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "OKE",
+    "name": "ONEOK Inc.",
+    "category": "Energy",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "E",
+    "name": "Eni S.p.A.",
+    "category": "Energy",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "DFS",
+    "name": "Discover Financial Services",
+    "category": "Financial Services"
+  },
+  {
+    "symbol": "KMI",
+    "name": "Kinder Morgan Inc.",
+    "category": "Energy",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "PRU",
+    "name": "Prudential Financial Inc.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "BK",
+    "name": "Bank of New York Mellon",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "CTAS",
+    "name": "Cintas Corp.",
+    "category": "Industrials",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "PCAR",
+    "name": "PACCAR Inc.",
+    "category": "Industrials",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "GPN",
+    "name": "Global Payments Inc.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "PAYX",
+    "name": "Paychex Inc.",
+    "category": "Industrials",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "TRV",
+    "name": "Travelers Companies Inc.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "ALL",
+    "name": "Allstate Corp.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "TEL",
+    "name": "TE Connectivity Ltd.",
+    "category": "Technology",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "A",
+    "name": "Agilent Technologies Inc.",
+    "category": "Healthcare",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "IDXX",
+    "name": "IDEXX Laboratories Inc.",
+    "category": "Healthcare",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "IQV",
+    "name": "IQVIA Holdings Inc.",
+    "category": "Healthcare",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "CMI",
+    "name": "Cummins Inc.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "OTIS",
+    "name": "Otis Worldwide Corp.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "FAST",
+    "name": "Fastenal Co.",
+    "category": "Industrials",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "EXC",
+    "name": "Exelon Corp.",
+    "category": "Utilities",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "CNC",
+    "name": "Centene Corp.",
+    "category": "Healthcare",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "STZ",
+    "name": "Constellation Brands Inc.",
+    "category": "Consumer Defensive",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "HLT",
+    "name": "Hilton Worldwide Holdings",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "VRSK",
+    "name": "Verisk Analytics Inc.",
+    "category": "Industrials",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "CPRT",
+    "name": "Copart Inc.",
+    "category": "Industrials",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "AME",
+    "name": "AMETEK Inc.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "KR",
+    "name": "Kroger Co.",
+    "category": "Consumer Defensive",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "KDP",
+    "name": "Keurig Dr Pepper Inc.",
+    "category": "Consumer Defensive",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "LUV",
+    "name": "Southwest Airlines Co.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "ED",
+    "name": "Consolidated Edison Inc.",
+    "category": "Utilities",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "CEG",
+    "name": "Constellation Energy Corp.",
+    "category": "Utilities",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "ODFL",
+    "name": "Old Dominion Freight Line",
+    "category": "Industrials",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "GEHC",
+    "name": "GE HealthCare Technologies",
+    "category": "Healthcare",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "DLTR",
+    "name": "Dollar Tree Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "URI",
+    "name": "United Rentals Inc.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "MNST",
+    "name": "Monster Beverage Corp.",
+    "category": "Consumer Defensive",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "WBD",
+    "name": "Warner Bros. Discovery",
+    "category": "Communication Services",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "MOH",
+    "name": "Molina Healthcare Inc.",
+    "category": "Healthcare",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "KEYS",
+    "name": "Keysight Technologies Inc.",
+    "category": "Technology",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "SYY",
+    "name": "Sysco Corp.",
+    "category": "Consumer Defensive",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "VICI",
+    "name": "VICI Properties Inc.",
+    "category": "Real Estate",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "ANET",
+    "name": "Arista Networks Inc.",
+    "category": "Technology",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "ACGL",
+    "name": "Arch Capital Group Ltd.",
+    "category": "Financial Services",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "NDAQ",
+    "name": "Nasdaq Inc.",
+    "category": "Financial Services",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "BKR",
+    "name": "Baker Hughes Co.",
+    "category": "Energy",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "K",
+    "name": "Kellanova",
+    "category": "Consumer Defensive"
+  },
+  {
+    "symbol": "YUM",
+    "name": "Yum! Brands Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "HPQ",
+    "name": "HP Inc.",
+    "category": "Technology",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "CTSH",
+    "name": "Cognizant Technology Solutions",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "GLW",
+    "name": "Corning Inc.",
+    "category": "Technology",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "CSX",
+    "name": "CSX Corp.",
+    "category": "Industrials",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "DLR",
+    "name": "Digital Realty Trust",
+    "category": "Real Estate",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "EFX",
+    "name": "Equifax Inc.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "STT",
+    "name": "State Street Corp.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "HWM",
+    "name": "Howmet Aerospace Inc.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "TT",
+    "name": "Trane Technologies plc",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "ZBH",
+    "name": "Zimmer Biomet Holdings",
+    "category": "Healthcare",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "DD",
+    "name": "DuPont de Nemours Inc.",
+    "category": "Materials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "AWK",
+    "name": "American Water Works Co.",
+    "category": "Utilities",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "BBY",
+    "name": "Best Buy Co. Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "WST",
+    "name": "West Pharmaceutical Services",
+    "category": "Healthcare",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "EBAY",
+    "name": "eBay Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "RMD",
+    "name": "ResMed Inc.",
+    "category": "Healthcare",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "GRMN",
+    "name": "Garmin Ltd.",
+    "category": "Technology",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "CHD",
+    "name": "Church & Dwight Co.",
+    "category": "Consumer Defensive",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "GWW",
+    "name": "W.W. Grainger Inc.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "VMC",
+    "name": "Vulcan Materials Co.",
+    "category": "Materials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "MPWR",
+    "name": "Monolithic Power Systems",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "FITB",
+    "name": "Fifth Third Bancorp",
+    "category": "Financial Services",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "CBRE",
+    "name": "CBRE Group Inc.",
+    "category": "Real Estate",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "FSLR",
+    "name": "First Solar Inc.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "FTV",
+    "name": "Fortive Corp.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "MTB",
+    "name": "M&T Bank Corp.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "ALGN",
+    "name": "Align Technology Inc.",
+    "category": "Healthcare",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "WDC",
+    "name": "Western Digital Corp.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "AVB",
+    "name": "AvalonBay Communities",
+    "category": "Real Estate",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "IRM",
+    "name": "Iron Mountain Inc.",
+    "category": "Real Estate",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "CDW",
+    "name": "CDW Corp.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "HUBB",
+    "name": "Hubbell Inc.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "EXPD",
+    "name": "Expeditors International",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "BALL",
+    "name": "Ball Corp.",
+    "category": "Materials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "TSCO",
+    "name": "Tractor Supply Co.",
+    "category": "Consumer Cyclical",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "CBOE",
+    "name": "Cboe Global Markets",
+    "category": "Financial Services",
+    "exchange": "CBOE"
+  },
+  {
+    "symbol": "ES",
+    "name": "Eversource Energy",
+    "category": "Utilities",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "MGM",
+    "name": "MGM Resorts International",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "BRO",
+    "name": "Brown & Brown Inc.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "ARE",
+    "name": "Alexandria Real Estate Equities",
+    "category": "Real Estate",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "LDOS",
+    "name": "Leidos Holdings Inc.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "NVR",
+    "name": "NVR Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "SWKS",
+    "name": "Skyworks Solutions Inc.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "BXP",
+    "name": "BXP Inc.",
+    "category": "Real Estate",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "PFG",
+    "name": "Principal Financial Group",
+    "category": "Financial Services",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "GEN",
+    "name": "Gen Digital Inc.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "PARA",
+    "name": "Paramount Global",
+    "category": "Communication Services"
+  },
+  {
+    "symbol": "WY",
+    "name": "Weyerhaeuser Co.",
+    "category": "Real Estate",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "STE",
+    "name": "STERIS plc",
+    "category": "Healthcare",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "POOL",
+    "name": "Pool Corp.",
+    "category": "Consumer Cyclical",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "TER",
+    "name": "Teradyne Inc.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "CNP",
+    "name": "CenterPoint Energy Inc.",
+    "category": "Utilities",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "CLX",
+    "name": "Clorox Co.",
+    "category": "Consumer Defensive",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "COO",
+    "name": "CooperCompanies Inc.",
+    "category": "Healthcare",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "MAS",
+    "name": "Masco Corp.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "FMC",
+    "name": "FMC Corp.",
+    "category": "Materials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "LW",
+    "name": "Lamb Weston Holdings",
+    "category": "Consumer Defensive",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "SRE",
+    "name": "Sempra",
+    "category": "Utilities",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "ZBRA",
+    "name": "Zebra Technologies Corp.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "HST",
+    "name": "Host Hotels & Resorts",
+    "category": "Real Estate",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "UDR",
+    "name": "UDR Inc.",
+    "category": "Real Estate",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "CHRW",
+    "name": "C.H. Robinson Worldwide",
+    "category": "Industrials",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "TRMB",
+    "name": "Trimble Inc.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "HAS",
+    "name": "Hasbro Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "ALLE",
+    "name": "Allegion plc",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "VTR",
+    "name": "Ventas Inc.",
+    "category": "Real Estate",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "PNW",
+    "name": "Pinnacle West Capital",
+    "category": "Utilities",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "NI",
+    "name": "NiSource Inc.",
+    "category": "Utilities",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "MKTX",
+    "name": "MarketAxess Holdings",
+    "category": "Financial Services",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "TAP",
+    "name": "Molson Coors Beverage Co.",
+    "category": "Consumer Defensive",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "EMN",
+    "name": "Eastman Chemical Co.",
+    "category": "Materials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "LNT",
+    "name": "Alliant Energy Corp.",
+    "category": "Utilities",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "CPB",
+    "name": "Campbell Soup Co.",
+    "category": "Consumer Defensive",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "FOXA",
+    "name": "Fox Corp. (Class A)",
+    "category": "Communication Services",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "AAL",
+    "name": "American Airlines Group",
+    "category": "Industrials",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "L",
+    "name": "Loews Corp.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "UHS",
+    "name": "Universal Health Services",
+    "category": "Healthcare",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "AIZ",
+    "name": "Assurant Inc.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "FFIV",
+    "name": "F5 Inc.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "WHR",
+    "name": "Whirlpool Corp.",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "RL",
+    "name": "Ralph Lauren Corp.",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "AOS",
+    "name": "A.O. Smith Corp.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "MOS",
+    "name": "Mosaic Co.",
+    "category": "Materials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "BEN",
+    "name": "Franklin Resources Inc.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "IVZ",
+    "name": "Invesco Ltd.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "DXC",
+    "name": "DXC Technology Co.",
+    "category": "Technology",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "NWL",
+    "name": "Newell Brands Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "BWA",
+    "name": "BorgWarner Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "ALK",
+    "name": "Alaska Air Group Inc.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "NRG",
+    "name": "NRG Energy Inc.",
+    "category": "Utilities",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "SEE",
+    "name": "Sealed Air Corp.",
+    "category": "Materials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "WYNN",
+    "name": "Wynn Resorts Ltd.",
+    "category": "Consumer Cyclical",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "GPS",
+    "name": "Gap Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "KSS",
+    "name": "Kohl's Corp.",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "M",
+    "name": "Macy's Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "TPR",
+    "name": "Tapestry Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "UA",
+    "name": "Under Armour Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "PVH",
+    "name": "PVH Corp.",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "LNC",
+    "name": "Lincoln National Corp.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "KMX",
+    "name": "CarMax Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "WU",
+    "name": "Western Union Co.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "CINF",
+    "name": "Cincinnati Financial Corp.",
+    "category": "Financial Services",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "RE",
+    "name": "Everest Group Ltd.",
+    "category": "Financial Services"
+  },
+  {
+    "symbol": "FDS",
+    "name": "FactSet Research Systems",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "JKHY",
+    "name": "Jack Henry & Associates",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "PAYC",
+    "name": "Paycom Software Inc.",
+    "category": "Technology",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "TYL",
+    "name": "Tyler Technologies Inc.",
+    "category": "Technology",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "TRGP",
+    "name": "Targa Resources Corp.",
+    "category": "Energy",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "TROW",
+    "name": "T. Rowe Price Group",
+    "category": "Financial Services",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "CME",
+    "name": "CME Group Inc.",
+    "category": "Financial Services",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "NTRS",
+    "name": "Northern Trust Corp.",
+    "category": "Financial Services",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "KEY",
+    "name": "KeyCorp",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "RF",
+    "name": "Regions Financial Corp.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "HBAN",
+    "name": "Huntington Bancshares",
+    "category": "Financial Services",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "CFG",
+    "name": "Citizens Financial Group",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "TFC",
+    "name": "Truist Financial Corp.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "PNC",
+    "name": "PNC Financial Services",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "SYF",
+    "name": "Synchrony Financial",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "COF",
+    "name": "Capital One Financial Corp.",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "PYPL",
+    "name": "PayPal Holdings Inc.",
+    "category": "Financial Services"
+  },
+  {
+    "symbol": "SQ",
+    "name": "Block Inc.",
+    "category": "Technology"
+  },
+  {
+    "symbol": "FIS",
+    "name": "Fidelity National Info Services",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "FTNT",
+    "name": "Fortinet Inc.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "AKAM",
+    "name": "Akamai Technologies Inc.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "PTC",
+    "name": "PTC Inc.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "QRVO",
+    "name": "Qorvo Inc.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "MCHP",
+    "name": "Microchip Technology Inc.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "GOOG",
+    "name": "Alphabet Inc. (Class C)",
+    "category": "Communication Services",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "FOX",
+    "name": "Fox Corp. (Class B)",
+    "category": "Communication Services",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "LYV",
+    "name": "Live Nation Entertainment",
+    "category": "Communication Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "EA",
+    "name": "Electronic Arts Inc.",
+    "category": "Communication Services",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "TTWO",
+    "name": "Take-Two Interactive",
+    "category": "Communication Services",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "RBLX",
+    "name": "Roblox Corp.",
+    "category": "Communication Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "UBER",
+    "name": "Uber Technologies Inc.",
+    "category": "Technology",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "LYFT",
+    "name": "Lyft Inc.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "DASH",
+    "name": "DoorDash Inc.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "ABNB",
+    "name": "Airbnb Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "EXPE",
+    "name": "Expedia Group Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "CCL",
+    "name": "Carnival Corp.",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "NCLH",
+    "name": "Norwegian Cruise Line Holdings",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "LVS",
+    "name": "Las Vegas Sands Corp.",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "RIVN",
+    "name": "Rivian Automotive Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "LCID",
+    "name": "Lucid Group Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "GM",
+    "name": "General Motors Co.",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "STLA",
+    "name": "Stellantis NV",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "HMC",
+    "name": "Honda Motor Co.",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "TM",
+    "name": "Toyota Motor Corp.",
+    "category": "Consumer Cyclical"
+  },
+  {
+    "symbol": "NIO",
+    "name": "NIO Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "LI",
+    "name": "Li Auto Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "XPEV",
+    "name": "XPeng Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "BYDDY",
+    "name": "BYD Co. Ltd.",
+    "category": "Consumer Cyclical",
+    "exchange": "OTC"
+  },
+  {
+    "symbol": "SPY",
+    "name": "SPDR S&P 500 ETF Trust",
+    "category": "ETF"
+  },
+  {
+    "symbol": "QQQ",
+    "name": "Invesco QQQ Trust",
+    "category": "ETF"
+  },
+  {
+    "symbol": "IWM",
+    "name": "iShares Russell 2000 ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "DIA",
+    "name": "SPDR Dow Jones Industrial Average ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "VOO",
+    "name": "Vanguard S&P 500 ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "VTI",
+    "name": "Vanguard Total Stock Market ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "VEU",
+    "name": "Vanguard FTSE All-World ex-US ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "VWO",
+    "name": "Vanguard FTSE Emerging Markets ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "BND",
+    "name": "Vanguard Total Bond Market ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "AGG",
+    "name": "iShares Core U.S. Aggregate Bond ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "XLF",
+    "name": "Financial Select Sector SPDR Fund",
+    "category": "ETF"
+  },
+  {
+    "symbol": "XLK",
+    "name": "Technology Select Sector SPDR Fund",
+    "category": "ETF"
+  },
+  {
+    "symbol": "XLV",
+    "name": "Health Care Select Sector SPDR Fund",
+    "category": "ETF"
+  },
+  {
+    "symbol": "XLE",
+    "name": "Energy Select Sector SPDR Fund",
+    "category": "ETF"
+  },
+  {
+    "symbol": "XLI",
+    "name": "Industrial Select Sector SPDR Fund",
+    "category": "ETF"
+  },
+  {
+    "symbol": "XLY",
+    "name": "Consumer Discretionary Select Sector SPDR Fund",
+    "category": "ETF"
+  },
+  {
+    "symbol": "XLP",
+    "name": "Consumer Staples Select Sector SPDR Fund",
+    "category": "ETF"
+  },
+  {
+    "symbol": "XLB",
+    "name": "Materials Select Sector SPDR Fund",
+    "category": "ETF"
+  },
+  {
+    "symbol": "XLU",
+    "name": "Utilities Select Sector SPDR Fund",
+    "category": "ETF"
+  },
+  {
+    "symbol": "XLRE",
+    "name": "Real Estate Select Sector SPDR Fund",
+    "category": "ETF"
+  },
+  {
+    "symbol": "SMH",
+    "name": "VanEck Semiconductor ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "SOXX",
+    "name": "iShares Semiconductor ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "GDX",
+    "name": "VanEck Gold Miners ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "GDXJ",
+    "name": "VanEck Junior Gold Miners ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "GLD",
+    "name": "SPDR Gold Shares",
+    "category": "ETF"
+  },
+  {
+    "symbol": "SLV",
+    "name": "iShares Silver Trust",
+    "category": "ETF"
+  },
+  {
+    "symbol": "USO",
+    "name": "United States Oil Fund",
+    "category": "ETF"
+  },
+  {
+    "symbol": "UNG",
+    "name": "United States Natural Gas Fund",
+    "category": "ETF"
+  },
+  {
+    "symbol": "TLT",
+    "name": "iShares 20+ Year Treasury Bond ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "IEF",
+    "name": "iShares 7-10 Year Treasury Bond ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "LQD",
+    "name": "iShares iBoxx $ Investment Grade Corp Bond ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "HYG",
+    "name": "iShares iBoxx $ High Yield Corp Bond ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "EEM",
+    "name": "iShares MSCI Emerging Markets ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "EFA",
+    "name": "iShares MSCI EAFE ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "EWJ",
+    "name": "iShares MSCI Japan ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "FXI",
+    "name": "iShares China Large-Cap ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "VGK",
+    "name": "Vanguard FTSE Europe ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "ACWI",
+    "name": "iShares MSCI ACWI ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "VT",
+    "name": "Vanguard Total World Stock ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "VIG",
+    "name": "Vanguard Dividend Appreciation ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "DVY",
+    "name": "iShares Select Dividend ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "SDY",
+    "name": "SPDR S&P Dividend ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "VYM",
+    "name": "Vanguard High Dividend Yield ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "SCHD",
+    "name": "Schwab U.S. Dividend Equity ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "ARKK",
+    "name": "ARK Innovation ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "ARKW",
+    "name": "ARK Next Generation Internet ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "ARKG",
+    "name": "ARK Genomic Revolution ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "ARKF",
+    "name": "ARK Fintech Innovation ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "ARKX",
+    "name": "ARK Space Exploration & Innovation ETF",
+    "category": "ETF"
+  },
+  {
+    "symbol": "TQQQ",
+    "name": "ProShares UltraPro QQQ",
+    "category": "ETF"
+  },
+  {
+    "symbol": "SQQQ",
+    "name": "ProShares UltraPro Short QQQ",
+    "category": "ETF"
+  },
+  {
+    "symbol": "SOXL",
+    "name": "Direxion Daily Semiconductor Bull 3X",
+    "category": "ETF"
+  },
+  {
+    "symbol": "SOXS",
+    "name": "Direxion Daily Semiconductor Bear 3X",
+    "category": "ETF"
+  },
+  {
+    "symbol": "LABU",
+    "name": "Direxion Daily S&P Biotech Bull 3X",
+    "category": "ETF"
+  },
+  {
+    "symbol": "BTC/USD",
+    "name": "Bitcoin",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "ETH/USD",
+    "name": "Ethereum",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "USDT/USD",
+    "name": "Tether",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "XRP/USD",
+    "name": "XRP",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "BNB/USD",
+    "name": "BNB",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "USDC/USD",
+    "name": "USD Coin",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "SOL/USD",
+    "name": "Solana",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "TRX/USD",
+    "name": "TRON",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "STETH/USD",
+    "name": "Lido Staked Ether",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "DOGE/USD",
+    "name": "Dogecoin",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "BCH/USD",
+    "name": "Bitcoin Cash",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "ADA/USD",
+    "name": "Cardano",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "LEOu/USD",
+    "name": "UNUS SED LEO",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "WBTC/USD",
+    "name": "Wrapped Bitcoin",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "USDE/USD",
+    "name": "USDe",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "XMR/USD",
+    "name": "Monero",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "LINK/USD",
+    "name": "Chainlink",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "XLM/USD",
+    "name": "Stellar",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "ZEC/USD",
+    "name": "Zcash",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "DAI/USD",
+    "name": "Dai",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "HBAR/USD",
+    "name": "Hedera",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "LTC/USD",
+    "name": "Litecoin",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "AVAX/USD",
+    "name": "Avalanche",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "SHIB/USD",
+    "name": "Shiba Inu",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "SUI/USD",
+    "name": "Sui",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "TON/USD",
+    "name": "Toncoin",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "CRO/USD",
+    "name": "Cronos",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "XAUT/USD",
+    "name": "Tether Gold",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "PAXG/USD",
+    "name": "PAX Gold",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "DOT/USD",
+    "name": "Polkadot",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "UNI/USD",
+    "name": "Uniswap",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "MNT/USD",
+    "name": "Mantle",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "TAO/USD",
+    "name": "Bittensor",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "PEPE/USD",
+    "name": "Pepe",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "OKB/USD",
+    "name": "OKB",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "NEAR/USD",
+    "name": "NEAR Protocol",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "ICP/USD",
+    "name": "Internet Computer",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "FIL/USD",
+    "name": "Filecoin",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "ARB/USD",
+    "name": "Arbitrum",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "APT/USD",
+    "name": "Aptos",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "LDO/USD",
+    "name": "Lido DAO",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "INJ/USD",
+    "name": "Injective",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "RENDER/USD",
+    "name": "Render",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "VET/USD",
+    "name": "VeChain",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "FET/USD",
+    "name": "Fetch.ai",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "RUNE/USD",
+    "name": "THORChain",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "TIA/USD",
+    "name": "Celestia",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "SEI/USD",
+    "name": "Sei",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "GRT/USD",
+    "name": "The Graph",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "THETA/USD",
+    "name": "Theta Network",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "XDC/USD",
+    "name": "XDC Network",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "SKY/USD",
+    "name": "Sky",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "KAVA/USD",
+    "name": "Kava",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "GALA/USD",
+    "name": "Gala",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "FLOW/USD",
+    "name": "Flow",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "EGLD/USD",
+    "name": "MultiversX",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "ALGO/USD",
+    "name": "Algorand",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "QNT/USD",
+    "name": "Quant",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "SAND/USD",
+    "name": "The Sandbox",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "MANA/USD",
+    "name": "Decentraland",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "APE/USD",
+    "name": "ApeCoin",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "AXS/USD",
+    "name": "Axie Infinity",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "CHZ/USD",
+    "name": "Chiliz",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "IOTA/USD",
+    "name": "IOTA",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "NEO/USD",
+    "name": "Neo",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "CRV/USD",
+    "name": "Curve DAO",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "SNX/USD",
+    "name": "Synthetix",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "COMP/USD",
+    "name": "Compound",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "ZRX/USD",
+    "name": "0x Protocol",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "ENJ/USD",
+    "name": "Enjin Coin",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "BAT/USD",
+    "name": "Basic Attention Token",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "KNC/USD",
+    "name": "Kyber Network Crystal",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "LRC/USD",
+    "name": "Loopring",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "1INCH/USD",
+    "name": "1inch",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "DYDX/USD",
+    "name": "dYdX",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "GMX/USD",
+    "name": "GMX",
+    "category": "Crypto"
+  },
+  {
+    "symbol": "PENDLE/USD",
+    "name": "Pendle",
+    "category": "Crypto"
+  }
 ]

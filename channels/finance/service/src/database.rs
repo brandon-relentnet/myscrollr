@@ -85,10 +85,16 @@ pub async fn get_tracked_symbols(pool: Arc<PgPool>) -> Vec<String> {
 }
 
 pub async fn seed_tracked_symbols(pool: Arc<PgPool>, symbols: Vec<crate::types::TrackedSymbolConfig>) -> Result<()> {
-    let statement = "INSERT INTO tracked_symbols (symbol, name, category) VALUES ($1, $2, $3) ON CONFLICT (symbol) DO UPDATE SET name = EXCLUDED.name, category = EXCLUDED.category";
+    let statement = "INSERT INTO tracked_symbols (symbol, name, category, exchange) VALUES ($1, $2, $3, $4) ON CONFLICT (symbol) DO UPDATE SET name = EXCLUDED.name, category = EXCLUDED.category, exchange = COALESCE(EXCLUDED.exchange, tracked_symbols.exchange)";
     let mut connection = pool.acquire().await?;
     for entry in symbols {
-        query(statement).bind(&entry.symbol).bind(&entry.name).bind(&entry.category).execute(&mut *connection).await?;
+        query(statement)
+            .bind(&entry.symbol)
+            .bind(&entry.name)
+            .bind(&entry.category)
+            .bind(&entry.exchange)
+            .execute(&mut *connection)
+            .await?;
     }
     Ok(())
 }

@@ -11,6 +11,8 @@ pub struct TrackedSymbolConfig {
     pub symbol: String,
     pub name: String,
     pub category: String,
+    #[serde(default)]
+    pub exchange: Option<String>,
 }
 
 /// TwelveData /stocks endpoint response.
