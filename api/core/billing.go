@@ -114,6 +114,12 @@ func getOrCreateStripeCustomer(logtoSub, email string) (string, error) {
 		// Verify the cached customer still exists in Stripe and isn't deleted
 		c, stripeErr := stripecustomer.Get(customerID, nil)
 		if stripeErr == nil && !c.Deleted {
+			// Backfill email if the Stripe customer was created without one
+			if c.Email == "" && email != "" {
+				stripecustomer.Update(customerID, &stripe.CustomerParams{
+					Email: stripe.String(email),
+				})
+			}
 			return customerID, nil
 		}
 		// Stale, deleted, or invalid customer — purge and recreate

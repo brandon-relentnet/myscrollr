@@ -155,6 +155,11 @@ func ValidateAuth(c *fiber.Ctx) error {
 	}
 	c.Locals("user_roles", roles)
 
+	// Extract email from JWT claims (Logto includes it when "email" scope is requested)
+	if email, ok := claims["email"].(string); ok {
+		c.Locals("user_email", email)
+	}
+
 	return nil
 }
 
