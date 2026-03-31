@@ -9,6 +9,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/stripe/stripe-go/v82"
+	stripesubscription "github.com/stripe/stripe-go/v82/subscription"
 	"github.com/stripe/stripe-go/v82/webhook"
 )
 
@@ -116,13 +117,19 @@ func handleCheckoutCompleted(event stripe.Event) {
 			return
 		}
 	} else {
-		// Subscription — store subscription ID and actual status (may be 'trialing')
+		// Subscription — fetch the full subscription to get actual status.
+		// Webhook payloads don't expand the subscription object, so
+		// session.Subscription.Status is always empty. We must call the
+		// Stripe API to get the real status (e.g. "trialing" vs "active").
 		subID := ""
 		subStatus := "active"
 		if session.Subscription != nil {
 			subID = session.Subscription.ID
-			if session.Subscription.Status != "" {
-				subStatus = string(session.Subscription.Status)
+			fullSub, err := stripesubscription.Get(subID, nil)
+			if err == nil {
+				subStatus = string(fullSub.Status)
+			} else {
+				log.Printf("[Stripe Webhook] Failed to fetch subscription %s, defaulting to active: %v", subID, err)
 			}
 		}
 
