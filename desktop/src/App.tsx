@@ -269,19 +269,34 @@ export default function App() {
       const isAuth = checkAuth();
       setAuthenticated(isAuth);
 
-      if (isAuth && !wasAuth) {
-        // Just logged in — update tier (drives refetchInterval)
-        const newTier = getTier();
-        setTier(newTier);
-        tierRef.current = newTier;
-        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
-        if (newTier === "uplink_ultimate") startSSE();
-      } else if (!isAuth && wasAuth) {
+      if (!isAuth && wasAuth) {
         // Just logged out — tear down SSE, reset to free tier
         if (sseActiveRef.current) stopSSE();
         setTier("free");
         tierRef.current = "free";
         queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+        return;
+      }
+
+      if (isAuth) {
+        // Re-read tier on every auth store change (login OR token refresh).
+        // A forced refresh after subscription change writes new roles to the JWT.
+        const newTier = getTier();
+        const oldTier = tierRef.current;
+        setTier(newTier);
+        tierRef.current = newTier;
+
+        if (!wasAuth) {
+          // Fresh login — invalidate dashboard
+          queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+        }
+
+        // Start/stop SSE based on tier change
+        if (newTier === "uplink_ultimate" && oldTier !== "uplink_ultimate") {
+          startSSE();
+        } else if (newTier !== "uplink_ultimate" && sseActiveRef.current) {
+          stopSSE();
+        }
       }
     });
   }, [startSSE, stopSSE, queryClient]);
