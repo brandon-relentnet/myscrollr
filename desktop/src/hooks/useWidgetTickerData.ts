@@ -4,7 +4,7 @@ import type { TempUnit } from "../preferences";
 import { fetchSysmonData } from "./useSysmonData";
 import type { SystemInfo } from "./useSysmonData";
 import { LS_CLOCK_TIMEZONES, LS_CLOCK_FORMAT, LS_TIMER_STATE, LS_WEATHER_CITIES, LS_WEATHER_UNIT, LS_UPTIME_MONITORS } from "../constants";
-import { getStore } from "../lib/store";
+import { getStore, onStoreChange } from "../lib/store";
 import { formatBytes, timeAgo } from "../utils/format";
 import { weatherCodeToIcon, weatherCodeToLabel, formatTemp } from "../widgets/weather/types";
 import { findCpuTemp, findGpuTemp } from "../widgets/sysmon/utils";
@@ -341,10 +341,18 @@ export function useWidgetTickerData(
       setData((prev) => ({ ...prev, clock: buildClockChips() }));
     }, 1000) : null;
 
-     // Weather: update every 30s (reads cached store data)
-    const weatherInterval = hasWeather ? setInterval(() => {
-      setData((prev) => ({ ...prev, weather: buildWeatherChips() }));
-    }, 30_000) : null;
+    // Weather: listen for store changes instead of polling
+    // (useWeatherData in __root.tsx writes to LS_WEATHER_CITIES on every fetch)
+    const unsubWeatherCities = hasWeather
+      ? onStoreChange<SavedCity[]>(LS_WEATHER_CITIES, () => {
+          setData((prev) => ({ ...prev, weather: buildWeatherChips() }));
+        })
+      : null;
+    const unsubWeatherUnit = hasWeather
+      ? onStoreChange<string>(LS_WEATHER_UNIT, () => {
+          setData((prev) => ({ ...prev, weather: buildWeatherChips() }));
+        })
+      : null;
 
     // Sysmon: poll Tauri IPC at the configured interval
     const sysmonMs = (widgetPrefs.sysmon.refreshInterval || 2) * 1000;
@@ -379,7 +387,8 @@ export function useWidgetTickerData(
 
     return () => {
       if (clockInterval) clearInterval(clockInterval);
-      if (weatherInterval) clearInterval(weatherInterval);
+      unsubWeatherCities?.();
+      unsubWeatherUnit?.();
       if (sysmonInterval) clearInterval(sysmonInterval);
       if (uptimeInterval) clearInterval(uptimeInterval);
       if (githubInterval) clearInterval(githubInterval);
