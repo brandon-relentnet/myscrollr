@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { AlertTriangle, ArrowRight, Calendar, Clock, CreditCard, Crown, Infinity, Loader2 } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Calendar, Clock, CreditCard, Crown, Infinity, Loader2, Zap } from 'lucide-react'
 import type { SubscriptionStatus as SubStatus } from '@/api/client'
 import {
   billingApi,
@@ -210,6 +210,19 @@ export default function SubscriptionStatus({
               : subscription.plan.includes('annual')
                 ? ' · Annual billing'
                 : ''}
+            {subscription.status === 'trialing' && subscription.trial_end
+              ? ` starting ${new Date(subscription.trial_end * 1000).toLocaleDateString()}`
+              : ''}
+          </span>
+        </div>
+      )}
+
+      {/* Trial: full Ultimate access note */}
+      {subscription.status === 'trialing' && (
+        <div className="flex items-center gap-2 py-2 px-3 bg-info/5 border border-info/15 rounded-lg">
+          <Zap size={12} className="text-info shrink-0" />
+          <span className="text-[10px] text-base-content/50">
+            Your trial includes full <span className="font-semibold text-base-content/70">Uplink Ultimate</span> access.
           </span>
         </div>
       )}

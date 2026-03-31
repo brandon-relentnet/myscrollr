@@ -147,9 +147,10 @@ func handleCheckoutCompleted(event stripe.Event) {
 		}
 	}
 
-	// Assign the appropriate Logto role synchronously to avoid race conditions
-	// with subscription.updated events that fire near-simultaneously.
-	if plan == "lifetime" || isUltimatePlan(plan) {
+	// Assign the appropriate Logto role.
+	// During trial, always grant Ultimate access regardless of selected plan.
+	// When the trial ends, subscription.updated fires and assigns the correct role.
+	if subStatus == "trialing" || plan == "lifetime" || isUltimatePlan(plan) {
 		if err := AssignUltimateRole(logtoSub); err != nil {
 			log.Printf("[Stripe Webhook] Failed to assign uplink_ultimate role to %s: %v", logtoSub, err)
 		}
