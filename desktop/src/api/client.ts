@@ -164,6 +164,7 @@ export interface SubscriptionInfo {
   currency?: string;
   interval?: string;
   trial_end?: number;
+  had_prior_sub: boolean;
 }
 
 export async function fetchSubscription(): Promise<SubscriptionInfo> {

@@ -223,6 +223,7 @@ export interface SubscriptionStatus {
   currency?: string
   interval?: string
   trial_end?: number
+  had_prior_sub: boolean
 }
 
 export interface CheckoutReturnStatus {
