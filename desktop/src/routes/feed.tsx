@@ -122,35 +122,40 @@ function HomePage() {
       )}
 
       {/* Channel sections */}
-      {orderedChannels.map(({ ch, manifest }) => (
-        <ChannelSection
-          key={ch.channel_type}
-          channel={ch}
-          manifest={manifest}
-          data={dashboard?.data}
-          tickerEnabled={ch.visible}
-          onToggleTicker={() =>
-            onToggleChannelTicker(
-              ch.channel_type as ChannelType,
-              !ch.visible,
-            )
-          }
-          pinned={pinnedSources.includes(ch.channel_type)}
-          onTogglePin={() => togglePin(ch.channel_type)}
-          onViewAll={() =>
-            navigate({
-              to: "/channel/$type/$tab",
-              params: { type: ch.channel_type, tab: "feed" },
-            })
-          }
-          onRowClick={() =>
-            navigate({
-              to: "/channel/$type/$tab",
-              params: { type: ch.channel_type, tab: "feed" },
-            })
-          }
-        />
-      ))}
+      {orderedChannels.map(({ ch, manifest }) => {
+        const channelData = dashboard?.data?.[ch.channel_type];
+        const hasData = Array.isArray(channelData) && channelData.length > 0;
+        const targetTab = hasData ? "feed" : "configuration";
+        return (
+          <ChannelSection
+            key={ch.channel_type}
+            channel={ch}
+            manifest={manifest}
+            data={dashboard?.data}
+            tickerEnabled={ch.visible}
+            onToggleTicker={() =>
+              onToggleChannelTicker(
+                ch.channel_type as ChannelType,
+                !ch.visible,
+              )
+            }
+            pinned={pinnedSources.includes(ch.channel_type)}
+            onTogglePin={() => togglePin(ch.channel_type)}
+            onViewAll={() =>
+              navigate({
+                to: "/channel/$type/$tab",
+                params: { type: ch.channel_type, tab: "feed" },
+              })
+            }
+            onRowClick={() =>
+              navigate({
+                to: "/channel/$type/$tab",
+                params: { type: ch.channel_type, tab: targetTab },
+              })
+            }
+          />
+        );
+      })}
 
       {/* Widget strip */}
       {orderedWidgets.length > 0 && (
@@ -324,18 +329,32 @@ function SportsRows({ data }: { data: unknown }) {
         const isLive = g.state === "in";
         return (
           <div key={g.id} className="flex items-center px-4 py-2.5 gap-3">
-            <span className="text-[10px] font-mono font-semibold text-fg-4 uppercase w-10 truncate">
-              {g.league}
-            </span>
-            <span className="text-xs text-fg-2 flex-1 truncate">
-              {g.away_team_code} {g.away_team_score} – {g.home_team_score} {g.home_team_code}
-            </span>
-            <span className="text-[10px] text-fg-4 truncate max-w-24">
-              {g.short_detail ?? g.status_short ?? ""}
-            </span>
             {isLive && (
               <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
             )}
+            <span className="text-[10px] font-mono font-semibold text-fg-4 uppercase w-10 shrink-0 truncate">
+              {g.league}
+            </span>
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              {g.away_team_logo && (
+                <img src={g.away_team_logo} alt="" className="w-4 h-4 shrink-0 object-contain" />
+              )}
+              <span className="text-xs text-fg-2 truncate">
+                {g.away_team_name || g.away_team_code}
+              </span>
+              <span className="text-xs text-fg-3 tabular-nums shrink-0">
+                {g.away_team_score} – {g.home_team_score}
+              </span>
+              <span className="text-xs text-fg-2 truncate">
+                {g.home_team_name || g.home_team_code}
+              </span>
+              {g.home_team_logo && (
+                <img src={g.home_team_logo} alt="" className="w-4 h-4 shrink-0 object-contain" />
+              )}
+            </div>
+            <span className="text-[10px] text-fg-4 shrink-0 truncate max-w-24">
+              {g.short_detail ?? g.status_short ?? ""}
+            </span>
           </div>
         );
       })}
@@ -493,7 +512,7 @@ function WidgetChip({
         <span style={{ color: widget.hex }} className="shrink-0">
           <Icon size={14} />
         </span>
-        <span className="text-xs font-medium text-fg truncate flex-1">{widget.name}</span>
+        <span className="text-xs font-medium text-fg truncate flex-1">{widget.tabLabel}</span>
 
         {/* Eye toggle */}
         <div
