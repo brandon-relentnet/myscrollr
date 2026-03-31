@@ -417,36 +417,47 @@ func HandleGetSubscription(c *fiber.Ctx) error {
 	// Fetch live subscription data from Stripe for billing details + schedule
 	if sc.StripeSubscriptionID != nil && *sc.StripeSubscriptionID != "" {
 		sub, err := stripesubscription.Get(*sc.StripeSubscriptionID, nil)
-		if err == nil {
-			// Extract billing details from the subscription's current price
-			if len(sub.Items.Data) > 0 {
-				price := sub.Items.Data[0].Price
-				resp.Amount = price.UnitAmount
-				resp.Currency = string(price.Currency)
-				if price.Recurring != nil {
-					resp.Interval = string(price.Recurring.Interval)
-				}
-			}
+		if err != nil {
+			// Subscription no longer exists in Stripe (deleted from Dashboard, etc.)
+			// Self-heal: reset the DB record so stale data isn't served.
+			log.Printf("[Billing] Stripe subscription %s not found, resetting record for %s: %v",
+				*sc.StripeSubscriptionID, userID, err)
+			_, _ = DBPool.Exec(context.Background(),
+				`UPDATE stripe_customers
+				 SET plan = 'free', status = 'none', stripe_subscription_id = NULL,
+				     current_period_end = NULL, updated_at = now()
+				 WHERE logto_sub = $1`, userID)
+			return c.JSON(SubscriptionResponse{Plan: "free", Status: "none"})
+		}
 
-			// Extract trial end timestamp
-			if sub.TrialEnd > 0 {
-				trialEnd := sub.TrialEnd
-				resp.TrialEnd = &trialEnd
+		// Extract billing details from the subscription's current price
+		if len(sub.Items.Data) > 0 {
+			price := sub.Items.Data[0].Price
+			resp.Amount = price.UnitAmount
+			resp.Currency = string(price.Currency)
+			if price.Recurring != nil {
+				resp.Interval = string(price.Recurring.Interval)
 			}
+		}
 
-			// Check for pending downgrade via subscription schedule
-			if sub.Schedule != nil && sub.Schedule.ID != "" {
-				sched, err := subscriptionschedule.Get(sub.Schedule.ID, nil)
-				if err == nil && len(sched.Phases) > 1 {
-					// Phase 0 = current, Phase 1 = scheduled change
-					nextPhase := sched.Phases[1]
-					if len(nextPhase.Items) > 0 {
-						nextPlan := planFromPriceID(nextPhase.Items[0].Price.ID)
-						if nextPlan != "unknown" && planRank(nextPlan) < planRank(sc.Plan) {
-							resp.PendingDowngradePlan = nextPlan
-							changeAt := time.Unix(nextPhase.StartDate, 0)
-							resp.ScheduledChangeAt = &changeAt
-						}
+		// Extract trial end timestamp
+		if sub.TrialEnd > 0 {
+			trialEnd := sub.TrialEnd
+			resp.TrialEnd = &trialEnd
+		}
+
+		// Check for pending downgrade via subscription schedule
+		if sub.Schedule != nil && sub.Schedule.ID != "" {
+			sched, err := subscriptionschedule.Get(sub.Schedule.ID, nil)
+			if err == nil && len(sched.Phases) > 1 {
+				// Phase 0 = current, Phase 1 = scheduled change
+				nextPhase := sched.Phases[1]
+				if len(nextPhase.Items) > 0 {
+					nextPlan := planFromPriceID(nextPhase.Items[0].Price.ID)
+					if nextPlan != "unknown" && planRank(nextPlan) < planRank(sc.Plan) {
+						resp.PendingDowngradePlan = nextPlan
+						changeAt := time.Unix(nextPhase.StartDate, 0)
+						resp.ScheduledChangeAt = &changeAt
 					}
 				}
 			}
