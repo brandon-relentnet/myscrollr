@@ -156,7 +156,11 @@ func getOrCreateStripeCustomer(logtoSub, email string) (string, error) {
 // Prefers the request's Origin header so redirects always match the caller.
 func getFrontendURL(c *fiber.Ctx) string {
 	if origin := c.Get("Origin"); origin != "" {
-		return strings.TrimSuffix(origin, "/")
+		// Desktop app sends "tauri://localhost" which isn't a valid browser URL.
+		// Only use the Origin if it's an HTTP(S) URL.
+		if strings.HasPrefix(origin, "http://") || strings.HasPrefix(origin, "https://") {
+			return strings.TrimSuffix(origin, "/")
+		}
 	}
 	if url := os.Getenv("FRONTEND_URL"); url != "" {
 		return url
@@ -197,7 +201,7 @@ func HandleCreateCheckoutSession(c *fiber.Ctx) error {
 		`SELECT plan, status, lifetime FROM stripe_customers WHERE logto_sub = $1`, userID,
 	).Scan(&existingPlan, &existingStatus, &isLifetime)
 
-	if err == nil && existingPlan != "free" && existingStatus == "active" {
+	if err == nil && existingPlan != "free" && (existingStatus == "active" || existingStatus == "trialing") {
 		// Lifetime members can add an Ultimate or Pro subscription on top
 		// (Ultimate gets 50% off coupon applied below)
 		if isLifetime && (isUltimatePlan(plan) || isProPlan(plan)) {
@@ -222,6 +226,14 @@ func HandleCreateCheckoutSession(c *fiber.Ctx) error {
 
 	frontendURL := getFrontendURL(c)
 
+	// Only offer a 7-day trial to first-time subscribers.
+	// Users who have had any prior paid plan (active, canceled, or past_due) skip the trial.
+	var hadPriorSub bool
+	_ = DBPool.QueryRow(context.Background(),
+		`SELECT EXISTS(SELECT 1 FROM stripe_customers WHERE logto_sub = $1 AND plan != 'free')`,
+		userID,
+	).Scan(&hadPriorSub)
+
 	params := &stripe.CheckoutSessionParams{
 		Customer: stripe.String(customerID),
 		Mode:     stripe.String(string(stripe.CheckoutSessionModeSubscription)),
@@ -233,9 +245,11 @@ func HandleCreateCheckoutSession(c *fiber.Ctx) error {
 			},
 		},
 		ReturnURL: stripe.String(frontendURL + "/uplink?session_id={CHECKOUT_SESSION_ID}"),
-		SubscriptionData: &stripe.CheckoutSessionSubscriptionDataParams{
+	}
+	if !hadPriorSub {
+		params.SubscriptionData = &stripe.CheckoutSessionSubscriptionDataParams{
 			TrialPeriodDays: stripe.Int64(7),
-		},
+		}
 	}
 	params.AddMetadata("logto_sub", userID)
 	params.AddMetadata("plan", plan)
