@@ -102,6 +102,8 @@ func handleCheckoutCompleted(event stripe.Event) {
 
 	log.Printf("[Stripe Webhook] Checkout completed: user=%s plan=%s mode=%s", logtoSub, plan, session.Mode)
 
+	subStatus := "active" // hoisted — used for role assignment after the if/else
+
 	if plan == "lifetime" {
 		// One-time payment — mark as lifetime
 		_, err := DBPool.Exec(context.Background(),
@@ -122,7 +124,6 @@ func handleCheckoutCompleted(event stripe.Event) {
 		// session.Subscription.Status is always empty. We must call the
 		// Stripe API to get the real status (e.g. "trialing" vs "active").
 		subID := ""
-		subStatus := "active"
 		if session.Subscription != nil {
 			subID = session.Subscription.ID
 			fullSub, err := stripesubscription.Get(subID, nil)
