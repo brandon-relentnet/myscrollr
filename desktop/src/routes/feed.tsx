@@ -273,7 +273,7 @@ function ChannelSection({
 
 function FinanceRows({ data }: { data: unknown }) {
   const trades = Array.isArray(data) ? (data as Trade[]) : [];
-  if (trades.length === 0) return <EmptyDataRow />;
+  if (trades.length === 0) return <EmptyDataRow channelType="finance" />;
 
   const sorted = [...trades]
     .sort((a, b) => Math.abs(Number(b.percentage_change ?? 0)) - Math.abs(Number(a.percentage_change ?? 0)))
@@ -311,7 +311,7 @@ function FinanceRows({ data }: { data: unknown }) {
 
 function SportsRows({ data }: { data: unknown }) {
   const games = Array.isArray(data) ? (data as Game[]) : [];
-  if (games.length === 0) return <EmptyDataRow />;
+  if (games.length === 0) return <EmptyDataRow channelType="sports" />;
 
   const priority: Record<string, number> = { in: 0, pre: 1, post: 2 };
   const sorted = [...games]
@@ -347,7 +347,7 @@ function SportsRows({ data }: { data: unknown }) {
 
 function RssRows({ data }: { data: unknown }) {
   const items = Array.isArray(data) ? (data as RssItem[]) : [];
-  if (items.length === 0) return <EmptyDataRow />;
+  if (items.length === 0) return <EmptyDataRow channelType="rss" />;
 
   const sorted = [...items]
     .sort((a, b) => {
@@ -376,7 +376,7 @@ function RssRows({ data }: { data: unknown }) {
 
 function FantasyRows({ data }: { data: unknown }) {
   const leagues = Array.isArray(data) ? data : [];
-  if (leagues.length === 0) return <EmptyDataRow />;
+  if (leagues.length === 0) return <EmptyDataRow channelType="fantasy" />;
 
   const preview = leagues.slice(0, MAX_PREVIEW);
 
@@ -405,10 +405,17 @@ function FantasyRows({ data }: { data: unknown }) {
 
 // ── Empty data row ──────────────────────────────────────────────
 
-function EmptyDataRow() {
+function EmptyDataRow({ channelType }: { channelType?: string }) {
+  const messages: Record<string, string> = {
+    finance: "No market data right now",
+    sports: "No scores right now",
+    rss: "No articles right now",
+    fantasy: "No league data right now",
+  };
+  const msg = (channelType && messages[channelType]) || "Nothing to show";
   return (
     <div className="px-4 py-4 text-center">
-      <p className="text-xs text-fg-4">No data yet — your feed will update shortly</p>
+      <p className="text-xs text-fg-4">{msg}</p>
     </div>
   );
 }
@@ -552,8 +559,16 @@ function getWidgetValue(id: string): string {
     }
     case "sysmon": {
       const info = getStore<SystemInfo | null>(LS_SYSMON_DATA, null);
-      if (!info) return "System Monitor";
-      return `CPU ${Math.round(info.cpuUsage)}%`;
+      if (!info) return "Waiting for data";
+      const parts = [`CPU ${Math.round(info.cpuUsage)}%`];
+      if (info.memTotal > 0) {
+        const ramPct = Math.round((info.memUsed / info.memTotal) * 100);
+        parts.push(`RAM ${ramPct}%`);
+      }
+      if (info.gpuUsage != null) {
+        parts.push(`GPU ${Math.round(info.gpuUsage)}%`);
+      }
+      return parts.join("  ·  ");
     }
     case "uptime": {
       const monitors = loadMonitors();
