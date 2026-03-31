@@ -30,6 +30,7 @@ import {
   Rocket,
   Rss,
   Satellite,
+  ShieldAlert,
   Sparkles,
   TrendingUp,
   Trophy,
@@ -887,6 +888,8 @@ function UplinkPage() {
   const [currentSub, setCurrentSub] = useState<SubscriptionStatus | null>(null)
   const [planChanging, setPlanChanging] = useState(false)
   const [planChangeError, setPlanChangeError] = useState<string | null>(null)
+  const [showTrialCancelModal, setShowTrialCancelModal] = useState(false)
+  const [trialCanceling, setTrialCanceling] = useState(false)
   const [loadingPreview, setLoadingPreview] = useState(false)
   const [pendingChange, setPendingChange] = useState<{
     tier: TierKey
@@ -1177,28 +1180,96 @@ function UplinkPage() {
         </div>
       )}
 
-      {/* ── Checkout Success Banner ─────────────────────────── */}
-      {checkoutSuccess && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="fixed top-24 left-1/2 -translate-x-1/2 z-40 px-6 py-4 bg-success/10 border border-success/30 rounded-lg backdrop-blur-sm flex items-center gap-3"
-        >
-          <CheckCircle2 size={18} className="text-success" />
-          <div>
-            <p className="text-xs font-bold text-success">{TIER_NAMES[selectedTier]} Activated</p>
-            <p className="text-[10px] text-base-content/40">
-              Your subscription is active. Welcome to {TIER_NAMES[selectedTier]}.
-            </p>
-          </div>
-          <button
-            onClick={() => setCheckoutSuccess(false)}
-            className="ml-4 text-base-content/30 hover:text-base-content/60 transition-colors text-xs"
+      {/* ── Trial Cancel Retention Modal ──────────────────────── */}
+      {showTrialCancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative w-full max-w-sm mx-4 bg-base-200 border border-base-content/10 rounded-xl p-6 space-y-4"
           >
-            \u2715
-          </button>
-        </motion.div>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-error/10 flex items-center justify-center">
+                <ShieldAlert size={20} className="text-error" />
+              </div>
+              <h3 className="text-sm font-semibold text-base-content/80">
+                Cancel your free trial?
+              </h3>
+            </div>
+
+            <div className="space-y-3 text-xs text-base-content/50 leading-relaxed">
+              <p>
+                If you cancel now, you&apos;ll lose access to all premium features
+                immediately &mdash; including real-time data, higher limits, and
+                Uplink Ultimate access.
+              </p>
+              <p className="font-semibold text-base-content/70">
+                This is the only free trial offered per account. Once canceled,
+                you&apos;ll need to purchase a paid plan to access premium features again.
+              </p>
+              <p>Your card has not been charged and won&apos;t be if you cancel.</p>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setShowTrialCancelModal(false)}
+                className="flex-1 py-2.5 text-xs font-semibold border border-primary/30 rounded-lg
+                           text-primary hover:bg-primary/10 transition-colors"
+              >
+                Keep My Trial
+              </button>
+              <button
+                onClick={async () => {
+                  setTrialCanceling(true)
+                  setShowTrialCancelModal(false)
+                  try {
+                    await billingApi.cancelSubscription(getToken)
+                    const sub = await billingApi.getSubscription(getToken)
+                    setCurrentSub(sub)
+                  } catch {
+                    setPlanChangeError('Failed to cancel trial')
+                  } finally {
+                    setTrialCanceling(false)
+                  }
+                }}
+                className="flex-1 py-2.5 text-xs font-semibold border border-error/30 rounded-lg
+                           text-error/60 hover:text-error hover:bg-error/10 transition-colors"
+              >
+                Cancel Trial
+              </button>
+            </div>
+          </motion.div>
+        </div>
       )}
+
+      {/* ── Checkout Success Banner ─────────────────────────── */}
+      {checkoutSuccess && (() => {
+        const subTier = currentSub ? tierFromPlan(currentSub.plan) : null
+        const tierName = subTier ? TIER_NAMES[subTier] : 'Uplink'
+        return (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="fixed top-24 left-1/2 -translate-x-1/2 z-40 px-6 py-4 bg-success/10 border border-success/30 rounded-lg backdrop-blur-sm flex items-center gap-3"
+          >
+            <CheckCircle2 size={18} className="text-success" />
+            <div>
+              <p className="text-xs font-bold text-success">{tierName} Activated</p>
+              <p className="text-[10px] text-base-content/40">
+                {currentSub?.status === 'trialing'
+                  ? `Your 7-day free trial is active. Enjoy full Uplink Ultimate access.`
+                  : `Your subscription is active. Welcome to ${tierName}.`}
+              </p>
+            </div>
+            <button
+              onClick={() => setCheckoutSuccess(false)}
+              className="ml-4 text-base-content/30 hover:text-base-content/60 transition-colors text-xs"
+            >
+              &times;
+            </button>
+          </motion.div>
+        )
+      })()}
 
       {/* ── Plan Change Error Banner ──────────────────────────── */}
       {planChangeError && (
@@ -2169,15 +2240,11 @@ function UplinkPage() {
                         {isTrialing ? (
                           <>
                             <button
-                              onClick={() =>
-                                billingApi
-                                  .cancelSubscription(getToken)
-                                  .then(() => billingApi.getSubscription(getToken))
-                                  .then(setCurrentSub)
-                              }
-                              className="block w-full py-2.5 text-center text-[10px] font-semibold border border-error/30 text-error/60 rounded-lg hover:border-error/50 hover:text-error/80 transition-colors cursor-pointer"
+                              onClick={() => setShowTrialCancelModal(true)}
+                              disabled={trialCanceling}
+                              className="block w-full py-2.5 text-center text-[10px] font-semibold border border-error/30 text-error/60 rounded-lg hover:border-error/50 hover:text-error/80 transition-colors cursor-pointer disabled:opacity-50"
                             >
-                              Cancel Trial
+                              {trialCanceling ? 'Canceling...' : 'Cancel Trial'}
                             </button>
                             <span className="text-[9px] text-base-content/20">
                               You won&apos;t be charged

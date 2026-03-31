@@ -135,7 +135,7 @@ export default function AccountSettings({
 
       {/* ── Subscription ─────────────────────────────────────── */}
       {authenticated && hasSub && (
-        <Section title="Subscription">
+        <Section title={status === "trialing" ? "Free Trial" : "Subscription"}>
           <div className="px-3 py-2 space-y-3">
             {/* Status badge + billing amount */}
             <div className="flex items-center justify-between">
@@ -234,7 +234,11 @@ export default function AccountSettings({
                     disabled={openingPortal}
                     className="flex-1 py-2 text-xs font-semibold rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition-colors disabled:opacity-50"
                   >
-                    {openingPortal ? "Opening..." : "Manage Subscription"}
+                    {openingPortal
+                      ? "Opening..."
+                      : status === "trialing"
+                        ? "Manage Trial"
+                        : "Manage Subscription"}
                   </button>
                 )}
               {status === "canceled" && (
