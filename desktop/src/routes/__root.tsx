@@ -43,7 +43,7 @@ import type { AppPreferences } from "../preferences";
 
 // Types
 import type { DeliveryMode } from "../types";
-import type { Channel } from "../api/client";
+import type { Channel, SubscriptionInfo } from "../api/client";
 
 // Hooks
 import { useTheme } from "../hooks/useTheme";
@@ -51,6 +51,7 @@ import { useAuthState } from "../hooks/useAuthState";
 import { useChannelActions } from "../hooks/useChannelActions";
 import { useWidgetActions } from "../hooks/useWidgetActions";
 import { weatherQueryOptions } from "../api/queries";
+import { fetchSubscription } from "../api/client";
 
 // Shell context
 import { ShellContext, ShellDataContext } from "../shell-context";
@@ -160,6 +161,7 @@ function RootLayout() {
   const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>(() =>
     loadPref<DeliveryMode>("deliveryMode", "polling"),
   );
+  const [billingBannerDismissed, setBillingBannerDismissed] = useState(false);
 
   // ── Extracted hooks ─────────────────────────────────────────
 
@@ -174,6 +176,31 @@ function RootLayout() {
     ...weatherQueryOptions(),
     enabled: enabledWidgets.includes("weather"),
   });
+
+  // ── Subscription info — fetched for billing UI in Account tab + banner ──
+  const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null);
+
+  const refreshSubscription = useCallback(() => {
+    if (!auth.authenticated) { setSubscriptionInfo(null); return; }
+    fetchSubscription()
+      .then(setSubscriptionInfo)
+      .catch(() => setSubscriptionInfo(null));
+  }, [auth.authenticated]);
+
+  // Fetch on auth change + periodic refresh every 5 minutes
+  useEffect(() => {
+    refreshSubscription();
+    if (!auth.authenticated) return;
+    const id = setInterval(refreshSubscription, 5 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [refreshSubscription]);
+
+  // Also refresh when window gains focus
+  useEffect(() => {
+    const onFocus = () => { if (auth.authenticated) refreshSubscription(); };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [auth.authenticated, refreshSubscription]);
 
   // Apply theme + UI scale
   useTheme("app-shell", prefs.appearance.theme, prefs.appearance.uiScale);
@@ -351,6 +378,7 @@ function RootLayout() {
       onPrefsChange: handlePrefsChange,
       authenticated: auth.authenticated,
       tier: auth.tier,
+      subscriptionInfo,
       onLogin: auth.handleLogin,
       onLogout: auth.handleLogout,
       autostartEnabled: autostartOn,
@@ -366,7 +394,7 @@ function RootLayout() {
       onSelectItem: handleSelectItem,
     }),
     [
-      prefs, handlePrefsChange, auth.authenticated, auth.tier,
+      prefs, handlePrefsChange, auth.authenticated, auth.tier, subscriptionInfo,
       auth.handleLogin, auth.handleLogout, autostartOn, handleAutostartChange,
       appVersion, allChannelManifests, allWidgets,
       channelActions.handleToggleChannel, widgetActions.handleToggleWidgetTicker,
@@ -431,6 +459,93 @@ function RootLayout() {
               </div>
             </div>
           )}
+
+          {/* Billing banner — trial ending, past-due, or canceling */}
+          {auth.authenticated && !billingBannerDismissed && (() => {
+            const s = subscriptionInfo;
+            if (!s) return null;
+            // Trial ending in ≤3 days
+            if (s.status === "trialing" && s.trial_end) {
+              const days = Math.max(0, Math.ceil((s.trial_end * 1000 - Date.now()) / 86_400_000));
+              if (days <= 3) {
+                return (
+                  <div className="flex items-center justify-between px-4 py-2 bg-info/10 border-b border-info/20 shrink-0">
+                    <span className="text-xs text-info">
+                      {days === 0 ? "Your trial ends today." : `Your trial ends in ${days} day${days === 1 ? "" : "s"}.`}
+                      {" "}Your card will be charged automatically.
+                    </span>
+                    <div className="flex items-center gap-2 shrink-0 ml-4">
+                      <button
+                        onClick={() => navigate({ to: "/settings", search: { tab: "account" } })}
+                        className="text-xs font-medium text-info hover:text-fg transition-colors"
+                      >
+                        View plan
+                      </button>
+                      <button
+                        onClick={() => setBillingBannerDismissed(true)}
+                        className="text-xs text-fg-4 hover:text-fg-3 transition-colors"
+                        aria-label="Dismiss"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+            }
+            // Past due
+            if (s.status === "past_due") {
+              return (
+                <div className="flex items-center justify-between px-4 py-2 bg-error/10 border-b border-error/20 shrink-0">
+                  <span className="text-xs text-error">
+                    Your payment failed. Update your payment method to keep your plan.
+                  </span>
+                  <div className="flex items-center gap-2 shrink-0 ml-4">
+                    <button
+                      onClick={() => navigate({ to: "/settings", search: { tab: "account" } })}
+                      className="text-xs font-medium text-error hover:text-fg transition-colors"
+                    >
+                      Fix payment
+                    </button>
+                    <button
+                      onClick={() => setBillingBannerDismissed(true)}
+                      className="text-xs text-fg-4 hover:text-fg-3 transition-colors"
+                      aria-label="Dismiss"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+            // Canceling
+            if (s.status === "canceling") {
+              return (
+                <div className="flex items-center justify-between px-4 py-2 bg-warn/10 border-b border-warn/20 shrink-0">
+                  <span className="text-xs text-warn">
+                    Your subscription is set to cancel.
+                    {s.current_period_end && ` Access until ${new Date(s.current_period_end).toLocaleDateString("en-US", { month: "short", day: "numeric" })}.`}
+                  </span>
+                  <div className="flex items-center gap-2 shrink-0 ml-4">
+                    <button
+                      onClick={() => navigate({ to: "/settings", search: { tab: "account" } })}
+                      className="text-xs font-medium text-warn hover:text-fg transition-colors"
+                    >
+                      Manage
+                    </button>
+                    <button
+                      onClick={() => setBillingBannerDismissed(true)}
+                      className="text-xs text-fg-4 hover:text-fg-3 transition-colors"
+                      aria-label="Dismiss"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
 
           <div className="flex-1 overflow-y-auto scrollbar-thin" style={{ scrollbarGutter: "stable" }}>
             <ShellContext.Provider value={shellStableValue}>

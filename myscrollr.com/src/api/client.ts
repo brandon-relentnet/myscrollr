@@ -219,6 +219,10 @@ export interface SubscriptionStatus {
   lifetime: boolean
   pending_downgrade_plan?: string
   scheduled_change_at?: string
+  amount?: number
+  currency?: string
+  interval?: string
+  trial_end?: number
 }
 
 export interface CheckoutReturnStatus {

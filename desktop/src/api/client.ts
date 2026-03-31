@@ -151,6 +151,25 @@ export async function toggleChannelVisibility(
   await channelsApi.update(channelType, payload);
 }
 
+// ── Subscription Types & API ────────────────────────────────────
+
+export interface SubscriptionInfo {
+  plan: string;
+  status: "none" | "active" | "trialing" | "canceling" | "canceled" | "past_due";
+  current_period_end?: string;
+  lifetime: boolean;
+  pending_downgrade_plan?: string;
+  scheduled_change_at?: string;
+  amount?: number;
+  currency?: string;
+  interval?: string;
+  trial_end?: number;
+}
+
+export async function fetchSubscription(): Promise<SubscriptionInfo> {
+  return authFetch<SubscriptionInfo>("/users/me/subscription");
+}
+
 // ── RSS Types & API ─────────────────────────────────────────────
 
 export interface TrackedFeed {
