@@ -1,24 +1,20 @@
 /**
  * Weather widget FeedTab — desktop-native.
  *
- * Pure display consumer: reads weather data from the Tauri store
- * (kept fresh by useWeatherData in __root.tsx). City management
- * (add/remove) writes to the store; the shell-level hook picks up
- * changes and fetches weather for new cities automatically.
+ * Reads weather data from TanStack Query (kept fresh by the shell-level
+ * observer in __root.tsx). City add/remove writes to the store and
+ * invalidates the query for immediate refetch.
  */
 import { useState, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Tooltip from "../../components/Tooltip";
 import { CloudSun } from "lucide-react";
 import { WeatherCard } from "./WeatherCard";
 import { CitySearch } from "./CitySearch";
+import { weatherQueryOptions, queryKeys } from "../../api/queries";
 import type { FeedTabProps, WidgetManifest } from "../../types";
-import type { WeatherLocation, SavedCity } from "./types";
+import type { WeatherLocation } from "./types";
 import { loadCities, saveCities, loadUnit, saveUnit } from "./types";
-import { refreshCityWeather } from "../../hooks/useWeatherData";
-import { getStore } from "../../lib/store";
-import { onStoreChange } from "../../lib/store";
-import { LS_WEATHER_CITIES } from "../../constants";
-import { useEffect } from "react";
 
 // ── Widget manifest ─────────────────────────────────────────────
 
@@ -48,60 +44,47 @@ export const weatherWidget: WidgetManifest = {
 function WeatherFeedTab({ mode: feedMode }: FeedTabProps) {
   const compact = feedMode === "compact";
 
-  // City list — read from store, subscribe to cross-window updates
-  const [cities, setCities] = useState<SavedCity[]>(loadCities);
+  // Weather data from TanStack Query — shared cache with __root.tsx observer
+  const { data: cities = [] } = useQuery(weatherQueryOptions());
+  const queryClient = useQueryClient();
+
   const [unit, setUnit] = useState(loadUnit);
   const [showSearch, setShowSearch] = useState(false);
 
-  // Subscribe to store changes (from useWeatherData shell hook or other window)
-  useEffect(() => {
-    const unsubscribe = onStoreChange<SavedCity[]>(LS_WEATHER_CITIES, (next) => {
-      const arr = Array.isArray(next) ? next : [];
-      setCities(arr);
-    });
-    return unsubscribe;
-  }, []);
-
-  // Also refresh from store on mount (in case shell hook updated since last render)
-  useEffect(() => {
-    setCities(loadCities());
-  }, []);
-
-  // Add city — writes to store, shell hook picks up and fetches weather
-  const addCity = useCallback((location: WeatherLocation) => {
-    setCities((prev) => {
-      const exists = prev.some(
-        (c) => c.location.lat === location.lat && c.location.lon === location.lon,
+  // Add city — write to store, then invalidate query for immediate fetch
+  const addCity = useCallback(
+    (location: WeatherLocation) => {
+      const current = loadCities();
+      const exists = current.some(
+        (c) =>
+          c.location.lat === location.lat && c.location.lon === location.lon,
       );
-      if (exists) return prev;
-      const next = [...prev, { location, weather: null, lastFetched: 0 }];
-      saveCities(next);
-      return next;
-    });
-    setShowSearch(false);
-  }, []);
+      if (exists) return;
+      saveCities([...current, { location, weather: null, lastFetched: 0 }]);
+      queryClient.invalidateQueries({ queryKey: queryKeys.weather });
+      setShowSearch(false);
+    },
+    [queryClient],
+  );
 
-  // Remove city — writes to store
+  // Remove city — write to store, then invalidate
   const removeCity = useCallback(
     (lat: number, lon: number) => {
-      setCities((prev) => {
-        const next = prev.filter(
+      const current = loadCities();
+      saveCities(
+        current.filter(
           (c) => c.location.lat !== lat || c.location.lon !== lon,
-        );
-        saveCities(next);
-        return next;
-      });
+        ),
+      );
+      queryClient.invalidateQueries({ queryKey: queryKeys.weather });
     },
-    [],
+    [queryClient],
   );
 
-  // Refresh single city — fetches directly and writes to store
-  const refreshCity = useCallback(
-    (lat: number, lon: number) => {
-      refreshCityWeather(lat, lon);
-    },
-    [],
-  );
+  // Refresh — invalidate triggers refetch for all cities
+  const refreshCity = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.weather });
+  }, [queryClient]);
 
   // Toggle unit
   const toggleUnit = useCallback(() => {
@@ -234,9 +217,7 @@ function WeatherFeedTab({ mode: feedMode }: FeedTabProps) {
             onRemove={() =>
               removeCity(city.location.lat, city.location.lon)
             }
-            onRefresh={() =>
-              refreshCity(city.location.lat, city.location.lon)
-            }
+            onRefresh={() => refreshCity()}
           />
         ))}
       </div>

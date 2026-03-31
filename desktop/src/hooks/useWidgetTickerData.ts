@@ -3,7 +3,7 @@ import type { WidgetPrefs } from "../preferences";
 import type { TempUnit } from "../preferences";
 import { fetchSysmonData } from "./useSysmonData";
 import type { SystemInfo } from "./useSysmonData";
-import { LS_CLOCK_TIMEZONES, LS_CLOCK_FORMAT, LS_TIMER_STATE, LS_WEATHER_CITIES, LS_WEATHER_UNIT, LS_UPTIME_MONITORS } from "../constants";
+import { LS_CLOCK_TIMEZONES, LS_CLOCK_FORMAT, LS_TIMER_STATE, LS_WEATHER_CITIES, LS_WEATHER_UNIT, LS_UPTIME_MONITORS, LS_GITHUB_REPOS } from "../constants";
 import { getStore, onStoreChange } from "../lib/store";
 import { formatBytes, timeAgo } from "../utils/format";
 import { weatherCodeToIcon, weatherCodeToLabel, formatTemp } from "../widgets/weather/types";
@@ -342,7 +342,7 @@ export function useWidgetTickerData(
     }, 1000) : null;
 
     // Weather: listen for store changes instead of polling
-    // (useWeatherData in __root.tsx writes to LS_WEATHER_CITIES on every fetch)
+    // (weatherQueryOptions in __root.tsx writes to LS_WEATHER_CITIES on every fetch)
     const unsubWeatherCities = hasWeather
       ? onStoreChange<SavedCity[]>(LS_WEATHER_CITIES, () => {
           setData((prev) => ({ ...prev, weather: buildWeatherChips() }));
@@ -351,6 +351,37 @@ export function useWidgetTickerData(
     const unsubWeatherUnit = hasWeather
       ? onStoreChange<string>(LS_WEATHER_UNIT, () => {
           setData((prev) => ({ ...prev, weather: buildWeatherChips() }));
+        })
+      : null;
+
+    // Clock: listen for store changes (timer state, timezones, format)
+    const unsubTimerState = hasClock
+      ? onStoreChange<TimerState | null>(LS_TIMER_STATE, () => {
+          setData((prev) => ({ ...prev, clock: buildClockChips() }));
+        })
+      : null;
+    const unsubClockTimezones = hasClock
+      ? onStoreChange<string[]>(LS_CLOCK_TIMEZONES, () => {
+          setData((prev) => ({ ...prev, clock: buildClockChips() }));
+        })
+      : null;
+    const unsubClockFormat = hasClock
+      ? onStoreChange<string>(LS_CLOCK_FORMAT, () => {
+          setData((prev) => ({ ...prev, clock: buildClockChips() }));
+        })
+      : null;
+
+    // Uptime: listen for store changes (monitor data written by FeedTab)
+    const unsubUptimeMonitors = hasUptime
+      ? onStoreChange(LS_UPTIME_MONITORS, () => {
+          setData((prev) => ({ ...prev, uptime: buildUptimeChips() }));
+        })
+      : null;
+
+    // GitHub: listen for store changes (repo data written by FeedTab)
+    const unsubGithubRepos = hasGithub
+      ? onStoreChange(LS_GITHUB_REPOS, () => {
+          setData((prev) => ({ ...prev, github: buildGithubChips() }));
         })
       : null;
 
@@ -389,6 +420,11 @@ export function useWidgetTickerData(
       if (clockInterval) clearInterval(clockInterval);
       unsubWeatherCities?.();
       unsubWeatherUnit?.();
+      unsubTimerState?.();
+      unsubClockTimezones?.();
+      unsubClockFormat?.();
+      unsubUptimeMonitors?.();
+      unsubGithubRepos?.();
       if (sysmonInterval) clearInterval(sysmonInterval);
       if (uptimeInterval) clearInterval(uptimeInterval);
       if (githubInterval) clearInterval(githubInterval);

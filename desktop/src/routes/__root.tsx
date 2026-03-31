@@ -50,7 +50,7 @@ import { useTheme } from "../hooks/useTheme";
 import { useAuthState } from "../hooks/useAuthState";
 import { useChannelActions } from "../hooks/useChannelActions";
 import { useWidgetActions } from "../hooks/useWidgetActions";
-import { useWeatherData } from "../hooks/useWeatherData";
+import { weatherQueryOptions } from "../api/queries";
 
 // Shell context
 import { ShellContext, ShellDataContext } from "../shell-context";
@@ -167,8 +167,13 @@ function RootLayout() {
   const channelActions = useChannelActions();
   const widgetActions = useWidgetActions(prefs, setPrefs, route.activeItem);
 
-  // Shell-level weather polling — keeps data fresh regardless of which page is visible
-  useWeatherData(enabledWidgets.includes("weather"));
+  // Shell-level weather polling — keeps data fresh regardless of which page is visible.
+  // Permanent observer so refetchInterval runs even when WeatherFeedTab is unmounted.
+  // The queryFn writes to the Tauri store on success (cross-window sync for ticker).
+  useQuery({
+    ...weatherQueryOptions(),
+    enabled: enabledWidgets.includes("weather"),
+  });
 
   // Apply theme + UI scale
   useTheme("app-shell", prefs.appearance.theme, prefs.appearance.uiScale);

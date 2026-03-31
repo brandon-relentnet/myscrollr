@@ -14,6 +14,7 @@ import type { DashboardResponse } from "../types";
 
 export const queryKeys = {
   dashboard: ["dashboard"] as const,
+  weather: ["weather"] as const,
   catalogs: {
     sports: ["catalogs", "sports"] as const,
     finance: ["catalogs", "finance"] as const,
@@ -182,7 +183,54 @@ export function fantasyLeaguesOptions() {
 
 // ── Weather Queries ──────────────────────────────────────────────
 
-import { searchCities } from "../widgets/weather/types";
+import { searchCities, loadCities, saveCities, fetchWeather } from "../widgets/weather/types";
+import type { SavedCity } from "../widgets/weather/types";
+
+/**
+ * Shell-level weather query.
+ *
+ * Fetches fresh weather for every saved city via Open-Meteo and writes
+ * the results to the Tauri store (cross-window sync for the ticker).
+ *
+ * Mount a `useQuery(weatherQueryOptions())` in __root.tsx so the
+ * refetchInterval keeps data fresh regardless of which page is active.
+ * FeedTab mounts a second observer on the same key — zero duplicate fetches.
+ */
+export function weatherQueryOptions() {
+  return queryOptions({
+    queryKey: queryKeys.weather,
+    queryFn: async (): Promise<SavedCity[]> => {
+      const cities = loadCities();
+      if (cities.length === 0) return [];
+
+      const results = await Promise.allSettled(
+        cities.map((c) => fetchWeather(c.location.lat, c.location.lon)),
+      );
+
+      let changed = false;
+      const updated = cities.map((city, i) => {
+        const result = results[i];
+        if (result.status === "fulfilled") {
+          changed = true;
+          return {
+            ...city,
+            weather: result.value,
+            lastFetched: Date.now(),
+            error: undefined,
+          };
+        }
+        // On failure, keep existing weather data
+        return city;
+      });
+
+      if (changed) saveCities(updated);
+      return updated;
+    },
+    staleTime: 10 * 60 * 1000, // 10 min
+    refetchInterval: 10 * 60 * 1000, // 10 min auto-poll
+    gcTime: 30 * 60 * 1000, // 30 min cache
+  });
+}
 
 export function citySearchOptions(query: string) {
   return queryOptions({
