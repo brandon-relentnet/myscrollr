@@ -284,6 +284,8 @@ export const billingApi = {
       proration_date: number
       is_downgrade: boolean
       scheduled_date: number
+      is_trial_change?: boolean
+      trial_end?: number
     }>(
       `/users/me/subscription/preview?price_id=${encodeURIComponent(priceId)}`,
       {},

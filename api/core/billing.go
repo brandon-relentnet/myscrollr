@@ -597,6 +597,43 @@ func HandleChangePlan(c *fiber.Ctx) error {
 	}
 	periodEnd := time.Unix(periodEndUnix, 0)
 
+	// ── TRIAL: simple price swap, no proration or scheduling ─────
+	if sub.Status == stripe.SubscriptionStatusTrialing {
+		updateParams := &stripe.SubscriptionParams{
+			ProrationBehavior: stripe.String("none"),
+			Items: []*stripe.SubscriptionItemsParams{
+				{
+					ID:    stripe.String(itemID),
+					Price: stripe.String(req.PriceID),
+				},
+			},
+		}
+
+		_, err := stripesubscription.Update(*subID, updateParams)
+		if err != nil {
+			log.Printf("[Billing] Failed to switch trial plan for %s: %v", userID, err)
+			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+				Status: "error", Error: "Failed to switch plan",
+			})
+		}
+
+		// Update DB plan (status stays trialing)
+		_, _ = DBPool.Exec(context.Background(),
+			`UPDATE stripe_customers SET plan = $2, updated_at = now() WHERE logto_sub = $1`,
+			userID, newPlan,
+		)
+
+		trialEnd := time.Unix(sub.TrialEnd, 0)
+		log.Printf("[Billing] Trial plan switched for %s: %s → %s (billing starts %s)", userID, currentPlan, newPlan, trialEnd.Format(time.RFC3339))
+
+		return c.JSON(SubscriptionResponse{
+			Plan:             newPlan,
+			Status:           "trialing",
+			CurrentPeriodEnd: &trialEnd,
+			Lifetime:         false,
+		})
+	}
+
 	isUpgrade := planRank(newPlan) > planRank(currentPlan)
 
 	if isUpgrade {
@@ -776,6 +813,16 @@ func HandlePreviewPlanChange(c *fiber.Ctx) error {
 	if sub.Items == nil || len(sub.Items.Data) == 0 {
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
 			Status: "error", Error: "Subscription has no items",
+		})
+	}
+
+	// Trial: no charge, just a price swap — return immediately
+	if sub.Status == stripe.SubscriptionStatusTrialing {
+		return c.JSON(PlanPreviewResponse{
+			AmountDue:     0,
+			Currency:      "usd",
+			IsTrialChange: true,
+			TrialEnd:      sub.TrialEnd,
 		})
 	}
 
