@@ -23,3 +23,4 @@ __pycache__/
 channels/sports/api/scrollr-sports
 scaling-changes/
 .worktrees/
+.superpowers/

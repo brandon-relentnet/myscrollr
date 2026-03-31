@@ -901,11 +901,13 @@ function UplinkPage() {
   const isLifetime = billingView === 'lifetime'
   const billingPeriod: PlanKey = isLifetime ? 'annual' : billingView
 
-  // Derive active tier from current subscription
+  // Derive active tier from current subscription (active or trialing)
   const activeTier =
-    currentSub && currentSub.status === 'active'
+    currentSub &&
+    (currentSub.status === 'active' || currentSub.status === 'trialing')
       ? tierFromPlan(currentSub.plan)
       : null
+  const isTrialing = currentSub?.status === 'trialing'
 
   // Derive pending downgrade tier (if a downgrade is scheduled)
   const pendingDowngradeTier = currentSub?.pending_downgrade_plan
@@ -1024,8 +1026,10 @@ function UplinkPage() {
   const getCtaLabel = (tier: TierKey): string => {
     if (loadingPreview) return 'Fetching quote...'
     if (!activeTier) return 'Start Free Trial'
+    if (isTrialing && activeTier === tier) return 'Your Choice'
     if (activeTier === tier) return 'Current Plan'
     if (pendingDowngradeTier === tier) return 'Downgrade Scheduled'
+    if (isTrialing) return 'Switch to ' + TIER_NAMES[tier]
     return TIER_RANK[tier] > TIER_RANK[activeTier] ? 'Upgrade' : 'Downgrade'
   }
 
@@ -1693,10 +1697,11 @@ function UplinkPage() {
             transition={{ duration: 0.4, delay: 0.15, ease: EASE }}
             className="flex items-center justify-center gap-2 mb-8"
           >
-            <CheckCircle2 size={13} className="text-primary/50 shrink-0" />
+            <CheckCircle2 size={13} className={isTrialing ? 'text-info/60 shrink-0' : 'text-primary/50 shrink-0'} />
             <span className="text-[11px] text-base-content/35">
-              Every plan includes a 7-day free trial. Cancel anytime &mdash; you
-              won&apos;t be charged until day 8.
+              {isTrialing
+                ? 'Your trial includes full Uplink Ultimate access. Pick the plan you want when it ends.'
+                : <>Every plan includes a 7-day free trial. Cancel anytime &mdash; you won&apos;t be charged until day 8.</>}
             </span>
           </motion.div>
 
@@ -2127,15 +2132,36 @@ function UplinkPage() {
                       </div>
 
                       <div className="mt-auto pt-2 flex flex-col items-center gap-1.5">
-                        <Link
-                          to="/"
-                          className="block w-full py-2.5 text-center text-[10px] font-semibold border border-base-300/30 text-base-content/35 rounded-lg hover:border-base-300/50 hover:text-base-content/50 transition-colors"
-                        >
-                          Get Started Free
-                        </Link>
-                        <span className="text-[9px] text-base-content/20">
-                          No card required
-                        </span>
+                        {isTrialing ? (
+                          <>
+                            <button
+                              onClick={() =>
+                                billingApi
+                                  .cancelSubscription(getToken)
+                                  .then(() => billingApi.getSubscription(getToken))
+                                  .then(setCurrentSub)
+                              }
+                              className="block w-full py-2.5 text-center text-[10px] font-semibold border border-error/30 text-error/60 rounded-lg hover:border-error/50 hover:text-error/80 transition-colors cursor-pointer"
+                            >
+                              Cancel Trial
+                            </button>
+                            <span className="text-[9px] text-base-content/20">
+                              You won&apos;t be charged
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <Link
+                              to="/"
+                              className="block w-full py-2.5 text-center text-[10px] font-semibold border border-base-300/30 text-base-content/35 rounded-lg hover:border-base-300/50 hover:text-base-content/50 transition-colors"
+                            >
+                              Get Started Free
+                            </Link>
+                            <span className="text-[9px] text-base-content/20">
+                              No card required
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </motion.div>

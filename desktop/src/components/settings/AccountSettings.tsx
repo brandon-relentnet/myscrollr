@@ -142,22 +142,29 @@ export default function AccountSettings({
                 <span className="text-[11px] text-fg-3 tabular-nums">
                   {formatAmount(sub.amount, sub.currency)}
                   {sub.interval === "month" ? "/mo" : sub.interval === "year" ? "/yr" : ""}
+                  {status === "trialing" && sub.trial_end
+                    ? ` starting ${new Date(sub.trial_end * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                    : ""}
                 </span>
               ) : isLifetime ? (
                 <span className="text-[11px] text-fg-3">Lifetime access</span>
               ) : null}
             </div>
 
-            {/* Trial days remaining */}
+            {/* Trial days remaining + Ultimate access note */}
             {status === "trialing" && sub.trial_end && (
-              <p className="text-[11px] text-info">
-                {trialDaysRemaining(sub.trial_end)} days remaining in trial
-                {" \u2014 "}billing starts{" "}
-                {new Date(sub.trial_end * 1000).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })}
-              </p>
+              <div className="space-y-1.5">
+                <p className="text-[11px] text-info">
+                  {trialDaysRemaining(sub.trial_end)} days remaining in trial
+                </p>
+                <p className="text-[11px] text-fg-4">
+                  Your trial includes full{" "}
+                  <span className="font-semibold text-fg-3">
+                    Uplink Ultimate
+                  </span>{" "}
+                  access.
+                </p>
+              </div>
             )}
 
             {/* Next billing date */}
