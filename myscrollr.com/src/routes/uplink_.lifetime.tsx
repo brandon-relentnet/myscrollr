@@ -17,6 +17,7 @@ import { usePageMeta } from '@/lib/usePageMeta'
 import { useScrollrAuth } from '@/hooks/useScrollrAuth'
 import { useGetToken } from '@/hooks/useGetToken'
 import { billingApi } from '@/api/client'
+import type { SubscriptionStatus } from '@/api/client'
 
 const CheckoutForm = lazy(() => import('@/components/billing/CheckoutForm'))
 
@@ -60,6 +61,19 @@ function LifetimePage() {
   const [showCheckout, setShowCheckout] = useState(false)
   const [checkoutSuccess, setCheckoutSuccess] = useState(false)
   const [checkingSession, setCheckingSession] = useState(false)
+  const [currentSub, setCurrentSub] = useState<SubscriptionStatus | null>(null)
+
+  // Fetch subscription status (to check for existing lifetime or active sub)
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setCurrentSub(null)
+      return
+    }
+    billingApi.getSubscription(getToken).then(setCurrentSub).catch(() => {})
+  }, [isAuthenticated, getToken, checkoutSuccess])
+
+  const isAlreadyLifetime = currentSub?.lifetime === true
+  const hasActiveSub = currentSub?.status === 'active' || currentSub?.status === 'trialing'
 
   // Handle return from Stripe checkout via ?session_id=
   useEffect(() => {
@@ -435,16 +449,37 @@ function LifetimePage() {
                   </div>
 
                   {/* Purchase button */}
-                  <button
-                    type="button"
-                    onClick={handlePurchase}
-                    className="btn btn-lg w-full gap-2.5 bg-warning/10 border-warning/30 text-warning hover:bg-warning/20 hover:border-warning/50"
-                  >
-                    <Sparkles size={14} />
-                    {isAuthenticated
-                      ? 'Purchase Lifetime Access'
-                      : 'Sign In to Purchase'}
-                  </button>
+                  {isAlreadyLifetime ? (
+                    <div className="w-full py-3 px-4 text-center text-xs font-semibold rounded-lg bg-success/10 border border-success/20 text-success">
+                      <CheckCircle2 size={14} className="inline mr-1.5 -mt-0.5" />
+                      You already have lifetime access
+                    </div>
+                  ) : hasActiveSub ? (
+                    <div className="space-y-3">
+                      <div className="py-2 px-3 text-center text-[10px] rounded-lg bg-info/10 border border-info/20 text-info/80">
+                        You have an active subscription. Purchasing lifetime will replace it.
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handlePurchase}
+                        className="btn btn-lg w-full gap-2.5 bg-warning/10 border-warning/30 text-warning hover:bg-warning/20 hover:border-warning/50"
+                      >
+                        <Sparkles size={14} />
+                        Purchase Lifetime Access
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handlePurchase}
+                      className="btn btn-lg w-full gap-2.5 bg-warning/10 border-warning/30 text-warning hover:bg-warning/20 hover:border-warning/50"
+                    >
+                      <Sparkles size={14} />
+                      {isAuthenticated
+                        ? 'Purchase Lifetime Access'
+                        : 'Sign In to Purchase'}
+                    </button>
+                  )}
 
                   {/* Trust signals */}
                   <div className="mt-6 flex items-center justify-center gap-6">

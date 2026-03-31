@@ -1148,9 +1148,9 @@ function UplinkPage() {
         >
           <CheckCircle2 size={18} className="text-success" />
           <div>
-            <p className="text-xs font-bold text-success">Uplink Activated</p>
+            <p className="text-xs font-bold text-success">{TIER_NAMES[selectedTier]} Activated</p>
             <p className="text-[10px] text-base-content/40">
-              Your subscription is active. Welcome to total coverage.
+              Your subscription is active. Welcome to {TIER_NAMES[selectedTier]}.
             </p>
           </div>
           <button
@@ -1379,7 +1379,7 @@ function UplinkPage() {
                     transition={{ delay: 1.6, duration: 0.5, ease: EASE }}
                   >
                     <span className="text-[9px] font-bold uppercase tracking-widest text-primary/70 bg-base-100/80 backdrop-blur-sm px-3 py-1 rounded-full border border-primary/15">
-                      Unlimited
+                      Ultimate
                     </span>
                   </motion.div>
                 </motion.div>
@@ -2035,10 +2035,10 @@ function UplinkPage() {
                         >
                           <div className="relative z-10">
                             <p className="text-[10px] text-primary/70 font-semibold mb-1">
-                              50% Off Unlimited — From $25.00/mo
+                              50% Off Ultimate — From $25.00/mo
                             </p>
                             <p className="text-[10px] text-base-content/35 leading-relaxed">
-                              Lifetime members get half off any Unlimited
+                              Lifetime members get half off any Ultimate
                               subscription. Real-time SSE, unlimited symbols and
                               feeds, webhooks, API access, and data export — all
                               at half price.
@@ -2651,7 +2651,7 @@ function UplinkPage() {
                           </div>
                           <div>
                             <h3 className="text-sm font-bold text-base-content">
-                              Unlimited
+                              Ultimate
                             </h3>
                             <p className="text-[11px] text-base-content/40 leading-snug mt-0.5">
                               Everything. Zero limits.
@@ -3092,7 +3092,7 @@ function UplinkPage() {
                   </span>
                 </motion.div>
                 <span className="text-xs font-bold uppercase tracking-wider text-primary inline-flex items-center gap-1.5">
-                  <Crown size={12} /> Unlimited
+                  <Crown size={12} /> Ultimate
                 </span>
               </div>
             </div>

@@ -103,6 +103,10 @@ type SubscriptionResponse struct {
 	Lifetime             bool       `json:"lifetime"`
 	PendingDowngradePlan string     `json:"pending_downgrade_plan,omitempty"`
 	ScheduledChangeAt    *time.Time `json:"scheduled_change_at,omitempty"`
+	Amount               int64      `json:"amount,omitempty"`
+	Currency             string     `json:"currency,omitempty"`
+	Interval             string     `json:"interval,omitempty"`
+	TrialEnd             *int64     `json:"trial_end,omitempty"`
 }
 
 // CheckoutReturnResponse tells the frontend about the checkout outcome.

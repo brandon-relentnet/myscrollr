@@ -4,7 +4,7 @@ import {
   EmbeddedCheckoutProvider,
 } from '@stripe/react-stripe-js'
 import { loadStripe } from '@stripe/stripe-js'
-import { AlertTriangle, Loader2, X } from 'lucide-react'
+import { AlertTriangle, X } from 'lucide-react'
 import { billingApi } from '@/api/client'
 
 // Lazy-load Stripe once using the publishable key from env
@@ -18,7 +18,6 @@ interface CheckoutFormProps {
   isUltimate?: boolean
   getToken: () => Promise<string | null>
   onClose: () => void
-  onSuccess?: () => void
 }
 
 /**
@@ -162,16 +161,4 @@ export default function CheckoutForm({
   )
 }
 
-/**
- * CheckoutLoading renders a loading indicator while the checkout session is being created.
- */
-export function CheckoutLoading() {
-  return (
-    <div className="flex flex-col items-center justify-center gap-3 py-16">
-      <Loader2 size={24} className="animate-spin text-primary" />
-      <p className="text-xs text-base-content/40">
-        Initializing secure checkout...
-      </p>
-    </div>
-  )
-}
+

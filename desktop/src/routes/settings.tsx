@@ -122,6 +122,7 @@ function SettingsRoute() {
           <AccountSettings
             authenticated={shell.authenticated}
             tier={shell.tier}
+            subscriptionInfo={shell.subscriptionInfo}
             onLogin={shell.onLogin}
             onLogout={shell.onLogout}
             onResetAll={handleResetAll}

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { AlertTriangle, ArrowRight, Calendar, CreditCard, Crown, Infinity, Loader2 } from 'lucide-react'
-import type {SubscriptionStatus as SubStatus} from '@/api/client';
+import { AlertTriangle, ArrowRight, Calendar, Clock, CreditCard, Crown, Infinity, Loader2 } from 'lucide-react'
+import type { SubscriptionStatus as SubStatus } from '@/api/client'
 import {
   billingApi,
-  getPreferences
+  getPreferences,
 } from '@/api/client'
 
 interface SubscriptionStatusProps {
@@ -222,6 +222,13 @@ export default function SubscriptionStatus({
             Lifetime access — no expiration
           </span>
         </div>
+      ) : subscription.status === 'canceled' ? (
+        <div className="flex items-center gap-2">
+          <Calendar size={12} className="text-base-content/30" />
+          <span className="text-xs text-base-content/40">
+            Your subscription has ended. Resubscribe to restore your plan.
+          </span>
+        </div>
       ) : periodEnd ? (
         <div className="flex items-center gap-2">
           <Calendar size={12} className="text-base-content/30" />
@@ -269,8 +276,22 @@ export default function SubscriptionStatus({
         </div>
       )}
 
+      {/* Trial Days Remaining */}
+      {subscription.status === 'trialing' && subscription.trial_end && (
+        <div className="flex items-center gap-2">
+          <Clock size={12} className="text-info" />
+          <span className="text-xs text-info font-medium">
+            {(() => {
+              const days = Math.max(0, Math.ceil((subscription.trial_end * 1000 - Date.now()) / 86_400_000))
+              return `${days} day${days !== 1 ? 's' : ''} remaining in trial`
+            })()}
+          </span>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="flex gap-2">
+        {/* Past due: update payment */}
         {subscription.status === 'past_due' && !subscription.lifetime && (
           <button
             onClick={handleOpenPortal}
@@ -282,6 +303,8 @@ export default function SubscriptionStatus({
             {openingPortal ? 'Opening...' : 'Update Payment Method'}
           </button>
         )}
+
+        {/* Active / Trialing: manage, change plan, cancel */}
         {(subscription.status === 'active' || subscription.status === 'trialing') && !subscription.lifetime && (
           <>
             <button
@@ -310,6 +333,42 @@ export default function SubscriptionStatus({
               {canceling ? 'Canceling...' : 'Cancel Subscription'}
             </button>
           </>
+        )}
+
+        {/* Canceling: manage (to resume) + change plan */}
+        {subscription.status === 'canceling' && !subscription.lifetime && (
+          <>
+            <button
+              onClick={handleOpenPortal}
+              disabled={openingPortal}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 text-[10px] font-semibold border border-base-content/10 rounded-lg
+                         text-base-content/40 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-50"
+            >
+              <CreditCard size={10} />
+              {openingPortal ? 'Opening...' : 'Resume Subscription'}
+            </button>
+            <Link
+              to="/uplink"
+              search={{ session_id: undefined }}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 text-[10px] font-semibold border border-base-content/10 rounded-lg
+                         text-base-content/40 hover:text-primary hover:border-primary/30 transition-colors"
+            >
+              Change Plan <ArrowRight size={10} />
+            </Link>
+          </>
+        )}
+
+        {/* Canceled: resubscribe */}
+        {subscription.status === 'canceled' && !subscription.lifetime && (
+          <Link
+            to="/uplink"
+            search={{ session_id: undefined }}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-[10px] font-semibold border border-primary/30 rounded-lg
+                       text-primary hover:bg-primary/10 transition-colors"
+          >
+            <Crown size={10} />
+            Resubscribe <ArrowRight size={10} />
+          </Link>
         )}
       </div>
     </div>

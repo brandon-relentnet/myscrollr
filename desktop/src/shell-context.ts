@@ -15,7 +15,7 @@
 import { createContext, useContext } from "react";
 import type { AppPreferences } from "./preferences";
 import type { SubscriptionTier } from "./auth";
-import type { ChannelType, Channel } from "./api/client";
+import type { ChannelType, Channel, SubscriptionInfo } from "./api/client";
 import type { DashboardResponse } from "./types";
 import type { ChannelManifest, WidgetManifest } from "./types";
 
@@ -26,6 +26,7 @@ export interface ShellState {
   onPrefsChange: (prefs: AppPreferences) => void;
   authenticated: boolean;
   tier: SubscriptionTier;
+  subscriptionInfo: SubscriptionInfo | null;
   onLogin: () => void;
   onLogout: () => void;
   autostartEnabled: boolean;

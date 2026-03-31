@@ -414,20 +414,39 @@ func HandleGetSubscription(c *fiber.Ctx) error {
 		Lifetime:         sc.Lifetime,
 	}
 
-	// Check if there's a pending downgrade via subscription schedule
+	// Fetch live subscription data from Stripe for billing details + schedule
 	if sc.StripeSubscriptionID != nil && *sc.StripeSubscriptionID != "" {
 		sub, err := stripesubscription.Get(*sc.StripeSubscriptionID, nil)
-		if err == nil && sub.Schedule != nil && sub.Schedule.ID != "" {
-			sched, err := subscriptionschedule.Get(sub.Schedule.ID, nil)
-			if err == nil && len(sched.Phases) > 1 {
-				// Phase 0 = current, Phase 1 = scheduled change
-				nextPhase := sched.Phases[1]
-				if len(nextPhase.Items) > 0 {
-					nextPlan := planFromPriceID(nextPhase.Items[0].Price.ID)
-					if nextPlan != "unknown" && planRank(nextPlan) < planRank(sc.Plan) {
-						resp.PendingDowngradePlan = nextPlan
-						changeAt := time.Unix(nextPhase.StartDate, 0)
-						resp.ScheduledChangeAt = &changeAt
+		if err == nil {
+			// Extract billing details from the subscription's current price
+			if len(sub.Items.Data) > 0 {
+				price := sub.Items.Data[0].Price
+				resp.Amount = price.UnitAmount
+				resp.Currency = string(price.Currency)
+				if price.Recurring != nil {
+					resp.Interval = string(price.Recurring.Interval)
+				}
+			}
+
+			// Extract trial end timestamp
+			if sub.TrialEnd > 0 {
+				trialEnd := sub.TrialEnd
+				resp.TrialEnd = &trialEnd
+			}
+
+			// Check for pending downgrade via subscription schedule
+			if sub.Schedule != nil && sub.Schedule.ID != "" {
+				sched, err := subscriptionschedule.Get(sub.Schedule.ID, nil)
+				if err == nil && len(sched.Phases) > 1 {
+					// Phase 0 = current, Phase 1 = scheduled change
+					nextPhase := sched.Phases[1]
+					if len(nextPhase.Items) > 0 {
+						nextPlan := planFromPriceID(nextPhase.Items[0].Price.ID)
+						if nextPlan != "unknown" && planRank(nextPlan) < planRank(sc.Plan) {
+							resp.PendingDowngradePlan = nextPlan
+							changeAt := time.Unix(nextPhase.StartDate, 0)
+							resp.ScheduledChangeAt = &changeAt
+						}
 					}
 				}
 			}
