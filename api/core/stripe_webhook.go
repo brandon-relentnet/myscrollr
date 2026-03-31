@@ -28,7 +28,8 @@ func HandleStripeWebhook(c *fiber.Ctx) error {
 	payload := c.Body()
 	sigHeader := c.Get("Stripe-Signature")
 
-	event, err := webhook.ConstructEvent(payload, sigHeader, webhookSecret)
+	event, err := webhook.ConstructEventWithOptions(payload, sigHeader, webhookSecret,
+		webhook.ConstructEventOptions{IgnoreAPIVersionMismatch: true})
 	if err != nil {
 		log.Printf("[Stripe Webhook] Signature verification failed: %v", err)
 		return c.SendStatus(fiber.StatusBadRequest)
@@ -115,19 +116,23 @@ func handleCheckoutCompleted(event stripe.Event) {
 			return
 		}
 	} else {
-		// Subscription — store subscription ID
+		// Subscription — store subscription ID and actual status (may be 'trialing')
 		subID := ""
+		subStatus := "active"
 		if session.Subscription != nil {
 			subID = session.Subscription.ID
+			if session.Subscription.Status != "" {
+				subStatus = string(session.Subscription.Status)
+			}
 		}
 
 		_, err := DBPool.Exec(context.Background(),
 			`INSERT INTO stripe_customers (logto_sub, stripe_customer_id, stripe_subscription_id, plan, status)
-			 VALUES ($1, $2, $3, $4, 'active')
+			 VALUES ($1, $2, $3, $4, $5)
 			 ON CONFLICT (logto_sub) DO UPDATE SET
 			   stripe_customer_id = $2, stripe_subscription_id = $3,
-			   plan = $4, status = 'active', updated_at = now()`,
-			logtoSub, customerID, subID, plan,
+			   plan = $4, status = $5, updated_at = now()`,
+			logtoSub, customerID, subID, plan, subStatus,
 		)
 		if err != nil {
 			log.Printf("[Stripe Webhook] Failed to upsert subscription for %s: %v", logtoSub, err)
