@@ -47,6 +47,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   canceling: { label: 'Canceling', color: 'text-warning' },
   canceled: { label: 'Canceled', color: 'text-error' },
   past_due: { label: 'Past Due', color: 'text-error' },
+  trialing: { label: 'Free Trial', color: 'text-info' },
 }
 
 export default function SubscriptionStatus({
@@ -227,7 +228,9 @@ export default function SubscriptionStatus({
           <span className="text-xs text-base-content/40">
             {subscription.status === 'canceling'
               ? `Access until ${periodEnd.toLocaleDateString()}`
-              : `Renews ${periodEnd.toLocaleDateString()}`}
+              : subscription.status === 'trialing'
+                ? `Trial ends ${periodEnd.toLocaleDateString()} — billing starts after`
+                : `Renews ${periodEnd.toLocaleDateString()}`}
           </span>
         </div>
       ) : null}
@@ -279,7 +282,7 @@ export default function SubscriptionStatus({
             {openingPortal ? 'Opening...' : 'Update Payment Method'}
           </button>
         )}
-        {subscription.status === 'active' && !subscription.lifetime && (
+        {(subscription.status === 'active' || subscription.status === 'trialing') && !subscription.lifetime && (
           <>
             <button
               onClick={handleOpenPortal}

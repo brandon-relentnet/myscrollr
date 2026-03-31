@@ -214,7 +214,7 @@ export interface SubscriptionStatus {
     | 'pro_annual'
     | 'ultimate_monthly'
     | 'ultimate_annual'
-  status: 'none' | 'active' | 'canceling' | 'canceled' | 'past_due'
+  status: 'none' | 'active' | 'trialing' | 'canceling' | 'canceled' | 'past_due'
   current_period_end?: string
   lifetime: boolean
   pending_downgrade_plan?: string
