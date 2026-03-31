@@ -5,9 +5,17 @@
  * plus a compact widget status strip. Discovery and add/remove happen
  * in the Catalog (/catalog), not here.
  */
-import { useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Eye, EyeOff, Pin, PinOff, ChevronRight } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Pin,
+  PinOff,
+  Pencil,
+  Check,
+  ChevronRight,
+} from "lucide-react";
 import clsx from "clsx";
 import RouteError from "../components/RouteError";
 import { useShell, useShellData } from "../shell-context";
@@ -32,7 +40,7 @@ import type {
   Game,
   RssItem,
 } from "../types";
-import type { TempUnit } from "../preferences";
+import type { TempUnit, HomePreview } from "../preferences";
 import type { SystemInfo } from "../hooks/useSysmonData";
 import type { SavedCity } from "../widgets/weather/types";
 
@@ -61,6 +69,7 @@ function HomePage() {
   const enabledWidgets = shell.prefs.widgets.enabledWidgets;
   const widgetsOnTicker = shell.prefs.widgets.widgetsOnTicker;
   const pinnedSources = shell.prefs.pinnedSources;
+  const homePreview = shell.prefs.homePreview;
 
   function togglePin(id: string) {
     const next = pinnedSources.includes(id)
@@ -68,6 +77,14 @@ function HomePage() {
       : [...pinnedSources, id];
     shell.onPrefsChange({ ...shell.prefs, pinnedSources: next });
   }
+
+  const setHomePreview = useCallback(
+    (channelType: string, keys: string[]) => {
+      const next: HomePreview = { ...homePreview, [channelType]: keys };
+      shell.onPrefsChange({ ...shell.prefs, homePreview: next });
+    },
+    [homePreview, shell],
+  );
 
   const orderedChannels = useMemo(
     () =>
@@ -141,6 +158,10 @@ function HomePage() {
             }
             pinned={pinnedSources.includes(ch.channel_type)}
             onTogglePin={() => togglePin(ch.channel_type)}
+            selectedKeys={homePreview[ch.channel_type] ?? []}
+            onSelectionChange={(keys) =>
+              setHomePreview(ch.channel_type, keys)
+            }
             onViewAll={() =>
               navigate({
                 to: "/channel/$type/$tab",
@@ -177,6 +198,40 @@ function HomePage() {
   );
 }
 
+// ── Group key extractors ────────────────────────────────────────
+
+function getGroups(type: string, data: unknown): string[] {
+  const arr = Array.isArray(data) ? data : [];
+  switch (type) {
+    case "finance":
+      return [...new Set((arr as Trade[]).map((t) => t.symbol))];
+    case "sports":
+      return [...new Set((arr as Game[]).map((g) => g.league))];
+    case "rss":
+      return [...new Set((arr as RssItem[]).map((i) => i.source_name))];
+    case "fantasy":
+      return [...new Set(
+        arr.map((l: Record<string, unknown>) =>
+          String(l.league_key ?? l.league_name ?? l.name ?? ""),
+        ).filter(Boolean),
+      )];
+    default:
+      return [];
+  }
+}
+
+function getGroupLabel(type: string, key: string, data: unknown): string {
+  if (type !== "fantasy") return key;
+  const arr = Array.isArray(data) ? data : [];
+  const league = arr.find(
+    (l: Record<string, unknown>) =>
+      String(l.league_key ?? "") === key || String(l.league_name ?? "") === key,
+  ) as Record<string, unknown> | undefined;
+  return league
+    ? String(league.league_name ?? league.name ?? key)
+    : key;
+}
+
 // ── Channel section ─────────────────────────────────────────────
 
 interface ChannelSectionProps {
@@ -187,6 +242,8 @@ interface ChannelSectionProps {
   onToggleTicker: () => void;
   pinned: boolean;
   onTogglePin: () => void;
+  selectedKeys: string[];
+  onSelectionChange: (keys: string[]) => void;
   onViewAll: () => void;
   onRowClick: () => void;
 }
@@ -199,11 +256,25 @@ function ChannelSection({
   onToggleTicker,
   pinned,
   onTogglePin,
+  selectedKeys,
+  onSelectionChange,
   onViewAll,
   onRowClick,
 }: ChannelSectionProps) {
+  const [editing, setEditing] = useState(false);
   const Icon = manifest.icon;
   const type = channel.channel_type;
+  const channelData = data?.[type];
+  const groups = useMemo(() => getGroups(type, channelData), [type, channelData]);
+  const hasSelections = selectedKeys.length > 0;
+
+  function toggleGroup(key: string) {
+    if (selectedKeys.includes(key)) {
+      onSelectionChange(selectedKeys.filter((k) => k !== key));
+    } else if (selectedKeys.length < MAX_PREVIEW) {
+      onSelectionChange([...selectedKeys, key]);
+    }
+  }
 
   return (
     <section className="mb-6">
@@ -215,12 +286,36 @@ function ChannelSection({
         >
           <Icon size={16} />
         </div>
-        <span className="text-sm font-semibold text-fg flex-1">{manifest.name}</span>
+        <span className="text-sm font-semibold text-fg flex-1">
+          {manifest.name}
+        </span>
+
+        {/* Edit toggle */}
+        {groups.length > 0 && (
+          <button
+            onClick={() => setEditing(!editing)}
+            aria-label={editing ? "Done editing" : `Edit ${manifest.name} preview`}
+            className={clsx(
+              "w-7 h-7 flex items-center justify-center rounded-lg transition-colors",
+              editing
+                ? "text-accent bg-accent/10"
+                : hasSelections
+                  ? "text-accent hover:bg-surface-hover"
+                  : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover",
+            )}
+          >
+            {editing ? <Check size={14} /> : <Pencil size={14} />}
+          </button>
+        )}
 
         {/* Eye toggle */}
         <button
           onClick={onToggleTicker}
-          aria-label={tickerEnabled ? `Hide ${manifest.name} from ticker` : `Show ${manifest.name} on ticker`}
+          aria-label={
+            tickerEnabled
+              ? `Hide ${manifest.name} from ticker`
+              : `Show ${manifest.name} on ticker`
+          }
           className={clsx(
             "w-7 h-7 flex items-center justify-center rounded-lg transition-colors",
             tickerEnabled
@@ -234,7 +329,11 @@ function ChannelSection({
         {/* Pin toggle */}
         <button
           onClick={onTogglePin}
-          aria-label={pinned ? `Unpin ${manifest.name}` : `Pin ${manifest.name} to sidebar`}
+          aria-label={
+            pinned
+              ? `Unpin ${manifest.name}`
+              : `Pin ${manifest.name} to sidebar`
+          }
           className={clsx(
             "w-7 h-7 flex items-center justify-center rounded-lg transition-colors",
             pinned
@@ -246,43 +345,119 @@ function ChannelSection({
         </button>
 
         {/* View all */}
-        <button
-          onClick={onViewAll}
-          className="flex items-center gap-1 text-[11px] font-medium text-fg-4 hover:text-fg-2 transition-colors"
-        >
-          View all
-          <ChevronRight size={12} />
-        </button>
+        {!editing && (
+          <button
+            onClick={onViewAll}
+            className="flex items-center gap-1 text-[11px] font-medium text-fg-4 hover:text-fg-2 transition-colors"
+          >
+            View all
+            <ChevronRight size={12} />
+          </button>
+        )}
       </div>
 
+      {/* Edit mode: group picker */}
+      {editing && (
+        <div className="rounded-lg border border-accent/20 bg-accent/[0.03] overflow-hidden divide-y divide-edge/10 mb-3">
+          <div className="px-4 py-2 flex items-center justify-between">
+            <span className="text-[11px] font-medium text-fg-3">
+              Choose up to {MAX_PREVIEW} to show on Home
+            </span>
+            {hasSelections && (
+              <button
+                onClick={() => onSelectionChange([])}
+                className="text-[11px] font-medium text-fg-4 hover:text-fg-2 transition-colors"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
+          {groups.map((key) => {
+            const isSelected = selectedKeys.includes(key);
+            const atLimit = selectedKeys.length >= MAX_PREVIEW && !isSelected;
+            return (
+              <button
+                key={key}
+                onClick={() => toggleGroup(key)}
+                disabled={atLimit}
+                className={clsx(
+                  "flex items-center gap-3 px-4 py-2.5 w-full text-left transition-colors",
+                  atLimit
+                    ? "opacity-40 cursor-not-allowed"
+                    : "hover:bg-accent/[0.04] cursor-pointer",
+                )}
+              >
+                <span
+                  className={clsx(
+                    "w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors",
+                    isSelected
+                      ? "bg-accent border-accent"
+                      : "border-edge/40",
+                  )}
+                >
+                  {isSelected && (
+                    <Check size={10} className="text-surface" strokeWidth={3} />
+                  )}
+                </span>
+                <span className="text-xs text-fg truncate flex-1">
+                  {getGroupLabel(type, key, channelData)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Data rows */}
-      <div
-        className="rounded-lg border border-edge/20 overflow-hidden divide-y divide-edge/10 cursor-pointer hover:bg-base-200/30 transition-colors"
-        onClick={onRowClick}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") onRowClick();
-        }}
-      >
-        {type === "finance" && <FinanceRows data={data?.finance} />}
-        {type === "sports" && <SportsRows data={data?.sports} />}
-        {type === "rss" && <RssRows data={data?.rss} />}
-        {type === "fantasy" && <FantasyRows data={data?.fantasy} />}
-      </div>
+      {!editing && (
+        <div
+          className="rounded-lg border border-edge/20 overflow-hidden divide-y divide-edge/10 cursor-pointer hover:bg-base-200/30 transition-colors"
+          onClick={onRowClick}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onRowClick();
+          }}
+        >
+          {type === "finance" && (
+            <FinanceRows data={channelData} filter={selectedKeys} />
+          )}
+          {type === "sports" && (
+            <SportsRows data={channelData} filter={selectedKeys} />
+          )}
+          {type === "rss" && (
+            <RssRows data={channelData} filter={selectedKeys} />
+          )}
+          {type === "fantasy" && (
+            <FantasyRows data={channelData} filter={selectedKeys} />
+          )}
+        </div>
+      )}
     </section>
   );
 }
 
 // ── Finance rows ────────────────────────────────────────────────
 
-function FinanceRows({ data }: { data: unknown }) {
+function FinanceRows({ data, filter }: { data: unknown; filter: string[] }) {
   const trades = Array.isArray(data) ? (data as Trade[]) : [];
   if (trades.length === 0) return <EmptyDataRow channelType="finance" />;
 
-  const sorted = [...trades]
-    .sort((a, b) => Math.abs(Number(b.percentage_change ?? 0)) - Math.abs(Number(a.percentage_change ?? 0)))
+  const filtered =
+    filter.length > 0
+      ? trades.filter((t) => filter.includes(t.symbol))
+      : trades;
+
+  const sorted = [...filtered]
+    .sort(
+      (a, b) =>
+        Math.abs(Number(b.percentage_change ?? 0)) -
+        Math.abs(Number(a.percentage_change ?? 0)),
+    )
     .slice(0, MAX_PREVIEW);
+
+  if (sorted.length === 0)
+    return <EmptyDataRow channelType="finance" />;
 
   return (
     <>
@@ -295,7 +470,11 @@ function FinanceRows({ data }: { data: unknown }) {
               {t.symbol}
             </span>
             <span className="text-xs text-fg-2 tabular-nums">
-              ${Number(t.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              $
+              {Number(t.price).toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
             </span>
             <span
               className={clsx(
@@ -314,14 +493,26 @@ function FinanceRows({ data }: { data: unknown }) {
 
 // ── Sports rows ─────────────────────────────────────────────────
 
-function SportsRows({ data }: { data: unknown }) {
+function SportsRows({ data, filter }: { data: unknown; filter: string[] }) {
   const games = Array.isArray(data) ? (data as Game[]) : [];
   if (games.length === 0) return <EmptyDataRow channelType="sports" />;
 
+  const filtered =
+    filter.length > 0
+      ? games.filter((g) => filter.includes(g.league))
+      : games;
+
   const priority: Record<string, number> = { in: 0, pre: 1, post: 2 };
-  const sorted = [...games]
-    .sort((a, b) => (priority[a.state ?? "post"] ?? 3) - (priority[b.state ?? "post"] ?? 3))
+  const sorted = [...filtered]
+    .sort(
+      (a, b) =>
+        (priority[a.state ?? "post"] ?? 3) -
+        (priority[b.state ?? "post"] ?? 3),
+    )
     .slice(0, MAX_PREVIEW);
+
+  if (sorted.length === 0)
+    return <EmptyDataRow channelType="sports" />;
 
   return (
     <>
@@ -337,7 +528,11 @@ function SportsRows({ data }: { data: unknown }) {
             </span>
             <div className="flex items-center gap-2 flex-1 min-w-0">
               {g.away_team_logo && (
-                <img src={g.away_team_logo} alt="" className="w-4 h-4 shrink-0 object-contain" />
+                <img
+                  src={g.away_team_logo}
+                  alt=""
+                  className="w-4 h-4 shrink-0 object-contain"
+                />
               )}
               <span className="text-xs text-fg-2 truncate">
                 {g.away_team_name || g.away_team_code}
@@ -349,7 +544,11 @@ function SportsRows({ data }: { data: unknown }) {
                 {g.home_team_name || g.home_team_code}
               </span>
               {g.home_team_logo && (
-                <img src={g.home_team_logo} alt="" className="w-4 h-4 shrink-0 object-contain" />
+                <img
+                  src={g.home_team_logo}
+                  alt=""
+                  className="w-4 h-4 shrink-0 object-contain"
+                />
               )}
             </div>
             <span className="text-[10px] text-fg-4 shrink-0 truncate max-w-24">
@@ -364,11 +563,16 @@ function SportsRows({ data }: { data: unknown }) {
 
 // ── RSS rows ────────────────────────────────────────────────────
 
-function RssRows({ data }: { data: unknown }) {
+function RssRows({ data, filter }: { data: unknown; filter: string[] }) {
   const items = Array.isArray(data) ? (data as RssItem[]) : [];
   if (items.length === 0) return <EmptyDataRow channelType="rss" />;
 
-  const sorted = [...items]
+  const filtered =
+    filter.length > 0
+      ? items.filter((i) => filter.includes(i.source_name))
+      : items;
+
+  const sorted = [...filtered]
     .sort((a, b) => {
       const aTime = a.published_at ? new Date(a.published_at).getTime() : 0;
       const bTime = b.published_at ? new Date(b.published_at).getTime() : 0;
@@ -376,12 +580,17 @@ function RssRows({ data }: { data: unknown }) {
     })
     .slice(0, MAX_PREVIEW);
 
+  if (sorted.length === 0)
+    return <EmptyDataRow channelType="rss" />;
+
   return (
     <>
       {sorted.map((item) => (
         <div key={item.id} className="flex items-center px-4 py-2.5 gap-3">
           <span className="text-xs text-fg flex-1 truncate">{item.title}</span>
-          <span className="text-[10px] text-fg-4 shrink-0">{item.source_name}</span>
+          <span className="text-[10px] text-fg-4 shrink-0">
+            {item.source_name}
+          </span>
           <span className="text-[10px] text-fg-4/60 shrink-0 w-8 text-right">
             {timeAgo(item.published_at)}
           </span>
@@ -393,11 +602,22 @@ function RssRows({ data }: { data: unknown }) {
 
 // ── Fantasy rows ────────────────────────────────────────────────
 
-function FantasyRows({ data }: { data: unknown }) {
+function FantasyRows({ data, filter }: { data: unknown; filter: string[] }) {
   const leagues = Array.isArray(data) ? data : [];
   if (leagues.length === 0) return <EmptyDataRow channelType="fantasy" />;
 
-  const preview = leagues.slice(0, MAX_PREVIEW);
+  const filtered =
+    filter.length > 0
+      ? leagues.filter((l: Record<string, unknown>) => {
+          const key = String(l.league_key ?? l.league_name ?? l.name ?? "");
+          return filter.includes(key);
+        })
+      : leagues;
+
+  const preview = filtered.slice(0, MAX_PREVIEW);
+
+  if (preview.length === 0)
+    return <EmptyDataRow channelType="fantasy" />;
 
   return (
     <>
@@ -431,7 +651,8 @@ function EmptyDataRow({ channelType }: { channelType?: string }) {
     rss: "No articles right now",
     fantasy: "No league data right now",
   };
-  const msg = (channelType && messages[channelType]) || "Nothing to show";
+  const msg =
+    (channelType && messages[channelType]) || "Nothing to show";
   return (
     <div className="px-4 py-4 text-center">
       <p className="text-xs text-fg-4">{msg}</p>
@@ -512,15 +733,26 @@ function WidgetChip({
         <span style={{ color: widget.hex }} className="shrink-0">
           <Icon size={14} />
         </span>
-        <span className="text-xs font-medium text-fg truncate flex-1">{widget.tabLabel}</span>
+        <span className="text-xs font-medium text-fg truncate flex-1">
+          {widget.tabLabel}
+        </span>
 
         {/* Eye toggle */}
         <div
           role="switch"
           aria-checked={tickerEnabled}
           tabIndex={0}
-          onClick={(e) => { e.stopPropagation(); onToggleTicker(); }}
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onToggleTicker(); } }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleTicker();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              e.stopPropagation();
+              onToggleTicker();
+            }
+          }}
           className={clsx(
             "w-6 h-6 flex items-center justify-center rounded transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 shrink-0",
             tickerEnabled
@@ -536,8 +768,17 @@ function WidgetChip({
           role="switch"
           aria-checked={pinned}
           tabIndex={0}
-          onClick={(e) => { e.stopPropagation(); onTogglePin(); }}
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onTogglePin(); } }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onTogglePin();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              e.stopPropagation();
+              onTogglePin();
+            }
+          }}
           className={clsx(
             "w-6 h-6 flex items-center justify-center rounded transition-colors shrink-0",
             pinned
@@ -549,7 +790,9 @@ function WidgetChip({
         </div>
       </div>
 
-      <p className="text-sm font-medium text-fg-2 tabular-nums truncate">{value}</p>
+      <p className="text-sm font-medium text-fg-2 tabular-nums truncate">
+        {value}
+      </p>
     </button>
   );
 }

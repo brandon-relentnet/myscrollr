@@ -185,6 +185,15 @@ export interface ChannelDisplayPrefs {
   fantasy: FantasyDisplayPrefs;
 }
 
+/**
+ * Per-channel homepage preview filter.
+ *
+ * Keys are group identifiers: symbols for finance, league names for
+ * sports, source names for rss, and league keys for fantasy.
+ * An empty array means "auto" — use default sort/slice.
+ */
+export type HomePreview = Record<string, string[]>;
+
 export interface AppPreferences {
   appearance: AppearancePrefs;
   ticker: TickerPrefs;
@@ -195,6 +204,8 @@ export interface AppPreferences {
   channelDisplay: ChannelDisplayPrefs;
   /** Channel/widget IDs pinned to the sidebar for quick access. */
   pinnedSources: string[];
+  /** Per-channel homepage preview selections (up to 5 group keys). */
+  homePreview: HomePreview;
 }
 
 // ── Defaults ────────────────────────────────────────────────────
@@ -319,6 +330,7 @@ const DEFAULT_PREFS: AppPreferences = {
   widgets: DEFAULT_WIDGETS,
   channelDisplay: DEFAULT_CHANNEL_DISPLAY,
   pinnedSources: [],
+  homePreview: {},
 };
 
 // ── Storage helpers ─────────────────────────────────────────────
@@ -465,6 +477,10 @@ export function loadPrefs(): AppPreferences {
         fantasy: { ...DEFAULT_CHANNEL_DISPLAY.fantasy, ...savedDisplay?.fantasy },
       },
       pinnedSources: Array.isArray(source.pinnedSources) ? source.pinnedSources : [],
+      homePreview:
+        source.homePreview && typeof source.homePreview === "object" && !Array.isArray(source.homePreview)
+          ? (source.homePreview as HomePreview)
+          : {},
     };
 
     // If migrated from v1, persist the new format
@@ -501,6 +517,7 @@ export function resetAll(): AppPreferences {
     widgets: { ...DEFAULT_WIDGETS },
     channelDisplay: { ...DEFAULT_CHANNEL_DISPLAY },
     pinnedSources: [],
+    homePreview: {},
   };
   savePrefs(defaults);
   return defaults;
