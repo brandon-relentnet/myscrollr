@@ -407,11 +407,19 @@ func HandleGetSubscription(c *fiber.Ctx) error {
 		})
 	}
 
+	// Check if user has ever had a paid subscription (for trial eligibility display)
+	var hadPriorSub bool
+	_ = DBPool.QueryRow(context.Background(),
+		`SELECT EXISTS(SELECT 1 FROM stripe_customers WHERE logto_sub = $1 AND plan != 'free')`,
+		userID,
+	).Scan(&hadPriorSub)
+
 	resp := SubscriptionResponse{
 		Plan:             sc.Plan,
 		Status:           sc.Status,
 		CurrentPeriodEnd: sc.CurrentPeriodEnd,
 		Lifetime:         sc.Lifetime,
+		HadPriorSub:      hadPriorSub,
 	}
 
 	// Fetch live subscription data from Stripe for billing details + schedule
@@ -467,7 +475,9 @@ func HandleGetSubscription(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-// HandleCancelSubscription cancels the user's Stripe subscription at period end.
+// HandleCancelSubscription cancels the user's Stripe subscription.
+// Trials are canceled immediately (no charge occurred). Paid subscriptions
+// are scheduled to cancel at the end of the current billing period.
 func HandleCancelSubscription(c *fiber.Ctx) error {
 	userID := GetUserID(c)
 	if userID == "" {
@@ -493,11 +503,49 @@ func HandleCancelSubscription(c *fiber.Ctx) error {
 		})
 	}
 
-	// Cancel at period end (user keeps access until then)
+	// Fetch the subscription to check if it's trialing
+	sub, err := stripesubscription.Get(*subID, nil)
+	if err != nil {
+		log.Printf("[Billing] Failed to fetch subscription %s for %s: %v", *subID, userID, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Status: "error", Error: "Failed to cancel subscription",
+		})
+	}
+
+	// Trialing: cancel immediately (no payment has been collected)
+	if sub.Status == stripe.SubscriptionStatusTrialing {
+		_, err := stripesubscription.Cancel(*subID, nil)
+		if err != nil {
+			log.Printf("[Billing] Failed to cancel trial %s for %s: %v", *subID, userID, err)
+			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+				Status: "error", Error: "Failed to cancel trial",
+			})
+		}
+
+		// Reset DB to free/canceled
+		_, _ = DBPool.Exec(context.Background(),
+			`UPDATE stripe_customers SET plan = 'free', status = 'canceled',
+			        stripe_subscription_id = NULL, current_period_end = NULL, updated_at = now()
+			 WHERE logto_sub = $1`, userID,
+		)
+
+		// Remove all Logto roles
+		_ = RemoveUplinkRole(userID)
+		_ = RemoveProRole(userID)
+		_ = RemoveUltimateRole(userID)
+
+		log.Printf("[Billing] Trial canceled immediately for %s", userID)
+		return c.JSON(fiber.Map{
+			"status":  "canceled",
+			"message": "Your trial has been ended",
+		})
+	}
+
+	// Paid subscription: cancel at period end (user keeps access until then)
 	params := &stripe.SubscriptionParams{
 		CancelAtPeriodEnd: stripe.Bool(true),
 	}
-	sub, err := stripesubscription.Update(*subID, params)
+	sub, err = stripesubscription.Update(*subID, params)
 	if err != nil {
 		log.Printf("[Billing] Failed to cancel subscription %s for %s: %v", *subID, userID, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{

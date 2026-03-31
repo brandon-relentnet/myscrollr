@@ -544,8 +544,10 @@ function SignalBars() {
 
 function BottomCTA({
   handleSelectPlan,
+  hadPriorSub,
 }: {
   handleSelectPlan: (period: PlanKey, tier: TierKey) => void
+  hadPriorSub: boolean
 }) {
   const sectionRef = useRef<HTMLElement>(null)
   const isInView = useInView(sectionRef, { amount: 0.15 })
@@ -746,14 +748,18 @@ function BottomCTA({
                 onClick={() => handleSelectPlan('annual', 'ultimate')}
                 className="btn btn-pulse gap-2 text-base px-8 py-5 shadow-2xl"
               >
-                <Crown size={14} /> Start Free Trial — Ultimate
+                <Crown size={14} />{' '}
+                {hadPriorSub
+                  ? 'Subscribe — Ultimate'
+                  : 'Start Free Trial — Ultimate'}
               </button>
               <button
                 type="button"
                 onClick={() => handleSelectPlan('annual', 'pro')}
                 className="btn btn-outline gap-2 px-6 py-4"
               >
-                <Gauge size={14} /> Try Pro Free for 7 Days
+                <Gauge size={14} />{' '}
+                {hadPriorSub ? 'Subscribe — Pro' : 'Try Pro Free for 7 Days'}
               </button>
             </div>
           </motion.div>
@@ -906,13 +912,16 @@ function UplinkPage() {
   const isLifetime = billingView === 'lifetime'
   const billingPeriod: PlanKey = isLifetime ? 'annual' : billingView
 
-  // Derive active tier from current subscription (active or trialing)
+  // Derive active tier from current subscription (active, trialing, or canceling)
   const activeTier =
     currentSub &&
-    (currentSub.status === 'active' || currentSub.status === 'trialing')
+    (currentSub.status === 'active' ||
+      currentSub.status === 'trialing' ||
+      currentSub.status === 'canceling')
       ? tierFromPlan(currentSub.plan)
       : null
   const isTrialing = currentSub?.status === 'trialing'
+  const hadPriorSub = currentSub?.had_prior_sub ?? false
 
   // Derive pending downgrade tier (if a downgrade is scheduled)
   const pendingDowngradeTier = currentSub?.pending_downgrade_plan
@@ -1032,11 +1041,18 @@ function UplinkPage() {
   /** Get the CTA label for a tier card based on current subscription state. */
   const getCtaLabel = (tier: TierKey): string => {
     if (loadingPreview) return 'Fetching quote...'
-    if (!activeTier) return 'Start Free Trial'
+    if (!activeTier) {
+      // No active subscription — check if they've used their trial
+      return hadPriorSub ? 'Subscribe' : 'Start Free Trial'
+    }
     if (isTrialing && activeTier === tier) return 'Your Choice'
+    if (currentSub?.status === 'canceling' && activeTier === tier)
+      return 'Current Plan'
     if (activeTier === tier) return 'Current Plan'
     if (pendingDowngradeTier === tier) return 'Downgrade Scheduled'
     if (isTrialing) return 'Switch to ' + TIER_NAMES[tier]
+    if (currentSub?.status === 'canceling')
+      return TIER_RANK[tier] > TIER_RANK[activeTier] ? 'Upgrade' : 'Downgrade'
     return TIER_RANK[tier] > TIER_RANK[activeTier] ? 'Upgrade' : 'Downgrade'
   }
 
@@ -1436,13 +1452,15 @@ function UplinkPage() {
                   className="btn btn-pulse btn-lg gap-2.5"
                 >
                   <Zap size={14} />
-                  Start Free Trial
+                  {hadPriorSub ? 'View Plans' : 'Start Free Trial'}
                 </button>
 
                 <div className="flex items-center gap-3">
                   <span className="h-px w-6 bg-base-300/50" />
                   <span className="text-[10px] font-mono text-base-content/20">
-                    7 days free &middot; From $6.67/mo &middot; Cancel anytime
+                    {hadPriorSub
+                      ? 'From $6.67/mo \u00b7 Cancel anytime'
+                      : '7 days free \u00b7 From $6.67/mo \u00b7 Cancel anytime'}
                   </span>
                 </div>
               </motion.div>
@@ -2409,7 +2427,7 @@ function UplinkPage() {
                             ? 'Changing...'
                             : getCtaLabel('uplink')}
                         </div>
-                        {!activeTier && (
+                        {!activeTier && !hadPriorSub && (
                           <span className="text-[9px] text-base-content/20">
                             7 days free, then $
                             {PRICING.uplink[billingPeriod].perMonth}/mo
@@ -2571,7 +2589,7 @@ function UplinkPage() {
                             ? 'Changing...'
                             : getCtaLabel('pro')}
                         </div>
-                        {!activeTier && (
+                        {!activeTier && !hadPriorSub && (
                           <span className="text-[9px] text-base-content/20">
                             7 days free, then $
                             {PRICING.pro[billingPeriod].perMonth}/mo
@@ -2876,7 +2894,7 @@ function UplinkPage() {
                               ? 'Changing...'
                               : getCtaLabel('ultimate')}
                           </div>
-                          {!activeTier && (
+                          {!activeTier && !hadPriorSub && (
                             <span className="text-[9px] text-base-content/20">
                               7 days free, then $
                               {PRICING.ultimate[billingPeriod].perMonth}/mo
@@ -3710,15 +3728,17 @@ function UplinkPage() {
                               : 'border border-info/20 text-info/60 hover:border-info/40 hover:text-info/80'
                         }`}
                       >
-                        Start Free Trial
+                        {hadPriorSub ? 'Subscribe' : 'Start Free Trial'}
                       </button>
-                      <p className="text-center mt-1.5 text-[9px] text-base-content/20">
-                        {tier.tier === 'ultimate'
-                          ? '7 days free, then $33.33/mo'
-                          : tier.tier === 'pro'
-                            ? '7 days free, then $16.67/mo'
-                            : '7 days free, then $6.67/mo'}
-                      </p>
+                      {!hadPriorSub && (
+                        <p className="text-center mt-1.5 text-[9px] text-base-content/20">
+                          {tier.tier === 'ultimate'
+                            ? '7 days free, then $33.33/mo'
+                            : tier.tier === 'pro'
+                              ? '7 days free, then $16.67/mo'
+                              : '7 days free, then $6.67/mo'}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -3953,7 +3973,7 @@ function UplinkPage() {
       {/* ================================================================
           BOTTOM CTA
           ================================================================ */}
-      <BottomCTA handleSelectPlan={handleSelectPlan} />
+      <BottomCTA handleSelectPlan={handleSelectPlan} hadPriorSub={hadPriorSub} />
     </div>
   )
 }

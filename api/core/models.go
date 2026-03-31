@@ -109,6 +109,7 @@ type SubscriptionResponse struct {
 	Currency             string     `json:"currency,omitempty"`
 	Interval             string     `json:"interval,omitempty"`
 	TrialEnd             *int64     `json:"trial_end,omitempty"`
+	HadPriorSub          bool       `json:"had_prior_sub"`
 }
 
 // CheckoutReturnResponse tells the frontend about the checkout outcome.
