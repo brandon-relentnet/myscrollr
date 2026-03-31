@@ -92,6 +92,12 @@ export default function AccountSettings({
   const hasSub = sub && sub.plan !== "free" && status !== "none";
   const isLifetime = sub?.lifetime === true;
 
+  // Compute trial days once
+  const trialDays =
+    status === "trialing" && sub?.trial_end
+      ? trialDaysRemaining(sub.trial_end)
+      : null;
+
   return (
     <div>
       {/* ── Account ──────────────────────────────────────────── */}
@@ -102,13 +108,13 @@ export default function AccountSettings({
               <DisplayRow
                 label="Signed in as"
                 value={userLabel}
-                valueClass="text-[12px] text-fg-2 truncate max-w-[180px]"
+                valueClass="text-xs text-fg-2 truncate max-w-[180px]"
               />
             )}
             <DisplayRow
               label="Plan"
               value={TIER_LABELS[tier]}
-              valueClass="text-[12px] text-accent font-semibold"
+              valueClass="text-xs text-accent font-semibold"
             />
             <ActionRow
               label=""
@@ -130,16 +136,16 @@ export default function AccountSettings({
       {/* ── Subscription ─────────────────────────────────────── */}
       {authenticated && hasSub && (
         <Section title="Subscription">
-          <div className="px-3 py-2 space-y-2.5">
+          <div className="px-3 py-2 space-y-3">
             {/* Status badge + billing amount */}
             <div className="flex items-center justify-between">
               <span
-                className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full ${statusCfg.color} ${statusCfg.bg}`}
+                className={`text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full ${statusCfg.color} ${statusCfg.bg}`}
               >
                 {statusCfg.label}
               </span>
               {sub.amount && sub.currency && !isLifetime ? (
-                <span className="text-[11px] text-fg-3 tabular-nums">
+                <span className="text-sm text-fg-3 tabular-nums">
                   {formatAmount(sub.amount, sub.currency)}
                   {sub.interval === "month" ? "/mo" : sub.interval === "year" ? "/yr" : ""}
                   {status === "trialing" && sub.trial_end
@@ -147,44 +153,45 @@ export default function AccountSettings({
                     : ""}
                 </span>
               ) : isLifetime ? (
-                <span className="text-[11px] text-fg-3">Lifetime access</span>
+                <span className="text-sm text-fg-3">Lifetime access</span>
               ) : null}
             </div>
 
-            {/* Trial days remaining + Ultimate access note */}
+            {/* Trial: consolidated days remaining + Ultimate access note */}
             {status === "trialing" && sub.trial_end && (
-              <div className="space-y-1.5">
-                <p className="text-[11px] text-info">
-                  {trialDaysRemaining(sub.trial_end)} days remaining in trial
-                </p>
-                <p className="text-[11px] text-fg-4">
-                  Your trial includes full{" "}
-                  <span className="font-semibold text-fg-3">
-                    Uplink Ultimate
-                  </span>{" "}
-                  access.
-                </p>
-              </div>
+              <p className="text-xs text-fg-4">
+                Your trial includes full{" "}
+                <span className="font-semibold text-fg-3">Uplink Ultimate</span>{" "}
+                access
+                {trialDays !== null && (
+                  <>
+                    {" · "}
+                    <span className="font-medium text-info">
+                      {trialDays} day{trialDays !== 1 ? "s" : ""} remaining
+                    </span>
+                  </>
+                )}
+              </p>
             )}
 
             {/* Next billing date */}
             {status === "active" && sub.current_period_end && !isLifetime && (
-              <p className="text-[11px] text-fg-4">
+              <p className="text-xs text-fg-4">
                 Renews {formatDate(sub.current_period_end)}
               </p>
             )}
 
             {/* Canceling notice */}
             {status === "canceling" && sub.current_period_end && (
-              <p className="text-[11px] text-warn">
+              <p className="text-xs text-warn">
                 Access until {formatDate(sub.current_period_end)}. After that,
-                you'll be on the Free plan.
+                you&apos;ll be on the Free plan.
               </p>
             )}
 
             {/* Past due warning */}
             {status === "past_due" && (
-              <p className="text-[11px] text-error">
+              <p className="text-xs text-error">
                 Your payment failed. Update your payment method to keep your
                 plan active.
               </p>
@@ -192,7 +199,7 @@ export default function AccountSettings({
 
             {/* Canceled notice */}
             {status === "canceled" && (
-              <p className="text-[11px] text-fg-4">
+              <p className="text-xs text-fg-4">
                 Your subscription has ended. Resubscribe to regain access to
                 paid features.
               </p>
@@ -200,7 +207,7 @@ export default function AccountSettings({
 
             {/* Pending downgrade */}
             {sub.pending_downgrade_plan && sub.scheduled_change_at && (
-              <p className="text-[11px] text-warn">
+              <p className="text-xs text-warn">
                 Switching to{" "}
                 <span className="font-semibold">
                   {sub.pending_downgrade_plan}
@@ -210,12 +217,12 @@ export default function AccountSettings({
             )}
 
             {/* Action buttons */}
-            <div className="flex gap-2 pt-1">
+            <div className="flex gap-2 pt-0.5">
               {status === "past_due" && (
                 <button
                   onClick={handleOpenPortal}
                   disabled={openingPortal}
-                  className="flex-1 py-1.5 text-[11px] font-semibold rounded-lg bg-error/10 text-error hover:bg-error/20 transition-colors disabled:opacity-50"
+                  className="flex-1 py-2 text-xs font-semibold rounded-lg bg-error/10 text-error hover:bg-error/20 transition-colors disabled:opacity-50"
                 >
                   {openingPortal ? "Opening..." : "Update Payment"}
                 </button>
@@ -225,7 +232,7 @@ export default function AccountSettings({
                   <button
                     onClick={handleOpenPortal}
                     disabled={openingPortal}
-                    className="flex-1 py-1.5 text-[11px] font-semibold rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition-colors disabled:opacity-50"
+                    className="flex-1 py-2 text-xs font-semibold rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition-colors disabled:opacity-50"
                   >
                     {openingPortal ? "Opening..." : "Manage Subscription"}
                   </button>
@@ -233,7 +240,7 @@ export default function AccountSettings({
               {status === "canceled" && (
                 <button
                   onClick={() => open("https://myscrollr.com/uplink")}
-                  className="flex-1 py-1.5 text-[11px] font-semibold rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+                  className="flex-1 py-2 text-xs font-semibold rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
                 >
                   See Plans
                 </button>
@@ -241,7 +248,7 @@ export default function AccountSettings({
             </div>
 
             {portalError && (
-              <span className="text-[11px] text-error px-1">
+              <span className="text-xs text-error px-1">
                 {portalError}
               </span>
             )}
@@ -257,7 +264,7 @@ export default function AccountSettings({
             <div className="px-3 pb-2">
               <button
                 onClick={() => open("https://myscrollr.com/uplink")}
-                className="w-full py-2 text-[11px] font-semibold rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+                className="w-full py-2 text-xs font-semibold rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
               >
                 {tier === "free"
                   ? "Upgrade to Uplink"
@@ -308,8 +315,8 @@ function TierLimitsTable({ tier }: { tier: SubscriptionTier }) {
     <div className="px-3 py-1.5 space-y-1">
       {LIMIT_ROWS.map(({ label, key }) => (
         <div key={key} className="flex items-center justify-between py-1">
-          <span className="text-[11px] text-fg-3">{label}</span>
-          <span className="text-[11px] font-medium text-fg-2 tabular-nums">
+          <span className="text-xs text-fg-3">{label}</span>
+          <span className="text-xs font-medium text-fg-2 tabular-nums">
             {isUnlimited(tier, key) ? "Unlimited" : limits[key]}
           </span>
         </div>

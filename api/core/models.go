@@ -86,6 +86,8 @@ type PlanPreviewResponse struct {
 	ProrationDate int64  `json:"proration_date"`
 	IsDowngrade   bool   `json:"is_downgrade"`
 	ScheduledDate int64  `json:"scheduled_date,omitempty"`
+	IsTrialChange bool   `json:"is_trial_change,omitempty"`
+	TrialEnd      int64  `json:"trial_end,omitempty"`
 }
 
 // CheckoutResponse returns the client secret for the Payment Element.

@@ -897,6 +897,8 @@ function UplinkPage() {
     prorationDate: number
     isDowngrade: boolean
     scheduledDate: number
+    isTrialChange: boolean
+    trialEnd: number
   } | null>(null)
   const isLifetime = billingView === 'lifetime'
   const billingPeriod: PlanKey = isLifetime ? 'annual' : billingView
@@ -973,6 +975,8 @@ function UplinkPage() {
           prorationDate: preview.proration_date,
           isDowngrade: preview.is_downgrade,
           scheduledDate: preview.scheduled_date,
+          isTrialChange: preview.is_trial_change ?? false,
+          trialEnd: preview.trial_end ?? 0,
         })
       } catch (err) {
         setPlanChangeError(
@@ -1072,12 +1076,40 @@ function UplinkPage() {
             className="relative w-full max-w-sm mx-4 bg-base-200 border border-base-content/10 rounded-xl p-6"
           >
             <h3 className="text-sm font-semibold text-base-content/80 mb-4">
-              {pendingChange.isDowngrade ? 'Downgrade' : 'Upgrade'} to{' '}
+              {pendingChange.isTrialChange
+                ? 'Switch to'
+                : pendingChange.isDowngrade
+                  ? 'Downgrade to'
+                  : 'Upgrade to'}{' '}
               {TIER_NAMES[pendingChange.tier]}
             </h3>
 
             <div className="space-y-3 mb-6">
-              {pendingChange.isDowngrade ? (
+              {pendingChange.isTrialChange ? (
+                <>
+                  <p className="text-xs text-base-content/50">
+                    No charge during your trial. Your plan will switch to{' '}
+                    <span className="font-semibold text-base-content/80">
+                      {TIER_NAMES[pendingChange.tier]}
+                    </span>{' '}
+                    and billing starts{' '}
+                    <span className="font-semibold text-base-content/80">
+                      {new Date(
+                        pendingChange.trialEnd * 1000,
+                      ).toLocaleDateString('en-US', {
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </span>
+                    .
+                  </p>
+                  <p className="text-[10px] text-base-content/30">
+                    You&rsquo;ll keep full Uplink Ultimate access until your
+                    trial ends.
+                  </p>
+                </>
+              ) : pendingChange.isDowngrade ? (
                 <>
                   <p className="text-xs text-base-content/50">
                     Your {activeTier ? TIER_NAMES[activeTier] : ''} access
@@ -1134,9 +1166,11 @@ function UplinkPage() {
               >
                 {planChanging
                   ? 'Processing...'
-                  : pendingChange.isDowngrade
-                    ? 'Confirm Downgrade'
-                    : 'Confirm Upgrade'}
+                  : pendingChange.isTrialChange
+                    ? 'Switch Plan'
+                    : pendingChange.isDowngrade
+                      ? 'Confirm Downgrade'
+                      : 'Confirm Upgrade'}
               </button>
             </div>
           </motion.div>
