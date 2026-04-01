@@ -11,6 +11,11 @@ import { channelsApi } from "../api/client";
 import { queryKeys } from "../api/queries";
 import { useShellData } from "../shell-context";
 
+export interface FavoriteTeam {
+  teamId: number;
+  teamName: string;
+}
+
 export interface SportsDisplayPrefs {
   showUpcoming: boolean;
   showFinal: boolean;
@@ -23,6 +28,7 @@ export interface SportsDisplayPrefs {
 export interface SportsConfig {
   leagues: string[];
   display: SportsDisplayPrefs;
+  favoriteTeams: Record<string, FavoriteTeam>;
 }
 
 const DEFAULT_DISPLAY: SportsDisplayPrefs = {
@@ -51,6 +57,10 @@ export function useSportsConfig() {
           ? (raw.display as Partial<SportsDisplayPrefs>)
           : {}),
       },
+      favoriteTeams:
+        typeof raw.favoriteTeams === "object" && raw.favoriteTeams !== null
+          ? (raw.favoriteTeams as Record<string, FavoriteTeam>)
+          : {},
     }),
     [raw],
   );
@@ -82,12 +92,27 @@ export function useSportsConfig() {
     [config, mutation],
   );
 
+  const setFavoriteTeam = useCallback(
+    (league: string, team: FavoriteTeam | null) => {
+      const newFavorites = { ...config.favoriteTeams };
+      if (team) {
+        newFavorites[league] = team;
+      } else {
+        delete newFavorites[league];
+      }
+      mutation.mutate({ ...config, favoriteTeams: newFavorites });
+    },
+    [config, mutation],
+  );
+
   return {
     config,
     leagues: config.leagues,
     display: config.display,
+    favoriteTeams: config.favoriteTeams,
     setLeagues,
     setDisplay,
+    setFavoriteTeam,
     saving: mutation.isPending,
   };
 }

@@ -77,14 +77,14 @@ func (a *App) getSports(c *fiber.Ctx) error {
 		return a.getUserGames(c, userSub, DefaultSportsLimit)
 	}
 
-	// Public: return all games
+	// Public: return all games (no favorites)
 	var games []Game
 	if GetCache(a.rdb, CacheKeySports, &games) {
 		c.Set("X-Cache", "HIT")
 		return c.JSON(games)
 	}
 
-	games, err := a.queryGames(context.Background(), DefaultSportsLimit)
+	games, err := a.queryGames(context.Background(), DefaultSportsLimit, nil)
 	if err != nil {
 		log.Printf("[Sports] getSports query failed: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
@@ -271,7 +271,8 @@ func (a *App) handleInternalDashboard(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"sports": []Game{}})
 	}
 
-	games, err := a.queryGamesByLeagues(context.Background(), leagues, DashboardSportsLimit)
+	favoriteTeams := a.getUserFavoriteTeams(userSub)
+	games, err := a.queryGamesByLeagues(context.Background(), leagues, DashboardSportsLimit, favoriteTeams)
 	if err != nil {
 		log.Printf("[Sports] Dashboard query failed: %v", err)
 		return c.JSON(fiber.Map{"sports": []Game{}})
@@ -379,7 +380,10 @@ func (a *App) onSyncSubscriptions(ctx context.Context, userSub string, config ma
 
 // queryGames fetches games from PostgreSQL prioritized by relevance:
 // live games first, then soonest upcoming, then most recently finished.
-func (a *App) queryGames(ctx context.Context, limit int) ([]Game, error) {
+// If favoriteTeams is provided, those teams' games are prioritized.
+func (a *App) queryGames(ctx context.Context, limit int, favoriteTeams map[string]FavoriteTeam) ([]Game, error) {
+	favNames := extractFavoriteTeamNames(favoriteTeams)
+
 	rows, err := a.db.Query(ctx, fmt.Sprintf(`
 		SELECT id, league, COALESCE(sport, ''), external_game_id, COALESCE(link, ''),
 			home_team_name, COALESCE(home_team_logo, ''), COALESCE(home_team_score::text, ''), COALESCE(home_team_code, ''),
@@ -390,9 +394,10 @@ func (a *App) queryGames(ctx context.Context, limit int) ([]Game, error) {
 		FROM games
 		ORDER BY
 			CASE state WHEN 'in' THEN 0 WHEN 'pre' THEN 1 ELSE 2 END,
+			CASE WHEN home_team_name = ANY($1) OR away_team_name = ANY($1) THEN 0 ELSE 1 END,
 			CASE WHEN state = 'pre' THEN start_time END ASC,
 			CASE WHEN state != 'pre' THEN start_time END DESC
-		LIMIT %d`, limit))
+		LIMIT %d`, limit), favNames)
 	if err != nil {
 		return nil, fmt.Errorf("sports query failed: %w", err)
 	}
@@ -418,10 +423,13 @@ func (a *App) queryGames(ctx context.Context, limit int) ([]Game, error) {
 }
 
 // queryGamesByLeagues fetches games for specific leagues.
-func (a *App) queryGamesByLeagues(ctx context.Context, leagues []string, limit int) ([]Game, error) {
+// If favoriteTeams is provided, those teams' games are prioritized.
+func (a *App) queryGamesByLeagues(ctx context.Context, leagues []string, limit int, favoriteTeams map[string]FavoriteTeam) ([]Game, error) {
 	if len(leagues) == 0 {
 		return make([]Game, 0), nil
 	}
+
+	favNames := extractFavoriteTeamNames(favoriteTeams)
 
 	rows, err := a.db.Query(ctx, fmt.Sprintf(`
 		SELECT id, league, COALESCE(sport, ''), external_game_id, COALESCE(link, ''),
@@ -434,9 +442,10 @@ func (a *App) queryGamesByLeagues(ctx context.Context, leagues []string, limit i
 		WHERE league = ANY($1)
 		ORDER BY
 			CASE state WHEN 'in' THEN 0 WHEN 'pre' THEN 1 ELSE 2 END,
+			CASE WHEN home_team_name = ANY($2) OR away_team_name = ANY($2) THEN 0 ELSE 1 END,
 			CASE WHEN state = 'pre' THEN start_time END ASC,
 			CASE WHEN state != 'pre' THEN start_time END DESC
-		LIMIT %d`, limit), leagues)
+		LIMIT %d`, limit), leagues, favNames)
 	if err != nil {
 		return nil, fmt.Errorf("sports league query failed: %w", err)
 	}
@@ -475,7 +484,8 @@ func (a *App) getUserGames(c *fiber.Ctx, userSub string, limit int) error {
 		return c.JSON([]Game{})
 	}
 
-	games, err := a.queryGamesByLeagues(context.Background(), leagues, limit)
+	favoriteTeams := a.getUserFavoriteTeams(userSub)
+	games, err := a.queryGamesByLeagues(context.Background(), leagues, limit, favoriteTeams)
 	if err != nil {
 		log.Printf("[Sports] getUserGames query failed: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
@@ -500,6 +510,19 @@ func (a *App) getUserSportsLeagues(logtoSub string) []string {
 		return nil
 	}
 	return extractLeaguesFromConfig(configJSON)
+}
+
+// getUserFavoriteTeams extracts favorite teams from a user's sports channel config.
+func (a *App) getUserFavoriteTeams(logtoSub string) map[string]FavoriteTeam {
+	var configJSON []byte
+	err := a.db.QueryRow(context.Background(), `
+		SELECT config FROM user_channels
+		WHERE logto_sub = $1 AND channel_type = 'sports'
+	`, logtoSub).Scan(&configJSON)
+	if err != nil {
+		return nil
+	}
+	return extractFavoriteTeamsFromConfig(configJSON)
 }
 
 // =============================================================================
@@ -628,4 +651,32 @@ func extractLeaguesFromConfig(configJSON []byte) []string {
 		}
 	}
 	return leagues
+}
+
+// extractFavoriteTeamsFromConfig parses config JSON and returns favorite teams per league.
+func extractFavoriteTeamsFromConfig(configJSON []byte) map[string]FavoriteTeam {
+	if len(configJSON) == 0 {
+		return nil
+	}
+	var config struct {
+		FavoriteTeams map[string]FavoriteTeam `json:"favoriteTeams"`
+	}
+	if err := json.Unmarshal(configJSON, &config); err != nil {
+		return nil
+	}
+	return config.FavoriteTeams
+}
+
+// extractFavoriteTeamNames extracts just the team names from a favoriteTeams map.
+func extractFavoriteTeamNames(favs map[string]FavoriteTeam) []string {
+	if len(favs) == 0 {
+		return []string{}
+	}
+	names := make([]string, 0, len(favs))
+	for _, f := range favs {
+		if f.TeamName != "" {
+			names = append(names, f.TeamName)
+		}
+	}
+	return names
 }

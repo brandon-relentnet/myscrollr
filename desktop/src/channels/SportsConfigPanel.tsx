@@ -1,17 +1,19 @@
 import { useCallback, useMemo, useState } from "react";
-import { Trophy } from "lucide-react";
+import { Trophy, Star, ChevronDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { SetupBrowser } from "../components/settings/SetupBrowser";
 import UpgradePrompt from "../components/UpgradePrompt";
 import { useSportsConfig } from "../hooks/useSportsConfig";
 import { formatCountdown } from "../utils/gameHelpers";
-import { sportsCatalogOptions } from "../api/queries";
+import { sportsCatalogOptions, sportsTeamsOptions } from "../api/queries";
 import { getLimit, maxItemsForBrowser } from "../tierLimits";
 import type { TrackedLeague } from "../api/queries";
 import type { Channel } from "../api/client";
 import type { SubscriptionTier } from "../auth";
+import type { TeamInfo } from "../api/queries";
+import type { FavoriteTeam } from "../hooks/useSportsConfig";
 
-// ── Types ────────────────────────────────────────────────────────
+// ── Types ────────────────────────────────────────────────────────────
 
 interface SportsConfigPanelProps {
   channel: Channel;
@@ -20,13 +22,13 @@ interface SportsConfigPanelProps {
   hex: string;
 }
 
-// ── Component ────────────────────────────────────────────────────
+// ── Component ──────────────────────────────────────────────────────
 
 export default function SportsConfigPanel({
   subscriptionTier,
   hex,
 }: SportsConfigPanelProps) {
-  const { leagues, setLeagues, saving } =
+  const { leagues, setLeagues, favoriteTeams, setFavoriteTeam, saving } =
     useSportsConfig();
   const [error, setError] = useState<string | null>(null);
 
@@ -69,6 +71,87 @@ export default function SportsConfigPanel({
     [leagues, setLeagues],
   );
 
+  // ── Team picker for a single league ─────────────────────────────
+  function TeamPicker({ league }: { league: string }) {
+    const { data: teamsData, isLoading } = useQuery(sportsTeamsOptions(league));
+    const teams = teamsData?.teams ?? [];
+    const current = favoriteTeams[league];
+
+    return (
+      <div className="flex items-center gap-2 mt-2">
+        <Star className="w-3 h-3 text-fg-4" />
+        <select
+          className="text-[11px] bg-bg-2 border border-bg-4 rounded px-2 py-1 text-fg-2 min-w-[140px]"
+          value={current?.teamName ?? ""}
+          onChange={(e) => {
+            const selected = teams.find((t) => t.name === e.target.value);
+            if (selected) {
+              setFavoriteTeam(league, {
+                teamId: selected.external_id,
+                teamName: selected.name,
+              });
+            } else {
+              setFavoriteTeam(league, null);
+            }
+          }}
+          disabled={isLoading}
+        >
+          <option value="">{isLoading ? "Loading..." : "Select favorite team"}</option>
+          {teams.map((t: TeamInfo) => (
+            <option key={t.external_id} value={t.name}>
+              {t.name}
+            </option>
+          ))}
+        </select>
+        {current && (
+          <button
+            type="button"
+            className="text-[10px] text-fg-4 hover:text-fg-2 underline"
+            onClick={() => setFavoriteTeam(league, null)}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // Render selected league items with team picker
+  const renderSelectedItem = (item: TrackedLeague) => {
+    const isSelected = leagueSet.has(item.name);
+    if (!isSelected) return null;
+
+    return (
+      <div key={item.name} className="mb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 min-w-0">
+            {item.logo_url && (
+              <img
+                src={item.logo_url}
+                alt={item.name}
+                className="w-5 h-5 object-contain shrink-0"
+              />
+            )}
+            <div className="min-w-0">
+              <div className="text-[12px] font-bold text-fg-2">{item.name}</div>
+              <div className="flex items-center gap-1.5 text-[10px] text-fg-4 truncate">
+                <span>{item.country}</span>
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="text-[10px] font-medium shrink-0 text-fg-4 hover:text-fg-2"
+            onClick={() => removeLeague(item.name)}
+          >
+            Remove
+          </button>
+        </div>
+        <TeamPicker league={item.name} />
+      </div>
+    );
+  };
+
   return (
     <div className="w-full max-w-2xl mx-auto">
       {atLimit && (
@@ -81,6 +164,19 @@ export default function SportsConfigPanel({
           />
         </div>
       )}
+
+      {/* Selected leagues with team pickers */}
+      {leagues.length > 0 && (
+        <div className="mb-4 px-3">
+          <div className="text-[11px] font-semibold text-fg-3 uppercase tracking-wider mb-2">
+            Your Leagues
+          </div>
+          <div className="bg-bg-2 rounded-lg p-3 border border-bg-4">
+            {sortedCatalog.map(renderSelectedItem)}
+          </div>
+        </div>
+      )}
+
       <SetupBrowser
         title="Sports"
         subtitle="Live scores from your favorite leagues"
