@@ -525,7 +525,10 @@ func (a *App) getStandings(c *fiber.Ctx) error {
 		SELECT league, team_name, COALESCE(team_code, ''), COALESCE(team_logo, ''),
 			COALESCE(rank, 0), wins, losses, draws, COALESCE(points, 0),
 			games_played, COALESCE(goal_diff, 0),
-			COALESCE(description, ''), COALESCE(form, ''), COALESCE(group_name, '')
+			COALESCE(description, ''), COALESCE(form, ''), COALESCE(group_name, ''),
+			COALESCE(sport_api, ''), COALESCE(pct, ''), COALESCE(games_behind, ''),
+			COALESCE(otl, 0), COALESCE(goals_for, 0), COALESCE(goals_against, 0),
+			COALESCE(points_for, 0), COALESCE(points_against, 0), COALESCE(streak, '')
 		FROM standings
 		WHERE league = $1
 		ORDER BY COALESCE(rank, 9999) ASC`, league)
@@ -543,6 +546,8 @@ func (a *App) getStandings(c *fiber.Ctx) error {
 			&s.League, &s.TeamName, &s.TeamCode, &s.TeamLogo,
 			&s.Rank, &s.Wins, &s.Losses, &s.Draws, &s.Points,
 			&s.GamesPlayed, &s.GoalDiff, &s.Description, &s.Form, &s.GroupName,
+			&s.SportAPI, &s.Pct, &s.GamesBehind, &s.OTL,
+			&s.GoalsFor, &s.GoalsAgainst, &s.PointsFor, &s.PointsAgainst, &s.Streak,
 		); err != nil {
 			log.Printf("[Sports] Standing row scan failed: %v", err)
 			continue

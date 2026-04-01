@@ -98,12 +98,21 @@ export interface Standing {
   description?: string;
   form?: string;
   group_name?: string;
+  sport_api?: string;
+  pct?: string;
+  games_behind?: string;
+  otl?: number;
+  goals_for?: number;
+  goals_against?: number;
+  points_for?: number;
+  points_against?: number;
+  streak?: string;
 }
 
 export function standingsOptions(league: string) {
   return queryOptions({
     queryKey: queryKeys.standings(league),
-    queryFn: () => request<{ standings: Standing[] }>(`/sports/standings?league=${encodeURIComponent(league)}`),
+    queryFn: () => authFetch<{ standings: Standing[] }>(`/sports/standings?league=${encodeURIComponent(league)}`),
     staleTime: 60 * 60 * 1000, // 1 hour
     enabled: !!league,
   });
