@@ -14,6 +14,7 @@ type SportType = "soccer" | "nfl" | "nba" | "nhl" | "mlb" | "other";
 interface Column {
   key: string;
   label: string;
+  fullName?: string;
   width?: string;
   align?: "left" | "center" | "right";
   getValue: (s: Standing) => React.ReactNode;
@@ -25,6 +26,7 @@ function getColumnsForSport(sportApi?: string): Column[] {
   const teamCol: Column = {
     key: "team",
     label: "Team",
+    fullName: "Team",
     getValue: (s) => (
       <div className="flex items-center gap-2">
         <TeamLogo src={s.team_logo} alt={s.team_name} size="sm" />
@@ -36,63 +38,63 @@ function getColumnsForSport(sportApi?: string): Column[] {
   switch (sport) {
     case "soccer":
       return [
-        { key: "rank", label: "#", width: "w-12", align: "center", getValue: (s) => s.rank || "-" },
+        { key: "rank", label: "#", fullName: "Rank", width: "w-12", align: "center", getValue: (s) => s.rank || "-" },
         { ...teamCol, width: "w-48" },
-        { key: "gp", label: "GP", width: "w-14", align: "center", getValue: (s) => s.games_played },
-        { key: "w", label: "W", width: "w-14", align: "center", getValue: (s) => s.wins },
-        { key: "d", label: "D", width: "w-14", align: "center", getValue: (s) => s.draws },
-        { key: "l", label: "L", width: "w-14", align: "center", getValue: (s) => s.losses },
-        { key: "gd", label: "GD", width: "w-16", align: "center", getValue: (s) => s.goal_diff > 0 ? `+${s.goal_diff}` : s.goal_diff },
-        { key: "pts", label: "Pts", width: "w-16", align: "center", getValue: (s) => s.points },
-        { key: "form", label: "Form", width: "w-20", getValue: (s) => s.form || "-" },
+        { key: "gp", label: "GP", fullName: "Games Played", width: "w-14", align: "center", getValue: (s) => s.games_played },
+        { key: "w", label: "W", fullName: "Wins", width: "w-14", align: "center", getValue: (s) => s.wins },
+        { key: "d", label: "D", fullName: "Draws", width: "w-14", align: "center", getValue: (s) => s.draws },
+        { key: "l", label: "L", fullName: "Losses", width: "w-14", align: "center", getValue: (s) => s.losses },
+        { key: "gd", label: "GD", fullName: "Goal Difference", width: "w-16", align: "center", getValue: (s) => s.goal_diff > 0 ? `+${s.goal_diff}` : s.goal_diff },
+        { key: "pts", label: "Pts", fullName: "Points", width: "w-16", align: "center", getValue: (s) => s.points },
+        { key: "form", label: "Form", fullName: "Recent Form", width: "w-20", getValue: (s) => s.form || "-" },
       ];
     case "nfl":
       return [
-        { key: "rank", label: "#", width: "w-12", align: "center", getValue: (s) => s.rank || "-" },
+        { key: "rank", label: "#", fullName: "Rank", width: "w-12", align: "center", getValue: (s) => s.rank || "-" },
         { ...teamCol, width: "w-48" },
-        { key: "w", label: "W", width: "w-14", align: "center", getValue: (s) => s.wins },
-        { key: "l", label: "L", width: "w-14", align: "center", getValue: (s) => s.losses },
-        { key: "t", label: "T", width: "w-14", align: "center", getValue: (s) => s.draws },
-        { key: "pct", label: "Pct", width: "w-16", align: "center", getValue: (s) => s.pct || "-" },
-        { key: "pf", label: "PF", width: "w-16", align: "center", getValue: (s) => s.points_for || "-" },
-        { key: "pa", label: "PA", width: "w-16", align: "center", getValue: (s) => s.points_against || "-" },
-        { key: "streak", label: "Str", width: "w-16", getValue: (s) => s.streak || "-" },
+        { key: "w", label: "W", fullName: "Wins", width: "w-14", align: "center", getValue: (s) => s.wins },
+        { key: "l", label: "L", fullName: "Losses", width: "w-14", align: "center", getValue: (s) => s.losses },
+        { key: "t", label: "T", fullName: "Ties", width: "w-14", align: "center", getValue: (s) => s.draws },
+        { key: "pct", label: "Pct", fullName: "Win Percentage", width: "w-16", align: "center", getValue: (s) => s.pct || "-" },
+        { key: "pf", label: "PF", fullName: "Points For", width: "w-16", align: "center", getValue: (s) => s.points_for || "-" },
+        { key: "pa", label: "PA", fullName: "Points Against", width: "w-16", align: "center", getValue: (s) => s.points_against || "-" },
+        { key: "streak", label: "Str", fullName: "Streak", width: "w-16", getValue: (s) => s.streak || "-" },
       ];
     case "nba":
     case "mlb":
       return [
-        { key: "rank", label: "#", width: "w-12", align: "center", getValue: (s) => s.rank || "-" },
+        { key: "rank", label: "#", fullName: "Rank", width: "w-12", align: "center", getValue: (s) => s.rank || "-" },
         { ...teamCol, width: "w-48" },
-        { key: "w", label: "W", width: "w-14", align: "center", getValue: (s) => s.wins },
-        { key: "l", label: "L", width: "w-14", align: "center", getValue: (s) => s.losses },
-        { key: "pct", label: "Pct", width: "w-16", align: "center", getValue: (s) => s.pct || "-" },
-        { key: "gb", label: "GB", width: "w-16", align: "center", getValue: (s) => s.games_behind || "-" },
-        { key: "pf", label: "PF", width: "w-16", align: "center", getValue: (s) => s.points_for || "-" },
-        { key: "pa", label: "PA", width: "w-16", align: "center", getValue: (s) => s.points_against || "-" },
-        { key: "streak", label: "Str", width: "w-16", getValue: (s) => s.streak || "-" },
+        { key: "w", label: "W", fullName: "Wins", width: "w-14", align: "center", getValue: (s) => s.wins },
+        { key: "l", label: "L", fullName: "Losses", width: "w-14", align: "center", getValue: (s) => s.losses },
+        { key: "pct", label: "Pct", fullName: "Win Percentage", width: "w-16", align: "center", getValue: (s) => s.pct || "-" },
+        { key: "gb", label: "GB", fullName: "Games Behind", width: "w-16", align: "center", getValue: (s) => s.games_behind || "-" },
+        { key: "pf", label: "PF", fullName: "Points For", width: "w-16", align: "center", getValue: (s) => s.points_for || "-" },
+        { key: "pa", label: "PA", fullName: "Points Against", width: "w-16", align: "center", getValue: (s) => s.points_against || "-" },
+        { key: "streak", label: "Str", fullName: "Streak", width: "w-16", getValue: (s) => s.streak || "-" },
       ];
     case "nhl":
       return [
-        { key: "rank", label: "#", width: "w-12", align: "center", getValue: (s) => s.rank || "-" },
+        { key: "rank", label: "#", fullName: "Rank", width: "w-12", align: "center", getValue: (s) => s.rank || "-" },
         { ...teamCol, width: "w-48" },
-        { key: "gp", label: "GP", width: "w-14", align: "center", getValue: (s) => s.games_played },
-        { key: "w", label: "W", width: "w-14", align: "center", getValue: (s) => s.wins },
-        { key: "l", label: "L", width: "w-14", align: "center", getValue: (s) => s.losses },
-        { key: "otl", label: "OTL", width: "w-14", align: "center", getValue: (s) => s.otl ?? "-" },
-        { key: "pts", label: "Pts", width: "w-16", align: "center", getValue: (s) => s.points },
-        { key: "gf", label: "GF", width: "w-16", align: "center", getValue: (s) => s.goals_for ?? "-" },
-        { key: "ga", label: "GA", width: "w-16", align: "center", getValue: (s) => s.goals_against ?? "-" },
-        { key: "streak", label: "Str", width: "w-16", getValue: (s) => s.streak || "-" },
+        { key: "gp", label: "GP", fullName: "Games Played", width: "w-14", align: "center", getValue: (s) => s.games_played },
+        { key: "w", label: "W", fullName: "Wins", width: "w-14", align: "center", getValue: (s) => s.wins },
+        { key: "l", label: "L", fullName: "Losses", width: "w-14", align: "center", getValue: (s) => s.losses },
+        { key: "otl", label: "OTL", fullName: "Overtime Losses", width: "w-14", align: "center", getValue: (s) => s.otl ?? "-" },
+        { key: "pts", label: "Pts", fullName: "Points", width: "w-16", align: "center", getValue: (s) => s.points },
+        { key: "gf", label: "GF", fullName: "Goals For", width: "w-16", align: "center", getValue: (s) => s.goals_for ?? "-" },
+        { key: "ga", label: "GA", fullName: "Goals Against", width: "w-16", align: "center", getValue: (s) => s.goals_against ?? "-" },
+        { key: "streak", label: "Str", fullName: "Streak", width: "w-16", getValue: (s) => s.streak || "-" },
       ];
     default:
       return [
-        { key: "rank", label: "#", width: "w-12", align: "center", getValue: (s) => s.rank || "-" },
+        { key: "rank", label: "#", fullName: "Rank", width: "w-12", align: "center", getValue: (s) => s.rank || "-" },
         { ...teamCol, width: "w-48" },
-        { key: "gp", label: "GP", width: "w-14", align: "center", getValue: (s) => s.games_played },
-        { key: "w", label: "W", width: "w-14", align: "center", getValue: (s) => s.wins },
-        { key: "l", label: "L", width: "w-14", align: "center", getValue: (s) => s.losses },
-        { key: "d", label: "D", width: "w-14", align: "center", getValue: (s) => s.draws },
-        { key: "pts", label: "Pts", width: "w-16", align: "center", getValue: (s) => s.points },
+        { key: "gp", label: "GP", fullName: "Games Played", width: "w-14", align: "center", getValue: (s) => s.games_played },
+        { key: "w", label: "W", fullName: "Wins", width: "w-14", align: "center", getValue: (s) => s.wins },
+        { key: "l", label: "L", fullName: "Losses", width: "w-14", align: "center", getValue: (s) => s.losses },
+        { key: "d", label: "D", fullName: "Draws", width: "w-14", align: "center", getValue: (s) => s.draws },
+        { key: "pts", label: "Pts", fullName: "Points", width: "w-16", align: "center", getValue: (s) => s.points },
       ];
   }
 }
@@ -208,6 +210,7 @@ export function StandingsTab({ leagues }: StandingsTabProps) {
                 {columns.map((col) => (
                   <th
                     key={col.key}
+                    title={col.fullName || col.label}
                     className={clsx(
                       "px-2 py-2",
                       col.width,
