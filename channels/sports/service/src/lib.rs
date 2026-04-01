@@ -21,6 +21,10 @@ pub mod types;
 /// time but fall on the next UTC date).
 const SCHEDULE_DAYS_AHEAD: i64 = 1;
 
+/// Delay between league requests on startup burst to avoid rate limits.
+/// 200ms spacing between requests spreads ~60 requests across ~12 seconds.
+const STARTUP_REQUEST_DELAY_MS: u64 = 200;
+
 // =============================================================================
 // Service initialization (runs once on startup)
 // =============================================================================
@@ -239,6 +243,9 @@ pub async fn poll_schedule(
                     error!("[{}] Schedule poll error for {}: {}", league.name, date, e);
                 }
             }
+
+            // Spread requests to avoid rate limiting on startup
+            tokio::time::sleep(std::time::Duration::from_millis(STARTUP_REQUEST_DELAY_MS)).await;
         }
     }
 
@@ -316,6 +323,9 @@ pub async fn poll_standings(
             }
             Err(e) => error!("[{}] Standings request failed: {}", league.name, e),
         }
+
+        // Spread requests to avoid rate limiting on startup
+        tokio::time::sleep(std::time::Duration::from_millis(STARTUP_REQUEST_DELAY_MS)).await;
     }
     info!("Standings poll complete");
 }
@@ -451,6 +461,9 @@ pub async fn poll_teams(
             }
             Err(e) => error!("[{}] Teams request failed: {}", league.name, e),
         }
+
+        // Spread requests to avoid rate limiting on startup
+        tokio::time::sleep(std::time::Duration::from_millis(STARTUP_REQUEST_DELAY_MS)).await;
     }
     info!("Teams poll complete");
 }
