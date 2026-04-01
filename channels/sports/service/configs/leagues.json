@@ -137,6 +137,7 @@
     "category": "Rugby",
     "country": "England",
     "season_format": "cross-year",
+    "season": "2025",
     "offseason_months": [7, 8]
   },
   {
@@ -156,6 +157,7 @@
     "category": "Handball",
     "country": "Europe",
     "season_format": "cross-year",
+    "season": "2025",
     "offseason_months": [6, 7, 8]
   },
   {
@@ -166,6 +168,7 @@
     "category": "Handball",
     "country": "Germany",
     "season_format": "cross-year",
+    "season": "2025",
     "offseason_months": [6, 7, 8]
   },
   {
@@ -176,6 +179,7 @@
     "category": "Handball",
     "country": "France",
     "season_format": "cross-year",
+    "season": "2025",
     "offseason_months": [6, 7, 8]
   },
   {
@@ -186,6 +190,7 @@
     "category": "Volleyball",
     "country": "Europe",
     "season_format": "cross-year",
+    "season": "2025",
     "offseason_months": [6, 7, 8, 9]
   },
   {
