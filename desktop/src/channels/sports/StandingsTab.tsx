@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { clsx } from "clsx";
 import TeamLogo from "../../components/TeamLogo";
 import { standingsOptions } from "../../api/queries";
 import type { Standing } from "../../api/queries";
@@ -36,44 +37,44 @@ function getColumnsForSport(sportApi?: string): Column[] {
     case "soccer":
       return [
         { key: "rank", label: "#", width: "w-8", align: "center", getValue: (s) => s.rank || "-" },
-        { ...teamCol },
+        { ...teamCol, width: "w-32" },
         { key: "gp", label: "GP", width: "w-8", align: "center", getValue: (s) => s.games_played },
         { key: "w", label: "W", width: "w-8", align: "center", getValue: (s) => s.wins },
         { key: "d", label: "D", width: "w-8", align: "center", getValue: (s) => s.draws },
         { key: "l", label: "L", width: "w-8", align: "center", getValue: (s) => s.losses },
         { key: "gd", label: "GD", width: "w-10", align: "center", getValue: (s) => s.goal_diff > 0 ? `+${s.goal_diff}` : s.goal_diff },
         { key: "pts", label: "Pts", width: "w-10", align: "center", getValue: (s) => s.points },
-        { key: "form", label: "Form", getValue: (s) => s.form || "-" },
+        { key: "form", label: "Form", width: "w-14", getValue: (s) => s.form || "-" },
       ];
     case "nfl":
       return [
         { key: "rank", label: "#", width: "w-8", align: "center", getValue: (s) => s.rank || "-" },
-        { ...teamCol },
+        { ...teamCol, width: "w-32" },
         { key: "w", label: "W", width: "w-8", align: "center", getValue: (s) => s.wins },
         { key: "l", label: "L", width: "w-8", align: "center", getValue: (s) => s.losses },
         { key: "t", label: "T", width: "w-8", align: "center", getValue: (s) => s.draws },
         { key: "pct", label: "Pct", width: "w-12", align: "center", getValue: (s) => s.pct || "-" },
         { key: "pf", label: "PF", width: "w-10", align: "center", getValue: (s) => s.points_for || "-" },
         { key: "pa", label: "PA", width: "w-10", align: "center", getValue: (s) => s.points_against || "-" },
-        { key: "streak", label: "Str", getValue: (s) => s.streak || "-" },
+        { key: "streak", label: "Str", width: "w-12", getValue: (s) => s.streak || "-" },
       ];
     case "nba":
     case "mlb":
       return [
         { key: "rank", label: "#", width: "w-8", align: "center", getValue: (s) => s.rank || "-" },
-        { ...teamCol },
+        { ...teamCol, width: "w-32" },
         { key: "w", label: "W", width: "w-8", align: "center", getValue: (s) => s.wins },
         { key: "l", label: "L", width: "w-8", align: "center", getValue: (s) => s.losses },
         { key: "pct", label: "Pct", width: "w-12", align: "center", getValue: (s) => s.pct || "-" },
         { key: "gb", label: "GB", width: "w-10", align: "center", getValue: (s) => s.games_behind || "-" },
         { key: "pf", label: "PF", width: "w-10", align: "center", getValue: (s) => s.points_for || "-" },
         { key: "pa", label: "PA", width: "w-10", align: "center", getValue: (s) => s.points_against || "-" },
-        { key: "streak", label: "Str", getValue: (s) => s.streak || "-" },
+        { key: "streak", label: "Str", width: "w-12", getValue: (s) => s.streak || "-" },
       ];
     case "nhl":
       return [
         { key: "rank", label: "#", width: "w-8", align: "center", getValue: (s) => s.rank || "-" },
-        { ...teamCol },
+        { ...teamCol, width: "w-32" },
         { key: "gp", label: "GP", width: "w-8", align: "center", getValue: (s) => s.games_played },
         { key: "w", label: "W", width: "w-8", align: "center", getValue: (s) => s.wins },
         { key: "l", label: "L", width: "w-8", align: "center", getValue: (s) => s.losses },
@@ -81,12 +82,12 @@ function getColumnsForSport(sportApi?: string): Column[] {
         { key: "pts", label: "Pts", width: "w-10", align: "center", getValue: (s) => s.points },
         { key: "gf", label: "GF", width: "w-10", align: "center", getValue: (s) => s.goals_for ?? "-" },
         { key: "ga", label: "GA", width: "w-10", align: "center", getValue: (s) => s.goals_against ?? "-" },
-        { key: "streak", label: "Str", getValue: (s) => s.streak || "-" },
+        { key: "streak", label: "Str", width: "w-12", getValue: (s) => s.streak || "-" },
       ];
     default:
       return [
         { key: "rank", label: "#", width: "w-8", align: "center", getValue: (s) => s.rank || "-" },
-        { ...teamCol },
+        { ...teamCol, width: "w-32" },
         { key: "gp", label: "GP", width: "w-8", align: "center", getValue: (s) => s.games_played },
         { key: "w", label: "W", width: "w-8", align: "center", getValue: (s) => s.wins },
         { key: "l", label: "L", width: "w-8", align: "center", getValue: (s) => s.losses },
@@ -201,13 +202,19 @@ export function StandingsTab({ leagues }: StandingsTabProps) {
 
       {standings.length > 0 && (
         <div className="overflow-x-auto">
-          <table className="w-full text-xs">
+          <table className="w-full text-xs table-fixed">
             <thead>
               <tr className="text-fg-4 text-[10px] uppercase tracking-wider border-b border-edge">
                 {columns.map((col) => (
                   <th
                     key={col.key}
-                    className={`text-${col.align || "left"} px-2 py-2 ${col.width || ""}`}
+                    className={clsx(
+                      "px-2 py-2",
+                      col.width,
+                      col.align === "center" && "text-center",
+                      col.align === "right" && "text-right",
+                      !col.align && "text-left"
+                    )}
                   >
                     {col.label}
                   </th>
@@ -226,7 +233,14 @@ export function StandingsTab({ leagues }: StandingsTabProps) {
                       {columns.map((col) => (
                         <td
                           key={col.key}
-                          className={`px-2 py-1.5 ${col.align === "center" ? "text-center" : col.align === "right" ? "text-right" : ""} ${col.width || ""} ${col.key === "team" ? "" : "font-mono text-fg-2"}`}
+                          className={clsx(
+                            "px-2 py-1.5",
+                            col.width,
+                            col.key !== "team" && "font-mono text-fg-2",
+                            col.align === "center" && "text-center",
+                            col.align === "right" && "text-right",
+                            !col.align && "text-left"
+                          )}
                         >
                           {col.getValue(s)}
                         </td>
