@@ -61,20 +61,29 @@ type ErrorResponse struct {
 
 // Standing represents a league standing entry.
 type Standing struct {
-	League      string `json:"league"`
-	TeamName    string `json:"team_name"`
-	TeamCode    string `json:"team_code"`
-	TeamLogo    string `json:"team_logo"`
-	Rank        int    `json:"rank"`
-	Wins        int    `json:"wins"`
-	Losses      int    `json:"losses"`
-	Draws       int    `json:"draws"`
-	Points      int    `json:"points"`
-	GamesPlayed int    `json:"games_played"`
-	GoalDiff    int    `json:"goal_diff"`
-	Description string `json:"description,omitempty"`
-	Form        string `json:"form,omitempty"`
-	GroupName   string `json:"group_name,omitempty"`
+	League        string `json:"league"`
+	TeamName      string `json:"team_name"`
+	TeamCode      string `json:"team_code"`
+	TeamLogo      string `json:"team_logo"`
+	Rank          int    `json:"rank"`
+	Wins          int    `json:"wins"`
+	Losses        int    `json:"losses"`
+	Draws         int    `json:"draws"`
+	Points        int    `json:"points"`
+	GamesPlayed   int    `json:"games_played"`
+	GoalDiff      int    `json:"goal_diff"`
+	Description   string `json:"description,omitempty"`
+	Form          string `json:"form,omitempty"`
+	GroupName     string `json:"group_name,omitempty"`
+	SportAPI      string `json:"sport_api,omitempty"`
+	Pct           string `json:"pct,omitempty"`
+	GamesBehind   string `json:"games_behind,omitempty"`
+	OTL           int    `json:"otl,omitempty"`
+	GoalsFor      int    `json:"goals_for,omitempty"`
+	GoalsAgainst  int    `json:"goals_against,omitempty"`
+	PointsFor     int    `json:"points_for,omitempty"`
+	PointsAgainst int    `json:"points_against,omitempty"`
+	Streak        string `json:"streak,omitempty"`
 }
 
 // TeamInfo represents a team entry from the teams table.

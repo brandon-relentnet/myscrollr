@@ -309,7 +309,7 @@ pub async fn poll_standings(
                 match resp.json::<serde_json::Value>().await {
                     Ok(body) => {
                         let response = body.get("response").and_then(|r| r.as_array()).cloned().unwrap_or_default();
-                        parse_and_upsert_standings(pool, &league.name, &season, &response).await;
+                        parse_and_upsert_standings(pool, &league.name, &season, &league.sport_api, &response).await;
                     }
                     Err(e) => warn!("[{}] Failed to parse standings JSON: {}", league.name, e),
                 }
@@ -324,11 +324,35 @@ async fn parse_and_upsert_standings(
     pool: &Arc<PgPool>,
     league_name: &str,
     season: &str,
+    sport_api: &str,
+    response: &[serde_json::Value],
+) {
+    // Route to the appropriate parser based on sport API
+    match sport_api {
+        "football" => parse_football_standings(pool, league_name, season, sport_api, response).await,
+        "american-football" => parse_v1_standings(pool, league_name, season, sport_api, response).await,
+        "basketball" => parse_basketball_standings(pool, league_name, season, sport_api, response).await,
+        "hockey" => parse_hockey_standings(pool, league_name, season, sport_api, response).await,
+        "baseball" => parse_basketball_standings(pool, league_name, season, sport_api, response).await, // Same as basketball format
+        "rugby" | "afl" => parse_v1_standings(pool, league_name, season, sport_api, response).await,
+        "handball" | "volleyball" => parse_basketball_standings(pool, league_name, season, sport_api, response).await,
+        _ => {
+            // Default to football-style parser
+            parse_football_standings(pool, league_name, season, sport_api, response).await;
+        }
+    }
+}
+
+/// Parse soccer/football standings (v3 API, nested league.standings structure)
+async fn parse_football_standings(
+    pool: &Arc<PgPool>,
+    league_name: &str,
+    season: &str,
+    sport_api: &str,
     response: &[serde_json::Value],
 ) {
     for entry in response {
-        // Football has nested league.standings arrays
-        // Other sports return flat standings arrays
+        // Football: nested response[].league.standings arrays
         let standings_arrays = if let Some(league_obj) = entry.get("league") {
             league_obj.get("standings").and_then(|s| s.as_array()).cloned().unwrap_or_default()
         } else {
@@ -364,12 +388,402 @@ async fn parse_and_upsert_standings(
                     form: item.get("form").and_then(|f| f.as_str()).map(|s| s.to_string()),
                     group_name: item.get("group").and_then(|g| g.as_str()).map(|s| s.to_string()),
                     season: Some(season.to_string()),
+                    sport_api: Some(sport_api.to_string()),
+                    pct: None,
+                    games_behind: None,
+                    otl: None,
+                    goals_for: None,
+                    goals_against: None,
+                    points_for: None,
+                    points_against: None,
+                    streak: None,
                 };
                 if let Err(e) = upsert_standing(pool, standing).await {
                     error!("[{}] Failed to upsert standing: {}", league_name, e);
                 }
             }
         }
+    }
+}
+
+/// Parse NFL, Rugby, AFL standings (v1 API, flat structure with won/lost/ties at top level)
+async fn parse_v1_standings(
+    pool: &Arc<PgPool>,
+    league_name: &str,
+    season: &str,
+    sport_api: &str,
+    response: &[serde_json::Value],
+) {
+    for entry in response {
+        // V1 sports: flat response array, each entry is a standing record
+        // May have a "league" metadata key but standings are at top level
+        // Skip entries that are arrays (these are group containers)
+        if entry.is_array() {
+            // This is a group array, iterate through items
+            for item in entry.as_array().unwrap_or(&vec![]) {
+                parse_v1_standing_item(pool, league_name, season, sport_api, item).await;
+            }
+        } else if entry.is_object() {
+            // Check if this is a nested league.standings structure (some responses have this)
+            if let Some(nested) = entry.get("league").and_then(|l| l.get("standings")) {
+                if let Some(groups) = nested.as_array() {
+                    for group in groups {
+                        if let Some(items) = group.as_array() {
+                            for item in items {
+                                parse_v1_standing_item(pool, league_name, season, sport_api, item).await;
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Direct standing item
+                parse_v1_standing_item(pool, league_name, season, sport_api, entry).await;
+            }
+        }
+    }
+}
+
+async fn parse_v1_standing_item(
+    pool: &Arc<PgPool>,
+    league_name: &str,
+    season: &str,
+    sport_api: &str,
+    item: &serde_json::Value,
+) {
+    let team = match item.get("team") {
+        Some(t) => t,
+        None => return,
+    };
+
+    // Extract wins/losses/ties from top-level fields
+    let wins = item.get("won").and_then(|w| w.as_i64()).unwrap_or(0) as i32;
+    let losses = item.get("lost").and_then(|l| l.as_i64()).unwrap_or(0) as i32;
+    let ties = item.get("ties").and_then(|t| t.as_i64()).unwrap_or(0) as i32;
+    let games_played = wins + losses + ties;
+
+    // Extract points - can be integer (NHL) or object {for, against} (NFL)
+    let (points, points_for, points_against) = if let Some(p) = item.get("points") {
+        if let Some(p_int) = p.as_i64() {
+            (Some(p_int as i32), None, None)
+        } else if let Some(p_obj) = p.as_object() {
+            let pf = p_obj.get("for").and_then(|v| v.as_i64()).map(|v| v as i32);
+            let pa = p_obj.get("against").and_then(|v| v.as_i64()).map(|v| v as i32);
+            (None, pf, pa)
+        } else {
+            (None, None, None)
+        }
+    } else {
+        (None, None, None)
+    };
+
+    // Extract streak
+    let streak = item.get("streak").and_then(|s| s.as_str()).map(|s| s.to_string());
+
+    // Group name - can be string (NFL) or object {name} (some v1 responses)
+    let group_name = if let Some(g) = item.get("group") {
+        if let Some(g_str) = g.as_str() {
+            Some(g_str.to_string())
+        } else if let Some(g_obj) = g.as_object() {
+            g_obj.get("name").and_then(|n| n.as_str()).map(|s| s.to_string())
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    // Calculate PCT for NFL: wins / games_played
+    let pct = if games_played > 0 {
+        let pct_val = (wins as f64) / (games_played as f64);
+        Some(format!(".{:03}", (pct_val * 1000.0).round() as i32))
+    } else {
+        None
+    };
+
+    let standing = StandingData {
+        league: league_name.to_string(),
+        team_name: team.get("name").and_then(|n| n.as_str()).unwrap_or("").to_string(),
+        team_code: team.get("code").and_then(|c| c.as_str()).map(|s| s.to_string()),
+        team_logo: team.get("logo").and_then(|l| l.as_str()).map(|s| s.to_string()),
+        rank: item.get("position").or_else(|| item.get("rank")).and_then(|r| r.as_i64()).map(|r| r as i32),
+        wins,
+        losses,
+        draws: ties,
+        points,
+        games_played,
+        goal_diff: None, // Not available in v1 format
+        description: item.get("description").and_then(|d| d.as_str()).map(|s| s.to_string()),
+        form: item.get("form").and_then(|f| f.as_str()).map(|s| s.to_string()),
+        group_name,
+        season: Some(season.to_string()),
+        sport_api: Some(sport_api.to_string()),
+        pct,
+        games_behind: None,
+        otl: None,
+        goals_for: None,
+        goals_against: None,
+        points_for,
+        points_against,
+        streak,
+    };
+
+    if let Err(e) = upsert_standing(pool, standing).await {
+        error!("[{}] Failed to upsert standing: {}", league_name, e);
+    }
+}
+
+/// Parse NBA, MLB, Handball, Volleyball standings (v1 API with nested games object)
+async fn parse_basketball_standings(
+    pool: &Arc<PgPool>,
+    league_name: &str,
+    season: &str,
+    sport_api: &str,
+    response: &[serde_json::Value],
+) {
+    for entry in response {
+        // V1 sports with games object: flat response array
+        if entry.is_array() {
+            for item in entry.as_array().unwrap_or(&vec![]) {
+                parse_basketball_standing_item(pool, league_name, season, sport_api, item).await;
+            }
+        } else if entry.is_object() {
+            // Check for nested structure
+            if let Some(nested) = entry.get("league").and_then(|l| l.get("standings")) {
+                if let Some(groups) = nested.as_array() {
+                    for group in groups {
+                        if let Some(items) = group.as_array() {
+                            for item in items {
+                                parse_basketball_standing_item(pool, league_name, season, sport_api, item).await;
+                            }
+                        }
+                    }
+                }
+            } else {
+                parse_basketball_standing_item(pool, league_name, season, sport_api, entry).await;
+            }
+        }
+    }
+}
+
+async fn parse_basketball_standing_item(
+    pool: &Arc<PgPool>,
+    league_name: &str,
+    season: &str,
+    sport_api: &str,
+    item: &serde_json::Value,
+) {
+    let team = match item.get("team") {
+        Some(t) => t,
+        None => return,
+    };
+
+    // NBA/MLB: games object has nested win/lose with {total, percentage}
+    let games = item.get("games");
+    let (wins, losses, games_played, pct) = if let Some(g) = games {
+        let w = g.get("win").and_then(|w| {
+            w.get("total").or_else(|| w.as_object().map(|o| o.values().next().unwrap_or(&serde_json::Value::Null)))
+        }).and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+        let l = g.get("lose").and_then(|l| {
+            l.get("total").or_else(|| l.as_object().map(|o| o.values().next().unwrap_or(&serde_json::Value::Null)))
+        }).and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+        let gp = g.get("played").and_then(|p| p.as_i64()).unwrap_or(0) as i32;
+        
+        // Extract percentage from win.percentage
+        let pct_str = g.get("win").and_then(|w| w.get("percentage")).and_then(|p| {
+            if let Some(pct_str) = p.as_str() {
+                Some(pct_str.to_string())
+            } else if let Some(pct_f) = p.as_f64() {
+                Some(format!(".{:.3}", pct_f).trim_start_matches("0").to_string())
+            } else {
+                None
+            }
+        });
+        
+        (w, l, gp, pct_str)
+    } else {
+        (0, 0, 0, None)
+    };
+
+    // Points for/against (available in some responses)
+    let (points_for, points_against) = if let Some(p) = item.get("points") {
+        if let Some(p_obj) = p.as_object() {
+            (p_obj.get("for").and_then(|v| v.as_i64()).map(|v| v as i32),
+             p_obj.get("against").and_then(|v| v.as_i64()).map(|v| v as i32))
+        } else {
+            (None, None)
+        }
+    } else {
+        (None, None)
+    };
+
+    // Games behind (for MLB)
+    let games_behind = item.get("games_behind").and_then(|gb| {
+        if let Some(gb_str) = gb.as_str() {
+            Some(gb_str.to_string())
+        } else if let Some(gb_f) = gb.as_f64() {
+            Some(format!("{:.1}", gb_f))
+        } else {
+            None
+        }
+    });
+
+    // Group - can be object {name} or string
+    let group_name = if let Some(g) = item.get("group") {
+        if let Some(g_str) = g.as_str() {
+            Some(g_str.to_string())
+        } else if let Some(g_obj) = g.as_object() {
+            g_obj.get("name").and_then(|n| n.as_str()).map(|s| s.to_string())
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    let standing = StandingData {
+        league: league_name.to_string(),
+        team_name: team.get("name").and_then(|n| n.as_str()).unwrap_or("").to_string(),
+        team_code: team.get("code").and_then(|c| c.as_str()).map(|s| s.to_string()),
+        team_logo: team.get("logo").and_then(|l| l.as_str()).map(|s| s.to_string()),
+        rank: item.get("position").or_else(|| item.get("rank")).and_then(|r| r.as_i64()).map(|r| r as i32),
+        wins,
+        losses,
+        draws: 0, // Basketball/Baseball don't have draws
+        points: None, // Basketball/MLB don't use points
+        games_played,
+        goal_diff: None,
+        description: item.get("description").and_then(|d| d.as_str()).map(|s| s.to_string()),
+        form: item.get("form").and_then(|f| f.as_str()).map(|s| s.to_string()),
+        group_name,
+        season: Some(season.to_string()),
+        sport_api: Some(sport_api.to_string()),
+        pct,
+        games_behind,
+        otl: None,
+        goals_for: None,
+        goals_against: None,
+        points_for,
+        points_against,
+        streak: item.get("streak").and_then(|s| s.as_str()).map(|s| s.to_string()),
+    };
+
+    if let Err(e) = upsert_standing(pool, standing).await {
+        error!("[{}] Failed to upsert standing: {}", league_name, e);
+    }
+}
+
+/// Parse NHL standings (similar to v1 but with overtime losses)
+async fn parse_hockey_standings(
+    pool: &Arc<PgPool>,
+    league_name: &str,
+    season: &str,
+    sport_api: &str,
+    response: &[serde_json::Value],
+) {
+    for entry in response {
+        if entry.is_array() {
+            for item in entry.as_array().unwrap_or(&vec![]) {
+                parse_hockey_standing_item(pool, league_name, season, sport_api, item).await;
+            }
+        } else if entry.is_object() {
+            if let Some(nested) = entry.get("league").and_then(|l| l.get("standings")) {
+                if let Some(groups) = nested.as_array() {
+                    for group in groups {
+                        if let Some(items) = group.as_array() {
+                            for item in items {
+                                parse_hockey_standing_item(pool, league_name, season, sport_api, item).await;
+                            }
+                        }
+                    }
+                }
+            } else {
+                parse_hockey_standing_item(pool, league_name, season, sport_api, entry).await;
+            }
+        }
+    }
+}
+
+async fn parse_hockey_standing_item(
+    pool: &Arc<PgPool>,
+    league_name: &str,
+    season: &str,
+    sport_api: &str,
+    item: &serde_json::Value,
+) {
+    let team = match item.get("team") {
+        Some(t) => t,
+        None => return,
+    };
+
+    // NHL: won, lost, lost_overtime at top level, points is integer
+    let wins = item.get("won").and_then(|w| w.as_i64()).unwrap_or(0) as i32;
+    let losses = item.get("lost").and_then(|l| l.as_i64()).unwrap_or(0) as i32;
+    let otl = item.get("lost_overtime").and_then(|l| l.as_i64()).unwrap_or(0) as i32;
+    let games_played = item.get("games").and_then(|g| g.get("played")).and_then(|p| p.as_i64()).unwrap_or(0) as i32;
+    
+    // Points is directly available as integer in NHL
+    let points = item.get("points").and_then(|p| p.as_i64()).map(|p| p as i32);
+
+    // Goals for/against
+    let goals_for = item.get("goals_for").and_then(|g| g.as_i64()).map(|g| g as i32);
+    let goals_against = item.get("goals_against").and_then(|g| g.as_i64()).map(|g| g as i32);
+
+    // Calculate goal diff
+    let goal_diff = match (goals_for, goals_against) {
+        (Some(gf), Some(ga)) => Some(gf - ga),
+        _ => None,
+    };
+
+    // Group name
+    let group_name = if let Some(g) = item.get("group") {
+        if let Some(g_str) = g.as_str() {
+            Some(g_str.to_string())
+        } else if let Some(g_obj) = g.as_object() {
+            g_obj.get("name").and_then(|n| n.as_str()).map(|s| s.to_string())
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    // Calculate PCT
+    let pct = if games_played > 0 {
+        let pct_val = (wins as f64) / (games_played as f64);
+        Some(format!(".{:03}", (pct_val * 1000.0).round() as i32))
+    } else {
+        None
+    };
+
+    let standing = StandingData {
+        league: league_name.to_string(),
+        team_name: team.get("name").and_then(|n| n.as_str()).unwrap_or("").to_string(),
+        team_code: team.get("code").and_then(|c| c.as_str()).map(|s| s.to_string()),
+        team_logo: team.get("logo").and_then(|l| l.as_str()).map(|s| s.to_string()),
+        rank: item.get("position").or_else(|| item.get("rank")).and_then(|r| r.as_i64()).map(|r| r as i32),
+        wins,
+        losses,
+        draws: 0, // NHL doesn't have draws
+        points,
+        games_played,
+        goal_diff,
+        description: item.get("description").and_then(|d| d.as_str()).map(|s| s.to_string()),
+        form: item.get("form").and_then(|f| f.as_str()).map(|s| s.to_string()),
+        group_name,
+        season: Some(season.to_string()),
+        sport_api: Some(sport_api.to_string()),
+        pct,
+        games_behind: None,
+        otl: Some(otl),
+        goals_for,
+        goals_against,
+        points_for: None,
+        points_against: None,
+        streak: item.get("streak").and_then(|s| s.as_str()).map(|s| s.to_string()),
+    };
+
+    if let Err(e) = upsert_standing(pool, standing).await {
+        error!("[{}] Failed to upsert standing: {}", league_name, e);
     }
 }
 

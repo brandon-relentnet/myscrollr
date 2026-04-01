@@ -324,25 +324,41 @@ pub struct StandingData {
     pub form: Option<String>,
     pub group_name: Option<String>,
     pub season: Option<String>,
+    pub sport_api: Option<String>,
+    pub pct: Option<String>,
+    pub games_behind: Option<String>,
+    pub otl: Option<i32>,
+    pub goals_for: Option<i32>,
+    pub goals_against: Option<i32>,
+    pub points_for: Option<i32>,
+    pub points_against: Option<i32>,
+    pub streak: Option<String>,
 }
 
 pub async fn upsert_standing(pool: &Arc<PgPool>, s: StandingData) -> Result<()> {
     let mut conn = pool.acquire().await?;
     query(
-        "INSERT INTO standings (league, team_name, team_code, team_logo, rank, wins, losses, draws, points, games_played, goal_diff, description, form, group_name, season)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        "INSERT INTO standings (league, team_name, team_code, team_logo, rank, wins, losses, draws, points, games_played, goal_diff, description, form, group_name, season, sport_api, pct, games_behind, otl, goals_for, goals_against, points_for, points_against, streak)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
          ON CONFLICT (league, team_name, season) DO UPDATE SET
-            team_code = EXCLUDED.team_code, team_logo = EXCLUDED.team_logo,
-            rank = EXCLUDED.rank, wins = EXCLUDED.wins, losses = EXCLUDED.losses,
-            draws = EXCLUDED.draws, points = EXCLUDED.points,
-            games_played = EXCLUDED.games_played, goal_diff = EXCLUDED.goal_diff,
-            description = EXCLUDED.description, form = EXCLUDED.form,
-            group_name = EXCLUDED.group_name, updated_at = CURRENT_TIMESTAMP"
+             team_code = EXCLUDED.team_code, team_logo = EXCLUDED.team_logo,
+             rank = EXCLUDED.rank, wins = EXCLUDED.wins, losses = EXCLUDED.losses,
+             draws = EXCLUDED.draws, points = EXCLUDED.points,
+             games_played = EXCLUDED.games_played, goal_diff = EXCLUDED.goal_diff,
+             description = EXCLUDED.description, form = EXCLUDED.form,
+             group_name = EXCLUDED.group_name, sport_api = EXCLUDED.sport_api,
+             pct = EXCLUDED.pct, games_behind = EXCLUDED.games_behind,
+             otl = EXCLUDED.otl, goals_for = EXCLUDED.goals_for,
+             goals_against = EXCLUDED.goals_against, points_for = EXCLUDED.points_for,
+             points_against = EXCLUDED.points_against, streak = EXCLUDED.streak,
+             updated_at = CURRENT_TIMESTAMP"
     )
     .bind(&s.league).bind(&s.team_name).bind(&s.team_code).bind(&s.team_logo)
     .bind(s.rank).bind(s.wins).bind(s.losses).bind(s.draws).bind(s.points)
     .bind(s.games_played).bind(s.goal_diff).bind(&s.description).bind(&s.form)
-    .bind(&s.group_name).bind(&s.season)
+    .bind(&s.group_name).bind(&s.season).bind(&s.sport_api).bind(&s.pct)
+    .bind(&s.games_behind).bind(s.otl).bind(s.goals_for).bind(s.goals_against)
+    .bind(s.points_for).bind(s.points_against).bind(&s.streak)
     .execute(&mut *conn)
     .await?;
     Ok(())
