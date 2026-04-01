@@ -1971,6 +1971,174 @@
     "exchange": "OTC"
   },
   {
+    "symbol": "GIS",
+    "name": "General Mills Inc.",
+    "category": "Consumer Defensive",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "HOOD",
+    "name": "Robinhood Markets Inc.",
+    "category": "Financial Services",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "HPE",
+    "name": "Hewlett Packard Enterprise Co.",
+    "category": "Technology",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "GDDY",
+    "name": "GoDaddy Inc.",
+    "category": "Technology",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "EVRG",
+    "name": "Evergy Inc.",
+    "category": "Utilities",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "DELL",
+    "name": "Dell Technologies Inc.",
+    "category": "Technology",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "KHC",
+    "name": "The Kraft Heinz Company",
+    "category": "Consumer Defensive",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "MRNA",
+    "name": "Moderna Inc.",
+    "category": "Healthcare",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "OXY",
+    "name": "Occidental Petroleum Corp.",
+    "category": "Energy",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "CRWD",
+    "name": "CrowdStrike Holdings Inc.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "DAL",
+    "name": "Delta Air Lines Inc.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "DG",
+    "name": "Dollar General Corporation",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "DTE",
+    "name": "DTE Energy Company",
+    "category": "Utilities",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "DUK",
+    "name": "Duke Energy Corp.",
+    "category": "Utilities",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "SWK",
+    "name": "Stanley Black & Decker Inc.",
+    "category": "Industrials",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "TGT",
+    "name": "Target Corporation",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "TSN",
+    "name": "Tyson Foods Inc.",
+    "category": "Consumer Defensive",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "WDAY",
+    "name": "Workday Inc.",
+    "category": "Technology",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "WSM",
+    "name": "Williams-Sonoma Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "XEL",
+    "name": "Xcel Energy Inc.",
+    "category": "Utilities",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "HSY",
+    "name": "The Hershey Company",
+    "category": "Consumer Defensive",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "FE",
+    "name": "FirstEnergy Corp.",
+    "category": "Utilities",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "FANG",
+    "name": "Diamondback Energy Inc.",
+    "category": "Energy",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "DECK",
+    "name": "Deckers Outdoor Corporation",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "CMG",
+    "name": "Chipotle Mexican Grill Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "CMCSA",
+    "name": "Comcast Corporation",
+    "category": "Communication Services",
+    "exchange": "NASDAQ"
+  },
+  {
+    "symbol": "AFL",
+    "name": "Aflac Incorporated",
+    "category": "Financial Services",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "AZO",
+    "name": "AutoZone Inc.",
+    "category": "Consumer Cyclical",
+    "exchange": "NASDAQ"
+  },
+  {
     "symbol": "SPY",
     "name": "SPDR S&P 500 ETF Trust",
     "category": "ETF"

@@ -95,3 +95,9 @@ type TeamInfo struct {
 	Logo       string `json:"logo"`
 	Country    string `json:"country,omitempty"`
 }
+
+// FavoriteTeam represents a user's favorite team for a specific league.
+type FavoriteTeam struct {
+	TeamID   int    `json:"teamId"`
+	TeamName string `json:"teamName"`
+}

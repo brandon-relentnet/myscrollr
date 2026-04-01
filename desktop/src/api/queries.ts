@@ -109,6 +109,15 @@ export interface Standing {
   streak?: string;
 }
 
+export interface TeamInfo {
+  league: string;
+  external_id: number;
+  name: string;
+  code: string;
+  logo: string;
+  country?: string;
+}
+
 export function standingsOptions(league: string) {
   return queryOptions({
     queryKey: queryKeys.standings(league),
@@ -123,6 +132,15 @@ export function sportsCatalogOptions() {
     queryKey: queryKeys.catalogs.sports,
     queryFn: () => request<TrackedLeague[]>("/sports/leagues"),
     staleTime: 5 * 60 * 1000, // 5 min — catalogs change infrequently
+  });
+}
+
+export function sportsTeamsOptions(league: string) {
+  return queryOptions({
+    queryKey: ["teams", league] as const,
+    queryFn: () => request<{ teams: TeamInfo[] }>(`/sports/teams?league=${encodeURIComponent(league)}`),
+    staleTime: 24 * 60 * 60 * 1000, // 24 hours — teams change infrequently
+    enabled: !!league,
   });
 }
 
