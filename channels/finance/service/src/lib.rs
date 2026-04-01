@@ -4,9 +4,13 @@ use futures_util::future::join_all;
 use reqwest::Client;
 use tokio::{sync::Mutex, time::{self, sleep}};
 use crate::log::{error, info, warn};
-use crate::database::{PgPool, insert_symbol, update_previous_close, update_trade, get_tracked_symbols, seed_tracked_symbols};
+use crate::database::{
+    PgPool, insert_symbol, update_previous_close, update_trade, get_tracked_symbols,
+    seed_tracked_symbols, get_symbols_without_exchange, get_all_enabled_symbols,
+    update_symbol_exchange_link,
+};
 
-use crate::{types::{FinanceHealth, FinanceState, QuoteResponse, TrackedSymbolConfig}, websocket::connect};
+use crate::{types::{FinanceHealth, FinanceState, QuoteResponse, TrackedSymbolConfig, TwelveDataStocksResponse}, websocket::connect};
 
 pub mod types;
 mod websocket;
@@ -32,7 +36,21 @@ pub async fn start_finance_services(pool: Arc<PgPool>, health_state: Arc<Mutex<F
     // Initialization with database-driven state
     let state = FinanceState::new(Arc::clone(&pool)).await;
     initialize_symbols(state.clone()).await;
+    
+    // Fetch exchange metadata for symbols that don't have it yet
+    fetch_exchange_metadata(state.clone()).await;
+    
     update_all_previous_closes(state.clone()).await;
+
+    // Spawn background task to verify/refresh exchange metadata every 24 hours
+    let bg_state = state.clone();
+    tokio::spawn(async move {
+        loop {
+            sleep(Duration::from_secs(86400)).await; // 24 hours
+            info!("[ TwelveData ] Running background exchange metadata verification...");
+            verify_exchange_metadata(bg_state.clone()).await;
+        }
+    });
 
     loop {
         match connect(state.subscriptions.clone(), state.api_key.clone(), state.client.clone(), pool.clone(), health_state.clone()).await {
@@ -117,4 +135,162 @@ pub(crate) async fn get_quote(symbol: String, client: Arc<Client>, api_key: &str
         anyhow::bail!("TwelveData API error {code}: {msg}");
     }
     Ok(data)
+}
+
+// =============================================================================
+// Exchange Metadata
+// =============================================================================
+
+/// Generates a Google Finance URL for a symbol.
+/// - Crypto (contains '/'): BTC/USD -> https://www.google.com/finance/quote/BTC-USD
+/// - Stock with exchange: AAPL + NASDAQ -> https://www.google.com/finance/quote/AAPL:NASDAQ
+/// - Fallback: https://www.google.com/search?q=SYMBOL+stock
+fn generate_google_finance_link(symbol: &str, exchange: Option<&str>) -> String {
+    if symbol.contains('/') {
+        // Crypto: BTC/USD -> BTC-USD
+        let cleaned = symbol.replace('/', "-");
+        format!("https://www.google.com/finance/quote/{}", cleaned)
+    } else if let Some(ex) = exchange {
+        // Stock with exchange
+        format!("https://www.google.com/finance/quote/{}:{}", symbol, ex)
+    } else {
+        // Fallback: Google search
+        format!("https://www.google.com/search?q={}+stock", symbol)
+    }
+}
+
+/// Fetches exchange info from TwelveData /stocks endpoint for a single symbol.
+/// Returns None if the symbol is not found (crypto, delisted, etc.)
+async fn fetch_stock_exchange(
+    symbol: &str,
+    client: Arc<Client>,
+    api_key: &str,
+) -> Option<String> {
+    let rest_base = std::env::var("TWELVEDATA_REST_URL")
+        .unwrap_or_else(|_| "https://api.twelvedata.com".to_string());
+    
+    // Must include country=United States to get US exchanges (otherwise returns first alphabetical)
+    let url = format!(
+        "{}/stocks?symbol={}&country=United%20States&apikey={}",
+        rest_base, symbol, api_key
+    );
+    
+    match client.get(&url).send().await {
+        Ok(resp) => match resp.text().await {
+            Ok(text) => {
+                match serde_json::from_str::<TwelveDataStocksResponse>(&text) {
+                    Ok(data) if !data.data.is_empty() => {
+                        Some(data.data[0].exchange.clone())
+                    }
+                    _ => None,
+                }
+            }
+            Err(_) => None,
+        },
+        Err(_) => None,
+    }
+}
+
+/// Fetches exchange metadata for symbols that don't have it yet.
+/// Called at startup - fast path if all symbols already have exchange data.
+async fn fetch_exchange_metadata(state: FinanceState) {
+    let symbols = get_symbols_without_exchange(state.pool.clone()).await;
+    
+    if symbols.is_empty() {
+        info!("[ TwelveData ] All symbols already have exchange metadata.");
+        return;
+    }
+    
+    info!("[ TwelveData ] Fetching exchange metadata for {} symbols...", symbols.len());
+    
+    // Batch 50 at a time with 5-second delays to stay well under 610 req/min limit
+    let batch_size = 50;
+    let mut processed = 0;
+    
+    for batch in symbols.chunks(batch_size) {
+        let futures: Vec<_> = batch.iter().map(|symbol| {
+            let client = state.client.clone();
+            let api_key = state.api_key.clone();
+            let pool = state.pool.clone();
+            let symbol = symbol.clone();
+            
+            async move {
+                // Crypto symbols contain '/' - no need to call TwelveData
+                let (exchange, link) = if symbol.contains('/') {
+                    let link = generate_google_finance_link(&symbol, None);
+                    (None, link)
+                } else {
+                    // Stock - fetch exchange from TwelveData
+                    let exchange = fetch_stock_exchange(&symbol, client, &api_key).await;
+                    let link = generate_google_finance_link(&symbol, exchange.as_deref());
+                    (exchange, link)
+                };
+                
+                if let Err(e) = update_symbol_exchange_link(
+                    pool,
+                    &symbol,
+                    exchange.as_deref(),
+                    &link,
+                ).await {
+                    warn!("[ TwelveData ] Failed to update exchange/link for {}: {}", symbol, e);
+                }
+            }
+        }).collect();
+        
+        join_all(futures).await;
+        processed += batch.len();
+        
+        // Only delay if there are more batches to process
+        if processed < symbols.len() {
+            time::sleep(Duration::from_secs(5)).await;
+        }
+    }
+    
+    info!("[ TwelveData ] Exchange metadata fetch complete for {} symbols.", symbols.len());
+}
+
+/// Background verification task - re-fetches exchange data for all symbols.
+/// Runs every 24 hours to catch any changes or fix previous failures.
+async fn verify_exchange_metadata(state: FinanceState) {
+    let symbols = get_all_enabled_symbols(state.pool.clone()).await;
+    
+    if symbols.is_empty() {
+        return;
+    }
+    
+    info!("[ TwelveData ] Verifying exchange metadata for {} symbols...", symbols.len());
+    
+    let batch_size = 50;
+    let mut processed = 0;
+    
+    for batch in symbols.chunks(batch_size) {
+        let futures: Vec<_> = batch.iter().map(|symbol| {
+            let client = state.client.clone();
+            let api_key = state.api_key.clone();
+            let pool = state.pool.clone();
+            let symbol = symbol.clone();
+            
+            async move {
+                let (exchange, link) = if symbol.contains('/') {
+                    let link = generate_google_finance_link(&symbol, None);
+                    (None, link)
+                } else {
+                    let exchange = fetch_stock_exchange(&symbol, client, &api_key).await;
+                    let link = generate_google_finance_link(&symbol, exchange.as_deref());
+                    (exchange, link)
+                };
+                
+                let _ = update_symbol_exchange_link(pool, &symbol, exchange.as_deref(), &link).await;
+            }
+        }).collect();
+        
+        join_all(futures).await;
+        processed += batch.len();
+        
+        if processed < symbols.len() {
+            time::sleep(Duration::from_secs(5)).await;
+        }
+    }
+    
+    info!("[ TwelveData ] Exchange metadata verification complete.");
 }

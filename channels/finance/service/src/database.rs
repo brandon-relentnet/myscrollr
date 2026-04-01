@@ -85,10 +85,16 @@ pub async fn get_tracked_symbols(pool: Arc<PgPool>) -> Vec<String> {
 }
 
 pub async fn seed_tracked_symbols(pool: Arc<PgPool>, symbols: Vec<crate::types::TrackedSymbolConfig>) -> Result<()> {
-    let statement = "INSERT INTO tracked_symbols (symbol, name, category) VALUES ($1, $2, $3) ON CONFLICT (symbol) DO UPDATE SET name = EXCLUDED.name, category = EXCLUDED.category";
+    let statement = "INSERT INTO tracked_symbols (symbol, name, category, exchange) VALUES ($1, $2, $3, $4) ON CONFLICT (symbol) DO UPDATE SET name = EXCLUDED.name, category = EXCLUDED.category, exchange = COALESCE(EXCLUDED.exchange, tracked_symbols.exchange)";
     let mut connection = pool.acquire().await?;
     for entry in symbols {
-        query(statement).bind(&entry.symbol).bind(&entry.name).bind(&entry.category).execute(&mut *connection).await?;
+        query(statement)
+            .bind(&entry.symbol)
+            .bind(&entry.name)
+            .bind(&entry.category)
+            .bind(&entry.exchange)
+            .execute(&mut *connection)
+            .await?;
     }
     Ok(())
 }
@@ -141,4 +147,58 @@ pub async fn get_trades(pool: Arc<PgPool>) -> Vec<DatabaseTradeData> {
             Vec::new()
         }
     }
+}
+
+/// Returns symbols where exchange is NULL (need metadata fetch).
+pub async fn get_symbols_without_exchange(pool: Arc<PgPool>) -> Vec<String> {
+    let statement = "SELECT symbol FROM tracked_symbols WHERE exchange IS NULL AND is_enabled = TRUE";
+    let res: Result<Vec<(String,)>, sqlx::Error> = async {
+        let mut connection = pool.acquire().await?;
+        let data = query_as(statement).fetch_all(&mut *connection).await?;
+        Ok(data)
+    }.await;
+
+    match res {
+        Ok(data) => data.into_iter().map(|(s,)| s).collect(),
+        Err(e) => {
+            log::error!("Failed to get symbols without exchange: {}", e);
+            Vec::new()
+        }
+    }
+}
+
+/// Returns all enabled symbols (for background verification).
+pub async fn get_all_enabled_symbols(pool: Arc<PgPool>) -> Vec<String> {
+    let statement = "SELECT symbol FROM tracked_symbols WHERE is_enabled = TRUE";
+    let res: Result<Vec<(String,)>, sqlx::Error> = async {
+        let mut connection = pool.acquire().await?;
+        let data = query_as(statement).fetch_all(&mut *connection).await?;
+        Ok(data)
+    }.await;
+
+    match res {
+        Ok(data) => data.into_iter().map(|(s,)| s).collect(),
+        Err(e) => {
+            log::error!("Failed to get all enabled symbols: {}", e);
+            Vec::new()
+        }
+    }
+}
+
+/// Updates exchange and link for a symbol.
+pub async fn update_symbol_exchange_link(
+    pool: Arc<PgPool>,
+    symbol: &str,
+    exchange: Option<&str>,
+    link: &str,
+) -> Result<()> {
+    let statement = "UPDATE tracked_symbols SET exchange = $1, link = $2 WHERE symbol = $3";
+    let mut connection = pool.acquire().await?;
+    query(statement)
+        .bind(exchange)
+        .bind(link)
+        .bind(symbol)
+        .execute(&mut *connection)
+        .await?;
+    Ok(())
 }
