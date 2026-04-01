@@ -1971,6 +1971,18 @@
     "exchange": "OTC"
   },
   {
+    "symbol": "CL",
+    "name": "Colgate-Palmolive Company",
+    "category": "Consumer Defensive",
+    "exchange": "NYSE"
+  },
+  {
+    "symbol": "LAC",
+    "name": "Lithium Americas Corp.",
+    "category": "Basic Materials",
+    "exchange": "NYSE"
+  },
+  {
     "symbol": "GIS",
     "name": "General Mills Inc.",
     "category": "Consumer Defensive",
