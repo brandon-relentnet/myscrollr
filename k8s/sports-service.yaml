@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sports-service
+  namespace: scrollr
+  labels:
+    app: sports-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sports-service
+  template:
+    metadata:
+      labels:
+        app: sports-service
+    spec:
+      containers:
+        - name: sports-service
+          image: registry.digitalocean.com/scrollr/sports-service:latest
+          ports:
+            - containerPort: 3002
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: scrollr-secrets
+                  key: DATABASE_URL
+            - name: API_SPORTS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrollr-secrets
+                  key: API_SPORTS_KEY
+            - name: PORT
+              value: "3002"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3002
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3002
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sports-service
+  namespace: scrollr
+spec:
+  selector:
+    app: sports-service
+  ports:
+    - port: 3002
+      targetPort: 3002
+  type: ClusterIP

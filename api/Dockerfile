@@ -27,17 +27,9 @@ FROM alpine:latest
 
 WORKDIR /root/
 
-# Define Build Args
-ARG COOLIFY_FQDN
-
-# Derive all URLs from COOLIFY_FQDN
-ENV API_URL=https://${COOLIFY_FQDN}
-ENV LOGTO_URL=https://${COOLIFY_FQDN}/oidc
-ENV LOGTO_JWKS_URL=https://${COOLIFY_FQDN}/oidc/jwks
-ENV YAHOO_CALLBACK_URL=https://${COOLIFY_FQDN}/yahoo/callback
-
-# Extension auth — set via Coolify env or build arg
-# LOGTO_EXTENSION_APP_ID should be configured in deployment environment
+# All URL env vars (API_URL, LOGTO_URL, LOGTO_JWKS_URL, YAHOO_CALLBACK_URL)
+# are supplied at runtime via K8s ConfigMap / Coolify env vars.
+# The Go code reads them via os.Getenv() with CleanFQDN() fallback.
 
 # Install curl for health checks
 RUN apk --no-cache add curl

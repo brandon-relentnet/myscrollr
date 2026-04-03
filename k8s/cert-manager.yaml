@@ -1,0 +1,28 @@
+# ClusterIssuer for Let's Encrypt production certificates.
+# Requires cert-manager to be installed in the cluster first:
+#
+#   kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.17.2/cert-manager.yaml
+#
+# If using Cloudflare proxy (orange cloud), you may want to use
+# Cloudflare Origin Certificates instead of Let's Encrypt.
+# In that case, skip this file and create a TLS secret manually:
+#
+#   kubectl create secret tls scrollr-tls \
+#     --cert=origin-cert.pem \
+#     --key=origin-key.pem \
+#     -n scrollr
+#
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: support@myscrollr.com
+    privateKeySecretRef:
+      name: letsencrypt-prod-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
