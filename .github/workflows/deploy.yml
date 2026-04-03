@@ -1,0 +1,221 @@
+name: Build & Deploy to K8s
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "api/**"
+      - "channels/**"
+      - "myscrollr.com/**"
+      - "k8s/**"
+  workflow_dispatch:
+    inputs:
+      services:
+        description: "Comma-separated services to deploy (or 'all')"
+        required: false
+        default: "all"
+
+env:
+  REGISTRY: registry.digitalocean.com/scrollr
+
+jobs:
+  # ── Detect which services changed ──────────────────────────────
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      core-api: ${{ steps.changes.outputs.core-api }}
+      website: ${{ steps.changes.outputs.website }}
+      finance-api: ${{ steps.changes.outputs.finance-api }}
+      finance-service: ${{ steps.changes.outputs.finance-service }}
+      sports-api: ${{ steps.changes.outputs.sports-api }}
+      sports-service: ${{ steps.changes.outputs.sports-service }}
+      rss-api: ${{ steps.changes.outputs.rss-api }}
+      rss-service: ${{ steps.changes.outputs.rss-service }}
+      fantasy-api: ${{ steps.changes.outputs.fantasy-api }}
+      k8s: ${{ steps.changes.outputs.k8s }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for manual override
+        id: manual
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.services }}" = "all" ]; then
+            echo "deploy_all=true" >> $GITHUB_OUTPUT
+          else
+            echo "deploy_all=false" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: dorny/paths-filter@v3
+        id: changes
+        if: steps.manual.outputs.deploy_all != 'true'
+        with:
+          filters: |
+            core-api:
+              - 'api/**'
+            website:
+              - 'myscrollr.com/**'
+            finance-api:
+              - 'channels/finance/api/**'
+            finance-service:
+              - 'channels/finance/service/**'
+            sports-api:
+              - 'channels/sports/api/**'
+            sports-service:
+              - 'channels/sports/service/**'
+            rss-api:
+              - 'channels/rss/api/**'
+            rss-service:
+              - 'channels/rss/service/**'
+            fantasy-api:
+              - 'channels/fantasy/api/**'
+            k8s:
+              - 'k8s/**'
+
+      - name: Set all outputs for manual deploy
+        if: steps.manual.outputs.deploy_all == 'true'
+        id: all
+        run: |
+          for svc in core-api website finance-api finance-service sports-api sports-service rss-api rss-service fantasy-api k8s; do
+            echo "${svc}=true" >> $GITHUB_OUTPUT
+          done
+
+  # ── Build & push Docker images ─────────────────────────────────
+  build:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: core-api
+            context: ./api
+            dockerfile: ./api/Dockerfile
+            changed: ${{ needs.detect-changes.outputs.core-api }}
+          - service: website
+            context: .
+            dockerfile: ./myscrollr.com/Dockerfile
+            changed: ${{ needs.detect-changes.outputs.website }}
+            build-args: |
+              VITE_API_URL=https://api.myscrollr.com
+              VITE_LOGTO_ENDPOINT=https://auth.myscrollr.com
+              VITE_LOGTO_APP_ID=${{ secrets.VITE_LOGTO_APP_ID }}
+              VITE_LOGTO_RESOURCE=https://api.myscrollr.com
+              VITE_STRIPE_PUBLISHABLE_KEY=${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+          - service: finance-api
+            context: ./channels/finance/api
+            dockerfile: ./channels/finance/api/Dockerfile
+            changed: ${{ needs.detect-changes.outputs.finance-api }}
+          - service: finance-service
+            context: ./channels/finance/service
+            dockerfile: ./channels/finance/service/Dockerfile
+            changed: ${{ needs.detect-changes.outputs.finance-service }}
+          - service: sports-api
+            context: ./channels/sports/api
+            dockerfile: ./channels/sports/api/Dockerfile
+            changed: ${{ needs.detect-changes.outputs.sports-api }}
+          - service: sports-service
+            context: ./channels/sports/service
+            dockerfile: ./channels/sports/service/Dockerfile
+            changed: ${{ needs.detect-changes.outputs.sports-service }}
+          - service: rss-api
+            context: ./channels/rss/api
+            dockerfile: ./channels/rss/api/Dockerfile
+            changed: ${{ needs.detect-changes.outputs.rss-api }}
+          - service: rss-service
+            context: ./channels/rss/service
+            dockerfile: ./channels/rss/service/Dockerfile
+            changed: ${{ needs.detect-changes.outputs.rss-service }}
+          - service: fantasy-api
+            context: ./channels/fantasy/api
+            dockerfile: ./channels/fantasy/api/Dockerfile
+            changed: ${{ needs.detect-changes.outputs.fantasy-api }}
+    steps:
+      - name: Skip unchanged service
+        if: matrix.changed != 'true'
+        run: echo "Skipping ${{ matrix.service }} — no changes detected"
+
+      - uses: actions/checkout@v4
+        if: matrix.changed == 'true'
+
+      - name: Install doctl
+        if: matrix.changed == 'true'
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Log in to DOCR
+        if: matrix.changed == 'true'
+        run: doctl registry login --expiry-seconds 600
+
+      - name: Build and push
+        if: matrix.changed == 'true'
+        run: |
+          IMAGE="${REGISTRY}/${{ matrix.service }}"
+          SHA_TAG="sha-${GITHUB_SHA::7}"
+
+          BUILD_ARGS=""
+          if [ -n "${{ matrix.build-args }}" ]; then
+            while IFS= read -r arg; do
+              [ -n "$arg" ] && BUILD_ARGS="$BUILD_ARGS --build-arg $arg"
+            done <<< "${{ matrix.build-args }}"
+          fi
+
+          docker build \
+            -f ${{ matrix.dockerfile }} \
+            -t "${IMAGE}:${SHA_TAG}" \
+            -t "${IMAGE}:latest" \
+            $BUILD_ARGS \
+            ${{ matrix.context }}
+
+          docker push "${IMAGE}:${SHA_TAG}"
+          docker push "${IMAGE}:latest"
+
+  # ── Deploy to K8s ──────────────────────────────────────────────
+  deploy:
+    needs: [detect-changes, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Configure kubectl
+        run: doctl kubernetes cluster kubeconfig save scrollr-cluster
+
+      - name: Apply K8s config changes
+        if: needs.detect-changes.outputs.k8s == 'true'
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/configmap-core.yaml
+          kubectl apply -f k8s/configmap-channels.yaml
+          kubectl apply -f k8s/cert-manager.yaml
+          kubectl apply -f k8s/ingress.yaml
+
+      - name: Roll out updated images
+        run: |
+          SHA_TAG="sha-${GITHUB_SHA::7}"
+
+          restart_if_changed() {
+            local service=$1
+            local changed=$2
+            if [ "$changed" = "true" ]; then
+              echo "Rolling out ${service} with tag ${SHA_TAG}"
+              kubectl set image deployment/${service} \
+                ${service}="${REGISTRY}/${service}:${SHA_TAG}" \
+                -n scrollr
+              kubectl rollout status deployment/${service} -n scrollr --timeout=120s
+            fi
+          }
+
+          restart_if_changed core-api "${{ needs.detect-changes.outputs.core-api }}"
+          restart_if_changed website "${{ needs.detect-changes.outputs.website }}"
+          restart_if_changed finance-api "${{ needs.detect-changes.outputs.finance-api }}"
+          restart_if_changed finance-service "${{ needs.detect-changes.outputs.finance-service }}"
+          restart_if_changed sports-api "${{ needs.detect-changes.outputs.sports-api }}"
+          restart_if_changed sports-service "${{ needs.detect-changes.outputs.sports-service }}"
+          restart_if_changed rss-api "${{ needs.detect-changes.outputs.rss-api }}"
+          restart_if_changed rss-service "${{ needs.detect-changes.outputs.rss-service }}"
+          restart_if_changed fantasy-api "${{ needs.detect-changes.outputs.fantasy-api }}"

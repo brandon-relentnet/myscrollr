@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: core-config
+  namespace: scrollr
+data:
+  # Derived URLs (replaces COOLIFY_FQDN build arg)
+  API_URL: "https://api.myscrollr.com"
+  LOGTO_URL: "https://auth.myscrollr.com/oidc"
+  LOGTO_JWKS_URL: "https://auth.myscrollr.com/oidc/jwks"
+  LOGTO_ENDPOINT: "https://auth.myscrollr.com"
+  LOGTO_M2M_RESOURCE: "https://api.myscrollr.com"
+  YAHOO_CALLBACK_URL: "https://api.myscrollr.com/yahoo/callback"
+
+  # CORS
+  ALLOWED_ORIGINS: "https://myscrollr.com,https://api.myscrollr.com"
+  FRONTEND_URL: "https://myscrollr.com"
+
+  # Logto role IDs (not secret, just config)
+  LOGTO_UPLINK_ROLE_ID: "yrz0lcq1i3rg2"
+  LOGTO_PRO_ROLE_ID: "vw99v7lv9vb47"
+  LOGTO_ULTIMATE_ROLE_ID: "cnnxg8o9cawf8"
+
+  # Stripe price IDs (not secret)
+  STRIPE_PRICE_MONTHLY: "price_1TC6czC2uHc0J8jtDEuoRRKd"
+  STRIPE_PRICE_ANNUAL: "price_1TC6d4C2uHc0J8jtz72nnm63"
+  STRIPE_PRICE_LIFETIME: "price_1TC6djC2uHc0J8jt38i1PoXy"
+  STRIPE_PRICE_PRO_MONTHLY: "price_1TC6dFC2uHc0J8jtrNuunKaC"
+  STRIPE_PRICE_PRO_ANNUAL: "price_1TC6dLC2uHc0J8jtzN17buAL"
+  STRIPE_PRICE_ULTIMATE_MONTHLY: "price_1TC6dWC2uHc0J8jt2eeHPqHg"
+  STRIPE_PRICE_ULTIMATE_ANNUAL: "price_1TC6dcC2uHc0J8jtf0qa6fXf"
+  STRIPE_LIFETIME_ULTIMATE_COUPON_ID: "BLMMYMix"
