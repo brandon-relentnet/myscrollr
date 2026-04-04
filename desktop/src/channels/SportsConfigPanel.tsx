@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { Trophy, Star, ChevronDown } from "lucide-react";
+import { Trophy, Star } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { SetupBrowser } from "../components/settings/SetupBrowser";
 import UpgradePrompt from "../components/UpgradePrompt";
@@ -11,7 +11,6 @@ import type { TrackedLeague } from "../api/queries";
 import type { Channel } from "../api/client";
 import type { SubscriptionTier } from "../auth";
 import type { TeamInfo } from "../api/queries";
-import type { FavoriteTeam } from "../hooks/useSportsConfig";
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -71,17 +70,21 @@ export default function SportsConfigPanel({
     [leagues, setLeagues],
   );
 
-  // ── Team picker for a single league ─────────────────────────────
-  function TeamPicker({ league }: { league: string }) {
+  // ── Inline team picker for selected leagues ─────────────────────
+  function InlineTeamPicker({ league }: { league: string }) {
     const { data: teamsData, isLoading } = useQuery(sportsTeamsOptions(league));
     const teams = teamsData?.teams ?? [];
     const current = favoriteTeams[league];
 
     return (
-      <div className="flex items-center gap-2 mt-2">
-        <Star className="w-3 h-3 text-fg-4" />
+      <div
+        className="flex items-center gap-2 mt-2 pt-2 border-t border-edge/10"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Star className="w-3 h-3 text-fg-4 shrink-0" />
+        <span className="text-[10px] text-fg-4 shrink-0">Favorite:</span>
         <select
-          className="text-[11px] bg-bg-2 border border-bg-4 rounded px-2 py-1 text-fg-2 min-w-[140px]"
+          className="text-[11px] bg-bg-2 border border-bg-4 rounded px-2 py-1 text-fg-2 min-w-[120px] flex-1"
           value={current?.teamName ?? ""}
           onChange={(e) => {
             const selected = teams.find((t) => t.name === e.target.value);
@@ -96,7 +99,9 @@ export default function SportsConfigPanel({
           }}
           disabled={isLoading}
         >
-          <option value="">{isLoading ? "Loading..." : "Select favorite team"}</option>
+          <option value="">
+            {isLoading ? "Loading..." : "None"}
+          </option>
           {teams.map((t: TeamInfo) => (
             <option key={t.external_id} value={t.name}>
               {t.name}
@@ -106,8 +111,11 @@ export default function SportsConfigPanel({
         {current && (
           <button
             type="button"
-            className="text-[10px] text-fg-4 hover:text-fg-2 underline"
-            onClick={() => setFavoriteTeam(league, null)}
+            className="text-[10px] text-fg-4 hover:text-fg-2 px-1"
+            onClick={(e) => {
+              e.stopPropagation();
+              setFavoriteTeam(league, null);
+            }}
           >
             Clear
           </button>
@@ -115,42 +123,6 @@ export default function SportsConfigPanel({
       </div>
     );
   }
-
-  // Render selected league items with team picker
-  const renderSelectedItem = (item: TrackedLeague) => {
-    const isSelected = leagueSet.has(item.name);
-    if (!isSelected) return null;
-
-    return (
-      <div key={item.name} className="mb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 min-w-0">
-            {item.logo_url && (
-              <img
-                src={item.logo_url}
-                alt={item.name}
-                className="w-5 h-5 object-contain shrink-0"
-              />
-            )}
-            <div className="min-w-0">
-              <div className="text-[12px] font-bold text-fg-2">{item.name}</div>
-              <div className="flex items-center gap-1.5 text-[10px] text-fg-4 truncate">
-                <span>{item.country}</span>
-              </div>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="text-[10px] font-medium shrink-0 text-fg-4 hover:text-fg-2"
-            onClick={() => removeLeague(item.name)}
-          >
-            Remove
-          </button>
-        </div>
-        <TeamPicker league={item.name} />
-      </div>
-    );
-  };
 
   return (
     <div className="w-full max-w-2xl mx-auto">
@@ -162,18 +134,6 @@ export default function SportsConfigPanel({
             noun="leagues"
             tier={subscriptionTier}
           />
-        </div>
-      )}
-
-      {/* Selected leagues with team pickers */}
-      {leagues.length > 0 && (
-        <div className="mb-4 px-3">
-          <div className="text-[11px] font-semibold text-fg-3 uppercase tracking-wider mb-2">
-            Your Leagues
-          </div>
-          <div className="bg-bg-2 rounded-lg p-3 border border-bg-4">
-            {sortedCatalog.map(renderSelectedItem)}
-          </div>
         </div>
       )}
 
@@ -194,49 +154,52 @@ export default function SportsConfigPanel({
           );
         }}
         renderItem={(item: TrackedLeague, isSelected: boolean) => (
-          <>
-            <div className="flex items-center gap-2 min-w-0 mr-2">
-              {item.logo_url && (
-                <img
-                  src={item.logo_url}
-                  alt={item.name}
-                  className="w-5 h-5 object-contain shrink-0"
-                />
-              )}
-              <div className="min-w-0">
-                <div className="text-[12px] font-bold text-fg-2">
-                  {item.name}
-                </div>
-                <div className="flex items-center gap-1.5 text-[10px] text-fg-4 truncate">
-                  <span>{item.country}</span>
-                  {item.live_count > 0 && (
-                    <span className="flex items-center gap-0.5 text-live font-bold">
-                      <span className="w-1 h-1 rounded-full bg-live animate-pulse" />
-                      {item.live_count} Live
-                    </span>
-                  )}
-                  {item.live_count === 0 && item.game_count > 0 && (
-                    <span>{item.game_count} games</span>
-                  )}
-                  {item.game_count === 0 && (
-                    <span className="text-fg-4/60">
-                      {item.is_offseason
-                        ? "Off-season"
-                        : item.next_game
-                          ? `Next: ${formatCountdown(item.next_game)}`
-                          : "No games scheduled"}
-                    </span>
-                  )}
+          <div className="w-full">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 min-w-0 mr-2">
+                {item.logo_url && (
+                  <img
+                    src={item.logo_url}
+                    alt={item.name}
+                    className="w-5 h-5 object-contain shrink-0"
+                  />
+                )}
+                <div className="min-w-0">
+                  <div className="text-[12px] font-bold text-fg-2">
+                    {item.name}
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[10px] text-fg-4 truncate">
+                    <span>{item.country}</span>
+                    {item.live_count > 0 && (
+                      <span className="flex items-center gap-0.5 text-live font-bold">
+                        <span className="w-1 h-1 rounded-full bg-live animate-pulse" />
+                        {item.live_count} Live
+                      </span>
+                    )}
+                    {item.live_count === 0 && item.game_count > 0 && (
+                      <span>{item.game_count} games</span>
+                    )}
+                    {item.game_count === 0 && (
+                      <span className="text-fg-4/60">
+                        {item.is_offseason
+                          ? "Off-season"
+                          : item.next_game
+                            ? `Next: ${formatCountdown(item.next_game)}`
+                            : "No games scheduled"}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
+              <span
+                className="text-[10px] font-medium shrink-0"
+                style={isSelected ? { color: hex } : undefined}
+              >
+                {isSelected ? "\u2713 Added" : "+ Add"}
+              </span>
             </div>
-            <span
-              className="text-[10px] font-medium shrink-0"
-              style={isSelected ? { color: hex } : undefined}
-            >
-              {isSelected ? "\u2713 Added" : "+ Add"}
-            </span>
-          </>
+            {isSelected && <InlineTeamPicker league={item.name} />}
+          </div>
         )}
         searchPlaceholder="Search by league or sport..."
         error={error}
