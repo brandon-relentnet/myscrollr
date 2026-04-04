@@ -5,12 +5,19 @@ import { SetupBrowser } from "../components/settings/SetupBrowser";
 import UpgradePrompt from "../components/UpgradePrompt";
 import { useSportsConfig } from "../hooks/useSportsConfig";
 import { formatCountdown } from "../utils/gameHelpers";
-import { sportsCatalogOptions, sportsTeamsOptions } from "../api/queries";
+import {
+  sportsCatalogOptions,
+  sportsTeamsOptions,
+  sportsFightersOptions,
+} from "../api/queries";
 import { getLimit, maxItemsForBrowser } from "../tierLimits";
 import type { TrackedLeague } from "../api/queries";
 import type { Channel } from "../api/client";
 import type { SubscriptionTier } from "../auth";
-import type { TeamInfo } from "../api/queries";
+import type { TeamInfo, FighterInfo } from "../api/queries";
+
+// Leagues that use fighters instead of teams (MMA)
+const FIGHTER_LEAGUES = new Set(["UFC"]);
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -70,11 +77,28 @@ export default function SportsConfigPanel({
     [leagues, setLeagues],
   );
 
-  // ── Inline team picker for selected leagues ─────────────────────
-  function InlineTeamPicker({ league }: { league: string }) {
-    const { data: teamsData, isLoading } = useQuery(sportsTeamsOptions(league));
-    const teams = teamsData?.teams ?? [];
+  // ── Inline favorite picker for selected leagues ─────────────────────
+  // Uses fighters for MMA leagues, teams for everything else
+  function InlineFavoritePicker({ league }: { league: string }) {
+    const isFighterLeague = FIGHTER_LEAGUES.has(league);
+
+    // Query teams or fighters based on league type
+    const { data: teamsData, isLoading: teamsLoading } = useQuery({
+      ...sportsTeamsOptions(league),
+      enabled: !isFighterLeague,
+    });
+    const { data: fightersData, isLoading: fightersLoading } = useQuery({
+      ...sportsFightersOptions(league),
+      enabled: isFighterLeague,
+    });
+
+    const isLoading = isFighterLeague ? fightersLoading : teamsLoading;
+    const items: Array<{ external_id: number; name: string }> = isFighterLeague
+      ? (fightersData?.fighters ?? [])
+      : (teamsData?.teams ?? []);
+
     const current = favoriteTeams[league];
+    const label = isFighterLeague ? "Fighter" : "Team";
 
     return (
       <div
@@ -82,12 +106,12 @@ export default function SportsConfigPanel({
         onClick={(e) => e.stopPropagation()}
       >
         <Star className="w-3 h-3 text-fg-4 shrink-0" />
-        <span className="text-[10px] text-fg-4 shrink-0">Favorite:</span>
+        <span className="text-[10px] text-fg-4 shrink-0">Favorite {label}:</span>
         <select
           className="text-[11px] bg-bg-2 border border-bg-4 rounded px-2 py-1 text-fg-2 min-w-[120px] flex-1"
           value={current?.teamName ?? ""}
           onChange={(e) => {
-            const selected = teams.find((t) => t.name === e.target.value);
+            const selected = items.find((item) => item.name === e.target.value);
             if (selected) {
               setFavoriteTeam(league, {
                 teamId: selected.external_id,
@@ -99,12 +123,10 @@ export default function SportsConfigPanel({
           }}
           disabled={isLoading}
         >
-          <option value="">
-            {isLoading ? "Loading..." : "None"}
-          </option>
-          {teams.map((t: TeamInfo) => (
-            <option key={t.external_id} value={t.name}>
-              {t.name}
+          <option value="">{isLoading ? "Loading..." : "None"}</option>
+          {items.map((item) => (
+            <option key={item.external_id} value={item.name}>
+              {item.name}
             </option>
           ))}
         </select>
@@ -198,7 +220,7 @@ export default function SportsConfigPanel({
                 {isSelected ? "\u2713 Added" : "+ Add"}
               </span>
             </div>
-            {isSelected && <InlineTeamPicker league={item.name} />}
+            {isSelected && <InlineFavoritePicker league={item.name} />}
           </div>
         )}
         searchPlaceholder="Search by league or sport..."

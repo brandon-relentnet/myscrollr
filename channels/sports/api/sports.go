@@ -619,6 +619,47 @@ func (a *App) getTeams(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"teams": teams})
 }
 
+// getFighters returns fighters for a given league (MMA/UFC only).
+func (a *App) getFighters(c *fiber.Ctx) error {
+	league := c.Query("league")
+	if league == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+			Status: "error", Error: "league query parameter is required",
+		})
+	}
+
+	cacheKey := "cache:sports:fighters:" + league
+	var fighters []FighterInfo
+	if GetCache(a.rdb, cacheKey, &fighters) {
+		return c.JSON(fiber.Map{"fighters": fighters})
+	}
+
+	rows, err := a.db.Query(c.Context(), `
+		SELECT league, external_id, name, COALESCE(logo, ''), COALESCE(category, '')
+		FROM fighters
+		WHERE league = $1
+		ORDER BY name ASC`, league)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Status: "error", Error: "failed to query fighters",
+		})
+	}
+	defer rows.Close()
+
+	fighters = make([]FighterInfo, 0)
+	for rows.Next() {
+		var f FighterInfo
+		if err := rows.Scan(&f.League, &f.ExternalID, &f.Name, &f.Logo, &f.Category); err != nil {
+			log.Printf("[Sports] Fighter row scan failed: %v", err)
+			continue
+		}
+		fighters = append(fighters, f)
+	}
+
+	SetCache(a.rdb, cacheKey, fighters, TeamsCacheTTL) // Same TTL as teams
+	return c.JSON(fiber.Map{"fighters": fighters})
+}
+
 // =============================================================================
 // Config Parsing Helpers
 // =============================================================================

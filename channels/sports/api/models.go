@@ -92,3 +92,12 @@ type FavoriteTeam struct {
 	TeamID   int    `json:"teamId"`
 	TeamName string `json:"teamName"`
 }
+
+// FighterInfo represents a fighter entry from the fighters table (MMA/UFC).
+type FighterInfo struct {
+	League     string `json:"league"`
+	ExternalID int    `json:"external_id"`
+	Name       string `json:"name"`
+	Logo       string `json:"logo,omitempty"`
+	Category   string `json:"category,omitempty"`
+}

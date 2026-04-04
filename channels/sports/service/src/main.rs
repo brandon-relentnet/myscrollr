@@ -4,7 +4,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 use sports_service::{
-    init_sports_service, poll_live, poll_schedule, poll_standings, poll_teams,
+    init_sports_service, poll_live, poll_schedule, poll_standings, poll_teams, poll_fighters,
     SportsHealth, RateLimiter,
     log::init_async_logger, database::initialize_pool,
 };
@@ -171,6 +171,29 @@ async fn main() {
                 _ = async {
                     tokio::time::sleep(std::time::Duration::from_secs(604800)).await;
                     poll_teams(&pool_teams, &client_teams, &leagues_teams, &rl_teams).await;
+                } => {}
+            }
+        }
+    });
+
+    // ── Weekly poll: fighters (every 7 days, MMA/UFC only) ───────────
+    let pool_fighters = pool.clone();
+    let client_fighters = client.clone();
+    let leagues_fighters = leagues.clone();
+    let rl_fighters = rate_limiter.clone();
+    let cancel_fighters = cancel.clone();
+    tokio::spawn(async move {
+        println!("Starting fighters poll loop (weekly)...");
+        poll_fighters(&pool_fighters, &client_fighters, &leagues_fighters, &rl_fighters).await;
+        loop {
+            tokio::select! {
+                _ = cancel_fighters.cancelled() => {
+                    println!("Fighters poll loop shutting down...");
+                    break;
+                }
+                _ = async {
+                    tokio::time::sleep(std::time::Duration::from_secs(604800)).await;
+                    poll_fighters(&pool_fighters, &client_fighters, &leagues_fighters, &rl_fighters).await;
                 } => {}
             }
         }

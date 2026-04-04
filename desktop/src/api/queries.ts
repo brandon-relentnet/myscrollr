@@ -109,6 +109,14 @@ export interface TeamInfo {
   country?: string;
 }
 
+export interface FighterInfo {
+  league: string;
+  external_id: number;
+  name: string;
+  logo?: string;
+  category?: string;
+}
+
 export function standingsOptions(league: string) {
   return queryOptions({
     queryKey: queryKeys.standings(league),
@@ -131,6 +139,15 @@ export function sportsTeamsOptions(league: string) {
     queryKey: ["teams", league] as const,
     queryFn: () => request<{ teams: TeamInfo[] }>(`/sports/teams?league=${encodeURIComponent(league)}`),
     staleTime: 24 * 60 * 60 * 1000, // 24 hours — teams change infrequently
+    enabled: !!league,
+  });
+}
+
+export function sportsFightersOptions(league: string) {
+  return queryOptions({
+    queryKey: ["fighters", league] as const,
+    queryFn: () => request<{ fighters: FighterInfo[] }>(`/sports/fighters?league=${encodeURIComponent(league)}`),
+    staleTime: 24 * 60 * 60 * 1000, // 24 hours — fighters change infrequently
     enabled: !!league,
   });
 }

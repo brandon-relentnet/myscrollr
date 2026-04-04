@@ -9,6 +9,7 @@ use crate::database::{
     cleanup_old_games, get_live_yesterday_leagues,
     LeagueConfig, TrackedLeague, upsert_game, CleanedData, Team,
     StandingData, upsert_standing, TeamData, upsert_team,
+    FighterData, upsert_fighter,
 };
 pub use crate::types::{SportsHealth, RateLimiter};
 
@@ -547,6 +548,145 @@ pub async fn poll_teams(
         tokio::time::sleep(std::time::Duration::from_millis(STARTUP_REQUEST_DELAY_MS)).await;
     }
     info!("Teams poll complete");
+}
+
+// =============================================================================
+// Fighter polling (weekly — MMA/UFC only)
+// =============================================================================
+
+/// MMA weight categories to poll for fighters.
+const MMA_WEIGHT_CATEGORIES: &[&str] = &[
+    "Flyweight",
+    "Bantamweight",
+    "Featherweight",
+    "Lightweight",
+    "Welterweight",
+    "Middleweight",
+    "Light Heavyweight",
+    "Heavyweight",
+    "Catch Weight",
+    // Women's divisions
+    "Women's Strawweight",
+    "Women's Flyweight",
+    "Women's Bantamweight",
+    "Women's Featherweight",
+];
+
+/// Fetch fighters for a given weight category from the MMA API.
+async fn fetch_fighters_for_category(
+    client: &Client,
+    category: &str,
+    rate_limiter: &Arc<RateLimiter>,
+) -> Option<Vec<serde_json::Value>> {
+    let base = "https://v1.mma.api-sports.io";
+    let url = format!("{}/fighters?category={}", base, urlencoding::encode(category));
+
+    match client.get(&url).send().await {
+        Ok(resp) => {
+            if let Some(remaining) = resp
+                .headers()
+                .get("x-ratelimit-requests-remaining")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|v| v.parse::<u32>().ok())
+            {
+                rate_limiter.update("mma", remaining);
+            }
+            if !resp.status().is_success() {
+                warn!("[UFC] Fighters API returned {} for category {}", resp.status(), category);
+                return None;
+            }
+            match resp.json::<serde_json::Value>().await {
+                Ok(body) => {
+                    let response = body
+                        .get("response")
+                        .and_then(|r| r.as_array())
+                        .cloned()
+                        .unwrap_or_default();
+                    Some(response)
+                }
+                Err(e) => {
+                    warn!("[UFC] Failed to parse fighters JSON for {}: {}", category, e);
+                    None
+                }
+            }
+        }
+        Err(e) => {
+            error!("[UFC] Fighters request failed for {}: {}", category, e);
+            None
+        }
+    }
+}
+
+/// Poll fighters for UFC/MMA. Runs weekly.
+/// Iterates through all weight categories and upserts fighters.
+pub async fn poll_fighters(
+    pool: &Arc<PgPool>,
+    client: &Client,
+    leagues: &[TrackedLeague],
+    rate_limiter: &Arc<RateLimiter>,
+) {
+    // Only poll if UFC is in the tracked leagues
+    let has_ufc = leagues.iter().any(|l| l.sport_api == "mma");
+    if !has_ufc {
+        info!("Skipping fighters poll — no MMA leagues tracked");
+        return;
+    }
+
+    if !rate_limiter.has_budget("mma") {
+        warn!("[UFC] Skipping fighters poll — budget low");
+        return;
+    }
+
+    info!("Starting fighters poll for {} weight categories", MMA_WEIGHT_CATEGORIES.len());
+    let mut total_fighters = 0u32;
+
+    for category in MMA_WEIGHT_CATEGORIES {
+        if !rate_limiter.has_budget("mma") {
+            warn!("[UFC] Stopping fighters poll — budget exhausted at category {}", category);
+            break;
+        }
+
+        match fetch_fighters_for_category(client, category, rate_limiter).await {
+            Some(fighters) => {
+                for item in &fighters {
+                    let ext_id = item.get("id").and_then(|i| i.as_i64()).unwrap_or(0) as i32;
+                    if ext_id == 0 {
+                        continue;
+                    }
+                    let data = FighterData {
+                        league: "UFC".to_string(),
+                        external_id: ext_id,
+                        name: item
+                            .get("name")
+                            .and_then(|n| n.as_str())
+                            .unwrap_or("")
+                            .to_string(),
+                        logo: item
+                            .get("photo")
+                            .and_then(|l| l.as_str())
+                            .map(|s| s.to_string()),
+                        category: item
+                            .get("category")
+                            .and_then(|c| c.as_str())
+                            .map(|s| s.to_string()),
+                    };
+                    if let Err(e) = upsert_fighter(pool, data).await {
+                        error!("[UFC] Failed to upsert fighter: {}", e);
+                    } else {
+                        total_fighters += 1;
+                    }
+                }
+            }
+            None => {
+                warn!("[UFC] No fighters returned for category {}", category);
+            }
+        }
+
+        // Spread requests to avoid rate limiting
+        tokio::time::sleep(std::time::Duration::from_millis(STARTUP_REQUEST_DELAY_MS)).await;
+    }
+
+    info!("Fighters poll complete: {} fighters upserted", total_fighters);
 }
 
 // =============================================================================

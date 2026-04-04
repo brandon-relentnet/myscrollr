@@ -378,3 +378,32 @@ pub async fn upsert_team(pool: &Arc<PgPool>, t: TeamData) -> Result<()> {
     .await?;
     Ok(())
 }
+
+// =============================================================================
+// Fighters (MMA/UFC)
+// =============================================================================
+
+#[derive(Debug)]
+pub struct FighterData {
+    pub league: String,
+    pub external_id: i32,
+    pub name: String,
+    pub logo: Option<String>,
+    pub category: Option<String>,
+}
+
+pub async fn upsert_fighter(pool: &Arc<PgPool>, f: FighterData) -> Result<()> {
+    let mut conn = pool.acquire().await?;
+    query(
+        "INSERT INTO fighters (league, external_id, name, logo, category)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (league, external_id) DO UPDATE SET
+            name = EXCLUDED.name, logo = EXCLUDED.logo,
+            category = EXCLUDED.category, updated_at = CURRENT_TIMESTAMP"
+    )
+    .bind(&f.league).bind(f.external_id).bind(&f.name)
+    .bind(&f.logo).bind(&f.category)
+    .execute(&mut *conn)
+    .await?;
+    Ok(())
+}
