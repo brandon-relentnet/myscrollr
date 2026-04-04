@@ -136,7 +136,7 @@
     "league_id": 13,
     "category": "Rugby",
     "country": "England",
-    "season_format": "cross-year",
+    "season_format": "calendar",
     "offseason_months": [7, 8]
   },
   {
@@ -155,7 +155,7 @@
     "league_id": 131,
     "category": "Handball",
     "country": "Europe",
-    "season_format": "cross-year",
+    "season_format": "calendar",
     "offseason_months": [6, 7, 8]
   },
   {
@@ -165,7 +165,7 @@
     "league_id": 39,
     "category": "Handball",
     "country": "Germany",
-    "season_format": "cross-year",
+    "season_format": "calendar",
     "offseason_months": [6, 7, 8]
   },
   {
@@ -175,7 +175,7 @@
     "league_id": 34,
     "category": "Handball",
     "country": "France",
-    "season_format": "cross-year",
+    "season_format": "calendar",
     "offseason_months": [6, 7, 8]
   },
   {
@@ -185,7 +185,7 @@
     "league_id": 248,
     "category": "Volleyball",
     "country": "Europe",
-    "season_format": "cross-year",
+    "season_format": "calendar",
     "offseason_months": [6, 7, 8, 9]
   },
   {
