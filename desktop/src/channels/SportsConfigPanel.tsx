@@ -19,6 +19,9 @@ import type { TeamInfo, FighterInfo } from "../api/queries";
 // Leagues that use fighters instead of teams (MMA)
 const FIGHTER_LEAGUES = new Set(["UFC"]);
 
+// Leagues that don't have favorites (F1 has drivers, not teams)
+const NO_FAVORITE_LEAGUES = new Set(["Formula 1"]);
+
 // ── Types ────────────────────────────────────────────────────────────
 
 interface SportsConfigPanelProps {
@@ -79,7 +82,12 @@ export default function SportsConfigPanel({
 
   // ── Inline favorite picker for selected leagues ─────────────────────
   // Uses fighters for MMA leagues, teams for everything else
+  // Returns null for leagues without favorites (F1)
   function InlineFavoritePicker({ league }: { league: string }) {
+    if (NO_FAVORITE_LEAGUES.has(league)) {
+      return null;
+    }
+
     const isFighterLeague = FIGHTER_LEAGUES.has(league);
 
     // Query teams or fighters based on league type
