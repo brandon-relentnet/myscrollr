@@ -387,7 +387,63 @@ async fn parse_and_upsert_standings(
 // Teams polling (weekly — every 7 days)
 // =============================================================================
 
+/// Fetch teams for a league and season. Returns the teams array from the API response.
+async fn fetch_teams_for_season(
+    client: &Client,
+    league: &TrackedLeague,
+    season: &str,
+    rate_limiter: &Arc<RateLimiter>,
+) -> Option<Vec<serde_json::Value>> {
+    let (base, is_mock) = match std::env::var("API_SPORTS_BASE_URL") {
+        Ok(override_url) => (override_url.trim_end_matches('/').to_string(), true),
+        Err(_) => (format!("https://{}", league.api_host), false),
+    };
+    let mut url = format!(
+        "{}/teams?league={}&season={}",
+        base, league.league_id, season
+    );
+    if is_mock {
+        url = format!("{}&sport={}", url, league.sport_api);
+    }
+
+    match client.get(&url).send().await {
+        Ok(resp) => {
+            if let Some(remaining) = resp
+                .headers()
+                .get("x-ratelimit-requests-remaining")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|v| v.parse::<u32>().ok())
+            {
+                rate_limiter.update(&league.sport_api, remaining);
+            }
+            if !resp.status().is_success() {
+                warn!("[{}] Teams API returned {}", league.name, resp.status());
+                return None;
+            }
+            match resp.json::<serde_json::Value>().await {
+                Ok(body) => {
+                    let response = body
+                        .get("response")
+                        .and_then(|r| r.as_array())
+                        .cloned()
+                        .unwrap_or_default();
+                    Some(response)
+                }
+                Err(e) => {
+                    warn!("[{}] Failed to parse teams JSON: {}", league.name, e);
+                    None
+                }
+            }
+        }
+        Err(e) => {
+            error!("[{}] Teams request failed: {}", league.name, e);
+            None
+        }
+    }
+}
+
 /// Poll teams for all enabled leagues. Runs weekly.
+/// If no teams found for the computed season, falls back to the previous year (1 year only).
 pub async fn poll_teams(
     pool: &Arc<PgPool>,
     client: &Client,
@@ -406,60 +462,85 @@ pub async fn poll_teams(
 
         let format_str = league.season_format.as_deref().unwrap_or("calendar");
         let default_season = compute_current_season(format_str);
-        let season = league.season.as_deref().unwrap_or(&default_season).to_string();
+        let season = league
+            .season
+            .as_deref()
+            .unwrap_or(&default_season)
+            .to_string();
 
-        let (base, is_mock) = match std::env::var("API_SPORTS_BASE_URL") {
-            Ok(override_url) => (override_url.trim_end_matches('/').to_string(), true),
-            Err(_) => (format!("https://{}", league.api_host), false),
-        };
-        let mut url = format!(
-            "{}/teams?league={}&season={}",
-            base, league.league_id, season
-        );
-        if is_mock {
-            url = format!("{}&sport={}", url, league.sport_api);
-        }
-
-        match client.get(&url).send().await {
-            Ok(resp) => {
-                if let Some(remaining) = resp.headers()
-                    .get("x-ratelimit-requests-remaining")
-                    .and_then(|v| v.to_str().ok())
-                    .and_then(|v| v.parse::<u32>().ok())
-                {
-                    rate_limiter.update(&league.sport_api, remaining);
-                }
-                if !resp.status().is_success() {
-                    warn!("[{}] Teams API returned {}", league.name, resp.status());
-                    continue;
-                }
-                match resp.json::<serde_json::Value>().await {
-                    Ok(body) => {
-                        let response = body.get("response").and_then(|r| r.as_array()).cloned().unwrap_or_default();
-                        for item in &response {
-                            let team = item.get("team").or(Some(item));
-                            if let Some(t) = team {
-                                let ext_id = t.get("id").and_then(|i| i.as_i64()).unwrap_or(0) as i32;
-                                if ext_id == 0 { continue; }
-                                let data = TeamData {
-                                    league: league.name.clone(),
-                                    external_id: ext_id,
-                                    name: t.get("name").and_then(|n| n.as_str()).unwrap_or("").to_string(),
-                                    code: t.get("code").and_then(|c| c.as_str()).map(|s| s.to_string()),
-                                    logo: t.get("logo").and_then(|l| l.as_str()).map(|s| s.to_string()),
-                                    country: t.get("country").and_then(|c| c.as_str()).map(|s| s.to_string()),
-                                    season: Some(season.clone()),
-                                };
-                                if let Err(e) = upsert_team(pool, data).await {
-                                    error!("[{}] Failed to upsert team: {}", league.name, e);
-                                }
+        // Try current season first
+        let (teams, actual_season) =
+            match fetch_teams_for_season(client, league, &season, rate_limiter).await {
+                Some(teams) if !teams.is_empty() => (teams, season.clone()),
+                _ => {
+                    // Fallback: try previous year (1 year back only)
+                    if let Ok(year) = season.parse::<i32>() {
+                        let fallback_season = (year - 1).to_string();
+                        info!(
+                            "[{}] No teams for season {}, trying fallback {}",
+                            league.name, season, fallback_season
+                        );
+                        // Add delay before fallback request
+                        tokio::time::sleep(std::time::Duration::from_millis(
+                            STARTUP_REQUEST_DELAY_MS,
+                        ))
+                        .await;
+                        match fetch_teams_for_season(client, league, &fallback_season, rate_limiter)
+                            .await
+                        {
+                            Some(teams) if !teams.is_empty() => (teams, fallback_season),
+                            _ => {
+                                warn!(
+                                    "[{}] No teams found for season {} or fallback {}",
+                                    league.name, season, fallback_season
+                                );
+                                (vec![], season.clone())
                             }
                         }
+                    } else {
+                        warn!(
+                            "[{}] Could not parse season '{}' as year for fallback",
+                            league.name, season
+                        );
+                        (vec![], season.clone())
                     }
-                    Err(e) => warn!("[{}] Failed to parse teams JSON: {}", league.name, e),
+                }
+            };
+
+        // Upsert teams
+        for item in &teams {
+            let team = item.get("team").or(Some(item));
+            if let Some(t) = team {
+                let ext_id = t.get("id").and_then(|i| i.as_i64()).unwrap_or(0) as i32;
+                if ext_id == 0 {
+                    continue;
+                }
+                let data = TeamData {
+                    league: league.name.clone(),
+                    external_id: ext_id,
+                    name: t
+                        .get("name")
+                        .and_then(|n| n.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    code: t
+                        .get("code")
+                        .and_then(|c| c.as_str())
+                        .map(|s| s.to_string()),
+                    logo: t
+                        .get("logo")
+                        .and_then(|l| l.as_str())
+                        .map(|s| s.to_string()),
+                    country: t
+                        .get("country")
+                        .and_then(|c| c.as_str())
+                        .map(|s| s.to_string()),
+                    season: Some(actual_season.clone()),
+                };
+                if let Err(e) = upsert_team(pool, data).await {
+                    error!("[{}] Failed to upsert team: {}", league.name, e);
                 }
             }
-            Err(e) => error!("[{}] Teams request failed: {}", league.name, e),
         }
 
         // Spread requests to avoid rate limiting on startup
