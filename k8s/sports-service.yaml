@@ -46,7 +46,7 @@ spec:
               port: 3002
             initialDelaySeconds: 5
             periodSeconds: 10
-            failureThreshold: 30
+            failureThreshold: 60
           livenessProbe:
             httpGet:
               path: /health
