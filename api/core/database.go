@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -54,7 +53,7 @@ func ConnectDB() {
 			}
 		}
 
-		fmt.Printf("Failed to connect to DB, retrying in 2 seconds... (%d attempts left)\n", retries-i-1)
+		log.Printf("[Database] Failed to connect, retrying in 2 seconds... (%d attempts left)", retries-i-1)
 		time.Sleep(DBRetryDelay)
 	}
 
@@ -63,9 +62,11 @@ func ConnectDB() {
 	}
 
 	DBPool = pool
-	log.Println("Successfully connected to PostgreSQL database")
+	log.Println("[Database] Connected to PostgreSQL")
 
-	// golang-migrate uses pq driver which requires sslmode to be explicit
+	// golang-migrate uses pq driver which requires sslmode to be explicit.
+	// Use a dedicated migrations table so core and channel APIs (e.g. fantasy)
+	// sharing the same database don't collide on the default schema_migrations.
 	migrateURL := databaseURL
 	if !strings.Contains(migrateURL, "sslmode=") {
 		if strings.Contains(migrateURL, "?") {
@@ -73,6 +74,11 @@ func ConnectDB() {
 		} else {
 			migrateURL += "?sslmode=disable"
 		}
+	}
+	if strings.Contains(migrateURL, "?") {
+		migrateURL += "&x-migrations-table=schema_migrations_core"
+	} else {
+		migrateURL += "?x-migrations-table=schema_migrations_core"
 	}
 
 	m, err := migrate.New(
@@ -88,7 +94,7 @@ func ConnectDB() {
 		log.Fatalf("Migration failed: %v", err)
 	}
 	m.Close()
-	log.Println("Database migrations applied")
+	log.Println("[Database] Migrations applied")
 
 	pruneWebhookEvents()
 }
@@ -98,6 +104,6 @@ func pruneWebhookEvents() {
 		DELETE FROM stripe_webhook_events WHERE created_at < now() - interval '7 days';
 	`)
 	if err != nil {
-		log.Printf("Warning: Failed to prune old webhook events: %v", err)
+		log.Printf("[Database] Failed to prune old webhook events: %v", err)
 	}
 }

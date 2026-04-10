@@ -182,6 +182,11 @@ func main() {
 			migrateURL += "?sslmode=disable"
 		}
 	}
+	if strings.Contains(migrateURL, "?") {
+		migrateURL += "&x-migrations-table=schema_migrations_fantasy"
+	} else {
+		migrateURL += "?x-migrations-table=schema_migrations_fantasy"
+	}
 
 	m, err := migrate.New(
 		"file://migrations",
