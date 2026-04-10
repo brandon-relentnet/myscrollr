@@ -37,7 +37,6 @@ func dynamicProxyHandler(c *fiber.Ctx) error {
 
 	// Find a matching channel route
 	routes := GetChannelRoutes()
-	log.Printf("[Proxy] %s %s — checking %d channel route(s)", requestMethod, requestPath, len(routes))
 
 	for _, entry := range routes {
 		route := entry.Route
@@ -52,9 +51,6 @@ func dynamicProxyHandler(c *fiber.Ctx) error {
 		if !ok {
 			continue
 		}
-
-		log.Printf("[Proxy] Matched %s %s -> channel=%s url=%s auth=%v",
-			requestMethod, requestPath, intg.Name, intg.InternalURL, route.Auth)
 
 		// If auth is required, validate the JWT inline (without c.Next())
 		if route.Auth {
@@ -74,7 +70,6 @@ func dynamicProxyHandler(c *fiber.Ctx) error {
 	}
 
 	// No matching route found — return 404
-	log.Printf("[Proxy] No matching channel route for %s %s (checked %d routes)", requestMethod, requestPath, len(routes))
 	return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 		"status": "error",
 		"error":  "Not found",

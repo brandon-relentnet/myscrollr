@@ -13,7 +13,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
-	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/swagger"
 )
 
@@ -48,10 +47,8 @@ func (s *Server) Setup() {
 	SetupDynamicProxy(s.App)
 }
 
-// setupMiddleware attaches logging, security headers, CORS, and rate limiting.
+// setupMiddleware attaches security headers, CORS, and rate limiting.
 func (s *Server) setupMiddleware() {
-	s.App.Use(logger.New())
-
 	// Security Headers
 	s.App.Use(func(c *fiber.Ctx) error {
 		c.Set("X-XSS-Protection", "1; mode=block")

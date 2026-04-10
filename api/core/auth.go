@@ -31,7 +31,7 @@ func InitAuth() {
 	var err error
 	jwks, err = keyfunc.Get(jwksURL, keyfunc.Options{
 		RefreshErrorHandler: func(err error) {
-			log.Printf("There was an error with the jwt.Keyfunc refresh: %s", err.Error())
+			log.Printf("[Auth] JWKS refresh error: %s", err.Error())
 		},
 		RefreshInterval:   JWKSRefreshInterval,
 		RefreshRateLimit:  JWKSRefreshRateLimit,
@@ -39,9 +39,9 @@ func InitAuth() {
 		RefreshUnknownKID: true,
 	})
 	if err != nil {
-		log.Fatalf("Failed to create JWKS from resource at %s: %s", jwksURL, err.Error())
+		log.Fatalf("[Auth] Failed to create JWKS from %s: %s", jwksURL, err.Error())
 	}
-	log.Printf("Successfully initialized Logto JWKS from %s", jwksURL)
+	log.Printf("[Auth] Initialized Logto JWKS from %s", jwksURL)
 }
 
 // ValidateToken validates a JWT token string and returns the subject (user ID)

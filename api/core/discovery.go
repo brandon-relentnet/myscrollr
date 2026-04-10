@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -27,9 +29,10 @@ type ChannelInfo struct {
 
 // Discovery manages runtime channel discovery via Redis.
 type Discovery struct {
-	mu         sync.RWMutex
-	channels   map[string]*ChannelInfo // keyed by name
-	tableIndex map[string]string       // table_name -> channel name
+	mu          sync.RWMutex
+	channels    map[string]*ChannelInfo // keyed by name
+	tableIndex  map[string]string       // table_name -> channel name
+	lastSummary string                  // for change detection
 }
 
 var globalDiscovery = &Discovery{
@@ -98,17 +101,23 @@ func (d *Discovery) refresh() {
 		}
 	}
 
+	// Build a summary string for change detection
+	names := make([]string, 0, len(channels))
+	for name := range channels {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	summary := strings.Join(names, ",")
+
 	d.mu.Lock()
+	changed := summary != d.lastSummary
 	d.channels = channels
 	d.tableIndex = tableIndex
+	d.lastSummary = summary
 	d.mu.Unlock()
 
-	if len(channels) > 0 {
-		names := make([]string, 0, len(channels))
-		for name := range channels {
-			names = append(names, name)
-		}
-		log.Printf("[Discovery] Found %d channel(s): %v", len(channels), names)
+	if changed {
+		log.Printf("[Discovery] Channels updated: %d active [%s]", len(channels), summary)
 	}
 }
 
