@@ -7,6 +7,7 @@ metadata:
     app: finance-service
 spec:
   replicas: 1
+  progressDeadlineSeconds: 1500
   selector:
     matchLabels:
       app: finance-service

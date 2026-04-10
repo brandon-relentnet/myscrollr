@@ -15,42 +15,13 @@ async fn main() {
     dotenv().ok();
     let _ = init_async_logger("./logs");
 
-    let mut retries = 5;
-    let pool = loop {
-        match initialize_pool().await {
-            Ok(p) => break Arc::new(p),
-            Err(e) => {
-                if retries == 0 {
-                    panic!("Failed to init DB after retries: {}", e);
-                }
-                println!("Failed to connect to DB, retrying in 2 seconds... ({} attempts left) Error: {}", retries, e);
-                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-                retries -= 1;
-            }
-        }
-    };
     let health = Arc::new(Mutex::new(FinanceHealth::new()));
 
     // Cancellation token for coordinated shutdown
     let cancel = CancellationToken::new();
 
-    // Start the background service (WebSocket)
-    let pool_clone = pool.clone();
-    let health_clone = health.clone();
-    let cancel_clone = cancel.clone();
-    tokio::spawn(async move {
-        tokio::select! {
-            _ = start_finance_services(pool_clone, health_clone) => {},
-            _ = cancel_clone.cancelled() => {
-                println!("Finance background service shutting down...");
-            }
-        }
-    });
-
-    let state = AppState {
-        health,
-    };
-
+    // Start HTTP server immediately so K8s startup probes pass
+    let state = AppState { health: health.clone() };
     let app = Router::new()
         .route("/health", get(health_handler))
         .with_state(state);
@@ -58,7 +29,36 @@ async fn main() {
     let port = std::env::var("PORT").unwrap_or_else(|_| "3001".to_string());
     let addr = format!("0.0.0.0:{}", port);
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
-    println!("Finance Service listening on {}", addr);
+    println!("Finance Service listening on {} (connecting to DB...)", addr);
+
+    // Spawn background task for DB connection + service init
+    let health_clone = health.clone();
+    let cancel_clone = cancel.clone();
+    tokio::spawn(async move {
+        let mut retries = 5;
+        let pool = loop {
+            match initialize_pool().await {
+                Ok(p) => break Arc::new(p),
+                Err(e) => {
+                    if retries == 0 {
+                        eprintln!("[FATAL] Failed to init DB after retries: {}", e);
+                        return;
+                    }
+                    eprintln!("[DB] Failed to connect, retrying in 2s... ({} attempts left) Error: {}", retries, e);
+                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                    retries -= 1;
+                }
+            }
+        };
+
+        // Start the background service (WebSocket)
+        tokio::select! {
+            _ = start_finance_services(pool, health_clone) => {},
+            _ = cancel_clone.cancelled() => {
+                println!("Finance background service shutting down...");
+            }
+        }
+    });
 
     let cancel_for_shutdown = cancel.clone();
     axum::serve(listener, app)
