@@ -15,60 +15,13 @@ async fn main() {
     dotenv().ok();
     let _ = init_async_logger("./logs");
 
-    let mut retries = 5;
-    let pool = loop {
-        match initialize_pool().await {
-            Ok(p) => break Arc::new(p),
-            Err(e) => {
-                if retries == 0 {
-                    panic!("Failed to init DB after retries: {}", e);
-                }
-                println!("Failed to connect to DB, retrying in 2 seconds... ({} attempts left) Error: {}", retries, e);
-                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-                retries -= 1;
-            }
-        }
-    };
-    // Build HTTP client once and reuse across all cycles for connection pooling
-    let http_client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(15))
-        .connect_timeout(std::time::Duration::from_secs(5))
-        .gzip(true)
-        .user_agent("MyScrollr RSS Bot/1.0")
-        .build()
-        .unwrap_or_else(|_| reqwest::Client::new());
-
     let health = Arc::new(Mutex::new(RssHealth::new()));
 
     // Cancellation token for coordinated shutdown
     let cancel = CancellationToken::new();
 
-    // Start the background service (Periodic ingest)
-    let pool_clone = pool.clone();
-    let health_clone = health.clone();
-    let cancel_clone = cancel.clone();
-    tokio::spawn(async move {
-        println!("Starting periodic RSS ingest loop (5 minute interval)...");
-        let mut cycle: u64 = 0;
-        loop {
-            tokio::select! {
-                _ = cancel_clone.cancelled() => {
-                    println!("RSS ingest loop shutting down...");
-                    break;
-                }
-                _ = async {
-                    start_rss_service(pool_clone.clone(), health_clone.clone(), &http_client, cycle).await;
-                    cycle += 1;
-                    tokio::time::sleep(std::time::Duration::from_secs(300)).await;
-                } => {}
-            }
-        }
-    });
-
-    let state = AppState {
-        health,
-    };
-
+    // Start HTTP server immediately so K8s startup probes pass
+    let state = AppState { health: health.clone() };
     let app = Router::new()
         .route("/health", get(health_handler))
         .with_state(state);
@@ -76,7 +29,55 @@ async fn main() {
     let port = std::env::var("PORT").unwrap_or_else(|_| "3004".to_string());
     let addr = format!("0.0.0.0:{}", port);
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
-    println!("RSS Service listening on {}", addr);
+    println!("RSS Service listening on {} (connecting to DB...)", addr);
+
+    // Spawn background task for DB connection + service init
+    let health_clone = health.clone();
+    let cancel_clone = cancel.clone();
+    tokio::spawn(async move {
+        let mut retries = 5;
+        let pool = loop {
+            match initialize_pool().await {
+                Ok(p) => break Arc::new(p),
+                Err(e) => {
+                    if retries == 0 {
+                        eprintln!("[FATAL] Failed to init DB after retries: {}", e);
+                        return;
+                    }
+                    eprintln!("[DB] Failed to connect, retrying in 2s... ({} attempts left) Error: {}", retries, e);
+                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                    retries -= 1;
+                }
+            }
+        };
+
+        // Build HTTP client once and reuse across all cycles for connection pooling
+        let http_client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(15))
+            .connect_timeout(std::time::Duration::from_secs(5))
+            .gzip(true)
+            .user_agent("MyScrollr RSS Bot/1.0")
+            .build()
+            .unwrap_or_else(|_| reqwest::Client::new());
+
+        // Start the background service (Periodic ingest)
+        let cancel_ingest = cancel_clone.clone();
+        println!("Starting periodic RSS ingest loop (5 minute interval)...");
+        let mut cycle: u64 = 0;
+        loop {
+            tokio::select! {
+                _ = cancel_ingest.cancelled() => {
+                    println!("RSS ingest loop shutting down...");
+                    break;
+                }
+                _ = async {
+                    start_rss_service(pool.clone(), health_clone.clone(), &http_client, cycle).await;
+                    cycle += 1;
+                    tokio::time::sleep(std::time::Duration::from_secs(300)).await;
+                } => {}
+            }
+        }
+    });
 
     let cancel_for_shutdown = cancel.clone();
     axum::serve(listener, app)

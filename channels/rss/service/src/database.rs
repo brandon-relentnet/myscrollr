@@ -14,8 +14,8 @@ fn migrator() -> sqlx::migrate::Migrator {
 
 pub async fn initialize_pool() -> Result<PgPool> {
     let pool_options = PgPoolOptions::new()
-        .max_connections(20)
-        .min_connections(1)
+        .max_connections(10)
+        .min_connections(0)
         .acquire_timeout(Duration::from_secs(10))
         .idle_timeout(Duration::from_millis(30_000));
 
@@ -44,7 +44,15 @@ pub async fn initialize_pool() -> Result<PgPool> {
         format!("postgres://{}:{}@{}:{}/{}", user, password, host, port, database)
     };
 
-    let pool = pool_options.connect(&database_url).await.context("Failed to connect to the PostgreSQL database")?;
+    eprintln!("[DB] Connecting to database...");
+    let pool = tokio::time::timeout(
+        Duration::from_secs(15),
+        pool_options.connect(&database_url),
+    )
+    .await
+    .map_err(|_| anyhow::anyhow!("Connection attempt timed out (15s)"))?
+    .context("Failed to connect to the PostgreSQL database")?;
+    eprintln!("[DB] Connected successfully, running migrations...");
 
     // Run migrations with ignore_missing=true so multiple services sharing one
     // PostgreSQL database don't fail on each other's migration records.
@@ -57,6 +65,7 @@ pub async fn initialize_pool() -> Result<PgPool> {
             .context("Failed to clear _sqlx_migrations")?;
         m.run(&pool).await.context("Failed to run migrations after reset")?;
     }
+    eprintln!("[DB] Migrations complete");
 
     Ok(pool)
 }
