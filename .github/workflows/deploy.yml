@@ -303,7 +303,7 @@ jobs:
 
           rollout_timeout_for() {
             case "$1" in
-              sports-service)
+              finance-service|sports-service|rss-service)
                 echo "300s"
                 ;;
               *)
