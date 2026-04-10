@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fantasy-api
+  namespace: scrollr
+  labels:
+    app: fantasy-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fantasy-api
+  template:
+    metadata:
+      labels:
+        app: fantasy-api
+    spec:
+      containers:
+        - name: fantasy-api
+          image: registry.digitalocean.com/scrollr/fantasy-api:latest
+          ports:
+            - containerPort: 8084
+          env:
+            - name: CHANNEL_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: channels-config
+                  key: FANTASY_CHANNEL_URL
+            - name: ALLOWED_ORIGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: channels-config
+                  key: ALLOWED_ORIGINS
+            - name: FRONTEND_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: channels-config
+                  key: FRONTEND_URL
+            - name: YAHOO_CALLBACK_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: channels-config
+                  key: YAHOO_CALLBACK_URL
+            - name: SYNC_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: channels-config
+                  key: SYNC_ENABLED
+            - name: SYNC_INTERVAL_SECS
+              valueFrom:
+                configMapKeyRef:
+                  name: channels-config
+                  key: SYNC_INTERVAL_SECS
+            - name: SYNC_CONCURRENCY
+              valueFrom:
+                configMapKeyRef:
+                  name: channels-config
+                  key: SYNC_CONCURRENCY
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: scrollr-secrets
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: scrollr-secrets
+                  key: REDIS_URL
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrollr-secrets
+                  key: ENCRYPTION_KEY
+            - name: YAHOO_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: scrollr-secrets
+                  key: YAHOO_CLIENT_ID
+            - name: YAHOO_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: scrollr-secrets
+                  key: YAHOO_CLIENT_SECRET
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /internal/health
+              port: 8084
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /internal/health
+              port: 8084
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fantasy-api
+  namespace: scrollr
+spec:
+  selector:
+    app: fantasy-api
+  ports:
+    - port: 8084
+      targetPort: 8084
+  type: ClusterIP

@@ -6,7 +6,11 @@ use sqlx::{FromRow, query, query_as};
 use chrono::Utc;
 use serde::Deserialize;
 
-const MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
+fn migrator() -> sqlx::migrate::Migrator {
+    let mut m = sqlx::migrate!("./migrations");
+    m.set_ignore_missing(true);
+    m
+}
 
 pub async fn initialize_pool() -> Result<PgPool> {
     let pool_options = PgPoolOptions::new()
@@ -42,7 +46,17 @@ pub async fn initialize_pool() -> Result<PgPool> {
 
     let pool = pool_options.connect(&database_url).await.context("Failed to connect to the PostgreSQL database")?;
 
-    MIGRATOR.run(&pool).await.context("Failed to run migrations")?;
+    // Run migrations with ignore_missing=true so multiple services sharing one
+    // PostgreSQL database don't fail on each other's migration records.
+    let m = migrator();
+    if let Err(e) = m.run(&pool).await {
+        log::warn!("Migrations failed ({}), resetting _sqlx_migrations and retrying…", e);
+        sqlx::query("DELETE FROM _sqlx_migrations")
+            .execute(&pool)
+            .await
+            .context("Failed to clear _sqlx_migrations")?;
+        m.run(&pool).await.context("Failed to run migrations after reset")?;
+    }
 
     Ok(pool)
 }

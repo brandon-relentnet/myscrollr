@@ -17,6 +17,7 @@ on:
     branches: [main]
     paths:
       - "desktop/**"
+      - ".github/workflows/desktop-release.yml"
 
 permissions:
   contents: write
@@ -99,6 +100,72 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Validate desktop release env
+        shell: bash
+        env:
+          DESKTOP_VITE_API_URL: ${{ secrets.DESKTOP_VITE_API_URL }}
+          DESKTOP_VITE_AUTH_ENDPOINT: ${{ secrets.DESKTOP_VITE_AUTH_ENDPOINT }}
+          DESKTOP_VITE_LOGTO_APP_ID: ${{ secrets.DESKTOP_VITE_LOGTO_APP_ID }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          for var in DESKTOP_VITE_API_URL DESKTOP_VITE_AUTH_ENDPOINT DESKTOP_VITE_LOGTO_APP_ID; do
+            value="$(printf '%s' "${!var}" | xargs)"
+
+            if [ -z "$value" ]; then
+              echo "Missing required desktop release secret: $var" >&2
+              exit 1
+            fi
+
+            printf -v "$var" '%s' "$value"
+          done
+
+          if [ -z "$(printf '%s' "$TAURI_SIGNING_PRIVATE_KEY")" ]; then
+            echo "Missing required desktop release secret: TAURI_SIGNING_PRIVATE_KEY" >&2
+            exit 1
+          fi
+
+          if [ "$DESKTOP_VITE_AUTH_ENDPOINT" = "your_local_auth_endpoint" ] || [ "$DESKTOP_VITE_LOGTO_APP_ID" = "your_local_or_dev_logto_app_id" ]; then
+            echo "Desktop release secrets must be real production values, not .env.example placeholders" >&2
+            exit 1
+          fi
+
+          case "$DESKTOP_VITE_API_URL" in
+            http://localhost*|https://localhost*|http://127.0.0.1*|https://127.0.0.1*)
+              echo "Desktop release API URL must point at production, not localhost" >&2
+              exit 1
+              ;;
+          esac
+
+          case "$DESKTOP_VITE_API_URL" in
+            https://*) ;;
+            *)
+              echo "Desktop release API URL must use HTTPS" >&2
+              exit 1
+              ;;
+          esac
+
+          case "$DESKTOP_VITE_AUTH_ENDPOINT" in
+            http://localhost*|https://localhost*|http://127.0.0.1*|https://127.0.0.1*)
+              echo "Desktop release auth endpoint must point at production, not localhost" >&2
+              exit 1
+              ;;
+          esac
+
+          case "$DESKTOP_VITE_AUTH_ENDPOINT" in
+            https://*) ;;
+            *)
+              echo "Desktop release auth endpoint must use HTTPS" >&2
+              exit 1
+              ;;
+          esac
+
+          case "$DESKTOP_VITE_AUTH_ENDPOINT" in
+            */oidc/auth|*/oidc/auth/)
+              echo "Desktop release auth endpoint must be the Logto base URL, not the full /oidc/auth path" >&2
+              exit 1
+              ;;
+          esac
+
       - name: Audit Node dependencies
         run: npm audit --audit-level=high
         continue-on-error: true
@@ -110,11 +177,16 @@ jobs:
 
       # tauri-action builds, signs updater artifacts, creates/updates
       # the GitHub release, and assembles latest.json across all platforms.
+      # Logto desktop app must allow callback http://127.0.0.1:19284/callback
+      # and API resource https://api.myscrollr.com for production releases.
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          VITE_API_URL: ${{ secrets.DESKTOP_VITE_API_URL }}
+          VITE_AUTH_ENDPOINT: ${{ secrets.DESKTOP_VITE_AUTH_ENDPOINT }}
+          VITE_LOGTO_APP_ID: ${{ secrets.DESKTOP_VITE_LOGTO_APP_ID }}
         with:
           projectPath: desktop
           tauriScript: npx tauri

@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sports-api
+  namespace: scrollr
+  labels:
+    app: sports-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sports-api
+  template:
+    metadata:
+      labels:
+        app: sports-api
+    spec:
+      containers:
+        - name: sports-api
+          image: registry.digitalocean.com/scrollr/sports-api:latest
+          ports:
+            - containerPort: 8082
+          env:
+            - name: CHANNEL_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: channels-config
+                  key: SPORTS_CHANNEL_URL
+            - name: INTERNAL_SPORTS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: channels-config
+                  key: INTERNAL_SPORTS_URL
+            - name: ALLOWED_ORIGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: channels-config
+                  key: ALLOWED_ORIGINS
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: scrollr-secrets
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: scrollr-secrets
+                  key: REDIS_URL
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrollr-secrets
+                  key: ENCRYPTION_KEY
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /internal/health
+              port: 8082
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /internal/health
+              port: 8082
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sports-api
+  namespace: scrollr
+spec:
+  selector:
+    app: sports-api
+  ports:
+    - port: 8082
+      targetPort: 8082
+  type: ClusterIP

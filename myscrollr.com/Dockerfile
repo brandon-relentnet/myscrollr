@@ -22,11 +22,23 @@ ARG VITE_LOGTO_ENDPOINT
 ARG VITE_LOGTO_APP_ID
 ARG VITE_LOGTO_RESOURCE
 ARG VITE_STRIPE_PUBLISHABLE_KEY
+ARG VITE_STRIPE_PRICE_MONTHLY
+ARG VITE_STRIPE_PRICE_ANNUAL
+ARG VITE_STRIPE_PRICE_PRO_MONTHLY
+ARG VITE_STRIPE_PRICE_PRO_ANNUAL
+ARG VITE_STRIPE_PRICE_ULTIMATE_MONTHLY
+ARG VITE_STRIPE_PRICE_ULTIMATE_ANNUAL
 ENV VITE_API_URL=${VITE_API_URL}
 ENV VITE_LOGTO_ENDPOINT=${VITE_LOGTO_ENDPOINT}
 ENV VITE_LOGTO_APP_ID=${VITE_LOGTO_APP_ID}
 ENV VITE_LOGTO_RESOURCE=${VITE_LOGTO_RESOURCE}
 ENV VITE_STRIPE_PUBLISHABLE_KEY=${VITE_STRIPE_PUBLISHABLE_KEY}
+ENV VITE_STRIPE_PRICE_MONTHLY=${VITE_STRIPE_PRICE_MONTHLY}
+ENV VITE_STRIPE_PRICE_ANNUAL=${VITE_STRIPE_PRICE_ANNUAL}
+ENV VITE_STRIPE_PRICE_PRO_MONTHLY=${VITE_STRIPE_PRICE_PRO_MONTHLY}
+ENV VITE_STRIPE_PRICE_PRO_ANNUAL=${VITE_STRIPE_PRICE_PRO_ANNUAL}
+ENV VITE_STRIPE_PRICE_ULTIMATE_MONTHLY=${VITE_STRIPE_PRICE_ULTIMATE_MONTHLY}
+ENV VITE_STRIPE_PRICE_ULTIMATE_ANNUAL=${VITE_STRIPE_PRICE_ULTIMATE_ANNUAL}
 
 # Build (vite build + tsc)
 WORKDIR /app/myscrollr.com
@@ -91,7 +103,7 @@ RUN printf 'server {\n\
 printf 'add_header X-Content-Type-Options "nosniff" always;\n\
 add_header Referrer-Policy "strict-origin-when-cross-origin" always;\n\
 add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;\n\
-add_header Content-Security-Policy "default-src '"'"'self'"'"'; frame-ancestors '"'"'self'"'"' https://relentnet.com; script-src '"'"'self'"'"' '"'"'unsafe-inline'"'"' https://js.stripe.com; style-src '"'"'self'"'"' '"'"'unsafe-inline'"'"'; img-src '"'"'self'"'"' data: https:; font-src '"'"'self'"'"'; connect-src '"'"'self'"'"' https://api.myscrollr.relentnet.dev https://auth.myscrollr.relentnet.dev https://api.stripe.com https://api.github.com; frame-src https://js.stripe.com https://hooks.stripe.com; base-uri '"'"'self'"'"'; form-action '"'"'self'"'"';" always;\n\
+add_header Content-Security-Policy "default-src '"'"'self'"'"'; frame-ancestors '"'"'self'"'"' https://relentnet.com; script-src '"'"'self'"'"' '"'"'unsafe-inline'"'"' https://js.stripe.com; style-src '"'"'self'"'"' '"'"'unsafe-inline'"'"'; img-src '"'"'self'"'"' data: https:; font-src '"'"'self'"'"'; connect-src '"'"'self'"'"' https://api.myscrollr.com https://auth.myscrollr.com https://api.stripe.com https://api.github.com; frame-src https://js.stripe.com https://hooks.stripe.com; base-uri '"'"'self'"'"'; form-action '"'"'self'"'"';" always;\n\
 ' > /etc/nginx/security-headers.conf
 
 EXPOSE 3000

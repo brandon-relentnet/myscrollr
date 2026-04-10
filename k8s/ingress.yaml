@@ -1,0 +1,49 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: scrollr-ingress
+  namespace: scrollr
+  annotations:
+    # Use nginx ingress controller (DO default)
+    kubernetes.io/ingress.class: nginx
+
+    # TLS via cert-manager
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+
+    # SSE support: disable buffering, long timeouts
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+
+    # Allow large request bodies (file uploads, bulk operations)
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+spec:
+  tls:
+    - hosts:
+        - myscrollr.com
+        - api.myscrollr.com
+      secretName: scrollr-tls
+  rules:
+    # Marketing website
+    - host: myscrollr.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: website
+                port:
+                  number: 3000
+
+    # Core API (gateway for all backend traffic)
+    - host: api.myscrollr.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: core-api
+                port:
+                  number: 8080

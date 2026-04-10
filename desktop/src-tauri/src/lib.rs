@@ -3,7 +3,7 @@ mod compositor;
 mod state;
 mod tray;
 
-use std::sync::{Arc, Mutex};
+use std::sync::{atomic::AtomicBool, Arc, Mutex};
 use tauri::Manager;
 
 pub fn run() {
@@ -63,6 +63,7 @@ pub fn run() {
     builder
         .manage(state::SseHandle(Mutex::new(None)))
         .manage(state::AuthServerRunning(Arc::new(Mutex::new(false))))
+        .manage(state::AuthServerStop(Arc::new(AtomicBool::new(false))))
         .manage(state::SysInfoState(Arc::new(state::SysInfoInner {
             sys: Mutex::new(sysinfo::System::new()),
             components: Mutex::new(sysinfo::Components::new_with_refreshed_list()),
@@ -73,6 +74,7 @@ pub fn run() {
             commands::window::position_ticker,
             commands::window::pin_window,
             commands::auth::start_auth_server,
+            commands::auth::stop_auth_server,
             commands::sse::start_sse,
             commands::sse::stop_sse,
             commands::window::show_app_window,

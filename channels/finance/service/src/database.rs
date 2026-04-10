@@ -5,7 +5,11 @@ pub use sqlx::PgPool;
 use sqlx::{FromRow, query, query_as};
 pub use chrono::Utc;
 
-const MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
+fn migrator() -> sqlx::migrate::Migrator {
+    let mut m = sqlx::migrate!("./migrations");
+    m.set_ignore_missing(true);
+    m
+}
 
 pub async fn initialize_pool() -> Result<PgPool> {
     let pool_options = PgPoolOptions::new()
@@ -41,16 +45,16 @@ pub async fn initialize_pool() -> Result<PgPool> {
 
     let pool = pool_options.connect(&database_url).await.context("Failed to connect to the PostgreSQL database")?;
 
-    // Run migrations; if checksums mismatch (e.g. migration files were edited after
-    // first apply), clear the tracking table and retry.  All migration SQL is
-    // idempotent (IF NOT EXISTS), so re-applying is safe.
-    if let Err(e) = MIGRATOR.run(&pool).await {
+    // Run migrations with ignore_missing=true so multiple services sharing one
+    // PostgreSQL database don't fail on each other's migration records.
+    let m = migrator();
+    if let Err(e) = m.run(&pool).await {
         log::warn!("Migrations failed ({}), resetting _sqlx_migrations and retrying…", e);
         sqlx::query("DELETE FROM _sqlx_migrations")
             .execute(&pool)
             .await
             .context("Failed to clear _sqlx_migrations")?;
-        MIGRATOR.run(&pool).await.context("Failed to run migrations after reset")?;
+        m.run(&pool).await.context("Failed to run migrations after reset")?;
     }
 
     Ok(pool)

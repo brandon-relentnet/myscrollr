@@ -30,7 +30,7 @@ const ScrollrAuthContext = createContext<ScrollrAuthContextValue | null>(null)
 // ── Provider ──────────────────────────────────────────────────────
 
 const API_RESOURCE =
-  import.meta.env.VITE_API_URL || 'https://api.myscrollr.relentnet.dev'
+  import.meta.env.VITE_LOGTO_RESOURCE || import.meta.env.VITE_API_URL || ''
 
 export function ScrollrAuthProvider({ children }: { children: ReactNode }) {
   const logto = useLogto()
@@ -44,11 +44,15 @@ export function ScrollrAuthProvider({ children }: { children: ReactNode }) {
   // ── Methods ───────────────────────────────────────────────────
 
   const signIn = useCallback((redirectUri: string) => {
-    logtoRef.current.signIn(redirectUri)
+    void logtoRef.current.signIn(redirectUri).catch((error: unknown) => {
+      console.error('Logto sign-in failed', error)
+    })
   }, [])
 
   const signOut = useCallback((postLogoutRedirectUri: string) => {
-    logtoRef.current.signOut(postLogoutRedirectUri)
+    void logtoRef.current.signOut(postLogoutRedirectUri).catch((error: unknown) => {
+      console.error('Logto sign-out failed', error)
+    })
   }, [])
 
   const getAccessToken = useCallback(

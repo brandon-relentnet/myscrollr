@@ -42,6 +42,18 @@ interface AuthState {
   userSub: string | null;
 }
 
+function assertAuthConfig(): void {
+  if (!LOGTO_ENDPOINT || !LOGTO_APP_ID) {
+    throw new Error(
+      "Desktop auth is not configured. Set VITE_AUTH_ENDPOINT and VITE_LOGTO_APP_ID before signing in.",
+    );
+  }
+}
+
+export function isAuthConfigured(): boolean {
+  return Boolean(LOGTO_ENDPOINT && LOGTO_APP_ID);
+}
+
 interface AuthCallbackPayload {
   code?: string | null;
   state?: string | null;
@@ -232,13 +244,20 @@ function scheduleRefresh(): void {
  * Returns the auth state on success, or null on failure/cancel.
  */
 export async function login(): Promise<AuthState | null> {
+  let cleanupPendingAuth = () => {};
+  let hasPendingAuthCleanup = false;
+  let authServerStarted = false;
+
   try {
+    assertAuthConfig();
+
     const codeVerifier = generateRandomHex(64);
     const codeChallenge = await generateCodeChallenge(codeVerifier);
     const state = generateRandomHex(16);
 
     // Start the callback server (returns immediately, listens in background)
     await invoke("start_auth_server");
+    authServerStarted = true;
 
     // Build the authorization URL
     const params = new URLSearchParams({
@@ -253,37 +272,62 @@ export async function login(): Promise<AuthState | null> {
       prompt: "consent",
     });
 
-    const authUrl = `${LOGTO_ENDPOINT}/oidc/auth?${params.toString()}`;
+    const authBase = LOGTO_ENDPOINT.replace(/\/+$/, "");
+    const authUrl = `${authBase}/oidc/auth?${params.toString()}`;
 
-    // Open in system browser
-    await open(authUrl);
+    let resolveListenerReady: (() => void) | null = null;
+    let rejectListenerReady: ((error: unknown) => void) | null = null;
+    const listenerReadyPromise = new Promise<void>((resolve, reject) => {
+      resolveListenerReady = resolve;
+      rejectListenerReady = reject;
+    });
 
-    // Wait for the callback event from Rust
-    const payload = await new Promise<AuthCallbackPayload>(
+    const payloadPromise = new Promise<AuthCallbackPayload>(
       (resolve, reject) => {
         let unlisten: (() => void) | null = null;
         let settled = false;
 
-        const timer = setTimeout(() => {
+        const dispose = () => {
           settled = true;
+          clearTimeout(timer);
           unlisten?.();
+          hasPendingAuthCleanup = false;
+        };
+
+        cleanupPendingAuth = dispose;
+        hasPendingAuthCleanup = true;
+
+        const timer = setTimeout(() => {
+          dispose();
           reject(new Error("Login timed out after 5 minutes"));
         }, 300_000);
 
         listen<AuthCallbackPayload>("auth-callback", (event) => {
-          settled = true;
-          clearTimeout(timer);
-          unlisten?.();
+          dispose();
           resolve(event.payload);
-        }).then((fn) => {
-          if (settled) {
-            fn(); // already resolved/rejected — clean up immediately
-          } else {
-            unlisten = fn;
-          }
-        });
+        })
+          .then((fn) => {
+            if (settled) {
+              fn(); // already resolved/rejected — clean up immediately
+            } else {
+              unlisten = fn;
+              resolveListenerReady?.();
+            }
+          })
+          .catch((err) => {
+            dispose();
+            rejectListenerReady?.(err);
+            reject(err);
+          });
       },
     );
+
+    // Open in system browser after the callback listener is ready.
+    await listenerReadyPromise;
+    await open(authUrl);
+
+    // Wait for the callback event from Rust.
+    const payload = await payloadPromise;
 
     if (payload.error || !payload.code) {
       throw new Error(payload.error ?? "No authorization code received");
@@ -307,6 +351,16 @@ export async function login(): Promise<AuthState | null> {
     saveAuth(authState);
     return authState;
   } catch (err) {
+    if (hasPendingAuthCleanup) {
+      cleanupPendingAuth();
+    }
+
+    if (authServerStarted) {
+      await invoke("stop_auth_server").catch((stopErr) => {
+        console.warn("[Scrollr] Failed to stop auth server:", stopErr);
+      });
+    }
+
     console.error("[Scrollr] Login failed:", err);
     return null;
   }
