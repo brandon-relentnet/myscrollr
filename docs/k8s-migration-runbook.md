@@ -60,76 +60,40 @@ kubectl apply -f k8s/secrets.yaml
 # IMPORTANT: Do NOT commit secrets.yaml to git.
 ```
 
-## Phase 2: Build & Push Images
+## Phase 2: GitHub Actions Rollout Path
 
-### 2.1 Authenticate with DO Registry
+Production rollouts are GitHub Actions driven. Do not build or push production images from a local machine.
 
-```bash
-doctl registry login
-```
+### 2.1 Website and backend rollout
 
-### 2.2 Build all images locally (first time)
+- Pushes to `main` that touch `api/**`, `channels/**`, `myscrollr.com/**`, or `k8s/**` trigger `.github/workflows/deploy.yml`.
+- That workflow builds changed images, pushes them to `registry.digitalocean.com/scrollr`, applies tracked Kubernetes manifests, and rolls or restarts the affected deployments in the `scrollr` namespace so config-only changes take effect.
+- `workflow_dispatch` stays available for manual reruns and targeted service deploys.
 
-```bash
-# Core API
-docker build -f api/Dockerfile -t registry.digitalocean.com/scrollr/core-api:latest api/
-docker push registry.digitalocean.com/scrollr/core-api:latest
+### 2.2 Desktop rollout
 
-# Website (build from monorepo root)
-docker build -f myscrollr.com/Dockerfile \
-  --build-arg VITE_API_URL=https://api.myscrollr.com \
-  --build-arg VITE_LOGTO_ENDPOINT=https://auth.myscrollr.com \
-  --build-arg VITE_LOGTO_APP_ID=YOUR_APP_ID \
-  --build-arg VITE_LOGTO_RESOURCE=https://api.myscrollr.com \
-  --build-arg VITE_STRIPE_PUBLISHABLE_KEY=YOUR_PK \
-  -t registry.digitalocean.com/scrollr/website:latest .
-docker push registry.digitalocean.com/scrollr/website:latest
+- Pushes to `main` that touch `desktop/**` or `.github/workflows/desktop-release.yml` trigger `.github/workflows/desktop-release.yml`.
+- The desktop release workflow injects production desktop config from GitHub Actions secrets, signs the artifacts, and updates the draft GitHub release.
+- `workflow_dispatch` stays available for manual reruns on all platforms or a single target platform.
 
-# Finance API
-docker build -f channels/finance/api/Dockerfile \
-  -t registry.digitalocean.com/scrollr/finance-api:latest channels/finance/api/
-docker push registry.digitalocean.com/scrollr/finance-api:latest
+### 2.3 Initial image publish before first cluster bootstrap
 
-# Finance Service
-docker build -f channels/finance/service/Dockerfile \
-  -t registry.digitalocean.com/scrollr/finance-service:latest channels/finance/service/
-docker push registry.digitalocean.com/scrollr/finance-service:latest
+For a fresh cluster, use `.github/workflows/deploy.yml` with `workflow_dispatch` and `services=all` as the first full production rollout once secrets and K8s manifests are ready.
 
-# Sports API
-docker build -f channels/sports/api/Dockerfile \
-  -t registry.digitalocean.com/scrollr/sports-api:latest channels/sports/api/
-docker push registry.digitalocean.com/scrollr/sports-api:latest
+- That run publishes the current images, applies the tracked workload manifests from `k8s/`, and then rolls the deployments onto the fresh cluster.
+- After that first bootstrap run, continue using `.github/workflows/deploy.yml` for routine website/backend rollouts.
 
-# Sports Service
-docker build -f channels/sports/service/Dockerfile \
-  -t registry.digitalocean.com/scrollr/sports-service:latest channels/sports/service/
-docker push registry.digitalocean.com/scrollr/sports-service:latest
-
-# RSS API
-docker build -f channels/rss/api/Dockerfile \
-  -t registry.digitalocean.com/scrollr/rss-api:latest channels/rss/api/
-docker push registry.digitalocean.com/scrollr/rss-api:latest
-
-# RSS Service
-docker build -f channels/rss/service/Dockerfile \
-  -t registry.digitalocean.com/scrollr/rss-service:latest channels/rss/service/
-docker push registry.digitalocean.com/scrollr/rss-service:latest
-
-# Fantasy API
-docker build -f channels/fantasy/api/Dockerfile \
-  -t registry.digitalocean.com/scrollr/fantasy-api:latest channels/fantasy/api/
-docker push registry.digitalocean.com/scrollr/fantasy-api:latest
-```
-
-### 2.3 Grant cluster access to registry
+### 2.4 Grant cluster access to registry
 
 ```bash
 doctl kubernetes cluster registry add scrollr-cluster
 ```
 
-## Phase 3: Deploy Services
+## Phase 3: Cluster Bootstrap Verification
 
-### 3.1 Apply all deployments + services
+Use this phase only for first-time cluster bootstrap or disaster recovery. Do not use these commands for routine production rollouts; ongoing website and backend deploys should go through `.github/workflows/deploy.yml`.
+
+### 3.1 Bootstrap all deployments + services (one-time only)
 
 ```bash
 # Apply in dependency order: infrastructure services first, then API gateway
@@ -170,7 +134,7 @@ kubectl logs -n scrollr deployment/finance-service --tail=50
 # - "listening on :PORT" messages (success)
 ```
 
-### 3.4 Apply ingress
+### 3.4 Apply ingress (one-time only)
 
 ```bash
 kubectl apply -f k8s/ingress.yaml
@@ -256,25 +220,49 @@ curl https://auth.myscrollr.com/.well-known/openid-configuration
 
 ## Phase 6: Post-Cutover
 
-### 6.1 Update desktop app config
+### 6.1 Desktop release configuration model
 
-Edit `desktop/src/config.ts`:
-```ts
-export const API_BASE = "https://api.myscrollr.com";
-export const AUTH_ENDPOINT = "https://auth.myscrollr.com";
-```
+Do not edit `desktop/src/config.ts` for production. Production desktop endpoints and app ID are injected during `.github/workflows/desktop-release.yml` using GitHub Actions secrets, then shipped through the signed desktop release.
 
-Version bump + release. Users will auto-update.
+Desktop production prerequisites:
 
-### 6.2 Configure CI/CD secrets
+- Logto desktop app callback: `http://127.0.0.1:19284/callback`
+- Logto API resource: `https://api.myscrollr.com`
 
-In GitHub repo Settings > Secrets and variables > Actions, add:
+### 6.2 Configure GitHub Actions and runtime ownership
 
-| Secret | Value |
-|--------|-------|
-| `DIGITALOCEAN_ACCESS_TOKEN` | DO personal access token |
-| `VITE_LOGTO_APP_ID` | Logto SPA app ID |
-| `VITE_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key |
+Production boundary: Logto and Sequin stay on Coolify. Website and backend services are released by GitHub Actions and run on DigitalOcean Kubernetes / DigitalOcean Container Registry. The desktop app is released by GitHub Actions and distributed through GitHub Releases with CI-injected production config.
+
+GitHub Actions workflow-managed constants/config:
+
+- `VITE_API_URL=https://api.myscrollr.com`
+- `VITE_LOGTO_ENDPOINT=https://auth.myscrollr.com`
+- `VITE_LOGTO_RESOURCE=https://api.myscrollr.com`
+
+GitHub Actions secrets and variables:
+
+- `DIGITALOCEAN_ACCESS_TOKEN`
+- `VITE_LOGTO_APP_ID`
+- `VITE_STRIPE_PUBLISHABLE_KEY`
+- `VITE_STRIPE_PRICE_MONTHLY`
+- `VITE_STRIPE_PRICE_ANNUAL`
+- `VITE_STRIPE_PRICE_PRO_MONTHLY`
+- `VITE_STRIPE_PRICE_PRO_ANNUAL`
+- `VITE_STRIPE_PRICE_ULTIMATE_MONTHLY`
+- `VITE_STRIPE_PRICE_ULTIMATE_ANNUAL`
+- `DESKTOP_VITE_API_URL`
+- `DESKTOP_VITE_AUTH_ENDPOINT`
+- `DESKTOP_VITE_LOGTO_APP_ID`
+- `TAURI_SIGNING_PRIVATE_KEY`
+
+Kubernetes configmaps and secrets:
+
+- Backend runtime configuration for APIs and services, including database, cache, channel, and webhook settings.
+
+Coolify:
+
+- Logto remains the external production auth service at `https://auth.myscrollr.com`.
+- Sequin remains the external production CDC/webhook service.
 
 ### 6.3 Monitor for 48 hours
 
@@ -300,9 +288,9 @@ watch -n 30 'curl -s https://api.myscrollr.com/health | jq .'
 
 If anything goes wrong during cutover:
 
-1. **DNS rollback**: In Cloudflare, point `myscrollr.com` and `api` back to old Coolify IP. Propagation: 1-5 minutes with Cloudflare proxy.
-2. **Old Coolify is still running** during the parallel period — it will immediately serve traffic again.
-3. No data loss: both old and new point to the same managed PostgreSQL and Valkey.
+1. **DNS rollback**: In Cloudflare, point `myscrollr.com` and `api` back to the legacy stack only if that stack is still running and still configured for production traffic. Propagation is typically 1-5 minutes with Cloudflare proxying.
+2. **Legacy stack requirement**: Keep the pre-cutover website/backend stack available during the observation window if you want a fast DNS-only rollback. Once it is reconfigured or decommissioned, rollback is no longer immediate.
+3. **Data/config verification**: Confirm which services are already pointing at DigitalOcean managed PostgreSQL and Valkey before rollback. Logto and Sequin remain on Coolify, but any workload that was migrated with new database/cache settings may require its legacy configuration to be restored before serving traffic again.
 
 ## Troubleshooting
 
@@ -310,7 +298,7 @@ If anything goes wrong during cutover:
 ```bash
 # Check registry access:
 doctl kubernetes cluster registry add scrollr-cluster
-# Re-push the image if needed
+# Then rerun the relevant GitHub Actions workflow if the image tag was not published
 ```
 
 ### Pod crashes — CrashLoopBackOff

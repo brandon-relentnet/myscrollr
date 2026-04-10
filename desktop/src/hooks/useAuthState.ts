@@ -12,6 +12,7 @@ import {
   login as authLogin,
   logout as authLogout,
   isAuthenticated as checkAuth,
+  isAuthConfigured,
   getTier,
 } from "../auth";
 import { queryKeys } from "../api/queries";
@@ -44,12 +45,18 @@ export function useAuthState(): UseAuthStateReturn {
   authenticatedRef.current = authenticated;
 
   const handleLogin = useCallback(async () => {
+    if (!isAuthConfigured()) {
+      toast.error("Desktop auth is not configured for this build");
+      return;
+    }
+
     setLoggingIn(true);
     try {
       const result = await authLogin();
       if (result) {
         setAuthenticated(true);
         setTier(getTier());
+        setSessionExpired(false);
         queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
       } else {
         toast.error("Sign-in failed — please try again");
@@ -64,21 +71,30 @@ export function useAuthState(): UseAuthStateReturn {
     authLogout();
     setAuthenticated(false);
     setTier("free");
+    setSessionExpired(false);
     queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
   }, [queryClient]);
 
   const syncAuthFromDashboard = useCallback(
     (dashboard: DashboardResponse | undefined) => {
-      if (dashboard) {
-        const isAuth = checkAuth();
-        if (isAuth !== authenticatedRef.current) {
-          // Was authenticated and now isn't — show session expired banner
-          if (authenticatedRef.current && !isAuth) {
-            setSessionExpired(true);
-          }
-          setAuthenticated(isAuth);
+      const isAuth = checkAuth();
+
+      if (isAuth !== authenticatedRef.current) {
+        // Was authenticated and now isn't — show session expired banner
+        if (authenticatedRef.current && !isAuth) {
+          setSessionExpired(true);
         }
-        if (isAuth) setTier(getTier());
+
+        setAuthenticated(isAuth);
+      }
+
+      if (!isAuth) {
+        setTier("free");
+        return;
+      }
+
+      if (dashboard) {
+        setTier(getTier());
       }
     },
     [],

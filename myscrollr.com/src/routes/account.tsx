@@ -26,6 +26,16 @@ export const Route = createFileRoute('/account')({
   component: AccountHub,
 })
 
+const LOGTO_ENDPOINT = (import.meta.env.VITE_LOGTO_ENDPOINT || '').replace(
+  /\/+$/,
+  '',
+)
+const LOGTO_APP_ID = import.meta.env.VITE_LOGTO_APP_ID || ''
+const SECURITY_NODE_HREF =
+  LOGTO_ENDPOINT && LOGTO_APP_ID
+    ? `${LOGTO_ENDPOINT}/account?${new URLSearchParams({ client_id: LOGTO_APP_ID })}`
+    : undefined
+
 // ── Signature easing (matches homepage) ────────────────────────
 const EASE = [0.22, 1, 0.36, 1] as const
 
@@ -79,7 +89,7 @@ const HUB_CARDS: Array<HubCardDef> = [
   {
     title: 'Security Node',
     desc: 'Manage password, MFA & linked accounts',
-    href: `https://auth.myscrollr.relentnet.dev/account?${new URLSearchParams({ client_id: 'ogbulfshvf934eeli4t9u' })}`,
+    href: SECURITY_NODE_HREF,
     Icon: Lock,
     hex: HEX.secondary,
     WatermarkIcon: Lock,
@@ -126,14 +136,9 @@ function AccountHub() {
     }
   }, [getToken])
 
-  // ── Redirect if not authenticated (one-time) ─────────────────
+  // ── Redirect if not authenticated ────────────────────────────
   useEffect(() => {
-    if (
-      !isLoading &&
-      !isAuthenticated &&
-      !hasLoaded.current &&
-      !autoRedirectTriggered.current
-    ) {
+    if (!isLoading && !isAuthenticated && !autoRedirectTriggered.current) {
       autoRedirectTriggered.current = true
       navigate({ to: '/' })
     }
@@ -144,7 +149,10 @@ function AccountHub() {
     if (isAuthenticated) {
       getIdTokenClaims()
         .then(setUserClaims)
-        .catch(() => {})
+        .catch((error: unknown) => {
+          console.warn('Failed to load account identity claims', error)
+          setUserClaims(undefined)
+        })
       fetchStats()
     }
   }, [isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -154,7 +162,9 @@ function AccountHub() {
     return <LoadingSpinner variant="spin" label="" />
   }
 
-  if (!isAuthenticated && !hasLoaded.current) return null
+  if (!isAuthenticated) {
+    return <LoadingSpinner variant="spin" label="" />
+  }
 
   hasLoaded.current = true
 
@@ -450,16 +460,25 @@ function AccountHub() {
 function HubCard({ card, index }: { card: HubCardDef; index: number }) {
   const { title, desc, to, params, search, href, Icon, hex, WatermarkIcon } =
     card
+  const isInteractive = Boolean(href || to)
 
   const inner = (
     <motion.div
-      className="relative bg-base-200/40 border border-base-300/25 rounded-xl p-6 overflow-hidden group h-full flex flex-col justify-between cursor-pointer hover:border-base-300/50 transition-colors"
+      className={`relative bg-base-200/40 border border-base-300/25 rounded-xl p-6 overflow-hidden group h-full flex flex-col justify-between transition-colors ${
+        isInteractive
+          ? 'cursor-pointer hover:border-base-300/50'
+          : 'cursor-default opacity-75'
+      }`}
       style={{ opacity: 0 }}
       initial={{ opacity: 0, y: 30 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-80px' }}
       transition={{ duration: 0.6, ease: EASE, delay: index * 0.1 }}
-      whileHover={{ y: -3, transition: { type: 'tween', duration: 0.2 } }}
+      whileHover={
+        isInteractive
+          ? { y: -3, transition: { type: 'tween', duration: 0.2 } }
+          : undefined
+      }
     >
       {/* Accent top line */}
       <div
@@ -484,9 +503,11 @@ function HubCard({ card, index }: { card: HubCardDef; index: number }) {
       />
 
       {/* Arrow indicator */}
-      <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-        <ArrowRight size={16} className="text-base-content/40" />
-      </div>
+      {isInteractive ? (
+        <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+          <ArrowRight size={16} className="text-base-content/40" />
+        </div>
+      ) : null}
 
       <div className="space-y-5">
         {/* Icon badge */}
@@ -530,6 +551,10 @@ function HubCard({ card, index }: { card: HubCardDef; index: number }) {
         {inner}
       </a>
     )
+  }
+
+  if (!to) {
+    return <div className="block h-full">{inner}</div>
   }
 
   return (

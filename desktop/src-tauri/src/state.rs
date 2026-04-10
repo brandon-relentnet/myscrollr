@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{atomic::AtomicBool, Arc, Mutex};
 use tokio::sync::watch;
 
 // ── SSE state ────────────────────────────────────────────────────
@@ -9,6 +9,10 @@ pub struct SseHandle(pub Mutex<Option<watch::Sender<bool>>>);
 /// Tracks whether the OAuth callback server is already running.
 #[derive(Clone)]
 pub struct AuthServerRunning(pub Arc<Mutex<bool>>);
+
+/// Signals the OAuth callback server thread to stop waiting for a callback.
+#[derive(Clone)]
+pub struct AuthServerStop(pub Arc<AtomicBool>);
 
 // ── System monitor state ─────────────────────────────────────────
 
