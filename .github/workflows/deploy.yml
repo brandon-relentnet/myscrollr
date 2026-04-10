@@ -112,18 +112,6 @@ jobs:
             context: .
             dockerfile: ./myscrollr.com/Dockerfile
             changed: ${{ needs.detect-changes.outputs.website }}
-            build-args: |
-              VITE_API_URL=https://api.myscrollr.com
-              VITE_LOGTO_ENDPOINT=https://auth.myscrollr.com
-              VITE_LOGTO_APP_ID=${{ secrets.VITE_LOGTO_APP_ID }}
-              VITE_LOGTO_RESOURCE=https://api.myscrollr.com
-              VITE_STRIPE_PUBLISHABLE_KEY=${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
-              VITE_STRIPE_PRICE_MONTHLY=${{ secrets.VITE_STRIPE_PRICE_MONTHLY }}
-              VITE_STRIPE_PRICE_ANNUAL=${{ secrets.VITE_STRIPE_PRICE_ANNUAL }}
-              VITE_STRIPE_PRICE_PRO_MONTHLY=${{ secrets.VITE_STRIPE_PRICE_PRO_MONTHLY }}
-              VITE_STRIPE_PRICE_PRO_ANNUAL=${{ secrets.VITE_STRIPE_PRICE_PRO_ANNUAL }}
-              VITE_STRIPE_PRICE_ULTIMATE_MONTHLY=${{ secrets.VITE_STRIPE_PRICE_ULTIMATE_MONTHLY }}
-              VITE_STRIPE_PRICE_ULTIMATE_ANNUAL=${{ secrets.VITE_STRIPE_PRICE_ULTIMATE_ANNUAL }}
           - service: finance-api
             context: ./channels/finance/api
             dockerfile: ./channels/finance/api/Dockerfile
@@ -234,15 +222,35 @@ jobs:
 
       - name: Build and push
         if: matrix.changed == 'true'
+        env:
+          VITE_LOGTO_APP_ID: ${{ secrets.VITE_LOGTO_APP_ID }}
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+          VITE_STRIPE_PRICE_MONTHLY: ${{ secrets.VITE_STRIPE_PRICE_MONTHLY }}
+          VITE_STRIPE_PRICE_ANNUAL: ${{ secrets.VITE_STRIPE_PRICE_ANNUAL }}
+          VITE_STRIPE_PRICE_PRO_MONTHLY: ${{ secrets.VITE_STRIPE_PRICE_PRO_MONTHLY }}
+          VITE_STRIPE_PRICE_PRO_ANNUAL: ${{ secrets.VITE_STRIPE_PRICE_PRO_ANNUAL }}
+          VITE_STRIPE_PRICE_ULTIMATE_MONTHLY: ${{ secrets.VITE_STRIPE_PRICE_ULTIMATE_MONTHLY }}
+          VITE_STRIPE_PRICE_ULTIMATE_ANNUAL: ${{ secrets.VITE_STRIPE_PRICE_ULTIMATE_ANNUAL }}
         run: |
           IMAGE="${REGISTRY}/${{ matrix.service }}"
           SHA_TAG="sha-${GITHUB_SHA::7}"
 
           BUILD_ARGS=""
-          if [ -n "${{ matrix.build-args }}" ]; then
-            while IFS= read -r arg; do
-              [ -n "$arg" ] && BUILD_ARGS="$BUILD_ARGS --build-arg $arg"
-            done <<< "${{ matrix.build-args }}"
+          if [ "${{ matrix.service }}" = "website" ]; then
+            for arg in \
+              "VITE_API_URL=https://api.myscrollr.com" \
+              "VITE_LOGTO_ENDPOINT=https://auth.myscrollr.com" \
+              "VITE_LOGTO_APP_ID=$VITE_LOGTO_APP_ID" \
+              "VITE_LOGTO_RESOURCE=https://api.myscrollr.com" \
+              "VITE_STRIPE_PUBLISHABLE_KEY=$VITE_STRIPE_PUBLISHABLE_KEY" \
+              "VITE_STRIPE_PRICE_MONTHLY=$VITE_STRIPE_PRICE_MONTHLY" \
+              "VITE_STRIPE_PRICE_ANNUAL=$VITE_STRIPE_PRICE_ANNUAL" \
+              "VITE_STRIPE_PRICE_PRO_MONTHLY=$VITE_STRIPE_PRICE_PRO_MONTHLY" \
+              "VITE_STRIPE_PRICE_PRO_ANNUAL=$VITE_STRIPE_PRICE_PRO_ANNUAL" \
+              "VITE_STRIPE_PRICE_ULTIMATE_MONTHLY=$VITE_STRIPE_PRICE_ULTIMATE_MONTHLY" \
+              "VITE_STRIPE_PRICE_ULTIMATE_ANNUAL=$VITE_STRIPE_PRICE_ULTIMATE_ANNUAL"; do
+              BUILD_ARGS="$BUILD_ARGS --build-arg $arg"
+            done
           fi
 
           docker build \
