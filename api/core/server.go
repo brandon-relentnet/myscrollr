@@ -25,7 +25,10 @@ type Server struct {
 // NewServer creates a new Server with a configured Fiber app.
 func NewServer() *Server {
 	app := fiber.New(fiber.Config{
-		AppName: "Scrollr API",
+		AppName:                 "Scrollr API",
+		EnableTrustedProxyCheck: true,
+		TrustedProxies:          []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"},
+		ProxyHeader:             "X-Forwarded-For",
 	})
 
 	return &Server{
@@ -88,11 +91,13 @@ func (s *Server) setupMiddleware() {
 
 	// Core paths always exempt from rate limiting
 	coreExemptPaths := map[string]bool{
-		"/health":          true,
-		"/events":          true,
-		"/webhooks/sequin": true,
-		"/webhooks/stripe": true,
-		"/channels":        true,
+		"/health":                  true,
+		"/events":                  true,
+		"/webhooks/sequin":         true,
+		"/webhooks/stripe":         true,
+		"/channels":                true,
+		"/extension/token":         true,
+		"/extension/token/refresh": true,
 	}
 
 	// Stricter rate limiter for OAuth initiation endpoints (e.g. /yahoo/start).
@@ -353,5 +358,3 @@ func (s *Server) Listen() error {
 	log.Printf("Starting server on port %s", port)
 	return s.App.Listen(":" + port)
 }
-
-
