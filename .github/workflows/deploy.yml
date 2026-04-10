@@ -301,6 +301,47 @@ jobs:
           SHA_TAG="sha-${GITHUB_SHA::7}"
           K8S_CHANGED="${{ needs.detect-changes.outputs.k8s }}"
 
+          rollout_timeout_for() {
+            case "$1" in
+              sports-service)
+                echo "300s"
+                ;;
+              *)
+                echo "120s"
+                ;;
+            esac
+          }
+
+          dump_rollout_debug() {
+            local service=$1
+
+            echo "Deployment status for ${service}:"
+            kubectl get deployment/${service} -n scrollr -o wide || true
+
+            echo "Pods for ${service}:"
+            kubectl get pods -n scrollr -l app=${service} -o wide || true
+
+            echo "Deployment describe for ${service}:"
+            kubectl describe deployment/${service} -n scrollr || true
+
+            echo "Pod describe for ${service}:"
+            kubectl describe pods -n scrollr -l app=${service} || true
+          }
+
+          wait_for_rollout() {
+            local service=$1
+            local timeout
+            timeout="$(rollout_timeout_for "$service")"
+
+            if kubectl rollout status deployment/${service} -n scrollr --timeout="${timeout}"; then
+              return 0
+            fi
+
+            echo "Rollout failed for ${service}; collecting Kubernetes diagnostics"
+            dump_rollout_debug "$service"
+            return 1
+          }
+
           rollout_if_needed() {
             local service=$1
             local image_changed=$2
@@ -310,14 +351,14 @@ jobs:
               kubectl set image deployment/${service} \
                 ${service}="${REGISTRY}/${service}:${SHA_TAG}" \
                 -n scrollr
-              kubectl rollout status deployment/${service} -n scrollr --timeout=120s
+              wait_for_rollout "$service"
               return
             fi
 
             if [ "$K8S_CHANGED" = "true" ]; then
               echo "Restarting ${service} to pick up Kubernetes config changes"
               kubectl rollout restart deployment/${service} -n scrollr
-              kubectl rollout status deployment/${service} -n scrollr --timeout=120s
+              wait_for_rollout "$service"
             fi
           }
 
