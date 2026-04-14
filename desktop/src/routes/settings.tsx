@@ -107,6 +107,10 @@ function SettingsRoute() {
             }}
             autostartEnabled={shell.autostartEnabled}
             onAutostartChange={shell.onAutostartChange}
+            showSetupOnLogin={prefs.showSetupOnLogin}
+            onShowSetupChange={(enabled) =>
+              onPrefsChange({ ...prefs, showSetupOnLogin: enabled })
+            }
             appVersion={shell.appVersion}
           />
         )}

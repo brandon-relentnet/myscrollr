@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Zap } from "lucide-react";
 import { channelsApi } from "../../api/client";
 import { queryKeys } from "../../api/queries";
 import type { ChannelType } from "../../api/client";
@@ -23,6 +24,7 @@ type WizardStep =
 
 interface OnboardingWizardProps {
   prefs: AppPreferences;
+  /** Called when the wizard finishes or is skipped. Updated prefs are passed. */
   onComplete: (prefs: AppPreferences) => void;
 }
 
@@ -40,10 +42,84 @@ function buildSteps(selectedChannels: Set<ChannelType>): WizardStep[] {
   return steps;
 }
 
+// ── Welcome Screen (shown before the wizard steps) ──────────────
+
+function WelcomeScreen({ onStart, onSkip }: {
+  onStart: () => void;
+  onSkip: (dontShowAgain: boolean) => void;
+}) {
+  const [dontShow, setDontShow] = useState(false);
+
+  return (
+    <div className="flex flex-col h-screen w-screen select-none">
+      {/* Draggable region */}
+      <div data-tauri-drag-region className="shrink-0 h-8" />
+
+      <div className="flex-1 flex flex-col items-center justify-center px-8">
+        <div className="flex flex-col items-center gap-6 max-w-md text-center">
+          {/* Logo */}
+          <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center">
+            <Zap size={28} className="text-accent" />
+          </div>
+
+          {/* Title */}
+          <div>
+            <h1 className="text-xl font-semibold text-fg">Welcome to Scrollr</h1>
+            <p className="text-sm text-fg-3 mt-2">
+              Let&apos;s set up your personalized ticker. Pick your channels,
+              configure your data sources, and choose your widgets.
+            </p>
+            <p className="text-xs text-fg-4 mt-2">
+              This takes about 1-2 minutes.
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div className="flex flex-col items-center gap-4 w-full max-w-xs">
+            <button
+              onClick={onStart}
+              className="w-full px-6 py-2.5 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent/90 transition-colors"
+            >
+              Get Started
+            </button>
+
+            <button
+              onClick={() => onSkip(dontShow)}
+              className="px-4 py-2 rounded-lg text-sm text-fg-4 hover:text-fg-3 transition-colors"
+            >
+              Skip Setup
+            </button>
+
+            {/* Don't show again checkbox */}
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={dontShow}
+                onChange={(e) => setDontShow(e.target.checked)}
+                className="w-3.5 h-3.5 rounded border-fg-4 text-accent focus:ring-accent/30 cursor-pointer"
+              />
+              <span className="text-xs text-fg-4 group-hover:text-fg-3 transition-colors">
+                Don&apos;t show this again
+              </span>
+            </label>
+          </div>
+
+          <p className="text-[10px] text-fg-5 mt-2">
+            You can re-enable this in Settings &gt; General at any time.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Component ───────────────────────────────────────────────────
 
 export default function OnboardingWizard({ prefs, onComplete }: OnboardingWizardProps) {
   const queryClient = useQueryClient();
+
+  // ── Phase: welcome screen or wizard steps ──
+  const [started, setStarted] = useState(false);
 
   // ── Wizard state ──
   const [selectedChannels, setSelectedChannels] = useState<Set<ChannelType>>(new Set());
@@ -109,7 +185,6 @@ export default function OnboardingWizard({ prefs, onComplete }: OnboardingWizard
       // Channel may already exist (409), which is fine
     }
 
-    // Update config with selected items
     try {
       if (type === "finance" && financeSymbols.size > 0) {
         await channelsApi.update(type, {
@@ -124,11 +199,39 @@ export default function OnboardingWizard({ prefs, onComplete }: OnboardingWizard
           config: { feeds: [...rssFeeds] },
         });
       }
-      // Fantasy: no config update needed — Yahoo OAuth handles it
     } catch {
-      toast.error(`Couldn't configure ${type} — you can set it up in Settings`);
+      toast.error(`Couldn't configure ${type} -- you can set it up in Settings`);
     }
   }
+
+  // ── Finish: provision everything and exit wizard ──
+  const finish = useCallback(async () => {
+    setBusy(true);
+
+    // Provision all selected channels
+    for (const ch of selectedChannels) {
+      await provisionChannel(ch);
+    }
+
+    // Build final prefs
+    const widgetIds = [...selectedWidgets];
+    const pinnedIds = [...Array.from(selectedChannels), ...widgetIds];
+
+    const nextPrefs: AppPreferences = {
+      ...prefs,
+      widgets: {
+        ...prefs.widgets,
+        enabledWidgets: widgetIds,
+        widgetsOnTicker: widgetIds,
+      },
+      pinnedSources: pinnedIds,
+    };
+
+    queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+    setBusy(false);
+    onComplete(nextPrefs);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedChannels, selectedWidgets, prefs, queryClient, onComplete]);
 
   // ── Navigation: Next ──
   const handleNext = useCallback(async () => {
@@ -145,67 +248,47 @@ export default function OnboardingWizard({ prefs, onComplete }: OnboardingWizard
 
     // If this is the last step (widgets), finish
     if (stepIndex >= steps.length - 1) {
-      setBusy(true);
-
-      // Provision any channels that don't have a configure step
-      // (channels selected but skipped through)
-      for (const ch of selectedChannels) {
-        try {
-          await channelsApi.create(ch);
-        } catch {
-          // 409 is fine
-        }
-      }
-
-      // Build final prefs
-      const widgetIds = [...selectedWidgets];
-      const pinnedIds = [
-        ...Array.from(selectedChannels),
-        ...widgetIds,
-      ];
-
-      const nextPrefs: AppPreferences = {
-        ...prefs,
-        widgets: {
-          ...prefs.widgets,
-          enabledWidgets: widgetIds,
-          widgetsOnTicker: widgetIds,
-        },
-        pinnedSources: pinnedIds,
-        onboardingComplete: true,
-      };
-
-      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
-      setBusy(false);
-      onComplete(nextPrefs);
+      await finish();
       return;
     }
 
     setStepIndex((i) => i + 1);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busy, stepIndex, steps, selectedChannels, selectedWidgets, prefs, queryClient, onComplete]);
+  }, [busy, stepIndex, steps, finish]);
 
   // ── Navigation: Back ──
   const handleBack = useCallback(() => {
     if (stepIndex > 0) setStepIndex((i) => i - 1);
   }, [stepIndex]);
 
-  // ── Navigation: Skip ──
+  // ── Navigation: Skip step ──
   const handleSkip = useCallback(() => {
-    // Skip always advances, without provisioning
     if (stepIndex >= steps.length - 1) {
-      // Skipping the last step = finish with defaults
-      const nextPrefs: AppPreferences = {
-        ...prefs,
-        pinnedSources: [...Array.from(selectedChannels)],
-        onboardingComplete: true,
-      };
-      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
-      onComplete(nextPrefs);
+      // Skipping the last step = finish with whatever we have
+      finish();
       return;
     }
     setStepIndex((i) => i + 1);
-  }, [stepIndex, steps.length, prefs, selectedChannels, queryClient, onComplete]);
+  }, [stepIndex, steps.length, finish]);
+
+  // ── Welcome screen skip: just exit wizard ──
+  const handleWelcomeSkip = useCallback((dontShowAgain: boolean) => {
+    const nextPrefs: AppPreferences = {
+      ...prefs,
+      showSetupOnLogin: dontShowAgain ? false : prefs.showSetupOnLogin,
+    };
+    onComplete(nextPrefs);
+  }, [prefs, onComplete]);
+
+  // ── Show welcome screen first ──
+  if (!started) {
+    return (
+      <WelcomeScreen
+        onStart={() => setStarted(true)}
+        onSkip={handleWelcomeSkip}
+      />
+    );
+  }
 
   // ── Render current step ──
   function renderStep() {
@@ -226,11 +309,7 @@ export default function OnboardingWizard({ prefs, onComplete }: OnboardingWizard
             return (
               <StepConfigureFantasy
                 connected={fantasyConnected}
-                onConnect={() => {
-                  // TODO: trigger Yahoo OAuth flow
-                  // For now, just mark as connected for UX
-                  setFantasyConnected(true);
-                }}
+                onConnect={() => setFantasyConnected(true)}
               />
             );
           default:

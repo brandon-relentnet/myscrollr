@@ -190,30 +190,12 @@ function RootLayout() {
   const [billingBannerDismissed, setBillingBannerDismissed] = useState(false);
 
   // ── Onboarding state ────────────────────────────────────────
-  // Existing users who already have channels skip the wizard automatically.
-  const [migrationChecked, setMigrationChecked] = useState(false);
-
-  useEffect(() => {
-    if (migrationChecked) return;
-    if (!auth.authenticated) return;
-    if (prefs.onboardingComplete) {
-      setMigrationChecked(true);
-      return;
-    }
-    // Check if user already has channels (existing user upgrade)
-    if (dashboard && !loading) {
-      if (dashboard.channels && dashboard.channels.length > 0) {
-        const next = { ...prefs, onboardingComplete: true };
-        setPrefs(next);
-        savePrefs(next);
-      }
-      setMigrationChecked(true);
-    }
-  }, [auth.authenticated, prefs.onboardingComplete, dashboard, loading, migrationChecked]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Session-local: once dismissed (skip or finish), stays dismissed until next login.
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
 
   const showAuthGate = !auth.authenticated;
-  const showOnboarding = auth.authenticated && !prefs.onboardingComplete && migrationChecked;
-  const showApp = auth.authenticated && prefs.onboardingComplete;
+  const showOnboarding = auth.authenticated && prefs.showSetupOnLogin && !onboardingDismissed;
+  const showApp = auth.authenticated && !showOnboarding;
 
   // ── SSE status tracking ─────────────────────────────────────
   // Listen directly for SSE status events from the Rust backend.
@@ -440,6 +422,7 @@ function RootLayout() {
   const handleOnboardingComplete = useCallback((nextPrefs: AppPreferences) => {
     setPrefs(nextPrefs);
     savePrefs(nextPrefs);
+    setOnboardingDismissed(true);
   }, []);
 
   const handleAutostartChange = useCallback(async (enabled: boolean) => {

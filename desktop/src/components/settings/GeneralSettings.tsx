@@ -37,6 +37,8 @@ interface GeneralSettingsProps {
   onReset: () => void;
   autostartEnabled: boolean;
   onAutostartChange: (enabled: boolean) => void;
+  showSetupOnLogin: boolean;
+  onShowSetupChange: (enabled: boolean) => void;
   appVersion: string;
 }
 
@@ -65,6 +67,8 @@ export default function GeneralSettings({
   onReset,
   autostartEnabled,
   onAutostartChange,
+  showSetupOnLogin,
+  onShowSetupChange,
   appVersion,
 }: GeneralSettingsProps) {
   const [status, setStatus] = useState<UpdateStatus>({ step: "idle" });
@@ -203,6 +207,12 @@ export default function GeneralSettings({
           description="Automatically open Scrollr when you start your computer"
           checked={autostartEnabled}
           onChange={onAutostartChange}
+        />
+        <ToggleRow
+          label="Show setup wizard on login"
+          description="Walk through channel and widget setup after signing in"
+          checked={showSetupOnLogin}
+          onChange={onShowSetupChange}
         />
       </Section>
 

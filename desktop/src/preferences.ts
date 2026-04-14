@@ -206,8 +206,8 @@ export interface AppPreferences {
   pinnedSources: string[];
   /** Per-channel homepage preview selections (up to 5 group keys). */
   homePreview: HomePreview;
-  /** Whether the user has completed the onboarding wizard. */
-  onboardingComplete: boolean;
+  /** Show the setup wizard when signing in. Users can disable this. */
+  showSetupOnLogin: boolean;
 }
 
 // ── Defaults ────────────────────────────────────────────────────
@@ -333,7 +333,7 @@ const DEFAULT_PREFS: AppPreferences = {
   channelDisplay: DEFAULT_CHANNEL_DISPLAY,
   pinnedSources: [],
   homePreview: {},
-  onboardingComplete: false,
+  showSetupOnLogin: true,
 };
 
 // ── Storage helpers ─────────────────────────────────────────────
@@ -484,7 +484,7 @@ export function loadPrefs(): AppPreferences {
         source.homePreview && typeof source.homePreview === "object" && !Array.isArray(source.homePreview)
           ? (source.homePreview as HomePreview)
           : {},
-      onboardingComplete: typeof source.onboardingComplete === "boolean" ? source.onboardingComplete : false,
+      showSetupOnLogin: typeof source.showSetupOnLogin === "boolean" ? source.showSetupOnLogin : true,
     };
 
     // If migrated from v1, persist the new format
@@ -526,7 +526,7 @@ export function resetAll(): AppPreferences {
     channelDisplay: { ...DEFAULT_CHANNEL_DISPLAY },
     pinnedSources: [],
     homePreview: {},
-    onboardingComplete: false,
+    showSetupOnLogin: true,
   };
   savePrefs(defaults);
   return defaults;
