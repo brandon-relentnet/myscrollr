@@ -15,9 +15,11 @@ import {
   Pencil,
   Check,
   ChevronRight,
+  Settings,
 } from "lucide-react";
 import clsx from "clsx";
 import RouteError from "../components/RouteError";
+import Tooltip from "../components/Tooltip";
 import { useShell, useShellData } from "../shell-context";
 import { CHANNEL_ORDER } from "../channels/registry";
 import { WIDGET_ORDER } from "../widgets/registry";
@@ -123,11 +125,18 @@ function HomePage() {
           <h2 className="text-base font-semibold text-fg mb-2">
             Welcome to Scrollr
           </h2>
-          <p className="text-sm text-fg-3 mb-6 max-w-sm">
-            Add channels and widgets from the Catalog to build your
-            personalized ticker.
+          <p className="text-sm text-fg-3 mb-4 max-w-sm">
+            Add channels like Finance, Sports, or RSS from the Catalog, then
+            configure what you want to track.
           </p>
-          {!authenticated && (
+          {authenticated ? (
+            <button
+              onClick={() => navigate({ to: "/catalog" })}
+              className="px-4 py-2 rounded-lg text-xs font-semibold bg-accent text-surface hover:bg-accent/90 transition-colors"
+            >
+              Browse Catalog
+            </button>
+          ) : (
             <button
               onClick={onLogin}
               className="px-4 py-2 rounded-lg text-xs font-semibold bg-accent text-surface hover:bg-accent/90 transition-colors"
@@ -172,6 +181,12 @@ function HomePage() {
               navigate({
                 to: "/channel/$type/$tab",
                 params: { type: ch.channel_type, tab: targetTab },
+              })
+            }
+            onConfigure={() =>
+              navigate({
+                to: "/channel/$type/$tab",
+                params: { type: ch.channel_type, tab: "configuration" },
               })
             }
           />
@@ -246,6 +261,7 @@ interface ChannelSectionProps {
   onSelectionChange: (keys: string[]) => void;
   onViewAll: () => void;
   onRowClick: () => void;
+  onConfigure: () => void;
 }
 
 function ChannelSection({
@@ -260,6 +276,7 @@ function ChannelSection({
   onSelectionChange,
   onViewAll,
   onRowClick,
+  onConfigure,
 }: ChannelSectionProps) {
   const [editing, setEditing] = useState(false);
   const Icon = manifest.icon;
@@ -292,57 +309,63 @@ function ChannelSection({
 
         {/* Edit toggle */}
         {groups.length > 0 && (
-          <button
-            onClick={() => setEditing(!editing)}
-            aria-label={editing ? "Done editing" : `Edit ${manifest.name} preview`}
-            className={clsx(
-              "w-7 h-7 flex items-center justify-center rounded-lg transition-colors",
-              editing
-                ? "text-accent bg-accent/10"
-                : hasSelections
-                  ? "text-accent hover:bg-surface-hover"
-                  : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover",
-            )}
-          >
-            {editing ? <Check size={14} /> : <Pencil size={14} />}
-          </button>
+          <Tooltip content={editing ? "Done editing" : "Edit preview"}>
+            <button
+              onClick={() => setEditing(!editing)}
+              aria-label={editing ? "Done editing" : `Edit ${manifest.name} preview`}
+              className={clsx(
+                "w-7 h-7 flex items-center justify-center rounded-lg transition-colors",
+                editing
+                  ? "text-accent bg-accent/10"
+                  : hasSelections
+                    ? "text-accent hover:bg-surface-hover"
+                    : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover",
+              )}
+            >
+              {editing ? <Check size={14} /> : <Pencil size={14} />}
+            </button>
+          </Tooltip>
         )}
 
         {/* Eye toggle */}
-        <button
-          onClick={onToggleTicker}
-          aria-label={
-            tickerEnabled
-              ? `Hide ${manifest.name} from ticker`
-              : `Show ${manifest.name} on ticker`
-          }
-          className={clsx(
-            "w-7 h-7 flex items-center justify-center rounded-lg transition-colors",
-            tickerEnabled
-              ? "text-fg-3 hover:text-fg hover:bg-surface-hover"
-              : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover",
-          )}
-        >
-          {tickerEnabled ? <Eye size={14} /> : <EyeOff size={14} />}
-        </button>
+        <Tooltip content={tickerEnabled ? "Hide from ticker" : "Show on ticker"}>
+          <button
+            onClick={onToggleTicker}
+            aria-label={
+              tickerEnabled
+                ? `Hide ${manifest.name} from ticker`
+                : `Show ${manifest.name} on ticker`
+            }
+            className={clsx(
+              "w-7 h-7 flex items-center justify-center rounded-lg transition-colors",
+              tickerEnabled
+                ? "text-fg-3 hover:text-fg hover:bg-surface-hover"
+                : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover",
+            )}
+          >
+            {tickerEnabled ? <Eye size={14} /> : <EyeOff size={14} />}
+          </button>
+        </Tooltip>
 
         {/* Pin toggle */}
-        <button
-          onClick={onTogglePin}
-          aria-label={
-            pinned
-              ? `Unpin ${manifest.name}`
-              : `Pin ${manifest.name} to sidebar`
-          }
-          className={clsx(
-            "w-7 h-7 flex items-center justify-center rounded-lg transition-colors",
-            pinned
-              ? "text-accent"
-              : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover",
-          )}
-        >
-          {pinned ? <Pin size={14} /> : <PinOff size={14} />}
-        </button>
+        <Tooltip content={pinned ? "Unpin from sidebar" : "Pin to sidebar"}>
+          <button
+            onClick={onTogglePin}
+            aria-label={
+              pinned
+                ? `Unpin ${manifest.name}`
+                : `Pin ${manifest.name} to sidebar`
+            }
+            className={clsx(
+              "w-7 h-7 flex items-center justify-center rounded-lg transition-colors",
+              pinned
+                ? "text-accent"
+                : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover",
+            )}
+          >
+            {pinned ? <Pin size={14} /> : <PinOff size={14} />}
+          </button>
+        </Tooltip>
 
         {/* View all */}
         {!editing && (
@@ -420,16 +443,16 @@ function ChannelSection({
           }}
         >
           {type === "finance" && (
-            <FinanceRows data={channelData} filter={selectedKeys} />
+            <FinanceRows data={channelData} filter={selectedKeys} onConfigure={onConfigure} />
           )}
           {type === "sports" && (
-            <SportsRows data={channelData} filter={selectedKeys} />
+            <SportsRows data={channelData} filter={selectedKeys} onConfigure={onConfigure} />
           )}
           {type === "rss" && (
-            <RssRows data={channelData} filter={selectedKeys} />
+            <RssRows data={channelData} filter={selectedKeys} onConfigure={onConfigure} />
           )}
           {type === "fantasy" && (
-            <FantasyRows data={channelData} filter={selectedKeys} />
+            <FantasyRows data={channelData} filter={selectedKeys} onConfigure={onConfigure} />
           )}
         </div>
       )}
@@ -439,9 +462,9 @@ function ChannelSection({
 
 // ── Finance rows ────────────────────────────────────────────────
 
-function FinanceRows({ data, filter }: { data: unknown; filter: string[] }) {
+function FinanceRows({ data, filter, onConfigure }: { data: unknown; filter: string[]; onConfigure: () => void }) {
   const trades = Array.isArray(data) ? (data as Trade[]) : [];
-  if (trades.length === 0) return <EmptyDataRow channelType="finance" />;
+  if (trades.length === 0) return <EmptyDataRow channelType="finance" onConfigure={onConfigure} />;
 
   const filtered =
     filter.length > 0
@@ -493,9 +516,9 @@ function FinanceRows({ data, filter }: { data: unknown; filter: string[] }) {
 
 // ── Sports rows ─────────────────────────────────────────────────
 
-function SportsRows({ data, filter }: { data: unknown; filter: string[] }) {
+function SportsRows({ data, filter, onConfigure }: { data: unknown; filter: string[]; onConfigure: () => void }) {
   const games = Array.isArray(data) ? (data as Game[]) : [];
-  if (games.length === 0) return <EmptyDataRow channelType="sports" />;
+  if (games.length === 0) return <EmptyDataRow channelType="sports" onConfigure={onConfigure} />;
 
   const filtered =
     filter.length > 0
@@ -563,9 +586,9 @@ function SportsRows({ data, filter }: { data: unknown; filter: string[] }) {
 
 // ── RSS rows ────────────────────────────────────────────────────
 
-function RssRows({ data, filter }: { data: unknown; filter: string[] }) {
+function RssRows({ data, filter, onConfigure }: { data: unknown; filter: string[]; onConfigure: () => void }) {
   const items = Array.isArray(data) ? (data as RssItem[]) : [];
-  if (items.length === 0) return <EmptyDataRow channelType="rss" />;
+  if (items.length === 0) return <EmptyDataRow channelType="rss" onConfigure={onConfigure} />;
 
   const filtered =
     filter.length > 0
@@ -602,9 +625,9 @@ function RssRows({ data, filter }: { data: unknown; filter: string[] }) {
 
 // ── Fantasy rows ────────────────────────────────────────────────
 
-function FantasyRows({ data, filter }: { data: unknown; filter: string[] }) {
+function FantasyRows({ data, filter, onConfigure }: { data: unknown; filter: string[]; onConfigure: () => void }) {
   const leagues = Array.isArray(data) ? data : [];
-  if (leagues.length === 0) return <EmptyDataRow channelType="fantasy" />;
+  if (leagues.length === 0) return <EmptyDataRow channelType="fantasy" onConfigure={onConfigure} />;
 
   const filtered =
     filter.length > 0
@@ -644,18 +667,38 @@ function FantasyRows({ data, filter }: { data: unknown; filter: string[] }) {
 
 // ── Empty data row ──────────────────────────────────────────────
 
-function EmptyDataRow({ channelType }: { channelType?: string }) {
-  const messages: Record<string, string> = {
-    finance: "No market data right now",
-    sports: "No scores right now",
-    rss: "No articles right now",
-    fantasy: "No league data right now",
-  };
-  const msg =
-    (channelType && messages[channelType]) || "Nothing to show";
+const EMPTY_HINTS: Record<string, { message: string; action: string }> = {
+  finance: { message: "No stocks configured yet", action: "choose what to track" },
+  sports: { message: "No leagues configured yet", action: "pick your leagues" },
+  rss: { message: "No feeds configured yet", action: "add websites to follow" },
+  fantasy: { message: "No leagues imported yet", action: "connect Yahoo Fantasy" },
+};
+
+function EmptyDataRow({
+  channelType,
+  onConfigure,
+}: {
+  channelType?: string;
+  onConfigure?: () => void;
+}) {
+  const hint = channelType ? EMPTY_HINTS[channelType] : undefined;
   return (
-    <div className="px-4 py-4 text-center">
-      <p className="text-xs text-fg-4">{msg}</p>
+    <div className="px-4 py-5 text-center">
+      <p className="text-xs text-fg-3 font-medium mb-1">
+        {hint?.message ?? "Nothing to show"}
+      </p>
+      {hint && onConfigure && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onConfigure();
+          }}
+          className="inline-flex items-center gap-1.5 text-[11px] text-accent hover:text-accent/80 transition-colors"
+        >
+          <Settings size={11} />
+          Open Settings to {hint.action}
+        </button>
+      )}
     </div>
   );
 }
@@ -738,56 +781,62 @@ function WidgetChip({
         </span>
 
         {/* Eye toggle */}
-        <div
-          role="switch"
-          aria-checked={tickerEnabled}
-          tabIndex={0}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleTicker();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
+        <Tooltip content={tickerEnabled ? "Hide from ticker" : "Show on ticker"}>
+          <div
+            role="switch"
+            aria-checked={tickerEnabled}
+            aria-label={tickerEnabled ? "Hide from ticker" : "Show on ticker"}
+            tabIndex={0}
+            onClick={(e) => {
               e.stopPropagation();
               onToggleTicker();
-            }
-          }}
-          className={clsx(
-            "w-6 h-6 flex items-center justify-center rounded transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 shrink-0",
-            tickerEnabled
-              ? "text-fg-3 hover:text-fg hover:bg-surface-hover"
-              : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover",
-          )}
-        >
-          {tickerEnabled ? <Eye size={12} /> : <EyeOff size={12} />}
-        </div>
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                onToggleTicker();
+              }
+            }}
+            className={clsx(
+              "w-6 h-6 flex items-center justify-center rounded transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 shrink-0",
+              tickerEnabled
+                ? "text-fg-3 hover:text-fg hover:bg-surface-hover"
+                : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover",
+            )}
+          >
+            {tickerEnabled ? <Eye size={12} /> : <EyeOff size={12} />}
+          </div>
+        </Tooltip>
 
         {/* Pin toggle */}
-        <div
-          role="switch"
-          aria-checked={pinned}
-          tabIndex={0}
-          onClick={(e) => {
-            e.stopPropagation();
-            onTogglePin();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
+        <Tooltip content={pinned ? "Unpin from sidebar" : "Pin to sidebar"}>
+          <div
+            role="switch"
+            aria-checked={pinned}
+            aria-label={pinned ? "Unpin from sidebar" : "Pin to sidebar"}
+            tabIndex={0}
+            onClick={(e) => {
               e.stopPropagation();
               onTogglePin();
-            }
-          }}
-          className={clsx(
-            "w-6 h-6 flex items-center justify-center rounded transition-colors shrink-0",
-            pinned
-              ? "text-accent"
-              : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover opacity-0 group-hover:opacity-100 focus:opacity-100",
-          )}
-        >
-          {pinned ? <Pin size={12} /> : <PinOff size={12} />}
-        </div>
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                onTogglePin();
+              }
+            }}
+            className={clsx(
+              "w-6 h-6 flex items-center justify-center rounded transition-colors shrink-0",
+              pinned
+                ? "text-accent"
+                : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover opacity-0 group-hover:opacity-100 focus:opacity-100",
+            )}
+          >
+            {pinned ? <Pin size={12} /> : <PinOff size={12} />}
+          </div>
+        </Tooltip>
       </div>
 
       <p className="text-sm font-medium text-fg-2 tabular-nums truncate">

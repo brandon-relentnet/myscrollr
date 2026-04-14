@@ -46,7 +46,7 @@ type SportsTab = "scores" | "schedule" | "standings";
 
 // ── FeedTab ──────────────────────────────────────────────────────
 
-function SportsFeedTab({ mode, feedContext }: FeedTabProps) {
+function SportsFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
   const [tab, setTab] = useState<SportsTab>("scores");
   const { leagues, display } = useSportsConfig();
 
@@ -65,6 +65,7 @@ function SportsFeedTab({ mode, feedContext }: FeedTabProps) {
         dashboardLoaded={!!feedContext.__dashboardLoaded}
         loadingNoun="scores"
         actionHint="pick your leagues"
+        onConfigure={onConfigure}
       />
     );
   }

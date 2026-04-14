@@ -260,7 +260,7 @@ export default function App() {
       if (next.window.tickerPosition !== prev.window.tickerPosition) {
         setTickerPosition(next.window.tickerPosition);
         savePref("tickerPosition", next.window.tickerPosition);
-        const h = TICKER_HEIGHTS[next.ticker.tickerMode] * next.appearance.tickerRows;
+        const h = Math.round(TICKER_HEIGHTS[next.ticker.tickerMode] * next.appearance.tickerRows * (next.appearance.uiScale / 100));
         invoke("position_ticker", { position: next.window.tickerPosition, height: h }).catch(() => {});
       }
 
@@ -280,7 +280,7 @@ export default function App() {
 
   useEffect(() => {
     const tickerH = prefs.ticker.showTicker
-      ? TICKER_HEIGHTS[prefs.ticker.tickerMode] * prefs.appearance.tickerRows
+      ? Math.round(TICKER_HEIGHTS[prefs.ticker.tickerMode] * prefs.appearance.tickerRows * (prefs.appearance.uiScale / 100))
       : 0;
     if (tickerH > 0) {
       // position_ticker sets size + position atomically via compositor
@@ -300,7 +300,7 @@ export default function App() {
 
   useEffect(() => {
     const tickerH = prefs.ticker.showTicker
-      ? TICKER_HEIGHTS[prefs.ticker.tickerMode] * prefs.appearance.tickerRows
+      ? Math.round(TICKER_HEIGHTS[prefs.ticker.tickerMode] * prefs.appearance.tickerRows * (prefs.appearance.uiScale / 100))
       : 0;
     if (tickerH > 0) {
       invoke("position_ticker", { position: tickerPosition, height: tickerH }).catch(() => {});
@@ -308,6 +308,7 @@ export default function App() {
   }, [
     prefs.ticker.tickerMode,
     prefs.appearance.tickerRows,
+    prefs.appearance.uiScale,
     prefs.ticker.showTicker,
     tickerPosition,
   ]);
@@ -385,7 +386,7 @@ export default function App() {
     };
     setPrefs(updated);
     savePrefs(updated);
-    const h = TICKER_HEIGHTS[updated.ticker.tickerMode] * updated.appearance.tickerRows;
+    const h = Math.round(TICKER_HEIGHTS[updated.ticker.tickerMode] * updated.appearance.tickerRows * (updated.appearance.uiScale / 100));
     invoke("position_ticker", { position: next, height: h }).catch(() => {});
   }, [tickerPosition]);
 

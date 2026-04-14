@@ -8,6 +8,7 @@
 import { useState, useCallback } from "react";
 import { Github, Plus, Trash2, ExternalLink, Loader2 } from "lucide-react";
 import type { FeedTabProps, WidgetManifest } from "../../types";
+import Tooltip from "../../components/Tooltip";
 import QueryErrorBanner from "../../components/QueryErrorBanner";
 import type { GitHubRepo } from "./types";
 import {
@@ -193,13 +194,16 @@ function GitHubFeedTab({ mode: feedMode }: FeedTabProps) {
           placeholder="Add another repo..."
           className="flex-1 text-[11px] font-mono px-2.5 py-1.5 rounded-md bg-surface-2 border border-edge text-fg placeholder:text-fg-4 focus:border-widget-github/50 focus:outline-none transition-colors"
         />
-        <button
-          onClick={handleAddRepo}
-          disabled={!inputUrl.trim()}
-          className="text-[11px] font-mono font-semibold text-widget-github px-2.5 py-1.5 rounded-md bg-widget-github/10 border border-widget-github/25 hover:bg-widget-github/15 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          <Plus size={11} />
-        </button>
+        <Tooltip content="Add repo">
+          <button
+            onClick={handleAddRepo}
+            disabled={!inputUrl.trim()}
+            aria-label="Add repo"
+            className="text-[11px] font-mono font-semibold text-widget-github px-2.5 py-1.5 rounded-md bg-widget-github/10 border border-widget-github/25 hover:bg-widget-github/15 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Plus size={11} />
+          </button>
+        </Tooltip>
       </div>
       {inputError && (
         <p className="text-[10px] font-mono text-error px-1">
@@ -286,13 +290,15 @@ function RepoRow({
       </span>
 
       {/* Remove */}
-      <button
-        onClick={onRemove}
-        className="text-fg-4 hover:text-error transition-colors shrink-0"
-        title="Remove repo"
-      >
-        <Trash2 size={11} />
-      </button>
+      <Tooltip content="Remove repo">
+        <button
+          onClick={onRemove}
+          aria-label="Remove repo"
+          className="text-fg-4 hover:text-error transition-colors shrink-0"
+        >
+          <Trash2 size={11} />
+        </button>
+      </Tooltip>
     </div>
   );
 }

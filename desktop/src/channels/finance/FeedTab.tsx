@@ -40,7 +40,7 @@ export const financeChannel: ChannelManifest = {
 
 // ── FeedTab ──────────────────────────────────────────────────────
 
-function FinanceFeedTab({ mode, feedContext }: FeedTabProps) {
+function FinanceFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
   const { prefs } = useShell();
   const dp = prefs.channelDisplay.finance;
 
@@ -67,6 +67,7 @@ function FinanceFeedTab({ mode, feedContext }: FeedTabProps) {
           dashboardLoaded={!!feedContext.__dashboardLoaded}
           loadingNoun="prices"
           actionHint="choose what to track"
+          onConfigure={onConfigure}
         />
       )}
       {trades.map((trade) => (

@@ -101,12 +101,15 @@ export default function Tooltip({
         ref: refs.setReference,
         ...getReferenceProps(),
       })}
+      {/* Portal renders at body level — outside the themed shell container.
+          Use hardcoded dark tooltip colors (convention: tooltips are always
+          dark, matching macOS/Figma/VS Code behavior). */}
       <FloatingPortal>
         {isMounted && (
           <div
             ref={refs.setFloating}
             style={{ ...floatingStyles, ...transitionStyles }}
-            className="z-50 px-2.5 py-1 text-xs text-fg-2 bg-surface-2 border border-edge rounded-md shadow-soft-sm pointer-events-none select-none whitespace-nowrap"
+            className="z-50 px-2.5 py-1 text-xs font-medium rounded-md pointer-events-none select-none whitespace-nowrap bg-[#282838] text-[#e2e2ec] border border-[#383848] shadow-[0_2px_8px_rgba(0,0,0,0.25)]"
             {...getFloatingProps()}
           >
             {content}

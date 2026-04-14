@@ -13,6 +13,7 @@ import { useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { HeartPulse, RefreshCw, Unlink, Loader2 } from "lucide-react";
 import type { FeedTabProps, WidgetManifest } from "../../types";
+import Tooltip from "../../components/Tooltip";
 import QueryErrorBanner from "../../components/QueryErrorBanner";
 import type { KumaMonitor } from "./types";
 import { fetchKumaStatus, loadMonitors, saveMonitors, MONITOR_STATUS_LABELS, MONITOR_STATUS_COLORS, MONITOR_STATUS_TEXT } from "./types";
@@ -192,20 +193,24 @@ function UptimeFeedTab({ mode: feedMode }: FeedTabProps) {
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleRefresh}
-            className="text-xs font-mono text-widget-uptime/70 hover:text-widget-uptime transition-colors"
-            title="Refresh now"
-          >
-            <RefreshCw size={12} />
-          </button>
-          <button
-            onClick={handleDisconnect}
-            className="text-xs font-mono text-fg-3 hover:text-error transition-colors"
-            title="Disconnect"
-          >
-            <Unlink size={12} />
-          </button>
+          <Tooltip content="Refresh">
+            <button
+              onClick={handleRefresh}
+              aria-label="Refresh monitors"
+              className="text-xs font-mono text-widget-uptime/70 hover:text-widget-uptime transition-colors"
+            >
+              <RefreshCw size={12} />
+            </button>
+          </Tooltip>
+          <Tooltip content="Disconnect">
+            <button
+              onClick={handleDisconnect}
+              aria-label="Disconnect from Uptime Kuma"
+              className="text-xs font-mono text-fg-3 hover:text-error transition-colors"
+            >
+              <Unlink size={12} />
+            </button>
+          </Tooltip>
         </div>
       </div>
 

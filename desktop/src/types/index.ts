@@ -102,6 +102,8 @@ export interface FeedTabProps {
    * Each channel decides what goes here (e.g., selected RSS feeds).
    */
   feedContext: Record<string, unknown>;
+  /** Navigate to the Settings/configuration tab. */
+  onConfigure?: () => void;
 }
 
 /** Structured info content for the Info tab. */

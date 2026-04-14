@@ -26,6 +26,7 @@
     "core:window:allow-available-monitors",
     "core:window:allow-current-monitor",
     "core:window:allow-primary-monitor",
+    "core:webview:allow-set-webview-zoom",
     "core:event:default",
     "core:event:allow-emit",
     "core:event:allow-listen",

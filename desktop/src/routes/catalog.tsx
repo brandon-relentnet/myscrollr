@@ -83,9 +83,14 @@ function CatalogPage() {
 
   const handleAdd = useCallback(
     async (item: CatalogItem) => {
+      const nextPinned = prefs.pinnedSources.includes(item.id)
+        ? prefs.pinnedSources
+        : [...prefs.pinnedSources, item.id];
+
       if (item.kind === "channel") {
         await channelsApi.create(item.id as ChannelType);
         await queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+        onPrefsChange({ ...prefs, pinnedSources: nextPinned });
         toast.success(`${item.name} added`);
         navigate({ to: "/channel/$type/$tab", params: { type: item.id, tab: "feed" } });
       } else {
@@ -93,6 +98,7 @@ function CatalogPage() {
         const nextOnTicker = [...prefs.widgets.widgetsOnTicker, item.id];
         onPrefsChange({
           ...prefs,
+          pinnedSources: nextPinned,
           widgets: { ...prefs.widgets, enabledWidgets: nextEnabled, widgetsOnTicker: nextOnTicker },
         });
         toast.success(`${item.name} added`);
@@ -175,6 +181,13 @@ function CatalogPage() {
             onAdd={handleAdd}
             onRemove={handleRemove}
             onLogin={onLogin}
+            onOpen={(it) => {
+              if (it.kind === "channel") {
+                navigate({ to: "/channel/$type/$tab", params: { type: it.id, tab: "feed" } });
+              } else {
+                navigate({ to: "/widget/$id/$tab", params: { id: it.id, tab: "feed" } });
+              }
+            }}
           />
         ))}
       </div>
