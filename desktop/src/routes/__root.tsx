@@ -63,7 +63,7 @@ import { POLL_INTERVALS } from "../cdc";
 import { ShellContext, ShellDataContext } from "../shell-context";
 
 // Store
-import { onStoreChange } from "../lib/store";
+import { onStoreChange, setStore } from "../lib/store";
 
 // ── Route context ────────────────────────────────────────────────
 
@@ -150,6 +150,13 @@ function RootLayout() {
 
   // ── CDC merge engine (processes SSE events into dashboard cache) ──
   useDashboardCDC();
+
+  // ── Broadcast dashboard to ticker window via store ──
+  useEffect(() => {
+    if (dashboard) {
+      setStore("scrollr:dashboard", dashboard);
+    }
+  }, [dashboard]);
 
   const channels: Channel[] = useMemo(() => dashboard?.channels ?? [], [dashboard]);
 

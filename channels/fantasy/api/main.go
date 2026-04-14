@@ -89,8 +89,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("[Fantasy] Failed to parse DATABASE_URL: %v", err)
 	}
-	poolConfig.MaxConns = 60
-	poolConfig.MinConns = 5
+	poolConfig.MaxConns = 10
+	poolConfig.MinConns = 2
 	poolConfig.MaxConnLifetime = 30 * time.Minute
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), poolConfig)
