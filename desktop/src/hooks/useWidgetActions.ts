@@ -41,6 +41,9 @@ export function useWidgetActions(
       const nextOnTicker = isEnabled
         ? prefs.widgets.widgetsOnTicker.filter((id) => id !== widgetId)
         : [...prefs.widgets.widgetsOnTicker, widgetId];
+      const nextPinned = isEnabled
+        ? prefs.pinnedSources.filter((id) => id !== widgetId)
+        : prefs.pinnedSources;
       const next: AppPreferences = {
         ...prefs,
         widgets: {
@@ -48,6 +51,7 @@ export function useWidgetActions(
           enabledWidgets: nextEnabled,
           widgetsOnTicker: nextOnTicker,
         },
+        pinnedSources: nextPinned,
       };
       setPrefs(next);
       savePrefs(next);

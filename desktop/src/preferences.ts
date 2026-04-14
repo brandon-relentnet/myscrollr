@@ -206,6 +206,8 @@ export interface AppPreferences {
   pinnedSources: string[];
   /** Per-channel homepage preview selections (up to 5 group keys). */
   homePreview: HomePreview;
+  /** Show the setup wizard when signing in. Users can disable this. */
+  showSetupOnLogin: boolean;
 }
 
 // ── Defaults ────────────────────────────────────────────────────
@@ -331,6 +333,7 @@ const DEFAULT_PREFS: AppPreferences = {
   channelDisplay: DEFAULT_CHANNEL_DISPLAY,
   pinnedSources: [],
   homePreview: {},
+  showSetupOnLogin: true,
 };
 
 // ── Storage helpers ─────────────────────────────────────────────
@@ -481,6 +484,7 @@ export function loadPrefs(): AppPreferences {
         source.homePreview && typeof source.homePreview === "object" && !Array.isArray(source.homePreview)
           ? (source.homePreview as HomePreview)
           : {},
+      showSetupOnLogin: typeof source.showSetupOnLogin === "boolean" ? source.showSetupOnLogin : true,
     };
 
     // If migrated from v1, persist the new format
@@ -503,7 +507,11 @@ export function resetCategory<K extends keyof AppPreferences>(
   prefs: AppPreferences,
   category: K,
 ): AppPreferences {
-  return { ...prefs, [category]: { ...DEFAULT_PREFS[category] } };
+  const def = DEFAULT_PREFS[category];
+  const value = typeof def === "object" && def !== null && !Array.isArray(def)
+    ? { ...def }
+    : def;
+  return { ...prefs, [category]: value };
 }
 
 /** Reset everything to defaults. */
@@ -518,6 +526,7 @@ export function resetAll(): AppPreferences {
     channelDisplay: { ...DEFAULT_CHANNEL_DISPLAY },
     pinnedSources: [],
     homePreview: {},
+    showSetupOnLogin: true,
   };
   savePrefs(defaults);
   return defaults;
