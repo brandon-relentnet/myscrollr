@@ -2,7 +2,7 @@ import type { Channel } from "../api/client";
 import type { SubscriptionTier } from "../auth";
 import FinanceConfigPanel from "./FinanceConfigPanel";
 import SportsConfigPanel from "./SportsConfigPanel";
-import RssConfigPanel from "./RssConfigPanel";
+import RssConfigPanel from "./rss/ConfigPanel";
 import FantasyConfigPanel from "./FantasyConfigPanel";
 
 // ── Props ────────────────────────────────────────────────────────
