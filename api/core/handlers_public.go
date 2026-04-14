@@ -36,45 +36,52 @@ type PublicFeedResponse struct {
 // @Router /public/feed [get]
 func HandlePublicFeed(c *fiber.Ctx) error {
 	// Check Redis cache first
-	var cached PublicFeedResponse
 	val, err := Rdb.Get(context.Background(), PublicFeedCacheKey).Result()
 	if err == nil {
-		if json.Unmarshal([]byte(val), &cached) == nil {
-			c.Set("X-Cache", "HIT")
-			return c.JSON(cached)
+		c.Set("Content-Type", "application/json")
+		c.Set("X-Cache", "HIT")
+		return c.SendString(val)
+	}
+
+	// Singleflight: only one goroutine fetches; others share the result
+	result, err, _ := publicFeedGroup.Do("public-feed", func() (interface{}, error) {
+		// Double-check cache
+		if val, err := Rdb.Get(context.Background(), PublicFeedCacheKey).Result(); err == nil {
+			return []byte(val), nil
 		}
-	}
 
-	// Build the response by calling finance and sports public endpoints
-	res := PublicFeedResponse{
-		Data: make(map[string]interface{}),
-	}
-
-	client := &http.Client{Timeout: HealthCheckTimeout}
-
-	// Fetch from finance
-	if intg := GetChannel("finance"); intg != nil {
-		data := fetchChannelPublic(client, intg, "/finance/public")
-		for k, v := range data {
-			res.Data[k] = v
+		res := PublicFeedResponse{
+			Data: make(map[string]interface{}),
 		}
-	}
 
-	// Fetch from sports
-	if intg := GetChannel("sports"); intg != nil {
-		data := fetchChannelPublic(client, intg, "/sports/public")
-		for k, v := range data {
-			res.Data[k] = v
+		client := &http.Client{Timeout: HealthCheckTimeout}
+
+		if intg := GetChannel("finance"); intg != nil {
+			data := fetchChannelPublic(client, intg, "/finance/public")
+			for k, v := range data {
+				res.Data[k] = v
+			}
 		}
-	}
 
-	// Cache the combined result
-	if cacheData, err := json.Marshal(res); err == nil {
+		if intg := GetChannel("sports"); intg != nil {
+			data := fetchChannelPublic(client, intg, "/sports/public")
+			for k, v := range data {
+				res.Data[k] = v
+			}
+		}
+
+		cacheData, _ := json.Marshal(res)
 		Rdb.Set(context.Background(), PublicFeedCacheKey, cacheData, PublicFeedCacheTTL)
+		return cacheData, nil
+	})
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "public feed fetch failed"})
 	}
 
+	c.Set("Content-Type", "application/json")
 	c.Set("X-Cache", "MISS")
-	return c.JSON(res)
+	return c.Send(result.([]byte))
 }
 
 // fetchChannelPublic calls a channel's public endpoint and returns
