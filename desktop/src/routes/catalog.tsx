@@ -112,9 +112,13 @@ function CatalogPage() {
 
   const handleRemove = useCallback(
     async (item: CatalogItem) => {
+      const nextPinned = prefs.pinnedSources.filter((id) => id !== item.id);
       if (item.kind === "channel") {
         await channelsApi.delete(item.id as ChannelType);
         await queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+        if (nextPinned.length !== prefs.pinnedSources.length) {
+          onPrefsChange({ ...prefs, pinnedSources: nextPinned });
+        }
         toast.success(`${item.name} removed`);
       } else {
         const nextEnabled = prefs.widgets.enabledWidgets.filter((id) => id !== item.id);
@@ -122,6 +126,7 @@ function CatalogPage() {
         onPrefsChange({
           ...prefs,
           widgets: { ...prefs.widgets, enabledWidgets: nextEnabled, widgetsOnTicker: nextOnTicker },
+          pinnedSources: nextPinned,
         });
         toast.success(`${item.name} removed`);
       }

@@ -216,7 +216,7 @@ function RootLayout() {
 
   // ── Extracted hooks ─────────────────────────────────────────
 
-  const channelActions = useChannelActions();
+  const channelActions = useChannelActions(prefs, setPrefs);
   const widgetActions = useWidgetActions(prefs, setPrefs, route.activeItem);
 
   // Shell-level weather polling — keeps data fresh regardless of which page is visible.
