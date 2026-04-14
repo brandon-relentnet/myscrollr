@@ -105,6 +105,8 @@ const (
 
 const (
 	DashboardCacheTTL = 30 * time.Second
+	HealthCacheTTL    = 10 * time.Second
+	HealthCacheKey    = "cache:health"
 )
 
 // =============================================================================

@@ -15,6 +15,15 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/swagger"
+	"golang.org/x/sync/singleflight"
+)
+
+// singleflight groups prevent thundering herd on cache misses.
+// Multiple concurrent requests for the same key coalesce into one.
+var (
+	dashboardGroup   singleflight.Group
+	publicFeedGroup  singleflight.Group
+	healthCheckGroup singleflight.Group
 )
 
 // Server holds the Fiber app and shared dependencies.
@@ -185,40 +194,65 @@ func (s *Server) setupRoutes() {
 }
 
 // healthCheck returns the aggregated health status.
+// Results are cached in Redis for 10s. Singleflight prevents thundering herd.
 func (s *Server) healthCheck(c *fiber.Ctx) error {
-	res := HealthResponse{Status: "healthy", Services: make(map[string]string)}
-
-	if err := DBPool.Ping(context.Background()); err != nil {
-		res.Database = "unhealthy"
-		res.Status = "degraded"
-	} else {
-		res.Database = "healthy"
-	}
-	if err := Rdb.Ping(context.Background()).Err(); err != nil {
-		res.Redis = "unhealthy"
-		res.Status = "degraded"
-	} else {
-		res.Redis = "healthy"
+	// Check Redis cache first
+	if val, err := Rdb.Get(context.Background(), HealthCacheKey).Result(); err == nil {
+		c.Set("Content-Type", "application/json")
+		c.Set("X-Cache", "HIT")
+		return c.SendString(val)
 	}
 
-	// Check health of discovered channel services
-	httpClient := &http.Client{Timeout: HealthCheckTimeout}
-	for _, intg := range GetAllChannels() {
-		if !intg.HasCapability("health_checker") {
-			continue
+	// Singleflight: only one goroutine computes; others wait and share the result
+	result, err, _ := healthCheckGroup.Do("health", func() (interface{}, error) {
+		// Double-check cache (another goroutine may have populated it)
+		if val, err := Rdb.Get(context.Background(), HealthCacheKey).Result(); err == nil {
+			return []byte(val), nil
 		}
-		targetURL := intg.InternalURL + "/internal/health"
-		resp, err := httpClient.Get(targetURL)
-		if err != nil || resp.StatusCode != http.StatusOK {
-			res.Services[intg.Name] = "down"
+
+		res := HealthResponse{Status: "healthy", Services: make(map[string]string)}
+
+		if err := DBPool.Ping(context.Background()); err != nil {
+			res.Database = "unhealthy"
 			res.Status = "degraded"
 		} else {
-			res.Services[intg.Name] = "healthy"
-			resp.Body.Close()
+			res.Database = "healthy"
 		}
+		if err := Rdb.Ping(context.Background()).Err(); err != nil {
+			res.Redis = "unhealthy"
+			res.Status = "degraded"
+		} else {
+			res.Redis = "healthy"
+		}
+
+		httpClient := &http.Client{Timeout: HealthCheckTimeout}
+		for _, intg := range GetAllChannels() {
+			if !intg.HasCapability("health_checker") {
+				continue
+			}
+			targetURL := intg.InternalURL + "/internal/health"
+			resp, err := httpClient.Get(targetURL)
+			if err != nil || resp.StatusCode != http.StatusOK {
+				res.Services[intg.Name] = "down"
+				res.Status = "degraded"
+			} else {
+				res.Services[intg.Name] = "healthy"
+				resp.Body.Close()
+			}
+		}
+
+		cacheData, _ := json.Marshal(res)
+		Rdb.Set(context.Background(), HealthCacheKey, cacheData, HealthCacheTTL)
+		return cacheData, nil
+	})
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "health check failed"})
 	}
 
-	return c.JSON(res)
+	c.Set("Content-Type", "application/json")
+	c.Set("X-Cache", "MISS")
+	return c.Send(result.([]byte))
 }
 
 // getDashboard retrieves aggregated data for the user dashboard.
@@ -242,86 +276,98 @@ func (s *Server) getDashboard(c *fiber.Ctx) error {
 		}
 	}
 
-	res := DashboardResponse{
-		Data: make(map[string]interface{}),
-	}
-
-	// 1. User preferences (sync tier from JWT roles)
-	prefs, err := GetOrCreatePreferences(userID, GetUserRoles(c))
-	if err == nil {
-		res.Preferences = prefs
-	}
-
-	// 2. User channels + enabled types
-	channels, err := GetUserChannels(userID)
-	if err == nil {
-		res.Channels = channels
-	}
-
-	enabledChannels := make(map[string]bool)
-	for _, ch := range channels {
-		if ch.Enabled {
-			enabledChannels[ch.ChannelType] = true
+	// Singleflight: coalesce concurrent cache misses for the same user
+	userRoles := GetUserRoles(c)
+	result, err, _ := dashboardGroup.Do(userID, func() (interface{}, error) {
+		// Double-check cache
+		if val, err := Rdb.Get(context.Background(), cacheKey).Result(); err == nil {
+			return []byte(val), nil
 		}
-	}
 
-	// Warm Redis subscription sets from current DB state
-	go SyncChannelSubscriptions(userID)
-
-	// 3. Fetch dashboard data from each enabled channel via HTTP (parallel)
-	dashboardClient := &http.Client{Timeout: HealthCheckTimeout}
-	var targets []*ChannelInfo
-	for _, intg := range GetAllChannels() {
-		if enabledChannels[intg.Name] && intg.HasCapability("dashboard_provider") {
-			targets = append(targets, intg)
+		res := DashboardResponse{
+			Data: make(map[string]interface{}),
 		}
-	}
 
-	type channelResult struct {
-		data map[string]interface{}
-	}
-	results := make([]channelResult, len(targets))
-	var wg sync.WaitGroup
-	wg.Add(len(targets))
-	for i, intg := range targets {
-		go func(idx int, ch *ChannelInfo) {
-			defer wg.Done()
-			url := fmt.Sprintf("%s/internal/dashboard?user=%s", ch.InternalURL, userID)
-			resp, err := dashboardClient.Get(url)
-			if err != nil {
-				log.Printf("[Dashboard] %s fetch error: %v", ch.Name, err)
-				return
-			}
-			body, err := io.ReadAll(resp.Body)
-			resp.Body.Close()
-			if err != nil || resp.StatusCode != 200 {
-				log.Printf("[Dashboard] %s returned status %d", ch.Name, resp.StatusCode)
-				return
-			}
-			var data map[string]interface{}
-			if err := json.Unmarshal(body, &data); err != nil {
-				log.Printf("[Dashboard] %s unmarshal error: %v", ch.Name, err)
-				return
-			}
-			results[idx] = channelResult{data: data}
-		}(i, intg)
-	}
-	wg.Wait()
-
-	// Merge results (sequential — safe, no concurrent map writes)
-	for _, r := range results {
-		for k, v := range r.data {
-			res.Data[k] = v
+		// 1. User preferences (sync tier from JWT roles)
+		prefs, err := GetOrCreatePreferences(userID, userRoles)
+		if err == nil {
+			res.Preferences = prefs
 		}
-	}
 
-	// Cache the assembled dashboard response
-	if cacheData, err := json.Marshal(res); err == nil {
+		// 2. User channels + enabled types
+		channels, err := GetUserChannels(userID)
+		if err == nil {
+			res.Channels = channels
+		}
+
+		enabledChannels := make(map[string]bool)
+		for _, ch := range channels {
+			if ch.Enabled {
+				enabledChannels[ch.ChannelType] = true
+			}
+		}
+
+		// Warm Redis subscription sets from current DB state
+		go SyncChannelSubscriptions(userID)
+
+		// 3. Fetch dashboard data from each enabled channel via HTTP (parallel)
+		dashboardClient := &http.Client{Timeout: HealthCheckTimeout}
+		var targets []*ChannelInfo
+		for _, intg := range GetAllChannels() {
+			if enabledChannels[intg.Name] && intg.HasCapability("dashboard_provider") {
+				targets = append(targets, intg)
+			}
+		}
+
+		type channelResult struct {
+			data map[string]interface{}
+		}
+		results := make([]channelResult, len(targets))
+		var wg sync.WaitGroup
+		wg.Add(len(targets))
+		for i, intg := range targets {
+			go func(idx int, ch *ChannelInfo) {
+				defer wg.Done()
+				url := fmt.Sprintf("%s/internal/dashboard?user=%s", ch.InternalURL, userID)
+				resp, err := dashboardClient.Get(url)
+				if err != nil {
+					log.Printf("[Dashboard] %s fetch error: %v", ch.Name, err)
+					return
+				}
+				body, err := io.ReadAll(resp.Body)
+				resp.Body.Close()
+				if err != nil || resp.StatusCode != 200 {
+					log.Printf("[Dashboard] %s returned status %d", ch.Name, resp.StatusCode)
+					return
+				}
+				var data map[string]interface{}
+				if err := json.Unmarshal(body, &data); err != nil {
+					log.Printf("[Dashboard] %s unmarshal error: %v", ch.Name, err)
+					return
+				}
+				results[idx] = channelResult{data: data}
+			}(i, intg)
+		}
+		wg.Wait()
+
+		for _, r := range results {
+			for k, v := range r.data {
+				res.Data[k] = v
+			}
+		}
+
+		cacheData, _ := json.Marshal(res)
 		Rdb.Set(context.Background(), cacheKey, cacheData, DashboardCacheTTL)
+		return cacheData, nil
+	})
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "dashboard fetch failed"})
 	}
 
+	c.Set("Content-Type", "application/json")
 	c.Set("X-Cache", "MISS")
-	return c.JSON(res)
+	return c.Send(result.([]byte))
 }
 
 // listChannels returns all discovered channels and their capabilities.
