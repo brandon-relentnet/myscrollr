@@ -26,6 +26,10 @@ import { Toaster, toast } from "sonner";
 import TitleBar from "../components/TitleBar";
 import Sidebar from "../components/Sidebar";
 
+// Onboarding
+import AuthGate from "../components/onboarding/AuthGate";
+import OnboardingWizard from "../components/onboarding/OnboardingWizard";
+
 // Registries
 import { getAllChannels } from "../channels/registry";
 import { getAllWidgets, getWidget } from "../widgets/registry";
@@ -184,6 +188,32 @@ function RootLayout() {
     loadPref<DeliveryMode>("deliveryMode", "polling"),
   );
   const [billingBannerDismissed, setBillingBannerDismissed] = useState(false);
+
+  // ── Onboarding state ────────────────────────────────────────
+  // Existing users who already have channels skip the wizard automatically.
+  const [migrationChecked, setMigrationChecked] = useState(false);
+
+  useEffect(() => {
+    if (migrationChecked) return;
+    if (!auth.authenticated) return;
+    if (prefs.onboardingComplete) {
+      setMigrationChecked(true);
+      return;
+    }
+    // Check if user already has channels (existing user upgrade)
+    if (dashboard && !loading) {
+      if (dashboard.channels && dashboard.channels.length > 0) {
+        const next = { ...prefs, onboardingComplete: true };
+        setPrefs(next);
+        savePrefs(next);
+      }
+      setMigrationChecked(true);
+    }
+  }, [auth.authenticated, prefs.onboardingComplete, dashboard, loading, migrationChecked]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const showAuthGate = !auth.authenticated;
+  const showOnboarding = auth.authenticated && !prefs.onboardingComplete && migrationChecked;
+  const showApp = auth.authenticated && prefs.onboardingComplete;
 
   // ── SSE status tracking ─────────────────────────────────────
   // Listen directly for SSE status events from the Rust backend.
@@ -407,6 +437,11 @@ function RootLayout() {
     savePrefs(next);
   }, []);
 
+  const handleOnboardingComplete = useCallback((nextPrefs: AppPreferences) => {
+    setPrefs(nextPrefs);
+    savePrefs(nextPrefs);
+  }, []);
+
   const handleAutostartChange = useCallback(async (enabled: boolean) => {
     try {
       if (enabled) await enableAutostart();
@@ -467,122 +502,49 @@ function RootLayout() {
         !IS_MACOS && "custom-chrome",
       )}
     >
-      {!IS_MACOS && <TitleBar />}
+      {/* ── Auth gate: unauthenticated users ── */}
+      {showAuthGate && <AuthGate onLogin={auth.handleLogin} />}
 
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        <Sidebar
-          isFeed={route.isFeed}
-          isSettings={route.isSettings}
-          isMarketplace={route.isMarketplace}
-          activeItem={route.activeItem}
-          pinnedSources={resolvedPinnedSources}
-          deliveryMode={deliveryMode}
-          tickerAlive={prefs.ticker.showTicker}
-          onNavigateToFeed={handleNavigateToFeed}
-          onNavigateToSettings={handleNavigateToSettings}
-          onNavigateToMarketplace={handleNavigateToMarketplace}
-          onSelectItem={handleSelectPinned}
-        />
+      {/* ── Onboarding wizard: authenticated, not yet onboarded ── */}
+      {showOnboarding && (
+        <OnboardingWizard prefs={prefs} onComplete={handleOnboardingComplete} />
+      )}
 
-        <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-          {auth.sessionExpired && (
-            <div className="flex items-center justify-between px-4 py-2 bg-warn/10 border-b border-warn/20 shrink-0">
-              <span className="text-xs text-warn">
-                Your session has expired. Sign in again to access your channels.
-              </span>
-              <div className="flex items-center gap-2 shrink-0 ml-4">
-                <button
-                  onClick={auth.handleLogin}
-                  className="text-xs font-medium text-warn hover:text-fg transition-colors"
-                >
-                  Sign in
-                </button>
-                <button
-                  onClick={() => auth.setSessionExpired(false)}
-                  className="text-xs text-fg-4 hover:text-fg-3 transition-colors"
-                  aria-label="Dismiss"
-                >
-                  Dismiss
-                </button>
-              </div>
-            </div>
-          )}
+      {/* ── Main app shell: authenticated + onboarded ── */}
+      {showApp && (
+        <>
+          {!IS_MACOS && <TitleBar />}
 
-          {/* Billing banner — trial ending, past-due, or canceling */}
-          {auth.authenticated && !billingBannerDismissed && (() => {
-            const s = subscriptionInfo;
-            if (!s) return null;
-            // Trial ending in ≤3 days
-            if (s.status === "trialing" && s.trial_end) {
-              const days = Math.max(0, Math.ceil((s.trial_end * 1000 - Date.now()) / 86_400_000));
-              if (days <= 3) {
-                return (
-                  <div className="flex items-center justify-between px-4 py-2 bg-info/10 border-b border-info/20 shrink-0">
-                    <span className="text-xs text-info">
-                      {days === 0 ? "Your trial ends today." : `Your trial ends in ${days} day${days === 1 ? "" : "s"}.`}
-                      {" "}Your card will be charged automatically.
-                    </span>
-                    <div className="flex items-center gap-2 shrink-0 ml-4">
-                      <button
-                        onClick={() => navigate({ to: "/settings", search: { tab: "account" } })}
-                        className="text-xs font-medium text-info hover:text-fg transition-colors"
-                      >
-                        View plan
-                      </button>
-                      <button
-                        onClick={() => setBillingBannerDismissed(true)}
-                        className="text-xs text-fg-4 hover:text-fg-3 transition-colors"
-                        aria-label="Dismiss"
-                      >
-                        Dismiss
-                      </button>
-                    </div>
-                  </div>
-                );
-              }
-            }
-            // Past due
-            if (s.status === "past_due") {
-              return (
-                <div className="flex items-center justify-between px-4 py-2 bg-error/10 border-b border-error/20 shrink-0">
-                  <span className="text-xs text-error">
-                    Your payment failed. Update your payment method to keep your plan.
-                  </span>
-                  <div className="flex items-center gap-2 shrink-0 ml-4">
-                    <button
-                      onClick={() => navigate({ to: "/settings", search: { tab: "account" } })}
-                      className="text-xs font-medium text-error hover:text-fg transition-colors"
-                    >
-                      Fix payment
-                    </button>
-                    <button
-                      onClick={() => setBillingBannerDismissed(true)}
-                      className="text-xs text-fg-4 hover:text-fg-3 transition-colors"
-                      aria-label="Dismiss"
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-                </div>
-              );
-            }
-            // Canceling
-            if (s.status === "canceling") {
-              return (
+          <div className="flex flex-1 min-h-0 overflow-hidden">
+            <Sidebar
+              isFeed={route.isFeed}
+              isSettings={route.isSettings}
+              isMarketplace={route.isMarketplace}
+              activeItem={route.activeItem}
+              pinnedSources={resolvedPinnedSources}
+              deliveryMode={deliveryMode}
+              tickerAlive={prefs.ticker.showTicker}
+              onNavigateToFeed={handleNavigateToFeed}
+              onNavigateToSettings={handleNavigateToSettings}
+              onNavigateToMarketplace={handleNavigateToMarketplace}
+              onSelectItem={handleSelectPinned}
+            />
+
+            <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+              {auth.sessionExpired && (
                 <div className="flex items-center justify-between px-4 py-2 bg-warn/10 border-b border-warn/20 shrink-0">
                   <span className="text-xs text-warn">
-                    Your subscription is set to cancel.
-                    {s.current_period_end && ` Access until ${new Date(s.current_period_end).toLocaleDateString("en-US", { month: "short", day: "numeric" })}.`}
+                    Your session has expired. Sign in again to access your channels.
                   </span>
                   <div className="flex items-center gap-2 shrink-0 ml-4">
                     <button
-                      onClick={() => navigate({ to: "/settings", search: { tab: "account" } })}
+                      onClick={auth.handleLogin}
                       className="text-xs font-medium text-warn hover:text-fg transition-colors"
                     >
-                      Manage
+                      Sign in
                     </button>
                     <button
-                      onClick={() => setBillingBannerDismissed(true)}
+                      onClick={() => auth.setSessionExpired(false)}
                       className="text-xs text-fg-4 hover:text-fg-3 transition-colors"
                       aria-label="Dismiss"
                     >
@@ -590,47 +552,137 @@ function RootLayout() {
                     </button>
                   </div>
                 </div>
-              );
-            }
-            return null;
-          })()}
+              )}
 
-          <div className="flex-1 overflow-y-auto scrollbar-thin" style={{ scrollbarGutter: "stable" }}>
-            <ShellContext.Provider value={shellStableValue}>
-              <ShellDataContext.Provider value={shellDataValue}>
-                <Outlet />
-              </ShellDataContext.Provider>
-            </ShellContext.Provider>
-          </div>
+              {/* Billing banner — trial ending, past-due, or canceling */}
+              {auth.authenticated && !billingBannerDismissed && (() => {
+                const s = subscriptionInfo;
+                if (!s) return null;
+                // Trial ending in ≤3 days
+                if (s.status === "trialing" && s.trial_end) {
+                  const days = Math.max(0, Math.ceil((s.trial_end * 1000 - Date.now()) / 86_400_000));
+                  if (days <= 3) {
+                    return (
+                      <div className="flex items-center justify-between px-4 py-2 bg-info/10 border-b border-info/20 shrink-0">
+                        <span className="text-xs text-info">
+                          {days === 0 ? "Your trial ends today." : `Your trial ends in ${days} day${days === 1 ? "" : "s"}.`}
+                          {" "}Your card will be charged automatically.
+                        </span>
+                        <div className="flex items-center gap-2 shrink-0 ml-4">
+                          <button
+                            onClick={() => navigate({ to: "/settings", search: { tab: "account" } })}
+                            className="text-xs font-medium text-info hover:text-fg transition-colors"
+                          >
+                            View plan
+                          </button>
+                          <button
+                            onClick={() => setBillingBannerDismissed(true)}
+                            className="text-xs text-fg-4 hover:text-fg-3 transition-colors"
+                            aria-label="Dismiss"
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+                }
+                // Past due
+                if (s.status === "past_due") {
+                  return (
+                    <div className="flex items-center justify-between px-4 py-2 bg-error/10 border-b border-error/20 shrink-0">
+                      <span className="text-xs text-error">
+                        Your payment failed. Update your payment method to keep your plan.
+                      </span>
+                      <div className="flex items-center gap-2 shrink-0 ml-4">
+                        <button
+                          onClick={() => navigate({ to: "/settings", search: { tab: "account" } })}
+                          className="text-xs font-medium text-error hover:text-fg transition-colors"
+                        >
+                          Fix payment
+                        </button>
+                        <button
+                          onClick={() => setBillingBannerDismissed(true)}
+                          className="text-xs text-fg-4 hover:text-fg-3 transition-colors"
+                          aria-label="Dismiss"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+                // Canceling
+                if (s.status === "canceling") {
+                  return (
+                    <div className="flex items-center justify-between px-4 py-2 bg-warn/10 border-b border-warn/20 shrink-0">
+                      <span className="text-xs text-warn">
+                        Your subscription is set to cancel.
+                        {s.current_period_end && ` Access until ${new Date(s.current_period_end).toLocaleDateString("en-US", { month: "short", day: "numeric" })}.`}
+                      </span>
+                      <div className="flex items-center gap-2 shrink-0 ml-4">
+                        <button
+                          onClick={() => navigate({ to: "/settings", search: { tab: "account" } })}
+                          className="text-xs font-medium text-warn hover:text-fg transition-colors"
+                        >
+                          Manage
+                        </button>
+                        <button
+                          onClick={() => setBillingBannerDismissed(true)}
+                          className="text-xs text-fg-4 hover:text-fg-3 transition-colors"
+                          aria-label="Dismiss"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
 
-          <Toaster theme="dark" richColors position="bottom-right" />
-
-          {auth.loggingIn && (
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-label="Signing in"
-              className="absolute inset-0 z-50 flex items-center justify-center bg-surface/80 backdrop-blur-sm"
-            >
-              <div className="text-center">
-                <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto mb-3" />
-                <p className="text-sm font-medium text-fg-2">
-                  Signing you in...
-                </p>
-                <p className="text-xs text-fg-3 mt-1">
-                  Finish signing in from your browser
-                </p>
-                <button
-                  onClick={() => auth.setLoggingIn(false)}
-                  className="mt-4 px-4 py-1.5 rounded-lg text-xs font-medium text-fg-3 hover:text-fg-2 hover:bg-surface-hover transition-colors"
-                >
-                  Cancel
-                </button>
+              <div className="flex-1 overflow-y-auto scrollbar-thin" style={{ scrollbarGutter: "stable" }}>
+                <ShellContext.Provider value={shellStableValue}>
+                  <ShellDataContext.Provider value={shellDataValue}>
+                    <Outlet />
+                  </ShellDataContext.Provider>
+                </ShellContext.Provider>
               </div>
-            </div>
-          )}
-        </main>
-      </div>
+
+              <Toaster theme="dark" richColors position="bottom-right" />
+            </main>
+          </div>
+        </>
+      )}
+
+      {/* Signing-in overlay — shows on ALL states (auth gate triggers login too) */}
+      {auth.loggingIn && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Signing in"
+          className="absolute inset-0 z-50 flex items-center justify-center bg-surface/80 backdrop-blur-sm"
+        >
+          <div className="text-center">
+            <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin mx-auto mb-3" />
+            <p className="text-sm font-medium text-fg-2">
+              Signing you in...
+            </p>
+            <p className="text-xs text-fg-3 mt-1">
+              Finish signing in from your browser
+            </p>
+            <button
+              onClick={() => auth.setLoggingIn(false)}
+              className="mt-4 px-4 py-1.5 rounded-lg text-xs font-medium text-fg-3 hover:text-fg-2 hover:bg-surface-hover transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Toaster must be available in all states */}
+      {!showApp && <Toaster theme="dark" richColors position="bottom-right" />}
     </div>
   );
 }
