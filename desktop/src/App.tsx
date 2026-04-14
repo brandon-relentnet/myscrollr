@@ -389,6 +389,9 @@ export default function App() {
     savePrefs(updated);
   }, []);
 
+  // ── System tray "Show/Hide Ticker" → toggle via prefs ──────────
+  useTauriListener("toggle-ticker", () => handleToggleTicker());
+
   const handleToggleWindowPin = useCallback(() => {
     const next = !prefsRef.current.window.pinned;
     setPinned(next);

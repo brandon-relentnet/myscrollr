@@ -2,7 +2,7 @@ use tauri::{
     image::Image,
     menu::{MenuBuilder, MenuItemBuilder},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Manager,
+    Emitter, Manager,
 };
 
 /// Build the system tray with menu items and event handlers.
@@ -32,14 +32,9 @@ pub fn setup(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
             "show_ticker" => {
-                if let Some(w) = app.get_webview_window("ticker") {
-                    if w.is_visible().unwrap_or(false) {
-                        let _ = w.hide();
-                    } else {
-                        let _ = w.show();
-                        let _ = w.set_focus();
-                    }
-                }
+                // Emit an event so JS can toggle the showTicker preference,
+                // which is the single source of truth for ticker visibility.
+                let _ = app.emit("toggle-ticker", ());
             }
             "quit" => {
                 app.exit(0);
