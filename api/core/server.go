@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -38,6 +39,8 @@ func NewServer() *Server {
 		EnableTrustedProxyCheck: true,
 		TrustedProxies:          []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"},
 		ProxyHeader:             "X-Forwarded-For",
+		ReadTimeout:             30 * time.Second,
+		IdleTimeout:             120 * time.Second,
 	})
 
 	return &Server{
@@ -226,20 +229,33 @@ func (s *Server) healthCheck(c *fiber.Ctx) error {
 		}
 
 		httpClient := &http.Client{Timeout: HealthCheckTimeout}
+		var healthTargets []*ChannelInfo
 		for _, intg := range GetAllChannels() {
-			if !intg.HasCapability("health_checker") {
-				continue
-			}
-			targetURL := intg.InternalURL + "/internal/health"
-			resp, err := httpClient.Get(targetURL)
-			if err != nil || resp.StatusCode != http.StatusOK {
-				res.Services[intg.Name] = "down"
-				res.Status = "degraded"
-			} else {
-				res.Services[intg.Name] = "healthy"
-				resp.Body.Close()
+			if intg.HasCapability("health_checker") {
+				healthTargets = append(healthTargets, intg)
 			}
 		}
+
+		var mu sync.Mutex
+		var wg sync.WaitGroup
+		wg.Add(len(healthTargets))
+		for _, intg := range healthTargets {
+			go func(ch *ChannelInfo) {
+				defer wg.Done()
+				targetURL := ch.InternalURL + "/internal/health"
+				resp, err := httpClient.Get(targetURL)
+				mu.Lock()
+				defer mu.Unlock()
+				if err != nil || resp.StatusCode != http.StatusOK {
+					res.Services[ch.Name] = "down"
+					res.Status = "degraded"
+				} else {
+					res.Services[ch.Name] = "healthy"
+					resp.Body.Close()
+				}
+			}(intg)
+		}
+		wg.Wait()
 
 		cacheData, _ := json.Marshal(res)
 		Rdb.Set(context.Background(), HealthCacheKey, cacheData, HealthCacheTTL)
