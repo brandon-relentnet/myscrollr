@@ -6,6 +6,7 @@ import { useTauriListener } from "./hooks/useTauriListener";
 import { useDashboardCDC } from "./hooks/useDashboardCDC";
 import { Menu, CheckMenuItem, MenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu";
 import { dashboardQueryOptions, queryKeys } from "./api/queries";
+import { onStoreChange } from "./lib/store";
 import ScrollrTicker from "./components/ScrollrTicker";
 import TickerToolbar from "./components/TickerToolbar";
 import {
@@ -31,7 +32,6 @@ import type { AppPreferences, TickerPosition } from "./preferences";
 import { getAllWidgets } from "./widgets/registry";
 import { useWidgetTickerData } from "./hooks/useWidgetTickerData";
 import { useTheme } from "./hooks/useTheme";
-import { onStoreChange } from "./lib/store";
 import { POLL_INTERVALS } from "./cdc";
 
 // ── Constants ────────────────────────────────────────────────────
@@ -52,18 +52,30 @@ export default function App() {
   // Delivery mode
   const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>("polling");
 
-  // ── Dashboard data via TanStack Query ──────────────────────────
-  // refetchInterval replaces the manual setInterval polling lifecycle.
-  // TanStack Query also handles refetchOnWindowFocus (configured in
-  // the QueryClient defaults).
+  // ── Dashboard data ──────────────────────────────────────────────
+  // The main window is the primary fetcher and broadcasts via Tauri store.
+  // The ticker reads from the store and only polls as a slow fallback
+  // (5 min) in case the main window is closed or slow.
+
+  const TICKER_FALLBACK_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
   const { data: dashboard } = useQuery({
     ...dashboardQueryOptions(),
-    refetchInterval: POLL_INTERVALS[tier],
+    refetchInterval: TICKER_FALLBACK_INTERVAL,
   });
 
   // ── CDC merge engine (processes SSE events into dashboard cache) ──
   useDashboardCDC();
+
+  // ── Sync dashboard from main window via store ──
+  useEffect(() => {
+    const unsub = onStoreChange("scrollr:dashboard", (newDashboard: unknown) => {
+      if (newDashboard) {
+        queryClient.setQueryData(queryKeys.dashboard, newDashboard);
+      }
+    });
+    return unsub;
+  }, [queryClient]);
 
   // Derive channels and active tabs from query data
   const channels = useMemo(

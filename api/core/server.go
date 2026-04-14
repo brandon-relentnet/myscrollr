@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -267,36 +268,49 @@ func (s *Server) getDashboard(c *fiber.Ctx) error {
 	// Warm Redis subscription sets from current DB state
 	go SyncChannelSubscriptions(userID)
 
-	// 3. Fetch dashboard data from each enabled channel via HTTP
+	// 3. Fetch dashboard data from each enabled channel via HTTP (parallel)
 	dashboardClient := &http.Client{Timeout: HealthCheckTimeout}
+	var targets []*ChannelInfo
 	for _, intg := range GetAllChannels() {
-		if !enabledChannels[intg.Name] {
-			continue
+		if enabledChannels[intg.Name] && intg.HasCapability("dashboard_provider") {
+			targets = append(targets, intg)
 		}
-		if !intg.HasCapability("dashboard_provider") {
-			continue
-		}
+	}
 
-		url := fmt.Sprintf("%s/internal/dashboard?user=%s", intg.InternalURL, userID)
-		resp, err := dashboardClient.Get(url)
-		if err != nil {
-			log.Printf("[Dashboard] %s fetch error: %v", intg.Name, err)
-			continue
-		}
-		body, err := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		if err != nil || resp.StatusCode != 200 {
-			log.Printf("[Dashboard] %s returned status %d", intg.Name, resp.StatusCode)
-			continue
-		}
+	type channelResult struct {
+		data map[string]interface{}
+	}
+	results := make([]channelResult, len(targets))
+	var wg sync.WaitGroup
+	wg.Add(len(targets))
+	for i, intg := range targets {
+		go func(idx int, ch *ChannelInfo) {
+			defer wg.Done()
+			url := fmt.Sprintf("%s/internal/dashboard?user=%s", ch.InternalURL, userID)
+			resp, err := dashboardClient.Get(url)
+			if err != nil {
+				log.Printf("[Dashboard] %s fetch error: %v", ch.Name, err)
+				return
+			}
+			body, err := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if err != nil || resp.StatusCode != 200 {
+				log.Printf("[Dashboard] %s returned status %d", ch.Name, resp.StatusCode)
+				return
+			}
+			var data map[string]interface{}
+			if err := json.Unmarshal(body, &data); err != nil {
+				log.Printf("[Dashboard] %s unmarshal error: %v", ch.Name, err)
+				return
+			}
+			results[idx] = channelResult{data: data}
+		}(i, intg)
+	}
+	wg.Wait()
 
-		// Merge channel data into response
-		var data map[string]interface{}
-		if err := json.Unmarshal(body, &data); err != nil {
-			log.Printf("[Dashboard] %s unmarshal error: %v", intg.Name, err)
-			continue
-		}
-		for k, v := range data {
+	// Merge results (sequential — safe, no concurrent map writes)
+	for _, r := range results {
+		for k, v := range r.data {
 			res.Data[k] = v
 		}
 	}

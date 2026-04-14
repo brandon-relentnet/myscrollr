@@ -35,9 +35,15 @@ func trySend(client *Client, payload []byte) bool {
 	}
 }
 
+// dispatchJob represents a fan-out task for the worker pool.
+type dispatchJob struct {
+	userID  string
+	payload []byte
+}
+
 // Hub maintains per-user SSE client connections and a topic subscription
 // registry. Messages arrive on topic channels (one per CDC event) and are
-// fanned out to subscribed clients in-memory.
+// fanned out to subscribed clients via a worker pool.
 type Hub struct {
 	// clients maps userID -> *clientList
 	clients     sync.Map
@@ -45,14 +51,23 @@ type Hub struct {
 
 	// Topic subscription registry
 	registry *topicRegistry
+
+	// Worker pool dispatch channel
+	dispatchCh chan dispatchJob
 }
 
 var globalHub *Hub
 
-// InitHub creates the topic-based hub and starts the listener.
+// InitHub creates the topic-based hub, starts dispatch workers, and the listener.
 func InitHub(ctx context.Context) {
 	globalHub = &Hub{
-		registry: &topicRegistry{},
+		registry:   &topicRegistry{},
+		dispatchCh: make(chan dispatchJob, SSEDispatchQueueSize),
+	}
+
+	// Start dispatch worker pool
+	for i := 0; i < SSEDispatchWorkers; i++ {
+		go globalHub.dispatchWorker(ctx)
 	}
 
 	go globalHub.listenToTopics(ctx)
@@ -61,6 +76,7 @@ func InitHub(ctx context.Context) {
 	go func() {
 		<-ctx.Done()
 		log.Println("[EventHub] Hub shutting down")
+		close(globalHub.dispatchCh)
 		globalHub.clients.Range(func(key, value any) bool {
 			list := value.(*clientList)
 			for _, c := range list.entries {
@@ -71,7 +87,22 @@ func InitHub(ctx context.Context) {
 		})
 	}()
 
-	log.Println("[EventHub] Hub started (topic-based mode)")
+	log.Printf("[EventHub] Hub started (topic-based mode, %d dispatch workers)", SSEDispatchWorkers)
+}
+
+// dispatchWorker processes dispatch jobs from the shared channel.
+func (h *Hub) dispatchWorker(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case job, ok := <-h.dispatchCh:
+			if !ok {
+				return
+			}
+			h.dispatchToUser(job.userID, job.payload)
+		}
+	}
 }
 
 // listenToTopics subscribes to all CDC topic patterns and dispatches to
@@ -108,7 +139,11 @@ func (h *Hub) listenToTopics(ctx context.Context) {
 			// These target a single user directly -- no registry lookup needed.
 			if strings.HasPrefix(topic, TopicPrefixCore) {
 				userID := topic[len(TopicPrefixCore):]
-				h.dispatchToUser(userID, payload)
+				select {
+				case h.dispatchCh <- dispatchJob{userID: userID, payload: payload}:
+				default:
+					// Queue full — drop to avoid blocking the listener
+				}
 				continue
 			}
 
@@ -118,9 +153,13 @@ func (h *Hub) listenToTopics(ctx context.Context) {
 				continue
 			}
 
-			// Fan-out in memory (no Redis, no network)
+			// Fan-out via worker pool (non-blocking enqueue)
 			for userID := range users {
-				h.dispatchToUser(userID, payload)
+				select {
+				case h.dispatchCh <- dispatchJob{userID: userID, payload: payload}:
+				default:
+					// Queue full — drop oldest-style backpressure
+				}
 			}
 		}
 	}
