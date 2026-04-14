@@ -190,8 +190,13 @@ function RootLayout() {
   const [billingBannerDismissed, setBillingBannerDismissed] = useState(false);
 
   // ── Onboarding state ────────────────────────────────────────
-  // Session-local: once dismissed (skip or finish), stays dismissed until next login.
+  // Session-local: once dismissed (skip or finish), stays dismissed until next sign-out.
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+
+  // Reset on sign-out so the wizard shows again on next sign-in.
+  useEffect(() => {
+    if (!auth.authenticated) setOnboardingDismissed(false);
+  }, [auth.authenticated]);
 
   const showAuthGate = !auth.authenticated;
   const showOnboarding = auth.authenticated && prefs.showSetupOnLogin && !onboardingDismissed;
