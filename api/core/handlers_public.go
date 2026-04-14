@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -54,18 +55,37 @@ func HandlePublicFeed(c *fiber.Ctx) error {
 			Data: make(map[string]interface{}),
 		}
 
-		client := &http.Client{Timeout: HealthCheckTimeout}
+		httpClient := &http.Client{Timeout: HealthCheckTimeout}
 
-		if intg := GetChannel("finance"); intg != nil {
-			data := fetchChannelPublic(client, intg, "/finance/public")
-			for k, v := range data {
-				res.Data[k] = v
-			}
+		type publicResult struct {
+			data map[string]interface{}
+		}
+		type publicTarget struct {
+			intg *ChannelInfo
+			path string
 		}
 
+		var targets []publicTarget
+		if intg := GetChannel("finance"); intg != nil {
+			targets = append(targets, publicTarget{intg, "/finance/public"})
+		}
 		if intg := GetChannel("sports"); intg != nil {
-			data := fetchChannelPublic(client, intg, "/sports/public")
-			for k, v := range data {
+			targets = append(targets, publicTarget{intg, "/sports/public"})
+		}
+
+		results := make([]publicResult, len(targets))
+		var wg sync.WaitGroup
+		wg.Add(len(targets))
+		for i, t := range targets {
+			go func(idx int, tgt publicTarget) {
+				defer wg.Done()
+				results[idx] = publicResult{data: fetchChannelPublic(httpClient, tgt.intg, tgt.path)}
+			}(i, t)
+		}
+		wg.Wait()
+
+		for _, r := range results {
+			for k, v := range r.data {
 				res.Data[k] = v
 			}
 		}
