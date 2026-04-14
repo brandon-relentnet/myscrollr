@@ -3,6 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTauriListener } from "./hooks/useTauriListener";
+import { useDashboardCDC } from "./hooks/useDashboardCDC";
 import { Menu, CheckMenuItem, MenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu";
 import { dashboardQueryOptions, queryKeys } from "./api/queries";
 import ScrollrTicker from "./components/ScrollrTicker";
@@ -31,19 +32,11 @@ import { getAllWidgets } from "./widgets/registry";
 import { useWidgetTickerData } from "./hooks/useWidgetTickerData";
 import { useTheme } from "./hooks/useTheme";
 import { onStoreChange } from "./lib/store";
+import { POLL_INTERVALS } from "./cdc";
 
 // ── Constants ────────────────────────────────────────────────────
 
 import { API_BASE as API_URL } from "./config";
-const POLL_INTERVALS: Record<SubscriptionTier, number> = {
-  free: 60_000,
-  uplink: 30_000,
-  uplink_pro: 10_000,
-  uplink_ultimate: 30_000, // Ultimate uses SSE — polling is just a safety-net fallback
-};
-/** Delay before re-fetching after an SSE config-change event, giving the
- *  backend time to propagate the update before we query. */
-const SSE_REFETCH_DELAY_MS = 500;
 
 // ── App (Ticker Window) ─────────────────────────────────────────
 
@@ -69,6 +62,9 @@ export default function App() {
     refetchInterval: POLL_INTERVALS[tier],
   });
 
+  // ── CDC merge engine (processes SSE events into dashboard cache) ──
+  useDashboardCDC();
+
   // Derive channels and active tabs from query data
   const channels = useMemo(
     () => dashboard?.channels ?? [],
@@ -93,11 +89,6 @@ export default function App() {
 
   const channelsRef = useRef(channels);
   channelsRef.current = channels;
-
-  // Ticker state
-  const [tickerCollapsed, setTickerCollapsed] = useState(() =>
-    loadPref("tickerCollapsed", false),
-  );
 
   // Pin (always-on-top) state
   const [pinned, setPinned] = useState(() => loadPref("feedPinned", true));
@@ -170,70 +161,6 @@ export default function App() {
           break;
       }
     },
-  );
-
-  // ── Channel config sync via CDC ────────────────────────────────
-  // CDC events for user_channels come via SSE. We update the local
-  // channelTabs optimistically and then invalidate the dashboard
-  // query so TanStack Query re-fetches the full dashboard.
-  //
-  // Note: channelTabs is now derived from the query cache, so the
-  // invalidation will cause it to update automatically. But the SSE
-  // event gives us immediate CDC data to update tabs without waiting
-  // for the re-fetch round-trip.
-
-  useTauriListener<{
-    data?: {
-      action: string;
-      record: Record<string, unknown>;
-      metadata: { table_name: string };
-    }[];
-  }>(
-    "sse-event",
-    (event) => {
-      const records = event.payload?.data;
-      if (!Array.isArray(records)) return;
-
-      const channelRecords = records.filter(
-        (r) => r.metadata?.table_name === "user_channels",
-      );
-      if (channelRecords.length === 0) return;
-
-      // Optimistically update the dashboard cache with CDC channel changes
-      queryClient.setQueryData(queryKeys.dashboard, (old: typeof dashboard) => {
-        if (!old?.channels) return old;
-
-        const updatedChannels = [...old.channels];
-        for (const cdc of channelRecords) {
-          const type = cdc.record.channel_type as string | undefined;
-          if (!type) continue;
-
-          const idx = updatedChannels.findIndex(
-            (ch) => ch.channel_type === type,
-          );
-
-          if (cdc.action === "delete") {
-            if (idx !== -1) updatedChannels.splice(idx, 1);
-          } else if (idx !== -1) {
-            updatedChannels[idx] = {
-              ...updatedChannels[idx],
-              enabled: cdc.record.enabled as boolean,
-              visible: cdc.record.visible as boolean,
-            };
-          }
-        }
-
-        return { ...old, channels: updatedChannels };
-      });
-
-      // Re-fetch full dashboard after a delay to pick up data changes
-      setTimeout(
-        () =>
-          queryClient.invalidateQueries({ queryKey: queryKeys.dashboard }),
-        SSE_REFETCH_DELAY_MS,
-      );
-    },
-    [queryClient],
   );
 
   // ── Initial SSE start for ultimate tier ───────────────────────
@@ -325,12 +252,6 @@ export default function App() {
         invoke("position_ticker", { position: next.window.tickerPosition, height: h }).catch(() => {});
       }
 
-      // Side effects: ticker visibility
-      if (next.ticker.showTicker !== prev.ticker.showTicker) {
-        const nextCollapsed = !next.ticker.showTicker;
-        setTickerCollapsed(nextCollapsed);
-        savePref("tickerCollapsed", nextCollapsed);
-      }
     });
   }, []);
 
@@ -346,9 +267,9 @@ export default function App() {
   // ── Initial setup ────────────────────────────────────────────
 
   useEffect(() => {
-    const tickerH = tickerCollapsed
-      ? 0
-      : TICKER_HEIGHTS[prefs.ticker.tickerMode] * prefs.appearance.tickerRows;
+    const tickerH = prefs.ticker.showTicker
+      ? TICKER_HEIGHTS[prefs.ticker.tickerMode] * prefs.appearance.tickerRows
+      : 0;
     if (tickerH > 0) {
       // position_ticker sets size + position atomically via compositor
       invoke("position_ticker", { position: tickerPosition, height: tickerH })
@@ -366,16 +287,16 @@ export default function App() {
   // position calculation reads the old height.
 
   useEffect(() => {
-    const tickerH = tickerCollapsed
-      ? 0
-      : TICKER_HEIGHTS[prefs.ticker.tickerMode] * prefs.appearance.tickerRows;
+    const tickerH = prefs.ticker.showTicker
+      ? TICKER_HEIGHTS[prefs.ticker.tickerMode] * prefs.appearance.tickerRows
+      : 0;
     if (tickerH > 0) {
       invoke("position_ticker", { position: tickerPosition, height: tickerH }).catch(() => {});
     }
   }, [
     prefs.ticker.tickerMode,
     prefs.appearance.tickerRows,
-    tickerCollapsed,
+    prefs.ticker.showTicker,
     tickerPosition,
   ]);
 
@@ -383,12 +304,12 @@ export default function App() {
 
   useEffect(() => {
     const win = getCurrentWindow();
-    if (tickerCollapsed || !prefs.ticker.showTicker) {
-      win.hide().catch(() => {});
-    } else {
+    if (prefs.ticker.showTicker) {
       win.show().catch(() => {});
+    } else {
+      win.hide().catch(() => {});
     }
-  }, [tickerCollapsed, prefs.ticker.showTicker]);
+  }, [prefs.ticker.showTicker]);
 
   // ── Chip click → open app window on that channel ───────────────
 
@@ -456,14 +377,13 @@ export default function App() {
     invoke("position_ticker", { position: next, height: h }).catch(() => {});
   }, [tickerPosition]);
 
-  // ── Hide ticker from toolbar ───────────────────────────────────
+  // ── Toggle ticker visibility ─────────────────────────────────
 
-  const handleHideTicker = useCallback(() => {
-    setTickerCollapsed(true);
-    savePref("tickerCollapsed", true);
+  const handleToggleTicker = useCallback((forceHide?: boolean) => {
+    const next = forceHide === undefined ? !prefsRef.current.ticker.showTicker : !forceHide;
     const updated = {
       ...prefsRef.current,
-      ticker: { ...prefsRef.current.ticker, showTicker: false },
+      ticker: { ...prefsRef.current.ticker, showTicker: next },
     };
     setPrefs(updated);
     savePrefs(updated);
@@ -549,11 +469,12 @@ export default function App() {
         }),
       );
 
-      // Hide Ticker
+      // Show/Hide Ticker
       items.push(
-        await MenuItem.new({
-          text: "Hide Ticker",
-          action: handleHideTicker,
+        await CheckMenuItem.new({
+          text: "Show Ticker",
+          checked: prefsRef.current.ticker.showTicker,
+          action: () => handleToggleTicker(),
         }),
       );
 
@@ -586,7 +507,7 @@ export default function App() {
 
   // ── Render ─────────────────────────────────────────────────────
 
-  const showTicker = !tickerCollapsed && prefs.ticker.showTicker;
+  const showTicker = prefs.ticker.showTicker;
 
   return (
     <div
@@ -600,7 +521,7 @@ export default function App() {
             position={tickerPosition}
             hovered={hovered}
             onTogglePosition={handleTogglePosition}
-            onHideTicker={handleHideTicker}
+            onHideTicker={() => handleToggleTicker(true)}
           />
           {Array.from({ length: prefs.appearance.tickerRows }, (_, i) => (
             <ScrollrTicker

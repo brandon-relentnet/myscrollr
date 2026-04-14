@@ -50,9 +50,14 @@ import { useTheme } from "../hooks/useTheme";
 import { useAuthState } from "../hooks/useAuthState";
 import { useChannelActions } from "../hooks/useChannelActions";
 import { useWidgetActions } from "../hooks/useWidgetActions";
+import { useDashboardCDC } from "../hooks/useDashboardCDC";
+import { useTauriListener } from "../hooks/useTauriListener";
 import { weatherQueryOptions } from "../api/queries";
 import { fetchSubscription } from "../api/client";
 import { getValidToken } from "../auth";
+
+// CDC
+import { POLL_INTERVALS } from "../cdc";
 
 // Shell context
 import { ShellContext, ShellDataContext } from "../shell-context";
@@ -131,11 +136,20 @@ function RootLayout() {
   const navigate = useNavigate();
   const route = parseRoute(location.pathname);
 
+  // ── Auth (must be before dashboard query — tier drives refetchInterval) ──
+  const auth = useAuthState();
+
   // ── Dashboard data (TanStack Query) ─────────────────────────
   const {
     data: dashboard,
     isLoading: loading,
-  } = useQuery(dashboardQueryOptions());
+  } = useQuery({
+    ...dashboardQueryOptions(),
+    refetchInterval: POLL_INTERVALS[auth.tier],
+  });
+
+  // ── CDC merge engine (processes SSE events into dashboard cache) ──
+  useDashboardCDC();
 
   const channels: Channel[] = useMemo(() => dashboard?.channels ?? [], [dashboard]);
 
@@ -164,9 +178,20 @@ function RootLayout() {
   );
   const [billingBannerDismissed, setBillingBannerDismissed] = useState(false);
 
+  // ── SSE status tracking ─────────────────────────────────────
+  // Listen directly for SSE status events from the Rust backend.
+  // Both windows receive these via Tauri's broadcast; no store relay needed.
+  useTauriListener<{ status: string }>(
+    "sse-status",
+    (event) => {
+      const mode: DeliveryMode =
+        event.payload.status === "connected" ? "sse" : "polling";
+      setDeliveryMode(mode);
+    },
+  );
+
   // ── Extracted hooks ─────────────────────────────────────────
 
-  const auth = useAuthState();
   const channelActions = useChannelActions();
   const widgetActions = useWidgetActions(prefs, setPrefs, route.activeItem);
 
@@ -236,14 +261,12 @@ function RootLayout() {
   }, [location.pathname, loading, navigate]);
 
   // ── Cross-window sync ───────────────────────────────────────
+  // Delivery mode is now synced via the direct sse-status Tauri listener above.
   useEffect(() => {
     const unsub1 = onStoreChange<AppPreferences>("scrollr:settings", (val) => {
       if (val) setPrefs(val);
     });
-    const unsub2 = onStoreChange<DeliveryMode>("scrollr:deliveryMode", (val) => {
-      if (val) setDeliveryMode(val);
-    });
-    return () => { unsub1(); unsub2(); };
+    return () => { unsub1(); };
   }, []);
 
   useEffect(() => {
