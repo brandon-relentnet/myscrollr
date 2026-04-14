@@ -1,13 +1,12 @@
 import { useCallback, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import MyFeeds from "./MyFeeds";
 import FeedCatalog from "./FeedCatalog";
-import { rssApi } from "../../api/client";
-import { rssCatalogOptions, queryKeys } from "../../api/queries";
+import { rssCatalogOptions } from "../../api/queries";
 import { useChannelConfig } from "../../hooks/useChannelConfig";
 import { getLimit } from "../../tierLimits";
-import type { Channel, RssChannelConfig, TrackedFeed } from "../../api/client";
+import type { Channel, RssChannelConfig } from "../../api/client";
 import type { SubscriptionTier } from "../../auth";
 
 // ── Types ────────────────────────────────────────────────────────
@@ -24,7 +23,6 @@ export default function RssConfigPanel({
   channel,
   subscriptionTier,
 }: RssConfigPanelProps) {
-  const queryClient = useQueryClient();
   const { error, setError, saving, updateItems } = useChannelConfig<
     Array<{ name: string; url: string; is_custom?: boolean }>
   >("rss", "feeds");
@@ -52,16 +50,6 @@ export default function RssConfigPanel({
   const { data: catalogAll = [] } = useQuery(
     rssCatalogOptions({ includeFailing: true }),
   );
-
-  // Delete catalog feed mutation (for custom feeds)
-  const deleteCatalogMutation = useMutation({
-    mutationFn: (url: string) => rssApi.deleteFeed(url),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.catalogs.rss });
-      queryClient.invalidateQueries({ queryKey: queryKeys.catalogs.rssAll });
-    },
-    onError: () => setError("Failed to remove feed from catalog"),
-  });
 
   // ── Handlers ───────────────────────────────────────────────────
 
