@@ -43,8 +43,13 @@ export default function WizardShell({
       {/* Draggable region */}
       <div data-tauri-drag-region className="shrink-0 h-8" />
 
-      {/* Progress bar */}
+      {/* Progress bar + step counter */}
       <div className="shrink-0 px-8">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[10px] font-medium text-fg-4 tabular-nums">
+            Step {stepIndex + 1} of {totalSteps}
+          </span>
+        </div>
         <div className="h-1 rounded-full bg-surface-2 overflow-hidden">
           <div
             className="h-full bg-accent rounded-full transition-all duration-300"

@@ -41,13 +41,16 @@ export default function StepWidgets({ selected, onToggle }: StepWidgetsProps) {
               <p className="text-sm font-medium text-fg">{w.name}</p>
               <p className="text-xs text-fg-4 mt-0.5">{w.description}</p>
             </div>
-            {active && (
-              <div className="w-5 h-5 rounded-full bg-accent flex items-center justify-center">
+            <div className={clsx(
+              "w-5 h-5 rounded-full flex items-center justify-center transition-colors",
+              active ? "bg-accent" : "bg-transparent",
+            )}>
+              {active && (
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                   <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-              </div>
-            )}
+              )}
+            </div>
           </button>
         );
       })}
