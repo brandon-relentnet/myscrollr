@@ -178,11 +178,17 @@ export interface TrackedFeed {
   name: string;
   category: string;
   is_default: boolean;
+  consecutive_failures: number;
+  last_error?: string;
+  last_success_at?: string;
 }
 
 export const rssApi = {
-  /** Fetch the public feed catalog (no auth required) */
-  getCatalog: () => request<Array<TrackedFeed>>("/rss/feeds"),
+  /** Fetch the public feed catalog. Pass includeFailing to see quarantined feeds. */
+  getCatalog: (opts?: { includeFailing?: boolean }) => {
+    const params = opts?.includeFailing ? "?include_failing=true" : "";
+    return request<Array<TrackedFeed>>(`/rss/feeds${params}`);
+  },
 
   /** Delete a custom (non-default) feed from the catalog */
   deleteFeed: (url: string) =>
