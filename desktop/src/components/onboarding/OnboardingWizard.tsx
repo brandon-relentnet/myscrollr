@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Zap } from "lucide-react";
 import { channelsApi } from "../../api/client";
+import { RECOMMENDED_FEEDS } from "./curated-picks";
 import { queryKeys } from "../../api/queries";
 import type { ChannelType } from "../../api/client";
 import type { AppPreferences } from "../../preferences";
@@ -195,8 +196,13 @@ export default function OnboardingWizard({ prefs, onComplete }: OnboardingWizard
           config: { leagues: [...sportsLeagues] },
         });
       } else if (type === "rss" && rssFeeds.size > 0) {
+        // RSS config expects { name, url } objects, not bare URL strings
+        const feedObjects = [...rssFeeds].map((url) => {
+          const pick = RECOMMENDED_FEEDS.find((f) => f.url === url);
+          return { name: pick?.name ?? url, url };
+        });
         await channelsApi.update(type, {
-          config: { feeds: [...rssFeeds] },
+          config: { feeds: feedObjects },
         });
       }
     } catch {
