@@ -215,24 +215,40 @@ func handleSubscriptionUpdated(event stripe.Event) {
 	}
 
 	// If subscription is active (not canceling), ensure correct role is assigned.
-	// Remove stale roles first to handle plan up/downgrades cleanly.
 	if (status == "active" || status == "trialing") && !sub.CancelAtPeriodEnd {
-		// Remove all paid roles, then assign only the current one
-		_ = RemoveUplinkRole(logtoSub)
-		_ = RemoveProRole(logtoSub)
-		_ = RemoveUltimateRole(logtoSub)
-
-		if isUltimatePlan(plan) {
+		if status == "trialing" {
+			// During trial, always grant Ultimate access regardless of selected plan.
+			// This matches checkout.session.completed behavior — trial users get
+			// full access. When the trial ends, this handler fires again with
+			// status="active" and assigns the plan-appropriate role.
 			if err := AssignUltimateRole(logtoSub); err != nil {
-				log.Printf("[Stripe Webhook] Failed to assign uplink_ultimate role to %s: %v", logtoSub, err)
-			}
-		} else if isProPlan(plan) {
-			if err := AssignProRole(logtoSub); err != nil {
-				log.Printf("[Stripe Webhook] Failed to assign uplink_pro role to %s: %v", logtoSub, err)
+				log.Printf("[Stripe Webhook] Failed to assign trial ultimate role to %s: %v", logtoSub, err)
 			}
 		} else {
-			if err := AssignUplinkRole(logtoSub); err != nil {
-				log.Printf("[Stripe Webhook] Failed to assign uplink role to %s: %v", logtoSub, err)
+			// Active subscription: remove stale roles first to handle plan
+			// up/downgrades cleanly, then assign only the current one.
+			if err := RemoveUplinkRole(logtoSub); err != nil {
+				log.Printf("[Stripe Webhook] Failed to remove uplink role from %s: %v", logtoSub, err)
+			}
+			if err := RemoveProRole(logtoSub); err != nil {
+				log.Printf("[Stripe Webhook] Failed to remove uplink_pro role from %s: %v", logtoSub, err)
+			}
+			if err := RemoveUltimateRole(logtoSub); err != nil {
+				log.Printf("[Stripe Webhook] Failed to remove uplink_ultimate role from %s: %v", logtoSub, err)
+			}
+
+			if isUltimatePlan(plan) {
+				if err := AssignUltimateRole(logtoSub); err != nil {
+					log.Printf("[Stripe Webhook] Failed to assign uplink_ultimate role to %s: %v", logtoSub, err)
+				}
+			} else if isProPlan(plan) {
+				if err := AssignProRole(logtoSub); err != nil {
+					log.Printf("[Stripe Webhook] Failed to assign uplink_pro role to %s: %v", logtoSub, err)
+				}
+			} else {
+				if err := AssignUplinkRole(logtoSub); err != nil {
+					log.Printf("[Stripe Webhook] Failed to assign uplink role to %s: %v", logtoSub, err)
+				}
 			}
 		}
 	}

@@ -26,7 +26,7 @@ var (
 
 // logtoM2MConfig holds the env-derived configuration for M2M calls.
 type logtoM2MConfig struct {
-	Endpoint       string // e.g. https://auth.myscrollr.relentnet.dev
+	Endpoint       string // e.g. https://auth.myscrollr.com
 	AppID          string
 	AppSecret      string
 	RoleID         string // "uplink" role
@@ -39,7 +39,7 @@ type logtoM2MConfig struct {
 func getM2MConfig() logtoM2MConfig {
 	endpoint := os.Getenv("LOGTO_ENDPOINT")
 	if endpoint == "" {
-		endpoint = "https://auth.myscrollr.relentnet.dev"
+		log.Println("[Logto M2M] Warning: LOGTO_ENDPOINT not set — M2M calls will fail")
 	}
 	endpoint = strings.TrimSuffix(endpoint, "/")
 

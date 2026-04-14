@@ -1,7 +1,6 @@
 package core
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -15,11 +14,6 @@ import (
 // getLogtoTokenURL returns the Logto OIDC token endpoint URL.
 func getLogtoTokenURL() string {
 	logtoURL := os.Getenv("LOGTO_URL")
-	if logtoURL == "" {
-		if fqdn := CleanFQDN(); fqdn != "" {
-			logtoURL = fmt.Sprintf("https://%s/oidc", fqdn)
-		}
-	}
 	return strings.TrimSuffix(logtoURL, "/") + "/token"
 }
 
@@ -30,13 +24,7 @@ func getExtensionAppID() string {
 
 // getAPIResource returns the API resource identifier (audience) for token requests.
 func getAPIResource() string {
-	apiURL := os.Getenv("API_URL")
-	if apiURL == "" {
-		if fqdn := CleanFQDN(); fqdn != "" {
-			apiURL = fmt.Sprintf("https://%s", fqdn)
-		}
-	}
-	return apiURL
+	return os.Getenv("API_URL")
 }
 
 // defaultExtensionOrigins includes the website and the Chrome extension.
