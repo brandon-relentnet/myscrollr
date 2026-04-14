@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/sync/singleflight"
@@ -63,20 +64,32 @@ type App struct {
 // catalog browser.
 func (a *App) getRSSFeedCatalog(c *fiber.Ctx) error {
 	ctx := c.Context()
+	includeFailing := c.Query("include_failing") == "true"
+
+	// Use separate cache keys so the two variants don't collide
+	cacheKey := CacheKeyRSSCatalog
+	if includeFailing {
+		cacheKey = CacheKeyRSSCatalog + ":all"
+	}
 
 	var catalog []TrackedFeed
-	if GetCache(a.rdb, ctx, CacheKeyRSSCatalog, &catalog) {
+	if GetCache(a.rdb, ctx, cacheKey, &catalog) {
 		c.Set("X-Cache", "HIT")
 		return c.JSON(catalog)
 	}
 
 	// Singleflight: collapse concurrent cache-miss requests into one DB query
-	result, err, _ := a.sfGroup.Do(CacheKeyRSSCatalog, func() (interface{}, error) {
-		rows, err := a.db.Query(ctx,
-			"SELECT url, name, category, is_default, consecutive_failures, last_error, last_success_at FROM tracked_feeds WHERE is_enabled = true AND consecutive_failures < $1 ORDER BY category, name",
-			MaxConsecutiveFailures)
-		if err != nil {
-			return nil, err
+	result, err, _ := a.sfGroup.Do(cacheKey, func() (interface{}, error) {
+		query := "SELECT url, name, category, is_default, consecutive_failures, last_error, last_success_at FROM tracked_feeds WHERE is_enabled = true"
+		var rows pgx.Rows
+		var qErr error
+		if includeFailing {
+			rows, qErr = a.db.Query(ctx, query+" ORDER BY category, name")
+		} else {
+			rows, qErr = a.db.Query(ctx, query+" AND consecutive_failures < $1 ORDER BY category, name", MaxConsecutiveFailures)
+		}
+		if qErr != nil {
+			return nil, qErr
 		}
 		defer rows.Close()
 
@@ -103,7 +116,7 @@ func (a *App) getRSSFeedCatalog(c *fiber.Ctx) error {
 		catalog = make([]TrackedFeed, 0)
 	}
 
-	SetCache(a.rdb, ctx, CacheKeyRSSCatalog, catalog, RSSCatalogCacheTTL)
+	SetCache(a.rdb, ctx, cacheKey, catalog, RSSCatalogCacheTTL)
 	c.Set("X-Cache", "MISS")
 	return c.JSON(catalog)
 }
@@ -175,6 +188,7 @@ func (a *App) deleteCustomFeed(c *fiber.Ctx) error {
 
 	a.rdb.Del(ctx, RedisRSSSubscribersPrefix+req.URL)
 	a.rdb.Del(ctx, CacheKeyRSSCatalog)
+	a.rdb.Del(ctx, CacheKeyRSSCatalog+":all")
 
 	log.Printf("[RSS] User %s deleted custom feed: %s", userSub, req.URL)
 	return c.JSON(fiber.Map{"status": "ok", "message": "Custom feed deleted"})
@@ -496,6 +510,7 @@ func (a *App) syncRSSFeedsToTracked(userSub string, config map[string]interface{
 
 	// Invalidate the catalog cache so new custom feeds appear
 	a.rdb.Del(ctx, CacheKeyRSSCatalog)
+	a.rdb.Del(ctx, CacheKeyRSSCatalog+":all")
 }
 
 // =============================================================================
