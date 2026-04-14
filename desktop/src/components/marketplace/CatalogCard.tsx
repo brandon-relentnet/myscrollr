@@ -1,6 +1,6 @@
 import { useState } from "react";
 import clsx from "clsx";
-import { Check, ExternalLink, Loader2 } from "lucide-react";
+import { Check, ChevronRight, ExternalLink, Loader2 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-shell";
 import type { CatalogItem, CatalogCategory } from "../../marketplace";
 import type { SubscriptionTier } from "../../auth";
@@ -33,6 +33,8 @@ interface CatalogCardProps {
   onAdd: (item: CatalogItem) => Promise<void>;
   onRemove: (item: CatalogItem) => Promise<void>;
   onLogin: () => void;
+  /** Navigate to the channel/widget page when already added. */
+  onOpen?: (item: CatalogItem) => void;
 }
 
 // ── Component ───────────────────────────────────────────────────
@@ -46,6 +48,7 @@ export default function CatalogCard({
   onAdd,
   onRemove,
   onLogin,
+  onOpen,
 }: CatalogCardProps) {
   const [loading, setLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -154,12 +157,22 @@ export default function CatalogCard({
           {loading ? (
             <Loader2 size={14} className="animate-spin text-fg-4" />
           ) : enabled ? (
-            <button
-              onClick={handleRemoveClick}
-              className="text-xs font-medium text-fg-4 hover:text-error transition-colors"
-            >
-              Remove
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleRemoveClick}
+                className="text-xs font-medium text-fg-4 hover:text-error transition-colors"
+              >
+                Remove
+              </button>
+              {onOpen && (
+                <button
+                  onClick={() => onOpen(item)}
+                  className="flex items-center gap-0.5 text-xs font-semibold text-accent hover:text-accent/80 transition-colors"
+                >
+                  Open <ChevronRight size={12} />
+                </button>
+              )}
+            </div>
           ) : tierLocked ? (
             <button
               onClick={() => open("https://myscrollr.com/uplink")}

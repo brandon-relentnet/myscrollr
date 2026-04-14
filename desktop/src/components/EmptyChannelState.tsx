@@ -17,6 +17,8 @@ interface EmptyChannelStateProps {
   loadingNoun?: string;
   /** Hint text for the action (e.g. "choose what to track", "pick your leagues"). */
   actionHint?: string;
+  /** Navigate to the Settings tab. When provided, the hint becomes clickable. */
+  onConfigure?: () => void;
 }
 
 export default function EmptyChannelState({
@@ -26,6 +28,7 @@ export default function EmptyChannelState({
   dashboardLoaded,
   loadingNoun,
   actionHint,
+  onConfigure,
 }: EmptyChannelStateProps) {
   return (
     <div
@@ -38,20 +41,25 @@ export default function EmptyChannelState({
         <p className="text-xs text-fg-4">
           Loading {loadingNoun ?? noun}&hellip;
         </p>
-      ) : hasConfig ? (
-        <p className="text-sm font-medium text-fg-3">
-          No active {noun} right now
-        </p>
       ) : (
         <>
           <p className="text-sm font-medium text-fg-3">
-            No {noun} added yet
+            {hasConfig ? `No active ${noun} right now` : `No ${noun} added yet`}
           </p>
-          <p className="text-xs text-fg-4">
-            Go to the{" "}
-            <span className="text-fg-3 font-medium">Settings</span> tab to{" "}
-            {actionHint ?? `add ${noun}`}.
-          </p>
+          {onConfigure ? (
+            <button
+              onClick={onConfigure}
+              className="text-xs text-accent hover:text-accent/80 transition-colors"
+            >
+              Open Settings to {actionHint ?? `add ${noun}`}
+            </button>
+          ) : (
+            <p className="text-xs text-fg-4">
+              Go to the{" "}
+              <span className="text-fg-3 font-medium">Settings</span> tab to{" "}
+              {actionHint ?? `add ${noun}`}.
+            </p>
+          )}
         </>
       )}
     </div>

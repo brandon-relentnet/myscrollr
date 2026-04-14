@@ -45,7 +45,7 @@ export const rssChannel: ChannelManifest = {
 
 // ── FeedTab ──────────────────────────────────────────────────────
 
-function RssFeedTab({ mode, feedContext }: FeedTabProps) {
+function RssFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
   const { prefs } = useShell();
   const dp = prefs.channelDisplay.rss;
 
@@ -76,6 +76,7 @@ function RssFeedTab({ mode, feedContext }: FeedTabProps) {
           dashboardLoaded={!!dashboardLoaded}
           loadingNoun="articles"
           actionHint="add websites"
+          onConfigure={onConfigure}
         />
       )}
       {rssItems.map((item) => (

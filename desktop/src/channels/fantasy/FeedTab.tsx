@@ -50,7 +50,7 @@ function extractLeagues(data: unknown): LeagueResponse[] {
 
 // ── FeedTab ──────────────────────────────────────────────────────
 
-function FantasyFeedTab({ mode, feedContext }: FeedTabProps) {
+function FantasyFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
   const { prefs } = useShell();
   const dp = prefs.channelDisplay.fantasy;
 
@@ -70,9 +70,18 @@ function FantasyFeedTab({ mode, feedContext }: FeedTabProps) {
             <p className="text-sm font-medium text-fg-3">
               No fantasy leagues connected
             </p>
-            <p className="text-xs text-fg-4">
-              Go to the <span className="text-fg-3 font-medium">Setup</span> tab to connect your Yahoo account.
-            </p>
+            {onConfigure ? (
+              <button
+                onClick={onConfigure}
+                className="text-xs text-accent hover:text-accent/80 transition-colors"
+              >
+                Open Settings to connect your Yahoo account
+              </button>
+            ) : (
+              <p className="text-xs text-fg-4">
+                Go to the <span className="text-fg-3 font-medium">Setup</span> tab to connect your Yahoo account.
+              </p>
+            )}
           </>
         ) : (
           <p className="text-xs text-fg-4">Loading fantasy data&hellip;</p>

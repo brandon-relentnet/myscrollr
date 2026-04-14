@@ -239,19 +239,23 @@ body {
   position: relative;
 }
 
-/* Hard-constrain the Ticker element to the wrapper width.
+/* Hard-constrain the Ticker element to the wrapper dimensions.
    Chromium (WebView2) + overflow-x: clip on a flex child does NOT
    establish a formatting context, so width: 100% alone can be
-   overridden by content. max-width is a hard upper bound. */
+   overridden by content. max-width is a hard upper bound.
+   height: 100% ensures the motion-plus Ticker fills the row
+   vertically so chips center correctly within the full row height. */
 .ticker-scroll-wrapper > * {
   max-width: 100% !important;
   min-width: 0 !important;
+  height: 100% !important;
 }
 
 /* Ensure ticker chips have consistent gap spacing */
 .ticker-container [data-motion-ticker] {
   gap: 8px;
   align-items: center;
+  height: 100%;
 }
 
 /* ── Scrollbar ──────────────────────────────────────────────────── */

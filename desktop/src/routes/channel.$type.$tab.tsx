@@ -57,7 +57,14 @@ function ChannelRoute() {
       }}
       sourceKind="channel"
     >
-      {tab === "feed" && <ChannelFeedTab type={type} dashboard={dashboard} channel={channel} />}
+      {tab === "feed" && (
+        <ChannelFeedTab
+          type={type}
+          dashboard={dashboard}
+          channel={channel}
+          onConfigure={() => navigate({ to: "/channel/$type/$tab", params: { type, tab: "configuration" } })}
+        />
+      )}
       {tab === "configuration" && <ChannelConfigTab type={type} dashboard={dashboard} />}
       {tab === "display" && <ChannelDisplayTab type={type} />}
     </SourcePageLayout>
@@ -68,10 +75,12 @@ function ChannelFeedTab({
   type,
   dashboard,
   channel,
+  onConfigure,
 }: {
   type: string;
   dashboard: DashboardResponse | undefined;
   channel: NonNullable<ReturnType<typeof getChannel>>;
+  onConfigure: () => void;
 }) {
   const feedContext = {
     __dashboardLoaded: dashboard !== undefined,
@@ -80,7 +89,7 @@ function ChannelFeedTab({
     ),
   };
 
-  return <channel.FeedTab mode="comfort" feedContext={feedContext} />;
+  return <channel.FeedTab mode="comfort" feedContext={feedContext} onConfigure={onConfigure} />;
 }
 
 function ChannelConfigTab({

@@ -12,6 +12,7 @@ import { useState, useMemo } from "react";
 import { Search, X, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { clsx } from "clsx";
+import Tooltip from "../Tooltip";
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -207,12 +208,15 @@ export function SetupBrowser<T>({
           >
             <span>{error}</span>
             {onDismissError && (
-              <button
-                onClick={onDismissError}
-                className="p-0.5 hover:bg-error/10 rounded cursor-pointer"
-              >
-                <X size={12} />
-              </button>
+              <Tooltip content="Dismiss">
+                <button
+                  onClick={onDismissError}
+                  aria-label="Dismiss error"
+                  className="p-0.5 hover:bg-error/10 rounded cursor-pointer"
+                >
+                  <X size={12} />
+                </button>
+              </Tooltip>
             )}
           </motion.div>
         )}
@@ -232,12 +236,15 @@ export function SetupBrowser<T>({
           className="w-full pl-9 pr-3 py-2.5 rounded-lg bg-base-200 border border-edge/30 text-[12px] font-mono text-fg-2 placeholder:text-fg-4 focus:outline-none focus:border-accent/40 transition-colors"
         />
         {searchQuery && (
-          <button
-            onClick={() => handleSearchChange("")}
-            className="absolute right-6 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-base-300 text-fg-4 hover:text-fg-2 transition-colors cursor-pointer"
-          >
-            <X size={12} />
-          </button>
+          <Tooltip content="Clear search">
+            <button
+              onClick={() => handleSearchChange("")}
+              aria-label="Clear search"
+              className="absolute right-6 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-base-300 text-fg-4 hover:text-fg-2 transition-colors cursor-pointer"
+            >
+              <X size={12} />
+            </button>
+          </Tooltip>
         )}
       </div>
 
