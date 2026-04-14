@@ -45,7 +45,7 @@ jobs:
               echo "has_linux=false" >> "$GITHUB_OUTPUT"
               ;;
             macos)
-              echo 'matrix={"include":[{"platform":"macos-latest","rust_target":"aarch64-apple-darwin"}]}' >> "$GITHUB_OUTPUT"
+              echo 'matrix={"include":[{"platform":"macos-14","rust_target":"aarch64-apple-darwin"}]}' >> "$GITHUB_OUTPUT"
               echo "has_linux=false" >> "$GITHUB_OUTPUT"
               ;;
             linux)
@@ -53,7 +53,7 @@ jobs:
               echo "has_linux=true" >> "$GITHUB_OUTPUT"
               ;;
             *)
-              echo 'matrix={"include":[{"platform":"ubuntu-22.04","rust_target":"x86_64-unknown-linux-gnu"},{"platform":"windows-latest","rust_target":"x86_64-pc-windows-msvc"},{"platform":"macos-latest","rust_target":"aarch64-apple-darwin"}]}' >> "$GITHUB_OUTPUT"
+              echo 'matrix={"include":[{"platform":"ubuntu-22.04","rust_target":"x86_64-unknown-linux-gnu"},{"platform":"windows-latest","rust_target":"x86_64-pc-windows-msvc"},{"platform":"macos-14","rust_target":"aarch64-apple-darwin"}]}' >> "$GITHUB_OUTPUT"
               echo "has_linux=true" >> "$GITHUB_OUTPUT"
               ;;
           esac
