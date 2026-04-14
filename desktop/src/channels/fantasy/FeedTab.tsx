@@ -4,7 +4,7 @@
  * Renders Yahoo Fantasy Sports leagues with matchups, standings,
  * and injury counts. Unlike other channels, fantasy data arrives
  * as a structured MyLeaguesResponse rather than a flat CDC array,
- * so this FeedTab does not use useScrollrCDC.
+ * so fantasy CDC events are not processed by the CDC merge engine.
  */
 import { useMemo } from "react";
 import { Swords } from "lucide-react";

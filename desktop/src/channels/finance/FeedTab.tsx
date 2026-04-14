@@ -5,10 +5,11 @@
  * via the desktop CDC/SSE pipeline. Supports compact and comfort
  * display modes with price flash animations on change.
  */
-import { memo, useMemo, useCallback, useRef, useEffect, useState } from "react";
+import { memo, useMemo, useRef, useEffect, useState } from "react";
 import { clsx } from "clsx";
 import { TrendingUp } from "lucide-react";
-import { useScrollrCDC } from "../../hooks/useScrollrCDC";
+import { useQuery } from "@tanstack/react-query";
+import { dashboardQueryOptions } from "../../api/queries";
 import { formatPrice, formatChange, timeAgo } from "../../utils/format";
 import EmptyChannelState from "../../components/EmptyChannelState";
 import { useShell } from "../../shell-context";
@@ -43,24 +44,11 @@ function FinanceFeedTab({ mode, feedContext }: FeedTabProps) {
   const { prefs } = useShell();
   const dp = prefs.channelDisplay.finance;
 
-  const keyOf = useCallback((t: Trade) => t.symbol, []);
-  const validate = useCallback(
-    (record: Record<string, unknown>) => typeof record.symbol === "string",
-    [],
+  const { data: dashboard } = useQuery(dashboardQueryOptions());
+  const trades = useMemo(
+    () => (dashboard?.data?.finance as Trade[] | undefined) ?? [],
+    [dashboard?.data?.finance],
   );
-
-  const sort = useCallback(
-    (a: Trade, b: Trade) => a.symbol.localeCompare(b.symbol),
-    [],
-  );
-
-  const { items: trades } = useScrollrCDC<Trade>({
-    table: "trades",
-    dataKey: "finance",
-    keyOf,
-    validate,
-    sort,
-  });
 
   return (
     <div

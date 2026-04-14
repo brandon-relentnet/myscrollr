@@ -5,10 +5,11 @@
  * real-time updates via the desktop CDC/SSE pipeline. Shows source
  * name, title, description, and relative timestamps.
  */
-import { memo, useMemo, useCallback } from "react";
+import { memo, useMemo } from "react";
 import { Rss } from "lucide-react";
 import { clsx } from "clsx";
-import { useScrollrCDC } from "../../hooks/useScrollrCDC";
+import { useQuery } from "@tanstack/react-query";
+import { dashboardQueryOptions } from "../../api/queries";
 import { timeAgo, truncate } from "../../utils/format";
 import EmptyChannelState from "../../components/EmptyChannelState";
 import { useShell } from "../../shell-context";
@@ -52,28 +53,11 @@ function RssFeedTab({ mode, feedContext }: FeedTabProps) {
     | boolean
     | undefined;
 
-  const keyOf = useCallback(
-    (r: RssItemType) => `${r.feed_url}:${r.guid}`,
-    [],
+  const { data: dashboard } = useQuery(dashboardQueryOptions());
+  const rssItems = useMemo(
+    () => (dashboard?.data?.rss as RssItemType[] | undefined) ?? [],
+    [dashboard?.data?.rss],
   );
-  const validate = useCallback(
-    (record: Record<string, unknown>) =>
-      typeof record.feed_url === "string" && typeof record.guid === "string",
-    [],
-  );
-  const sort = useCallback((a: RssItemType, b: RssItemType) => {
-    const ta = a.published_at ? new Date(a.published_at).getTime() : 0;
-    const tb = b.published_at ? new Date(b.published_at).getTime() : 0;
-    return tb - ta;
-  }, []);
-
-  const { items: rssItems } = useScrollrCDC<RssItemType>({
-    table: "rss_items",
-    dataKey: "rss",
-    keyOf,
-    validate,
-    sort,
-  });
 
   return (
     <div

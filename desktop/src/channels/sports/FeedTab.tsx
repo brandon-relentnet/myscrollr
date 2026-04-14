@@ -6,10 +6,11 @@
  * Schedule filters upcoming pre-games by date.
  * Standings fetches league standings from the API.
  */
-import { useState, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { clsx } from "clsx";
 import { Trophy } from "lucide-react";
-import { useScrollrCDC } from "../../hooks/useScrollrCDC";
+import { useQuery } from "@tanstack/react-query";
+import { dashboardQueryOptions } from "../../api/queries";
 import { useSportsConfig } from "../../hooks/useSportsConfig";
 import { ScoresTab } from "./ScoresTab";
 import { ScheduleTab } from "./ScheduleTab";
@@ -49,18 +50,11 @@ function SportsFeedTab({ mode, feedContext }: FeedTabProps) {
   const [tab, setTab] = useState<SportsTab>("scores");
   const { leagues, display } = useSportsConfig();
 
-  const keyOf = useCallback((g: Game) => String(g.id), []);
-  const validate = useCallback(
-    (record: Record<string, unknown>) => record.id != null,
-    [],
+  const { data: dashboard } = useQuery(dashboardQueryOptions());
+  const games = useMemo(
+    () => (dashboard?.data?.sports as Game[] | undefined) ?? [],
+    [dashboard?.data?.sports],
   );
-
-  const { items: games } = useScrollrCDC<Game>({
-    table: "games",
-    dataKey: "sports",
-    keyOf,
-    validate,
-  });
 
   if (games.length === 0 && leagues.length === 0) {
     return (

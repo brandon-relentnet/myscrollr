@@ -94,15 +94,15 @@ pub fn run() {
         })
         .setup(|app| {
             // ── Ticker window setup ──────────────────────────────
+            // Size the ticker to fill the screen width. Visibility is
+            // managed by the JS side based on the showTicker preference;
+            // tauri.conf.json starts the window with `visible: false`.
             if let Some(ticker) = app.get_webview_window("ticker") {
-                // Set initial ticker width to fill screen
                 if let Ok(Some(monitor)) = ticker.current_monitor() {
                     let scale = monitor.scale_factor();
                     let screen_width = monitor.size().width as f64 / scale;
                     let _ = ticker.set_size(tauri::LogicalSize::new(screen_width, 200.0));
                 }
-
-                let _ = ticker.show();
             } else {
                 log::error!("Failed to create ticker window — continuing without it");
             }
