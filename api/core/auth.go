@@ -19,12 +19,8 @@ var (
 func InitAuth() {
 	jwksURL := os.Getenv("LOGTO_JWKS_URL")
 	if jwksURL == "" {
-		fqdn := CleanFQDN()
-		if fqdn == "" {
-			log.Println("[Security Warning] COOLIFY_FQDN not set, authentication will fail")
-			return
-		}
-		jwksURL = fmt.Sprintf("https://%s/oidc/jwks", fqdn)
+		log.Println("[Auth] LOGTO_JWKS_URL not set — authentication will fail")
+		return
 	}
 
 	log.Printf("[Auth] Initializing with JWKS: %s", jwksURL)
@@ -71,21 +67,11 @@ func ValidateToken(tokenString string) (sub string, claims jwt.MapClaims, err er
 	}
 
 	expectedIssuer := os.Getenv("LOGTO_URL")
-	if expectedIssuer == "" {
-		if fqdn := CleanFQDN(); fqdn != "" {
-			expectedIssuer = fmt.Sprintf("https://%s/oidc", fqdn)
-		}
-	}
 	if expectedIssuer != "" && mapClaims["iss"] != expectedIssuer {
 		return "", nil, fmt.Errorf("invalid token issuer")
 	}
 
 	expectedAudience := os.Getenv("API_URL")
-	if expectedAudience == "" {
-		if fqdn := CleanFQDN(); fqdn != "" {
-			expectedAudience = fmt.Sprintf("https://%s", fqdn)
-		}
-	}
 	audValid := false
 	switch audClaim := mapClaims["aud"].(type) {
 	case string:

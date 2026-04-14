@@ -9,7 +9,7 @@ data:
   LOGTO_URL: "https://auth.myscrollr.com/oidc"
   LOGTO_JWKS_URL: "https://auth.myscrollr.com/oidc/jwks"
   LOGTO_ENDPOINT: "https://auth.myscrollr.com"
-  LOGTO_M2M_RESOURCE: "https://api.myscrollr.com"
+  LOGTO_M2M_RESOURCE: "https://default.logto.app/api"
   YAHOO_CALLBACK_URL: "https://api.myscrollr.com/yahoo/callback"
 
   # CORS
@@ -17,9 +17,9 @@ data:
   FRONTEND_URL: "https://myscrollr.com"
 
   # Logto role IDs (not secret, just config)
-  LOGTO_UPLINK_ROLE_ID: "yrz0lcq1i3rg2"
-  LOGTO_PRO_ROLE_ID: "vw99v7lv9vb47"
-  LOGTO_ULTIMATE_ROLE_ID: "cnnxg8o9cawf8"
+  LOGTO_UPLINK_ROLE_ID: "x8qz9zmdthw19n10dqnr5"
+  LOGTO_PRO_ROLE_ID: "mpp4isevqg194srzrhjha"
+  LOGTO_ULTIMATE_ROLE_ID: "saxuo1hnzn43jtbt33zou"
 
   # Stripe price IDs (not secret)
   STRIPE_PRICE_MONTHLY: "price_1TC6czC2uHc0J8jtDEuoRRKd"

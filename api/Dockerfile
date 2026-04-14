@@ -28,8 +28,7 @@ FROM alpine:latest
 WORKDIR /root/
 
 # All URL env vars (API_URL, LOGTO_URL, LOGTO_JWKS_URL, YAHOO_CALLBACK_URL)
-# are supplied at runtime via K8s ConfigMap / Coolify env vars.
-# The Go code reads them via os.Getenv() with CleanFQDN() fallback.
+# are supplied at runtime via K8s ConfigMap and Secrets.
 
 # Install curl for health checks
 RUN apk --no-cache add curl
