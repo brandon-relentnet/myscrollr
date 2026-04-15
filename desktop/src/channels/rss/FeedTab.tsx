@@ -314,9 +314,7 @@ function RssFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
   // ── Build render list ──────────────────────────────────────────
   type RenderEntry =
     | { kind: "article"; item: RssItemType; category?: string }
-    | { kind: "source-header"; source: string; count: number; total: number }
-    | { kind: "show-more"; source: string; count: number }
-    | { kind: "collapse"; source: string };
+    | { kind: "source-header"; source: string; overflow: number; expanded: boolean };
 
   const isBySource = sortOrder === "by-source";
 
@@ -324,53 +322,30 @@ function RssFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
     const entries: RenderEntry[] = [];
 
     if (isBySource) {
-      // Group by source with headers and expand/collapse per group
+      // Group by source — header contains the expand/collapse action
       let currentSource: string | null = null;
-      let sourceArticleCount = 0;
 
       for (const item of visibleItems) {
         if (item.source_name !== currentSource) {
-          // Insert show-more/collapse for previous source
-          if (currentSource !== null) {
-            const overflow = overflowCounts.get(currentSource);
-            if (overflow != null && overflow > 0) {
-              entries.push({ kind: "show-more", source: currentSource, count: overflow });
-            } else if (expandedSources.has(currentSource) && dp.articlesPerSource > 0) {
-              entries.push({ kind: "collapse", source: currentSource });
-            }
-          }
-
           currentSource = item.source_name;
-          sourceArticleCount = 0;
           const overflow = overflowCounts.get(currentSource) ?? 0;
-          const totalForSource = sourceArticleCount + overflow; // will refine below
+          const expanded = expandedSources.has(currentSource);
           entries.push({
             kind: "source-header",
             source: currentSource,
-            count: 0, // placeholder, we'll count as we go
-            total: 0,
+            overflow,
+            expanded,
           });
         }
 
-        sourceArticleCount++;
         entries.push({
           kind: "article",
           item,
           category: categoryMap.get(item.feed_url),
         });
       }
-
-      // Handle last source
-      if (currentSource !== null) {
-        const overflow = overflowCounts.get(currentSource);
-        if (overflow != null && overflow > 0) {
-          entries.push({ kind: "show-more", source: currentSource, count: overflow });
-        } else if (expandedSources.has(currentSource) && dp.articlesPerSource > 0) {
-          entries.push({ kind: "collapse", source: currentSource });
-        }
-      }
     } else {
-      // Chronological sorts: plain article list, no show-more rows
+      // Chronological sorts: plain article list
       for (const item of visibleItems) {
         entries.push({
           kind: "article",
@@ -381,7 +356,7 @@ function RssFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
     }
 
     return entries;
-  }, [visibleItems, overflowCounts, expandedSources, categoryMap, isBySource, dp.articlesPerSource]);
+  }, [visibleItems, overflowCounts, expandedSources, categoryMap, isBySource]);
 
   // ── Empty state (no data at all) ─────────────────────────────
   if (rssItems.length === 0) {
@@ -523,25 +498,9 @@ function RssFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
                   category={categoryMap.get(
                     rssItems.find((i) => i.source_name === entry.source)?.feed_url ?? "",
                   )}
-                />
-              );
-            }
-            if (entry.kind === "show-more") {
-              return (
-                <ShowMoreRow
-                  key={`more:${entry.source}`}
-                  source={entry.source}
-                  count={entry.count}
-                  onExpand={() => toggleExpanded(entry.source)}
-                />
-              );
-            }
-            if (entry.kind === "collapse") {
-              return (
-                <CollapseRow
-                  key={`collapse:${entry.source}`}
-                  source={entry.source}
-                  onCollapse={() => toggleExpanded(entry.source)}
+                  overflow={entry.overflow}
+                  expanded={entry.expanded}
+                  onToggle={() => toggleExpanded(entry.source)}
                 />
               );
             }
@@ -566,9 +525,14 @@ function RssFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
 interface SourceHeaderProps {
   source: string;
   category?: string;
+  overflow: number;
+  expanded: boolean;
+  onToggle: () => void;
 }
 
-function SourceHeader({ source, category }: SourceHeaderProps) {
+function SourceHeader({ source, category, overflow, expanded, onToggle }: SourceHeaderProps) {
+  const hasAction = overflow > 0 || expanded;
+
   return (
     <div className="col-span-full flex items-center gap-2 px-3 py-2 bg-surface-2/60 border-b border-edge/15">
       <span className="font-mono text-[10px] font-bold text-fg-2 uppercase tracking-wider">
@@ -579,50 +543,25 @@ function SourceHeader({ source, category }: SourceHeaderProps) {
           {category}
         </span>
       )}
+      {hasAction && (
+        <button
+          onClick={onToggle}
+          className="ml-auto flex items-center gap-1 text-[10px] text-accent/70 hover:text-accent transition-colors cursor-pointer"
+        >
+          {overflow > 0 ? (
+            <>
+              <span>{overflow} more</span>
+              <ChevronDown size={11} />
+            </>
+          ) : (
+            <>
+              <span>Collapse</span>
+              <ChevronUp size={11} />
+            </>
+          )}
+        </button>
+      )}
     </div>
-  );
-}
-
-// ── ShowMoreRow ──────────────────────────────────────────────────
-
-interface ShowMoreRowProps {
-  source: string;
-  count: number;
-  onExpand: () => void;
-}
-
-function ShowMoreRow({ source, count, onExpand }: ShowMoreRowProps) {
-  return (
-    <button
-      onClick={onExpand}
-      className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-surface hover:bg-surface-hover transition-colors cursor-pointer text-[10px] text-fg-4 hover:text-fg-3 col-span-full"
-    >
-      <ChevronDown size={12} />
-      <span>
-        {count} more from <span className="font-medium text-fg-3">{source}</span>
-      </span>
-    </button>
-  );
-}
-
-// ── CollapseRow ─────────────────────────────────────────────────
-
-interface CollapseRowProps {
-  source: string;
-  onCollapse: () => void;
-}
-
-function CollapseRow({ source, onCollapse }: CollapseRowProps) {
-  return (
-    <button
-      onClick={onCollapse}
-      className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-surface hover:bg-surface-hover transition-colors cursor-pointer text-[10px] text-fg-4 hover:text-fg-3 col-span-full"
-    >
-      <ChevronUp size={12} />
-      <span>
-        Collapse <span className="font-medium text-fg-3">{source}</span>
-      </span>
-    </button>
   );
 }
 
