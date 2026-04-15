@@ -4,9 +4,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTauriListener } from "./hooks/useTauriListener";
 import { useDashboardCDC } from "./hooks/useDashboardCDC";
-import { Menu, CheckMenuItem, MenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu";
+import { Menu, Submenu, CheckMenuItem, MenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu";
 import { dashboardQueryOptions, queryKeys } from "./api/queries";
-import { onStoreChange } from "./lib/store";
+import { onStoreChange, setStore } from "./lib/store";
 import ScrollrTicker from "./components/ScrollrTicker";
 import TickerToolbar from "./components/TickerToolbar";
 import {
@@ -424,46 +424,10 @@ export default function App() {
     async function onContextMenu(e: MouseEvent) {
       e.preventDefault();
 
-      const items: (CheckMenuItem | MenuItem | PredefinedMenuItem)[] = [];
+      const items: (Submenu | CheckMenuItem | MenuItem | PredefinedMenuItem)[] = [];
       const chs = channelsRef.current;
 
-      // Channel quick toggles (only when authenticated with channels)
-      if (chs.length > 0) {
-        for (const ch of chs) {
-          const channelType = ch.channel_type;
-          const isVisible = ch.enabled && ch.visible;
-          const label =
-            channelType.charAt(0).toUpperCase() + channelType.slice(1);
-          const item = await CheckMenuItem.new({
-            text: label,
-            checked: isVisible,
-            action: () => {
-              handleChannelToggle(channelType, !isVisible);
-            },
-          });
-          items.push(item);
-        }
-        items.push(await PredefinedMenuItem.new({ item: "Separator" }));
-      }
-
-      // Widget quick toggles
-      const allWidgets = getAllWidgets();
-      if (allWidgets.length > 0) {
-        for (const widget of allWidgets) {
-          const isEnabled = prefsRef.current.widgets.widgetsOnTicker.includes(widget.id);
-          const item = await CheckMenuItem.new({
-            text: widget.name,
-            checked: isEnabled,
-            action: () => {
-              handleWidgetToggle(widget.id);
-            },
-          });
-          items.push(item);
-        }
-        items.push(await PredefinedMenuItem.new({ item: "Separator" }));
-      }
-
-      // Open Scrollr
+      // Open Scrollr — most common action, top of menu
       items.push(
         await MenuItem.new({
           text: "Open Scrollr",
@@ -473,7 +437,58 @@ export default function App() {
         }),
       );
 
-      // Separator
+      items.push(await PredefinedMenuItem.new({ item: "Separator" }));
+
+      // Channels submenu (only when authenticated with channels)
+      if (chs.length > 0) {
+        const channelItems: CheckMenuItem[] = [];
+        for (const ch of chs) {
+          const channelType = ch.channel_type;
+          const isVisible = ch.enabled && ch.visible;
+          const label =
+            channelType.charAt(0).toUpperCase() + channelType.slice(1);
+          channelItems.push(
+            await CheckMenuItem.new({
+              text: label,
+              checked: isVisible,
+              action: () => {
+                // Optimistic update — flip the ref immediately so the next
+                // menu build reflects the change without waiting for the API
+                const target = channelsRef.current.find(
+                  (c) => c.channel_type === channelType,
+                );
+                if (target) target.visible = !isVisible;
+                handleChannelToggle(channelType, !isVisible);
+              },
+            }),
+          );
+        }
+        items.push(
+          await Submenu.new({ text: "Channels", items: channelItems }),
+        );
+      }
+
+      // Widgets submenu
+      const allWidgets = getAllWidgets();
+      if (allWidgets.length > 0) {
+        const widgetItems: CheckMenuItem[] = [];
+        for (const widget of allWidgets) {
+          const isEnabled = prefsRef.current.widgets.widgetsOnTicker.includes(widget.id);
+          widgetItems.push(
+            await CheckMenuItem.new({
+              text: widget.name,
+              checked: isEnabled,
+              action: () => {
+                handleWidgetToggle(widget.id);
+              },
+            }),
+          );
+        }
+        items.push(
+          await Submenu.new({ text: "Widgets", items: widgetItems }),
+        );
+      }
+
       items.push(await PredefinedMenuItem.new({ item: "Separator" }));
 
       // Pin on Top
@@ -485,17 +500,52 @@ export default function App() {
         }),
       );
 
-      // Show/Hide Ticker
+      // Customize Ticker — opens main app to ticker settings
       items.push(
-        await CheckMenuItem.new({
-          text: "Show Ticker",
-          checked: prefsRef.current.ticker.showTicker,
-          action: () => handleToggleTicker(),
+        await MenuItem.new({
+          text: "Customize Ticker",
+          action: () => {
+            invoke("show_app_window").catch(() => {});
+            setStore("scrollr:navigate", "/settings?tab=ticker");
+          },
         }),
       );
 
-      // Separator + Quit
+      // Position submenu (Top / Bottom)
+      const currentPos = prefsRef.current.window.tickerPosition ?? "top";
+      items.push(
+        await Submenu.new({
+          text: "Position",
+          items: [
+            await CheckMenuItem.new({
+              text: "Top",
+              checked: currentPos === "top",
+              action: () => {
+                if (currentPos !== "top") handleTogglePosition();
+              },
+            }),
+            await CheckMenuItem.new({
+              text: "Bottom",
+              checked: currentPos === "bottom",
+              action: () => {
+                if (currentPos !== "bottom") handleTogglePosition();
+              },
+            }),
+          ],
+        }),
+      );
+
       items.push(await PredefinedMenuItem.new({ item: "Separator" }));
+
+      // Hide Ticker — action verb, not a checkbox
+      items.push(
+        await MenuItem.new({
+          text: "Hide Ticker",
+          action: () => handleToggleTicker(true),
+        }),
+      );
+
+      // Quit
       items.push(
         await MenuItem.new({
           text: "Quit",
@@ -510,7 +560,7 @@ export default function App() {
     }
     document.addEventListener("contextmenu", onContextMenu);
     return () => document.removeEventListener("contextmenu", onContextMenu);
-  }, [handleChannelToggle, handleWidgetToggle]);
+  }, [handleChannelToggle, handleWidgetToggle, handleTogglePosition]);
 
   // ── Merge channel + widget tabs ──────────────────────────────
   const activeTabs = useMemo(

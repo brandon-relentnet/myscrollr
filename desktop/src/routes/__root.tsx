@@ -68,7 +68,7 @@ import { POLL_INTERVALS } from "../cdc";
 import { ShellContext, ShellDataContext } from "../shell-context";
 
 // Store
-import { onStoreChange, setStore } from "../lib/store";
+import { onStoreChange, setStore, removeStore } from "../lib/store";
 
 // ── Route context ────────────────────────────────────────────────
 
@@ -291,8 +291,16 @@ function RootLayout() {
     const unsub1 = onStoreChange<AppPreferences>("scrollr:settings", (val) => {
       if (val) setPrefs(val);
     });
-    return () => { unsub1(); };
-  }, []);
+    // Cross-window navigation requests (e.g. ticker context menu → "Customize Ticker")
+    const unsub2 = onStoreChange<string>("scrollr:navigate", (path) => {
+      if (path) {
+        navigate({ to: path });
+        // Clear the key so it can be triggered again
+        removeStore("scrollr:navigate");
+      }
+    });
+    return () => { unsub1(); unsub2(); };
+  }, [navigate]);
 
   useEffect(() => {
     isAutostartEnabled().then(setAutostartOn).catch(() => {});
