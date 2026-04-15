@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Filter } from "lucide-react";
 import clsx from "clsx";
 
@@ -11,6 +11,8 @@ interface CategoryFilterProps {
   onToggle: (category: string) => void;
   /** Clear all filters (show all) */
   onClearAll: () => void;
+  /** Align dropdown to right edge of button (default: left) */
+  alignRight?: boolean;
 }
 
 export default function CategoryFilter({
@@ -18,51 +20,29 @@ export default function CategoryFilter({
   selected,
   onToggle,
   onClearAll,
+  alignRight = false,
 }: CategoryFilterProps) {
   const [open, setOpen] = useState(false);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
-
-  // Position the menu using fixed coords from button rect
-  const updatePosition = useCallback(() => {
-    if (!buttonRef.current) return;
-    const rect = buttonRef.current.getBoundingClientRect();
-    setMenuStyle({
-      position: "fixed",
-      top: rect.bottom + 4,
-      left: rect.left,
-      width: 208,
-    });
-  }, []);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   // Close on outside click
   useEffect(() => {
     if (!open) return;
-    updatePosition();
     function handleClick(e: MouseEvent) {
-      const target = e.target as Node;
-      if (
-        buttonRef.current && !buttonRef.current.contains(target) &&
-        menuRef.current && !menuRef.current.contains(target)
-      ) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, [open, updatePosition]);
+  }, [open]);
 
   const activeCount = selected.size;
 
   return (
-    <div>
+    <div ref={wrapperRef} className="relative">
       <button
-        ref={buttonRef}
-        onClick={() => {
-          if (!open) updatePosition();
-          setOpen(!open);
-        }}
+        onClick={() => setOpen(!open)}
         className={clsx(
           "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-[11px] transition-colors cursor-pointer whitespace-nowrap",
           activeCount > 0
@@ -80,7 +60,12 @@ export default function CategoryFilter({
       </button>
 
       {open && (
-        <div ref={menuRef} style={menuStyle} className="bg-surface-2 border border-edge/50 rounded-lg shadow-lg z-50 py-1">
+        <div
+          className={clsx(
+            "absolute top-full mt-1 w-52 bg-surface-2 border border-edge/50 rounded-lg shadow-lg z-[5] py-1 max-h-64 overflow-y-auto",
+            alignRight ? "right-0" : "left-0",
+          )}
+        >
           {categories.map((cat) => {
             const isActive = selected.has(cat.name);
             return (
@@ -102,7 +87,7 @@ export default function CategoryFilter({
                       : "border-edge/50",
                   )}
                 >
-                  {isActive && "✓"}
+                  {isActive && "\u2713"}
                 </span>
                 <span className="flex-1 truncate">{cat.name}</span>
                 <span className="text-[10px] text-fg-3 tabular-nums">{cat.count}</span>

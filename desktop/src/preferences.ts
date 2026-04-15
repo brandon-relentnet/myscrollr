@@ -166,6 +166,7 @@ export interface FinanceDisplayPrefs {
   showChange: boolean;
   showPrevClose: boolean;
   showLastUpdated: boolean;
+  defaultSort: "alpha" | "price" | "change" | "updated";
 }
 
 export interface RssDisplayPrefs {
@@ -289,7 +290,7 @@ export const DEFAULT_GITHUB_TICKER: GitHubTickerConfig = {
 };
 
 const DEFAULT_CHANNEL_DISPLAY: ChannelDisplayPrefs = {
-  finance: { showChange: true, showPrevClose: true, showLastUpdated: true },
+  finance: { showChange: true, showPrevClose: true, showLastUpdated: true, defaultSort: "alpha" },
   rss: { showDescription: true, showSource: true, showTimestamps: true, articlesPerSource: 4 },
   fantasy: { showStandings: true, showInjuryCount: true },
 };
