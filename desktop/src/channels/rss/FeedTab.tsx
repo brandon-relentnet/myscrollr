@@ -200,6 +200,7 @@ function RssFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
   const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
+  const [showAll, setShowAll] = useState(false);
 
   const toggleSource = useCallback((source: string) => {
     setSelectedSources((prev) => {
@@ -240,7 +241,7 @@ function RssFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
   const hasFilters = selectedSources.size > 0 || selectedCategories.size > 0;
 
   // ── Data pipeline ────────────────────────────────────────────
-  const { visibleItems, overflowCounts } = useMemo(() => {
+  const { visibleItems, overflowCounts, totalHidden } = useMemo(() => {
     let items = rssItems;
 
     // Source filter
@@ -267,7 +268,6 @@ function RssFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
       items = [...items].sort((a, b) => {
         const cmp = a.source_name.localeCompare(b.source_name, undefined, { sensitivity: "base" });
         if (cmp !== 0) return cmp;
-        // Within source: newest first
         const aTime = a.published_at ?? a.created_at;
         const bTime = b.published_at ?? b.created_at;
         return bTime.localeCompare(aTime);
@@ -278,14 +278,17 @@ function RssFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
     // Per-source limit
     const limit = dp.articlesPerSource;
     const overflow = new Map<string, number>();
+    const isBySource = sortOrder === "by-source";
 
-    if (limit > 0) {
+    // For chronological sorts: silently limit unless user clicked "Show all".
+    // For "by-source": use expandable per-source groups.
+    if (limit > 0 && !showAll) {
       const sourceCounts = new Map<string, number>();
       const limited: RssItemType[] = [];
 
       for (const item of items) {
         const count = sourceCounts.get(item.source_name) ?? 0;
-        const isExpanded = expandedSources.has(item.source_name);
+        const isExpanded = isBySource && expandedSources.has(item.source_name);
 
         if (isExpanded || count < limit) {
           limited.push(item);
@@ -293,67 +296,92 @@ function RssFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
         sourceCounts.set(item.source_name, count + 1);
       }
 
-      // Calculate overflow for each source
+      let hidden = 0;
       for (const [source, total] of sourceCounts) {
-        if (total > limit && !expandedSources.has(source)) {
+        const expanded = isBySource && expandedSources.has(source);
+        if (total > limit && !expanded) {
           overflow.set(source, total - limit);
+          hidden += total - limit;
         }
       }
 
-      return { visibleItems: limited, overflowCounts: overflow };
+      return { visibleItems: limited, overflowCounts: overflow, totalHidden: hidden };
     }
 
-    return { visibleItems: items, overflowCounts: overflow };
-  }, [rssItems, selectedSources, selectedCategories, sortOrder, dp.articlesPerSource, categoryMap, expandedSources]);
+    return { visibleItems: items, overflowCounts: overflow, totalHidden: 0 };
+  }, [rssItems, selectedSources, selectedCategories, sortOrder, dp.articlesPerSource, categoryMap, expandedSources, showAll]);
 
-  // ── Build render list with interleaved show-more/collapse rows ─
+  // ── Build render list ──────────────────────────────────────────
   type RenderEntry =
     | { kind: "article"; item: RssItemType; category?: string }
+    | { kind: "source-header"; source: string; count: number; total: number }
     | { kind: "show-more"; source: string; count: number }
     | { kind: "collapse"; source: string };
 
+  const isBySource = sortOrder === "by-source";
+
   const renderList = useMemo(() => {
-    // Find the index of the last article from each source so we can insert
-    // show-more / collapse rows right after them (not at every transition,
-    // and not appended at the bottom).
-    const lastIndexBySource = new Map<string, number>();
-    for (let i = 0; i < visibleItems.length; i++) {
-      lastIndexBySource.set(visibleItems[i].source_name, i);
-    }
-
-    // Sources that need a trailing row
-    const needsShowMore = new Set(overflowCounts.keys());
-    const needsCollapse = new Set<string>();
-    for (const source of expandedSources) {
-      const total = rssItems.filter((i) => i.source_name === source).length;
-      if (total > dp.articlesPerSource && dp.articlesPerSource > 0) {
-        needsCollapse.add(source);
-      }
-    }
-
     const entries: RenderEntry[] = [];
-    for (let i = 0; i < visibleItems.length; i++) {
-      const item = visibleItems[i];
-      entries.push({
-        kind: "article",
-        item,
-        category: categoryMap.get(item.feed_url),
-      });
 
-      // If this is the last visible article from this source, insert its row
-      if (lastIndexBySource.get(item.source_name) === i) {
-        const overflow = overflowCounts.get(item.source_name);
-        if (overflow != null && overflow > 0 && needsShowMore.has(item.source_name)) {
-          entries.push({ kind: "show-more", source: item.source_name, count: overflow });
+    if (isBySource) {
+      // Group by source with headers and expand/collapse per group
+      let currentSource: string | null = null;
+      let sourceArticleCount = 0;
+
+      for (const item of visibleItems) {
+        if (item.source_name !== currentSource) {
+          // Insert show-more/collapse for previous source
+          if (currentSource !== null) {
+            const overflow = overflowCounts.get(currentSource);
+            if (overflow != null && overflow > 0) {
+              entries.push({ kind: "show-more", source: currentSource, count: overflow });
+            } else if (expandedSources.has(currentSource) && dp.articlesPerSource > 0) {
+              entries.push({ kind: "collapse", source: currentSource });
+            }
+          }
+
+          currentSource = item.source_name;
+          sourceArticleCount = 0;
+          const overflow = overflowCounts.get(currentSource) ?? 0;
+          const totalForSource = sourceArticleCount + overflow; // will refine below
+          entries.push({
+            kind: "source-header",
+            source: currentSource,
+            count: 0, // placeholder, we'll count as we go
+            total: 0,
+          });
         }
-        if (needsCollapse.has(item.source_name)) {
-          entries.push({ kind: "collapse", source: item.source_name });
+
+        sourceArticleCount++;
+        entries.push({
+          kind: "article",
+          item,
+          category: categoryMap.get(item.feed_url),
+        });
+      }
+
+      // Handle last source
+      if (currentSource !== null) {
+        const overflow = overflowCounts.get(currentSource);
+        if (overflow != null && overflow > 0) {
+          entries.push({ kind: "show-more", source: currentSource, count: overflow });
+        } else if (expandedSources.has(currentSource) && dp.articlesPerSource > 0) {
+          entries.push({ kind: "collapse", source: currentSource });
         }
+      }
+    } else {
+      // Chronological sorts: plain article list, no show-more rows
+      for (const item of visibleItems) {
+        entries.push({
+          kind: "article",
+          item,
+          category: categoryMap.get(item.feed_url),
+        });
       }
     }
 
     return entries;
-  }, [visibleItems, overflowCounts, expandedSources, categoryMap, rssItems, dp.articlesPerSource]);
+  }, [visibleItems, overflowCounts, expandedSources, categoryMap, isBySource, dp.articlesPerSource]);
 
   // ── Empty state (no data at all) ─────────────────────────────
   if (rssItems.length === 0) {
@@ -389,7 +417,11 @@ function RssFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
         <div className="ml-auto">
           <select
             value={sortOrder}
-            onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+            onChange={(e) => {
+              setSortOrder(e.target.value as SortOrder);
+              setShowAll(false);
+              setExpandedSources(new Set());
+            }}
             className="bg-surface-2 border border-edge/30 rounded-md px-2 py-1.5 text-[11px] text-fg-3 cursor-pointer outline-none focus:border-accent/40"
           >
             <option value="newest">Newest</option>
@@ -431,6 +463,33 @@ function RssFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
         </div>
       )}
 
+      {/* Per-source limit info bar (chronological sorts only) */}
+      {!isBySource && totalHidden > 0 && !showAll && (
+        <div className="flex items-center justify-between px-3 py-1.5 bg-surface-2/50 border-b border-edge/10 text-[10px] text-fg-4">
+          <span>
+            Showing {dp.articlesPerSource} per source &middot;{" "}
+            <span className="tabular-nums">{totalHidden}</span> articles hidden
+          </span>
+          <button
+            onClick={() => setShowAll(true)}
+            className="text-accent hover:text-accent/80 transition-colors cursor-pointer font-medium"
+          >
+            Show all
+          </button>
+        </div>
+      )}
+      {!isBySource && showAll && totalHidden === 0 && dp.articlesPerSource > 0 && (
+        <div className="flex items-center justify-between px-3 py-1.5 bg-surface-2/50 border-b border-edge/10 text-[10px] text-fg-4">
+          <span>Showing all articles</span>
+          <button
+            onClick={() => setShowAll(false)}
+            className="text-accent hover:text-accent/80 transition-colors cursor-pointer font-medium"
+          >
+            Limit to {dp.articlesPerSource} per source
+          </button>
+        </div>
+      )}
+
       {/* No-results state */}
       {visibleItems.length === 0 && hasFilters && (
         <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
@@ -456,6 +515,17 @@ function RssFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
           )}
         >
           {renderList.map((entry) => {
+            if (entry.kind === "source-header") {
+              return (
+                <SourceHeader
+                  key={`hdr:${entry.source}`}
+                  source={entry.source}
+                  category={categoryMap.get(
+                    rssItems.find((i) => i.source_name === entry.source)?.feed_url ?? "",
+                  )}
+                />
+              );
+            }
             if (entry.kind === "show-more") {
               return (
                 <ShowMoreRow
@@ -486,6 +556,28 @@ function RssFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
             );
           })}
         </div>
+      )}
+    </div>
+  );
+}
+
+// ── SourceHeader (by-source sort) ────────────────────────────────
+
+interface SourceHeaderProps {
+  source: string;
+  category?: string;
+}
+
+function SourceHeader({ source, category }: SourceHeaderProps) {
+  return (
+    <div className="col-span-full flex items-center gap-2 px-3 py-2 bg-surface-2/60 border-b border-edge/15">
+      <span className="font-mono text-[10px] font-bold text-fg-2 uppercase tracking-wider">
+        {source}
+      </span>
+      {category && (
+        <span className="px-1.5 py-px rounded text-[8px] text-fg-4/50 bg-accent/5">
+          {category}
+        </span>
       )}
     </div>
   );
