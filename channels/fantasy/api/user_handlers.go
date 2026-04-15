@@ -122,9 +122,6 @@ func (a *App) YahooCallback(c *fiber.Ctx) error {
 			log.Printf("[YahooCallback] Failed to link Yahoo account: %v", linkErr)
 
 			userMsg := "Yahoo authentication succeeded, but we failed to link your account. Please try again."
-			if strings.Contains(linkErr.Error(), "already connected to another") {
-				userMsg = "This Yahoo account is already connected to a different Scrollr account. Please sign into a different Yahoo account or disconnect it from the other Scrollr account first."
-			}
 
 			html := fmt.Sprintf(`<!doctype html><html><head><meta charset="utf-8"><title>Auth Error</title></head>
 				<body style="font-family: ui-sans-serif, system-ui; max-width: 420px; margin: 2rem auto; line-height: 1.5;">
@@ -206,16 +203,22 @@ func (a *App) fetchAndLinkYahooUser(accessToken, refreshToken, logtoSub string) 
 		logtoIdentifier = guid
 	}
 
-	// Safety check: make sure this Yahoo account isn't already linked to a
-	// *different* Scrollr user.
+	// If this Yahoo account is linked to a *different* Scrollr user, take over.
+	// The person authenticating with Yahoo IS the account owner — they just
+	// proved it via OAuth — so they should control where it's linked.
 	var existingSub string
 	checkErr := a.db.QueryRow(context.Background(),
 		"SELECT logto_sub FROM yahoo_users WHERE guid = $1", guid,
 	).Scan(&existingSub)
 	if checkErr == nil && existingSub != logtoIdentifier {
-		log.Printf("[fetchAndLinkYahooUser] BLOCKED — Yahoo GUID %s already linked to logto_sub=%s, current user is logto_sub=%s",
+		log.Printf("[fetchAndLinkYahooUser] Takeover — Yahoo GUID %s was linked to logto_sub=%s, reassigning to logto_sub=%s",
 			guid, existingSub, logtoIdentifier)
-		return fmt.Errorf("this Yahoo account is already connected to another Scrollr account")
+		a.CleanupLeagueSubscribers(context.Background(), guid, existingSub)
+		_, delErr := a.db.Exec(context.Background(),
+			"DELETE FROM yahoo_users WHERE guid = $1", guid)
+		if delErr != nil {
+			log.Printf("[fetchAndLinkYahooUser] Warning: failed to delete old link for takeover guid=%s: %v", guid, delErr)
+		}
 	}
 
 	// Clean up any *previous* Yahoo account this Scrollr user had linked.
