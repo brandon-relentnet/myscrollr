@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Star, X } from "lucide-react";
+import { Star, Trophy, X } from "lucide-react";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
 import Tooltip from "../../components/Tooltip";
@@ -91,6 +91,29 @@ function TeamPicker({
         </Tooltip>
       )}
     </div>
+  );
+}
+
+// ── League Logo ──────────────────────────────────────────────────
+
+function LeagueLogo({ url }: { url?: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (!url || failed) {
+    return (
+      <div className="flex items-center justify-center w-5 h-5 rounded-sm bg-[#f97316]/10 shrink-0">
+        <Trophy size={12} className="text-[#f97316]/40" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={url}
+      alt=""
+      className="w-5 h-5 rounded-sm object-contain shrink-0"
+      onError={() => setFailed(true)}
+    />
   );
 }
 
@@ -260,15 +283,7 @@ export default function MyLeagues({
                 className="flex items-center gap-2.5 px-3 py-2 hover:bg-base-200/50 transition-colors"
               >
                 {/* League logo */}
-                {entry?.logo_url ? (
-                  <img
-                    src={entry.logo_url}
-                    alt=""
-                    className="w-5 h-5 rounded-sm object-contain shrink-0"
-                  />
-                ) : (
-                  <div className="w-5 h-5 rounded-sm bg-edge/30 shrink-0" />
-                )}
+                <LeagueLogo url={entry?.logo_url} />
 
                 {/* Name + country */}
                 <div className="flex-1 min-w-0">

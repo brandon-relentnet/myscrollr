@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import clsx from "clsx";
+import { Trophy } from "lucide-react";
 import CategoryFilter from "../rss/CategoryFilter";
 import { formatCountdown } from "../../utils/gameHelpers";
 import type { TrackedLeague } from "../../api/queries";
@@ -16,6 +17,27 @@ interface LeagueCatalogProps {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────
+
+function LeagueLogo({ url }: { url?: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (!url || failed) {
+    return (
+      <div className="flex items-center justify-center w-5 h-5 rounded-sm bg-[#f97316]/10 shrink-0">
+        <Trophy size={12} className="text-[#f97316]/40" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={url}
+      alt=""
+      className="w-5 h-5 object-contain shrink-0"
+      onError={() => setFailed(true)}
+    />
+  );
+}
 
 function leagueStatus(league: TrackedLeague): React.ReactNode {
   if (league.live_count > 0) {
@@ -188,11 +210,9 @@ export default function LeagueCatalog({
               >
                 {/* Top row: logo + name + sport badge */}
                 <div className="flex items-start gap-1.5">
-                  <img
-                    src={league.logo_url}
-                    alt=""
-                    className="w-5 h-5 object-contain shrink-0 mt-px"
-                  />
+                  <div className="mt-px">
+                    <LeagueLogo url={league.logo_url} />
+                  </div>
                   <div className="flex-1 min-w-0">
                     <span className="text-[12px] font-semibold text-fg-2 leading-tight line-clamp-1">
                       {league.name}

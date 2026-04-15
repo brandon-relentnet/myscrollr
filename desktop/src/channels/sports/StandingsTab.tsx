@@ -133,29 +133,31 @@ export function StandingsTab({ leagues, favoriteTeams }: StandingsTabProps) {
   const { columns, groupedRows } = useMemo(() => {
     const cols = getColumnsForSport(standings[0]?.sport_api);
     
-    const groups: { groupName: string; standings: Standing[] }[] = [];
-    let currentGroup: Standing[] = [];
-    let currentGroupName = "";
-
+    // Group by group_name using a Map so non-contiguous entries merge properly
+    const map = new Map<string, Standing[]>();
+    const order: string[] = [];
     for (const s of standings) {
-      if (s.group_name && s.group_name !== currentGroupName) {
-        if (currentGroup.length > 0) {
-          groups.push({ groupName: currentGroupName, standings: currentGroup });
-        }
-        currentGroupName = s.group_name;
-        currentGroup = [s];
-      } else if (!s.group_name && currentGroupName !== "") {
-        if (currentGroup.length > 0) {
-          groups.push({ groupName: currentGroupName, standings: currentGroup });
-        }
-        currentGroupName = "";
-        currentGroup = [s];
-      } else {
-        currentGroup.push(s);
+      const key = s.group_name || "";
+      if (!map.has(key)) {
+        map.set(key, []);
+        order.push(key);
       }
+      map.get(key)!.push(s);
     }
-    if (currentGroup.length > 0) {
-      groups.push({ groupName: currentGroupName, standings: currentGroup });
+
+    const groups = order.map((key) => ({
+      groupName: key,
+      standings: map.get(key)!,
+    }));
+
+    // If every team is its own "group" (single-member groups with names),
+    // collapse them into one unnamed group to avoid a header per team
+    const namedGroups = groups.filter((g) => g.groupName);
+    if (namedGroups.length > 0 && namedGroups.every((g) => g.standings.length === 1)) {
+      // Every named group has exactly one team — this is not real grouping,
+      // it's just per-team metadata. Flatten into a single group.
+      const allStandings = groups.flatMap((g) => g.standings);
+      return { columns: cols, groupedRows: [{ groupName: "", standings: allStandings }] };
     }
 
     return { columns: cols, groupedRows: groups };
