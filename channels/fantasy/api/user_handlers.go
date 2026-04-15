@@ -89,10 +89,25 @@ func (a *App) YahooCallback(c *fiber.Ctx) error {
 		log.Printf("[YahooCallback] Retrieved logto_sub=%s for state=%s…", logtoSub, state[:8])
 	}
 
+	// Yahoo intermittently rejects the first token exchange with INVALID_REDIRECT_URI
+	// even when the redirect URI is correct. Retry once after a brief delay.
 	log.Printf("[YahooCallback] Exchanging code for token (redirect_uri=%s)…", a.yahooConfig.RedirectURL)
-	token, err := a.yahooConfig.Exchange(context.Background(), code)
-	if err != nil {
-		log.Printf("[YahooCallback] Token exchange failed: %v", err)
+	var token *oauth2.Token
+	var exchangeErr error
+	for attempt := 1; attempt <= 2; attempt++ {
+		token, exchangeErr = a.yahooConfig.Exchange(context.Background(), code)
+		if exchangeErr == nil {
+			break
+		}
+		if attempt == 1 && strings.Contains(exchangeErr.Error(), "INVALID_REDIRECT_URI") {
+			log.Printf("[YahooCallback] Attempt %d failed with INVALID_REDIRECT_URI — retrying in 500ms", attempt)
+			time.Sleep(500 * time.Millisecond)
+			continue
+		}
+		break
+	}
+	if exchangeErr != nil {
+		log.Printf("[YahooCallback] Token exchange failed after retries: %v", exchangeErr)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Status: "error", Error: "Failed to exchange code"})
 	}
 	log.Printf("[YahooCallback] Token exchange succeeded — access_token_len=%d refresh_token_present=%v expires=%v",
@@ -517,7 +532,7 @@ func (a *App) ImportYahooLeague(c *fiber.Ctx) error {
 	}
 
 	result := map[string]any{
-		"league":   targetLeague,
+		"league":    targetLeague,
 		"standings": nil,
 	}
 
