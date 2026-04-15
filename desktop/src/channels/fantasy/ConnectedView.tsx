@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { open } from "@tauri-apps/plugin-shell";
 import { ChevronDown, Plus } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -25,6 +26,8 @@ interface ConnectedViewProps {
   maxLeagues: number;
   subscriptionTier: SubscriptionTier;
   hex: string;
+  /** Discovery ran but Yahoo returned zero leagues for this account. */
+  noLeaguesFound: boolean;
   onStartDiscovery: () => void;
   onDisconnect: () => void;
 }
@@ -38,6 +41,7 @@ export function ConnectedView({
   maxLeagues,
   subscriptionTier,
   hex,
+  noLeaguesFound,
   onStartDiscovery,
   onDisconnect,
 }: ConnectedViewProps) {
@@ -163,20 +167,49 @@ export function ConnectedView({
         </Section>
       )}
 
-      {/* Connected but no leagues at all */}
+      {/* Connected but no leagues */}
       {yahooConnected && leagues.length === 0 && (
         <div className="text-center py-8 space-y-3 px-3">
-          <p className="text-[12px] text-fg-3">
-            Yahoo account connected — no leagues added yet
-          </p>
-          <button
-            onClick={onStartDiscovery}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-medium text-white transition-colors cursor-pointer"
-            style={{ background: hex }}
-          >
-            <Plus size={14} />
-            Add Leagues
-          </button>
+          {noLeaguesFound ? (
+            <>
+              <p className="text-sm font-medium text-fg-2">
+                No Fantasy Leagues Found
+              </p>
+              <p className="text-[12px] text-fg-3 max-w-xs mx-auto">
+                Your Yahoo account doesn&rsquo;t have any Fantasy Sports leagues.
+                Join or create a league on Yahoo, then come back and search again.
+              </p>
+              <div className="flex items-center justify-center gap-2 pt-1">
+                <button
+                  onClick={() => open("https://football.fantasysports.yahoo.com")}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-medium border border-edge/30 text-fg-3 hover:text-fg-2 hover:border-edge/50 transition-colors cursor-pointer"
+                >
+                  Go to Yahoo Fantasy
+                </button>
+                <button
+                  onClick={onStartDiscovery}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-medium text-white transition-colors cursor-pointer"
+                  style={{ background: hex }}
+                >
+                  Search Again
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-[12px] text-fg-3">
+                Yahoo account connected — no leagues added yet
+              </p>
+              <button
+                onClick={onStartDiscovery}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-medium text-white transition-colors cursor-pointer"
+                style={{ background: hex }}
+              >
+                <Plus size={14} />
+                Find Leagues
+              </button>
+            </>
+          )}
         </div>
       )}
 

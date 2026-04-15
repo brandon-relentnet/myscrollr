@@ -80,6 +80,7 @@ export default function FantasyConfigPanel({
     }
   }, [statusData, initialPhase]);
 
+  const [noLeaguesFound, setNoLeaguesFound] = useState(false);
   const [discoveredLeagues, setDiscoveredLeagues] = useState<
     DiscoveredLeague[]
   >([]);
@@ -110,9 +111,19 @@ export default function FantasyConfigPanel({
         (l) => !alreadyImported.has(l.league_key),
       );
       if (newLeagues.length === 0) {
+        // Tell the user whether Yahoo had zero leagues total or just
+        // no *new* ones to import.
+        if (discovered.length === 0) {
+          setNoLeaguesFound(true);
+          toast.info("No fantasy leagues found on your Yahoo account");
+        } else {
+          setNoLeaguesFound(false);
+          toast.info("All your Yahoo leagues are already imported");
+        }
         setPhase("connected");
         return;
       }
+      setNoLeaguesFound(false);
       const preSelected = new Set(
         newLeagues
           .filter((l) => !l.is_finished)
@@ -133,6 +144,7 @@ export default function FantasyConfigPanel({
   const startDiscovery = useCallback(() => {
     setPhase("discovering");
     setDiscoverError(null);
+    setNoLeaguesFound(false);
     setDiscoveredLeagues([]);
     discoverMutation.mutate();
   }, [discoverMutation]);
@@ -457,6 +469,7 @@ export default function FantasyConfigPanel({
           maxLeagues={maxFantasy}
           subscriptionTier={subscriptionTier}
           hex={hex}
+          noLeaguesFound={noLeaguesFound}
           onStartDiscovery={startDiscovery}
           onDisconnect={handleYahooDisconnect}
         />
