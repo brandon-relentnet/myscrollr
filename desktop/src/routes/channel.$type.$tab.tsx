@@ -249,15 +249,15 @@ function RssDisplay() {
       ...prefs,
       channelDisplay: {
         ...prefs.channelDisplay,
-        rss: { showDescription: true, showSource: true, showTimestamps: true, articlesPerSource: 3 },
+        rss: { showDescription: true, showSource: true, showTimestamps: true, articlesPerSource: 4 },
       },
     });
   }
 
   const ARTICLES_PER_SOURCE_OPTIONS = [
-    { value: "1", label: "1" },
-    { value: "3", label: "3" },
-    { value: "5", label: "5" },
+    { value: "2", label: "2" },
+    { value: "4", label: "4" },
+    { value: "6", label: "6" },
     { value: "10", label: "10" },
     { value: "0", label: "All" },
   ];

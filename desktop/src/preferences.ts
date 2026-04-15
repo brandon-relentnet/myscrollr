@@ -290,7 +290,7 @@ export const DEFAULT_GITHUB_TICKER: GitHubTickerConfig = {
 
 const DEFAULT_CHANNEL_DISPLAY: ChannelDisplayPrefs = {
   finance: { showChange: true, showPrevClose: true, showLastUpdated: true },
-  rss: { showDescription: true, showSource: true, showTimestamps: true, articlesPerSource: 3 },
+  rss: { showDescription: true, showSource: true, showTimestamps: true, articlesPerSource: 4 },
   fantasy: { showStandings: true, showInjuryCount: true },
 };
 
