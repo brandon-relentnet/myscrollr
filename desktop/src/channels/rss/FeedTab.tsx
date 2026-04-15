@@ -59,25 +59,47 @@ interface SourceFilterProps {
 
 function SourceFilter({ sources, selected, onToggle, onClearAll }: SourceFilterProps) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
+
+  const updatePosition = useCallback(() => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    setMenuStyle({
+      position: "fixed",
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: 208,
+    });
+  }, []);
 
   useEffect(() => {
     if (!open) return;
+    updatePosition();
     function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        buttonRef.current && !buttonRef.current.contains(target) &&
+        menuRef.current && !menuRef.current.contains(target)
+      ) {
         setOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
+  }, [open, updatePosition]);
 
   const activeCount = selected.size;
 
   return (
-    <div className="relative" ref={ref}>
+    <div>
       <button
-        onClick={() => setOpen(!open)}
+        ref={buttonRef}
+        onClick={() => {
+          if (!open) updatePosition();
+          setOpen(!open);
+        }}
         className={clsx(
           "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-[11px] transition-colors cursor-pointer whitespace-nowrap",
           activeCount > 0
@@ -95,7 +117,7 @@ function SourceFilter({ sources, selected, onToggle, onClearAll }: SourceFilterP
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 w-52 bg-surface-2 border border-edge/30 rounded-lg shadow-lg z-50 py-1 max-h-64 overflow-y-auto">
+        <div ref={menuRef} style={menuStyle} className="bg-surface-2 border border-edge/30 rounded-lg shadow-lg z-50 py-1 max-h-64 overflow-y-auto">
           {sources.map((source) => {
             const isActive = selected.has(source);
             return (

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Filter } from "lucide-react";
 import clsx from "clsx";
 
@@ -20,26 +20,49 @@ export default function CategoryFilter({
   onClearAll,
 }: CategoryFilterProps) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
+
+  // Position the menu using fixed coords from button rect
+  const updatePosition = useCallback(() => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    setMenuStyle({
+      position: "fixed",
+      top: rect.bottom + 4,
+      left: Math.max(0, rect.right - 208), // 208 = w-52 (13rem)
+      width: 208,
+    });
+  }, []);
 
   // Close on outside click
   useEffect(() => {
     if (!open) return;
+    updatePosition();
     function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        buttonRef.current && !buttonRef.current.contains(target) &&
+        menuRef.current && !menuRef.current.contains(target)
+      ) {
         setOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
+  }, [open, updatePosition]);
 
   const activeCount = selected.size;
 
   return (
-    <div className="relative" ref={ref}>
+    <div>
       <button
-        onClick={() => setOpen(!open)}
+        ref={buttonRef}
+        onClick={() => {
+          if (!open) updatePosition();
+          setOpen(!open);
+        }}
         className={clsx(
           "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-[11px] transition-colors cursor-pointer whitespace-nowrap",
           activeCount > 0
@@ -57,7 +80,7 @@ export default function CategoryFilter({
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-52 bg-surface-2 border border-edge/30 rounded-lg shadow-lg z-50 py-1">
+        <div ref={menuRef} style={menuStyle} className="bg-surface-2 border border-edge/30 rounded-lg shadow-lg z-50 py-1">
           {categories.map((cat) => {
             const isActive = selected.has(cat.name);
             return (
