@@ -117,7 +117,7 @@ export default function RssConfigPanel({
       />
 
       {/* Divider */}
-      <div className="h-px bg-edge/10" />
+      <div className="h-px bg-edge/30" />
 
       {/* Section 2: Add Feeds (Catalog) */}
       <FeedCatalog

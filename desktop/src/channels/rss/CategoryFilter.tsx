@@ -66,8 +66,8 @@ export default function CategoryFilter({
         className={clsx(
           "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-[11px] transition-colors cursor-pointer whitespace-nowrap",
           activeCount > 0
-            ? "border-accent/30 text-accent"
-            : "border-edge/30 text-fg-4 hover:text-fg-3 hover:border-edge/50",
+            ? "border-accent/50 text-accent"
+            : "border-edge/40 text-fg-3 hover:text-fg-2 hover:border-edge/60",
         )}
       >
         <Filter size={12} />
@@ -80,7 +80,7 @@ export default function CategoryFilter({
       </button>
 
       {open && (
-        <div ref={menuRef} style={menuStyle} className="bg-surface-2 border border-edge/30 rounded-lg shadow-lg z-50 py-1">
+        <div ref={menuRef} style={menuStyle} className="bg-surface-2 border border-edge/50 rounded-lg shadow-lg z-50 py-1">
           {categories.map((cat) => {
             const isActive = selected.has(cat.name);
             return (
@@ -98,20 +98,20 @@ export default function CategoryFilter({
                   className={clsx(
                     "w-3.5 h-3.5 rounded border flex items-center justify-center text-[10px] shrink-0",
                     isActive
-                      ? "bg-accent/20 border-accent/40 text-accent"
-                      : "border-edge/40",
+                      ? "bg-accent/25 border-accent/50 text-accent"
+                      : "border-edge/50",
                   )}
                 >
                   {isActive && "✓"}
                 </span>
                 <span className="flex-1 truncate">{cat.name}</span>
-                <span className="text-[10px] text-fg-4/50 tabular-nums">{cat.count}</span>
+                <span className="text-[10px] text-fg-3 tabular-nums">{cat.count}</span>
               </button>
             );
           })}
           {activeCount > 0 && (
             <>
-              <div className="h-px bg-edge/20 my-1" />
+              <div className="h-px bg-edge/40 my-1" />
               <button
                 onClick={() => {
                   onClearAll();

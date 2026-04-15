@@ -181,7 +181,7 @@ export default function MyFeeds({
         {!atFeedLimit && !atCustomLimit && maxCustomFeeds > 0 && (
           <button
             onClick={() => setShowCustomForm(!showCustomForm)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-accent/30 text-accent text-[11px] hover:bg-accent/5 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-accent/50 text-accent text-[11px] hover:bg-accent/10 transition-colors cursor-pointer"
           >
             <Plus size={13} />
             Add custom feed
@@ -201,7 +201,7 @@ export default function MyFeeds({
 
       {/* Custom feed form */}
       {showCustomForm && (
-        <div className="p-3 rounded-lg border border-edge/20 bg-surface-2/50 space-y-2">
+        <div className="p-3 rounded-lg border border-edge/40 bg-surface-2 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[10px] uppercase tracking-wider font-bold text-fg-4">
               Add your own feed
@@ -227,7 +227,7 @@ export default function MyFeeds({
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="Feed name"
-                  className="flex-1 px-3 py-2 rounded-lg bg-base-200 border border-edge/30 text-[12px] font-mono text-fg-2 placeholder:text-fg-4 focus:outline-none focus:border-accent/40 transition-colors"
+                  className="flex-1 px-3 py-2 rounded-lg bg-base-200 border border-edge/40 text-[12px] font-mono text-fg-2 placeholder:text-fg-4 focus:outline-none focus:border-accent/60 transition-colors"
                 />
                 <input
                   type="url"
@@ -237,7 +237,7 @@ export default function MyFeeds({
                     if (e.key === "Enter") handleAddCustom();
                   }}
                   placeholder="https://..."
-                  className="flex-[2] px-3 py-2 rounded-lg bg-base-200 border border-edge/30 text-[12px] font-mono text-fg-2 placeholder:text-fg-4 focus:outline-none focus:border-accent/40 transition-colors"
+                  className="flex-[2] px-3 py-2 rounded-lg bg-base-200 border border-edge/40 text-[12px] font-mono text-fg-2 placeholder:text-fg-4 focus:outline-none focus:border-accent/60 transition-colors"
                 />
                 <button
                   onClick={handleAddCustom}
@@ -264,12 +264,12 @@ export default function MyFeeds({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Filter feeds..."
-            className="flex-1 px-2.5 py-1.5 rounded-md bg-base-200 border border-edge/20 text-[11px] text-fg-2 placeholder:text-fg-4 focus:outline-none focus:border-accent/30 transition-colors"
+            className="flex-1 px-2.5 py-1.5 rounded-md bg-base-200 border border-edge/40 text-[11px] text-fg-2 placeholder:text-fg-4 focus:outline-none focus:border-accent/60 transition-colors"
           />
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
-            className="px-2.5 py-1.5 rounded-md bg-base-200 border border-edge/20 text-[11px] text-fg-3 focus:outline-none focus:border-accent/30 transition-colors cursor-pointer appearance-none"
+            className="px-2.5 py-1.5 rounded-md bg-base-200 border border-edge/40 text-[11px] text-fg-2 focus:outline-none focus:border-accent/60 transition-colors cursor-pointer appearance-none"
           >
             <option value="name">Sort: Name</option>
             <option value="activity">Sort: Last Activity</option>
@@ -281,7 +281,7 @@ export default function MyFeeds({
 
       {/* Feed list */}
       {sortedFeeds.length > 0 ? (
-        <div className="border border-edge/10 rounded-lg overflow-hidden divide-y divide-edge/5">
+        <div className="border border-edge/30 rounded-lg overflow-hidden divide-y divide-edge/20">
           {sortedFeeds.map((feed) => {
             const health = feedHealth(feed, catalogMap);
             const entry = catalogMap.get(feed.url);
@@ -304,15 +304,15 @@ export default function MyFeeds({
                   </span>
                 </div>
                 {feed.is_custom ? (
-                  <span className="px-1.5 py-px rounded text-[9px] font-medium bg-amber-500/10 text-amber-500 border border-amber-500/15 shrink-0">
+                  <span className="px-1.5 py-px rounded text-[9px] font-medium bg-amber-500/10 text-amber-500 border border-amber-500/30 shrink-0">
                     custom
                   </span>
                 ) : (
-                  <span className="px-1.5 py-px rounded text-[9px] text-fg-4/50 bg-accent/5 shrink-0">
+                  <span className="px-1.5 py-px rounded text-[9px] text-fg-3 bg-accent/10 shrink-0">
                     {entry?.category ?? ""}
                   </span>
                 )}
-                <span className="text-[10px] text-fg-4/40 tabular-nums shrink-0 w-14 text-right">
+                <span className="text-[10px] text-fg-3 tabular-nums shrink-0 w-14 text-right">
                   {health === "failing" ? (
                     <span className="text-red-500">failing</span>
                   ) : (
@@ -322,7 +322,7 @@ export default function MyFeeds({
                 <Tooltip content="Remove feed">
                   <button
                     onClick={() => onRemove(feed.url)}
-                    className="p-1 rounded hover:bg-error/10 text-fg-4/30 hover:text-error transition-colors cursor-pointer shrink-0"
+                    className="p-1 rounded hover:bg-error/10 text-fg-3 hover:text-error transition-colors cursor-pointer shrink-0"
                     aria-label={`Remove ${feed.name}`}
                   >
                     <X size={12} />
@@ -344,7 +344,7 @@ export default function MyFeeds({
 
       {/* Tier limit footer */}
       {feeds.length > 0 && (
-        <p className="text-[10px] text-fg-4/40 text-right tabular-nums">
+        <p className="text-[10px] text-fg-3 text-right tabular-nums">
           {feedCount} / {maxFeeds === Infinity ? "∞" : maxFeeds} feeds
           {maxCustomFeeds > 0 &&
             ` (${customCount} / ${maxCustomFeeds === Infinity ? "∞" : maxCustomFeeds} custom)`}

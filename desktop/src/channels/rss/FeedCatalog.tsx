@@ -94,7 +94,7 @@ export default function FeedCatalog({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search catalog..."
-          className="flex-1 px-2.5 py-1.5 rounded-md bg-base-200 border border-edge/20 text-[11px] text-fg-2 placeholder:text-fg-4 focus:outline-none focus:border-accent/30 transition-colors"
+          className="flex-1 px-2.5 py-1.5 rounded-md bg-base-200 border border-edge/40 text-[11px] text-fg-2 placeholder:text-fg-4 focus:outline-none focus:border-accent/60 transition-colors"
         />
         <CategoryFilter
           categories={categories}
@@ -111,7 +111,7 @@ export default function FeedCatalog({
             <button
               key={cat}
               onClick={() => toggleCategory(cat)}
-              className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/10 border border-accent/20 text-[10px] text-accent hover:bg-accent/15 transition-colors cursor-pointer"
+              className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/15 border border-accent/30 text-[10px] text-accent hover:bg-accent/25 transition-colors cursor-pointer"
             >
               {cat}
               <span className="opacity-60">×</span>
@@ -147,8 +147,8 @@ export default function FeedCatalog({
                 className={clsx(
                   "flex flex-col gap-1 p-2.5 rounded-lg border transition-colors",
                   isAdded
-                    ? "border-accent/15 bg-accent/[0.02]"
-                    : "border-edge/10 hover:border-edge/20",
+                    ? "border-accent/30 bg-accent/5"
+                    : "border-edge/30 hover:border-edge/40",
                 )}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -158,16 +158,16 @@ export default function FeedCatalog({
                       <span className="text-accent text-[10px] ml-1">✓</span>
                     )}
                   </span>
-                  <span className="px-1.5 py-px rounded text-[9px] text-fg-4/50 bg-accent/5 shrink-0 whitespace-nowrap">
+                  <span className="px-1.5 py-px rounded text-[9px] text-fg-3 bg-accent/10 shrink-0 whitespace-nowrap">
                     {feed.category}
                   </span>
                 </div>
                 {!feed.is_default && (
-                  <span className="text-[9px] text-amber-500/60">custom</span>
+                  <span className="text-[9px] text-amber-500">custom</span>
                 )}
                 <div className="mt-auto pt-1">
                   {isAdded ? (
-                    <span className="text-[11px] text-fg-4/40">Added</span>
+                    <span className="text-[11px] text-fg-3">Added</span>
                   ) : (
                     <button
                       onClick={() => onAdd(feed.url)}
