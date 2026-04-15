@@ -19,6 +19,7 @@ export const queryKeys = {
     sports: ["catalogs", "sports"] as const,
     finance: ["catalogs", "finance"] as const,
     rss: ["catalogs", "rss"] as const,
+    rssAll: ["catalogs", "rss", "all"] as const,
   },
   fantasy: {
     status: ["fantasy", "status"] as const,
@@ -152,10 +153,11 @@ export function financeCatalogOptions() {
   });
 }
 
-export function rssCatalogOptions() {
+export function rssCatalogOptions(opts?: { includeFailing?: boolean }) {
+  const includeFailing = opts?.includeFailing ?? false;
   return queryOptions({
-    queryKey: queryKeys.catalogs.rss,
-    queryFn: () => rssApi.getCatalog(),
+    queryKey: includeFailing ? queryKeys.catalogs.rssAll : queryKeys.catalogs.rss,
+    queryFn: () => rssApi.getCatalog(includeFailing ? { includeFailing: true } : undefined),
     staleTime: 5 * 60 * 1000,
   });
 }

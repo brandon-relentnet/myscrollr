@@ -15,7 +15,7 @@ import { getChannel, getAllChannels } from "../channels/registry";
 import { dashboardQueryOptions } from "../api/queries";
 import ChannelConfigPanel from "../channels/ChannelConfigPanel";
 import { useShell, useShellData } from "../shell-context";
-import { Section, ToggleRow, ResetButton } from "../components/settings/SettingsControls";
+import { Section, ToggleRow, ResetButton, SegmentedRow } from "../components/settings/SettingsControls";
 import { useSportsConfig } from "../hooks/useSportsConfig";
 import { loadPref } from "../preferences";
 import type { Channel, ChannelType } from "../api/client";
@@ -224,7 +224,7 @@ function RssDisplay() {
   const { prefs, onPrefsChange } = useShell();
   const dp = prefs.channelDisplay.rss;
 
-  function toggle(key: keyof RssDisplayPrefs) {
+  function toggle(key: keyof Pick<RssDisplayPrefs, "showDescription" | "showSource" | "showTimestamps">) {
     onPrefsChange({
       ...prefs,
       channelDisplay: {
@@ -234,15 +234,33 @@ function RssDisplay() {
     });
   }
 
+  function setArticlesPerSource(value: string) {
+    onPrefsChange({
+      ...prefs,
+      channelDisplay: {
+        ...prefs.channelDisplay,
+        rss: { ...dp, articlesPerSource: Number(value) },
+      },
+    });
+  }
+
   function handleReset() {
     onPrefsChange({
       ...prefs,
       channelDisplay: {
         ...prefs.channelDisplay,
-        rss: { showDescription: true, showSource: true, showTimestamps: true },
+        rss: { showDescription: true, showSource: true, showTimestamps: true, articlesPerSource: 4 },
       },
     });
   }
+
+  const ARTICLES_PER_SOURCE_OPTIONS = [
+    { value: "2", label: "2" },
+    { value: "4", label: "4" },
+    { value: "6", label: "6" },
+    { value: "10", label: "10" },
+    { value: "0", label: "All" },
+  ];
 
   return (
     <div className="p-4 max-w-2xl mx-auto">
@@ -250,6 +268,15 @@ function RssDisplay() {
         <ToggleRow label="Show description" checked={dp.showDescription} onChange={() => toggle("showDescription")} />
         <ToggleRow label="Show source name" checked={dp.showSource} onChange={() => toggle("showSource")} />
         <ToggleRow label="Show timestamps" checked={dp.showTimestamps} onChange={() => toggle("showTimestamps")} />
+      </Section>
+      <Section title="Feed Balance">
+        <SegmentedRow
+          label="Articles per source"
+          description="Limit how many articles appear from each feed"
+          value={String(dp.articlesPerSource)}
+          options={ARTICLES_PER_SOURCE_OPTIONS}
+          onChange={setArticlesPerSource}
+        />
       </Section>
       <ResetButton label="Reset display settings" onClick={handleReset} />
     </div>
