@@ -3,7 +3,7 @@ import type { SubscriptionTier } from "../auth";
 import FinanceConfigPanel from "./finance/ConfigPanel";
 import SportsConfigPanel from "./sports/ConfigPanel";
 import RssConfigPanel from "./rss/ConfigPanel";
-import FantasyConfigPanel from "./FantasyConfigPanel";
+import FantasyConfigPanel from "./fantasy/ConfigPanel";
 
 // ── Props ────────────────────────────────────────────────────────
 
@@ -56,7 +56,6 @@ export default function ChannelConfigPanel({
         <FantasyConfigPanel
           channel={channel}
           subscriptionTier={subscriptionTier}
-          connected={connected}
           hex={hex}
         />
       );

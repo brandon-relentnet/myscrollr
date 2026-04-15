@@ -169,26 +169,9 @@ interface YahooStatusResponse {
   synced: boolean;
 }
 
-interface MyLeaguesResponse {
-  leagues: Array<{
-    league_key: string;
-    name: string;
-    game_code: string;
-    season: string;
-    team_key: string | null;
-    team_name: string | null;
-    data: {
-      num_teams: number;
-      is_finished: boolean;
-      current_week: number | null;
-      scoring_type: string;
-      [k: string]: unknown;
-    };
-    standings: unknown[] | null;
-    matchups: unknown[] | null;
-    rosters: unknown[] | null;
-  }>;
-}
+// MyLeaguesResponse imported from canonical source to avoid duplicate types.
+import type { MyLeaguesResponse } from "../channels/fantasy/types";
+export type { MyLeaguesResponse } from "../channels/fantasy/types";
 
 export function fantasyStatusOptions() {
   return queryOptions({

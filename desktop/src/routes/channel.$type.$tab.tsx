@@ -315,7 +315,7 @@ function FantasyDisplay() {
   const { prefs, onPrefsChange } = useShell();
   const dp = prefs.channelDisplay.fantasy;
 
-  function toggle(key: keyof FantasyDisplayPrefs) {
+  function toggle(key: keyof Pick<FantasyDisplayPrefs, "showStandings" | "showInjuryCount" | "showMatchups">) {
     onPrefsChange({
       ...prefs,
       channelDisplay: {
@@ -325,21 +325,48 @@ function FantasyDisplay() {
     });
   }
 
+  function setDefaultSort(value: string) {
+    onPrefsChange({
+      ...prefs,
+      channelDisplay: {
+        ...prefs.channelDisplay,
+        fantasy: { ...dp, defaultSort: value as FantasyDisplayPrefs["defaultSort"] },
+      },
+    });
+  }
+
   function handleReset() {
     onPrefsChange({
       ...prefs,
       channelDisplay: {
         ...prefs.channelDisplay,
-        fantasy: { showStandings: true, showInjuryCount: true },
+        fantasy: { showStandings: true, showInjuryCount: true, showMatchups: true, defaultSort: "name" },
       },
     });
   }
+
+  const SORT_OPTIONS = [
+    { value: "name", label: "Name" },
+    { value: "season", label: "Season" },
+    { value: "record", label: "Record" },
+    { value: "matchup", label: "Matchup" },
+  ];
 
   return (
     <div className="p-4 max-w-2xl mx-auto">
       <Section title="Feed">
         <ToggleRow label="Show standings" checked={dp.showStandings} onChange={() => toggle("showStandings")} />
         <ToggleRow label="Show injury count" checked={dp.showInjuryCount} onChange={() => toggle("showInjuryCount")} />
+        <ToggleRow label="Show matchups" checked={dp.showMatchups} onChange={() => toggle("showMatchups")} />
+      </Section>
+      <Section title="Default Sort">
+        <SegmentedRow
+          label="Sort order"
+          description="Default sort when opening the feed"
+          value={dp.defaultSort}
+          options={SORT_OPTIONS}
+          onChange={setDefaultSort}
+        />
       </Section>
       <ResetButton label="Reset display settings" onClick={handleReset} />
     </div>
