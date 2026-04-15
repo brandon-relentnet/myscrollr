@@ -172,6 +172,7 @@ export interface RssDisplayPrefs {
   showDescription: boolean;
   showSource: boolean;
   showTimestamps: boolean;
+  articlesPerSource: number; // 1, 3, 5, 10, or 0 (all)
 }
 
 export interface FantasyDisplayPrefs {
@@ -289,7 +290,7 @@ export const DEFAULT_GITHUB_TICKER: GitHubTickerConfig = {
 
 const DEFAULT_CHANNEL_DISPLAY: ChannelDisplayPrefs = {
   finance: { showChange: true, showPrevClose: true, showLastUpdated: true },
-  rss: { showDescription: true, showSource: true, showTimestamps: true },
+  rss: { showDescription: true, showSource: true, showTimestamps: true, articlesPerSource: 3 },
   fantasy: { showStandings: true, showInjuryCount: true },
 };
 
