@@ -46,9 +46,10 @@ interface LeagueCardProps {
   mode: FeedMode;
   showStandings?: boolean;
   showInjuryCount?: boolean;
+  showMatchups?: boolean;
 }
 
-export function LeagueCard({ league, mode, showStandings = true, showInjuryCount = true }: LeagueCardProps) {
+export function LeagueCard({ league, mode, showStandings = true, showInjuryCount = true, showMatchups = true }: LeagueCardProps) {
   const myTeamKey = league.team_key ?? "";
   const currentWeek = league.data?.current_week ?? 0;
 
@@ -76,7 +77,7 @@ export function LeagueCard({ league, mode, showStandings = true, showInjuryCount
     return (
       <LeagueCardCompact
         league={league}
-        myMatchup={myMatchup}
+        myMatchup={showMatchups ? myMatchup : undefined}
         myStanding={showStandings ? myStanding : undefined}
         injuryCount={showInjuryCount ? injuryCount : 0}
       />
@@ -86,7 +87,7 @@ export function LeagueCard({ league, mode, showStandings = true, showInjuryCount
   return (
     <LeagueCardComfort
       league={league}
-      myMatchup={myMatchup}
+      myMatchup={showMatchups ? myMatchup : undefined}
       myStanding={showStandings ? myStanding : undefined}
       injuryCount={showInjuryCount ? injuryCount : 0}
     />
@@ -158,7 +159,7 @@ function LeagueCardComfort({
         <span className="text-xs font-mono font-bold text-fg truncate">
           {league.name}
         </span>
-        <span className="text-[9px] font-mono text-fg-4 ml-auto shrink-0 uppercase">
+        <span className="text-[9px] font-mono text-fg-3 ml-auto shrink-0 uppercase">
           {league.game_code} {league.season}
         </span>
       </div>
@@ -219,7 +220,7 @@ function StatPill({
 }) {
   return (
     <div className="flex items-center gap-1">
-      <span className="text-[8px] font-mono text-fg-4 uppercase tracking-wider">
+      <span className="text-[9px] font-mono text-fg-3 uppercase tracking-wider">
         {label}
       </span>
       <span

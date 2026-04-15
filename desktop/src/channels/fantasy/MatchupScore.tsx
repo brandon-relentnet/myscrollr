@@ -29,11 +29,11 @@ function MatchupStatusBadge({
   }
   if (isFinal) {
     return (
-      <span className="text-[9px] font-mono text-fg-4 uppercase">Final</span>
+      <span className="text-[9px] font-mono text-fg-3 uppercase">Final</span>
     );
   }
   return (
-    <span className="text-[9px] font-mono text-fg-4 uppercase">
+    <span className="text-[9px] font-mono text-fg-3 uppercase">
       Wk{matchup.week}
     </span>
   );
@@ -74,7 +74,7 @@ export function CompactMatchupScore({
       >
         {myPts.toFixed(1)}
       </span>
-      <span className="text-fg-4 font-mono">&ndash;</span>
+      <span className="text-fg-3 font-mono">&ndash;</span>
       <span className="font-mono font-medium text-fg tabular-nums">
         {oppPts.toFixed(1)}
       </span>
@@ -129,7 +129,7 @@ export function ComfortMatchupHero({
           <div className="text-[10px] font-mono text-fg truncate">
             {myTeam.name}
           </div>
-          <div className="text-[9px] font-mono text-fg-4 tabular-nums">
+          <div className="text-[9px] font-mono text-fg-3 tabular-nums">
             proj {(myTeam.projected_points ?? 0).toFixed(1)}
           </div>
         </div>
@@ -149,7 +149,7 @@ export function ComfortMatchupHero({
         >
           {myPts.toFixed(1)}
         </span>
-        <span className="text-fg-4 text-[10px] font-mono">&ndash;</span>
+        <span className="text-fg-3 text-[10px] font-mono">&ndash;</span>
         <span
           className={clsx(
             "text-sm font-mono font-bold tabular-nums",
@@ -170,7 +170,7 @@ export function ComfortMatchupHero({
           <div className="text-[10px] font-mono text-fg truncate">
             {oppTeam.name}
           </div>
-          <div className="text-[9px] font-mono text-fg-4 tabular-nums">
+          <div className="text-[9px] font-mono text-fg-3 tabular-nums">
             proj {(oppTeam.projected_points ?? 0).toFixed(1)}
           </div>
         </div>

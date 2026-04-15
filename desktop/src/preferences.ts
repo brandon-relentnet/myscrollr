@@ -179,6 +179,8 @@ export interface RssDisplayPrefs {
 export interface FantasyDisplayPrefs {
   showStandings: boolean;
   showInjuryCount: boolean;
+  showMatchups: boolean;
+  defaultSort: "name" | "season" | "record" | "matchup";
 }
 
 export interface ChannelDisplayPrefs {
@@ -292,7 +294,7 @@ export const DEFAULT_GITHUB_TICKER: GitHubTickerConfig = {
 const DEFAULT_CHANNEL_DISPLAY: ChannelDisplayPrefs = {
   finance: { showChange: true, showPrevClose: true, showLastUpdated: true, defaultSort: "alpha" },
   rss: { showDescription: true, showSource: true, showTimestamps: true, articlesPerSource: 4 },
-  fantasy: { showStandings: true, showInjuryCount: true },
+  fantasy: { showStandings: true, showInjuryCount: true, showMatchups: true, defaultSort: "name" },
 };
 
 const DEFAULT_WIDGETS: WidgetPrefs = {
