@@ -59,47 +59,25 @@ interface SourceFilterProps {
 
 function SourceFilter({ sources, selected, onToggle, onClearAll }: SourceFilterProps) {
   const [open, setOpen] = useState(false);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
-
-  const updatePosition = useCallback(() => {
-    if (!buttonRef.current) return;
-    const rect = buttonRef.current.getBoundingClientRect();
-    setMenuStyle({
-      position: "fixed",
-      top: rect.bottom + 4,
-      left: rect.left,
-      width: 208,
-    });
-  }, []);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    updatePosition();
     function handleClick(e: MouseEvent) {
-      const target = e.target as Node;
-      if (
-        buttonRef.current && !buttonRef.current.contains(target) &&
-        menuRef.current && !menuRef.current.contains(target)
-      ) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, [open, updatePosition]);
+  }, [open]);
 
   const activeCount = selected.size;
 
   return (
-    <div>
+    <div ref={wrapperRef} className="relative">
       <button
-        ref={buttonRef}
-        onClick={() => {
-          if (!open) updatePosition();
-          setOpen(!open);
-        }}
+        onClick={() => setOpen(!open)}
         className={clsx(
           "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-[11px] transition-colors cursor-pointer whitespace-nowrap",
           activeCount > 0
@@ -117,7 +95,7 @@ function SourceFilter({ sources, selected, onToggle, onClearAll }: SourceFilterP
       </button>
 
       {open && (
-        <div ref={menuRef} style={menuStyle} className="bg-surface-2 border border-edge/50 rounded-lg shadow-lg z-50 py-1 max-h-64 overflow-y-auto">
+        <div className="absolute top-full mt-1 left-0 w-52 bg-surface-2 border border-edge/50 rounded-lg shadow-lg z-[5] py-1 max-h-64 overflow-y-auto">
           {sources.map((source) => {
             const isActive = selected.has(source);
             return (

@@ -61,49 +61,27 @@ interface LeagueFilterProps {
 
 function LeagueFilter({ leagues, selected, onToggle, onClearAll }: LeagueFilterProps) {
   const [open, setOpen] = useState(false);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
-
-  const updatePosition = useCallback(() => {
-    if (!buttonRef.current) return;
-    const rect = buttonRef.current.getBoundingClientRect();
-    setMenuStyle({
-      position: "fixed",
-      top: rect.bottom + 4,
-      right: window.innerWidth - rect.right,
-      width: 208,
-    });
-  }, []);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    updatePosition();
     function handleClick(e: MouseEvent) {
-      const target = e.target as Node;
-      if (
-        buttonRef.current && !buttonRef.current.contains(target) &&
-        menuRef.current && !menuRef.current.contains(target)
-      ) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, [open, updatePosition]);
+  }, [open]);
 
   const activeCount = selected.size;
 
   if (leagues.length === 0) return null;
 
   return (
-    <div>
+    <div ref={wrapperRef} className="relative">
       <button
-        ref={buttonRef}
-        onClick={() => {
-          if (!open) updatePosition();
-          setOpen(!open);
-        }}
+        onClick={() => setOpen(!open)}
         className={clsx(
           "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-[11px] transition-colors cursor-pointer whitespace-nowrap",
           activeCount > 0
@@ -121,11 +99,7 @@ function LeagueFilter({ leagues, selected, onToggle, onClearAll }: LeagueFilterP
       </button>
 
       {open && (
-        <div
-          ref={menuRef}
-          style={menuStyle}
-          className="bg-surface border border-edge/50 rounded-lg shadow-lg z-50 py-1 max-h-64 overflow-y-auto"
-        >
+        <div className="absolute top-full mt-1 right-0 w-52 bg-surface-2 border border-edge/50 rounded-lg shadow-lg z-[5] py-1 max-h-64 overflow-y-auto">
           {leagues.map((league) => {
             const isActive = selected.has(league);
             return (

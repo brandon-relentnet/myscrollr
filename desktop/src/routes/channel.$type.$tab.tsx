@@ -159,7 +159,7 @@ function FinanceDisplay() {
   const { prefs, onPrefsChange } = useShell();
   const dp = prefs.channelDisplay.finance;
 
-  function toggle(key: keyof FinanceDisplayPrefs) {
+  function toggle(key: keyof Pick<FinanceDisplayPrefs, "showChange" | "showPrevClose" | "showLastUpdated">) {
     onPrefsChange({
       ...prefs,
       channelDisplay: {
@@ -169,22 +169,48 @@ function FinanceDisplay() {
     });
   }
 
+  function setDefaultSort(value: string) {
+    onPrefsChange({
+      ...prefs,
+      channelDisplay: {
+        ...prefs.channelDisplay,
+        finance: { ...dp, defaultSort: value as FinanceDisplayPrefs["defaultSort"] },
+      },
+    });
+  }
+
   function handleReset() {
     onPrefsChange({
       ...prefs,
       channelDisplay: {
         ...prefs.channelDisplay,
-        finance: { showChange: true, showPrevClose: true, showLastUpdated: true },
+        finance: { showChange: true, showPrevClose: true, showLastUpdated: true, defaultSort: "alpha" },
       },
     });
   }
 
+  const SORT_OPTIONS = [
+    { value: "alpha", label: "A–Z" },
+    { value: "price", label: "Price" },
+    { value: "change", label: "% Change" },
+    { value: "updated", label: "Updated" },
+  ];
+
   return (
     <div className="p-4 max-w-2xl mx-auto">
-      <Section title="Feed & Ticker">
+      <Section title="Appearance">
         <ToggleRow label="Show % change" checked={dp.showChange} onChange={() => toggle("showChange")} />
         <ToggleRow label="Show previous close" checked={dp.showPrevClose} onChange={() => toggle("showPrevClose")} />
         <ToggleRow label="Show last updated" checked={dp.showLastUpdated} onChange={() => toggle("showLastUpdated")} />
+      </Section>
+      <Section title="Default Sort">
+        <SegmentedRow
+          label="Sort order"
+          description="Default sort when opening the feed"
+          value={dp.defaultSort}
+          options={SORT_OPTIONS}
+          onChange={setDefaultSort}
+        />
       </Section>
       <ResetButton label="Reset display settings" onClick={handleReset} />
     </div>
