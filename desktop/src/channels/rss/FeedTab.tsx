@@ -258,11 +258,22 @@ function RssFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
 
     // Sort
     if (sortOrder === "oldest") {
-      items = [...items].reverse();
+      items = [...items].sort((a, b) => {
+        const aTime = a.published_at ?? a.created_at;
+        const bTime = b.published_at ?? b.created_at;
+        return aTime.localeCompare(bTime);
+      });
     } else if (sortOrder === "by-source") {
-      items = [...items].sort((a, b) => a.source_name.localeCompare(b.source_name));
+      items = [...items].sort((a, b) => {
+        const cmp = a.source_name.localeCompare(b.source_name, undefined, { sensitivity: "base" });
+        if (cmp !== 0) return cmp;
+        // Within source: newest first
+        const aTime = a.published_at ?? a.created_at;
+        const bTime = b.published_at ?? b.created_at;
+        return bTime.localeCompare(aTime);
+      });
     }
-    // "newest" is the default order — no re-sort needed
+    // "newest" is the default order from the dashboard/CDC pipeline — no re-sort needed
 
     // Per-source limit
     const limit = dp.articlesPerSource;
