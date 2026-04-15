@@ -31,7 +31,7 @@ export default function CategoryFilter({
     setMenuStyle({
       position: "fixed",
       top: rect.bottom + 4,
-      left: Math.max(0, rect.right - 208), // 208 = w-52 (13rem)
+      left: rect.left,
       width: 208,
     });
   }, []);
