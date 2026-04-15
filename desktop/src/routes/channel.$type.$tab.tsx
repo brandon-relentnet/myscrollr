@@ -194,7 +194,7 @@ function FinanceDisplay() {
 function SportsDisplay() {
   const { display, setDisplay } = useSportsConfig();
 
-  function toggle(key: keyof typeof display) {
+  function toggle(key: keyof Pick<typeof display, "showLogos" | "showTimer" | "showUpcoming" | "showFinal">) {
     setDisplay({ [key]: !display[key] });
   }
 
@@ -209,11 +209,13 @@ function SportsDisplay() {
 
   return (
     <div className="p-4 max-w-2xl mx-auto">
-      <Section title="Feed & Ticker">
+      <Section title="Appearance">
         <ToggleRow label="Show team logos" checked={display.showLogos} onChange={() => toggle("showLogos")} />
-        <ToggleRow label="Show game clock" checked={display.showTimer} onChange={() => toggle("showTimer")} />
-        <ToggleRow label="Show upcoming games" checked={display.showUpcoming} onChange={() => toggle("showUpcoming")} />
-        <ToggleRow label="Show final scores" checked={display.showFinal} onChange={() => toggle("showFinal")} />
+        <ToggleRow label="Show game clock / status" checked={display.showTimer} onChange={() => toggle("showTimer")} />
+      </Section>
+      <Section title="Default Filters">
+        <ToggleRow label="Include upcoming games" checked={display.showUpcoming} onChange={() => toggle("showUpcoming")} />
+        <ToggleRow label="Include final scores" checked={display.showFinal} onChange={() => toggle("showFinal")} />
       </Section>
       <ResetButton label="Reset display settings" onClick={handleReset} />
     </div>

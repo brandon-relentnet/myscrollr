@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { Fragment, useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { clsx } from "clsx";
 import TeamLogo from "../../components/TeamLogo";
@@ -7,6 +7,7 @@ import type { Standing } from "../../api/queries";
 
 interface StandingsTabProps {
   leagues: string[];
+  favoriteTeams: Set<string>;
 }
 
 type SportType = "soccer" | "nfl" | "nba" | "nhl" | "mlb" | "other";
@@ -119,7 +120,7 @@ function GroupHeader({ name }: { name: string }) {
   );
 }
 
-export function StandingsTab({ leagues }: StandingsTabProps) {
+export function StandingsTab({ leagues, favoriteTeams }: StandingsTabProps) {
   const [selected, setSelected] = useState(leagues[0] ?? "");
 
   const { data, isLoading, isError } = useQuery({
@@ -162,7 +163,7 @@ export function StandingsTab({ leagues }: StandingsTabProps) {
 
   if (leagues.length === 0) {
     return (
-      <div className="flex items-center justify-center py-12 text-fg-4 text-xs">
+      <div className="flex items-center justify-center py-12 text-fg-3 text-xs">
         Add leagues in the Configure tab to see standings
       </div>
     );
@@ -171,11 +172,11 @@ export function StandingsTab({ leagues }: StandingsTabProps) {
   return (
     <div>
       {/* League selector */}
-      <div className="px-3 py-2 border-b border-edge bg-surface">
+      <div className="px-3 py-2 border-b border-edge/30 bg-surface">
         <select
           value={selected}
           onChange={(e) => setSelected(e.target.value)}
-          className="bg-surface-hover text-fg-2 text-xs rounded px-2 py-1 border border-edge focus:outline-none focus:border-primary"
+          className="bg-surface-hover text-fg-2 text-xs rounded px-2 py-1 border border-edge/30 focus:outline-none focus:border-accent/60"
         >
           {leagues.map((l) => (
             <option key={l} value={l}>{l}</option>
@@ -185,7 +186,7 @@ export function StandingsTab({ leagues }: StandingsTabProps) {
 
       {/* Content */}
       {isLoading && (
-        <div className="flex items-center justify-center py-12 text-fg-4 text-xs">
+        <div className="flex items-center justify-center py-12 text-fg-3 text-xs">
           Loading standings...
         </div>
       )}
@@ -197,7 +198,7 @@ export function StandingsTab({ leagues }: StandingsTabProps) {
       )}
 
       {!isLoading && !isError && standings.length === 0 && (
-        <div className="flex items-center justify-center py-12 text-fg-4 text-xs">
+        <div className="flex items-center justify-center py-12 text-fg-3 text-xs">
           No standings available for {selected}
         </div>
       )}
@@ -206,13 +207,13 @@ export function StandingsTab({ leagues }: StandingsTabProps) {
         <div className="overflow-x-auto">
           <table className="w-full text-xs table-fixed">
             <thead>
-              <tr className="text-fg-4 text-[10px] uppercase tracking-wider border-b border-edge">
+              <tr className="text-fg-3 text-[10px] uppercase tracking-wider border-b border-edge/30">
                 {columns.map((col) => (
                   <th
                     key={col.key}
                     title={col.fullName || col.label}
                     className={clsx(
-                      "px-2 py-2",
+                      "px-2 py-2 font-semibold",
                       col.width,
                       col.align === "center" && "text-center",
                       col.align === "right" && "text-right",
@@ -226,30 +227,37 @@ export function StandingsTab({ leagues }: StandingsTabProps) {
             </thead>
             <tbody>
               {groupedRows.map((group, groupIdx) => (
-                <>{group.groupName && <GroupHeader name={group.groupName} />}
-                  {group.standings.map((s, i) => (
-                    <tr
-                      key={`${s.team_name}-${i}`}
-                      className="border-b border-edge/50 hover:bg-surface-hover transition-colors"
-                    >
-                      {columns.map((col) => (
-                        <td
-                          key={col.key}
-                          className={clsx(
-                            "px-2 py-1.5",
-                            col.width,
-                            col.key !== "team" && "font-mono text-fg-2",
-                            col.align === "center" && "text-center",
-                            col.align === "right" && "text-right",
-                            !col.align && "text-left"
-                          )}
-                        >
-                          {col.getValue(s)}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </>
+                <Fragment key={group.groupName || `group-${groupIdx}`}>
+                  {group.groupName && <GroupHeader name={group.groupName} />}
+                  {group.standings.map((s, i) => {
+                    const isFav = favoriteTeams.has(s.team_name);
+                    return (
+                      <tr
+                        key={`${s.team_name}-${i}`}
+                        className={clsx(
+                          "border-b border-edge/30 hover:bg-surface-hover transition-colors",
+                          isFav && "bg-[#f97316]/5",
+                        )}
+                      >
+                        {columns.map((col) => (
+                          <td
+                            key={col.key}
+                            className={clsx(
+                              "px-2 py-1.5",
+                              col.width,
+                              col.key !== "team" && "font-mono text-fg-2",
+                              col.align === "center" && "text-center",
+                              col.align === "right" && "text-right",
+                              !col.align && "text-left"
+                            )}
+                          >
+                            {col.getValue(s)}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                </Fragment>
               ))}
             </tbody>
           </table>

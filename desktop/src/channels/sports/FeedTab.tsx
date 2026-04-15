@@ -5,10 +5,14 @@
  * Scores shows real-time game scoreboard cards via CDC/SSE.
  * Schedule filters upcoming pre-games by date.
  * Standings fetches league standings from the API.
+ *
+ * Controls bar between the tab bar and content provides:
+ *   - LeagueFilter dropdown (filter games by league)
+ *   - StatusFilter pill buttons (All / Live / Upcoming / Final)
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { clsx } from "clsx";
-import { Trophy } from "lucide-react";
+import { Trophy, Filter } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { dashboardQueryOptions } from "../../api/queries";
 import { useSportsConfig } from "../../hooks/useSportsConfig";
@@ -17,6 +21,7 @@ import { ScheduleTab } from "./ScheduleTab";
 import { StandingsTab } from "./StandingsTab";
 import EmptyChannelState from "../../components/EmptyChannelState";
 import type { Game, FeedTabProps, ChannelManifest } from "../../types";
+import type { FavoriteTeam } from "../../hooks/useSportsConfig";
 
 // ── Channel manifest ─────────────────────────────────────────────
 
@@ -40,21 +45,192 @@ export const sportsChannel: ChannelManifest = {
   FeedTab: SportsFeedTab,
 };
 
-// ── Tab type ─────────────────────────────────────────────────────
+// ── Types ────────────────────────────────────────────────────────
 
 type SportsTab = "scores" | "schedule" | "standings";
+export type StatusFilter = "all" | "live" | "upcoming" | "final";
+
+// ── LeagueFilter ─────────────────────────────────────────────────
+
+interface LeagueFilterProps {
+  leagues: string[];
+  selected: Set<string>;
+  onToggle: (league: string) => void;
+  onClearAll: () => void;
+}
+
+function LeagueFilter({ leagues, selected, onToggle, onClearAll }: LeagueFilterProps) {
+  const [open, setOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
+
+  const updatePosition = useCallback(() => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    setMenuStyle({
+      position: "fixed",
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: 208,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    updatePosition();
+    function handleClick(e: MouseEvent) {
+      const target = e.target as Node;
+      if (
+        buttonRef.current && !buttonRef.current.contains(target) &&
+        menuRef.current && !menuRef.current.contains(target)
+      ) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open, updatePosition]);
+
+  const activeCount = selected.size;
+
+  if (leagues.length === 0) return null;
+
+  return (
+    <div>
+      <button
+        ref={buttonRef}
+        onClick={() => {
+          if (!open) updatePosition();
+          setOpen(!open);
+        }}
+        className={clsx(
+          "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-[11px] transition-colors cursor-pointer whitespace-nowrap",
+          activeCount > 0
+            ? "border-accent/50 text-accent"
+            : "border-edge/40 text-fg-3 hover:text-fg-2 hover:border-edge/60",
+        )}
+      >
+        <Filter size={12} />
+        <span>Leagues</span>
+        {activeCount > 0 && (
+          <span className="bg-accent/20 text-accent rounded-full px-1.5 text-[10px] font-medium">
+            {activeCount}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div
+          ref={menuRef}
+          style={menuStyle}
+          className="bg-surface border border-edge/50 rounded-lg shadow-lg z-50 py-1 max-h-64 overflow-y-auto"
+        >
+          {leagues.map((league) => {
+            const isActive = selected.has(league);
+            return (
+              <button
+                key={league}
+                onClick={() => onToggle(league)}
+                className={clsx(
+                  "flex items-center gap-2 w-full px-3 py-1.5 text-left text-[12px] transition-colors cursor-pointer",
+                  isActive ? "text-fg-2" : "text-fg-3 hover:text-fg-2",
+                )}
+              >
+                <span
+                  className={clsx(
+                    "w-3.5 h-3.5 rounded border flex items-center justify-center text-[10px] shrink-0",
+                    isActive
+                      ? "bg-accent/25 border-accent/50 text-accent"
+                      : "border-edge/50",
+                  )}
+                >
+                  {isActive && "\u2713"}
+                </span>
+                <span className="flex-1 truncate">{league}</span>
+              </button>
+            );
+          })}
+          {activeCount > 0 && (
+            <>
+              <div className="h-px bg-edge/40 my-1" />
+              <button
+                onClick={() => {
+                  onClearAll();
+                  setOpen(false);
+                }}
+                className="w-full px-3 py-1.5 text-left text-[11px] text-fg-3 hover:text-fg-2 transition-colors cursor-pointer"
+              >
+                Clear all filters
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── StatusFilter pills ───────────────────────────────────────────
+
+const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "live", label: "Live" },
+  { value: "upcoming", label: "Upcoming" },
+  { value: "final", label: "Final" },
+];
+
+// ── Helper: build set of favorite team names ─────────────────────
+
+function buildFavoriteSet(favorites: Record<string, FavoriteTeam>): Set<string> {
+  const set = new Set<string>();
+  for (const ft of Object.values(favorites)) {
+    set.add(ft.teamName);
+  }
+  return set;
+}
 
 // ── FeedTab ──────────────────────────────────────────────────────
 
 function SportsFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
   const [tab, setTab] = useState<SportsTab>("scores");
-  const { leagues, display } = useSportsConfig();
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [leagueFilter, setLeagueFilter] = useState<Set<string>>(new Set());
+  const { leagues, display, favoriteTeams } = useSportsConfig();
 
   const { data: dashboard } = useQuery(dashboardQueryOptions());
   const games = useMemo(
     () => (dashboard?.data?.sports as Game[] | undefined) ?? [],
     [dashboard?.data?.sports],
   );
+
+  // Unique leagues from current games for the filter dropdown
+  const availableLeagues = useMemo(() => {
+    const set = new Set<string>();
+    for (const g of games) {
+      if (g.league) set.add(g.league);
+    }
+    return Array.from(set).sort();
+  }, [games]);
+
+  // Favorite team names as a Set for fast lookup
+  const favoriteTeamNames = useMemo(
+    () => buildFavoriteSet(favoriteTeams),
+    [favoriteTeams],
+  );
+
+  const toggleLeague = useCallback((league: string) => {
+    setLeagueFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(league)) next.delete(league);
+      else next.add(league);
+      return next;
+    });
+  }, []);
+
+  const clearLeagueFilter = useCallback(() => {
+    setLeagueFilter(new Set());
+  }, []);
 
   if (games.length === 0 && leagues.length === 0) {
     return (
@@ -90,10 +266,60 @@ function SportsFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
         ))}
       </div>
 
+      {/* Controls bar — league filter + status pills (scores & schedule only) */}
+      {tab !== "standings" && (
+        <div className="sticky top-0 z-10 flex items-center gap-2 px-3 py-2 bg-surface border-b border-edge/30">
+          <LeagueFilter
+            leagues={availableLeagues}
+            selected={leagueFilter}
+            onToggle={toggleLeague}
+            onClearAll={clearLeagueFilter}
+          />
+          <div className="flex gap-1 ml-1">
+            {STATUS_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setStatusFilter(opt.value)}
+                className={clsx(
+                  "px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors cursor-pointer",
+                  statusFilter === opt.value
+                    ? "bg-accent/15 text-accent"
+                    : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Tab content */}
-      {tab === "scores" && <ScoresTab games={games} mode={mode} display={display} />}
-      {tab === "schedule" && <ScheduleTab games={games} />}
-      {tab === "standings" && <StandingsTab leagues={leagues} />}
+      {tab === "scores" && (
+        <ScoresTab
+          games={games}
+          mode={mode}
+          display={display}
+          favoriteTeams={favoriteTeamNames}
+          leagueFilter={leagueFilter}
+          statusFilter={statusFilter}
+        />
+      )}
+      {tab === "schedule" && (
+        <ScheduleTab
+          games={games}
+          display={display}
+          favoriteTeams={favoriteTeamNames}
+          leagueFilter={leagueFilter}
+          statusFilter={statusFilter}
+        />
+      )}
+      {tab === "standings" && (
+        <StandingsTab
+          leagues={leagues}
+          favoriteTeams={favoriteTeamNames}
+        />
+      )}
     </div>
   );
 }
