@@ -21,6 +21,7 @@ import {
 import { getVersion } from "@tauri-apps/api/app";
 import clsx from "clsx";
 import { Toaster, toast } from "sonner";
+import "sonner/dist/styles.css";
 
 // Shell components
 import TitleBar from "../components/TitleBar";
