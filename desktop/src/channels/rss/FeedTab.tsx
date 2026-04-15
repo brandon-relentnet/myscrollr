@@ -313,28 +313,42 @@ function RssFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
     | { kind: "collapse"; source: string };
 
   const renderList = useMemo(() => {
-    const entries: RenderEntry[] = [];
+    // Find the index of the last article from each source so we can insert
+    // show-more / collapse rows right after them (not at every transition,
+    // and not appended at the bottom).
+    const lastIndexBySource = new Map<string, number>();
+    for (let i = 0; i < visibleItems.length; i++) {
+      lastIndexBySource.set(visibleItems[i].source_name, i);
+    }
 
-    // First, add all articles
-    for (const item of visibleItems) {
+    // Sources that need a trailing row
+    const needsShowMore = new Set(overflowCounts.keys());
+    const needsCollapse = new Set<string>();
+    for (const source of expandedSources) {
+      const total = rssItems.filter((i) => i.source_name === source).length;
+      if (total > dp.articlesPerSource && dp.articlesPerSource > 0) {
+        needsCollapse.add(source);
+      }
+    }
+
+    const entries: RenderEntry[] = [];
+    for (let i = 0; i < visibleItems.length; i++) {
+      const item = visibleItems[i];
       entries.push({
         kind: "article",
         item,
         category: categoryMap.get(item.feed_url),
       });
-    }
 
-    // Then append one "show more" or "collapse" row per source that needs it.
-    // These appear at the end of the list (not interleaved) to avoid duplicates
-    // when articles from the same source are scattered across chronological sorts.
-    for (const [source, count] of overflowCounts) {
-      entries.push({ kind: "show-more", source, count });
-    }
-    for (const source of expandedSources) {
-      // Only show collapse if this source was actually limited (has enough articles)
-      const total = rssItems.filter((i) => i.source_name === source).length;
-      if (total > dp.articlesPerSource && dp.articlesPerSource > 0) {
-        entries.push({ kind: "collapse", source });
+      // If this is the last visible article from this source, insert its row
+      if (lastIndexBySource.get(item.source_name) === i) {
+        const overflow = overflowCounts.get(item.source_name);
+        if (overflow != null && overflow > 0 && needsShowMore.has(item.source_name)) {
+          entries.push({ kind: "show-more", source: item.source_name, count: overflow });
+        }
+        if (needsCollapse.has(item.source_name)) {
+          entries.push({ kind: "collapse", source: item.source_name });
+        }
       }
     }
 
