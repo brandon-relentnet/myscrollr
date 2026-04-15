@@ -314,43 +314,32 @@ function RssFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
 
   const renderList = useMemo(() => {
     const entries: RenderEntry[] = [];
-    let lastSource: string | null = null;
 
+    // First, add all articles
     for (const item of visibleItems) {
-      // When switching sources, insert overflow row for the previous source
-      if (lastSource !== null && lastSource !== item.source_name) {
-        // Check if previous source has overflow
-        const prevOverflow = overflowCounts.get(lastSource);
-        if (prevOverflow != null && prevOverflow > 0) {
-          entries.push({ kind: "show-more", source: lastSource, count: prevOverflow });
-        }
-        // Check if previous source is expanded (show collapse row)
-        if (expandedSources.has(lastSource)) {
-          entries.push({ kind: "collapse", source: lastSource });
-        }
-      }
-
       entries.push({
         kind: "article",
         item,
         category: categoryMap.get(item.feed_url),
       });
-      lastSource = item.source_name;
     }
 
-    // Handle the final source
-    if (lastSource !== null) {
-      const finalOverflow = overflowCounts.get(lastSource);
-      if (finalOverflow != null && finalOverflow > 0) {
-        entries.push({ kind: "show-more", source: lastSource, count: finalOverflow });
-      }
-      if (expandedSources.has(lastSource)) {
-        entries.push({ kind: "collapse", source: lastSource });
+    // Then append one "show more" or "collapse" row per source that needs it.
+    // These appear at the end of the list (not interleaved) to avoid duplicates
+    // when articles from the same source are scattered across chronological sorts.
+    for (const [source, count] of overflowCounts) {
+      entries.push({ kind: "show-more", source, count });
+    }
+    for (const source of expandedSources) {
+      // Only show collapse if this source was actually limited (has enough articles)
+      const total = rssItems.filter((i) => i.source_name === source).length;
+      if (total > dp.articlesPerSource && dp.articlesPerSource > 0) {
+        entries.push({ kind: "collapse", source });
       }
     }
 
     return entries;
-  }, [visibleItems, overflowCounts, expandedSources, categoryMap]);
+  }, [visibleItems, overflowCounts, expandedSources, categoryMap, rssItems, dp.articlesPerSource]);
 
   // ── Empty state (no data at all) ─────────────────────────────
   if (rssItems.length === 0) {
