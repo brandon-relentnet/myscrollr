@@ -1,7 +1,7 @@
 import type { Channel } from "../api/client";
 import type { SubscriptionTier } from "../auth";
 import FinanceConfigPanel from "./FinanceConfigPanel";
-import SportsConfigPanel from "./SportsConfigPanel";
+import SportsConfigPanel from "./sports/ConfigPanel";
 import RssConfigPanel from "./rss/ConfigPanel";
 import FantasyConfigPanel from "./FantasyConfigPanel";
 
@@ -41,7 +41,6 @@ export default function ChannelConfigPanel({
         <SportsConfigPanel
           channel={channel}
           subscriptionTier={subscriptionTier}
-          connected={connected}
           hex={hex}
         />
       );

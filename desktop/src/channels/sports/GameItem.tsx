@@ -3,9 +3,11 @@
  *
  * Supports compact (single-row) and comfort (two-row with team logos)
  * display modes. Flashes briefly when scores update via CDC.
+ * Clickable when game.link is available (opens in new tab).
  */
 import { memo } from "react";
 import { clsx } from "clsx";
+import { Star } from "lucide-react";
 import { isLive, isFinal, getWinner, gameStatusLabel, displayTeamCode } from "../../utils/gameHelpers";
 import TeamLogo from "../../components/TeamLogo";
 import { useScoreFlash } from "../../hooks/useScoreFlash";
@@ -14,6 +16,9 @@ import type { Game, FeedMode } from "../../types";
 interface GameItemProps {
   game: Game;
   mode: FeedMode;
+  isFavorite?: boolean;
+  showLogos?: boolean;
+  showTimer?: boolean;
 }
 
 function formatScore(score: number | string | null | undefined): string {
@@ -21,23 +26,59 @@ function formatScore(score: number | string | null | undefined): string {
   return String(score);
 }
 
+/** Wraps children in an <a> tag if the game has a link, otherwise a <div>. */
+function CardWrapper({
+  link,
+  children,
+  className,
+}: {
+  link: string;
+  children: React.ReactNode;
+  className: string;
+}) {
+  if (link) {
+    return (
+      <a
+        href={link}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={className}
+      >
+        {children}
+      </a>
+    );
+  }
+  return <div className={className}>{children}</div>;
+}
+
 // ── Component ───────────────────────────────────────────────────
 
-export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
+export const GameItem = memo(function GameItem({
+  game,
+  mode,
+  isFavorite = false,
+  showLogos = true,
+  showTimer = true,
+}: GameItemProps) {
   const live = isLive(game);
   const final_ = isFinal(game);
   const winner = getWinner(game);
   const flash = useScoreFlash(game.away_team_score, game.home_team_score);
+  const hasLink = !!game.link;
 
   if (mode === "compact") {
     return (
-      <div
+      <CardWrapper
+        link={game.link}
         className={clsx(
           "flex items-center gap-2 px-3 py-1.5 bg-surface text-xs transition-colors duration-700",
           flash && "bg-live/10",
+          hasLink && "hover:bg-surface-hover cursor-pointer",
         )}
       >
-        <TeamLogo src={game.away_team_logo} alt={game.away_team_name} size="md" />
+        {showLogos && (
+          <TeamLogo src={game.away_team_logo} alt={game.away_team_name} size="md" />
+        )}
         <span
           className={clsx(
             "font-mono font-medium min-w-[28px]",
@@ -56,7 +97,7 @@ export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
         >
           {formatScore(game.away_team_score)}
         </span>
-        <span className="text-fg-4 font-mono">&ndash;</span>
+        <span className="text-fg-3 font-mono">&ndash;</span>
         <span
           className={clsx(
             "font-mono tabular-nums",
@@ -75,35 +116,53 @@ export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
         >
           {displayTeamCode(game.home_team_code, game.home_team_name)}
         </span>
-        <TeamLogo src={game.home_team_logo} alt={game.home_team_name} size="md" />
-        <span
-          className={clsx(
-            "ml-auto text-[9px] font-mono uppercase tracking-wider",
-            live && "text-live font-bold",
-            !live && "text-fg-3",
-          )}
-        >
-          {live && (
-            <span className="inline-block w-1 h-1 rounded-full bg-live mr-1 align-middle animate-pulse" />
-          )}
-          {gameStatusLabel(game)}
-        </span>
-      </div>
+        {showLogos && (
+          <TeamLogo src={game.home_team_logo} alt={game.home_team_name} size="md" />
+        )}
+        {isFavorite && (
+          <Star size={10} className="text-[#f97316]/60 fill-[#f97316]/40 shrink-0" />
+        )}
+        {showTimer && (
+          <span
+            className={clsx(
+              "ml-auto text-[9px] font-mono uppercase tracking-wider",
+              live && "text-live font-bold",
+              !live && "text-fg-3",
+            )}
+          >
+            {live && (
+              <span className="inline-block w-1 h-1 rounded-full bg-live mr-1 align-middle animate-pulse" />
+            )}
+            {gameStatusLabel(game)}
+          </span>
+        )}
+      </CardWrapper>
     );
   }
 
   // Comfort mode
   return (
-    <div
+    <CardWrapper
+      link={game.link}
       className={clsx(
         "px-3 py-2 bg-surface border-l-2 transition-colors duration-700",
-        live ? "border-l-live/40" : "border-l-transparent",
+        // Border color: favorite+live > live > favorite > transparent
+        isFavorite && live
+          ? "border-l-[#f97316]/60"
+          : live
+            ? "border-l-live/40"
+            : isFavorite
+              ? "border-l-[#f97316]/30"
+              : "border-l-transparent",
         flash && "bg-live/8",
+        hasLink && "hover:bg-surface-hover cursor-pointer",
       )}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <TeamLogo src={game.away_team_logo} alt={game.away_team_name} size="lg" />
+          {showLogos && (
+            <TeamLogo src={game.away_team_logo} alt={game.away_team_name} size="lg" />
+          )}
           <span
             className={clsx(
               "text-sm",
@@ -126,7 +185,9 @@ export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
 
       <div className="flex items-center justify-between mt-0.5">
         <div className="flex items-center gap-2">
-          <TeamLogo src={game.home_team_logo} alt={game.home_team_name} size="lg" />
+          {showLogos && (
+            <TeamLogo src={game.home_team_logo} alt={game.home_team_name} size="lg" />
+          )}
           <span
             className={clsx(
               "text-sm",
@@ -147,25 +208,38 @@ export const GameItem = memo(function GameItem({ game, mode }: GameItemProps) {
         </span>
       </div>
 
-      <div className="mt-1.5 flex items-center justify-end gap-1.5">
-        {live && (
-          <span className="inline-block w-1 h-1 rounded-full bg-live animate-pulse" />
+      <div className="mt-1.5 flex items-center justify-between">
+        {isFavorite && (
+          <Star size={10} className="text-[#f97316]/60 fill-[#f97316]/40" />
         )}
-        <span
-          className={clsx(
-            "text-[9px] font-mono uppercase tracking-wider",
-            live && "text-live font-bold",
-            !live && "text-fg-3",
+        <div className={clsx("flex items-center gap-1.5", !isFavorite && "ml-auto")}>
+          {showTimer && (
+            <>
+              {live && (
+                <span className="inline-block w-1 h-1 rounded-full bg-live animate-pulse" />
+              )}
+              <span
+                className={clsx(
+                  "text-[9px] font-mono uppercase tracking-wider",
+                  live && "text-live font-bold",
+                  !live && "text-fg-3",
+                )}
+              >
+                {gameStatusLabel(game)}
+              </span>
+            </>
           )}
-        >
-          {gameStatusLabel(game)}
-        </span>
+        </div>
       </div>
-    </div>
+    </CardWrapper>
   );
 }, (prev, next) =>
   prev.mode === next.mode &&
+  prev.isFavorite === next.isFavorite &&
+  prev.showLogos === next.showLogos &&
+  prev.showTimer === next.showTimer &&
   prev.game.id === next.game.id &&
+  prev.game.link === next.game.link &&
   prev.game.away_team_name === next.game.away_team_name &&
   prev.game.away_team_logo === next.game.away_team_logo &&
   prev.game.away_team_score === next.game.away_team_score &&

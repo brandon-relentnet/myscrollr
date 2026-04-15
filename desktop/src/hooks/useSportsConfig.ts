@@ -21,8 +21,6 @@ export interface SportsDisplayPrefs {
   showFinal: boolean;
   showLogos: boolean;
   showTimer: boolean;
-  compact: boolean;
-  stats: boolean;
 }
 
 export interface SportsConfig {
@@ -36,8 +34,6 @@ const DEFAULT_DISPLAY: SportsDisplayPrefs = {
   showFinal: true,
   showLogos: true,
   showTimer: true,
-  compact: true,
-  stats: true,
 };
 
 export function useSportsConfig() {
