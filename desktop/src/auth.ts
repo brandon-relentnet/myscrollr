@@ -58,6 +58,7 @@ interface AuthCallbackPayload {
   code?: string | null;
   state?: string | null;
   error?: string | null;
+  error_description?: string | null;
 }
 
 // ── Storage ──────────────────────────────────────────────────────
@@ -199,6 +200,12 @@ export function getTier(): SubscriptionTier {
 let refreshPromise: Promise<string | null> | null = null;
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
+/** Last login error message — cleared on next attempt. */
+let lastLoginError: string | null = null;
+export function getLastLoginError(): string | null {
+  return lastLoginError;
+}
+
 /**
  * Proactively refresh the access token before it expires.
  * Self-sustaining: on success, saveAuth() re-schedules the next refresh.
@@ -248,6 +255,8 @@ export async function login(): Promise<AuthState | null> {
   let hasPendingAuthCleanup = false;
   let authServerStarted = false;
 
+  lastLoginError = null;
+
   try {
     assertAuthConfig();
 
@@ -256,7 +265,23 @@ export async function login(): Promise<AuthState | null> {
     const state = generateRandomHex(16);
 
     // Start the callback server (returns immediately, listens in background)
-    await invoke("start_auth_server");
+    try {
+      await invoke("start_auth_server");
+    } catch (err) {
+      const msg = String(err);
+      if (msg.includes("already running")) {
+        // Previous login attempt didn't clean up — stop and retry once
+        await invoke("stop_auth_server").catch(() => {});
+        await invoke("start_auth_server");
+      } else if (msg.includes("Failed to bind")) {
+        throw new Error(
+          "Another application is using the sign-in port (19284). " +
+            "Close it and try again.",
+        );
+      } else {
+        throw err;
+      }
+    }
     authServerStarted = true;
 
     // Build the authorization URL
@@ -330,7 +355,8 @@ export async function login(): Promise<AuthState | null> {
     const payload = await payloadPromise;
 
     if (payload.error || !payload.code) {
-      throw new Error(payload.error ?? "No authorization code received");
+      const detail = payload.error_description || payload.error;
+      throw new Error(detail ?? "No authorization code received");
     }
 
     // Validate state to prevent CSRF
@@ -361,6 +387,7 @@ export async function login(): Promise<AuthState | null> {
       });
     }
 
+    lastLoginError = (err as Error).message ?? "Unknown error";
     console.error("[Scrollr] Login failed:", err);
     return null;
   }

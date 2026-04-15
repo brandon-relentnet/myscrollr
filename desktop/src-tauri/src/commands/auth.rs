@@ -109,28 +109,53 @@ fn run_auth_server<F>(
             Ok((mut stream, _)) => {
                 stream.set_nonblocking(true).ok();
 
-                if let Some(request) =
-                    read_callback_request(&mut stream, &stop_requested, started_at)
+                let request = match read_callback_request(&mut stream, &stop_requested, started_at)
                 {
-                    let code = extract_query_param(&request, "code");
-                    let state = extract_query_param(&request, "state");
+                    Some(r) => r,
+                    None => {
+                        // Connection closed before a full HTTP request arrived
+                        // (preflight, dropped connection, etc.) — keep listening
+                        continue;
+                    }
+                };
 
-                    // Respond with a styled "you can close this tab" page
-                    let html = r#"<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:system-ui,sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#0a0a0a;color:#d4d4da}div{text-align:center}h2{color:#bfff00;margin-bottom:8px}p{color:#84848e;font-size:14px}</style></head><body><div><h2>Login successful</h2><p>You can close this tab and return to Scrollr.</p></div></body></html>"#;
-
-                    let response = format!(
-                        "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
-                        html.len(),
-                        html,
-                    );
-                    stream.write_all(response.as_bytes()).ok();
+                // Only process requests to /callback — ignore favicon, prefetch,
+                // and other spurious requests the browser sends.
+                let first_line = request.lines().next().unwrap_or("");
+                if !first_line.contains("/callback") {
+                    let _ =
+                        stream.write_all(b"HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n");
                     stream.flush().ok();
-
-                    emit_callback(serde_json::json!({
-                        "code": code,
-                        "state": state,
-                    }));
+                    continue;
                 }
+
+                // Extract OAuth params — Logto may return error params instead of code
+                let code = extract_query_param(&request, "code");
+                let state = extract_query_param(&request, "state");
+                let error = extract_query_param(&request, "error");
+                let error_desc = extract_query_param(&request, "error_description");
+
+                // Respond with context-appropriate HTML
+                let html = if error.is_some() {
+                    r#"<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:system-ui,sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#0a0a0a;color:#d4d4da}div{text-align:center}h2{color:#ef4444;margin-bottom:8px}p{color:#84848e;font-size:14px}</style></head><body><div><h2>Sign-in failed</h2><p>Return to Scrollr and try again.</p></div></body></html>"#
+                } else {
+                    r#"<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:system-ui,sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#0a0a0a;color:#d4d4da}div{text-align:center}h2{color:#bfff00;margin-bottom:8px}p{color:#84848e;font-size:14px}</style></head><body><div><h2>Login successful</h2><p>You can close this tab and return to Scrollr.</p></div></body></html>"#
+                };
+
+                let response = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                    html.len(),
+                    html,
+                );
+                stream.write_all(response.as_bytes()).ok();
+                stream.flush().ok();
+
+                emit_callback(serde_json::json!({
+                    "code": code,
+                    "state": state,
+                    "error": error,
+                    "error_description": error_desc,
+                }));
 
                 break;
             }
@@ -301,6 +326,61 @@ mod tests {
         assert_eq!(payloads[0]["code"], "test-code");
         assert_eq!(payloads[0]["state"], "test-state");
         assert!(!*running_handle.0.lock().expect("lock running flag"));
+    }
+
+    #[test]
+    fn auth_server_ignores_favicon_and_processes_real_callback() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind test listener");
+        let addr = listener.local_addr().expect("read listener addr");
+        let running_handle = AuthServerRunning(Arc::new(Mutex::new(true)));
+        let stop_requested = AuthServerStop(Arc::new(AtomicBool::new(false)));
+        let payloads = Arc::new(Mutex::new(Vec::<serde_json::Value>::new()));
+
+        let running_for_thread = running_handle.clone();
+        let stop_for_thread = stop_requested.clone();
+        let payloads_for_thread = payloads.clone();
+        let thread = thread::spawn(move || {
+            run_auth_server(
+                listener,
+                running_for_thread,
+                stop_for_thread,
+                move |payload| {
+                    payloads_for_thread
+                        .lock()
+                        .expect("lock payload store")
+                        .push(payload);
+                },
+            );
+        });
+
+        // Send a favicon request first — should be ignored
+        {
+            let mut favicon_stream = TcpStream::connect(addr).expect("connect for favicon");
+            favicon_stream
+                .write_all(b"GET /favicon.ico HTTP/1.1\r\nHost: localhost\r\n\r\n")
+                .expect("write favicon request");
+            // Read the 204 response
+            let mut buf = [0u8; 256];
+            let _ = std::io::Read::read(&mut favicon_stream, &mut buf);
+        }
+
+        // Small delay to let the server loop back
+        thread::sleep(Duration::from_millis(50));
+
+        // Now send the real callback — should be processed
+        {
+            let mut callback_stream = TcpStream::connect(addr).expect("connect for callback");
+            callback_stream
+                .write_all(b"GET /callback?code=real-code&state=real-state HTTP/1.1\r\nHost: localhost\r\n\r\n")
+                .expect("write callback request");
+        }
+
+        thread.join().expect("join auth server thread");
+
+        let payloads = payloads.lock().expect("lock payload store");
+        assert_eq!(payloads.len(), 1, "should emit exactly one callback");
+        assert_eq!(payloads[0]["code"], "real-code");
+        assert_eq!(payloads[0]["state"], "real-state");
     }
 
     #[test]

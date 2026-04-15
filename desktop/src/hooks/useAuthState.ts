@@ -13,6 +13,7 @@ import {
   logout as authLogout,
   isAuthenticated as checkAuth,
   isAuthConfigured,
+  getLastLoginError,
   getTier,
 } from "../auth";
 import { queryKeys } from "../api/queries";
@@ -59,7 +60,10 @@ export function useAuthState(): UseAuthStateReturn {
         setSessionExpired(false);
         queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
       } else {
-        toast.error("Sign-in failed — please try again");
+        const detail = getLastLoginError();
+        toast.error(detail
+          ? `Sign-in failed: ${detail}`
+          : "Sign-in failed — please try again");
       }
     } finally {
       setLoggingIn(false);
