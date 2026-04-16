@@ -1,4 +1,4 @@
-import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
 import { motion } from 'motion/react'
 import { Suspense, lazy, useEffect, useState } from 'react'
 import {
@@ -19,7 +19,9 @@ import { useScrollrAuth } from '@/hooks/useScrollrAuth'
 import { useGetToken } from '@/hooks/useGetToken'
 import { billingApi } from '@/api/client'
 
-const CheckoutForm = lazy(() => import('@/components/billing/CheckoutForm'))
+const CheckoutModal = lazy(
+  () => import('@/components/billing/CheckoutModal'),
+)
 
 // ── Signature easing (matches homepage) ────────────────────────
 const EASE = [0.22, 1, 0.36, 1] as const
@@ -28,9 +30,7 @@ const EASE = [0.22, 1, 0.36, 1] as const
 const HEX_WARNING = '#f59e0b'
 
 export const Route = createFileRoute('/uplink_/lifetime')({
-  validateSearch: (search: Record<string, unknown>) => ({
-    session_id: (search.session_id as string) || undefined,
-  }),
+  validateSearch: () => ({}),
   component: LifetimePage,
 })
 
@@ -55,12 +55,9 @@ function LifetimePage() {
 
   const { isAuthenticated, signIn } = useScrollrAuth()
   const getToken = useGetToken()
-  const navigate = useNavigate()
-  const { session_id } = Route.useSearch()
 
   const [showCheckout, setShowCheckout] = useState(false)
   const [checkoutSuccess, setCheckoutSuccess] = useState(false)
-  const [checkingSession, setCheckingSession] = useState(false)
   const [currentSub, setCurrentSub] = useState<SubscriptionStatus | null>(null)
 
   // Fetch subscription status (to check for existing lifetime or active sub)
@@ -78,28 +75,6 @@ function LifetimePage() {
   const isAlreadyLifetime = currentSub?.lifetime === true
   const hasActiveSub =
     currentSub?.status === 'active' || currentSub?.status === 'trialing'
-
-  // Handle return from Stripe checkout via ?session_id=
-  useEffect(() => {
-    if (!session_id) return
-    setCheckingSession(true)
-    billingApi
-      .getCheckoutReturn(session_id, getToken)
-      .then((res) => {
-        if (res.status === 'complete') {
-          setCheckoutSuccess(true)
-        }
-      })
-      .catch(() => {})
-      .finally(() => {
-        setCheckingSession(false)
-        navigate({
-          to: '/uplink/lifetime',
-          search: { session_id: undefined },
-          replace: true,
-        })
-      })
-  }, [session_id, getToken, navigate])
 
   const handlePurchase = () => {
     if (!isAuthenticated) {
@@ -120,9 +95,14 @@ function LifetimePage() {
             </div>
           }
         >
-          <CheckoutForm
-            isLifetime
+          <CheckoutModal
+            plan={{ name: 'Lifetime', tier: 'lifetime', price: 399 }}
+            hasTrial={false}
             getToken={getToken}
+            onSuccess={() => {
+              setShowCheckout(false)
+              setCheckoutSuccess(true)
+            }}
             onClose={() => setShowCheckout(false)}
           />
         </Suspense>
@@ -151,16 +131,6 @@ function LifetimePage() {
             ✕
           </button>
         </motion.div>
-      )}
-
-      {/* ── Session Checking ────────────────────────────────── */}
-      {checkingSession && (
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-40 px-6 py-3 bg-base-200/90 border border-base-content/10 rounded-lg backdrop-blur-sm flex items-center gap-3">
-          <Loader2 size={14} className="animate-spin text-warning" />
-          <span className="text-[10px] text-base-content/40">
-            Confirming payment...
-          </span>
-        </div>
       )}
 
       {/* ================================================================
@@ -219,7 +189,6 @@ function LifetimePage() {
           >
             <Link
               to="/uplink"
-              search={{ session_id: undefined }}
               className="inline-flex items-center gap-2 text-[10px] text-base-content/30 hover:text-base-content/50 transition-colors mb-12"
             >
               <ArrowLeft size={12} /> Back to Uplink

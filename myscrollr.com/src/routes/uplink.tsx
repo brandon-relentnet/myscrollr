@@ -797,7 +797,6 @@ function BottomCTA({
           >
             <Link
               to="/uplink/lifetime"
-              search={{ session_id: undefined }}
               className="inline-flex items-center gap-2 text-sm text-base-content/40 hover:text-warning transition-colors duration-200"
             >
               <Sparkles className="size-4" aria-hidden />
@@ -2170,7 +2169,6 @@ function UplinkPage() {
                         {/* CTA */}
                         <Link
                           to="/uplink/lifetime"
-                          search={{ session_id: undefined }}
                           className="block w-full py-3.5 text-center text-xs font-bold bg-warning/10 border border-warning/30 text-warning rounded-xl hover:bg-warning/20 hover:border-warning/50 transition-colors"
                         >
                           Claim Your Slot
