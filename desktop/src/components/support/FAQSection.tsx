@@ -26,7 +26,8 @@ export default function FAQSection() {
           <div key={i} className="border-b border-edge/30">
             <button
               onClick={() => toggle(i)}
-              className="flex w-full items-center justify-between gap-3 px-1 py-3 text-left hover:bg-surface-2/50"
+              aria-expanded={isOpen}
+              className="flex w-full items-center justify-between gap-3 px-1 py-3 text-left hover:bg-surface-2/50 cursor-pointer"
             >
               <span className="text-sm font-medium text-fg">
                 {item.question}

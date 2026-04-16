@@ -285,7 +285,13 @@ function RootLayout() {
   }, [auth.authenticated, refreshSubscription]);
 
   // Apply theme + UI scale
-  useTheme("app-shell", prefs.appearance.theme, prefs.appearance.uiScale);
+  useTheme({
+    shellId: "app-shell",
+    theme: prefs.appearance.theme,
+    uiScale: prefs.appearance.uiScale,
+    fontWeight: prefs.appearance.fontWeight,
+    highContrast: prefs.appearance.highContrast,
+  });
 
   // ── Auth sync — refresh tier on dashboard load ──────────────
   useEffect(() => {

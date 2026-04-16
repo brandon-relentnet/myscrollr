@@ -57,6 +57,12 @@ const SCALE_PRESETS: { value: string; label: string }[] = [
   { value: "130", label: "130%" },
 ];
 
+const FONT_WEIGHT_OPTIONS: { value: string; label: string }[] = [
+  { value: "normal", label: "Normal" },
+  { value: "medium", label: "Medium" },
+  { value: "bold", label: "Bold" },
+];
+
 // ── Component ───────────────────────────────────────────────────
 
 export default function GeneralSettings({
@@ -189,6 +195,19 @@ export default function GeneralSettings({
           value={String(appearance.uiScale)}
           options={SCALE_PRESETS}
           onChange={(v) => setApp("uiScale", Number(v) as AppearancePrefs["uiScale"])}
+        />
+        <SegmentedRow
+          label="Font weight"
+          description="Increase text thickness for readability"
+          value={appearance.fontWeight}
+          options={FONT_WEIGHT_OPTIONS}
+          onChange={(v) => setApp("fontWeight", v as AppearancePrefs["fontWeight"])}
+        />
+        <ToggleRow
+          label="High contrast text"
+          description="Brighten muted text for easier reading"
+          checked={appearance.highContrast}
+          onChange={(v) => setApp("highContrast", v)}
         />
       </Section>
 

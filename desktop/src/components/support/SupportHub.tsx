@@ -140,9 +140,19 @@ export default function SupportHub({ onSelectSection }: SupportHubProps) {
   const hasQuery = query.trim().length > 0;
 
   return (
-    <div className="flex flex-col h-full px-6 pt-4 pb-6">
+    <div className="p-5 max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="mb-5">
+        <h1 className="text-[11px] font-mono font-semibold text-fg-4 uppercase tracking-wider mb-1">
+          Support
+        </h1>
+        <p className="text-xs text-fg-4">
+          Get help, find answers, and contact us
+        </p>
+      </div>
+
       {/* Search input */}
-      <div className="relative shrink-0 mb-5">
+      <div className="relative mb-5">
         <Search
           size={15}
           className="absolute left-3 top-1/2 -translate-y-1/2 text-fg-3 pointer-events-none"
@@ -157,7 +167,7 @@ export default function SupportHub({ onSelectSection }: SupportHubProps) {
       </div>
 
       {/* Content area */}
-      <div className="flex-1 overflow-y-auto">
+      <div>
         {hasQuery ? (
           results.length > 0 ? (
             <div className="flex flex-col gap-1">

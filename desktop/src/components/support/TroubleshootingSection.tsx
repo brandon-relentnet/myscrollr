@@ -29,7 +29,8 @@ export default function TroubleshootingSection() {
           >
             <button
               onClick={() => toggle(i)}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2/50"
+              aria-expanded={isOpen}
+              className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2/50 cursor-pointer"
             >
               <AlertCircle size={16} className="shrink-0 text-accent" />
               <span className="flex-1 text-sm font-bold text-fg">

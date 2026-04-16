@@ -18,10 +18,14 @@ export type TickerDirection = "left" | "right";
 export type ScrollMode = "continuous" | "step" | "flip";
 export type PinSide = "left" | "right";
 
+export type FontWeight = "normal" | "medium" | "bold";
+
 export interface AppearancePrefs {
   theme: Theme;
   uiScale: number; // 75–150, default 100
   tickerRows: TickerRows;
+  fontWeight: FontWeight;
+  highContrast: boolean;
 }
 
 export interface TickerPrefs {
@@ -220,6 +224,8 @@ const DEFAULT_APPEARANCE: AppearancePrefs = {
   theme: "dark",
   uiScale: 100,
   tickerRows: 1,
+  fontWeight: "normal",
+  highContrast: false,
 };
 
 const DEFAULT_TICKER: TickerPrefs = {

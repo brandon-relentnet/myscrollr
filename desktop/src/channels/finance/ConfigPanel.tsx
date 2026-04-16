@@ -77,6 +77,7 @@ export default function FinanceConfigPanel({
           <span>{error}</span>
           <button
             onClick={() => setError(null)}
+            aria-label="Dismiss error"
             className="text-error/60 hover:text-error cursor-pointer"
           >
             ×

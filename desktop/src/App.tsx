@@ -268,7 +268,13 @@ export default function App() {
   }, []);
 
   // ── Theme + UI scale (shared hook) ────────────────────────────
-  useTheme("desktop-shell", prefs.appearance.theme, prefs.appearance.uiScale);
+  useTheme({
+    shellId: "desktop-shell",
+    theme: prefs.appearance.theme,
+    uiScale: prefs.appearance.uiScale,
+    fontWeight: prefs.appearance.fontWeight,
+    highContrast: prefs.appearance.highContrast,
+  });
 
   // ── Broadcast delivery mode to app window ─────────────────────
 

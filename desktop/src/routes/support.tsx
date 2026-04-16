@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
 import SupportHub from "../components/support/SupportHub";
 import GettingStartedSection from "../components/support/GettingStartedSection";
 import FAQSection from "../components/support/FAQSection";
@@ -29,23 +28,30 @@ function SupportPage() {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Back button + section title */}
-      <div className="shrink-0 px-6 pt-4 pb-2">
-        <button
-          onClick={() => setActiveSection(null)}
-          className="flex items-center gap-1.5 text-sm text-fg-3 hover:text-fg-2 transition-colors mb-2 cursor-pointer"
-        >
-          <ArrowLeft size={14} />
-          Back to Support
-        </button>
-        <h1 className="text-lg font-bold text-fg">
-          {SECTION_TITLES[activeSection]}
-        </h1>
+    <div className="p-5 max-w-6xl mx-auto">
+      {/* Breadcrumb header */}
+      <div className="mb-5">
+        <div className="flex items-center gap-1.5 text-[11px] font-mono font-semibold uppercase tracking-wider mb-1">
+          <button
+            onClick={() => setActiveSection(null)}
+            className="text-fg-4 hover:text-fg-3 transition-colors cursor-pointer uppercase"
+          >
+            Support
+          </button>
+          <span className="text-fg-4">/</span>
+          <span className="text-fg-4">
+            {SECTION_TITLES[activeSection]}
+          </span>
+        </div>
+        <p className="text-xs text-fg-4">
+          {activeSection === "contact"
+            ? "Report bugs, request features, or send feedback"
+            : "Get help, find answers, and contact us"}
+        </p>
       </div>
 
       {/* Section content */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6">
+      <div>
         {activeSection === "getting-started" && <GettingStartedSection />}
         {activeSection === "faq" && <FAQSection />}
         {activeSection === "troubleshooting" && <TroubleshootingSection />}

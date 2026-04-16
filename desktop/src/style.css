@@ -111,6 +111,36 @@
   --shadow-soft-md: 0 2px 6px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
+/* ── Font weight boost ────────────────────────────────────────── */
+/* Applied via useTheme hook to the shell element */
+.font-weight-medium {
+  font-weight: 500;
+  & * { font-weight: inherit; }
+  & strong, & b, & [class*="font-bold"], & [class*="font-semibold"] {
+    font-weight: 700;
+  }
+}
+
+.font-weight-bold {
+  font-weight: 600;
+  & * { font-weight: inherit; }
+  & strong, & b, & [class*="font-bold"], & [class*="font-semibold"] {
+    font-weight: 800;
+  }
+}
+
+/* ── High contrast text ──────────────────────────────────────── */
+/* Bumps muted text tiers to be more readable */
+.high-contrast[data-theme="dark"] {
+  --color-fg-3: #8a8a9a;
+  --color-fg-4: #6a6a7a;
+}
+
+.high-contrast[data-theme="light"] {
+  --color-fg-3: #555568;
+  --color-fg-4: #6a6a7e;
+}
+
 /* Smooth theme transition */
 #desktop-shell.theme-transition,
 #desktop-shell.theme-transition *,
@@ -391,6 +421,24 @@ body {
   50%      { opacity: 0.4; transform: scale(0.75); }
 }
 
+/* ── Global focus-visible ring ──────────────────────────────────── */
+/* Provides a consistent, visible focus indicator for keyboard users.
+   Uses focus-visible so mouse clicks don't show the ring. */
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible,
+[role="switch"]:focus-visible,
+[role="radio"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: inherit;
+}
+
 /* ── Reduced motion ─────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
@@ -400,5 +448,4 @@ body {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
-
 }

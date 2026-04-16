@@ -1,5 +1,5 @@
 /**
- * Apply theme and UI scale to a shell element.
+ * Apply theme, UI scale, font weight, and contrast to a shell element.
  *
  * Shared between the app window (#app-shell) and ticker window (#desktop-shell).
  * Handles dark/light/system themes with smooth transitions and prefers-color-scheme
@@ -12,9 +12,23 @@
 import { useEffect } from "react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { resolveTheme } from "../preferences";
-import type { Theme } from "../preferences";
+import type { Theme, FontWeight } from "../preferences";
 
-export function useTheme(shellId: string, theme: Theme, uiScale: number): void {
+interface UseThemeOptions {
+  shellId: string;
+  theme: Theme;
+  uiScale: number;
+  fontWeight: FontWeight;
+  highContrast: boolean;
+}
+
+export function useTheme({
+  shellId,
+  theme,
+  uiScale,
+  fontWeight,
+  highContrast,
+}: UseThemeOptions): void {
   // ── Theme application ────────────────────────────────────────
   useEffect(() => {
     const shell = document.getElementById(shellId);
@@ -49,4 +63,23 @@ export function useTheme(shellId: string, theme: Theme, uiScale: number): void {
       .setZoom(uiScale / 100)
       .catch(() => {});
   }, [uiScale]);
+
+  // ── Font weight ──────────────────────────────────────────────
+  useEffect(() => {
+    const shell = document.getElementById(shellId);
+    if (!shell) return;
+
+    shell.classList.remove("font-weight-normal", "font-weight-medium", "font-weight-bold");
+    if (fontWeight !== "normal") {
+      shell.classList.add(`font-weight-${fontWeight}`);
+    }
+  }, [shellId, fontWeight]);
+
+  // ── High contrast ────────────────────────────────────────────
+  useEffect(() => {
+    const shell = document.getElementById(shellId);
+    if (!shell) return;
+
+    shell.classList.toggle("high-contrast", highContrast);
+  }, [shellId, highContrast]);
 }
