@@ -18,11 +18,13 @@ import (
 // ===== Support ticket types =====
 
 type SupportTicketRequest struct {
+	Category         string                 `json:"category"`
 	Subject          string                 `json:"subject"`
 	Description      string                 `json:"description"`
 	WhatWentWrong    string                 `json:"what_went_wrong"`
 	ExpectedBehavior string                 `json:"expected_behavior,omitempty"`
 	Frequency        string                 `json:"frequency"`
+	Priority         string                 `json:"priority,omitempty"`
 	Diagnostics      map[string]interface{} `json:"diagnostics,omitempty"`
 	Attachments      []TicketAttachment     `json:"attachments,omitempty"`
 	Email            string                 `json:"email,omitempty"`
@@ -99,10 +101,10 @@ func HandleSubmitSupportTicket(c *fiber.Ctx) error {
 		})
 	}
 
-	if strings.TrimSpace(req.WhatWentWrong) == "" {
+	if strings.TrimSpace(req.WhatWentWrong) == "" && strings.TrimSpace(req.Description) == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
 			Status: "error",
-			Error:  "Description of what went wrong is required",
+			Error:  "Either 'what_went_wrong' or 'description' is required",
 		})
 	}
 
@@ -122,27 +124,52 @@ func HandleSubmitSupportTicket(c *fiber.Ctx) error {
 	}
 
 	// Build subject
-	subject := req.Subject
-	if subject == "" {
-		what := strings.TrimSpace(req.WhatWentWrong)
-		if len(what) > 80 {
-			what = what[:80] + "..."
-		}
-		subject = fmt.Sprintf("Bug Report: %s", what)
+	var subjectPrefix string
+	switch req.Category {
+	case "feature":
+		subjectPrefix = "Feature Request: "
+	case "feedback":
+		subjectPrefix = "Feedback: "
+	default:
+		subjectPrefix = "Bug Report: "
 	}
 
-	// Build HTML message body
-	var body strings.Builder
-	body.WriteString("<h3>What were you trying to do?</h3>")
-	body.WriteString(fmt.Sprintf("<p>%s</p>", escapeHTML(req.Description)))
-	body.WriteString("<h3>What went wrong?</h3>")
-	body.WriteString(fmt.Sprintf("<p>%s</p>", escapeHTML(req.WhatWentWrong)))
-	if req.ExpectedBehavior != "" {
-		body.WriteString("<h3>What did you expect to happen instead?</h3>")
-		body.WriteString(fmt.Sprintf("<p>%s</p>", escapeHTML(req.ExpectedBehavior)))
+	subject := req.Subject
+	if subject == "" {
+		content := strings.TrimSpace(req.WhatWentWrong)
+		if content == "" {
+			content = strings.TrimSpace(req.Description)
+		}
+		if len(content) > 80 {
+			content = content[:80] + "..."
+		}
+		subject = subjectPrefix + content
 	}
-	if req.Frequency != "" {
-		body.WriteString(fmt.Sprintf("<p><strong>Frequency:</strong> %s</p>", escapeHTML(req.Frequency)))
+
+	// Build HTML message body (category-aware)
+	var body strings.Builder
+	switch req.Category {
+	case "feature":
+		body.WriteString("<h3>Feature Request</h3>")
+		body.WriteString(fmt.Sprintf("<p>%s</p>", escapeHTML(req.Description)))
+		if req.Priority != "" {
+			body.WriteString(fmt.Sprintf("<p><strong>Priority:</strong> %s</p>", escapeHTML(req.Priority)))
+		}
+	case "feedback":
+		body.WriteString("<h3>Feedback</h3>")
+		body.WriteString(fmt.Sprintf("<p>%s</p>", escapeHTML(req.Description)))
+	default:
+		body.WriteString("<h3>What were you trying to do?</h3>")
+		body.WriteString(fmt.Sprintf("<p>%s</p>", escapeHTML(req.Description)))
+		body.WriteString("<h3>What went wrong?</h3>")
+		body.WriteString(fmt.Sprintf("<p>%s</p>", escapeHTML(req.WhatWentWrong)))
+		if req.ExpectedBehavior != "" {
+			body.WriteString("<h3>What did you expect to happen instead?</h3>")
+			body.WriteString(fmt.Sprintf("<p>%s</p>", escapeHTML(req.ExpectedBehavior)))
+		}
+		if req.Frequency != "" {
+			body.WriteString(fmt.Sprintf("<p><strong>Frequency:</strong> %s</p>", escapeHTML(req.Frequency)))
+		}
 	}
 
 	// Append diagnostics as collapsible block
@@ -155,6 +182,19 @@ func HandleSubmitSupportTicket(c *fiber.Ctx) error {
 		}
 	}
 
+	// Resolve topic ID (per-category env vars override the default)
+	topicID := os.Getenv("OSTICKET_TOPIC_ID")
+	switch req.Category {
+	case "feature":
+		if id := os.Getenv("OSTICKET_TOPIC_ID_FEATURE"); id != "" {
+			topicID = id
+		}
+	case "feedback":
+		if id := os.Getenv("OSTICKET_TOPIC_ID_FEEDBACK"); id != "" {
+			topicID = id
+		}
+	}
+
 	// Build OS Ticket payload
 	payload := osTicketPayload{
 		Name:    name,
@@ -163,7 +203,6 @@ func HandleSubmitSupportTicket(c *fiber.Ctx) error {
 		Message: fmt.Sprintf("data:text/html;charset=utf-8,%s", body.String()),
 	}
 
-	topicID := os.Getenv("OSTICKET_TOPIC_ID")
 	if topicID != "" {
 		payload.TopicID = topicID
 	}
