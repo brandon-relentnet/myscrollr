@@ -32,7 +32,7 @@ import type { AppPreferences, TickerPosition } from "./preferences";
 import { getAllWidgets } from "./widgets/registry";
 import { useWidgetTickerData } from "./hooks/useWidgetTickerData";
 import { useTheme } from "./hooks/useTheme";
-import { POLL_INTERVALS } from "./cdc";
+
 
 // ── Constants ────────────────────────────────────────────────────
 
@@ -57,11 +57,14 @@ export default function App() {
   // The ticker reads from the store and only polls as a slow fallback
   // (5 min) in case the main window is closed or slow.
 
-  const TICKER_FALLBACK_INTERVAL = 5 * 60 * 1000; // 5 minutes
-
+  // ── Dashboard data — fed by the main window via store broadcast ──
+  // The main window is the single source of truth for dashboard polling.
+  // This query has no refetchInterval; it only serves as the TanStack Query
+  // cache holder so child components can useQuery(dashboardQueryOptions()).
+  // Data arrives via: (1) store broadcast from main window, (2) CDC merge.
   const { data: dashboard } = useQuery({
     ...dashboardQueryOptions(),
-    refetchInterval: TICKER_FALLBACK_INTERVAL,
+    refetchInterval: false,
   });
 
   // ── CDC merge engine (processes SSE events into dashboard cache) ──
