@@ -13,6 +13,7 @@ import (
 	checkoutsession "github.com/stripe/stripe-go/v82/checkout/session"
 	stripecustomer "github.com/stripe/stripe-go/v82/customer"
 	stripeinvoice "github.com/stripe/stripe-go/v82/invoice"
+	stripepaymentmethod "github.com/stripe/stripe-go/v82/paymentmethod"
 	stripeprice "github.com/stripe/stripe-go/v82/price"
 	stripesetupintent "github.com/stripe/stripe-go/v82/setupintent"
 	stripesubscription "github.com/stripe/stripe-go/v82/subscription"
@@ -467,6 +468,180 @@ func HandleCreateSetupIntent(c *fiber.Ctx) error {
 		Currency:       string(p.Currency),
 		Interval:       interval,
 		PublishableKey: os.Getenv("STRIPE_PUBLISHABLE_KEY"),
+	})
+}
+
+// HandleConfirmSubscription creates a Stripe Subscription after a SetupIntent is confirmed.
+// The frontend calls this after stripe.confirmSetup() succeeds.
+func HandleConfirmSubscription(c *fiber.Ctx) error {
+	userID := GetUserID(c)
+	if userID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Status: "unauthorized", Error: "Authentication required",
+		})
+	}
+
+	var req SubscribeRequest
+	if err := c.BodyParser(&req); err != nil || req.SetupIntentID == "" || req.PriceID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+			Status: "error", Error: "setup_intent_id and price_id are required",
+		})
+	}
+
+	plan := planFromPriceID(req.PriceID)
+	if plan == "unknown" || plan == "lifetime" {
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+			Status: "error", Error: "Invalid price_id",
+		})
+	}
+
+	// Retrieve the SetupIntent and verify ownership
+	si, err := stripesetupintent.Get(req.SetupIntentID, nil)
+	if err != nil {
+		log.Printf("[Billing] Failed to retrieve SetupIntent %s: %v", req.SetupIntentID, err)
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+			Status: "error", Error: "Invalid setup intent",
+		})
+	}
+
+	if si.Status != stripe.SetupIntentStatusSucceeded {
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+			Status: "error", Error: "Setup intent not confirmed",
+		})
+	}
+
+	// Verify the SetupIntent belongs to this user
+	if si.Metadata["logto_sub"] != userID {
+		return c.Status(fiber.StatusForbidden).JSON(ErrorResponse{
+			Status: "error", Error: "Unauthorized",
+		})
+	}
+
+	paymentMethodID := ""
+	if si.PaymentMethod != nil {
+		paymentMethodID = si.PaymentMethod.ID
+	}
+	if paymentMethodID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+			Status: "error", Error: "No payment method on setup intent",
+		})
+	}
+
+	customerID := ""
+	if si.Customer != nil {
+		customerID = si.Customer.ID
+	}
+
+	// Attach payment method to customer (idempotent if already attached)
+	_, err = stripepaymentmethod.Attach(paymentMethodID, &stripe.PaymentMethodAttachParams{
+		Customer: stripe.String(customerID),
+	})
+	if err != nil {
+		// "already been attached" is not a real error
+		if !strings.Contains(err.Error(), "already been attached") {
+			log.Printf("[Billing] Failed to attach payment method %s to customer %s: %v", paymentMethodID, customerID, err)
+			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+				Status: "error", Error: "Failed to attach payment method",
+			})
+		}
+	}
+
+	// Set as default payment method on the customer
+	_, err = stripecustomer.Update(customerID, &stripe.CustomerParams{
+		InvoiceSettings: &stripe.CustomerInvoiceSettingsParams{
+			DefaultPaymentMethod: stripe.String(paymentMethodID),
+		},
+	})
+	if err != nil {
+		log.Printf("[Billing] Failed to set default payment method for customer %s: %v", customerID, err)
+	}
+
+	// Check trial eligibility
+	var hadPriorSub bool
+	_ = DBPool.QueryRow(context.Background(),
+		`SELECT EXISTS(SELECT 1 FROM stripe_customers WHERE logto_sub = $1 AND plan != 'free')`,
+		userID,
+	).Scan(&hadPriorSub)
+
+	// Check if lifetime member (for coupon)
+	var isLifetime bool
+	_ = DBPool.QueryRow(context.Background(),
+		`SELECT COALESCE(lifetime, false) FROM stripe_customers WHERE logto_sub = $1`, userID,
+	).Scan(&isLifetime)
+
+	// Create subscription
+	subParams := &stripe.SubscriptionParams{
+		Customer: stripe.String(customerID),
+		Items: []*stripe.SubscriptionItemsParams{
+			{Price: stripe.String(req.PriceID)},
+		},
+		DefaultPaymentMethod: stripe.String(paymentMethodID),
+	}
+	subParams.AddMetadata("logto_sub", userID)
+	subParams.AddMetadata("plan", plan)
+
+	if !hadPriorSub {
+		subParams.TrialPeriodDays = stripe.Int64(7)
+	}
+
+	// Lifetime members get 50% off Ultimate
+	if isLifetime && isUltimatePlan(plan) {
+		couponID := os.Getenv("STRIPE_LIFETIME_ULTIMATE_COUPON_ID")
+		if couponID != "" {
+			subParams.Discounts = []*stripe.SubscriptionDiscountParams{
+				{Coupon: stripe.String(couponID)},
+			}
+			log.Printf("[Billing] Applied lifetime 50%% discount coupon for %s", userID)
+		}
+	}
+
+	sub, err := stripesubscription.New(subParams)
+	if err != nil {
+		log.Printf("[Billing] Failed to create subscription for %s: %v", userID, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Status: "error", Error: "Failed to create subscription",
+		})
+	}
+
+	// Upsert DB record
+	subStatus := string(sub.Status)
+	_, err = DBPool.Exec(context.Background(),
+		`INSERT INTO stripe_customers (logto_sub, stripe_customer_id, stripe_subscription_id, plan, status)
+		 VALUES ($1, $2, $3, $4, $5)
+		 ON CONFLICT (logto_sub) DO UPDATE SET
+		   stripe_customer_id = $2, stripe_subscription_id = $3,
+		   plan = $4, status = $5, updated_at = now()`,
+		userID, customerID, sub.ID, plan, subStatus,
+	)
+	if err != nil {
+		log.Printf("[Billing] Failed to upsert subscription record for %s: %v", userID, err)
+	}
+
+	// Assign Logto role
+	if subStatus == "trialing" || isUltimatePlan(plan) {
+		if err := AssignUltimateRole(userID); err != nil {
+			log.Printf("[Billing] Failed to assign ultimate role to %s: %v", userID, err)
+		}
+	} else if isProPlan(plan) {
+		if err := AssignProRole(userID); err != nil {
+			log.Printf("[Billing] Failed to assign pro role to %s: %v", userID, err)
+		}
+	} else {
+		if err := AssignUplinkRole(userID); err != nil {
+			log.Printf("[Billing] Failed to assign uplink role to %s: %v", userID, err)
+		}
+	}
+
+	var trialEnd *int64
+	if sub.TrialEnd > 0 {
+		trialEnd = &sub.TrialEnd
+	}
+
+	return c.JSON(SubscribeResponse{
+		SubscriptionID: sub.ID,
+		Status:         subStatus,
+		TrialEnd:       trialEnd,
+		Plan:           plan,
 	})
 }
 

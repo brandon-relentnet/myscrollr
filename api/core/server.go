@@ -184,6 +184,7 @@ func (s *Server) setupRoutes() {
 	s.App.Post("/checkout/session", LogtoAuth, HandleCreateCheckoutSession)
 	s.App.Post("/checkout/lifetime", LogtoAuth, HandleCreateLifetimeCheckout)
 	s.App.Post("/checkout/setup-intent", LogtoAuth, HandleCreateSetupIntent)
+	s.App.Post("/checkout/subscribe", LogtoAuth, HandleConfirmSubscription)
 	s.App.Get("/checkout/return", LogtoAuth, HandleCheckoutReturn)
 	s.App.Get("/users/me/subscription", LogtoAuth, HandleGetSubscription)
 	s.App.Get("/users/me/subscription/preview", LogtoAuth, HandlePreviewPlanChange)
