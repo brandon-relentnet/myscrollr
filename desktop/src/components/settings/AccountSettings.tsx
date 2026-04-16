@@ -92,9 +92,11 @@ export default function AccountSettings({
   const hasSub = sub && sub.plan !== "free" && status !== "none";
   const isLifetime = sub?.lifetime === true;
 
-  // During trial, always show Uplink Ultimate (the JWT tier may lag behind)
+  // Super users always show their own tier label; trial users show Ultimate
   const displayTier: SubscriptionTier =
-    status === "trialing" ? "uplink_ultimate" : tier;
+    tier === "super_user" ? "super_user"
+    : status === "trialing" ? "uplink_ultimate"
+    : tier;
 
   // Compute trial days once
   const trialDays =
@@ -268,7 +270,7 @@ export default function AccountSettings({
       {authenticated && (
         <Section title="Your Plan">
           <TierLimitsTable tier={tier} />
-          {tier !== "uplink_ultimate" && !isLifetime && (
+          {tier !== "uplink_ultimate" && tier !== "super_user" && !isLifetime && (
             <div className="px-3 pb-2">
               <button
                 onClick={() => open("https://myscrollr.com/uplink")}

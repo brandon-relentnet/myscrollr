@@ -251,6 +251,10 @@ function RootLayout() {
       const sub = await fetchSubscription();
       setSubscriptionInfo(sub);
 
+      // Super users get their tier from the Logto role, not from Stripe.
+      // Skip mismatch detection — they have no subscription to compare against.
+      if (auth.tier === "super_user") return;
+
       // Detect tier mismatch: the JWT may still carry stale roles after a
       // subscription change.  Force a token refresh so the new Logto roles
       // propagate to the JWT, which updates tier / SSE / enforcement.

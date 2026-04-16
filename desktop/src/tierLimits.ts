@@ -23,6 +23,13 @@ export const TIER_LIMITS: Record<SubscriptionTier, ChannelLimits> = {
     leagues: Infinity,
     fantasy: 10,
   },
+  super_user: {
+    symbols: Infinity,
+    feeds: Infinity,
+    customFeeds: Infinity,
+    leagues: Infinity,
+    fantasy: Infinity,
+  },
 };
 
 type LimitKey = keyof ChannelLimits;

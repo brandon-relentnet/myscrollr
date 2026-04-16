@@ -192,7 +192,7 @@ export default function App() {
         setAuthenticated(true);
       }
 
-      if (resolvedTier === "uplink_ultimate") {
+      if (resolvedTier === "uplink_ultimate" || resolvedTier === "super_user") {
         startSSE();
       }
     }
@@ -234,9 +234,11 @@ export default function App() {
         }
 
         // Start/stop SSE based on tier change
-        if (newTier === "uplink_ultimate" && oldTier !== "uplink_ultimate") {
+        const newHasSSE = newTier === "uplink_ultimate" || newTier === "super_user";
+        const oldHasSSE = oldTier === "uplink_ultimate" || oldTier === "super_user";
+        if (newHasSSE && !oldHasSSE) {
           startSSE();
-        } else if (newTier !== "uplink_ultimate" && sseActiveRef.current) {
+        } else if (!newHasSSE && sseActiveRef.current) {
           stopSSE();
         }
       }

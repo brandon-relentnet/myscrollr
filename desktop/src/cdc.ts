@@ -74,6 +74,7 @@ export const POLL_INTERVALS: Record<SubscriptionTier, number> = {
   uplink: 30_000,
   uplink_pro: 10_000,
   uplink_ultimate: 30_000, // SSE is primary; polling is a safety-net
+  super_user: 30_000,      // SSE is primary; same as ultimate
 };
 
 /**

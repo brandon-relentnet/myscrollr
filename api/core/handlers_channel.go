@@ -67,7 +67,8 @@ func StreamEvents(c *fiber.Ctx) error {
 			}
 		}
 	}
-	if tierFromRoles(roles) != "uplink_ultimate" {
+	tier := tierFromRoles(roles)
+	if tier != "uplink_ultimate" && tier != "super_user" {
 		return c.Status(fiber.StatusForbidden).JSON(ErrorResponse{
 			Status: "forbidden",
 			Error:  "SSE requires an Uplink Ultimate subscription",

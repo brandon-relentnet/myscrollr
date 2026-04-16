@@ -167,15 +167,21 @@ function extractSub(jwt: string): string | null {
  * Extract the subscription tier from the JWT's `roles` claim.
  * Logto injects roles via Custom JWT (e.g. ["uplink_ultimate"]).
  *
- * Tier hierarchy: uplink_ultimate > uplink_pro > uplink > free
+ * Tier hierarchy: super_user > uplink_ultimate > uplink_pro > uplink > free
  */
-export type SubscriptionTier = "free" | "uplink" | "uplink_pro" | "uplink_ultimate";
+export type SubscriptionTier =
+  | "free"
+  | "uplink"
+  | "uplink_pro"
+  | "uplink_ultimate"
+  | "super_user";
 
 export const TIER_LABELS: Record<SubscriptionTier, string> = {
   free: "Free",
   uplink: "Uplink",
   uplink_pro: "Uplink Pro",
   uplink_ultimate: "Uplink Ultimate",
+  super_user: "Super User",
 };
 
 export function getTier(): SubscriptionTier {
@@ -189,6 +195,7 @@ export function getTier(): SubscriptionTier {
     ? (payload.roles as string[])
     : [];
 
+  if (roles.includes("super_user")) return "super_user";
   if (roles.includes("uplink_ultimate")) return "uplink_ultimate";
   if (roles.includes("uplink_pro")) return "uplink_pro";
   if (roles.includes("uplink")) return "uplink";
