@@ -84,8 +84,7 @@ const FAQ_ITEMS: Array<FAQItem> = [
   {
     icon: SlidersHorizontal,
     question: 'Can I customize the feed?',
-    highlight:
-      'Adjust everything from position and size to display behavior.',
+    highlight: 'Adjust everything from position and size to display behavior.',
     answer:
       'Position the ticker at the top or bottom of your screen, drag to resize, switch between comfort and compact modes, choose overlay or push behavior, and pick which channels appear as tabs.',
     accent: 'orange',

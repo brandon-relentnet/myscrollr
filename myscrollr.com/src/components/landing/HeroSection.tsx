@@ -140,9 +140,9 @@ export function HeroSection() {
               transition={{ duration: 0.5, delay: 1 }}
               className="text-base text-base-content/50 max-w-md leading-relaxed"
             >
-              A quiet ticker at the edge of your screen. Scores update,
-              prices move, headlines arrive &mdash; all while you stay
-              focused on whatever you&rsquo;re working on.
+              A quiet ticker at the edge of your screen. Scores update, prices
+              move, headlines arrive &mdash; all while you stay focused on
+              whatever you&rsquo;re working on.
             </motion.p>
 
             <motion.div

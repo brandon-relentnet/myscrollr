@@ -1,11 +1,18 @@
 import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { AlertTriangle, ArrowRight, Calendar, CreditCard, Crown, Infinity, Loader2, ShieldAlert, Zap } from 'lucide-react'
-import type { SubscriptionStatus as SubStatus } from '@/api/client'
 import {
-  billingApi,
-  getPreferences,
-} from '@/api/client'
+  AlertTriangle,
+  ArrowRight,
+  Calendar,
+  CreditCard,
+  Crown,
+  Infinity,
+  Loader2,
+  ShieldAlert,
+  Zap,
+} from 'lucide-react'
+import type { SubscriptionStatus as SubStatus } from '@/api/client'
+import { billingApi, getPreferences } from '@/api/client'
 
 interface SubscriptionStatusProps {
   getToken: () => Promise<string | null>
@@ -96,7 +103,9 @@ export default function SubscriptionStatus({
       const { url } = await billingApi.createPortalSession(getToken)
       window.location.href = url
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to open billing portal')
+      setError(
+        err instanceof Error ? err.message : 'Failed to open billing portal',
+      )
       setOpeningPortal(false)
     }
   }
@@ -146,7 +155,8 @@ export default function SubscriptionStatus({
           </span>
         </div>
         <p className="text-sm text-base-content/30">
-          Upgrade to Uplink for faster polling, or Uplink Ultimate for real-time SSE.
+          Upgrade to Uplink for faster polling, or Uplink Ultimate for real-time
+          SSE.
         </p>
       </div>
     )
@@ -158,9 +168,13 @@ export default function SubscriptionStatus({
     : null
 
   // Compute trial days once
-  const trialDays = subscription.status === 'trialing' && subscription.trial_end
-    ? Math.max(0, Math.ceil((subscription.trial_end * 1000 - Date.now()) / 86_400_000))
-    : null
+  const trialDays =
+    subscription.status === 'trialing' && subscription.trial_end
+      ? Math.max(
+          0,
+          Math.ceil((subscription.trial_end * 1000 - Date.now()) / 86_400_000),
+        )
+      : null
 
   return (
     <div
@@ -222,9 +236,19 @@ export default function SubscriptionStatus({
         <div className="flex items-center gap-2 py-2.5 px-3 bg-info/5 border border-info/15 rounded-lg">
           <Zap size={14} className="text-info shrink-0" />
           <span className="text-xs text-base-content/50">
-            Your trial includes full <span className="font-semibold text-base-content/70">Uplink Ultimate</span> access
+            Your trial includes full{' '}
+            <span className="font-semibold text-base-content/70">
+              Uplink Ultimate
+            </span>{' '}
+            access
             {trialDays !== null && (
-              <> · <span className="font-medium text-info">{trialDays} day{trialDays !== 1 ? 's' : ''} remaining</span></>
+              <>
+                {' '}
+                ·{' '}
+                <span className="font-medium text-info">
+                  {trialDays} day{trialDays !== 1 ? 's' : ''} remaining
+                </span>
+              </>
             )}
           </span>
         </div>
@@ -270,13 +294,14 @@ export default function SubscriptionStatus({
                   subscription.pending_downgrade_plan}
               </span>{' '}
               on{' '}
-              {new Date(
-                subscription.scheduled_change_at,
-              ).toLocaleDateString('en-US', {
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric',
-              })}{' '}
+              {new Date(subscription.scheduled_change_at).toLocaleDateString(
+                'en-US',
+                {
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric',
+                },
+              )}{' '}
               · your current plan remains active until then.
             </span>
           </div>
@@ -287,7 +312,8 @@ export default function SubscriptionStatus({
         <div className="flex items-center gap-2 p-3 rounded-lg bg-error/10 border border-error/20">
           <AlertTriangle size={14} className="text-error shrink-0" />
           <span className="text-xs text-error/80">
-            Your payment failed. Update your payment method to avoid service interruption.
+            Your payment failed. Update your payment method to avoid service
+            interruption.
           </span>
         </div>
       )}
@@ -308,35 +334,41 @@ export default function SubscriptionStatus({
         )}
 
         {/* Active / Trialing: manage, change plan, cancel */}
-        {(subscription.status === 'active' || subscription.status === 'trialing') && !subscription.lifetime && (
-          <>
-            <button
-              onClick={handleOpenPortal}
-              disabled={openingPortal}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold border border-base-content/10 rounded-lg
+        {(subscription.status === 'active' ||
+          subscription.status === 'trialing') &&
+          !subscription.lifetime && (
+            <>
+              <button
+                onClick={handleOpenPortal}
+                disabled={openingPortal}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold border border-base-content/10 rounded-lg
                          text-base-content/40 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-50"
-            >
-              <CreditCard size={12} />
-              {openingPortal ? 'Opening...' : 'Manage Subscription'}
-            </button>
-            <Link
-              to="/uplink"
-              search={{ session_id: undefined }}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold border border-base-content/10 rounded-lg
+              >
+                <CreditCard size={12} />
+                {openingPortal ? 'Opening...' : 'Manage Subscription'}
+              </button>
+              <Link
+                to="/uplink"
+                search={{ session_id: undefined }}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold border border-base-content/10 rounded-lg
                          text-base-content/40 hover:text-primary hover:border-primary/30 transition-colors"
-            >
-              Change Plan <ArrowRight size={12} />
-            </Link>
-            <button
-              onClick={() => setShowCancelModal(true)}
-              disabled={canceling}
-              className="flex-1 py-2.5 text-xs font-semibold border border-base-content/10 rounded-lg
+              >
+                Change Plan <ArrowRight size={12} />
+              </Link>
+              <button
+                onClick={() => setShowCancelModal(true)}
+                disabled={canceling}
+                className="flex-1 py-2.5 text-xs font-semibold border border-base-content/10 rounded-lg
                          text-base-content/30 hover:text-error hover:border-error/30 transition-colors disabled:opacity-50"
-            >
-              {canceling ? 'Canceling...' : isTrialing ? 'Cancel Trial' : 'Cancel Subscription'}
-            </button>
-          </>
-        )}
+              >
+                {canceling
+                  ? 'Canceling...'
+                  : isTrialing
+                    ? 'Cancel Trial'
+                    : 'Cancel Subscription'}
+              </button>
+            </>
+          )}
 
         {/* Canceling: manage (to resume) + change plan */}
         {subscription.status === 'canceling' && !subscription.lifetime && (
@@ -384,7 +416,9 @@ export default function SubscriptionStatus({
                 <ShieldAlert size={20} className="text-error" />
               </div>
               <h3 className="text-sm font-semibold text-base-content/80">
-                {isTrialing ? 'Cancel your free trial?' : 'Cancel your subscription?'}
+                {isTrialing
+                  ? 'Cancel your free trial?'
+                  : 'Cancel your subscription?'}
               </h3>
             </div>
 
@@ -392,26 +426,30 @@ export default function SubscriptionStatus({
               {isTrialing ? (
                 <>
                   <p>
-                    If you cancel now, you&apos;ll lose access to all premium features
-                    immediately &mdash; including real-time data, higher limits, and
-                    Uplink Ultimate access.
+                    If you cancel now, you&apos;ll lose access to all premium
+                    features immediately &mdash; including real-time data,
+                    higher limits, and Uplink Ultimate access.
                   </p>
                   <p className="font-semibold text-base-content/70">
-                    This is the only free trial offered per account. Once canceled,
-                    you&apos;ll need to purchase a paid plan to access premium features
-                    again.
+                    This is the only free trial offered per account. Once
+                    canceled, you&apos;ll need to purchase a paid plan to access
+                    premium features again.
                   </p>
-                  <p>Your card has not been charged and won&apos;t be if you cancel.</p>
+                  <p>
+                    Your card has not been charged and won&apos;t be if you
+                    cancel.
+                  </p>
                 </>
               ) : (
                 <>
                   <p>
-                    You&apos;ll keep access until the end of your current billing period,
-                    then your account will revert to the Free plan.
+                    You&apos;ll keep access until the end of your current
+                    billing period, then your account will revert to the Free
+                    plan.
                   </p>
                   <p>
-                    On the Free plan, you&apos;ll have reduced limits and 60-second polling
-                    instead of real-time data.
+                    On the Free plan, you&apos;ll have reduced limits and
+                    60-second polling instead of real-time data.
                   </p>
                 </>
               )}

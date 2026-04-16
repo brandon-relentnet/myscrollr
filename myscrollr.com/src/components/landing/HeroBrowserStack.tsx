@@ -190,7 +190,7 @@ function MusicPlayerContent() {
 
 function CodeEditorContent() {
   const lines = [
-    { num: 1, code: "import { fetchData } from", cls: 'text-info/50' },
+    { num: 1, code: 'import { fetchData } from', cls: 'text-info/50' },
     { num: 2, code: "  './api'", cls: 'text-primary/50' },
     { num: 3, code: '', cls: '' },
     {
@@ -497,9 +497,7 @@ export function HeroDesktopPreview({
                   </div>
                   <span
                     className={`text-[10px] truncate transition-colors duration-300 ${
-                      isActive
-                        ? 'text-base-content/50'
-                        : 'text-base-content/25'
+                      isActive ? 'text-base-content/50' : 'text-base-content/25'
                     }`}
                   >
                     {mockup.appTitle}

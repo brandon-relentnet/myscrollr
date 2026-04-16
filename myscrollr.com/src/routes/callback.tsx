@@ -9,7 +9,9 @@ function Callback() {
   const navigate = useNavigate()
 
   const { isLoading, error } = useHandleSignInCallback(() => {
-    navigate({ to: '/account' })
+    const returnTo = sessionStorage.getItem('scrollr:returnTo')
+    sessionStorage.removeItem('scrollr:returnTo')
+    navigate({ to: returnTo || '/account' })
   })
 
   if (isLoading) {

@@ -474,7 +474,10 @@ function IllustrationOutOfWay() {
 
       {/* Ticker bar — animates from expanded to collapsed */}
       <motion.g
-        animate={{ scaleY: [1, 1, 0.15, 0.15, 1], opacity: [1, 1, 0.5, 0.5, 1] }}
+        animate={{
+          scaleY: [1, 1, 0.15, 0.15, 1],
+          opacity: [1, 1, 0.5, 0.5, 1],
+        }}
         transition={{
           duration: 5,
           repeat: Infinity,

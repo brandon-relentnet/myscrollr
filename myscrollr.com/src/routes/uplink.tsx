@@ -966,7 +966,7 @@ function UplinkPage() {
 
   const handleSelectPlan = async (plan: PlanKey, tier: TierKey = 'uplink') => {
     if (!isAuthenticated) {
-      signIn(window.location.origin + '/uplink')
+      signIn('/uplink')
       return
     }
 
@@ -1215,15 +1215,18 @@ function UplinkPage() {
 
             <div className="space-y-3 text-xs text-base-content/50 leading-relaxed">
               <p>
-                If you cancel now, you&apos;ll lose access to all premium features
-                immediately &mdash; including real-time data, higher limits, and
-                Uplink Ultimate access.
+                If you cancel now, you&apos;ll lose access to all premium
+                features immediately &mdash; including real-time data, higher
+                limits, and Uplink Ultimate access.
               </p>
               <p className="font-semibold text-base-content/70">
                 This is the only free trial offered per account. Once canceled,
-                you&apos;ll need to purchase a paid plan to access premium features again.
+                you&apos;ll need to purchase a paid plan to access premium
+                features again.
               </p>
-              <p>Your card has not been charged and won&apos;t be if you cancel.</p>
+              <p>
+                Your card has not been charged and won&apos;t be if you cancel.
+              </p>
             </div>
 
             <div className="flex gap-2 pt-1">
@@ -1259,33 +1262,36 @@ function UplinkPage() {
       )}
 
       {/* ── Checkout Success Banner ─────────────────────────── */}
-      {checkoutSuccess && (() => {
-        const subTier = currentSub ? tierFromPlan(currentSub.plan) : null
-        const tierName = subTier ? TIER_NAMES[subTier] : 'Uplink'
-        return (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="fixed top-24 left-1/2 -translate-x-1/2 z-40 px-6 py-4 bg-success/10 border border-success/30 rounded-lg backdrop-blur-sm flex items-center gap-3"
-          >
-            <CheckCircle2 size={18} className="text-success" />
-            <div>
-              <p className="text-xs font-bold text-success">{tierName} Activated</p>
-              <p className="text-[10px] text-base-content/40">
-                {currentSub?.status === 'trialing'
-                  ? `Your 7-day free trial is active. Enjoy full Uplink Ultimate access.`
-                  : `Your subscription is active. Welcome to ${tierName}.`}
-              </p>
-            </div>
-            <button
-              onClick={() => setCheckoutSuccess(false)}
-              className="ml-4 text-base-content/30 hover:text-base-content/60 transition-colors text-xs"
+      {checkoutSuccess &&
+        (() => {
+          const subTier = currentSub ? tierFromPlan(currentSub.plan) : null
+          const tierName = subTier ? TIER_NAMES[subTier] : 'Uplink'
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="fixed top-24 left-1/2 -translate-x-1/2 z-40 px-6 py-4 bg-success/10 border border-success/30 rounded-lg backdrop-blur-sm flex items-center gap-3"
             >
-              &times;
-            </button>
-          </motion.div>
-        )
-      })()}
+              <CheckCircle2 size={18} className="text-success" />
+              <div>
+                <p className="text-xs font-bold text-success">
+                  {tierName} Activated
+                </p>
+                <p className="text-[10px] text-base-content/40">
+                  {currentSub?.status === 'trialing'
+                    ? `Your 7-day free trial is active. Enjoy full Uplink Ultimate access.`
+                    : `Your subscription is active. Welcome to ${tierName}.`}
+                </p>
+              </div>
+              <button
+                onClick={() => setCheckoutSuccess(false)}
+                className="ml-4 text-base-content/30 hover:text-base-content/60 transition-colors text-xs"
+              >
+                &times;
+              </button>
+            </motion.div>
+          )
+        })()}
 
       {/* ── Plan Change Error Banner ──────────────────────────── */}
       {planChangeError && (
@@ -1820,11 +1826,23 @@ function UplinkPage() {
             transition={{ duration: 0.4, delay: 0.15, ease: EASE }}
             className="flex items-center justify-center gap-2 mb-8"
           >
-            <CheckCircle2 size={13} className={isTrialing ? 'text-info/60 shrink-0' : 'text-primary/50 shrink-0'} />
+            <CheckCircle2
+              size={13}
+              className={
+                isTrialing
+                  ? 'text-info/60 shrink-0'
+                  : 'text-primary/50 shrink-0'
+              }
+            />
             <span className="text-[11px] text-base-content/35">
-              {isTrialing
-                ? 'Your trial includes full Uplink Ultimate access. Pick the plan you want when it ends.'
-                : <>Every plan includes a 7-day free trial. Cancel anytime &mdash; you won&apos;t be charged until day 8.</>}
+              {isTrialing ? (
+                'Your trial includes full Uplink Ultimate access. Pick the plan you want when it ends.'
+              ) : (
+                <>
+                  Every plan includes a 7-day free trial. Cancel anytime &mdash;
+                  you won&apos;t be charged until day 8.
+                </>
+              )}
             </span>
           </motion.div>
 
@@ -3973,7 +3991,10 @@ function UplinkPage() {
       {/* ================================================================
           BOTTOM CTA
           ================================================================ */}
-      <BottomCTA handleSelectPlan={handleSelectPlan} hadPriorSub={hadPriorSub} />
+      <BottomCTA
+        handleSelectPlan={handleSelectPlan}
+        hadPriorSub={hadPriorSub}
+      />
     </div>
   )
 }

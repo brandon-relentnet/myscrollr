@@ -3,15 +3,13 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, BookOpen, ChevronDown, Info, List } from 'lucide-react'
 
-import type {LegalDocument, LegalSection} from '@/components/legal/documents';
+import type { LegalDocument, LegalSection } from '@/components/legal/documents'
 import { usePageMeta } from '@/lib/usePageMeta'
 import { itemVariants, pageVariants, sectionVariants } from '@/lib/animations'
 import {
   LEGAL_DOCUMENTS,
-  
-  
   getDocument,
-  getDocumentsByCategory
+  getDocumentsByCategory,
 } from '@/components/legal/documents'
 
 // ── Route ───────────────────────────────────────────────────────
