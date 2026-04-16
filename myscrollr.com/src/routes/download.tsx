@@ -1,11 +1,5 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import {
-  Apple,
-  Check,
-  Download,
-  ExternalLink,
-  Monitor,
-} from 'lucide-react'
+import { Link, createFileRoute } from '@tanstack/react-router'
+import { Apple, Check, Download, ExternalLink, Monitor } from 'lucide-react'
 import { motion } from 'motion/react'
 import { usePageMeta } from '@/lib/usePageMeta'
 
@@ -25,11 +19,11 @@ type Platform = {
   name: string
   arch: string
   icon: React.ReactNode
-  requirements: string[]
+  requirements: Array<string>
   note?: string
 }
 
-const PLATFORMS: Platform[] = [
+const PLATFORMS: Array<Platform> = [
   {
     id: 'macos',
     name: 'macOS',
@@ -242,10 +236,10 @@ function DownloadPage() {
                 Privacy first
               </h3>
               <p className="mt-4 text-sm leading-relaxed text-base-content/60">
-                Scrollr stores your preferences locally on your device.
-                No browsing data, no analytics, no tracking. The app
-                communicates only with Scrollr&rsquo;s API servers to deliver
-                live data via Server-Sent Events.
+                Scrollr stores your preferences locally on your device. No
+                browsing data, no analytics, no tracking. The app communicates
+                only with Scrollr&rsquo;s API servers to deliver live data via
+                Server-Sent Events.
               </p>
               <Link
                 to="/legal"

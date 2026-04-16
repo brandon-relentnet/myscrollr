@@ -170,7 +170,7 @@ function ProfilePage() {
           </p>
           <button
             type="button"
-            onClick={() => signIn(`${window.location.origin}/callback`)}
+            onClick={() => signIn()}
             className="btn btn-pulse btn-lg"
           >
             Sign In

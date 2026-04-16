@@ -15,8 +15,8 @@ interface ScrollrAuthContextValue {
   isAuthenticated: boolean
   /** True only while the Logto SDK is initialising. */
   isLoading: boolean
-  /** Initiate Logto sign-in redirect. */
-  signIn: (redirectUri: string) => void
+  /** Initiate Logto sign-in redirect. Optionally pass a path to return to after auth. */
+  signIn: (returnTo?: string) => void
   /** Sign out via Logto. */
   signOut: (postLogoutRedirectUri: string) => void
   /** Returns an access token from Logto. */
@@ -43,16 +43,24 @@ export function ScrollrAuthProvider({ children }: { children: ReactNode }) {
 
   // ── Methods ───────────────────────────────────────────────────
 
-  const signIn = useCallback((redirectUri: string) => {
-    void logtoRef.current.signIn(redirectUri).catch((error: unknown) => {
+  const signIn = useCallback((returnTo?: string) => {
+    // Store the intended destination so the callback route can redirect
+    // back after authentication. Falls back to /account if not set.
+    if (returnTo) {
+      sessionStorage.setItem('scrollr:returnTo', returnTo)
+    }
+    const callbackUrl = `${window.location.origin}/callback`
+    void logtoRef.current.signIn(callbackUrl).catch((error: unknown) => {
       console.error('Logto sign-in failed', error)
     })
   }, [])
 
   const signOut = useCallback((postLogoutRedirectUri: string) => {
-    void logtoRef.current.signOut(postLogoutRedirectUri).catch((error: unknown) => {
-      console.error('Logto sign-out failed', error)
-    })
+    void logtoRef.current
+      .signOut(postLogoutRedirectUri)
+      .catch((error: unknown) => {
+        console.error('Logto sign-out failed', error)
+      })
   }, [])
 
   const getAccessToken = useCallback(

@@ -34,7 +34,7 @@ export default function Header() {
   }, [isAuthenticated, getIdTokenClaims])
 
   const handleSignIn = () => {
-    signIn(`${window.location.origin}/callback`)
+    signIn()
   }
 
   const handleSignOut = () => {

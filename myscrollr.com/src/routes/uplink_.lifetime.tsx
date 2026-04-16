@@ -13,11 +13,11 @@ import {
   Zap,
 } from 'lucide-react'
 
+import type { SubscriptionStatus } from '@/api/client'
 import { usePageMeta } from '@/lib/usePageMeta'
 import { useScrollrAuth } from '@/hooks/useScrollrAuth'
 import { useGetToken } from '@/hooks/useGetToken'
 import { billingApi } from '@/api/client'
-import type { SubscriptionStatus } from '@/api/client'
 
 const CheckoutForm = lazy(() => import('@/components/billing/CheckoutForm'))
 
@@ -69,11 +69,15 @@ function LifetimePage() {
       setCurrentSub(null)
       return
     }
-    billingApi.getSubscription(getToken).then(setCurrentSub).catch(() => {})
+    billingApi
+      .getSubscription(getToken)
+      .then(setCurrentSub)
+      .catch(() => {})
   }, [isAuthenticated, getToken, checkoutSuccess])
 
   const isAlreadyLifetime = currentSub?.lifetime === true
-  const hasActiveSub = currentSub?.status === 'active' || currentSub?.status === 'trialing'
+  const hasActiveSub =
+    currentSub?.status === 'active' || currentSub?.status === 'trialing'
 
   // Handle return from Stripe checkout via ?session_id=
   useEffect(() => {
@@ -99,7 +103,7 @@ function LifetimePage() {
 
   const handlePurchase = () => {
     if (!isAuthenticated) {
-      signIn(window.location.origin + '/uplink/lifetime')
+      signIn('/uplink/lifetime')
       return
     }
     setShowCheckout(true)
@@ -264,10 +268,10 @@ function LifetimePage() {
                 className="text-sm text-base-content/40 leading-relaxed max-w-md mb-10"
               >
                 Lifetime members get permanent Uplink-tier access with a single
-                payment — plus 50% off any Uplink Ultimate subscription. Real-time
-                SSE, unlimited symbols, webhooks, API access — all at half
-                price, for as long as you subscribe. Only 128 founding member
-                slots will ever exist.
+                payment — plus 50% off any Uplink Ultimate subscription.
+                Real-time SSE, unlimited symbols, webhooks, API access — all at
+                half price, for as long as you subscribe. Only 128 founding
+                member slots will ever exist.
               </motion.p>
 
               {/* Feature list */}
@@ -412,7 +416,7 @@ function LifetimePage() {
                       }}
                     />
                     <div className="relative z-10">
-                       <p className="text-[10px] text-primary/70 font-semibold mb-1">
+                      <p className="text-[10px] text-primary/70 font-semibold mb-1">
                         50% Off Uplink Ultimate — From $25.00/mo
                       </p>
                       <p className="text-[10px] text-base-content/35 leading-relaxed">
@@ -451,13 +455,17 @@ function LifetimePage() {
                   {/* Purchase button */}
                   {isAlreadyLifetime ? (
                     <div className="w-full py-3 px-4 text-center text-xs font-semibold rounded-lg bg-success/10 border border-success/20 text-success">
-                      <CheckCircle2 size={14} className="inline mr-1.5 -mt-0.5" />
+                      <CheckCircle2
+                        size={14}
+                        className="inline mr-1.5 -mt-0.5"
+                      />
                       You already have lifetime access
                     </div>
                   ) : hasActiveSub ? (
                     <div className="space-y-3">
                       <div className="py-2 px-3 text-center text-[10px] rounded-lg bg-info/10 border border-info/20 text-info/80">
-                        You have an active subscription. Purchasing lifetime will replace it.
+                        You have an active subscription. Purchasing lifetime
+                        will replace it.
                       </div>
                       <button
                         type="button"
