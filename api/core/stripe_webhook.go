@@ -64,6 +64,8 @@ func HandleStripeWebhook(c *fiber.Ctx) error {
 		handleInvoicePaymentFailed(event)
 	case "customer.subscription.trial_will_end":
 		handleTrialWillEnd(event)
+	case "payment_intent.succeeded":
+		handlePaymentIntentSucceeded(event)
 	default:
 		log.Printf("[Stripe Webhook] Unhandled event type: %s", event.Type)
 	}
@@ -393,6 +395,48 @@ func handleTrialWillEnd(event stripe.Event) {
 	trialEnd := time.Unix(sub.TrialEnd, 0)
 	log.Printf("[Stripe Webhook] Trial ending soon for user=%s on %s (sub=%s)",
 		logtoSub, trialEnd.Format("2006-01-02"), sub.ID)
+}
+
+// handlePaymentIntentSucceeded handles successful one-time payments (lifetime purchases).
+func handlePaymentIntentSucceeded(event stripe.Event) {
+	var pi stripe.PaymentIntent
+	if err := json.Unmarshal(event.Data.Raw, &pi); err != nil {
+		log.Printf("[Stripe Webhook] Failed to parse payment_intent.succeeded: %v", err)
+		return
+	}
+
+	plan := pi.Metadata["plan"]
+	logtoSub := pi.Metadata["logto_sub"]
+
+	// Only handle lifetime payments (other PaymentIntents are not ours)
+	if plan != "lifetime" || logtoSub == "" {
+		log.Printf("[Stripe Webhook] Ignoring payment_intent.succeeded: plan=%s logto_sub=%s", plan, logtoSub)
+		return
+	}
+
+	customerID := ""
+	if pi.Customer != nil {
+		customerID = pi.Customer.ID
+	}
+
+	log.Printf("[Stripe Webhook] Lifetime payment succeeded: user=%s customer=%s", logtoSub, customerID)
+
+	_, err := DBPool.Exec(context.Background(),
+		`INSERT INTO stripe_customers (logto_sub, stripe_customer_id, plan, status, lifetime)
+		 VALUES ($1, $2, 'lifetime', 'active', true)
+		 ON CONFLICT (logto_sub) DO UPDATE SET
+		   stripe_customer_id = $2, plan = 'lifetime', status = 'active',
+		   lifetime = true, updated_at = now()`,
+		logtoSub, customerID,
+	)
+	if err != nil {
+		log.Printf("[Stripe Webhook] Failed to upsert lifetime for %s: %v", logtoSub, err)
+		return
+	}
+
+	if err := AssignUltimateRole(logtoSub); err != nil {
+		log.Printf("[Stripe Webhook] Failed to assign ultimate role to %s: %v", logtoSub, err)
+	}
 }
 
 // lookupLogtoSub finds the Logto user ID for a Stripe customer ID.
