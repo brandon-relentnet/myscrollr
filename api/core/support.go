@@ -251,9 +251,9 @@ func HandleSubmitSupportTicket(c *fiber.Ctx) error {
 
 	log.Printf("[Support] All API keys failed. Last status: %d, body: %s", lastStatus, lastBody)
 
-	return c.JSON(fiber.Map{
-		"status":  "ok",
-		"message": "Bug report submitted successfully",
+	return c.Status(fiber.StatusBadGateway).JSON(ErrorResponse{
+		Status: "error",
+		Error:  "Failed to submit bug report — support system rejected all API keys",
 	})
 }
 
