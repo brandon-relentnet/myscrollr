@@ -13,6 +13,7 @@ import (
 	checkoutsession "github.com/stripe/stripe-go/v82/checkout/session"
 	stripecustomer "github.com/stripe/stripe-go/v82/customer"
 	stripeinvoice "github.com/stripe/stripe-go/v82/invoice"
+	stripepaymentintent "github.com/stripe/stripe-go/v82/paymentintent"
 	stripepaymentmethod "github.com/stripe/stripe-go/v82/paymentmethod"
 	stripeprice "github.com/stripe/stripe-go/v82/price"
 	stripesetupintent "github.com/stripe/stripe-go/v82/setupintent"
@@ -642,6 +643,90 @@ func HandleConfirmSubscription(c *fiber.Ctx) error {
 		Status:         subStatus,
 		TrialEnd:       trialEnd,
 		Plan:           plan,
+	})
+}
+
+// HandleCreatePaymentIntent creates a Stripe PaymentIntent for lifetime purchases.
+// The frontend confirms this directly via stripe.confirmPayment().
+func HandleCreatePaymentIntent(c *fiber.Ctx) error {
+	userID := GetUserID(c)
+	if userID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Status: "unauthorized", Error: "Authentication required",
+		})
+	}
+
+	lifetimePrice := os.Getenv("STRIPE_PRICE_LIFETIME")
+	if lifetimePrice == "" {
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Status: "error", Error: "Lifetime pricing not configured",
+		})
+	}
+
+	// Check eligibility
+	var existingPlan string
+	var existingStatus string
+	var existingLifetime bool
+	err := DBPool.QueryRow(context.Background(),
+		`SELECT plan, status, lifetime FROM stripe_customers WHERE logto_sub = $1`, userID,
+	).Scan(&existingPlan, &existingStatus, &existingLifetime)
+
+	if err == nil {
+		if existingLifetime {
+			return c.Status(fiber.StatusConflict).JSON(ErrorResponse{
+				Status: "error", Error: "You already have lifetime access",
+			})
+		}
+		if existingPlan != "free" && (existingStatus == "active" || existingStatus == "trialing") {
+			return c.Status(fiber.StatusConflict).JSON(ErrorResponse{
+				Status: "error", Error: "Please cancel your current subscription before purchasing lifetime",
+			})
+		}
+	}
+
+	email, _ := c.Locals("user_email").(string)
+	customerID, err := getOrCreateStripeCustomer(userID, email)
+	if err != nil {
+		log.Printf("[Billing] Failed to create Stripe customer for %s: %v", userID, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Status: "error", Error: "Failed to initialize billing",
+		})
+	}
+
+	// Look up the lifetime price amount from Stripe
+	p, err := stripeprice.Get(lifetimePrice, nil)
+	if err != nil {
+		log.Printf("[Billing] Failed to fetch lifetime price %s: %v", lifetimePrice, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Status: "error", Error: "Failed to fetch price details",
+		})
+	}
+
+	// Create PaymentIntent
+	piParams := &stripe.PaymentIntentParams{
+		Amount:   stripe.Int64(p.UnitAmount),
+		Currency: stripe.String(string(p.Currency)),
+		Customer: stripe.String(customerID),
+		AutomaticPaymentMethods: &stripe.PaymentIntentAutomaticPaymentMethodsParams{
+			Enabled: stripe.Bool(true),
+		},
+	}
+	piParams.AddMetadata("logto_sub", userID)
+	piParams.AddMetadata("plan", "lifetime")
+
+	pi, err := stripepaymentintent.New(piParams)
+	if err != nil {
+		log.Printf("[Billing] Failed to create PaymentIntent for %s: %v", userID, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Status: "error", Error: "Failed to initialize payment",
+		})
+	}
+
+	return c.JSON(PaymentIntentResponse{
+		ClientSecret:   pi.ClientSecret,
+		Amount:         p.UnitAmount,
+		Currency:       string(p.Currency),
+		PublishableKey: os.Getenv("STRIPE_PUBLISHABLE_KEY"),
 	})
 }
 
