@@ -92,9 +92,43 @@ type PlanPreviewResponse struct {
 
 // CheckoutResponse returns the client secret for the Payment Element.
 type CheckoutResponse struct {
-	ClientSecret    string `json:"client_secret"`
-	SessionID       string `json:"session_id"`
-	PublishableKey  string `json:"publishable_key"`
+	ClientSecret   string `json:"client_secret"`
+	SessionID      string `json:"session_id"`
+	PublishableKey string `json:"publishable_key"`
+}
+
+// SetupIntentResponse returns the client secret for the Payment Element (subscription flow).
+type SetupIntentResponse struct {
+	ClientSecret   string `json:"client_secret"`
+	Plan           string `json:"plan"`
+	HasTrial       bool   `json:"has_trial"`
+	TrialDays      int64  `json:"trial_days,omitempty"`
+	Amount         int64  `json:"amount"`
+	Currency       string `json:"currency"`
+	Interval       string `json:"interval"`
+	PublishableKey string `json:"publishable_key"`
+}
+
+// SubscribeRequest is the body for POST /checkout/subscribe.
+type SubscribeRequest struct {
+	SetupIntentID string `json:"setup_intent_id"`
+	PriceID       string `json:"price_id"`
+}
+
+// SubscribeResponse returns the newly created subscription details.
+type SubscribeResponse struct {
+	SubscriptionID string `json:"subscription_id"`
+	Status         string `json:"status"`
+	TrialEnd       *int64 `json:"trial_end,omitempty"`
+	Plan           string `json:"plan"`
+}
+
+// PaymentIntentResponse returns the client secret for the Payment Element (lifetime flow).
+type PaymentIntentResponse struct {
+	ClientSecret   string `json:"client_secret"`
+	Amount         int64  `json:"amount"`
+	Currency       string `json:"currency"`
+	PublishableKey string `json:"publishable_key"`
 }
 
 // SubscriptionResponse returns the user's subscription state.
