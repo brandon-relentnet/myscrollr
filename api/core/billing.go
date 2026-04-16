@@ -13,6 +13,8 @@ import (
 	checkoutsession "github.com/stripe/stripe-go/v82/checkout/session"
 	stripecustomer "github.com/stripe/stripe-go/v82/customer"
 	stripeinvoice "github.com/stripe/stripe-go/v82/invoice"
+	stripeprice "github.com/stripe/stripe-go/v82/price"
+	stripesetupintent "github.com/stripe/stripe-go/v82/setupintent"
 	stripesubscription "github.com/stripe/stripe-go/v82/subscription"
 	subscriptionschedule "github.com/stripe/stripe-go/v82/subscriptionschedule"
 )
@@ -353,6 +355,117 @@ func HandleCreateLifetimeCheckout(c *fiber.Ctx) error {
 	return c.JSON(CheckoutResponse{
 		ClientSecret:   session.ClientSecret,
 		SessionID:      session.ID,
+		PublishableKey: os.Getenv("STRIPE_PUBLISHABLE_KEY"),
+	})
+}
+
+// HandleCreateSetupIntent creates a Stripe SetupIntent for the Payment Element.
+// Used for subscription checkout: collect payment method first, then create subscription.
+func HandleCreateSetupIntent(c *fiber.Ctx) error {
+	userID := GetUserID(c)
+	if userID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Status: "unauthorized", Error: "Authentication required",
+		})
+	}
+
+	var req CheckoutRequest
+	if err := c.BodyParser(&req); err != nil || req.PriceID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+			Status: "error", Error: "price_id is required",
+		})
+	}
+
+	// Validate the price is a known recurring price (not lifetime)
+	plan := planFromPriceID(req.PriceID)
+	if plan == "unknown" || plan == "lifetime" {
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+			Status: "error", Error: "Invalid price_id for subscription checkout",
+		})
+	}
+
+	// Check if user already has an active subscription
+	var existingPlan string
+	var existingStatus string
+	var isLifetime bool
+	err := DBPool.QueryRow(context.Background(),
+		`SELECT plan, status, lifetime FROM stripe_customers WHERE logto_sub = $1`, userID,
+	).Scan(&existingPlan, &existingStatus, &isLifetime)
+
+	if err == nil && existingPlan != "free" && (existingStatus == "active" || existingStatus == "trialing") {
+		// Lifetime members can add Ultimate or Pro on top
+		if isLifetime && (isUltimatePlan(plan) || isProPlan(plan)) {
+			// Allow through
+		} else {
+			return c.Status(fiber.StatusConflict).JSON(ErrorResponse{
+				Status: "error", Error: "You already have an active subscription",
+			})
+		}
+	}
+
+	email, _ := c.Locals("user_email").(string)
+	customerID, err := getOrCreateStripeCustomer(userID, email)
+	if err != nil {
+		log.Printf("[Billing] Failed to create Stripe customer for %s: %v", userID, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Status: "error", Error: "Failed to initialize billing",
+		})
+	}
+
+	// Check trial eligibility
+	var hadPriorSub bool
+	_ = DBPool.QueryRow(context.Background(),
+		`SELECT EXISTS(SELECT 1 FROM stripe_customers WHERE logto_sub = $1 AND plan != 'free')`,
+		userID,
+	).Scan(&hadPriorSub)
+
+	// Create SetupIntent
+	siParams := &stripe.SetupIntentParams{
+		Customer: stripe.String(customerID),
+		AutomaticPaymentMethods: &stripe.SetupIntentAutomaticPaymentMethodsParams{
+			Enabled: stripe.Bool(true),
+		},
+	}
+	siParams.AddMetadata("logto_sub", userID)
+	siParams.AddMetadata("plan", plan)
+	siParams.AddMetadata("price_id", req.PriceID)
+
+	si, err := stripesetupintent.New(siParams)
+	if err != nil {
+		log.Printf("[Billing] Failed to create SetupIntent for %s: %v", userID, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Status: "error", Error: "Failed to initialize payment setup",
+		})
+	}
+
+	// Look up price details to return amount/currency/interval
+	p, err := stripeprice.Get(req.PriceID, nil)
+	if err != nil {
+		log.Printf("[Billing] Failed to fetch price %s: %v", req.PriceID, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Status: "error", Error: "Failed to fetch price details",
+		})
+	}
+
+	interval := ""
+	if p.Recurring != nil {
+		interval = string(p.Recurring.Interval)
+	}
+
+	hasTrial := !hadPriorSub
+	var trialDays int64
+	if hasTrial {
+		trialDays = 7
+	}
+
+	return c.JSON(SetupIntentResponse{
+		ClientSecret:   si.ClientSecret,
+		Plan:           plan,
+		HasTrial:       hasTrial,
+		TrialDays:      trialDays,
+		Amount:         p.UnitAmount,
+		Currency:       string(p.Currency),
+		Interval:       interval,
 		PublishableKey: os.Getenv("STRIPE_PUBLISHABLE_KEY"),
 	})
 }
