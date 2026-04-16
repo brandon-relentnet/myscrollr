@@ -8,8 +8,12 @@ import FeatureGuidesSection from "../components/support/FeatureGuidesSection";
 import BillingHelpSection from "../components/support/BillingHelpSection";
 import ContactForm from "../components/support/ContactForm";
 import type { SectionId } from "../components/support/SupportHub";
+import RouteError from "../components/RouteError";
 
-export const Route = createFileRoute("/support")({ component: SupportPage });
+export const Route = createFileRoute("/support")({
+  component: SupportPage,
+  errorComponent: RouteError,
+});
 
 const SECTION_TITLES: Record<SectionId, string> = {
   "getting-started": "Getting Started",

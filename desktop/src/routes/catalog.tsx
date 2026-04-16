@@ -15,9 +15,11 @@ import { CHANNEL_ORDER } from "../channels/registry";
 import { WIDGET_ORDER } from "../widgets/registry";
 import CatalogCard from "../components/marketplace/CatalogCard";
 import QueryErrorBanner from "../components/QueryErrorBanner";
+import RouteError from "../components/RouteError";
 
 export const Route = createFileRoute("/catalog")({
   component: CatalogPage,
+  errorComponent: RouteError,
 });
 
 // ── Category filter options ─────────────────────────────────────
