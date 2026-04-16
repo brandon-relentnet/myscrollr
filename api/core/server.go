@@ -108,6 +108,7 @@ func (s *Server) setupMiddleware() {
 		"/channels":                true,
 		"/extension/token":         true,
 		"/extension/token/refresh": true,
+		"/support/ticket":          true,
 	}
 
 	// Stricter rate limiter for OAuth initiation endpoints (e.g. /yahoo/start).
@@ -175,6 +176,9 @@ func (s *Server) setupRoutes() {
 
 	// --- Protected Routes ---
 	s.App.Get("/dashboard", LogtoAuth, s.getDashboard)
+
+	// Support
+	s.App.Post("/support/ticket", LogtoAuth, HandleSubmitSupportTicket)
 
 	// Billing Routes
 	s.App.Post("/checkout/session", LogtoAuth, HandleCreateCheckoutSession)
