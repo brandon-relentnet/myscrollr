@@ -6,10 +6,10 @@ import {
   useStripe,
 } from '@stripe/react-stripe-js'
 import { loadStripe } from '@stripe/stripe-js'
-import type { Appearance, StripeElementsOptions } from '@stripe/stripe-js'
 import { AlertTriangle, Loader2, Lock, X } from 'lucide-react'
-import { billingApi } from '@/api/client'
+import type { Appearance, StripeElementsOptions } from '@stripe/stripe-js'
 import type { PaymentIntentResponse, SetupIntentResponse } from '@/api/client'
+import { billingApi } from '@/api/client'
 
 const stripePromise = loadStripe(
   import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '',
@@ -184,8 +184,7 @@ function PaymentForm({
           await stripe.confirmSetup({
             elements,
             confirmParams: {
-              return_url:
-                window.location.origin + '/uplink?setup=complete',
+              return_url: window.location.origin + '/uplink?setup=complete',
             },
             redirect: 'if_required',
           })
@@ -196,13 +195,11 @@ function PaymentForm({
         }
 
         // Create the subscription on the backend
-        if (confirmedSi && 'id' in confirmedSi && !isLifetimePlan(plan)) {
-          await billingApi.confirmSubscription(
-            confirmedSi.id,
-            plan.priceId,
-            getToken,
-          )
-        }
+        await billingApi.confirmSubscription(
+          confirmedSi.id,
+          plan.priceId,
+          getToken,
+        )
         onSuccess()
       }
     } catch (err) {
@@ -219,10 +216,7 @@ function PaymentForm({
       <h3 className="text-xs font-semibold text-base-content/50 uppercase tracking-wider">
         Payment method
       </h3>
-      <PaymentElement
-        options={{ layout: 'tabs' }}
-        onReady={onReady}
-      />
+      <PaymentElement options={{ layout: 'tabs' }} onReady={onReady} />
       {error && (
         <div className="flex items-start gap-2 p-3 bg-error/10 border border-error/20 rounded-lg">
           <AlertTriangle size={14} className="text-error mt-0.5 shrink-0" />
@@ -260,7 +254,12 @@ interface OrderSummaryProps {
   currency: string
 }
 
-function OrderSummary({ plan, hasTrial, amount, currency: _currency }: OrderSummaryProps) {
+function OrderSummary({
+  plan,
+  hasTrial,
+  amount,
+  currency: _currency,
+}: OrderSummaryProps) {
   const colors = TIER_COLORS[plan.tier]
   const isLifetime = isLifetimePlan(plan)
 
@@ -284,24 +283,26 @@ function OrderSummary({ plan, hasTrial, amount, currency: _currency }: OrderSumm
         <p className="text-xs text-base-content/40 mt-0.5">
           {isLifetime
             ? 'One-time payment — permanent access'
-            : `${(plan as SubscriptionPlan).interval === 'annual' ? 'Annual' : 'Monthly'} billing`}
+            : `${(plan).interval === 'annual' ? 'Annual' : 'Monthly'} billing`}
         </p>
       </div>
 
       <div className="border-t border-base-content/10 pt-4">
         <div className="flex items-baseline justify-between">
           <span className="text-xs text-base-content/50">
-            {isLifetime ? 'Lifetime Access' : `${plan.name} — ${(plan as SubscriptionPlan).interval}`}
+            {isLifetime
+              ? 'Lifetime Access'
+              : `${plan.name} — ${(plan).interval}`}
           </span>
           <span className="text-sm font-semibold text-base-content">
             {formatCurrency(amount)}
             {!isLifetime &&
-              `/${(plan as SubscriptionPlan).interval === 'annual' ? 'yr' : 'mo'}`}
+              `/${(plan).interval === 'annual' ? 'yr' : 'mo'}`}
           </span>
         </div>
-        {!isLifetime && (plan as SubscriptionPlan).interval === 'annual' && (
+        {!isLifetime && (plan).interval === 'annual' && (
           <p className="text-[10px] text-base-content/30 text-right mt-0.5">
-            ${(plan as SubscriptionPlan).perMonth.toFixed(2)}/mo
+            ${(plan).perMonth.toFixed(2)}/mo
           </p>
         )}
       </div>
@@ -376,7 +377,7 @@ export default function CheckoutModal({
           if (!cancelled) setPaymentIntent(res)
         } else {
           const res = await billingApi.createSetupIntent(
-            (plan as SubscriptionPlan).priceId,
+            (plan).priceId,
             getToken,
           )
           if (!cancelled) setSetupIntent(res)
@@ -464,7 +465,9 @@ export default function CheckoutModal({
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label={isLifetime ? 'Lifetime purchase' : `Subscribe to ${plan.name}`}
+        aria-label={
+          isLifetime ? 'Lifetime purchase' : `Subscribe to ${plan.name}`
+        }
         tabIndex={-1}
         className="relative w-full max-w-2xl mx-4 bg-base-200 border border-base-content/10 rounded-xl overflow-hidden"
       >

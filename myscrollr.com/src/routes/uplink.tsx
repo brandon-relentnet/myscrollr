@@ -45,9 +45,7 @@ import { useGetToken } from '@/hooks/useGetToken'
 import { billingApi } from '@/api/client'
 import { FAQSection } from '@/components/landing/FAQSection'
 
-const CheckoutModal = lazy(
-  () => import('@/components/billing/CheckoutModal'),
-)
+const CheckoutModal = lazy(() => import('@/components/billing/CheckoutModal'))
 
 // ── Signature easing (matches homepage) ────────────────────────
 const EASE = [0.22, 1, 0.36, 1] as const
@@ -979,7 +977,7 @@ function UplinkPage() {
     // No subscription or same tier — open checkout modal
     const priceId = getPriceId(tier, plan)
     const pricing = PRICING[tier]
-    const periodPricing = pricing[plan as keyof typeof pricing] as {
+    const periodPricing = pricing[plan] as {
       price: number
       perMonth: number
     }

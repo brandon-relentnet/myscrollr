@@ -19,9 +19,7 @@ import { useScrollrAuth } from '@/hooks/useScrollrAuth'
 import { useGetToken } from '@/hooks/useGetToken'
 import { billingApi } from '@/api/client'
 
-const CheckoutModal = lazy(
-  () => import('@/components/billing/CheckoutModal'),
-)
+const CheckoutModal = lazy(() => import('@/components/billing/CheckoutModal'))
 
 // ── Signature easing (matches homepage) ────────────────────────
 const EASE = [0.22, 1, 0.36, 1] as const
