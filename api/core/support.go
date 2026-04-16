@@ -177,10 +177,11 @@ func HandleSubmitSupportTicket(c *fiber.Ctx) error {
 		})
 	}
 
-	// POST to OS Ticket
+	// POST to OS Ticket — try each API key (comma-separated) until one succeeds.
+	// OS Ticket ties API keys to specific IPs, and pods can land on different nodes.
 	osTicketURL := os.Getenv("OSTICKET_URL")
-	apiKey := os.Getenv("OSTICKET_API_KEY")
-	if osTicketURL == "" || apiKey == "" {
+	apiKeysRaw := os.Getenv("OSTICKET_API_KEY")
+	if osTicketURL == "" || apiKeysRaw == "" {
 		log.Println("[Support] OSTICKET_URL or OSTICKET_API_KEY not configured")
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
 			Status: "error",
@@ -199,40 +200,56 @@ func HandleSubmitSupportTicket(c *fiber.Ctx) error {
 		})
 	}
 
+	apiKeys := strings.Split(apiKeysRaw, ",")
 	client := &http.Client{Timeout: 15 * time.Second}
-	httpReq, err := http.NewRequest("POST", ticketURL, bytes.NewReader(payloadBytes))
-	if err != nil {
-		log.Printf("[Support] Failed to create OS Ticket request: %v", err)
-		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
-			Status: "error",
-			Error:  "Failed to submit ticket",
-		})
+	var lastStatus int
+	var lastBody string
+
+	for i, key := range apiKeys {
+		key = strings.TrimSpace(key)
+		if key == "" {
+			continue
+		}
+
+		httpReq, err := http.NewRequest("POST", ticketURL, bytes.NewReader(payloadBytes))
+		if err != nil {
+			log.Printf("[Support] Failed to create OS Ticket request: %v", err)
+			continue
+		}
+		httpReq.Header.Set("Content-Type", "application/json")
+		httpReq.Header.Set("X-API-Key", key)
+
+		resp, err := client.Do(httpReq)
+		if err != nil {
+			log.Printf("[Support] OS Ticket request failed (key %d): %v", i+1, err)
+			continue
+		}
+		respBody, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		lastStatus = resp.StatusCode
+		lastBody = string(respBody)
+
+		if resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusOK {
+			log.Printf("[Support] Ticket created for user %s (key %d)", userID, i+1)
+			return c.JSON(fiber.Map{
+				"status":  "ok",
+				"message": "Bug report submitted successfully",
+			})
+		}
+
+		// If 401 (wrong IP for this key), try the next key
+		if resp.StatusCode == http.StatusUnauthorized {
+			log.Printf("[Support] Key %d rejected (401), trying next...", i+1)
+			continue
+		}
+
+		// Any other error — don't retry, it's not an IP issue
+		log.Printf("[Support] OS Ticket returned %d: %s", resp.StatusCode, lastBody)
+		break
 	}
 
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("X-API-Key", apiKey)
-
-	resp, err := client.Do(httpReq)
-	if err != nil {
-		log.Printf("[Support] OS Ticket request failed: %v", err)
-		return c.Status(fiber.StatusBadGateway).JSON(ErrorResponse{
-			Status: "error",
-			Error:  "Failed to reach support system",
-		})
-	}
-	defer resp.Body.Close()
-
-	respBody, _ := io.ReadAll(resp.Body)
-
-	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		log.Printf("[Support] OS Ticket returned %d: %s", resp.StatusCode, string(respBody))
-		return c.Status(fiber.StatusBadGateway).JSON(ErrorResponse{
-			Status: "error",
-			Error:  "Support system rejected the ticket",
-		})
-	}
-
-	log.Printf("[Support] Ticket created for user %s", userID)
+	log.Printf("[Support] All API keys failed. Last status: %d, body: %s", lastStatus, lastBody)
 
 	return c.JSON(fiber.Map{
 		"status":  "ok",
