@@ -231,6 +231,31 @@ export interface CheckoutReturnStatus {
   session_id?: string
 }
 
+export interface SetupIntentResponse {
+  client_secret: string
+  plan: string
+  has_trial: boolean
+  trial_days: number
+  amount: number
+  currency: string
+  interval: string
+  publishable_key: string
+}
+
+export interface SubscribeResponse {
+  subscription_id: string
+  status: string
+  trial_end?: number
+  plan: string
+}
+
+export interface PaymentIntentResponse {
+  client_secret: string
+  amount: number
+  currency: string
+  publishable_key: string
+}
+
 export const billingApi = {
   /** Create a subscription checkout session (monthly/annual) */
   createCheckoutSession: (
@@ -251,6 +276,48 @@ export const billingApi = {
   createLifetimeCheckout: (getToken: () => Promise<string | null>) =>
     authenticatedFetch<CheckoutResponse>(
       '/checkout/lifetime',
+      { method: 'POST' },
+      getToken,
+    ),
+
+  /** Create a SetupIntent for subscription checkout (PaymentElement flow) */
+  createSetupIntent: (
+    priceId: string,
+    getToken: () => Promise<string | null>,
+  ) =>
+    authenticatedFetch<SetupIntentResponse>(
+      '/checkout/setup-intent',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ price_id: priceId }),
+      },
+      getToken,
+    ),
+
+  /** Confirm subscription after SetupIntent is confirmed */
+  confirmSubscription: (
+    setupIntentId: string,
+    priceId: string,
+    getToken: () => Promise<string | null>,
+  ) =>
+    authenticatedFetch<SubscribeResponse>(
+      '/checkout/subscribe',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          setup_intent_id: setupIntentId,
+          price_id: priceId,
+        }),
+      },
+      getToken,
+    ),
+
+  /** Create a PaymentIntent for lifetime purchase (PaymentElement flow) */
+  createPaymentIntent: (getToken: () => Promise<string | null>) =>
+    authenticatedFetch<PaymentIntentResponse>(
+      '/checkout/payment-intent',
       { method: 'POST' },
       getToken,
     ),
