@@ -496,6 +496,24 @@ func HandleConfirmSubscription(c *fiber.Ctx) error {
 		})
 	}
 
+	// Re-check for active subscription (guards against concurrent tab race condition)
+	var existingPlan string
+	var existingStatus string
+	var existingLifetime bool
+	err := DBPool.QueryRow(context.Background(),
+		`SELECT plan, status, lifetime FROM stripe_customers WHERE logto_sub = $1`, userID,
+	).Scan(&existingPlan, &existingStatus, &existingLifetime)
+
+	if err == nil && existingPlan != "free" && (existingStatus == "active" || existingStatus == "trialing") {
+		if existingLifetime && (isUltimatePlan(plan) || isProPlan(plan)) {
+			// Allow lifetime members to add Ultimate or Pro
+		} else {
+			return c.Status(fiber.StatusConflict).JSON(ErrorResponse{
+				Status: "error", Error: "You already have an active subscription",
+			})
+		}
+	}
+
 	// Retrieve the SetupIntent and verify ownership
 	si, err := stripesetupintent.Get(req.SetupIntentID, nil)
 	if err != nil {
