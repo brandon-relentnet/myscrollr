@@ -1,4 +1,4 @@
-import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
 import {
   AnimatePresence,
   motion,
@@ -45,7 +45,9 @@ import { useGetToken } from '@/hooks/useGetToken'
 import { billingApi } from '@/api/client'
 import { FAQSection } from '@/components/landing/FAQSection'
 
-const CheckoutForm = lazy(() => import('@/components/billing/CheckoutForm'))
+const CheckoutModal = lazy(
+  () => import('@/components/billing/CheckoutModal'),
+)
 
 // ── Signature easing (matches homepage) ────────────────────────
 const EASE = [0.22, 1, 0.36, 1] as const
@@ -70,9 +72,7 @@ type PlanKey = 'monthly' | 'annual'
 type TierKey = 'uplink' | 'pro' | 'ultimate'
 
 export const Route = createFileRoute('/uplink')({
-  validateSearch: (search: Record<string, unknown>) => ({
-    session_id: (search.session_id as string) || undefined,
-  }),
+  validateSearch: () => ({}),
   component: UplinkPage,
 })
 
@@ -882,14 +882,15 @@ function UplinkPage() {
 
   const { isAuthenticated, signIn } = useScrollrAuth()
   const getToken = useGetToken()
-  const navigate = useNavigate()
-  const { session_id } = Route.useSearch()
-
-  const [selectedPlan, setSelectedPlan] = useState<PlanKey | null>(null)
-  const [selectedTier, setSelectedTier] = useState<TierKey>('uplink')
-  const [showCheckout, setShowCheckout] = useState(false)
+  const [checkoutPlan, setCheckoutPlan] = useState<{
+    name: string
+    tier: TierKey
+    priceId: string
+    price: number
+    interval: PlanKey
+    perMonth: number
+  } | null>(null)
   const [checkoutSuccess, setCheckoutSuccess] = useState(false)
-  const [checkingSession, setCheckingSession] = useState(false)
   const [billingView, setBillingView] = useState<BillingView>('annual')
   const [currentSub, setCurrentSub] = useState<SubscriptionStatus | null>(null)
   const [planChanging, setPlanChanging] = useState(false)
@@ -940,30 +941,6 @@ function UplinkPage() {
       .catch(() => {})
   }, [isAuthenticated, getToken, checkoutSuccess])
 
-  // Handle return from Stripe checkout via ?session_id=
-  useEffect(() => {
-    if (!session_id) return
-    setCheckingSession(true)
-    billingApi
-      .getCheckoutReturn(session_id, getToken)
-      .then((res) => {
-        if (res.status === 'complete') {
-          setCheckoutSuccess(true)
-        }
-      })
-      .catch(() => {
-        // Session check failed — not critical, user can check account
-      })
-      .finally(() => {
-        setCheckingSession(false)
-        navigate({
-          to: '/uplink',
-          search: { session_id: undefined },
-          replace: true,
-        })
-      })
-  }, [session_id, getToken, navigate])
-
   const handleSelectPlan = async (plan: PlanKey, tier: TierKey = 'uplink') => {
     if (!isAuthenticated) {
       signIn('/uplink')
@@ -1000,10 +977,21 @@ function UplinkPage() {
       return
     }
 
-    // No subscription or same tier — original checkout flow
-    setSelectedPlan(plan)
-    setSelectedTier(tier)
-    setShowCheckout(true)
+    // No subscription or same tier — open checkout modal
+    const priceId = getPriceId(tier, plan)
+    const pricing = PRICING[tier]
+    const periodPricing = pricing[plan as keyof typeof pricing] as {
+      price: number
+      perMonth: number
+    }
+    setCheckoutPlan({
+      name: TIER_NAMES[tier],
+      tier,
+      priceId,
+      price: periodPricing.price,
+      interval: plan,
+      perMonth: periodPricing.perMonth,
+    })
   }
 
   const handleConfirmChange = async () => {
@@ -1028,14 +1016,7 @@ function UplinkPage() {
   }
 
   const handleCloseCheckout = () => {
-    setShowCheckout(false)
-    setSelectedPlan(null)
-    setSelectedTier('uplink')
-  }
-
-  const getSelectedPriceId = (): string => {
-    if (!selectedPlan) return ''
-    return getPriceId(selectedTier, selectedPlan)
+    setCheckoutPlan(null)
   }
 
   /** Get the CTA label for a tier card based on current subscription state. */
@@ -1069,7 +1050,7 @@ function UplinkPage() {
   return (
     <div className="min-h-screen pt-20">
       {/* ── Checkout Modal ──────────────────────────────────── */}
-      {showCheckout && selectedPlan && (
+      {checkoutPlan && (
         <Suspense
           fallback={
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
@@ -1077,10 +1058,14 @@ function UplinkPage() {
             </div>
           }
         >
-          <CheckoutForm
-            priceId={getSelectedPriceId()}
-            isUltimate={selectedTier === 'ultimate'}
+          <CheckoutModal
+            plan={checkoutPlan}
+            hasTrial={!hadPriorSub}
             getToken={getToken}
+            onSuccess={() => {
+              setCheckoutPlan(null)
+              setCheckoutSuccess(true)
+            }}
             onClose={handleCloseCheckout}
           />
         </Suspense>
@@ -1314,16 +1299,6 @@ function UplinkPage() {
             ✕
           </button>
         </motion.div>
-      )}
-
-      {/* ── Session Checking Indicator ──────────────────────── */}
-      {checkingSession && (
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-40 px-6 py-3 bg-base-200/90 border border-base-content/10 rounded-lg backdrop-blur-sm flex items-center gap-3">
-          <Loader2 size={14} className="animate-spin text-primary" />
-          <span className="text-[10px] text-base-content/40">
-            Confirming payment...
-          </span>
-        </div>
       )}
 
       {/* ================================================================
