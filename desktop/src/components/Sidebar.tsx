@@ -6,7 +6,7 @@
  * Collapses to a 48px icon-only rail with tooltips.
  */
 import { useState } from "react";
-import { Home, LayoutGrid, Settings, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Home, LayoutGrid, Settings, LifeBuoy, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import clsx from "clsx";
 import Tooltip from "./Tooltip";
 import type { DeliveryMode, ChannelManifest, WidgetManifest } from "../types";
@@ -85,6 +85,8 @@ interface SidebarProps {
   isSettings: boolean;
   /** Whether the catalog page is active. */
   isMarketplace: boolean;
+  /** Whether the support page is active. */
+  isSupport: boolean;
   /** Currently active channel or widget ID (for pinned item highlighting). */
   activeItem: string;
 
@@ -102,6 +104,8 @@ interface SidebarProps {
   onNavigateToSettings: () => void;
   /** Navigate to the catalog page. */
   onNavigateToMarketplace: () => void;
+  /** Navigate to the support page. */
+  onNavigateToSupport: () => void;
   /** Navigate to a specific source (channel or widget) feed. */
   onSelectItem: (id: string, kind: "channel" | "widget") => void;
 }
@@ -112,6 +116,7 @@ export default function Sidebar({
   isFeed,
   isSettings,
   isMarketplace,
+  isSupport,
   activeItem,
   pinnedSources,
   deliveryMode,
@@ -119,6 +124,7 @@ export default function Sidebar({
   onNavigateToFeed,
   onNavigateToSettings,
   onNavigateToMarketplace,
+  onNavigateToSupport,
   onSelectItem,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(() =>
@@ -214,6 +220,14 @@ export default function Sidebar({
           active={isSettings}
           collapsed={collapsed}
           onClick={onNavigateToSettings}
+        />
+
+        <NavItem
+          icon={<LifeBuoy size={15} />}
+          label="Support"
+          active={isSupport}
+          collapsed={collapsed}
+          onClick={onNavigateToSupport}
         />
 
         {/* Collapse toggle */}

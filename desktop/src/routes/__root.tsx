@@ -96,41 +96,48 @@ function parseRoute(pathname: string) {
     return {
       activeItem: "",
       isChannel: false, isWidget: false, isFeed: true,
-      isSettings: false, isMarketplace: false,
+      isSettings: false, isMarketplace: false, isSupport: false,
     };
   }
   if (kind === "channel" && itemId) {
     return {
       activeItem: itemId,
       isChannel: true, isWidget: false, isFeed: false,
-      isSettings: false, isMarketplace: false,
+      isSettings: false, isMarketplace: false, isSupport: false,
     };
   }
   if (kind === "widget" && itemId) {
     return {
       activeItem: itemId,
       isChannel: false, isWidget: true, isFeed: false,
-      isSettings: false, isMarketplace: false,
+      isSettings: false, isMarketplace: false, isSupport: false,
     };
   }
   if (kind === "catalog") {
     return {
       activeItem: "",
       isChannel: false, isWidget: false, isFeed: false,
-      isSettings: false, isMarketplace: true,
+      isSettings: false, isMarketplace: true, isSupport: false,
     };
   }
   if (kind === "settings") {
     return {
       activeItem: "settings",
       isChannel: false, isWidget: false, isFeed: false,
-      isSettings: true, isMarketplace: false,
+      isSettings: true, isMarketplace: false, isSupport: false,
+    };
+  }
+  if (kind === "support") {
+    return {
+      activeItem: "",
+      isChannel: false, isWidget: false, isFeed: false,
+      isSettings: false, isMarketplace: false, isSupport: true,
     };
   }
   return {
     activeItem: "",
     isChannel: false, isWidget: false, isFeed: true,
-    isSettings: false, isMarketplace: false,
+    isSettings: false, isMarketplace: false, isSupport: false,
   };
 }
 
@@ -214,6 +221,13 @@ function RootLayout() {
       setDeliveryMode(mode);
     },
   );
+
+  // ── Tray navigation (e.g. "Report a Bug" menu item) ────────
+  useTauriListener<string>("navigate-to", (event) => {
+    if (event.payload) {
+      navigate({ to: event.payload });
+    }
+  });
 
   // ── Extracted hooks ─────────────────────────────────────────
 
@@ -335,6 +349,7 @@ function RootLayout() {
   const handleNavigateToFeed = useCallback(() => navigate({ to: "/feed" }), [navigate]);
   const handleNavigateToSettings = useCallback(() => navigate({ to: "/settings", search: { tab: "general" } }), [navigate]);
   const handleNavigateToMarketplace = useCallback(() => navigate({ to: "/catalog" }), [navigate]);
+  const handleNavigateToSupport = useCallback(() => navigate({ to: "/support" }), [navigate]);
 
   const handleSelectPinned = useCallback(
     (id: string, kind: "channel" | "widget") => {
@@ -517,6 +532,7 @@ function RootLayout() {
               isFeed={route.isFeed}
               isSettings={route.isSettings}
               isMarketplace={route.isMarketplace}
+              isSupport={route.isSupport}
               activeItem={route.activeItem}
               pinnedSources={resolvedPinnedSources}
               deliveryMode={deliveryMode}
@@ -524,6 +540,7 @@ function RootLayout() {
               onNavigateToFeed={handleNavigateToFeed}
               onNavigateToSettings={handleNavigateToSettings}
               onNavigateToMarketplace={handleNavigateToMarketplace}
+              onNavigateToSupport={handleNavigateToSupport}
               onSelectItem={handleSelectPinned}
             />
 

@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SupportRouteImport } from './routes/support'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as CatalogRouteImport } from './routes/catalog'
@@ -16,6 +17,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as WidgetIdTabRouteImport } from './routes/widget.$id.$tab'
 import { Route as ChannelTypeTabRouteImport } from './routes/channel.$type.$tab'
 
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/catalog': typeof CatalogRoute
   '/feed': typeof FeedRoute
   '/settings': typeof SettingsRoute
+  '/support': typeof SupportRoute
   '/channel/$type/$tab': typeof ChannelTypeTabRoute
   '/widget/$id/$tab': typeof WidgetIdTabRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/catalog': typeof CatalogRoute
   '/feed': typeof FeedRoute
   '/settings': typeof SettingsRoute
+  '/support': typeof SupportRoute
   '/channel/$type/$tab': typeof ChannelTypeTabRoute
   '/widget/$id/$tab': typeof WidgetIdTabRoute
 }
@@ -69,6 +77,7 @@ export interface FileRoutesById {
   '/catalog': typeof CatalogRoute
   '/feed': typeof FeedRoute
   '/settings': typeof SettingsRoute
+  '/support': typeof SupportRoute
   '/channel/$type/$tab': typeof ChannelTypeTabRoute
   '/widget/$id/$tab': typeof WidgetIdTabRoute
 }
@@ -79,6 +88,7 @@ export interface FileRouteTypes {
     | '/catalog'
     | '/feed'
     | '/settings'
+    | '/support'
     | '/channel/$type/$tab'
     | '/widget/$id/$tab'
   fileRoutesByTo: FileRoutesByTo
@@ -87,6 +97,7 @@ export interface FileRouteTypes {
     | '/catalog'
     | '/feed'
     | '/settings'
+    | '/support'
     | '/channel/$type/$tab'
     | '/widget/$id/$tab'
   id:
@@ -95,6 +106,7 @@ export interface FileRouteTypes {
     | '/catalog'
     | '/feed'
     | '/settings'
+    | '/support'
     | '/channel/$type/$tab'
     | '/widget/$id/$tab'
   fileRoutesById: FileRoutesById
@@ -104,12 +116,20 @@ export interface RootRouteChildren {
   CatalogRoute: typeof CatalogRoute
   FeedRoute: typeof FeedRoute
   SettingsRoute: typeof SettingsRoute
+  SupportRoute: typeof SupportRoute
   ChannelTypeTabRoute: typeof ChannelTypeTabRoute
   WidgetIdTabRoute: typeof WidgetIdTabRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -160,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   CatalogRoute: CatalogRoute,
   FeedRoute: FeedRoute,
   SettingsRoute: SettingsRoute,
+  SupportRoute: SupportRoute,
   ChannelTypeTabRoute: ChannelTypeTabRoute,
   WidgetIdTabRoute: WidgetIdTabRoute,
 }

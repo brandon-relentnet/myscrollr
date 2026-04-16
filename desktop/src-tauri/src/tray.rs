@@ -11,9 +11,19 @@ pub fn setup(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let sep1 = PredefinedMenuItem::separator(app)?;
     let toggle_ticker = MenuItemBuilder::with_id("toggle_ticker", "Toggle Ticker").build(app)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
+    let report_bug = MenuItemBuilder::with_id("report_bug", "Report a Bug").build(app)?;
+    let sep3 = PredefinedMenuItem::separator(app)?;
     let quit = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
     let menu = MenuBuilder::new(app)
-        .items(&[&open, &sep1, &toggle_ticker, &sep2, &quit])
+        .items(&[
+            &open,
+            &sep1,
+            &toggle_ticker,
+            &sep2,
+            &report_bug,
+            &sep3,
+            &quit,
+        ])
         .build()?;
 
     // Monochrome icon for the system tray. On macOS, icon_as_template(true)
@@ -37,6 +47,13 @@ pub fn setup(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                 // Emit an event so JS can toggle the showTicker preference,
                 // which is the single source of truth for ticker visibility.
                 let _ = app.emit("toggle-ticker", ());
+            }
+            "report_bug" => {
+                if let Some(main) = app.get_webview_window("main") {
+                    let _ = main.show();
+                    let _ = main.set_focus();
+                }
+                let _ = app.emit("navigate-to", "/support");
             }
             "quit" => {
                 app.exit(0);

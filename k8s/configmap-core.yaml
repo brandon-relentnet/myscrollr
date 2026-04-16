@@ -30,3 +30,7 @@ data:
   STRIPE_PRICE_ULTIMATE_MONTHLY: "price_1TC6dWC2uHc0J8jt2eeHPqHg"
   STRIPE_PRICE_ULTIMATE_ANNUAL: "price_1TC6dcC2uHc0J8jtf0qa6fXf"
   STRIPE_LIFETIME_ULTIMATE_COUPON_ID: "BLMMYMix"
+
+  # Support / OS Ticket
+  OSTICKET_URL: "https://support.myscrollr.com"
+  OSTICKET_TOPIC_ID: ""

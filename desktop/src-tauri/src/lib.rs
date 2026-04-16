@@ -80,6 +80,7 @@ pub fn run() {
             commands::window::show_app_window,
             commands::window::quit_app,
             commands::system_info::get_system_info,
+            commands::diagnostics::collect_diagnostics,
         ])
         .on_window_event(|window, event| {
             // Intercept close on both windows — hide instead of destroy.
