@@ -5,8 +5,11 @@ import { Zap } from "lucide-react";
 import { channelsApi } from "../../api/client";
 import { RECOMMENDED_FEEDS } from "./curated-picks";
 import { queryKeys } from "../../api/queries";
+import { getLimit, TIER_LIMITS } from "../../tierLimits";
+import { TIER_LABELS } from "../../auth";
 import type { ChannelType } from "../../api/client";
 import type { AppPreferences } from "../../preferences";
+import type { SubscriptionTier } from "../../auth";
 
 import WizardShell from "./WizardShell";
 import StepChannels from "./StepChannels";
@@ -25,6 +28,7 @@ type WizardStep =
 
 interface OnboardingWizardProps {
   prefs: AppPreferences;
+  tier: SubscriptionTier;
   /** Called when the wizard finishes or is skipped. Updated prefs are passed. */
   onComplete: (prefs: AppPreferences) => void;
 }
@@ -49,7 +53,7 @@ function WelcomeScreen({ onStart, onSkip }: {
   onStart: () => void;
   onSkip: (dontShowAgain: boolean) => void;
 }) {
-  const [dontShow, setDontShow] = useState(false);
+  const [dontShow, setDontShow] = useState(true);
 
   return (
     <div className="flex flex-col h-screen w-screen select-none">
@@ -116,8 +120,39 @@ function WelcomeScreen({ onStart, onSkip }: {
 
 // ── Component ───────────────────────────────────────────────────
 
-export default function OnboardingWizard({ prefs, onComplete }: OnboardingWizardProps) {
+export default function OnboardingWizard({ prefs, tier, onComplete }: OnboardingWizardProps) {
   const queryClient = useQueryClient();
+
+  // ── Tier-based channel locks ──
+  const channelLimitKeys: Record<ChannelType, keyof typeof TIER_LIMITS["free"]> = {
+    finance: "symbols",
+    sports: "leagues",
+    rss: "feeds",
+    fantasy: "fantasy",
+  };
+
+  const lockedChannels = new Set<ChannelType>();
+  const minTierLabels: Record<string, string> = {};
+
+  for (const [ch, limitKey] of Object.entries(channelLimitKeys) as [ChannelType, keyof typeof TIER_LIMITS["free"]][]) {
+    if (getLimit(tier, limitKey) === 0) {
+      lockedChannels.add(ch);
+      // Find the minimum tier that unlocks this channel
+      const tiers: SubscriptionTier[] = ["free", "uplink", "uplink_pro", "uplink_ultimate"];
+      for (const t of tiers) {
+        if (getLimit(t, limitKey) > 0) {
+          minTierLabels[ch] = TIER_LABELS[t];
+          break;
+        }
+      }
+    }
+  }
+
+  function maxItemsFor(channel: ChannelType): number | undefined {
+    const limitKey = channelLimitKeys[channel];
+    const limit = getLimit(tier, limitKey);
+    return limit === Infinity ? undefined : limit;
+  }
 
   // ── Phase: welcome screen or wizard steps ──
   const [started, setStarted] = useState(false);
@@ -134,7 +169,8 @@ export default function OnboardingWizard({ prefs, onComplete }: OnboardingWizard
 
   // ── Derived step sequence ──
   const steps = buildSteps(selectedChannels);
-  const currentStep = steps[stepIndex];
+  const effectiveIndex = Math.min(stepIndex, steps.length - 1);
+  const currentStep = steps[effectiveIndex];
   const totalSteps = steps.length;
 
   // ── Toggle helpers ──
@@ -154,10 +190,10 @@ export default function OnboardingWizard({ prefs, onComplete }: OnboardingWizard
     });
   }, []);
 
-  const toggleLeague = useCallback((id: string) => {
+  const toggleLeague = useCallback((name: string) => {
     setSportsLeagues((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      next.has(name) ? next.delete(name) : next.add(name);
       return next;
     });
   }, []);
@@ -225,6 +261,7 @@ export default function OnboardingWizard({ prefs, onComplete }: OnboardingWizard
 
     const nextPrefs: AppPreferences = {
       ...prefs,
+      showSetupOnLogin: false,
       widgets: {
         ...prefs.widgets,
         enabledWidgets: widgetIds,
@@ -243,7 +280,7 @@ export default function OnboardingWizard({ prefs, onComplete }: OnboardingWizard
   const handleNext = useCallback(async () => {
     if (busy) return;
 
-    const step = steps[stepIndex];
+    const step = steps[effectiveIndex];
 
     // If leaving a configure step, provision the channel
     if (step.kind === "configure") {
@@ -253,29 +290,29 @@ export default function OnboardingWizard({ prefs, onComplete }: OnboardingWizard
     }
 
     // If this is the last step (widgets), finish
-    if (stepIndex >= steps.length - 1) {
+    if (effectiveIndex >= steps.length - 1) {
       await finish();
       return;
     }
 
     setStepIndex((i) => i + 1);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busy, stepIndex, steps, finish]);
+  }, [busy, effectiveIndex, steps, finish]);
 
   // ── Navigation: Back ──
   const handleBack = useCallback(() => {
-    if (stepIndex > 0) setStepIndex((i) => i - 1);
-  }, [stepIndex]);
+    if (effectiveIndex > 0) setStepIndex((i) => i - 1);
+  }, [effectiveIndex]);
 
   // ── Navigation: Skip step ──
   const handleSkip = useCallback(() => {
-    if (stepIndex >= steps.length - 1) {
+    if (effectiveIndex >= steps.length - 1) {
       // Skipping the last step = finish with whatever we have
       finish();
       return;
     }
     setStepIndex((i) => i + 1);
-  }, [stepIndex, steps.length, finish]);
+  }, [effectiveIndex, steps.length, finish]);
 
   // ── Welcome screen skip: just exit wizard ──
   const handleWelcomeSkip = useCallback((dontShowAgain: boolean) => {
@@ -302,15 +339,22 @@ export default function OnboardingWizard({ prefs, onComplete }: OnboardingWizard
 
     switch (currentStep.kind) {
       case "channels":
-        return <StepChannels selected={selectedChannels} onToggle={toggleChannel} />;
+        return (
+          <StepChannels
+            selected={selectedChannels}
+            onToggle={toggleChannel}
+            lockedChannels={lockedChannels}
+            minTierLabels={minTierLabels}
+          />
+        );
       case "configure":
         switch (currentStep.channel) {
           case "finance":
-            return <StepConfigureFinance selected={financeSymbols} onToggle={toggleSymbol} />;
+            return <StepConfigureFinance selected={financeSymbols} onToggle={toggleSymbol} maxItems={maxItemsFor("finance")} />;
           case "sports":
-            return <StepConfigureSports selected={sportsLeagues} onToggle={toggleLeague} />;
+            return <StepConfigureSports selected={sportsLeagues} onToggle={toggleLeague} maxItems={maxItemsFor("sports")} />;
           case "rss":
-            return <StepConfigureRss selected={rssFeeds} onToggle={toggleFeed} />;
+            return <StepConfigureRss selected={rssFeeds} onToggle={toggleFeed} maxItems={maxItemsFor("rss")} />;
           case "fantasy":
             return (
               <StepConfigureFantasy
@@ -359,15 +403,15 @@ export default function OnboardingWizard({ prefs, onComplete }: OnboardingWizard
     }
   }
 
-  const isLastStep = stepIndex >= steps.length - 1;
+  const isLastStep = effectiveIndex >= steps.length - 1;
 
   return (
     <WizardShell
-      stepIndex={stepIndex}
+      stepIndex={effectiveIndex}
       totalSteps={totalSteps}
       title={stepTitle()}
       subtitle={stepSubtitle()}
-      showBack={stepIndex > 0}
+      showBack={effectiveIndex > 0}
       showSkip
       nextLabel={isLastStep ? "Finish" : "Next"}
       nextDisabled={busy}

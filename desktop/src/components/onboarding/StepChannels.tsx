@@ -1,4 +1,4 @@
-import { TrendingUp, Trophy, Rss, Star } from "lucide-react";
+import { TrendingUp, Trophy, Rss, Star, Lock } from "lucide-react";
 import clsx from "clsx";
 import type { ChannelType } from "../../api/client";
 
@@ -12,30 +12,46 @@ const CHANNEL_OPTIONS: { id: ChannelType; name: string; description: string; ico
 interface StepChannelsProps {
   selected: Set<ChannelType>;
   onToggle: (id: ChannelType) => void;
+  /** Channels that are locked for the current tier (limit is 0). */
+  lockedChannels: Set<ChannelType>;
+  /** Minimum tier label needed to unlock each locked channel (e.g., "Uplink"). */
+  minTierLabels: Record<string, string>;
 }
 
-export default function StepChannels({ selected, onToggle }: StepChannelsProps) {
+export default function StepChannels({ selected, onToggle, lockedChannels, minTierLabels }: StepChannelsProps) {
   return (
     <div className="grid grid-cols-2 gap-3">
       {CHANNEL_OPTIONS.map((ch) => {
         const Icon = ch.icon;
-        const active = selected.has(ch.id);
+        const locked = lockedChannels.has(ch.id);
+        const active = !locked && selected.has(ch.id);
         return (
           <button
             key={ch.id}
-            onClick={() => onToggle(ch.id)}
+            onClick={() => !locked && onToggle(ch.id)}
+            disabled={locked}
             className={clsx(
-              "flex flex-col items-center gap-2 p-5 rounded-xl border-2 transition-all",
-              active
-                ? "border-accent bg-accent/5"
-                : "border-edge hover:border-fg-4 bg-surface-2/50",
+              "relative flex flex-col items-center gap-2 p-5 rounded-xl border-2 transition-all",
+              locked
+                ? "border-edge bg-surface-2/30 opacity-50 cursor-not-allowed"
+                : active
+                  ? "border-accent bg-accent/5"
+                  : "border-edge hover:border-fg-4 bg-surface-2/50",
             )}
           >
+            {locked && (
+              <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded bg-fg-4/10">
+                <Lock size={10} className="text-fg-4" />
+                <span className="text-[9px] font-medium text-fg-4">
+                  {minTierLabels[ch.id] ?? "Upgrade"}
+                </span>
+              </div>
+            )}
             <div
               className="w-10 h-10 rounded-lg flex items-center justify-center"
               style={{ backgroundColor: `${ch.hex}15` }}
             >
-              <Icon size={20} style={{ color: ch.hex }} />
+              <Icon size={20} style={{ color: locked ? "var(--fg-4)" : ch.hex }} />
             </div>
             <div className="text-center">
               <p className="text-sm font-medium text-fg">{ch.name}</p>

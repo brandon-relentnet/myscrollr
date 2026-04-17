@@ -529,7 +529,7 @@ function RootLayout() {
 
       {/* ── Onboarding wizard: authenticated, not yet onboarded ── */}
       {showOnboarding && (
-        <OnboardingWizard prefs={prefs} onComplete={handleOnboardingComplete} />
+        <OnboardingWizard prefs={prefs} tier={auth.tier} onComplete={handleOnboardingComplete} />
       )}
 
       {/* ── Main app shell: authenticated + onboarded ── */}
