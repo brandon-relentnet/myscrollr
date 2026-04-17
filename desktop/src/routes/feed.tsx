@@ -10,8 +10,6 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   Eye,
   EyeOff,
-  Pin,
-  PinOff,
   Pencil,
   Check,
   ChevronRight,
@@ -70,15 +68,7 @@ function HomePage() {
 
   const enabledWidgets = shell.prefs.widgets.enabledWidgets;
   const widgetsOnTicker = shell.prefs.widgets.widgetsOnTicker;
-  const pinnedSources = shell.prefs.pinnedSources;
   const homePreview = shell.prefs.homePreview;
-
-  function togglePin(id: string) {
-    const next = pinnedSources.includes(id)
-      ? pinnedSources.filter((s) => s !== id)
-      : [...pinnedSources, id];
-    shell.onPrefsChange({ ...shell.prefs, pinnedSources: next });
-  }
 
   const setHomePreview = useCallback(
     (channelType: string, keys: string[]) => {
@@ -165,8 +155,6 @@ function HomePage() {
                 !ch.visible,
               )
             }
-            pinned={pinnedSources.includes(ch.channel_type)}
-            onTogglePin={() => togglePin(ch.channel_type)}
             selectedKeys={homePreview[ch.channel_type] ?? []}
             onSelectionChange={(keys) =>
               setHomePreview(ch.channel_type, keys)
@@ -199,8 +187,6 @@ function HomePage() {
           widgets={orderedWidgets}
           widgetsOnTicker={widgetsOnTicker}
           onToggleTicker={onToggleWidgetTicker}
-          pinnedSources={pinnedSources}
-          onTogglePin={togglePin}
           onNavigate={(id) =>
             navigate({
               to: "/widget/$id/$tab",
@@ -255,8 +241,6 @@ interface ChannelSectionProps {
   data: Record<string, unknown> | undefined;
   tickerEnabled: boolean;
   onToggleTicker: () => void;
-  pinned: boolean;
-  onTogglePin: () => void;
   selectedKeys: string[];
   onSelectionChange: (keys: string[]) => void;
   onViewAll: () => void;
@@ -270,8 +254,6 @@ function ChannelSection({
   data,
   tickerEnabled,
   onToggleTicker,
-  pinned,
-  onTogglePin,
   selectedKeys,
   onSelectionChange,
   onViewAll,
@@ -344,26 +326,6 @@ function ChannelSection({
             )}
           >
             {tickerEnabled ? <Eye size={14} /> : <EyeOff size={14} />}
-          </button>
-        </Tooltip>
-
-        {/* Pin toggle */}
-        <Tooltip content={pinned ? "Unpin from sidebar" : "Pin to sidebar"}>
-          <button
-            onClick={onTogglePin}
-            aria-label={
-              pinned
-                ? `Unpin ${manifest.name}`
-                : `Pin ${manifest.name} to sidebar`
-            }
-            className={clsx(
-              "w-7 h-7 flex items-center justify-center rounded-lg transition-colors",
-              pinned
-                ? "text-accent"
-                : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover",
-            )}
-          >
-            {pinned ? <Pin size={14} /> : <PinOff size={14} />}
           </button>
         </Tooltip>
 
@@ -709,8 +671,6 @@ interface WidgetStripProps {
   widgets: WidgetManifest[];
   widgetsOnTicker: string[];
   onToggleTicker: (id: string) => void;
-  pinnedSources: string[];
-  onTogglePin: (id: string) => void;
   onNavigate: (id: string) => void;
 }
 
@@ -718,8 +678,6 @@ function WidgetStrip({
   widgets,
   widgetsOnTicker,
   onToggleTicker,
-  pinnedSources,
-  onTogglePin,
   onNavigate,
 }: WidgetStripProps) {
   return (
@@ -737,8 +695,6 @@ function WidgetStrip({
             widget={widget}
             tickerEnabled={widgetsOnTicker.includes(widget.id)}
             onToggleTicker={() => onToggleTicker(widget.id)}
-            pinned={pinnedSources.includes(widget.id)}
-            onTogglePin={() => onTogglePin(widget.id)}
             onClick={() => onNavigate(widget.id)}
           />
         ))}
@@ -751,8 +707,6 @@ interface WidgetChipProps {
   widget: WidgetManifest;
   tickerEnabled: boolean;
   onToggleTicker: () => void;
-  pinned: boolean;
-  onTogglePin: () => void;
   onClick: () => void;
 }
 
@@ -760,8 +714,6 @@ function WidgetChip({
   widget,
   tickerEnabled,
   onToggleTicker,
-  pinned,
-  onTogglePin,
   onClick,
 }: WidgetChipProps) {
   const Icon = widget.icon;
@@ -806,35 +758,6 @@ function WidgetChip({
             )}
           >
             {tickerEnabled ? <Eye size={12} /> : <EyeOff size={12} />}
-          </div>
-        </Tooltip>
-
-        {/* Pin toggle */}
-        <Tooltip content={pinned ? "Unpin from sidebar" : "Pin to sidebar"}>
-          <div
-            role="switch"
-            aria-checked={pinned}
-            aria-label={pinned ? "Unpin from sidebar" : "Pin to sidebar"}
-            tabIndex={0}
-            onClick={(e) => {
-              e.stopPropagation();
-              onTogglePin();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                e.stopPropagation();
-                onTogglePin();
-              }
-            }}
-            className={clsx(
-              "w-6 h-6 flex items-center justify-center rounded transition-colors shrink-0",
-              pinned
-                ? "text-accent"
-                : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover opacity-0 group-hover:opacity-100 focus:opacity-100",
-            )}
-          >
-            {pinned ? <Pin size={12} /> : <PinOff size={12} />}
           </div>
         </Tooltip>
       </div>

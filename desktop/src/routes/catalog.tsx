@@ -110,6 +110,19 @@ function CatalogPage() {
     [navigate, queryClient, prefs, onPrefsChange],
   );
 
+  // ── Pin toggle ──────────────────────────────────────────────
+
+  const handleTogglePin = useCallback(
+    (item: CatalogItem) => {
+      const pinned = prefs.pinnedSources.includes(item.id);
+      const nextPinned = pinned
+        ? prefs.pinnedSources.filter((id) => id !== item.id)
+        : [...prefs.pinnedSources, item.id];
+      onPrefsChange({ ...prefs, pinnedSources: nextPinned });
+    },
+    [prefs, onPrefsChange],
+  );
+
   // ── Remove handler ──────────────────────────────────────────
 
   const handleRemove = useCallback(
@@ -182,12 +195,14 @@ function CatalogPage() {
             key={item.id}
             item={item}
             enabled={allEnabledIds.has(item.id)}
+            pinned={prefs.pinnedSources.includes(item.id)}
             tier={tier}
             authenticated={authenticated}
             dashboardLoading={isLoading}
             onAdd={handleAdd}
             onRemove={handleRemove}
             onLogin={onLogin}
+            onTogglePin={handleTogglePin}
             onOpen={(it) => {
               if (it.kind === "channel") {
                 navigate({ to: "/channel/$type/$tab", params: { type: it.id, tab: "feed" } });

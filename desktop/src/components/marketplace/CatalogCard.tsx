@@ -1,11 +1,12 @@
 import { useState } from "react";
 import clsx from "clsx";
-import { Check, ChevronRight, ExternalLink, Loader2 } from "lucide-react";
+import { Check, ChevronRight, ExternalLink, Loader2, Pin, PinOff } from "lucide-react";
 import { open } from "@tauri-apps/plugin-shell";
 import type { CatalogItem, CatalogCategory } from "../../marketplace";
 import type { SubscriptionTier } from "../../auth";
 import { TIER_LABELS } from "../../auth";
 import ConfirmDialog from "../ConfirmDialog";
+import Tooltip from "../Tooltip";
 
 // ── Confirm-dialog nouns per channel ────────────────────────────
 
@@ -26,6 +27,8 @@ const CATEGORY_BADGE: Record<CatalogCategory, string> = {
 interface CatalogCardProps {
   item: CatalogItem;
   enabled: boolean;
+  /** True when this source appears in the left sidebar. Only meaningful when enabled. */
+  pinned: boolean;
   tier: SubscriptionTier;
   authenticated: boolean;
   /** Disable Add button while dashboard is loading (channels enabled state unknown). */
@@ -33,6 +36,8 @@ interface CatalogCardProps {
   onAdd: (item: CatalogItem) => Promise<void>;
   onRemove: (item: CatalogItem) => Promise<void>;
   onLogin: () => void;
+  /** Toggle sidebar pin state. Only rendered when `enabled` is true. */
+  onTogglePin?: (item: CatalogItem) => void;
   /** Navigate to the channel/widget page when already added. */
   onOpen?: (item: CatalogItem) => void;
 }
@@ -42,12 +47,14 @@ interface CatalogCardProps {
 export default function CatalogCard({
   item,
   enabled,
+  pinned,
   tier,
   authenticated,
   dashboardLoading,
   onAdd,
   onRemove,
   onLogin,
+  onTogglePin,
   onOpen,
 }: CatalogCardProps) {
   const [loading, setLoading] = useState(false);
@@ -158,6 +165,23 @@ export default function CatalogCard({
             <Loader2 size={14} className="animate-spin text-fg-4" />
           ) : enabled ? (
             <div className="flex items-center gap-3">
+              {onTogglePin && (
+                <Tooltip content={pinned ? "Unpin from sidebar" : "Pin to sidebar"}>
+                  <button
+                    onClick={() => onTogglePin(item)}
+                    aria-label={pinned ? `Unpin ${item.name}` : `Pin ${item.name} to sidebar`}
+                    aria-pressed={pinned}
+                    className={clsx(
+                      "w-7 h-7 flex items-center justify-center rounded-lg transition-colors cursor-pointer",
+                      pinned
+                        ? "text-accent hover:bg-surface-hover"
+                        : "text-fg-4 hover:text-fg-2 hover:bg-surface-hover",
+                    )}
+                  >
+                    {pinned ? <Pin size={14} /> : <PinOff size={14} />}
+                  </button>
+                </Tooltip>
+              )}
               <button
                 onClick={handleRemoveClick}
                 className="text-xs font-medium text-fg-4 hover:text-error transition-colors"
