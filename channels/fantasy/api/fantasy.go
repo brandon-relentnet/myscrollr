@@ -135,21 +135,31 @@ func (a *App) fetchLeagueBundle(ctx context.Context, guid string) ([]LeagueRespo
 		}
 	}
 
-	// Batch-fetch current matchups (most recent week per league)
+	// Batch-fetch matchups for the two most recent weeks per league.
+	// Current week (latest) is exposed as `matchups`; previous week (if any)
+	// is exposed as `previous_matchups` so the UI can show last week's final
+	// result alongside this week's live game.
 	matchupsMap := make(map[string]json.RawMessage)
+	prevMatchupsMap := make(map[string]json.RawMessage)
 	matchupsRows, err := a.db.Query(ctx, `
-		SELECT DISTINCT ON (league_key) league_key, data
+		SELECT league_key, week, data, rank() OVER (PARTITION BY league_key ORDER BY week DESC) AS r
 		FROM yahoo_matchups
 		WHERE league_key = ANY($1)
-		ORDER BY league_key, week DESC
 	`, leagueKeys)
 	if err == nil {
 		defer matchupsRows.Close()
 		for matchupsRows.Next() {
 			var lk string
+			var week int
 			var data json.RawMessage
-			if err := matchupsRows.Scan(&lk, &data); err == nil {
-				matchupsMap[lk] = data
+			var r int
+			if err := matchupsRows.Scan(&lk, &week, &data, &r); err == nil {
+				switch r {
+				case 1:
+					matchupsMap[lk] = data
+				case 2:
+					prevMatchupsMap[lk] = data
+				}
 			}
 		}
 	}
@@ -182,6 +192,9 @@ func (a *App) fetchLeagueBundle(ctx context.Context, guid string) ([]LeagueRespo
 		}
 		if m, ok := matchupsMap[lk]; ok {
 			leagues[i].Matchups = m
+		}
+		if pm, ok := prevMatchupsMap[lk]; ok {
+			leagues[i].PreviousMatchups = pm
 		}
 		if r, ok := rostersMap[lk]; ok {
 			leagues[i].Rosters = r
