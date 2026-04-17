@@ -49,7 +49,7 @@ function WelcomeScreen({ onStart, onSkip }: {
   onStart: () => void;
   onSkip: (dontShowAgain: boolean) => void;
 }) {
-  const [dontShow, setDontShow] = useState(false);
+  const [dontShow, setDontShow] = useState(true);
 
   return (
     <div className="flex flex-col h-screen w-screen select-none">
@@ -225,6 +225,7 @@ export default function OnboardingWizard({ prefs, onComplete }: OnboardingWizard
 
     const nextPrefs: AppPreferences = {
       ...prefs,
+      showSetupOnLogin: false,
       widgets: {
         ...prefs.widgets,
         enabledWidgets: widgetIds,
