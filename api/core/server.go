@@ -180,6 +180,9 @@ func (s *Server) setupRoutes() {
 	// Support
 	s.App.Post("/support/ticket", LogtoAuth, HandleSubmitSupportTicket)
 
+	// Invite (no auth — user isn't logged in yet, token-verified server-side)
+	s.App.Post("/invite/complete", HandleCompleteInvite)
+
 	// Billing Routes
 	s.App.Post("/checkout/session", LogtoAuth, HandleCreateCheckoutSession)
 	s.App.Post("/checkout/lifetime", LogtoAuth, HandleCreateLifetimeCheckout)
