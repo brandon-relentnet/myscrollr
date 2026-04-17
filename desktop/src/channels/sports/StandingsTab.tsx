@@ -168,18 +168,18 @@ export function StandingsTab({ leagues, favoriteTeams }: StandingsTabProps) {
     setCollapsed(new Set());
   }, [selected]);
 
-  useEffect(() => {
-    if (favRowRef.current) {
-      favRowRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  }, [standings, favoriteTeams]);
-
   const { data, isLoading, isError } = useQuery({
     ...standingsOptions(selected),
     enabled: !!selected,
   });
 
   const standings: Standing[] = data?.standings ?? [];
+
+  useEffect(() => {
+    if (favRowRef.current) {
+      favRowRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [standings, favoriteTeams]);
 
   const { columns, groupedRows, hasZones } = useMemo(() => {
     const cols = getColumnsForSport(standings[0]?.sport_api);
