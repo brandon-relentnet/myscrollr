@@ -5,8 +5,11 @@ import { Zap } from "lucide-react";
 import { channelsApi } from "../../api/client";
 import { RECOMMENDED_FEEDS } from "./curated-picks";
 import { queryKeys } from "../../api/queries";
+import { getLimit, TIER_LIMITS } from "../../tierLimits";
+import { TIER_LABELS } from "../../auth";
 import type { ChannelType } from "../../api/client";
 import type { AppPreferences } from "../../preferences";
+import type { SubscriptionTier } from "../../auth";
 
 import WizardShell from "./WizardShell";
 import StepChannels from "./StepChannels";
@@ -25,6 +28,7 @@ type WizardStep =
 
 interface OnboardingWizardProps {
   prefs: AppPreferences;
+  tier: SubscriptionTier;
   /** Called when the wizard finishes or is skipped. Updated prefs are passed. */
   onComplete: (prefs: AppPreferences) => void;
 }
@@ -116,8 +120,39 @@ function WelcomeScreen({ onStart, onSkip }: {
 
 // ── Component ───────────────────────────────────────────────────
 
-export default function OnboardingWizard({ prefs, onComplete }: OnboardingWizardProps) {
+export default function OnboardingWizard({ prefs, tier, onComplete }: OnboardingWizardProps) {
   const queryClient = useQueryClient();
+
+  // ── Tier-based channel locks ──
+  const channelLimitKeys: Record<ChannelType, keyof typeof TIER_LIMITS["free"]> = {
+    finance: "symbols",
+    sports: "leagues",
+    rss: "feeds",
+    fantasy: "fantasy",
+  };
+
+  const lockedChannels = new Set<ChannelType>();
+  const minTierLabels: Record<string, string> = {};
+
+  for (const [ch, limitKey] of Object.entries(channelLimitKeys) as [ChannelType, keyof typeof TIER_LIMITS["free"]][]) {
+    if (getLimit(tier, limitKey) === 0) {
+      lockedChannels.add(ch);
+      // Find the minimum tier that unlocks this channel
+      const tiers: SubscriptionTier[] = ["free", "uplink", "uplink_pro", "uplink_ultimate"];
+      for (const t of tiers) {
+        if (getLimit(t, limitKey) > 0) {
+          minTierLabels[ch] = TIER_LABELS[t];
+          break;
+        }
+      }
+    }
+  }
+
+  function maxItemsFor(channel: ChannelType): number | undefined {
+    const limitKey = channelLimitKeys[channel];
+    const limit = getLimit(tier, limitKey);
+    return limit === Infinity ? undefined : limit;
+  }
 
   // ── Phase: welcome screen or wizard steps ──
   const [started, setStarted] = useState(false);
@@ -304,15 +339,22 @@ export default function OnboardingWizard({ prefs, onComplete }: OnboardingWizard
 
     switch (currentStep.kind) {
       case "channels":
-        return <StepChannels selected={selectedChannels} onToggle={toggleChannel} />;
+        return (
+          <StepChannels
+            selected={selectedChannels}
+            onToggle={toggleChannel}
+            lockedChannels={lockedChannels}
+            minTierLabels={minTierLabels}
+          />
+        );
       case "configure":
         switch (currentStep.channel) {
           case "finance":
-            return <StepConfigureFinance selected={financeSymbols} onToggle={toggleSymbol} />;
+            return <StepConfigureFinance selected={financeSymbols} onToggle={toggleSymbol} maxItems={maxItemsFor("finance")} />;
           case "sports":
-            return <StepConfigureSports selected={sportsLeagues} onToggle={toggleLeague} />;
+            return <StepConfigureSports selected={sportsLeagues} onToggle={toggleLeague} maxItems={maxItemsFor("sports")} />;
           case "rss":
-            return <StepConfigureRss selected={rssFeeds} onToggle={toggleFeed} />;
+            return <StepConfigureRss selected={rssFeeds} onToggle={toggleFeed} maxItems={maxItemsFor("rss")} />;
           case "fantasy":
             return (
               <StepConfigureFantasy
