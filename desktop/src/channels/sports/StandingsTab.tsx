@@ -141,6 +141,15 @@ function GroupHeader({
   );
 }
 
+function getZoneColor(description?: string): string | null {
+  if (!description) return null;
+  const lower = description.toLowerCase();
+  if (lower.includes("champions league")) return "border-l-green-500";
+  if (lower.includes("europa")) return "border-l-blue-500";
+  if (lower.includes("relegation")) return "border-l-red-500";
+  return null;
+}
+
 export function StandingsTab({ leagues, favoriteTeams }: StandingsTabProps) {
   const [selected, setSelected] = useState(leagues[0] ?? "");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -172,7 +181,7 @@ export function StandingsTab({ leagues, favoriteTeams }: StandingsTabProps) {
 
   const standings: Standing[] = data?.standings ?? [];
 
-  const { columns, groupedRows } = useMemo(() => {
+  const { columns, groupedRows, hasZones } = useMemo(() => {
     const cols = getColumnsForSport(standings[0]?.sport_api);
     
     // Group by group_name using a Map so non-contiguous entries merge properly
@@ -192,6 +201,8 @@ export function StandingsTab({ leagues, favoriteTeams }: StandingsTabProps) {
       standings: map.get(key)!,
     }));
 
+    const zones = standings.some((s) => getZoneColor(s.description) !== null);
+
     // If every team is its own "group" (single-member groups with names),
     // collapse them into one unnamed group to avoid a header per team
     const namedGroups = groups.filter((g) => g.groupName);
@@ -199,10 +210,10 @@ export function StandingsTab({ leagues, favoriteTeams }: StandingsTabProps) {
       // Every named group has exactly one team — this is not real grouping,
       // it's just per-team metadata. Flatten into a single group.
       const allStandings = groups.flatMap((g) => g.standings);
-      return { columns: cols, groupedRows: [{ groupName: "", standings: allStandings }] };
+      return { columns: cols, groupedRows: [{ groupName: "", standings: allStandings }], hasZones: zones };
     }
 
-    return { columns: cols, groupedRows: groups };
+    return { columns: cols, groupedRows: groups, hasZones: zones };
   }, [standings]);
 
   if (leagues.length === 0) {
@@ -286,6 +297,7 @@ export function StandingsTab({ leagues, favoriteTeams }: StandingsTabProps) {
                         const isFav = favoriteTeams.has(s.team_name);
                         const assignRef = isFav && !favRefAssigned;
                         if (assignRef) favRefAssigned = true;
+                        const zoneColor = getZoneColor(s.description);
                         return (
                           <tr
                             key={`${s.team_name}-${i}`}
@@ -293,6 +305,9 @@ export function StandingsTab({ leagues, favoriteTeams }: StandingsTabProps) {
                             className={clsx(
                               "border-b border-edge/30 hover:bg-surface-hover transition-colors",
                               isFav && "bg-[#f97316]/5",
+                              zoneColor
+                                ? `border-l-2 ${zoneColor}`
+                                : "border-l-2 border-l-transparent",
                             )}
                           >
                             {columns.map((col) => (
@@ -318,6 +333,22 @@ export function StandingsTab({ leagues, favoriteTeams }: StandingsTabProps) {
               })()}
             </tbody>
           </table>
+          {hasZones && (
+            <div className="flex items-center gap-4 px-3 py-2 border-t border-edge/30 text-[10px] text-fg-3">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-green-500" />
+                Champions League
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-blue-500" />
+                Europa League
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-red-500" />
+                Relegation
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
