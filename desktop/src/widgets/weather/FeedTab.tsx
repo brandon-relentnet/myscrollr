@@ -15,6 +15,7 @@ import { weatherQueryOptions, queryKeys } from "../../api/queries";
 import type { FeedTabProps, WidgetManifest } from "../../types";
 import type { WeatherLocation } from "./types";
 import { loadCities, saveCities, loadUnit, saveUnit } from "./types";
+import { toast } from "sonner";
 
 // ── Widget manifest ─────────────────────────────────────────────
 
@@ -50,6 +51,7 @@ function WeatherFeedTab({ mode: feedMode }: FeedTabProps) {
 
   const [unit, setUnit] = useState(loadUnit);
   const [showSearch, setShowSearch] = useState(false);
+  const [detecting, setDetecting] = useState(false);
 
   // Add city — write to store, then invalidate query for immediate fetch
   const addCity = useCallback(
@@ -95,50 +97,35 @@ function WeatherFeedTab({ mode: feedMode }: FeedTabProps) {
     });
   }, []);
 
-  // Detect location
-  const detectLocation = useCallback(() => {
-    if (!("geolocation" in navigator)) return;
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude: lat, longitude: lon } = pos.coords;
-        try {
-          const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=10`;
-          const res = await fetch(url, {
-            headers: { "User-Agent": "Scrollr/1.0" },
-          });
-          if (res.ok) {
-            const data = (await res.json()) as {
-              address?: {
-                city?: string;
-                town?: string;
-                village?: string;
-                state?: string;
-                country?: string;
-              };
-            };
-            const addr = data.address;
-            if (addr) {
-              const name =
-                addr.city || addr.town || addr.village || "My Location";
-              addCity({
-                name,
-                lat,
-                lon,
-                country: addr.country ?? "",
-                admin1: addr.state,
-              });
-              return;
-            }
-          }
-        } catch {
-          /* fallback below */
-        }
-        addCity({ name: "My Location", lat, lon, country: "" });
-      },
-      () => {
-        /* geolocation denied */
-      },
-    );
+  // Detect location via IP-based geolocation
+  const detectLocation = useCallback(async () => {
+    setDetecting(true);
+    try {
+      const res = await fetch("http://ip-api.com/json/?fields=status,city,lat,lon,country,regionName");
+      if (!res.ok) throw new Error("Request failed");
+      const data = (await res.json()) as {
+        status: string;
+        city?: string;
+        lat?: number;
+        lon?: number;
+        country?: string;
+        regionName?: string;
+      };
+      if (data.status !== "success" || data.lat == null || data.lon == null) {
+        throw new Error("Location not found");
+      }
+      addCity({
+        name: data.city || "My Location",
+        lat: data.lat,
+        lon: data.lon,
+        country: data.country ?? "",
+        admin1: data.regionName,
+      });
+    } catch {
+      toast.error("Couldn't detect your location — try searching for a city instead");
+    } finally {
+      setDetecting(false);
+    }
   }, [addCity]);
 
   // ── Empty state ─────────────────────────────────────────────
@@ -158,9 +145,10 @@ function WeatherFeedTab({ mode: feedMode }: FeedTabProps) {
           </button>
           <button
             onClick={detectLocation}
-            className="text-xs font-mono text-fg px-3 py-1.5 rounded-lg bg-surface-2 border border-edge hover:border-edge-2 transition-colors"
+            disabled={detecting}
+            className="text-xs font-mono text-fg px-3 py-1.5 rounded-lg bg-surface-2 border border-edge hover:border-edge-2 transition-colors disabled:opacity-40"
           >
-            Use My Location
+            {detecting ? "Detecting..." : "Use My Location"}
           </button>
         </div>
       </div>
@@ -187,9 +175,10 @@ function WeatherFeedTab({ mode: feedMode }: FeedTabProps) {
           <Tooltip content="Use my location">
             <button
               onClick={detectLocation}
-              className="text-xs font-mono text-widget-weather/70 hover:text-widget-weather transition-colors"
+              disabled={detecting}
+              className="text-xs font-mono text-widget-weather/70 hover:text-widget-weather transition-colors disabled:opacity-40"
             >
-              {"\u{1F4CD}"}
+              {detecting ? "..." : "\u{1F4CD}"}
             </button>
           </Tooltip>
           <button
