@@ -180,11 +180,21 @@ export interface RssDisplayPrefs {
   articlesPerSource: number; // 1, 3, 5, 10, or 0 (all)
 }
 
+export type FantasySubTab = "overview" | "matchup" | "standings" | "roster";
+
 export interface FantasyDisplayPrefs {
   showStandings: boolean;
   showInjuryCount: boolean;
   showMatchups: boolean;
   defaultSort: "name" | "season" | "record" | "matchup";
+  /** Which sub-tab the Feed view opens on. Defaults to overview when in 2+ leagues, matchup otherwise. */
+  defaultSubTab: FantasySubTab;
+  /** The user-preferred "primary" league key shown as the hero in Overview/Matchup tabs. */
+  primaryLeagueKey: string | null;
+  /** Explicit list of league keys the user wants visible. Empty array means "all imported leagues". */
+  enabledLeagueKeys: string[];
+  /** Show matchups on the always-on-top ticker chip. */
+  tickerShowMatchup: boolean;
 }
 
 export interface ChannelDisplayPrefs {
@@ -300,7 +310,16 @@ export const DEFAULT_GITHUB_TICKER: GitHubTickerConfig = {
 const DEFAULT_CHANNEL_DISPLAY: ChannelDisplayPrefs = {
   finance: { showChange: true, showPrevClose: true, showLastUpdated: true, defaultSort: "alpha" },
   rss: { showDescription: true, showSource: true, showTimestamps: true, articlesPerSource: 4 },
-  fantasy: { showStandings: true, showInjuryCount: true, showMatchups: true, defaultSort: "name" },
+  fantasy: {
+    showStandings: true,
+    showInjuryCount: true,
+    showMatchups: true,
+    defaultSort: "name",
+    defaultSubTab: "overview",
+    primaryLeagueKey: null,
+    enabledLeagueKeys: [],
+    tickerShowMatchup: true,
+  },
 };
 
 const DEFAULT_WIDGETS: WidgetPrefs = {
