@@ -395,3 +395,27 @@ export const billingApi = {
       getToken,
     ),
 }
+
+// ── Invite API ───────────────────────────────────────────────────
+
+export interface CompleteInviteRequest {
+  email: string
+  token: string
+  password: string
+  birthday: string
+  gender: string
+}
+
+export interface CompleteInviteResponse {
+  success: boolean
+  username: string
+}
+
+export const inviteApi = {
+  completeInvite: (data: CompleteInviteRequest) =>
+    request<CompleteInviteResponse>('/invite/complete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+}

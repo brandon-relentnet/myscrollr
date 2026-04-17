@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as UplinkRouteImport } from './routes/uplink'
 import { Route as StatusRouteImport } from './routes/status'
 import { Route as LegalRouteImport } from './routes/legal'
+import { Route as InviteRouteImport } from './routes/invite'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as ChannelsRouteImport } from './routes/channels'
 import { Route as CallbackRouteImport } from './routes/callback'
@@ -34,6 +35,11 @@ const StatusRoute = StatusRouteImport.update({
 const LegalRoute = LegalRouteImport.update({
   id: '/legal',
   path: '/legal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InviteRoute = InviteRouteImport.update({
+  id: '/invite',
+  path: '/invite',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DownloadRoute = DownloadRouteImport.update({
@@ -84,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/callback': typeof CallbackRoute
   '/channels': typeof ChannelsRoute
   '/download': typeof DownloadRoute
+  '/invite': typeof InviteRoute
   '/legal': typeof LegalRoute
   '/status': typeof StatusRoute
   '/uplink': typeof UplinkRoute
@@ -97,6 +104,7 @@ export interface FileRoutesByTo {
   '/callback': typeof CallbackRoute
   '/channels': typeof ChannelsRoute
   '/download': typeof DownloadRoute
+  '/invite': typeof InviteRoute
   '/legal': typeof LegalRoute
   '/status': typeof StatusRoute
   '/uplink': typeof UplinkRoute
@@ -111,6 +119,7 @@ export interface FileRoutesById {
   '/callback': typeof CallbackRoute
   '/channels': typeof ChannelsRoute
   '/download': typeof DownloadRoute
+  '/invite': typeof InviteRoute
   '/legal': typeof LegalRoute
   '/status': typeof StatusRoute
   '/uplink': typeof UplinkRoute
@@ -126,6 +135,7 @@ export interface FileRouteTypes {
     | '/callback'
     | '/channels'
     | '/download'
+    | '/invite'
     | '/legal'
     | '/status'
     | '/uplink'
@@ -139,6 +149,7 @@ export interface FileRouteTypes {
     | '/callback'
     | '/channels'
     | '/download'
+    | '/invite'
     | '/legal'
     | '/status'
     | '/uplink'
@@ -152,6 +163,7 @@ export interface FileRouteTypes {
     | '/callback'
     | '/channels'
     | '/download'
+    | '/invite'
     | '/legal'
     | '/status'
     | '/uplink'
@@ -166,6 +178,7 @@ export interface RootRouteChildren {
   CallbackRoute: typeof CallbackRoute
   ChannelsRoute: typeof ChannelsRoute
   DownloadRoute: typeof DownloadRoute
+  InviteRoute: typeof InviteRoute
   LegalRoute: typeof LegalRoute
   StatusRoute: typeof StatusRoute
   UplinkRoute: typeof UplinkRoute
@@ -194,6 +207,13 @@ declare module '@tanstack/react-router' {
       path: '/legal'
       fullPath: '/legal'
       preLoaderRoute: typeof LegalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invite': {
+      id: '/invite'
+      path: '/invite'
+      fullPath: '/invite'
+      preLoaderRoute: typeof InviteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/download': {
@@ -262,6 +282,7 @@ const rootRouteChildren: RootRouteChildren = {
   CallbackRoute: CallbackRoute,
   ChannelsRoute: ChannelsRoute,
   DownloadRoute: DownloadRoute,
+  InviteRoute: InviteRoute,
   LegalRoute: LegalRoute,
   StatusRoute: StatusRoute,
   UplinkRoute: UplinkRoute,
