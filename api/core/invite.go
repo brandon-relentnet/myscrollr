@@ -113,6 +113,59 @@ func HandleCompleteInvite(c *fiber.Ctx) error {
 	})
 }
 
+// HandleCheckUsernameAvailable checks if a username is available.
+// GET /invite/username-available?email=X&username=Y (no auth — verified via email+role)
+func HandleCheckUsernameAvailable(c *fiber.Ctx) error {
+	email := c.Query("email")
+	username := c.Query("username")
+
+	if email == "" || username == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Error: "email and username are required"})
+	}
+
+	if !usernameRegex.MatchString(username) {
+		return c.JSON(fiber.Map{
+			"available": false,
+			"reason":    "invalid",
+		})
+	}
+
+	m2mToken, err := getM2MToken()
+	if err != nil {
+		log.Printf("[Invite] Username check: M2M token failed: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "Internal server error"})
+	}
+
+	cfg := getM2MConfig()
+
+	userID, _, err := findUserByEmail(cfg.Endpoint, m2mToken, email)
+	if err != nil {
+		return c.Status(fiber.StatusForbidden).JSON(ErrorResponse{Error: "Not authorized"})
+	}
+
+	hasSuperUser, err := userHasRole(cfg.Endpoint, m2mToken, userID, superUserRoleID)
+	if err != nil || !hasSuperUser {
+		return c.Status(fiber.StatusForbidden).JSON(ErrorResponse{Error: "Not authorized"})
+	}
+
+	available, err := checkUsernameAvailable(cfg.Endpoint, m2mToken, username)
+	if err != nil {
+		log.Printf("[Invite] Username availability check failed: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "Internal server error"})
+	}
+
+	if !available {
+		return c.JSON(fiber.Map{
+			"available": false,
+			"reason":    "taken",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"available": true,
+	})
+}
+
 // ── Logto Management API helpers ────────────────────────────────────
 
 // findUserByEmail searches for a user by primary email and returns (userID, username, error).
