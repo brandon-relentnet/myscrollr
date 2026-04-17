@@ -3,7 +3,10 @@ import { motion } from "motion/react";
 import { Section } from "../../components/settings/SettingsControls";
 import { sportLabel } from "./types";
 import type { DiscoveredLeague } from "./types";
-import type { ImportStatus } from "./LeagueDetails";
+
+// ── Types ────────────────────────────────────────────────────────
+
+export type ImportStatus = "pending" | "importing" | "done" | "error";
 
 // ── Props ────────────────────────────────────────────────────────
 
