@@ -11,6 +11,7 @@ import { AlertTriangle, ChevronDown } from "lucide-react";
 import { motion } from "motion/react";
 import {
   fmtPlayerPoints,
+  fmtPlayerStats,
   isBenchPosition,
   isInjuryStatus,
   positionOrderIndex,
@@ -171,7 +172,7 @@ export function RosterView({ league }: RosterViewProps) {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2, delay: i * 0.02 }}
                 >
-                  <PlayerRow player={p} />
+                  <PlayerRow player={p} gameCode={league.game_code} />
                 </motion.div>
               ))}
             </div>
@@ -187,7 +188,7 @@ export function RosterView({ league }: RosterViewProps) {
           </div>
           <div className="overflow-hidden rounded-lg border border-edge/30 bg-surface-2/40">
             {bench.map((p) => (
-              <PlayerRow key={p.player_key} player={p} subdued />
+              <PlayerRow key={p.player_key} player={p} gameCode={league.game_code} subdued />
             ))}
           </div>
         </section>
@@ -258,10 +259,22 @@ function TeamSelector({
 
 // ── Player row ──────────────────────────────────────────────────
 
-function PlayerRow({ player, subdued }: { player: RosterPlayer; subdued?: boolean }) {
+function PlayerRow({
+  player,
+  gameCode,
+  subdued,
+}: {
+  player: RosterPlayer;
+  gameCode: string;
+  subdued?: boolean;
+}) {
   const injured = isInjuryStatus(player.status);
   const hasPoints = typeof player.player_points === "number";
   const pts = player.player_points ?? 0;
+  const statsSummary = !hasPoints
+    ? fmtPlayerStats(player.player_stats, gameCode, player.position_type)
+    : "";
+  const showStatsInline = statsSummary.length > 0;
   return (
     <div
       className={clsx(
@@ -307,18 +320,29 @@ function PlayerRow({ player, subdued }: { player: RosterPlayer; subdued?: boolea
           {player.selected_position && !subdued && ` · slot ${player.selected_position}`}
         </div>
       </div>
-      <div
-        className={clsx(
-          "shrink-0 font-mono tabular-nums",
-          subdued
-            ? "text-[11px] text-fg-3"
-            : hasPoints && pts > 0
-              ? "text-sm font-bold text-fg"
-              : "text-[11px] text-fg-3",
-        )}
-      >
-        {fmtPlayerPoints(player.player_points)}
-      </div>
+      {showStatsInline ? (
+        <div
+          className={clsx(
+            "shrink-0 font-mono text-[10px] tabular-nums",
+            subdued ? "text-fg-3" : "text-fg-2",
+          )}
+        >
+          {statsSummary}
+        </div>
+      ) : (
+        <div
+          className={clsx(
+            "shrink-0 font-mono tabular-nums",
+            subdued
+              ? "text-[11px] text-fg-3"
+              : hasPoints && pts > 0
+                ? "text-sm font-bold text-fg"
+                : "text-[11px] text-fg-3",
+          )}
+        >
+          {fmtPlayerPoints(player.player_points)}
+        </div>
+      )}
     </div>
   );
 }

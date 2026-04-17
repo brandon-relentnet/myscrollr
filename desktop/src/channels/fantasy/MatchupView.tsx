@@ -12,6 +12,7 @@ import { motion } from "motion/react";
 import { MatchupHero } from "./MatchupHero";
 import {
   fmtPlayerPoints,
+  fmtPlayerStats,
   isBenchPosition,
   isInjuryStatus,
   positionOrderIndex,
@@ -74,7 +75,7 @@ export function MatchupView({ league }: MatchupViewProps) {
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.2, delay: i * 0.015 }}
               >
-                <PlayerPairRow position={pair.position} left={pair.left} right={pair.right} />
+                <PlayerPairRow position={pair.position} left={pair.left} right={pair.right} gameCode={league.game_code} />
               </motion.div>
             ))}
           </div>
@@ -96,6 +97,7 @@ export function MatchupView({ league }: MatchupViewProps) {
                 position={pair.position}
                 left={pair.left}
                 right={pair.right}
+                gameCode={league.game_code}
                 subdued
               />
             ))}
@@ -194,11 +196,13 @@ function PlayerPairRow({
   position,
   left,
   right,
+  gameCode,
   subdued,
 }: {
   position: string;
   left: RosterPlayer | null;
   right: RosterPlayer | null;
+  gameCode: string;
   subdued?: boolean;
 }) {
   const leftPts = left?.player_points ?? 0;
@@ -214,13 +218,13 @@ function PlayerPairRow({
         !subdued && "bg-surface hover:bg-surface-2",
       )}
     >
-      <PlayerSide player={left} leading={leftLeading} align="left" subdued={subdued} />
+      <PlayerSide player={left} leading={leftLeading} align="left" gameCode={gameCode} subdued={subdued} />
       <div className="flex items-center justify-center font-mono text-[9px] uppercase tracking-wider text-fg-3">
         <span className="rounded-full border border-edge/50 bg-surface-2 px-1.5 py-0.5">
           {position}
         </span>
       </div>
-      <PlayerSide player={right} leading={rightLeading} align="right" subdued={subdued} />
+      <PlayerSide player={right} leading={rightLeading} align="right" gameCode={gameCode} subdued={subdued} />
     </div>
   );
 }
@@ -229,17 +233,24 @@ function PlayerSide({
   player,
   leading,
   align,
+  gameCode,
   subdued,
 }: {
   player: RosterPlayer | null;
   leading?: boolean;
   align: "left" | "right";
+  gameCode: string;
   subdued?: boolean;
 }) {
   if (!player) {
     return <div className="text-right font-mono text-[10px] text-fg-3">—</div>;
   }
   const injured = isInjuryStatus(player.status);
+  const hasPoints = typeof player.player_points === "number";
+  const statsSummary = !hasPoints
+    ? fmtPlayerStats(player.player_stats, gameCode, player.position_type)
+    : "";
+  const showStatsInline = statsSummary.length > 0;
   return (
     <div
       className={clsx(
@@ -285,16 +296,27 @@ function PlayerSide({
           {player.display_position && ` · ${player.display_position}`}
         </div>
       </div>
-      <div
-        className={clsx(
-          "shrink-0 font-mono tabular-nums",
-          subdued ? "text-[11px] text-fg-3" : "text-sm font-bold",
-          leading && !subdued && "text-up",
-          player.player_points === null && "text-fg-3",
-        )}
-      >
-        {fmtPlayerPoints(player.player_points)}
-      </div>
+      {showStatsInline ? (
+        <div
+          className={clsx(
+            "shrink-0 font-mono text-[10px] tabular-nums",
+            subdued ? "text-fg-3" : "text-fg-2",
+          )}
+        >
+          {statsSummary}
+        </div>
+      ) : (
+        <div
+          className={clsx(
+            "shrink-0 font-mono tabular-nums",
+            subdued ? "text-[11px] text-fg-3" : "text-sm font-bold",
+            leading && !subdued && "text-up",
+            !hasPoints && "text-fg-3",
+          )}
+        >
+          {fmtPlayerPoints(player.player_points)}
+        </div>
+      )}
     </div>
   );
 }

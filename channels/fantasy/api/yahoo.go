@@ -412,9 +412,6 @@ func (yc *YahooClient) GetLeagueSettings(ctx context.Context, leagueKey string) 
 		}
 		modifiers[mod.StatID] = v
 	}
-	// TEMP DEBUG: remove once player_points renders correctly.
-	log.Printf("[SettingsDEBUG] league=%s modifiers=%d first_200=%s",
-		leagueKey, len(modifiers), truncate(string(xmlBody), 200))
 	return modifiers, nil
 }
 

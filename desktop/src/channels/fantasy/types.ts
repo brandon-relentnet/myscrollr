@@ -308,6 +308,97 @@ export function fmtPlayerPoints(pts: number | null | undefined): string {
   return pts.toFixed(1);
 }
 
+/**
+ * Yahoo stat_id → short label, per sport. For category leagues where
+ * <player_points> is absent we render a compact summary of the top few
+ * stat values instead of a misleading "0.0".
+ *
+ * These are Yahoo's canonical stat IDs; only the most-shown categories
+ * are mapped. Unknown IDs fall back to `#{id}`.
+ */
+const STAT_LABELS_MLB_HIT: Record<string, string> = {
+  "7": "R",
+  "8": "H",
+  "12": "HR",
+  "13": "RBI",
+  "16": "SB",
+  "55": "OPS",
+  "3": "AVG",
+};
+
+const STAT_LABELS_MLB_PIT: Record<string, string> = {
+  "28": "W",
+  "32": "SV",
+  "42": "K",
+  "26": "ERA",
+  "27": "WHIP",
+  "83": "QS",
+};
+
+const STAT_LABELS_NBA: Record<string, string> = {
+  "12": "PTS",
+  "15": "REB",
+  "16": "AST",
+  "17": "ST",
+  "18": "BLK",
+  "19": "TO",
+};
+
+const STAT_LABELS_NHL: Record<string, string> = {
+  "1": "G",
+  "2": "A",
+  "3": "P",
+  "8": "SHG",
+  "19": "W",
+  "22": "GAA",
+  "23": "SV%",
+};
+
+function statLabelMap(gameCode: string, positionType: string | undefined): Record<string, string> {
+  if (gameCode === "mlb") {
+    return positionType === "P" ? STAT_LABELS_MLB_PIT : STAT_LABELS_MLB_HIT;
+  }
+  if (gameCode === "nba") return STAT_LABELS_NBA;
+  if (gameCode === "nhl") return STAT_LABELS_NHL;
+  return {};
+}
+
+/**
+ * Return a compact "HR 2 · RBI 5 · R 4" summary for a player in a category
+ * league. Picks the three most meaningful non-zero stats, falling back to
+ * any known-label stats. Returns an empty string when nothing useful is
+ * available — caller should render "—" in that case.
+ */
+export function fmtPlayerStats(
+  stats: Record<string, number> | null | undefined,
+  gameCode: string,
+  positionType?: string,
+): string {
+  if (!stats) return "";
+  const labels = statLabelMap(gameCode, positionType);
+  // Score each known stat by (nonzero boost, label presence) so zeros sort last.
+  const entries = Object.entries(stats)
+    .filter(([id]) => labels[id])
+    .map(([id, v]) => ({ label: labels[id], value: v }));
+  if (entries.length === 0) return "";
+  entries.sort((a, b) => {
+    const aZero = a.value === 0;
+    const bZero = b.value === 0;
+    if (aZero !== bZero) return aZero ? 1 : -1;
+    return 0;
+  });
+  return entries
+    .slice(0, 3)
+    .map(({ label, value }) => {
+      const rounded =
+        Number.isInteger(value) || Math.abs(value) >= 10
+          ? Math.round(value).toString()
+          : value.toFixed(2).replace(/\.?0+$/, "");
+      return `${label} ${rounded}`;
+    })
+    .join(" · ");
+}
+
 /** Short "W3" / "L2" / "T1" badge. */
 export function streakLabel(type: string, value: number): string {
   if (!type || value <= 0) return "—";
