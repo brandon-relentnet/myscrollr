@@ -25,8 +25,7 @@ CLI Script (local)
                     ├── Collects: birthday, gender, password
                     ├── POST /invite/complete (core-api)
                     │     ├── Logto: PATCH /api/users/{id}/password
-                    │     ├── Logto: PATCH /api/users/{id}/profile
-                    │     └── Logto: PATCH /api/users/{id}/custom-data
+                    │     └── Logto: PATCH /api/users/{id}/profile (gender + birthdate)
                     └── signIn() with one_time_token + login_hint
 ```
 
@@ -96,9 +95,9 @@ Branded HTML email:
 1. Validates all fields present. Password minimum 8 characters.
 2. Looks up user by email: `GET /api/users?search.primaryEmail={email}` via Logto Management API.
 3. Verifies user exists and has `super_user` role: `GET /api/users/{id}/roles`, checks for role ID `saaf40fy2iaxu1bwhy0m8`.
-4. Updates password: `PATCH /api/users/{id}/password` with `{ password }`.
-5. Updates profile gender: `PATCH /api/users/{id}/profile` with `{ profile: { gender } }`.
-6. Stores birthday in custom data: `PATCH /api/users/{id}/custom-data` with `{ birthday }`.
+4. Verifies the one-time token server-side: `POST /api/one-time-tokens/verify` with `{ token, email }`. Rejects if expired/consumed/revoked.
+5. Updates password: `PATCH /api/users/{id}/password` with `{ password }`.
+6. Updates profile: `PATCH /api/users/{id}/profile` with `{ profile: { gender, birthdate } }` (both are built-in Logto profile fields).
 7. Returns `{ success: true, username }`.
 
 **Security:**
