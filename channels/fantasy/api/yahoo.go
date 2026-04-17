@@ -399,6 +399,10 @@ func (yc *YahooClient) GetRoster(ctx context.Context, teamKey, leagueKey, teamNa
 		return nil, err
 	}
 
+	// TEMP DEBUG: dump URL + first 1500 chars of Yahoo response so we can see
+	// whether <player_points> is actually in the XML. Remove once diagnosed.
+	log.Printf("[RosterDEBUG] url=%s len=%d body_head=%s", urlPath, len(xmlBody), truncate(string(xmlBody), 1500))
+
 	var fc FantasyContent
 	if err := xml.Unmarshal(xmlBody, &fc); err != nil {
 		return nil, fmt.Errorf("parse roster XML: %w", err)
