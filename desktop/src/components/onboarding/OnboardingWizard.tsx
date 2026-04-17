@@ -134,7 +134,8 @@ export default function OnboardingWizard({ prefs, onComplete }: OnboardingWizard
 
   // ── Derived step sequence ──
   const steps = buildSteps(selectedChannels);
-  const currentStep = steps[stepIndex];
+  const effectiveIndex = Math.min(stepIndex, steps.length - 1);
+  const currentStep = steps[effectiveIndex];
   const totalSteps = steps.length;
 
   // ── Toggle helpers ──
@@ -244,7 +245,7 @@ export default function OnboardingWizard({ prefs, onComplete }: OnboardingWizard
   const handleNext = useCallback(async () => {
     if (busy) return;
 
-    const step = steps[stepIndex];
+    const step = steps[effectiveIndex];
 
     // If leaving a configure step, provision the channel
     if (step.kind === "configure") {
@@ -254,29 +255,29 @@ export default function OnboardingWizard({ prefs, onComplete }: OnboardingWizard
     }
 
     // If this is the last step (widgets), finish
-    if (stepIndex >= steps.length - 1) {
+    if (effectiveIndex >= steps.length - 1) {
       await finish();
       return;
     }
 
     setStepIndex((i) => i + 1);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busy, stepIndex, steps, finish]);
+  }, [busy, effectiveIndex, steps, finish]);
 
   // ── Navigation: Back ──
   const handleBack = useCallback(() => {
-    if (stepIndex > 0) setStepIndex((i) => i - 1);
-  }, [stepIndex]);
+    if (effectiveIndex > 0) setStepIndex((i) => i - 1);
+  }, [effectiveIndex]);
 
   // ── Navigation: Skip step ──
   const handleSkip = useCallback(() => {
-    if (stepIndex >= steps.length - 1) {
+    if (effectiveIndex >= steps.length - 1) {
       // Skipping the last step = finish with whatever we have
       finish();
       return;
     }
     setStepIndex((i) => i + 1);
-  }, [stepIndex, steps.length, finish]);
+  }, [effectiveIndex, steps.length, finish]);
 
   // ── Welcome screen skip: just exit wizard ──
   const handleWelcomeSkip = useCallback((dontShowAgain: boolean) => {
@@ -360,15 +361,15 @@ export default function OnboardingWizard({ prefs, onComplete }: OnboardingWizard
     }
   }
 
-  const isLastStep = stepIndex >= steps.length - 1;
+  const isLastStep = effectiveIndex >= steps.length - 1;
 
   return (
     <WizardShell
-      stepIndex={stepIndex}
+      stepIndex={effectiveIndex}
       totalSteps={totalSteps}
       title={stepTitle()}
       subtitle={stepSubtitle()}
-      showBack={stepIndex > 0}
+      showBack={effectiveIndex > 0}
       showSkip
       nextLabel={isLastStep ? "Finish" : "Next"}
       nextDisabled={busy}
