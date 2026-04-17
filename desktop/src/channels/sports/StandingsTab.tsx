@@ -1,6 +1,7 @@
-import { Fragment, useState, useMemo } from "react";
+import { Fragment, useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { clsx } from "clsx";
+import { ChevronDown } from "lucide-react";
 import TeamLogo from "../../components/TeamLogo";
 import { standingsOptions } from "../../api/queries";
 import type { Standing } from "../../api/queries";
@@ -110,11 +111,31 @@ function getSportType(sportApi?: string): SportType {
   return "other";
 }
 
-function GroupHeader({ name }: { name: string }) {
+function GroupHeader({
+  name,
+  isCollapsed,
+  onToggle,
+}: {
+  name: string;
+  isCollapsed: boolean;
+  onToggle: () => void;
+}) {
   return (
-    <tr className="bg-surface-hover">
+    <tr
+      className="bg-surface-hover cursor-pointer select-none hover:bg-surface-hover/80 transition-colors"
+      onClick={onToggle}
+    >
       <td colSpan={9} className="px-3 py-1.5 text-xs font-semibold text-fg-2">
-        {name}
+        <div className="flex items-center gap-1.5">
+          <ChevronDown
+            size={14}
+            className={clsx(
+              "text-fg-3 transition-transform duration-200",
+              isCollapsed && "-rotate-90",
+            )}
+          />
+          {name}
+        </div>
       </td>
     </tr>
   );
@@ -122,6 +143,20 @@ function GroupHeader({ name }: { name: string }) {
 
 export function StandingsTab({ leagues, favoriteTeams }: StandingsTabProps) {
   const [selected, setSelected] = useState(leagues[0] ?? "");
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  const toggleGroup = useCallback((groupName: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupName)) next.delete(groupName);
+      else next.add(groupName);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    setCollapsed(new Set());
+  }, [selected]);
 
   const { data, isLoading, isError } = useQuery({
     ...standingsOptions(selected),
@@ -230,35 +265,42 @@ export function StandingsTab({ leagues, favoriteTeams }: StandingsTabProps) {
             <tbody>
               {groupedRows.map((group, groupIdx) => (
                 <Fragment key={group.groupName || `group-${groupIdx}`}>
-                  {group.groupName && <GroupHeader name={group.groupName} />}
-                  {group.standings.map((s, i) => {
-                    const isFav = favoriteTeams.has(s.team_name);
-                    return (
-                      <tr
-                        key={`${s.team_name}-${i}`}
-                        className={clsx(
-                          "border-b border-edge/30 hover:bg-surface-hover transition-colors",
-                          isFav && "bg-[#f97316]/5",
-                        )}
-                      >
-                        {columns.map((col) => (
-                          <td
-                            key={col.key}
-                            className={clsx(
-                              "px-2 py-1.5",
-                              col.width,
-                              col.key !== "team" && "font-mono text-fg-2",
-                              col.align === "center" && "text-center",
-                              col.align === "right" && "text-right",
-                              !col.align && "text-left"
-                            )}
-                          >
-                            {col.getValue(s)}
-                          </td>
-                        ))}
-                      </tr>
-                    );
-                  })}
+                  {group.groupName && (
+                    <GroupHeader
+                      name={group.groupName}
+                      isCollapsed={collapsed.has(group.groupName)}
+                      onToggle={() => toggleGroup(group.groupName)}
+                    />
+                  )}
+                  {!collapsed.has(group.groupName) &&
+                    group.standings.map((s, i) => {
+                      const isFav = favoriteTeams.has(s.team_name);
+                      return (
+                        <tr
+                          key={`${s.team_name}-${i}`}
+                          className={clsx(
+                            "border-b border-edge/30 hover:bg-surface-hover transition-colors",
+                            isFav && "bg-[#f97316]/5",
+                          )}
+                        >
+                          {columns.map((col) => (
+                            <td
+                              key={col.key}
+                              className={clsx(
+                                "px-2 py-1.5",
+                                col.width,
+                                col.key !== "team" && "font-mono text-fg-2",
+                                col.align === "center" && "text-center",
+                                col.align === "right" && "text-right",
+                                !col.align && "text-left"
+                              )}
+                            >
+                              {col.getValue(s)}
+                            </td>
+                          ))}
+                        </tr>
+                      );
+                    })}
                 </Fragment>
               ))}
             </tbody>
