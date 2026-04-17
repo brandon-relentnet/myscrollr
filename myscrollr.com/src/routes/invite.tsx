@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
-import { Eye, EyeOff, Shield } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Check, Eye, EyeOff, Loader2, Shield, X } from 'lucide-react'
 import { useLogto } from '@logto/react'
 import type { FormEvent } from 'react'
 import { inviteApi } from '@/api/client'
@@ -14,6 +14,9 @@ export const Route = createFileRoute('/invite')({
 })
 
 type PageState = 'form' | 'submitting' | 'signing-in' | 'error'
+type UsernameState = 'idle' | 'checking' | 'available' | 'taken' | 'invalid'
+
+const USERNAME_REGEX = /^[a-z0-9_]{3,24}$/
 
 function InvitePage() {
   const { token, email } = Route.useSearch()
@@ -26,6 +29,10 @@ function InvitePage() {
     !token || !email ? 'Invalid invite link — missing token or email.' : '',
   )
 
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [username, setUsername] = useState('')
+  const [usernameState, setUsernameState] = useState<UsernameState>('idle')
   const [birthday, setBirthday] = useState('')
   const [gender, setGender] = useState('')
   const [password, setPassword] = useState('')
@@ -33,29 +40,55 @@ function InvitePage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
 
+  const usernameRef = useRef<HTMLInputElement>(null)
+
+  function handleUsernameChange(value: string) {
+    const lower = value.toLowerCase().replace(/[^a-z0-9_]/g, '')
+    setUsername(lower)
+    setUsernameState('idle')
+  }
+
+  async function handleUsernameBlur() {
+    if (!username) {
+      setUsernameState('idle')
+      return
+    }
+    if (!USERNAME_REGEX.test(username)) {
+      setUsernameState('invalid')
+      return
+    }
+
+    setUsernameState('checking')
+    try {
+      const result = await inviteApi.checkUsernameAvailable(email, username)
+      if (result.available) {
+        setUsernameState('available')
+      } else {
+        setUsernameState(result.reason === 'invalid' ? 'invalid' : 'taken')
+      }
+    } catch {
+      setUsernameState('idle')
+    }
+  }
+
+  const canSubmit =
+    state !== 'submitting' &&
+    firstName.trim() !== '' &&
+    lastName.trim() !== '' &&
+    username !== '' &&
+    USERNAME_REGEX.test(username) &&
+    usernameState !== 'checking' &&
+    usernameState !== 'taken' &&
+    usernameState !== 'invalid' &&
+    birthday !== '' &&
+    gender !== '' &&
+    password.length >= 8 &&
+    password === confirmPassword
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.')
-      setState('error')
-      return
-    }
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.')
-      setState('error')
-      return
-    }
-    if (!birthday) {
-      setError('Birthday is required.')
-      setState('error')
-      return
-    }
-    if (!gender) {
-      setError('Please select a gender.')
-      setState('error')
-      return
-    }
+    if (!canSubmit) return
 
     setState('submitting')
     setError('')
@@ -67,11 +100,13 @@ function InvitePage() {
         password,
         birthday,
         gender,
+        username,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
       })
 
       setState('signing-in')
 
-      // Store return path so callback redirects to /account
       sessionStorage.setItem('scrollr:returnTo', '/account')
 
       const callbackUrl = `${window.location.origin}/callback`
@@ -85,6 +120,15 @@ function InvitePage() {
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Something went wrong'
+
+      // Handle 409 — username was taken between check and submit
+      if (message.toLowerCase().includes('username was taken')) {
+        setUsernameState('taken')
+        setState('form')
+        usernameRef.current?.focus()
+        return
+      }
+
       setError(message)
       setState('error')
     }
@@ -103,6 +147,23 @@ function InvitePage() {
     )
   }
 
+  if (!token || !email) {
+    return (
+      <div className="min-h-screen text-base-content flex items-center justify-center p-4 font-sans">
+        <div className="w-full max-w-md text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-error/10 border border-error/20 mb-4">
+            <X className="w-8 h-8 text-error" />
+          </div>
+          <h1 className="text-2xl font-bold mb-2">Invalid Invite Link</h1>
+          <p className="text-base-content/60 text-sm">
+            This link is missing required parameters. Please check your email
+            for the correct invite link.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen text-base-content flex items-center justify-center p-4 font-sans">
       <div className="w-full max-w-md">
@@ -111,27 +172,109 @@ function InvitePage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 mb-4">
             <Shield className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold mb-2">Welcome to MyScrollr</h1>
+          <h1 className="text-2xl font-bold mb-2">Welcome, {email}</h1>
           <p className="text-base-content/60 text-sm">
             You&apos;ve been invited as a{' '}
             <span className="text-primary font-semibold">Super User</span>.
-            Complete your profile to get started.
+            Let&apos;s set up your account.
           </p>
         </div>
 
         {/* Form card */}
         <div className="bg-base-200/50 border border-base-300 rounded-2xl p-6 space-y-5">
-          {/* Email (read-only) */}
-          <div>
-            <label className="block text-xs font-medium text-base-content/50 uppercase tracking-wider mb-1.5">
-              Email
-            </label>
-            <div className="px-3 py-2 bg-base-300/50 rounded-lg text-sm text-base-content/70">
-              {email}
-            </div>
-          </div>
-
           <form onSubmit={handleSubmit} className="space-y-5">
+            {/* First Name */}
+            <div>
+              <label
+                htmlFor="first-name"
+                className="block text-xs font-medium text-base-content/50 uppercase tracking-wider mb-1.5"
+              >
+                First Name
+              </label>
+              <input
+                id="first-name"
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                required
+                placeholder="Your first name"
+                className="w-full px-3 py-2 bg-base-300/50 border border-base-300 rounded-lg text-sm focus:outline-none focus:border-primary transition-colors"
+              />
+            </div>
+
+            {/* Last Name */}
+            <div>
+              <label
+                htmlFor="last-name"
+                className="block text-xs font-medium text-base-content/50 uppercase tracking-wider mb-1.5"
+              >
+                Last Name
+              </label>
+              <input
+                id="last-name"
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                required
+                placeholder="Your last name"
+                className="w-full px-3 py-2 bg-base-300/50 border border-base-300 rounded-lg text-sm focus:outline-none focus:border-primary transition-colors"
+              />
+            </div>
+
+            {/* Username */}
+            <div>
+              <label
+                htmlFor="username"
+                className="block text-xs font-medium text-base-content/50 uppercase tracking-wider mb-1.5"
+              >
+                Username
+              </label>
+              <div className="relative">
+                <input
+                  ref={usernameRef}
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => handleUsernameChange(e.target.value)}
+                  onBlur={handleUsernameBlur}
+                  required
+                  placeholder="Choose a username"
+                  className="w-full px-3 py-2 pr-10 bg-base-300/50 border border-base-300 rounded-lg text-sm focus:outline-none focus:border-primary transition-colors"
+                />
+                <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                  {usernameState === 'checking' && (
+                    <Loader2 className="w-4 h-4 text-base-content/40 animate-spin" />
+                  )}
+                  {usernameState === 'available' && (
+                    <Check className="w-4 h-4 text-success" />
+                  )}
+                  {(usernameState === 'taken' ||
+                    usernameState === 'invalid') && (
+                    <X className="w-4 h-4 text-error" />
+                  )}
+                </div>
+              </div>
+              <p className="mt-1 text-xs text-base-content/40">
+                {usernameState === 'idle' &&
+                  '3-24 characters, lowercase letters, digits, or underscores'}
+                {usernameState === 'checking' && 'Checking availability...'}
+                {usernameState === 'available' && (
+                  <span className="text-success">Username is available</span>
+                )}
+                {usernameState === 'taken' && (
+                  <span className="text-error">
+                    Username is taken, try another
+                  </span>
+                )}
+                {usernameState === 'invalid' && (
+                  <span className="text-error">
+                    3-24 characters, lowercase letters, digits, or underscores
+                    only
+                  </span>
+                )}
+              </p>
+            </div>
+
             {/* Birthday */}
             <div>
               <label
@@ -249,7 +392,7 @@ function InvitePage() {
             {/* Submit */}
             <button
               type="submit"
-              disabled={state === 'submitting'}
+              disabled={!canSubmit}
               className="w-full py-2.5 bg-primary text-primary-content font-medium rounded-lg text-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {state === 'submitting'
