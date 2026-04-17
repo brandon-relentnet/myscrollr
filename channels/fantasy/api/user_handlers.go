@@ -598,7 +598,10 @@ func (a *App) ImportYahooLeague(c *fiber.Ctx) error {
 		// Rosters — all teams in the league
 		if teams != nil {
 			for _, team := range teams {
-				roster, err := client.GetRoster(ctx, team.TeamKey, incoming.LeagueKey, team.Name)
+				// Pass currentWeek so Yahoo populates per-player points for
+				// that week. Falls back to a plain roster fetch when the
+				// league has no current_week available.
+				roster, err := client.GetRoster(ctx, team.TeamKey, incoming.LeagueKey, team.Name, currentWeek)
 				if err != nil {
 					log.Printf("[Import] Failed roster for %s: %v", team.TeamKey, err)
 					continue

@@ -372,14 +372,25 @@ func (yc *YahooClient) GetTeams(ctx context.Context, leagueKey string) ([]XMLTea
 	return fc.League.Teams.Team, nil
 }
 
-// GetRoster fetches the live roster for a team.
+// GetRoster fetches the live roster for a team. When `week` > 0 we request
+// the stats subresource pinned to that week, which is the only Yahoo endpoint
+// that populates each player's <player_points> element. When `week` is 0 we
+// fall back to the plain roster URL — the serialized players will be missing
+// `player_points` in that case.
+//
 // Returns a serialized roster dict (same shape as Python serialize_roster).
-func (yc *YahooClient) GetRoster(ctx context.Context, teamKey, leagueKey, teamName string) (map[string]any, error) {
+func (yc *YahooClient) GetRoster(ctx context.Context, teamKey, leagueKey, teamName string, week int) (map[string]any, error) {
 	// Note: roster URL uses team key directly (not league-prefixed)
-	urlPath := fmt.Sprintf("team/%s/roster;", teamKey)
+	var urlPath string
+	if week > 0 {
+		// Pin the lineup AND the stats to the same week so player_points is populated.
+		urlPath = fmt.Sprintf("team/%s/roster;week=%d/players/stats;type=week;week=%d", teamKey, week, week)
+	} else {
+		urlPath = fmt.Sprintf("team/%s/roster;", teamKey)
+	}
 
 	var xmlBody []byte
-	err := yc.withRetry(ctx, fmt.Sprintf("roster(%s)", teamKey), func() error {
+	err := yc.withRetry(ctx, fmt.Sprintf("roster(%s,week=%d)", teamKey, week), func() error {
 		var reqErr error
 		xmlBody, reqErr = yc.makeRequest(ctx, urlPath)
 		return reqErr

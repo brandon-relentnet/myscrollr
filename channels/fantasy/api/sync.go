@@ -351,7 +351,10 @@ func (a *App) syncUser(ctx context.Context, user yahooUser, clientID, clientSecr
 		}
 
 		for _, team := range teams {
-			roster, err := client.GetRoster(ctx, team.TeamKey, lk, team.Name)
+			// Pass currentWeek so Yahoo populates per-player points for that
+			// week. If currentWeek is 0 (finished league or missing metadata)
+			// the call falls back to a roster-only request.
+			roster, err := client.GetRoster(ctx, team.TeamKey, lk, team.Name, currentWeek)
 			if err != nil {
 				log.Printf("[Sync] Failed roster for %s: %v", team.TeamKey, err)
 				continue
