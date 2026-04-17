@@ -154,10 +154,10 @@ export default function OnboardingWizard({ prefs, onComplete }: OnboardingWizard
     });
   }, []);
 
-  const toggleLeague = useCallback((id: string) => {
+  const toggleLeague = useCallback((name: string) => {
     setSportsLeagues((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      next.has(name) ? next.delete(name) : next.add(name);
       return next;
     });
   }, []);

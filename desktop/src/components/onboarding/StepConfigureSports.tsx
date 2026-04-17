@@ -3,7 +3,7 @@ import { POPULAR_LEAGUES } from "./curated-picks";
 
 interface StepConfigureSportsProps {
   selected: Set<string>;
-  onToggle: (leagueId: string) => void;
+  onToggle: (leagueName: string) => void;
 }
 
 export default function StepConfigureSports({ selected, onToggle }: StepConfigureSportsProps) {
@@ -19,11 +19,11 @@ export default function StepConfigureSports({ selected, onToggle }: StepConfigur
           <h3 className="text-xs font-medium text-fg-3 uppercase tracking-wider mb-2">{sport}</h3>
           <div className="flex flex-col gap-1.5">
             {leagues.map((league) => {
-              const active = selected.has(league.id);
+              const active = selected.has(league.name);
               return (
                 <button
-                  key={`${league.id}-${league.name}`}
-                  onClick={() => onToggle(league.id)}
+                  key={league.name}
+                  onClick={() => onToggle(league.name)}
                   className={clsx(
                     "flex items-center gap-3 px-3 py-2 rounded-lg border transition-all text-left",
                     active
