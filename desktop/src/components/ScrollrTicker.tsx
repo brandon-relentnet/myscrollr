@@ -4,6 +4,8 @@ import { Ticker } from "motion-plus/react";
 import { useMotionValue, animate, AnimatePresence, motion } from "motion/react";
 import type { DashboardResponse, Trade, Game, RssItem, WidgetTickerData } from "../types";
 import type { MixMode, ChipColorMode, TickerDirection, ScrollMode, WidgetPinConfig, ChannelDisplayPrefs } from "../preferences";
+import type { LeagueResponse as FantasyLeague } from "../channels/fantasy/types";
+import { isMatchupLive as isFantasyMatchupLive, userMatchupContext as fantasyMatchupContext } from "../channels/fantasy/types";
 import TradeChip from "./chips/TradeChip";
 import GameChip from "./chips/GameChip";
 import { isLive, isCloseGame, isFinal, isPre } from "../utils/gameHelpers";
@@ -74,11 +76,18 @@ interface ScrollrTickerProps {
   stepPause?: number;
 }
 
-// ── Helpers ──────────────────────────────────────────────────────
+// ── Fantasy engagement ─────────────────────────────────────────
 
-function getItemId(item: Record<string, unknown>): string | number {
-  return (item.id as string | number) ?? (item.symbol as string) ?? 0;
+function fantasyEngagement(league: FantasyLeague): number {
+  const ctx = fantasyMatchupContext(league);
+  if (!ctx) return league.data.is_finished ? 0 : 5;
+  if (isFantasyMatchupLive(ctx.matchup)) return 100;
+  if (ctx.matchup.status === "preevent") return 40;
+  if (ctx.matchup.status === "postevent") return 20;
+  return 10;
 }
+
+// ── Helpers ──────────────────────────────────────────────────────
 
 /** Round-robin interleave across buckets:
  *  bucket0[0], bucket1[0], bucket2[0], bucket0[1], bucket1[1], ... */
@@ -155,6 +164,36 @@ export default function ScrollrTicker({
 
       // ── Channel tabs: use dashboard.data ──────────────────────
       const data = dashboard?.data?.[tab];
+
+      // Fantasy arrives as a structured { leagues: [...] } object, so it
+      // needs its own branch before the generic array check below.
+      if (tab === "fantasy") {
+        const fantasyTicker = channelDisplay?.fantasy?.tickerShowMatchup ?? true;
+        if (!fantasyTicker) continue;
+        const fantasyPayload = data as { leagues?: unknown } | undefined;
+        const leagues = Array.isArray(fantasyPayload?.leagues)
+          ? (fantasyPayload.leagues as FantasyLeague[])
+          : [];
+        if (leagues.length === 0) continue;
+        // Prioritise live matchups, then leagues with a scheduled matchup,
+        // then alphabetical.
+        const ranked = [...leagues].sort((a, b) => fantasyEngagement(b) - fantasyEngagement(a));
+        for (const league of ranked) {
+          bucket.push(
+            wrap(`fan-${league.league_key}`,
+              <FantasyChip
+                league={league}
+                comfort={comfort}
+                colorMode={chipColorMode}
+                onClick={() => onChipClick?.("fantasy", league.league_key)}
+              />
+            )
+          );
+        }
+        buckets.push(bucket);
+        continue;
+      }
+
       if (!Array.isArray(data) || data.length === 0) continue;
 
       switch (tab) {
@@ -228,23 +267,6 @@ export default function ScrollrTicker({
           }
           break;
 
-        default: {
-          const records = data as Record<string, unknown>[];
-          for (const item of records) {
-            const id = getItemId(item);
-            bucket.push(
-              wrap(`${tab}-${id}`,
-                <FantasyChip
-                  item={item}
-                  comfort={comfort}
-                  colorMode={chipColorMode}
-                  onClick={() => onChipClick?.(tab, id)}
-                />
-              )
-            );
-          }
-          break;
-        }
       }
 
       buckets.push(bucket);

@@ -1,27 +1,47 @@
 /**
- * Fantasy FeedTab -- desktop-native.
+ * Fantasy FeedTab — redesigned as a multi-view consumption experience.
  *
- * Renders Yahoo Fantasy Sports leagues with matchups, standings,
- * and injury counts. Unlike other channels, fantasy data arrives
- * as a structured MyLeaguesResponse rather than a flat CDC array,
- * so fantasy CDC events are not processed by the CDC merge engine.
+ * Organized around the rituals of a fantasy season:
+ *   - Overview: multi-league weekly scorecard + primary league hero
+ *   - Matchup:  live head-to-head with starting lineups
+ *   - Standings: playoff-aware standings for the primary league
+ *   - Roster:   user's (or any team's) roster with injury spotlight
  *
- * Controls bar provides sport filter pills, sort dropdown, and
- * status filter. Summary bar shows league/matchup/live counts.
+ * A league switcher appears when the user has 2+ active leagues, so each
+ * sub-view follows a single "current" league.  The Feed is deliberately
+ * read-only; import / disconnect / tier gating lives on the Configure
+ * tab.
  */
-import { useMemo, useState, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { clsx } from "clsx";
-import { Swords } from "lucide-react";
+import {
+  Activity,
+  ClipboardList,
+  LayoutGrid,
+  Star,
+  Swords,
+  Trophy,
+  Users,
+} from "lucide-react";
+import { motion } from "motion/react";
 import { useQuery } from "@tanstack/react-query";
-import { LeagueCard } from "./LeagueCard";
-import { SPORT_EMOJI, isMatchupLive } from "./types";
 import { dashboardQueryOptions } from "../../api/queries";
 import { useShell } from "../../shell-context";
 import EmptyChannelState from "../../components/EmptyChannelState";
+import { OverviewView } from "./OverviewView";
+import { MatchupView } from "./MatchupView";
+import { StandingsView } from "./StandingsView";
+import { RosterView } from "./RosterView";
+import {
+  SPORT_EMOJI,
+  isMatchupLive,
+  userMatchupContext,
+} from "./types";
 import type { FeedTabProps, ChannelManifest } from "../../types";
+import type { FantasySubTab } from "../../preferences";
 import type { LeagueResponse, MyLeaguesResponse } from "./types";
 
-// -- Channel manifest ---------------------------------------------------------
+// ── Channel manifest ─────────────────────────────────────────────
 
 export const fantasyChannel: ChannelManifest = {
   id: "fantasy",
@@ -32,18 +52,19 @@ export const fantasyChannel: ChannelManifest = {
   icon: Swords,
   info: {
     about:
-      "View your Yahoo Fantasy Sports leagues at a glance. See your current " +
-      "matchup score, standings rank, win/loss record, and roster injury alerts.",
+      "Live matchups, playoff-aware standings, and roster intel for all of " +
+      "your Yahoo Fantasy leagues. Scores, injuries, and seedings update in " +
+      "near real time as games play out.",
     usage: [
-      "Connect your Yahoo account from the Settings tab.",
-      "Your leagues and matchups appear automatically.",
-      "Scores update when the dashboard refreshes.",
+      "Import your leagues from the Configure tab.",
+      "Pick a primary league to surface as the hero view.",
+      "Flip between Overview, Matchup, Standings, and Roster to manage your teams.",
     ],
   },
   FeedTab: FantasyFeedTab,
 };
 
-// -- Helpers ------------------------------------------------------------------
+// ── Helpers ──────────────────────────────────────────────────────
 
 function extractLeagues(data: unknown): LeagueResponse[] {
   if (data && typeof data === "object" && !Array.isArray(data)) {
@@ -54,60 +75,20 @@ function extractLeagues(data: unknown): LeagueResponse[] {
   return [];
 }
 
-// -- Filter / sort types ------------------------------------------------------
+interface SubTabMeta {
+  value: FantasySubTab;
+  label: string;
+  icon: typeof LayoutGrid;
+}
 
-type SportFilter = "all" | "nfl" | "nba" | "nhl" | "mlb";
-type StatusFilter = "all" | "active" | "finished";
-type SortKey = "name" | "season" | "record" | "matchup";
-
-const SORT_OPTIONS: { value: SortKey; label: string }[] = [
-  { value: "name", label: "Name" },
-  { value: "season", label: "Season" },
-  { value: "record", label: "Record" },
-  { value: "matchup", label: "Matchup" },
+const SUB_TABS: SubTabMeta[] = [
+  { value: "overview", label: "Overview", icon: LayoutGrid },
+  { value: "matchup", label: "Matchup", icon: Swords },
+  { value: "standings", label: "Standings", icon: Trophy },
+  { value: "roster", label: "Roster", icon: Users },
 ];
 
-const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "active", label: "Active" },
-  { value: "finished", label: "Finished" },
-];
-
-// -- Sort helpers -------------------------------------------------------------
-
-function winPct(league: LeagueResponse): number {
-  const myStanding = league.standings?.find(
-    (s) => s.team_key === league.team_key,
-  );
-  if (!myStanding) return -1;
-  const total = myStanding.wins + myStanding.losses + myStanding.ties;
-  return total === 0 ? 0 : myStanding.wins / total;
-}
-
-function matchupDiff(league: LeagueResponse): number {
-  const currentWeek = league.data?.current_week ?? 0;
-  const myMatchup = league.matchups?.find(
-    (m) =>
-      m.week === currentWeek &&
-      m.teams?.some((t) => t.team_key === league.team_key),
-  );
-  if (!myMatchup || !myMatchup.teams || myMatchup.teams.length < 2) return -Infinity;
-  const myTeam = myMatchup.teams.find((t) => t.team_key === league.team_key);
-  const oppTeam = myMatchup.teams.find((t) => t.team_key !== league.team_key);
-  return (myTeam?.points ?? 0) - (oppTeam?.points ?? 0);
-}
-
-function hasLiveMatchup(league: LeagueResponse): boolean {
-  const currentWeek = league.data?.current_week ?? 0;
-  const myMatchup = league.matchups?.find(
-    (m) =>
-      m.week === currentWeek &&
-      m.teams?.some((t) => t.team_key === league.team_key),
-  );
-  return myMatchup ? isMatchupLive(myMatchup) : false;
-}
-
-// -- FeedTab ------------------------------------------------------------------
+// ── FeedTab ──────────────────────────────────────────────────────
 
 function FantasyFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
   const { prefs } = useShell();
@@ -117,89 +98,54 @@ function FantasyFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
   const fantasyData = dashboard?.data?.fantasy;
   const leagues = useMemo(() => extractLeagues(fantasyData), [fantasyData]);
 
-  // -- Filter / sort state --------------------------------------------------
-  const [sportFilter, setSportFilter] = useState<SportFilter>("all");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [sortKey, setSortKey] = useState<SortKey>(() => dp.defaultSort ?? "name");
+  // Apply the user's per-league visibility filter: empty = show all.
+  const visibleLeagues = useMemo(() => {
+    if (!dp.enabledLeagueKeys || dp.enabledLeagueKeys.length === 0) return leagues;
+    const allowed = new Set(dp.enabledLeagueKeys);
+    return leagues.filter((l) => allowed.has(l.league_key));
+  }, [leagues, dp.enabledLeagueKeys]);
 
-  const clearFilters = useCallback(() => {
-    setSportFilter("all");
-    setStatusFilter("all");
+  // Resolve the "primary" league — user override, else first active, else first.
+  const primaryLeague = useMemo(
+    () => resolvePrimaryLeague(visibleLeagues, dp.primaryLeagueKey),
+    [visibleLeagues, dp.primaryLeagueKey],
+  );
+
+  // Current league the sub-views render against. Defaults to primary.
+  const [activeLeagueKey, setActiveLeagueKey] = useState<string | null>(
+    primaryLeague?.league_key ?? null,
+  );
+  useEffect(() => {
+    if (!activeLeagueKey && primaryLeague) {
+      setActiveLeagueKey(primaryLeague.league_key);
+    } else if (
+      activeLeagueKey &&
+      !visibleLeagues.some((l) => l.league_key === activeLeagueKey)
+    ) {
+      setActiveLeagueKey(primaryLeague?.league_key ?? null);
+    }
+  }, [activeLeagueKey, primaryLeague, visibleLeagues]);
+
+  const activeLeague = useMemo(
+    () =>
+      activeLeagueKey
+        ? visibleLeagues.find((l) => l.league_key === activeLeagueKey) ?? null
+        : primaryLeague,
+    [activeLeagueKey, visibleLeagues, primaryLeague],
+  );
+
+  const [subTab, setSubTab] = useState<FantasySubTab>(() => {
+    if (dp.defaultSubTab) return dp.defaultSubTab;
+    return visibleLeagues.length > 1 ? "overview" : "matchup";
+  });
+
+  const handleOpenMatchup = useCallback(() => setSubTab("matchup"), []);
+  const handleSelectLeague = useCallback((key: string) => {
+    setActiveLeagueKey(key);
+    setSubTab("matchup");
   }, []);
 
-  const hasFilters = sportFilter !== "all" || statusFilter !== "all";
-
-  // -- Available sports (only show pills for sports that exist) -------------
-  const availableSports = useMemo(() => {
-    const sports = new Set<string>();
-    for (const l of leagues) {
-      if (l.game_code) sports.add(l.game_code.toLowerCase());
-    }
-    const order: SportFilter[] = ["nfl", "nba", "nhl", "mlb"];
-    return order.filter((s) => sports.has(s));
-  }, [leagues]);
-
-  // -- Data pipeline: filter + sort -----------------------------------------
-  const filtered = useMemo(() => {
-    let items = leagues;
-
-    // Sport filter
-    if (sportFilter !== "all") {
-      items = items.filter(
-        (l) => l.game_code.toLowerCase() === sportFilter,
-      );
-    }
-
-    // Status filter
-    if (statusFilter === "active") {
-      items = items.filter((l) => !l.data.is_finished);
-    } else if (statusFilter === "finished") {
-      items = items.filter((l) => l.data.is_finished);
-    }
-
-    // Sort
-    items = [...items].sort((a, b) => {
-      switch (sortKey) {
-        case "name":
-          return a.name.localeCompare(b.name);
-        case "season":
-          return (b.season ?? "").localeCompare(a.season ?? "");
-        case "record":
-          return winPct(b) - winPct(a);
-        case "matchup": {
-          const aLive = hasLiveMatchup(a) ? 1 : 0;
-          const bLive = hasLiveMatchup(b) ? 1 : 0;
-          if (bLive !== aLive) return bLive - aLive;
-          return matchupDiff(b) - matchupDiff(a);
-        }
-        default:
-          return 0;
-      }
-    });
-
-    return items;
-  }, [leagues, sportFilter, statusFilter, sortKey]);
-
-  // -- Summary counts -------------------------------------------------------
-  const { activeMatchups, liveCount } = useMemo(() => {
-    let active = 0;
-    let live = 0;
-    for (const l of leagues) {
-      const currentWeek = l.data?.current_week ?? 0;
-      const myMatchup = l.matchups?.find(
-        (m) =>
-          m.week === currentWeek &&
-          m.teams?.some((t) => t.team_key === l.team_key),
-      );
-      if (myMatchup) {
-        active++;
-        if (isMatchupLive(myMatchup)) live++;
-      }
-    }
-    return { activeMatchups: active, liveCount: live };
-  }, [leagues]);
-
-  // -- Empty state (no data at all) -----------------------------------------
+  // ── Empty / loading states ───────────────────────────────────
   if (leagues.length === 0) {
     return (
       <EmptyChannelState
@@ -214,106 +160,177 @@ function FantasyFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
     );
   }
 
+  if (visibleLeagues.length === 0) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+        <Activity size={28} className="text-fg-3" />
+        <div className="text-[13px] font-semibold text-fg">
+          No leagues enabled for viewing
+        </div>
+        <p className="max-w-sm text-[11px] text-fg-3">
+          Every one of your imported leagues is currently hidden. Enable at
+          least one in the Configure tab to see your matchups, standings, and
+          rosters here.
+        </p>
+        <button
+          type="button"
+          onClick={onConfigure}
+          className="mt-1 rounded-md bg-accent/10 px-3 py-1.5 text-[11px] font-medium text-accent hover:bg-accent/20 cursor-pointer"
+        >
+          Open Configure
+        </button>
+      </div>
+    );
+  }
+
+  const liveCount = visibleLeagues.filter((l) => {
+    const ctx = userMatchupContext(l);
+    return ctx && isMatchupLive(ctx.matchup);
+  }).length;
+
   return (
-    <div className="flex flex-col h-full">
-      {/* Controls bar */}
-      <div className="sticky top-0 z-20 bg-surface border-b border-edge/30 px-3 py-2 flex items-center gap-2">
-        {/* Sport filter pills -- left side */}
+    <div className={clsx("flex h-full flex-col", mode === "compact" && "text-[12px]")}>
+      {/* Top bar: sub-tabs + live pulse */}
+      <div className="sticky top-0 z-20 flex items-center gap-2 border-b border-edge/30 bg-surface px-3 py-2">
         <div className="flex gap-1">
-          <button
-            onClick={() => setSportFilter("all")}
-            className={clsx(
-              "px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors cursor-pointer",
-              sportFilter === "all"
-                ? "bg-accent/15 text-accent"
-                : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
-            )}
-          >
-            All
-          </button>
-          {availableSports.map((sport) => (
-            <button
-              key={sport}
-              onClick={() => setSportFilter(sport)}
-              className={clsx(
-                "px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors cursor-pointer",
-                sportFilter === sport
-                  ? "bg-accent/15 text-accent"
-                  : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
-              )}
-            >
-              {SPORT_EMOJI[sport] ?? ""} {sport.toUpperCase()}
-            </button>
-          ))}
+          {SUB_TABS.map((tab) => {
+            const Icon = tab.icon;
+            const disabled = tab.value !== "overview" && !activeLeague;
+            const active = subTab === tab.value;
+            return (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => setSubTab(tab.value)}
+                disabled={disabled}
+                className={clsx(
+                  "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium transition-colors",
+                  active
+                    ? "bg-accent/15 text-accent"
+                    : "text-fg-3 hover:bg-surface-hover hover:text-fg-2",
+                  disabled && "cursor-not-allowed opacity-50",
+                )}
+              >
+                <Icon size={13} />
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Sort + status filter -- right side */}
-        <div className="flex items-center gap-2 ml-auto">
-          <select
-            value={sortKey}
-            onChange={(e) => setSortKey(e.target.value as SortKey)}
-            className="bg-surface-2 border border-edge/40 rounded-md px-2 py-1.5 text-[11px] text-fg-2 cursor-pointer outline-none focus:border-accent/60"
-          >
-            {SORT_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-            className="bg-surface-2 border border-edge/40 rounded-md px-2 py-1.5 text-[11px] text-fg-2 cursor-pointer outline-none focus:border-accent/60"
-          >
-            {STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+        <div className="ml-auto flex items-center gap-3 font-mono text-[10px] uppercase tracking-wider text-fg-3">
+          <span>
+            {visibleLeagues.length} league{visibleLeagues.length === 1 ? "" : "s"}
+          </span>
+          {liveCount > 0 && (
+            <span className="inline-flex items-center gap-1 text-live">
+              <span className="h-1.5 w-1.5 rounded-full bg-live animate-pulse" />
+              {liveCount} live
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Summary bar */}
-      <div className="px-3 py-1 bg-surface border-b border-edge/30 font-mono text-[10px] tabular-nums flex items-center gap-1.5">
-        <span className="text-fg-3">{leagues.length} leagues</span>
-        <span className="text-fg-3">&middot;</span>
-        <span className="text-fg-3">{activeMatchups} active matchups</span>
-        {liveCount > 0 && (
-          <>
-            <span className="text-fg-3">&middot;</span>
-            <span className="text-accent">{liveCount} live</span>
-          </>
-        )}
-      </div>
-
-      {/* League grid or empty filter state */}
-      {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 gap-3">
-          <p className="text-[12px] text-fg-3">
-            No leagues match your filters
-          </p>
-          <button
-            onClick={clearFilters}
-            className="px-3 py-1.5 rounded-md text-[11px] font-medium text-accent bg-accent/10 hover:bg-accent/20 transition-colors cursor-pointer"
-          >
-            Clear filters
-          </button>
-        </div>
-      ) : (
-        <div className="grid gap-px bg-edge grid-cols-1">
-          {filtered.map((league) => (
-            <LeagueCard
-              key={league.league_key}
-              league={league}
-              mode={mode}
-              showStandings={dp.showStandings}
-              showInjuryCount={dp.showInjuryCount}
-              showMatchups={dp.showMatchups}
-            />
-          ))}
-        </div>
+      {/* Secondary bar: league switcher when 2+ leagues AND not in overview */}
+      {visibleLeagues.length > 1 && subTab !== "overview" && (
+        <LeagueSwitcher
+          leagues={visibleLeagues}
+          activeKey={activeLeague?.league_key ?? null}
+          primaryKey={primaryLeague?.league_key ?? null}
+          onSelect={setActiveLeagueKey}
+        />
       )}
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
+        <motion.div
+          key={subTab + (activeLeague?.league_key ?? "none")}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.18 }}
+        >
+          {subTab === "overview" && (
+            <OverviewView
+              leagues={visibleLeagues}
+              primaryLeagueKey={primaryLeague?.league_key ?? null}
+              onSelectLeague={handleSelectLeague}
+              onOpenMatchup={handleOpenMatchup}
+            />
+          )}
+          {subTab === "matchup" && <MatchupView league={activeLeague} />}
+          {subTab === "standings" && <StandingsView league={activeLeague} />}
+          {subTab === "roster" && <RosterView league={activeLeague} />}
+        </motion.div>
+      </div>
     </div>
   );
+}
+
+// ── League switcher pill bar ─────────────────────────────────────
+
+interface LeagueSwitcherProps {
+  leagues: LeagueResponse[];
+  activeKey: string | null;
+  primaryKey: string | null;
+  onSelect: (key: string) => void;
+}
+
+function LeagueSwitcher({ leagues, activeKey, primaryKey, onSelect }: LeagueSwitcherProps) {
+  return (
+    <div className="flex items-center gap-2 overflow-x-auto border-b border-edge/30 bg-surface-2/40 px-3 py-1.5">
+      <ClipboardList size={12} className="shrink-0 text-fg-3" />
+      <div className="flex items-center gap-1">
+        {leagues.map((l) => {
+          const active = l.league_key === activeKey;
+          const isPrimary = l.league_key === primaryKey;
+          const ctx = userMatchupContext(l);
+          const live = ctx && isMatchupLive(ctx.matchup);
+          return (
+            <button
+              key={l.league_key}
+              type="button"
+              onClick={() => onSelect(l.league_key)}
+              className={clsx(
+                "flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors cursor-pointer",
+                active
+                  ? "border-accent/60 bg-accent/15 text-accent"
+                  : "border-edge/40 text-fg-3 hover:border-accent/40 hover:text-fg-2",
+              )}
+            >
+              <span aria-hidden>{SPORT_EMOJI[l.game_code] ?? "🏆"}</span>
+              <span className="max-w-[140px] truncate">{l.name}</span>
+              {isPrimary && (
+                <Star size={10} className="fill-accent stroke-accent" />
+              )}
+              {live && (
+                <span className="ml-0.5 h-1.5 w-1.5 animate-pulse rounded-full bg-live" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Helpers ──────────────────────────────────────────────────────
+
+function resolvePrimaryLeague(
+  leagues: LeagueResponse[],
+  configuredKey: string | null,
+): LeagueResponse | null {
+  if (!leagues.length) return null;
+  if (configuredKey) {
+    const match = leagues.find((l) => l.league_key === configuredKey);
+    if (match) return match;
+  }
+  const activeWithLive = leagues.find((l) => {
+    const ctx = userMatchupContext(l);
+    return ctx && isMatchupLive(ctx.matchup);
+  });
+  if (activeWithLive) return activeWithLive;
+  const activeWithMatchup = leagues.find((l) => userMatchupContext(l));
+  if (activeWithMatchup) return activeWithMatchup;
+  const active = leagues.find((l) => !l.data.is_finished);
+  return active ?? leagues[0];
 }

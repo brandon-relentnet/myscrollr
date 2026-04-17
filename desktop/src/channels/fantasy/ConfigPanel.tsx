@@ -19,7 +19,7 @@ import { ConnectedView } from "./ConnectedView";
 import type { Channel } from "../../api/client";
 import type { SubscriptionTier } from "../../auth";
 import type { LeagueResponse, DiscoveredLeague } from "./types";
-import type { ImportStatus } from "./LeagueDetails";
+import type { ImportStatus } from "./ImportProgress";
 
 // ── Local types ──────────────────────────────────────────────────
 

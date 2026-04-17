@@ -452,10 +452,13 @@ func serializeLeague(l XMLLeague, gameCode string) map[string]any {
 	}
 }
 
-// computeIsFinished mirrors the Python heuristic:
-//   - is_finished == "1" -> true
-//   - is_finished == "0" -> false
-//   - missing/nil -> season < (current_year - 1)
+// computeIsFinished derives the is_finished flag from Yahoo data:
+//   - is_finished == "1"   -> true
+//   - is_finished == "0"   -> false
+//   - missing/nil          -> default false when the season is current or in
+//     the future, true only if the season is strictly older than last year.
+//     The conservative default prevents a just-linked 2025 league from being
+//     marked finished while we're early in 2026 (before it actually ends).
 func computeIsFinished(raw *string, season int) bool {
 	if raw != nil {
 		if *raw == "1" {
@@ -465,7 +468,8 @@ func computeIsFinished(raw *string, season int) bool {
 			return false
 		}
 	}
-	return season < (time.Now().Year() - 1)
+	currentYear := time.Now().Year()
+	return season < currentYear-1
 }
 
 // serializeStandings converts XML team standings to the JSON array stored

@@ -315,24 +315,18 @@ function FantasyDisplay() {
   const { prefs, onPrefsChange } = useShell();
   const dp = prefs.channelDisplay.fantasy;
 
-  function toggle(key: keyof Pick<FantasyDisplayPrefs, "showStandings" | "showInjuryCount" | "showMatchups">) {
+  function patch(next: Partial<FantasyDisplayPrefs>) {
     onPrefsChange({
       ...prefs,
       channelDisplay: {
         ...prefs.channelDisplay,
-        fantasy: { ...dp, [key]: !dp[key] },
+        fantasy: { ...dp, ...next },
       },
     });
   }
 
-  function setDefaultSort(value: string) {
-    onPrefsChange({
-      ...prefs,
-      channelDisplay: {
-        ...prefs.channelDisplay,
-        fantasy: { ...dp, defaultSort: value as FantasyDisplayPrefs["defaultSort"] },
-      },
-    });
+  function toggle(key: keyof Pick<FantasyDisplayPrefs, "showStandings" | "showInjuryCount" | "showMatchups" | "tickerShowMatchup">) {
+    patch({ [key]: !dp[key] } as Partial<FantasyDisplayPrefs>);
   }
 
   function handleReset() {
@@ -340,32 +334,48 @@ function FantasyDisplay() {
       ...prefs,
       channelDisplay: {
         ...prefs.channelDisplay,
-        fantasy: { showStandings: true, showInjuryCount: true, showMatchups: true, defaultSort: "name" },
+        fantasy: {
+          showStandings: true,
+          showInjuryCount: true,
+          showMatchups: true,
+          defaultSort: "name",
+          defaultSubTab: "overview",
+          primaryLeagueKey: null,
+          enabledLeagueKeys: [],
+          tickerShowMatchup: true,
+        },
       },
     });
   }
 
-  const SORT_OPTIONS = [
-    { value: "name", label: "Name" },
-    { value: "season", label: "Season" },
-    { value: "record", label: "Record" },
+  const SUB_TAB_OPTIONS = [
+    { value: "overview", label: "Overview" },
     { value: "matchup", label: "Matchup" },
+    { value: "standings", label: "Standings" },
+    { value: "roster", label: "Roster" },
   ];
 
   return (
     <div className="p-4 max-w-2xl mx-auto">
-      <Section title="Feed">
-        <ToggleRow label="Show standings" checked={dp.showStandings} onChange={() => toggle("showStandings")} />
-        <ToggleRow label="Show injury count" checked={dp.showInjuryCount} onChange={() => toggle("showInjuryCount")} />
-        <ToggleRow label="Show matchups" checked={dp.showMatchups} onChange={() => toggle("showMatchups")} />
-      </Section>
-      <Section title="Default Sort">
+      <Section title="Feed Layout">
         <SegmentedRow
-          label="Sort order"
-          description="Default sort when opening the feed"
-          value={dp.defaultSort}
-          options={SORT_OPTIONS}
-          onChange={setDefaultSort}
+          label="Default view"
+          description="Which sub-tab opens when you enter the Fantasy feed"
+          value={dp.defaultSubTab}
+          options={SUB_TAB_OPTIONS}
+          onChange={(value) => patch({ defaultSubTab: value as FantasyDisplayPrefs["defaultSubTab"] })}
+        />
+      </Section>
+      <Section title="Secondary displays">
+        <ToggleRow label="Show standings" checked={dp.showStandings} onChange={() => toggle("showStandings")} />
+        <ToggleRow label="Show matchups" checked={dp.showMatchups} onChange={() => toggle("showMatchups")} />
+        <ToggleRow label="Show injury alerts" checked={dp.showInjuryCount} onChange={() => toggle("showInjuryCount")} />
+      </Section>
+      <Section title="Always-on-top ticker">
+        <ToggleRow
+          label="Show live matchups on ticker"
+          checked={dp.tickerShowMatchup}
+          onChange={() => toggle("tickerShowMatchup")}
         />
       </Section>
       <ResetButton label="Reset display settings" onClick={handleReset} />

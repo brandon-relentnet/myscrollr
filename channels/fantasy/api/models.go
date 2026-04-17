@@ -123,13 +123,13 @@ type XMLManager struct {
 }
 
 type XMLTeamStats struct {
-	Rank          *string         `xml:"rank" json:"rank"`
-	PlayoffSeed   *string         `xml:"playoff_seed" json:"playoff_seed"`
-	OutcomeTotals *XMLOutcome     `xml:"outcome_totals" json:"outcome_totals"`
-	Streak        *XMLStreak      `xml:"streak" json:"streak"`
-	GamesBack     *string         `xml:"games_back" json:"games_back"`
-	PointsFor     *string         `xml:"points_for" json:"points_for"`
-	PointsAgainst *string         `xml:"points_against" json:"points_against"`
+	Rank          *string     `xml:"rank" json:"rank"`
+	PlayoffSeed   *string     `xml:"playoff_seed" json:"playoff_seed"`
+	OutcomeTotals *XMLOutcome `xml:"outcome_totals" json:"outcome_totals"`
+	Streak        *XMLStreak  `xml:"streak" json:"streak"`
+	GamesBack     *string     `xml:"games_back" json:"games_back"`
+	PointsFor     *string     `xml:"points_for" json:"points_for"`
+	PointsAgainst *string     `xml:"points_against" json:"points_against"`
 }
 
 type XMLOutcome struct {
@@ -149,8 +149,8 @@ type XMLStreak struct {
 // ---------------------------------------------------------------------------
 
 type XMLScoreboard struct {
-	Week     string       `xml:"week" json:"week"`
-	Matchups XMLMatchups  `xml:"matchups" json:"matchups"`
+	Week     string      `xml:"week" json:"week"`
+	Matchups XMLMatchups `xml:"matchups" json:"matchups"`
 }
 
 type XMLMatchups struct {
@@ -158,15 +158,15 @@ type XMLMatchups struct {
 }
 
 type XMLMatchup struct {
-	Week            string          `xml:"week" json:"week"`
-	WeekStart       string          `xml:"week_start" json:"week_start"`
-	WeekEnd         string          `xml:"week_end" json:"week_end"`
-	Status          string          `xml:"status" json:"status"`
-	IsPlayoffs      string          `xml:"is_playoffs" json:"is_playoffs"`
-	IsConsolation   string          `xml:"is_consolation" json:"is_consolation"`
-	IsTied          string          `xml:"is_tied" json:"is_tied"`
-	WinnerTeamKey   string          `xml:"winner_team_key" json:"winner_team_key"`
-	Teams           XMLMatchupTeams `xml:"teams" json:"teams"`
+	Week          string          `xml:"week" json:"week"`
+	WeekStart     string          `xml:"week_start" json:"week_start"`
+	WeekEnd       string          `xml:"week_end" json:"week_end"`
+	Status        string          `xml:"status" json:"status"`
+	IsPlayoffs    string          `xml:"is_playoffs" json:"is_playoffs"`
+	IsConsolation string          `xml:"is_consolation" json:"is_consolation"`
+	IsTied        string          `xml:"is_tied" json:"is_tied"`
+	WinnerTeamKey string          `xml:"winner_team_key" json:"winner_team_key"`
+	Teams         XMLMatchupTeams `xml:"teams" json:"teams"`
 }
 
 type XMLMatchupTeams struct {
@@ -174,14 +174,14 @@ type XMLMatchupTeams struct {
 }
 
 type XMLMatchupTeam struct {
-	TeamKey             string              `xml:"team_key" json:"team_key"`
-	TeamID              string              `xml:"team_id" json:"team_id"`
-	Name                string              `xml:"name" json:"name"`
-	TeamLogos           *XMLTeamLogos       `xml:"team_logos,omitempty" json:"team_logos,omitempty"`
-	TeamLogo            string              `xml:"team_logo" json:"team_logo"`
-	Managers            *XMLManagers        `xml:"managers,omitempty" json:"managers,omitempty"`
-	TeamPoints          *XMLTeamPoints      `xml:"team_points,omitempty" json:"team_points,omitempty"`
-	TeamProjectedPoints *XMLTeamPoints      `xml:"team_projected_points,omitempty" json:"team_projected_points,omitempty"`
+	TeamKey             string         `xml:"team_key" json:"team_key"`
+	TeamID              string         `xml:"team_id" json:"team_id"`
+	Name                string         `xml:"name" json:"name"`
+	TeamLogos           *XMLTeamLogos  `xml:"team_logos,omitempty" json:"team_logos,omitempty"`
+	TeamLogo            string         `xml:"team_logo" json:"team_logo"`
+	Managers            *XMLManagers   `xml:"managers,omitempty" json:"managers,omitempty"`
+	TeamPoints          *XMLTeamPoints `xml:"team_points,omitempty" json:"team_points,omitempty"`
+	TeamProjectedPoints *XMLTeamPoints `xml:"team_projected_points,omitempty" json:"team_projected_points,omitempty"`
 }
 
 type XMLTeamPoints struct {
@@ -212,20 +212,20 @@ type XMLPlayers struct {
 }
 
 type XMLPlayer struct {
-	PlayerKey               string              `xml:"player_key" json:"player_key"`
-	PlayerID                string              `xml:"player_id" json:"player_id"`
-	Name                    XMLPlayerName       `xml:"name" json:"name"`
-	EditorialTeamAbbr       string              `xml:"editorial_team_abbr" json:"editorial_team_abbr"`
-	EditorialTeamFullName   string              `xml:"editorial_team_full_name" json:"editorial_team_full_name"`
-	DisplayPosition         string              `xml:"display_position" json:"display_position"`
-	ImageURL                string              `xml:"image_url" json:"image_url"`
-	PositionType            string              `xml:"position_type" json:"position_type"`
-	Status                  string              `xml:"status" json:"status"`
-	StatusFull              string              `xml:"status_full" json:"status_full"`
-	InjuryNote              string              `xml:"injury_note" json:"injury_note"`
-	SelectedPosition        *XMLSelectedPosition `xml:"selected_position,omitempty" json:"selected_position,omitempty"`
-	EligiblePositions       *XMLEligiblePos      `xml:"eligible_positions,omitempty" json:"eligible_positions,omitempty"`
-	PlayerPoints            *XMLPlayerPoints     `xml:"player_points,omitempty" json:"player_points,omitempty"`
+	PlayerKey             string               `xml:"player_key" json:"player_key"`
+	PlayerID              string               `xml:"player_id" json:"player_id"`
+	Name                  XMLPlayerName        `xml:"name" json:"name"`
+	EditorialTeamAbbr     string               `xml:"editorial_team_abbr" json:"editorial_team_abbr"`
+	EditorialTeamFullName string               `xml:"editorial_team_full_name" json:"editorial_team_full_name"`
+	DisplayPosition       string               `xml:"display_position" json:"display_position"`
+	ImageURL              string               `xml:"image_url" json:"image_url"`
+	PositionType          string               `xml:"position_type" json:"position_type"`
+	Status                string               `xml:"status" json:"status"`
+	StatusFull            string               `xml:"status_full" json:"status_full"`
+	InjuryNote            string               `xml:"injury_note" json:"injury_note"`
+	SelectedPosition      *XMLSelectedPosition `xml:"selected_position,omitempty" json:"selected_position,omitempty"`
+	EligiblePositions     *XMLEligiblePos      `xml:"eligible_positions,omitempty" json:"eligible_positions,omitempty"`
+	PlayerPoints          *XMLPlayerPoints     `xml:"player_points,omitempty" json:"player_points,omitempty"`
 }
 
 type XMLPlayerName struct {
@@ -262,16 +262,17 @@ type YahooStatusResponse struct {
 
 // LeagueResponse is a single league with all associated data.
 type LeagueResponse struct {
-	LeagueKey string          `json:"league_key"`
-	Name      string          `json:"name"`
-	GameCode  string          `json:"game_code"`
-	Season    string          `json:"season"`
-	TeamKey   *string         `json:"team_key"`
-	TeamName  *string         `json:"team_name"`
-	Data      json.RawMessage `json:"data"`
-	Standings json.RawMessage `json:"standings,omitempty"`
-	Matchups  json.RawMessage `json:"matchups,omitempty"`
-	Rosters   json.RawMessage `json:"rosters,omitempty"`
+	LeagueKey        string          `json:"league_key"`
+	Name             string          `json:"name"`
+	GameCode         string          `json:"game_code"`
+	Season           string          `json:"season"`
+	TeamKey          *string         `json:"team_key"`
+	TeamName         *string         `json:"team_name"`
+	Data             json.RawMessage `json:"data"`
+	Standings        json.RawMessage `json:"standings,omitempty"`
+	Matchups         json.RawMessage `json:"matchups,omitempty"`
+	PreviousMatchups json.RawMessage `json:"previous_matchups,omitempty"`
+	Rosters          json.RawMessage `json:"rosters,omitempty"`
 }
 
 // MyLeaguesResponse is the response for GET /users/me/yahoo-leagues.
