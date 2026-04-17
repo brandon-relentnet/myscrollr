@@ -220,7 +220,7 @@ export default function CatalogCard({
 
 // ── Helpers ──────────────────────────────────────────────────────
 
-const TIER_ORDER: SubscriptionTier[] = ["free", "uplink", "uplink_pro", "uplink_ultimate"];
+const TIER_ORDER: SubscriptionTier[] = ["free", "uplink", "uplink_pro", "uplink_ultimate", "super_user"];
 
 function tierMeetsRequirement(current: SubscriptionTier, required: SubscriptionTier): boolean {
   return TIER_ORDER.indexOf(current) >= TIER_ORDER.indexOf(required);
