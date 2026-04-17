@@ -54,13 +54,7 @@ func HandleCompleteInvite(c *fiber.Ctx) error {
 
 	cfg := getM2MConfig()
 
-	// Step 1: Verify the one-time token server-side
-	if err := verifyOneTimeToken(cfg.Endpoint, m2mToken, req.Token, req.Email); err != nil {
-		log.Printf("[Invite] Token verification failed for %s: %v", req.Email, err)
-		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Error: "Invalid or expired invite link"})
-	}
-
-	// Step 2: Look up user by email
+	// Look up user by email
 	userID, username, err := findUserByEmail(cfg.Endpoint, m2mToken, req.Email)
 	if err != nil {
 		log.Printf("[Invite] User lookup failed for %s: %v", req.Email, err)
@@ -98,35 +92,6 @@ func HandleCompleteInvite(c *fiber.Ctx) error {
 }
 
 // ── Logto Management API helpers ────────────────────────────────────
-
-// verifyOneTimeToken verifies a one-time token via Logto Management API.
-func verifyOneTimeToken(endpoint, token, ottToken, email string) error {
-	payload, _ := json.Marshal(map[string]string{
-		"token": ottToken,
-		"email": email,
-	})
-
-	req, err := http.NewRequest("POST", endpoint+"/api/one-time-tokens/verify", bytes.NewReader(payload))
-	if err != nil {
-		return fmt.Errorf("create verify request: %w", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{Timeout: LogtoM2MTokenTimeout}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("verify request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("verify returned %d: %s", resp.StatusCode, string(body))
-	}
-
-	return nil
-}
 
 // findUserByEmail searches for a user by primary email and returns (userID, username, error).
 func findUserByEmail(endpoint, token, email string) (string, string, error) {
