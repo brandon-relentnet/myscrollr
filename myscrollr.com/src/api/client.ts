@@ -404,11 +404,19 @@ export interface CompleteInviteRequest {
   password: string
   birthday: string
   gender: string
+  username: string
+  first_name: string
+  last_name: string
 }
 
 export interface CompleteInviteResponse {
   success: boolean
   username: string
+}
+
+export interface CheckUsernameResponse {
+  available: boolean
+  reason?: 'invalid' | 'taken'
 }
 
 export const inviteApi = {
@@ -418,4 +426,9 @@ export const inviteApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }),
+
+  checkUsernameAvailable: (email: string, username: string) =>
+    request<CheckUsernameResponse>(
+      `/invite/username-available?email=${encodeURIComponent(email)}&username=${encodeURIComponent(username)}`,
+    ),
 }
