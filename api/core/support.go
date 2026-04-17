@@ -29,6 +29,7 @@ type SupportTicketRequest struct {
 	Attachments      []TicketAttachment     `json:"attachments,omitempty"`
 	Email            string                 `json:"email,omitempty"`
 	Name             string                 `json:"name,omitempty"`
+	Channel          string                 `json:"channel,omitempty"`
 }
 
 type TicketAttachment struct {
@@ -130,6 +131,17 @@ func HandleSubmitSupportTicket(c *fiber.Ctx) error {
 		subjectPrefix = "Feature Request: "
 	case "feedback":
 		subjectPrefix = "Feedback: "
+	case "billing":
+		subjectPrefix = "Billing: "
+	case "account":
+		subjectPrefix = "Account: "
+	case "channel":
+		ch := strings.TrimSpace(req.Channel)
+		if ch != "" {
+			subjectPrefix = fmt.Sprintf("Channel Help (%s): ", ch)
+		} else {
+			subjectPrefix = "Channel Help: "
+		}
 	default:
 		subjectPrefix = "Bug Report: "
 	}
@@ -157,6 +169,20 @@ func HandleSubmitSupportTicket(c *fiber.Ctx) error {
 		}
 	case "feedback":
 		body.WriteString("<h3>Feedback</h3>")
+		body.WriteString(fmt.Sprintf("<p>%s</p>", escapeHTML(req.Description)))
+	case "billing":
+		body.WriteString("<h3>Billing &amp; Subscription</h3>")
+		body.WriteString(fmt.Sprintf("<p>%s</p>", escapeHTML(req.Description)))
+	case "account":
+		body.WriteString("<h3>Account &amp; Login</h3>")
+		body.WriteString(fmt.Sprintf("<p>%s</p>", escapeHTML(req.Description)))
+	case "channel":
+		ch := strings.TrimSpace(req.Channel)
+		if ch != "" {
+			body.WriteString(fmt.Sprintf("<h3>Channel Help — %s</h3>", escapeHTML(ch)))
+		} else {
+			body.WriteString("<h3>Channel Help</h3>")
+		}
 		body.WriteString(fmt.Sprintf("<p>%s</p>", escapeHTML(req.Description)))
 	default:
 		body.WriteString("<h3>What were you trying to do?</h3>")
@@ -191,6 +217,18 @@ func HandleSubmitSupportTicket(c *fiber.Ctx) error {
 		}
 	case "feedback":
 		if id := os.Getenv("OSTICKET_TOPIC_ID_FEEDBACK"); id != "" {
+			topicID = id
+		}
+	case "billing":
+		if id := os.Getenv("OSTICKET_TOPIC_ID_BILLING"); id != "" {
+			topicID = id
+		}
+	case "account":
+		if id := os.Getenv("OSTICKET_TOPIC_ID_ACCOUNT"); id != "" {
+			topicID = id
+		}
+	case "channel":
+		if id := os.Getenv("OSTICKET_TOPIC_ID_CHANNEL"); id != "" {
 			topicID = id
 		}
 	}

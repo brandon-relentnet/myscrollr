@@ -1,6 +1,6 @@
 /**
- * ContactForm — unified support form with three categories:
- * Bug Report, Feature Request, and General Feedback.
+ * ContactForm — unified support form with six categories:
+ * Bug Report, Feature Request, General Feedback, Billing, Account, and Channel Help.
  *
  * Bug reports collect diagnostics via `collect_diagnostics` Tauri command,
  * file attachments, and frequency. Feature requests collect priority.
@@ -8,7 +8,7 @@
  */
 import { useState, useEffect, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Bug, Lightbulb, MessageSquare, Paperclip, X, Loader2 } from "lucide-react";
+import { Bug, Lightbulb, MessageSquare, CreditCard, UserCog, Radio, Paperclip, X, Loader2 } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
 import { authFetch } from "../../api/client";
@@ -20,7 +20,7 @@ interface ContactFormProps {
   onBack: () => void;
 }
 
-type Category = "bug" | "feature" | "feedback";
+type Category = "bug" | "feature" | "feedback" | "billing" | "account" | "channel";
 
 interface Attachment {
   filename: string;
@@ -37,6 +37,9 @@ const CATEGORY_OPTIONS: { value: Category; label: string; icon: typeof Bug }[] =
   { value: "bug", label: "Bug Report", icon: Bug },
   { value: "feature", label: "Feature Request", icon: Lightbulb },
   { value: "feedback", label: "General Feedback", icon: MessageSquare },
+  { value: "billing", label: "Billing & Subscription", icon: CreditCard },
+  { value: "account", label: "Account & Login", icon: UserCog },
+  { value: "channel", label: "Channel Help", icon: Radio },
 ];
 
 const FREQUENCY_OPTIONS: { value: Frequency; label: string }[] = [
@@ -64,18 +67,36 @@ const HEADER_CONFIG: Record<Category, { title: string; subtitle: string }> = {
     title: "Send Feedback",
     subtitle: "Share your thoughts and suggestions",
   },
+  billing: {
+    title: "Billing & Subscription Help",
+    subtitle: "Questions about charges, plan changes, or cancellations",
+  },
+  account: {
+    title: "Account & Login Help",
+    subtitle: "Issues with signing in, password, or account settings",
+  },
+  channel: {
+    title: "Channel Help",
+    subtitle: "Issues with a specific data channel",
+  },
 };
 
 const SUBMIT_LABELS: Record<Category, string> = {
   bug: "Submit Bug Report",
   feature: "Submit Feature Request",
   feedback: "Submit Feedback",
+  billing: "Submit Billing Question",
+  account: "Submit Account Question",
+  channel: "Submit Channel Issue",
 };
 
 const SUCCESS_MESSAGES: Record<Category, string> = {
   bug: "Bug report submitted — we'll follow up by email",
   feature: "Feature request submitted — thanks for the suggestion",
   feedback: "Feedback submitted — thanks for sharing",
+  billing: "Billing question submitted — we'll follow up by email",
+  account: "Account question submitted — we'll follow up by email",
+  channel: "Channel issue submitted — we'll follow up by email",
 };
 
 const MAX_FILES = 5;
@@ -116,6 +137,9 @@ export default function ContactForm({ onBack }: ContactFormProps) {
   // Feature-specific fields
   const [featureWhy, setFeatureWhy] = useState("");
   const [priority, setPriority] = useState<Priority | null>(null);
+
+  // Channel-specific fields
+  const [channelSelection, setChannelSelection] = useState("");
 
   // Attachments (bug only)
   const [files, setFiles] = useState<File[]>([]);
@@ -205,9 +229,12 @@ export default function ContactForm({ onBack }: ContactFormProps) {
       case "bug":
         return description.trim().length > 0 && whatWentWrong.trim().length > 0;
       case "feature":
-        return description.trim().length > 0;
       case "feedback":
+      case "billing":
+      case "account":
         return description.trim().length > 0;
+      case "channel":
+        return description.trim().length > 0 && channelSelection !== "";
     }
   })();
 
@@ -252,9 +279,18 @@ export default function ContactForm({ onBack }: ContactFormProps) {
           email: email.trim() || undefined,
           name: name.trim() || undefined,
         };
-      } else {
+      } else if (category === "channel") {
         payload = {
-          category: "feedback",
+          category: "channel",
+          channel: channelSelection,
+          description: description.trim(),
+          email: email.trim() || undefined,
+          name: name.trim() || undefined,
+        };
+      } else {
+        // feedback, billing, account — all just description
+        payload = {
+          category,
           description: description.trim(),
           email: email.trim() || undefined,
           name: name.trim() || undefined,
@@ -284,7 +320,7 @@ export default function ContactForm({ onBack }: ContactFormProps) {
 
       onBack();
     } catch {
-      toast.error(`Failed to submit ${category === "bug" ? "bug report" : category === "feature" ? "feature request" : "feedback"} — please try again`);
+      toast.error(`Failed to submit ${SUBMIT_LABELS[category].toLowerCase()} — please try again`);
     } finally {
       setSubmitting(false);
     }
@@ -569,6 +605,75 @@ export default function ContactForm({ onBack }: ContactFormProps) {
               Share suggestions, thoughts, or anything else
             </p>
           </div>
+        )}
+
+        {/* ── Billing fields ────────────────────────────────── */}
+        {category === "billing" && (
+          <div>
+            <label className="block text-xs font-medium text-fg-2 mb-1.5">
+              Describe your billing question
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={5}
+              required
+              placeholder="Questions about charges, plan changes, cancellations..."
+              className={inputClass}
+            />
+          </div>
+        )}
+
+        {/* ── Account fields ────────────────────────────────── */}
+        {category === "account" && (
+          <div>
+            <label className="block text-xs font-medium text-fg-2 mb-1.5">
+              Describe your account issue
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={5}
+              required
+              placeholder="Issues with signing in, password, account settings..."
+              className={inputClass}
+            />
+          </div>
+        )}
+
+        {/* ── Channel Help fields ───────────────────────────── */}
+        {category === "channel" && (
+          <>
+            <div>
+              <label className="block text-xs font-medium text-fg-2 mb-1.5">
+                Which channel?
+              </label>
+              <select
+                value={channelSelection}
+                onChange={(e) => setChannelSelection(e.target.value)}
+                className="w-full bg-surface-2 border border-edge/30 rounded-lg px-3 py-2 text-sm text-fg focus:border-accent/60 focus:outline-none"
+              >
+                <option value="">Select a channel...</option>
+                <option value="Finance">Finance</option>
+                <option value="Sports">Sports</option>
+                <option value="RSS">RSS</option>
+                <option value="Fantasy">Fantasy</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-fg-2 mb-1.5">
+                Describe your issue
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={5}
+                required
+                placeholder="What's happening with this channel?"
+                className={inputClass}
+              />
+            </div>
+          </>
         )}
 
         {/* Submit */}

@@ -61,6 +61,8 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "updated", label: "Last Updated" },
 ];
 
+const PAGE_SIZE = 20;
+
 // ── FeedTab ──────────────────────────────────────────────────────
 
 function FinanceFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
@@ -125,6 +127,13 @@ function FinanceFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
 
   const hasFilters = directionFilter !== "all" || selectedCategories.size > 0;
 
+  const [page, setPage] = useState(1);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setPage(1);
+  }, [directionFilter, selectedCategories, sortKey]);
+
   // ── Data pipeline ────────────────────────────────────────────
   const filtered = useMemo(() => {
     let items = trades;
@@ -186,6 +195,17 @@ function FinanceFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
     return items;
   }, [trades, directionFilter, selectedCategories, categoryMap, sortKey]);
 
+  // ── Pagination ───────────────────────────────────────────────
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  useEffect(() => {
+    if (page > 1) {
+      containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [page]);
+
   // ── Summary counts ───────────────────────────────────────────
   const { upCount, downCount, unchangedCount } = useMemo(() => {
     let up = 0;
@@ -215,7 +235,7 @@ function FinanceFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div ref={containerRef} className="flex flex-col h-full overflow-y-auto">
       {/* Controls bar */}
       <div className="sticky top-0 z-20 bg-surface border-b border-edge/30 px-3 py-2 flex items-center gap-2">
         {/* Direction filter pills — left side */}
@@ -312,24 +332,57 @@ function FinanceFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
           </button>
         </div>
       ) : (
-        <div
-          className={clsx(
-            "grid gap-px bg-edge",
-            mode === "compact"
-              ? "grid-cols-1"
-              : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
+        <>
+          <div
+            className={clsx(
+              "grid gap-px bg-edge",
+              mode === "compact"
+                ? "grid-cols-1"
+                : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
+            )}
+          >
+            {pageItems.map((trade) => (
+              <TradeItem
+                key={trade.symbol}
+                trade={trade}
+                mode={mode}
+                display={dp}
+                category={categoryMap.get(trade.symbol)}
+              />
+            ))}
+          </div>
+          {filtered.length > PAGE_SIZE && (
+            <div className="sticky bottom-0 flex items-center justify-center gap-3 px-3 py-2 bg-surface border-t border-edge/30">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={safePage <= 1}
+                className={clsx(
+                  "px-3 py-1 rounded text-xs font-medium transition-colors",
+                  safePage <= 1
+                    ? "text-fg-4 cursor-not-allowed"
+                    : "text-fg-2 hover:bg-surface-hover cursor-pointer",
+                )}
+              >
+                Previous
+              </button>
+              <span className="text-xs text-fg-3 tabular-nums font-mono">
+                Page {safePage} of {totalPages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={safePage >= totalPages}
+                className={clsx(
+                  "px-3 py-1 rounded text-xs font-medium transition-colors",
+                  safePage >= totalPages
+                    ? "text-fg-4 cursor-not-allowed"
+                    : "text-fg-2 hover:bg-surface-hover cursor-pointer",
+                )}
+              >
+                Next
+              </button>
+            </div>
           )}
-        >
-          {filtered.map((trade) => (
-            <TradeItem
-              key={trade.symbol}
-              trade={trade}
-              mode={mode}
-              display={dp}
-              category={categoryMap.get(trade.symbol)}
-            />
-          ))}
-        </div>
+        </>
       )}
     </div>
   );
