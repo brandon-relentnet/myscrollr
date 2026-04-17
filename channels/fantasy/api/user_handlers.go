@@ -372,8 +372,10 @@ func (a *App) DiscoverYahooLeagues(c *fiber.Ctx) error {
 
 	client := NewYahooClient(clientID, clientSecret, refreshToken)
 
+	// Include currentYear+1 so Yahoo-side early rollover leagues (created
+	// before the calendar year ticks over) appear during discovery.
 	currentYear := time.Now().Year()
-	seasons := []int{currentYear, currentYear - 1}
+	seasons := []int{currentYear + 1, currentYear, currentYear - 1}
 
 	// Fetch leagues across all game codes concurrently
 	type result struct {

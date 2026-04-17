@@ -1,6 +1,13 @@
 package main
 
-import "fmt"
+import (
+	"context"
+	"encoding/xml"
+	"fmt"
+	"log"
+	"strconv"
+	"sync"
+)
 
 // =============================================================================
 // Yahoo Fantasy Game Key Mapping
@@ -48,8 +55,12 @@ var gameKeys = map[string]map[int]int{
 // SupportedGameCodes lists all sport codes the sync loop iterates.
 var SupportedGameCodes = []string{"nfl", "nba", "nhl", "mlb"}
 
-// GameKey returns the Yahoo game ID for a sport + season.
+// GameKey returns the Yahoo game ID for a sport + season from the static table.
 // Returns an error if the game code or season is not in the mapping.
+//
+// Prefer ResolveGameKey(), which falls back to a live Yahoo lookup for seasons
+// not in the static table. This function remains for callers that only need
+// the fast in-memory check.
 func GameKey(gameCode string, season int) (int, error) {
 	seasons, ok := gameKeys[gameCode]
 	if !ok {
@@ -60,4 +71,94 @@ func GameKey(gameCode string, season int) (int, error) {
 		return 0, fmt.Errorf("no game key for %s season %d", gameCode, season)
 	}
 	return key, nil
+}
+
+// =============================================================================
+// Dynamic game key resolution
+//
+// Yahoo mints a new game_key each season. Rather than hardcoding every future
+// year, ResolveGameKey queries Yahoo's /games endpoint on demand whenever the
+// static table misses, caching the result process-wide.
+// =============================================================================
+
+var (
+	dynamicGameKeyCache = make(map[string]int)
+	dynamicGameKeyMu    sync.RWMutex
+)
+
+// gamesDiscoveryResponse matches the XML returned by
+// /games;game_codes={code};seasons={year}
+type gamesDiscoveryResponse struct {
+	XMLName xml.Name `xml:"fantasy_content"`
+	Games   struct {
+		Game []struct {
+			GameKey string `xml:"game_key"`
+			Code    string `xml:"code"`
+			Season  string `xml:"season"`
+		} `xml:"game"`
+	} `xml:"games"`
+}
+
+// ResolveGameKey returns the Yahoo game_key for a sport + season.
+// It checks the static table first, then the in-memory dynamic cache, then
+// calls Yahoo to resolve. Successful lookups are cached until process restart.
+func ResolveGameKey(ctx context.Context, client *YahooClient, gameCode string, season int) (int, error) {
+	// 1) Static table (fast path, no network).
+	if key, err := GameKey(gameCode, season); err == nil {
+		return key, nil
+	}
+
+	// 2) Dynamic cache (successful Yahoo lookups).
+	cacheKey := fmt.Sprintf("%s:%d", gameCode, season)
+	dynamicGameKeyMu.RLock()
+	if key, ok := dynamicGameKeyCache[cacheKey]; ok {
+		dynamicGameKeyMu.RUnlock()
+		return key, nil
+	}
+	dynamicGameKeyMu.RUnlock()
+
+	// 3) Live Yahoo lookup.
+	if client == nil {
+		return 0, fmt.Errorf("no game key for %s season %d and no client for dynamic lookup", gameCode, season)
+	}
+
+	urlPath := fmt.Sprintf("games;game_codes=%s;seasons=%d", gameCode, season)
+
+	var xmlBody []byte
+	err := client.withRetry(ctx, fmt.Sprintf("resolveGameKey(%s,%d)", gameCode, season), func() error {
+		var reqErr error
+		xmlBody, reqErr = client.makeRequest(ctx, urlPath)
+		return reqErr
+	})
+	if err != nil {
+		return 0, fmt.Errorf("yahoo games discovery for %s/%d: %w", gameCode, season, err)
+	}
+
+	var resp gamesDiscoveryResponse
+	if err := xml.Unmarshal(xmlBody, &resp); err != nil {
+		return 0, fmt.Errorf("parse games discovery XML: %w", err)
+	}
+
+	for _, g := range resp.Games.Game {
+		if g.Code != gameCode {
+			continue
+		}
+		parsedSeason, _ := strconv.Atoi(g.Season)
+		if parsedSeason != season {
+			continue
+		}
+		key, err := strconv.Atoi(g.GameKey)
+		if err != nil {
+			return 0, fmt.Errorf("parse game_key %q: %w", g.GameKey, err)
+		}
+
+		dynamicGameKeyMu.Lock()
+		dynamicGameKeyCache[cacheKey] = key
+		dynamicGameKeyMu.Unlock()
+
+		log.Printf("[GameKeys] Resolved %s/%d -> %d (dynamic)", gameCode, season, key)
+		return key, nil
+	}
+
+	return 0, fmt.Errorf("yahoo returned no game for %s season %d", gameCode, season)
 }

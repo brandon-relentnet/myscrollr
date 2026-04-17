@@ -223,9 +223,12 @@ func (a *App) syncUser(ctx context.Context, user yahooUser, clientID, clientSecr
 		return nil // nothing to sync
 	}
 
-	// Fetch leagues from Yahoo across all game codes and recent seasons
+	// Fetch leagues from Yahoo across all game codes and recent seasons.
+	// Include currentYear+1 to catch Yahoo-side early rollover (e.g. 2026 NFL
+	// leagues created while it's still 2025 in real-world time, or MLB 2026
+	// leagues visible before opening day).
 	currentYear := time.Now().Year()
-	seasons := []int{currentYear, currentYear - 1}
+	seasons := []int{currentYear + 1, currentYear, currentYear - 1}
 	var allLeagues []leagueSyncItem
 
 	for _, gameCode := range SupportedGameCodes {

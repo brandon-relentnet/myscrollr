@@ -249,7 +249,7 @@ func (yc *YahooClient) withRetry(ctx context.Context, label string, fn func() er
 // GetLeagues fetches all leagues for the authenticated user in a game/season.
 // Returns serialized league metadata dicts (same shape as Python serialize_league).
 func (yc *YahooClient) GetLeagues(ctx context.Context, gameCode string, season int) ([]map[string]any, error) {
-	gameKey, err := GameKey(gameCode, season)
+	gameKey, err := ResolveGameKey(ctx, yc, gameCode, season)
 	if err != nil {
 		return nil, err
 	}
@@ -560,15 +560,15 @@ func serializeScoreboard(sb *XMLScoreboard, fallbackWeek int) (int, []map[string
 		}
 
 		result = append(result, map[string]any{
-			"week":             wk,
-			"week_start":       m.WeekStart,
-			"week_end":         m.WeekEnd,
-			"status":           m.Status,
-			"is_playoffs":      m.IsPlayoffs == "1",
-			"is_consolation":   m.IsConsolation == "1",
-			"is_tied":          m.IsTied == "1",
-			"winner_team_key":  winnerKey,
-			"teams":            teams,
+			"week":            wk,
+			"week_start":      m.WeekStart,
+			"week_end":        m.WeekEnd,
+			"status":          m.Status,
+			"is_playoffs":     m.IsPlayoffs == "1",
+			"is_consolation":  m.IsConsolation == "1",
+			"is_tied":         m.IsTied == "1",
+			"winner_team_key": winnerKey,
+			"teams":           teams,
 		})
 	}
 
@@ -642,20 +642,20 @@ func serializeRoster(players []XMLPlayer, teamKey, teamName string) map[string]a
 		}
 
 		serialized = append(serialized, map[string]any{
-			"player_key":                p.PlayerKey,
-			"player_id":                 safeAtoi(p.PlayerID),
-			"name":                      map[string]any{"full": p.Name.Full, "first": p.Name.First, "last": p.Name.Last},
-			"editorial_team_abbr":       p.EditorialTeamAbbr,
-			"editorial_team_full_name":  p.EditorialTeamFullName,
-			"display_position":          p.DisplayPosition,
-			"selected_position":         selectedPos,
-			"eligible_positions":        eligiblePos,
-			"image_url":                 p.ImageURL,
-			"position_type":             p.PositionType,
-			"status":                    status,
-			"status_full":               statusFull,
-			"injury_note":               injuryNote,
-			"player_points":             playerPoints,
+			"player_key":               p.PlayerKey,
+			"player_id":                safeAtoi(p.PlayerID),
+			"name":                     map[string]any{"full": p.Name.Full, "first": p.Name.First, "last": p.Name.Last},
+			"editorial_team_abbr":      p.EditorialTeamAbbr,
+			"editorial_team_full_name": p.EditorialTeamFullName,
+			"display_position":         p.DisplayPosition,
+			"selected_position":        selectedPos,
+			"eligible_positions":       eligiblePos,
+			"image_url":                p.ImageURL,
+			"position_type":            p.PositionType,
+			"status":                   status,
+			"status_full":              statusFull,
+			"injury_note":              injuryNote,
+			"player_points":            playerPoints,
 		})
 	}
 
@@ -737,5 +737,3 @@ func truncate(s string, max int) string {
 	}
 	return s[:max] + "..."
 }
-
-
