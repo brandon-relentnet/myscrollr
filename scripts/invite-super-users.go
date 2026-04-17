@@ -190,80 +190,6 @@ func logtoRequest(method, url string, token string, payload interface{}) ([]byte
 	return body, resp.StatusCode, nil
 }
 
-// usernameExists checks if a username is taken in Logto.
-func usernameExists(endpoint, token, username string) (bool, error) {
-	searchURL := fmt.Sprintf("%s/api/users?search.username=%s", endpoint, url.QueryEscape(username))
-	body, status, err := logtoRequest("GET", searchURL, token, nil)
-	if err != nil {
-		return false, err
-	}
-	if status != http.StatusOK {
-		return false, fmt.Errorf("search returned %d: %s", status, string(body))
-	}
-
-	var users []struct {
-		Username *string `json:"username"`
-	}
-	if err := json.Unmarshal(body, &users); err != nil {
-		return false, err
-	}
-
-	// Logto search is partial match, so verify exact match
-	for _, u := range users {
-		if u.Username != nil && *u.Username == username {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-// deriveUsername generates a unique username from an email prefix.
-// Truncates to 12 chars (Logto's max), appends numbers on collision.
-func deriveUsername(endpoint, token, email string) (string, error) {
-	prefix := strings.Split(email, "@")[0]
-	// Sanitize: only keep alphanumeric and underscore
-	clean := strings.Map(func(r rune) rune {
-		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' {
-			return r
-		}
-		if r >= 'A' && r <= 'Z' {
-			return r + 32 // lowercase
-		}
-		return '_'
-	}, prefix)
-	if clean == "" {
-		clean = "user"
-	}
-
-	// Truncate to 12 chars (Logto username maxLength)
-	if len(clean) > 12 {
-		clean = clean[:12]
-	}
-
-	candidate := clean
-	for i := 2; i <= 99; i++ {
-		exists, err := usernameExists(endpoint, token, candidate)
-		if err != nil {
-			return "", fmt.Errorf("check username %s: %w", candidate, err)
-		}
-		if !exists {
-			return candidate, nil
-		}
-		suffix := fmt.Sprintf("%d", i)
-		maxBase := 12 - len(suffix)
-		if maxBase < 1 {
-			maxBase = 1
-		}
-		base := clean
-		if len(base) > maxBase {
-			base = base[:maxBase]
-		}
-		candidate = base + suffix
-	}
-
-	return "", fmt.Errorf("could not find unique username for %s after 99 attempts", email)
-}
-
 func randomPassword() string {
 	b := make([]byte, 16)
 	_, _ = rand.Read(b)
@@ -271,9 +197,8 @@ func randomPassword() string {
 }
 
 // createUser creates a Logto user and returns the user ID.
-func createUser(endpoint, token, username, email, password string) (string, error) {
+func createUser(endpoint, token, email, password string) (string, error) {
 	payload := map[string]interface{}{
-		"username":     username,
 		"primaryEmail": email,
 		"password":     password,
 	}
@@ -333,7 +258,7 @@ func createOneTimeToken(endpoint, token, email string) (string, error) {
 
 // ── Resend email ────────────────────────────────────────────────────
 
-func sendInviteEmail(apiKey, from, toEmail, inviteURL, username string) error {
+func sendInviteEmail(apiKey, from, toEmail, inviteURL string) error {
 	htmlBody := fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
@@ -345,7 +270,7 @@ func sendInviteEmail(apiKey, from, toEmail, inviteURL, username string) error {
     <h1 style="color:#ffffff;font-size:22px;text-align:center;margin:0 0 8px;">You're Invited to MyScrollr</h1>
     <p style="color:#a0a0a0;font-size:14px;text-align:center;margin:0 0 24px;line-height:1.5;">
       You've been granted <span style="color:#34d399;font-weight:600;">Super User</span> access.
-      Your username is <strong style="color:#ffffff;">%s</strong>.
+      Click below to set up your profile and choose a username.
     </p>
     <div style="text-align:center;margin-bottom:24px;">
       <a href="%s" style="display:inline-block;padding:12px 32px;background-color:#34d399;color:#0a0a0a;font-weight:600;font-size:14px;text-decoration:none;border-radius:8px;">
@@ -357,9 +282,9 @@ func sendInviteEmail(apiKey, from, toEmail, inviteURL, username string) error {
     </p>
   </div>
 </body>
-</html>`, username, inviteURL)
+</html>`, inviteURL)
 
-	textBody := fmt.Sprintf("You've been invited to MyScrollr as a Super User!\n\nYour username: %s\n\nComplete your account: %s\n\nThis link expires in 7 days.", username, inviteURL)
+	textBody := fmt.Sprintf("You've been invited to MyScrollr as a Super User!\n\nComplete your account and choose a username: %s\n\nThis link expires in 7 days.", inviteURL)
 
 	payload := map[string]interface{}{
 		"from":    from,
@@ -437,18 +362,9 @@ func main() {
 
 		fmt.Printf("[%d/%d] %s\n", i+1, len(emails), email)
 
-		// 1. Derive unique username
-		username, err := deriveUsername(cfg.LogtoEndpoint, m2mToken, email)
-		if err != nil {
-			fmt.Printf("  ✗ Username derivation failed: %v\n", err)
-			failures++
-			continue
-		}
-		fmt.Printf("  → username: %s\n", username)
-
-		// 2. Create user
+		// 1. Create user (no username — user picks it during onboarding)
 		password := randomPassword()
-		userID, err := createUser(cfg.LogtoEndpoint, m2mToken, username, email, password)
+		userID, err := createUser(cfg.LogtoEndpoint, m2mToken, email, password)
 		if err != nil {
 			fmt.Printf("  ✗ User creation failed: %v\n", err)
 			failures++
@@ -456,7 +372,7 @@ func main() {
 		}
 		fmt.Printf("  → user ID: %s\n", userID)
 
-		// 3. Assign super_user role
+		// 2. Assign super_user role
 		if err := assignRole(cfg.LogtoEndpoint, m2mToken, userID, superUserRoleID); err != nil {
 			fmt.Printf("  ✗ Role assignment failed: %v\n", err)
 			failures++
@@ -464,7 +380,7 @@ func main() {
 		}
 		fmt.Printf("  → super_user role assigned\n")
 
-		// 4. Generate one-time token
+		// 3. Generate one-time token
 		ottToken, err := createOneTimeToken(cfg.LogtoEndpoint, m2mToken, email)
 		if err != nil {
 			fmt.Printf("  ✗ One-time token creation failed: %v\n", err)
@@ -479,8 +395,8 @@ func main() {
 		)
 		fmt.Printf("  → invite URL: %s\n", inviteURL)
 
-		// 5. Send invite email
-		if err := sendInviteEmail(cfg.ResendAPIKey, cfg.ResendFrom, email, inviteURL, username); err != nil {
+		// 4. Send invite email
+		if err := sendInviteEmail(cfg.ResendAPIKey, cfg.ResendFrom, email, inviteURL); err != nil {
 			fmt.Printf("  ✗ Email send failed: %v\n", err)
 			failures++
 			continue
