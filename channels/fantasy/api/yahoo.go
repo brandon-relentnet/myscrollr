@@ -372,14 +372,67 @@ func (yc *YahooClient) GetTeams(ctx context.Context, leagueKey string) ([]XMLTea
 	return fc.League.Teams.Team, nil
 }
 
+// GetLeagueSettings fetches the league's stat categories and their point
+// modifiers. Used to compute synthetic player points in category leagues
+// (e.g. MLB head-to-head categories) where Yahoo doesn't ship a per-player
+// <player_points> total in roster responses.
+//
+// Returns a map stat_id -> point modifier. For categories leagues with no
+// modifiers, each enabled stat maps to 0.0 and callers should ignore points.
+func (yc *YahooClient) GetLeagueSettings(ctx context.Context, leagueKey string) (map[string]float64, error) {
+	urlPath := fmt.Sprintf("league/%s/settings", leagueKey)
+
+	var xmlBody []byte
+	err := yc.withRetry(ctx, fmt.Sprintf("settings(%s)", leagueKey), func() error {
+		var reqErr error
+		xmlBody, reqErr = yc.makeRequest(ctx, urlPath)
+		return reqErr
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var fc FantasyContent
+	if err := xml.Unmarshal(xmlBody, &fc); err != nil {
+		return nil, fmt.Errorf("parse league settings XML: %w", err)
+	}
+
+	if fc.League == nil || fc.League.Settings == nil {
+		return nil, nil
+	}
+
+	modifiers := map[string]float64{}
+	for _, mod := range fc.League.Settings.StatModifiers.Stats.Stat {
+		if mod.StatID == "" {
+			continue
+		}
+		v, err := strconv.ParseFloat(mod.Value, 64)
+		if err != nil {
+			continue
+		}
+		modifiers[mod.StatID] = v
+	}
+	return modifiers, nil
+}
+
 // GetRoster fetches the live roster for a team. When `week` > 0 we request
 // the stats subresource pinned to that week, which is the only Yahoo endpoint
 // that populates each player's <player_points> element. When `week` is 0 we
 // fall back to the plain roster URL — the serialized players will be missing
 // `player_points` in that case.
 //
+// `statModifiers` is an optional stat_id -> point value map. When provided
+// (typically from GetLeagueSettings), serializeRoster uses it to compute
+// synthetic player points in category leagues where Yahoo doesn't ship
+// <player_points>. Pass nil for points-native leagues.
+//
 // Returns a serialized roster dict (same shape as Python serialize_roster).
-func (yc *YahooClient) GetRoster(ctx context.Context, teamKey, leagueKey, teamName string, week int) (map[string]any, error) {
+func (yc *YahooClient) GetRoster(
+	ctx context.Context,
+	teamKey, leagueKey, teamName string,
+	week int,
+	statModifiers map[string]float64,
+) (map[string]any, error) {
 	// Note: roster URL uses team key directly (not league-prefixed)
 	var urlPath string
 	if week > 0 {
@@ -399,35 +452,6 @@ func (yc *YahooClient) GetRoster(ctx context.Context, teamKey, leagueKey, teamNa
 		return nil, err
 	}
 
-	// TEMP DEBUG: summarize what Yahoo returned, especially whether
-	// <player_points> is in the response at all. Remove once diagnosed.
-	bodyStr := string(xmlBody)
-	hasPoints := strings.Contains(bodyStr, "<player_points>")
-	hasPlayerStats := strings.Contains(bodyStr, "<player_stats>")
-	pointsCount := strings.Count(bodyStr, "<player_points>")
-	log.Printf("[RosterDEBUG] url=%s len=%d player_points_elements=%d has_player_points=%v has_player_stats=%v",
-		urlPath, len(xmlBody), pointsCount, hasPoints, hasPlayerStats)
-	if hasPoints {
-		idx := strings.Index(bodyStr, "<player_points>")
-		end := idx + 400
-		if end > len(bodyStr) {
-			end = len(bodyStr)
-		}
-		snippet := strings.ReplaceAll(bodyStr[idx:end], "\n", " ")
-		log.Printf("[RosterDEBUG] points_snippet=%s", snippet)
-	} else if len(bodyStr) > 0 {
-		// Show a sample of what <player>...</player> looks like without points.
-		idx := strings.Index(bodyStr, "<player>")
-		if idx >= 0 {
-			end := idx + 800
-			if end > len(bodyStr) {
-				end = len(bodyStr)
-			}
-			snippet := strings.ReplaceAll(bodyStr[idx:end], "\n", " ")
-			log.Printf("[RosterDEBUG] player_snippet=%s", snippet)
-		}
-	}
-
 	var fc FantasyContent
 	if err := xml.Unmarshal(xmlBody, &fc); err != nil {
 		return nil, fmt.Errorf("parse roster XML: %w", err)
@@ -441,7 +465,7 @@ func (yc *YahooClient) GetRoster(ctx context.Context, teamKey, leagueKey, teamNa
 		}, nil
 	}
 
-	return serializeRoster(fc.Team.Roster.Players.Player, teamKey, teamName), nil
+	return serializeRoster(fc.Team.Roster.Players.Player, teamKey, teamName, statModifiers), nil
 }
 
 // GetUserGUID fetches the authenticated user's Yahoo GUID.
@@ -650,7 +674,17 @@ func serializeMatchupTeam(t XMLMatchupTeam) map[string]any {
 }
 
 // serializeRoster converts XML player list to the dict stored in yahoo_rosters.data.
-func serializeRoster(players []XMLPlayer, teamKey, teamName string) map[string]any {
+//
+// `statModifiers` maps Yahoo stat_id -> point value. When non-nil and the
+// player's <player_points> element is missing (category leagues), we compute
+// a synthetic points total by summing stat_value * modifier across categories.
+// The raw per-stat values are also exposed as `player_stats` so the UI can
+// show categorical breakdowns when desired.
+func serializeRoster(
+	players []XMLPlayer,
+	teamKey, teamName string,
+	statModifiers map[string]float64,
+) map[string]any {
 	serialized := make([]map[string]any, 0, len(players))
 
 	for _, p := range players {
@@ -674,6 +708,38 @@ func serializeRoster(players []XMLPlayer, teamKey, teamName string) map[string]a
 			}
 		}
 
+		// Raw stats map for category leagues.
+		playerStats := map[string]float64{}
+		if p.PlayerStats != nil {
+			for _, s := range p.PlayerStats.Stats.Stat {
+				if s.StatID == "" {
+					continue
+				}
+				v, err := strconv.ParseFloat(s.Value, 64)
+				if err != nil {
+					continue
+				}
+				playerStats[s.StatID] = v
+			}
+		}
+
+		// Synthetic points for category leagues: sum(stat_value * modifier).
+		// Only populate when Yahoo didn't provide native player_points AND we
+		// have modifiers + stats to work with.
+		if playerPoints == nil && len(statModifiers) > 0 && len(playerStats) > 0 {
+			var total float64
+			var matched int
+			for statID, val := range playerStats {
+				if mod, ok := statModifiers[statID]; ok {
+					total += val * mod
+					matched++
+				}
+			}
+			if matched > 0 {
+				playerPoints = &total
+			}
+		}
+
 		var status, statusFull, injuryNote string
 		if p.Status != "" {
 			status = p.Status
@@ -685,7 +751,7 @@ func serializeRoster(players []XMLPlayer, teamKey, teamName string) map[string]a
 			injuryNote = p.InjuryNote
 		}
 
-		serialized = append(serialized, map[string]any{
+		playerMap := map[string]any{
 			"player_key":               p.PlayerKey,
 			"player_id":                safeAtoi(p.PlayerID),
 			"name":                     map[string]any{"full": p.Name.Full, "first": p.Name.First, "last": p.Name.Last},
@@ -700,7 +766,11 @@ func serializeRoster(players []XMLPlayer, teamKey, teamName string) map[string]a
 			"status_full":              statusFull,
 			"injury_note":              injuryNote,
 			"player_points":            playerPoints,
-		})
+		}
+		if len(playerStats) > 0 {
+			playerMap["player_stats"] = playerStats
+		}
+		serialized = append(serialized, playerMap)
 	}
 
 	return map[string]any{

@@ -350,11 +350,20 @@ func (a *App) syncUser(ctx context.Context, user yahooUser, clientID, clientSecr
 			continue
 		}
 
+		// Fetch league scoring modifiers once per league. These let us
+		// compute synthetic player_points in category leagues where Yahoo
+		// omits the native <player_points> element.
+		statModifiers, err := client.GetLeagueSettings(ctx, lk)
+		if err != nil {
+			log.Printf("[Sync] Failed league settings for %s: %v (continuing without synthetic points)", lk, err)
+			statModifiers = nil
+		}
+
 		for _, team := range teams {
 			// Pass currentWeek so Yahoo populates per-player points for that
 			// week. If currentWeek is 0 (finished league or missing metadata)
 			// the call falls back to a roster-only request.
-			roster, err := client.GetRoster(ctx, team.TeamKey, lk, team.Name, currentWeek)
+			roster, err := client.GetRoster(ctx, team.TeamKey, lk, team.Name, currentWeek, statModifiers)
 			if err != nil {
 				log.Printf("[Sync] Failed roster for %s: %v", team.TeamKey, err)
 				continue

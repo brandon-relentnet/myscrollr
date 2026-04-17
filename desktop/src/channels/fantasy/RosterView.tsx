@@ -10,6 +10,7 @@ import { clsx } from "clsx";
 import { AlertTriangle, ChevronDown } from "lucide-react";
 import { motion } from "motion/react";
 import {
+  fmtPlayerPoints,
   isBenchPosition,
   isInjuryStatus,
   positionOrderIndex,
@@ -57,7 +58,11 @@ export function RosterView({ league }: RosterViewProps) {
     : [];
 
   const groupedStarters = groupByDisplay(starters, league.game_code);
-  const totalPoints = starters.reduce((sum, p) => sum + (p.player_points ?? 0), 0);
+  const totalPoints = starters.reduce(
+    (sum, p) => sum + (typeof p.player_points === "number" ? p.player_points : 0),
+    0,
+  );
+  const hasAnyPoints = starters.some((p) => typeof p.player_points === "number");
   const injuries = activeRoster?.data.players.filter((p) => isInjuryStatus(p.status)) ?? [];
 
   return (
@@ -73,11 +78,15 @@ export function RosterView({ league }: RosterViewProps) {
           <span>
             <span className="font-bold text-fg">{starters.length}</span> starters
           </span>
-          <span>·</span>
-          <span>
-            <span className="font-bold text-fg">{totalPoints.toFixed(1)}</span>{" "}
-            pts
-          </span>
+          {hasAnyPoints && (
+            <>
+              <span>·</span>
+              <span>
+                <span className="font-bold text-fg">{totalPoints.toFixed(1)}</span>{" "}
+                pts
+              </span>
+            </>
+          )}
           {injuries.length > 0 && (
             <>
               <span>·</span>
@@ -251,6 +260,7 @@ function TeamSelector({
 
 function PlayerRow({ player, subdued }: { player: RosterPlayer; subdued?: boolean }) {
   const injured = isInjuryStatus(player.status);
+  const hasPoints = typeof player.player_points === "number";
   const pts = player.player_points ?? 0;
   return (
     <div
@@ -302,12 +312,12 @@ function PlayerRow({ player, subdued }: { player: RosterPlayer; subdued?: boolea
           "shrink-0 font-mono tabular-nums",
           subdued
             ? "text-[11px] text-fg-3"
-            : pts > 0
+            : hasPoints && pts > 0
               ? "text-sm font-bold text-fg"
               : "text-[11px] text-fg-3",
         )}
       >
-        {pts.toFixed(1)}
+        {fmtPlayerPoints(player.player_points)}
       </div>
     </div>
   );

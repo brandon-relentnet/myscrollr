@@ -73,9 +73,10 @@ type XMLLeague struct {
 	Season      string  `xml:"season" json:"season"`
 
 	// Nested resources (populated by standings/teams endpoints)
-	Standings  *XMLStandings  `xml:"standings,omitempty" json:"standings,omitempty"`
-	Scoreboard *XMLScoreboard `xml:"scoreboard,omitempty" json:"scoreboard,omitempty"`
-	Teams      *XMLTeams      `xml:"teams,omitempty" json:"teams,omitempty"`
+	Standings  *XMLStandings      `xml:"standings,omitempty" json:"standings,omitempty"`
+	Scoreboard *XMLScoreboard     `xml:"scoreboard,omitempty" json:"scoreboard,omitempty"`
+	Teams      *XMLTeams          `xml:"teams,omitempty" json:"teams,omitempty"`
+	Settings   *XMLLeagueSettings `xml:"settings,omitempty" json:"settings,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
@@ -226,6 +227,7 @@ type XMLPlayer struct {
 	SelectedPosition      *XMLSelectedPosition `xml:"selected_position,omitempty" json:"selected_position,omitempty"`
 	EligiblePositions     *XMLEligiblePos      `xml:"eligible_positions,omitempty" json:"eligible_positions,omitempty"`
 	PlayerPoints          *XMLPlayerPoints     `xml:"player_points,omitempty" json:"player_points,omitempty"`
+	PlayerStats           *XMLPlayerStats      `xml:"player_stats,omitempty" json:"player_stats,omitempty"`
 }
 
 type XMLPlayerName struct {
@@ -248,6 +250,60 @@ type XMLPlayerPoints struct {
 	CoverageType string `xml:"coverage_type" json:"coverage_type"`
 	Week         string `xml:"week" json:"week"`
 	Total        string `xml:"total" json:"total"`
+}
+
+// XMLPlayerStats captures per-category stat values. Present in category
+// leagues (e.g. MLB head-to-head cats) where <player_points> is absent.
+type XMLPlayerStats struct {
+	CoverageType string   `xml:"coverage_type" json:"coverage_type"`
+	Week         string   `xml:"week" json:"week"`
+	Stats        XMLStats `xml:"stats" json:"stats"`
+}
+
+type XMLStats struct {
+	Stat []XMLStat `xml:"stat" json:"stat"`
+}
+
+type XMLStat struct {
+	StatID string `xml:"stat_id" json:"stat_id"`
+	Value  string `xml:"value" json:"value"`
+}
+
+// XMLLeagueSettings mirrors <league_settings> from the league/settings endpoint.
+// We only need the stat_categories + stat_modifiers to compute synthetic points.
+type XMLLeagueSettings struct {
+	StatCategories XMLStatCategories `xml:"stat_categories" json:"stat_categories"`
+	StatModifiers  XMLStatModifiers  `xml:"stat_modifiers" json:"stat_modifiers"`
+}
+
+type XMLStatCategories struct {
+	Stats XMLStatDefs `xml:"stats" json:"stats"`
+}
+
+type XMLStatDefs struct {
+	Stat []XMLStatDef `xml:"stat" json:"stat"`
+}
+
+type XMLStatDef struct {
+	StatID            string `xml:"stat_id" json:"stat_id"`
+	Enabled           string `xml:"enabled" json:"enabled"`
+	Name              string `xml:"name" json:"name"`
+	DisplayName       string `xml:"display_name" json:"display_name"`
+	PositionType      string `xml:"position_type" json:"position_type"`
+	IsOnlyDisplayStat string `xml:"is_only_display_stat" json:"is_only_display_stat"`
+}
+
+type XMLStatModifiers struct {
+	Stats XMLStatModifierList `xml:"stats" json:"stats"`
+}
+
+type XMLStatModifierList struct {
+	Stat []XMLStatModifier `xml:"stat" json:"stat"`
+}
+
+type XMLStatModifier struct {
+	StatID string `xml:"stat_id" json:"stat_id"`
+	Value  string `xml:"value" json:"value"`
 }
 
 // =============================================================================

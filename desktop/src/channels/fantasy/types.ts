@@ -116,7 +116,14 @@ export interface RosterPlayer {
   status: string | null;
   status_full: string | null;
   injury_note: string | null;
+  /**
+   * Either Yahoo's native <player_points> total (NFL-style points leagues)
+   * or a synthetic total the API computes from player_stats × league stat
+   * modifiers (MLB H2H categories, etc.). Null when neither is available.
+   */
   player_points: number | null;
+  /** Raw stat_id → value map. Present in category leagues. */
+  player_stats?: Record<string, number> | null;
 }
 
 export interface RosterEntry {
@@ -289,6 +296,16 @@ export function fmtPoints(pf: number | string | undefined | null): string {
   const n = typeof pf === "number" ? pf : parseFloat(pf);
   if (!Number.isFinite(n)) return String(pf);
   return n.toFixed(1);
+}
+
+/**
+ * Format a player's points for display. Returns "—" when the value is null
+ * (category leagues with no scoring modifiers, or genuinely unscored games),
+ * signalling to the UI that 0.0 is not the correct answer.
+ */
+export function fmtPlayerPoints(pts: number | null | undefined): string {
+  if (typeof pts !== "number" || !Number.isFinite(pts)) return "—";
+  return pts.toFixed(1);
 }
 
 /** Short "W3" / "L2" / "T1" badge. */

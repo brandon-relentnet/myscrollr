@@ -580,7 +580,7 @@ func TestSerializeRoster(t *testing.T) {
 		},
 	}
 
-	got := serializeRoster(players, "team.1", "My Team")
+	got := serializeRoster(players, "team.1", "My Team", nil)
 	playerList := got["players"].([]map[string]any)
 
 	p1 := playerList[0]

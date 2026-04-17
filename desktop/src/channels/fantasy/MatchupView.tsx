@@ -11,6 +11,7 @@ import { AlertTriangle, Minus } from "lucide-react";
 import { motion } from "motion/react";
 import { MatchupHero } from "./MatchupHero";
 import {
+  fmtPlayerPoints,
   isBenchPosition,
   isInjuryStatus,
   positionOrderIndex,
@@ -289,9 +290,10 @@ function PlayerSide({
           "shrink-0 font-mono tabular-nums",
           subdued ? "text-[11px] text-fg-3" : "text-sm font-bold",
           leading && !subdued && "text-up",
+          player.player_points === null && "text-fg-3",
         )}
       >
-        {(player.player_points ?? 0).toFixed(1)}
+        {fmtPlayerPoints(player.player_points)}
       </div>
     </div>
   );
