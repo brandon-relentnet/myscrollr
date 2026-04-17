@@ -144,6 +144,7 @@ function GroupHeader({
 export function StandingsTab({ leagues, favoriteTeams }: StandingsTabProps) {
   const [selected, setSelected] = useState(leagues[0] ?? "");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const favRowRef = useRef<HTMLTableRowElement | null>(null);
 
   const toggleGroup = useCallback((groupName: string) => {
     setCollapsed((prev) => {
@@ -157,6 +158,12 @@ export function StandingsTab({ leagues, favoriteTeams }: StandingsTabProps) {
   useEffect(() => {
     setCollapsed(new Set());
   }, [selected]);
+
+  useEffect(() => {
+    if (favRowRef.current) {
+      favRowRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [standings, favoriteTeams]);
 
   const { data, isLoading, isError } = useQuery({
     ...standingsOptions(selected),
@@ -263,46 +270,52 @@ export function StandingsTab({ leagues, favoriteTeams }: StandingsTabProps) {
               </tr>
             </thead>
             <tbody>
-              {groupedRows.map((group, groupIdx) => (
-                <Fragment key={group.groupName || `group-${groupIdx}`}>
-                  {group.groupName && (
-                    <GroupHeader
-                      name={group.groupName}
-                      isCollapsed={collapsed.has(group.groupName)}
-                      onToggle={() => toggleGroup(group.groupName)}
-                    />
-                  )}
-                  {!collapsed.has(group.groupName) &&
-                    group.standings.map((s, i) => {
-                      const isFav = favoriteTeams.has(s.team_name);
-                      return (
-                        <tr
-                          key={`${s.team_name}-${i}`}
-                          className={clsx(
-                            "border-b border-edge/30 hover:bg-surface-hover transition-colors",
-                            isFav && "bg-[#f97316]/5",
-                          )}
-                        >
-                          {columns.map((col) => (
-                            <td
-                              key={col.key}
-                              className={clsx(
-                                "px-2 py-1.5",
-                                col.width,
-                                col.key !== "team" && "font-mono text-fg-2",
-                                col.align === "center" && "text-center",
-                                col.align === "right" && "text-right",
-                                !col.align && "text-left"
-                              )}
-                            >
-                              {col.getValue(s)}
-                            </td>
-                          ))}
-                        </tr>
-                      );
-                    })}
-                </Fragment>
-              ))}
+              {(() => {
+                let favRefAssigned = false;
+                return groupedRows.map((group, groupIdx) => (
+                  <Fragment key={group.groupName || `group-${groupIdx}`}>
+                    {group.groupName && (
+                      <GroupHeader
+                        name={group.groupName}
+                        isCollapsed={collapsed.has(group.groupName)}
+                        onToggle={() => toggleGroup(group.groupName)}
+                      />
+                    )}
+                    {!collapsed.has(group.groupName) &&
+                      group.standings.map((s, i) => {
+                        const isFav = favoriteTeams.has(s.team_name);
+                        const assignRef = isFav && !favRefAssigned;
+                        if (assignRef) favRefAssigned = true;
+                        return (
+                          <tr
+                            key={`${s.team_name}-${i}`}
+                            ref={assignRef ? favRowRef : undefined}
+                            className={clsx(
+                              "border-b border-edge/30 hover:bg-surface-hover transition-colors",
+                              isFav && "bg-[#f97316]/5",
+                            )}
+                          >
+                            {columns.map((col) => (
+                              <td
+                                key={col.key}
+                                className={clsx(
+                                  "px-2 py-1.5",
+                                  col.width,
+                                  col.key !== "team" && "font-mono text-fg-2",
+                                  col.align === "center" && "text-center",
+                                  col.align === "right" && "text-right",
+                                  !col.align && "text-left"
+                                )}
+                              >
+                                {col.getValue(s)}
+                              </td>
+                            ))}
+                          </tr>
+                        );
+                      })}
+                  </Fragment>
+                ));
+              })()}
             </tbody>
           </table>
         </div>
