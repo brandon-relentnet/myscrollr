@@ -399,9 +399,34 @@ func (yc *YahooClient) GetRoster(ctx context.Context, teamKey, leagueKey, teamNa
 		return nil, err
 	}
 
-	// TEMP DEBUG: dump URL + first 1500 chars of Yahoo response so we can see
-	// whether <player_points> is actually in the XML. Remove once diagnosed.
-	log.Printf("[RosterDEBUG] url=%s len=%d body_head=%s", urlPath, len(xmlBody), truncate(string(xmlBody), 1500))
+	// TEMP DEBUG: summarize what Yahoo returned, especially whether
+	// <player_points> is in the response at all. Remove once diagnosed.
+	bodyStr := string(xmlBody)
+	hasPoints := strings.Contains(bodyStr, "<player_points>")
+	hasPlayerStats := strings.Contains(bodyStr, "<player_stats>")
+	pointsCount := strings.Count(bodyStr, "<player_points>")
+	log.Printf("[RosterDEBUG] url=%s len=%d player_points_elements=%d has_player_points=%v has_player_stats=%v",
+		urlPath, len(xmlBody), pointsCount, hasPoints, hasPlayerStats)
+	if hasPoints {
+		idx := strings.Index(bodyStr, "<player_points>")
+		end := idx + 400
+		if end > len(bodyStr) {
+			end = len(bodyStr)
+		}
+		snippet := strings.ReplaceAll(bodyStr[idx:end], "\n", " ")
+		log.Printf("[RosterDEBUG] points_snippet=%s", snippet)
+	} else if len(bodyStr) > 0 {
+		// Show a sample of what <player>...</player> looks like without points.
+		idx := strings.Index(bodyStr, "<player>")
+		if idx >= 0 {
+			end := idx + 800
+			if end > len(bodyStr) {
+				end = len(bodyStr)
+			}
+			snippet := strings.ReplaceAll(bodyStr[idx:end], "\n", " ")
+			log.Printf("[RosterDEBUG] player_snippet=%s", snippet)
+		}
+	}
 
 	var fc FantasyContent
 	if err := xml.Unmarshal(xmlBody, &fc); err != nil {
