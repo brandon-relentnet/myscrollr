@@ -119,11 +119,20 @@ export interface RosterPlayer {
   /**
    * Either Yahoo's native <player_points> total (NFL-style points leagues)
    * or a synthetic total the API computes from player_stats × league stat
-   * modifiers (MLB H2H categories, etc.). Null when neither is available.
+   * modifiers (points leagues). Null when neither is available (pure
+   * categories leagues like MLB H2H cats).
    */
   player_points: number | null;
-  /** Raw stat_id → value map. Present in category leagues. */
-  player_stats?: Record<string, number> | null;
+  /**
+   * Raw stat_id → value map, verbatim from Yahoo. Values are STRINGS, not
+   * numbers, because Yahoo ships formats that don't parse as floats:
+   *   - "5/17"  hits/at-bats ratio
+   *   - "3.2"   innings pitched (fractional part encodes thirds, not tenths)
+   *   - ".686"  OPS with leading period
+   *   - "-"     no data for this coverage window (bench/IL/pre-game)
+   * Render these verbatim. Never `parseFloat` them for display.
+   */
+  player_stats?: Record<string, string> | null;
 }
 
 export interface RosterEntry {
@@ -133,6 +142,30 @@ export interface RosterEntry {
     team_name: string;
     players: RosterPlayer[];
   };
+}
+
+/**
+ * Authoritative stat definition for a single stat_id in a given league.
+ * Sourced from Yahoo's `<stat_categories>` element under
+ * `league/{key}/settings`. This is the ONLY truthful source for stat
+ * labels — stat_ids are not globally consistent across sports and
+ * leagues can customize their category selection.
+ */
+export interface StatCatalogEntry {
+  stat_id: string;
+  display_name: string;
+  name?: string;
+  /** "B" (batter), "P" (pitcher), "O" (offense), "D" (defense), or "" (any). */
+  position_type: string;
+  sort_order: number;
+  /** Display-only stats (e.g. MLB H/AB, IP) are shown but not scored. */
+  display_only: boolean;
+}
+
+export interface StatCatalog {
+  stats: StatCatalogEntry[];
+  /** stat_id → point multiplier. Empty for categories-only leagues. */
+  modifiers: Record<string, number>;
 }
 
 export interface LeagueResponse {
@@ -147,6 +180,8 @@ export interface LeagueResponse {
     is_finished: boolean;
     current_week: number | null;
     scoring_type: string;
+    /** Persisted league stat catalog — Yahoo's authoritative labels. */
+    stat_catalog?: StatCatalog | null;
     [k: string]: unknown;
   };
   standings: StandingsEntry[] | null;
@@ -309,93 +344,47 @@ export function fmtPlayerPoints(pts: number | null | undefined): string {
 }
 
 /**
- * Yahoo stat_id → short label, per sport. For category leagues where
- * <player_points> is absent we render a compact summary of the top few
- * stat values instead of a misleading "0.0".
+ * Return a compact "H/AB 5/17 · R 2 · RBI 1" summary for a player using
+ * the league's own Yahoo-provided stat catalog. Labels come from the
+ * league's <stat_categories> and values are rendered verbatim (preserving
+ * ratios like "5/17", IP thirds like "3.2", and leading-period decimals
+ * like ".686"). Returns an empty string when nothing useful is available
+ * — caller should render "—" in that case.
  *
- * These are Yahoo's canonical stat IDs; only the most-shown categories
- * are mapped. Unknown IDs fall back to `#{id}`.
- */
-const STAT_LABELS_MLB_HIT: Record<string, string> = {
-  "7": "R",
-  "8": "H",
-  "12": "HR",
-  "13": "RBI",
-  "16": "SB",
-  "55": "OPS",
-  "3": "AVG",
-};
-
-const STAT_LABELS_MLB_PIT: Record<string, string> = {
-  "28": "W",
-  "32": "SV",
-  "42": "K",
-  "26": "ERA",
-  "27": "WHIP",
-  "83": "QS",
-};
-
-const STAT_LABELS_NBA: Record<string, string> = {
-  "12": "PTS",
-  "15": "REB",
-  "16": "AST",
-  "17": "ST",
-  "18": "BLK",
-  "19": "TO",
-};
-
-const STAT_LABELS_NHL: Record<string, string> = {
-  "1": "G",
-  "2": "A",
-  "3": "P",
-  "8": "SHG",
-  "19": "W",
-  "22": "GAA",
-  "23": "SV%",
-};
-
-function statLabelMap(gameCode: string, positionType: string | undefined): Record<string, string> {
-  if (gameCode === "mlb") {
-    return positionType === "P" ? STAT_LABELS_MLB_PIT : STAT_LABELS_MLB_HIT;
-  }
-  if (gameCode === "nba") return STAT_LABELS_NBA;
-  if (gameCode === "nhl") return STAT_LABELS_NHL;
-  return {};
-}
-
-/**
- * Return a compact "HR 2 · RBI 5 · R 4" summary for a player in a category
- * league. Picks the three most meaningful non-zero stats, falling back to
- * any known-label stats. Returns an empty string when nothing useful is
- * available — caller should render "—" in that case.
+ * Stats are filtered to those matching the player's position_type (B/P
+ * in MLB) and sorted by the league's own sort_order. A leading
+ * display-only stat (e.g. H/AB, IP) is rendered without its label since
+ * Yahoo's value already encodes context (e.g. "5/17").
  */
 export function fmtPlayerStats(
-  stats: Record<string, number> | null | undefined,
-  gameCode: string,
+  stats: Record<string, string> | null | undefined,
+  catalog: StatCatalog | null | undefined,
   positionType?: string,
 ): string {
-  if (!stats) return "";
-  const labels = statLabelMap(gameCode, positionType);
-  // Score each known stat by (nonzero boost, label presence) so zeros sort last.
-  const entries = Object.entries(stats)
-    .filter(([id]) => labels[id])
-    .map(([id, v]) => ({ label: labels[id], value: v }));
-  if (entries.length === 0) return "";
-  entries.sort((a, b) => {
-    const aZero = a.value === 0;
-    const bZero = b.value === 0;
-    if (aZero !== bZero) return aZero ? 1 : -1;
-    return 0;
-  });
-  return entries
-    .slice(0, 3)
-    .map(({ label, value }) => {
-      const rounded =
-        Number.isInteger(value) || Math.abs(value) >= 10
-          ? Math.round(value).toString()
-          : value.toFixed(2).replace(/\.?0+$/, "");
-      return `${label} ${rounded}`;
+  if (!stats || !catalog || catalog.stats.length === 0) return "";
+
+  const relevant = catalog.stats
+    .filter((def) => {
+      // Stats without a position_type apply to everyone (rare for MLB).
+      if (!def.position_type) return true;
+      if (!positionType) return true;
+      return def.position_type === positionType;
     })
+    .filter((def) => stats[def.stat_id] !== undefined)
+    .sort((a, b) => a.sort_order - b.sort_order);
+
+  if (relevant.length === 0) return "";
+
+  return relevant
+    .map((def) => {
+      const raw = stats[def.stat_id];
+      if (raw === "" || raw === undefined || raw === null) return "";
+      // Display-only stats (H/AB, IP) already carry context in their value.
+      // Show the value without a label prefix so the UI reads "5/17 · R 2".
+      if (def.display_only) return raw;
+      return `${def.display_name} ${raw}`;
+    })
+    .filter((s) => s.length > 0)
     .join(" · ");
 }
 

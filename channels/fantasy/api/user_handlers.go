@@ -597,12 +597,20 @@ func (a *App) ImportYahooLeague(c *fiber.Ctx) error {
 
 		// Rosters — all teams in the league
 		if teams != nil {
-			// Fetch league scoring modifiers once. Used to compute synthetic
-			// player_points in category leagues (e.g. MLB H2H cats).
-			statModifiers, mErr := client.GetLeagueSettings(ctx, incoming.LeagueKey)
+			// Fetch league stat catalog (labels + modifiers) once. Labels
+			// populate the frontend's authoritative display; modifiers
+			// power synthetic points for H2H points leagues.
+			catalog, mErr := client.GetLeagueStatCatalog(ctx, incoming.LeagueKey)
 			if mErr != nil {
-				log.Printf("[Import] Failed league settings for %s: %v (continuing without synthetic points)", incoming.LeagueKey, mErr)
-				statModifiers = nil
+				log.Printf("[Import] Failed league stat catalog for %s: %v (continuing without it)", incoming.LeagueKey, mErr)
+				catalog = nil
+			}
+			var statModifiers map[string]float64
+			if catalog != nil {
+				statModifiers = catalog.Modifiers
+				if err := a.upsertLeagueStatCatalog(ctx, incoming.LeagueKey, catalog); err != nil {
+					log.Printf("[Import] Failed to persist stat catalog for %s: %v", incoming.LeagueKey, err)
+				}
 			}
 
 			for _, team := range teams {

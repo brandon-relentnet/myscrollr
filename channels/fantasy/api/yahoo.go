@@ -372,14 +372,15 @@ func (yc *YahooClient) GetTeams(ctx context.Context, leagueKey string) ([]XMLTea
 	return fc.League.Teams.Team, nil
 }
 
-// GetLeagueSettings fetches the league's stat categories and their point
-// modifiers. Used to compute synthetic player points in category leagues
-// (e.g. MLB head-to-head categories) where Yahoo doesn't ship a per-player
-// <player_points> total in roster responses.
+// GetLeagueStatCatalog fetches the league's authoritative stat definitions
+// (labels + position scopes + display order) alongside its scoring modifiers.
+// The catalog is the only truthful source for stat_id → display_name because
+// leagues can customize their enabled categories and Yahoo's stat_ids are
+// NOT globally consistent — stat_id 28 is 'W' in some sports and '1BA' in MLB.
 //
-// Returns a map stat_id -> point modifier. For categories leagues with no
-// modifiers, each enabled stat maps to 0.0 and callers should ignore points.
-func (yc *YahooClient) GetLeagueSettings(ctx context.Context, leagueKey string) (map[string]float64, error) {
+// The returned Modifiers map is empty (not nil) for pure categories leagues
+// like MLB H2H cats where no single-number scoring applies.
+func (yc *YahooClient) GetLeagueStatCatalog(ctx context.Context, leagueKey string) (*LeagueStatCatalog, error) {
 	urlPath := fmt.Sprintf("league/%s/settings", leagueKey)
 
 	var xmlBody []byte
@@ -398,7 +399,29 @@ func (yc *YahooClient) GetLeagueSettings(ctx context.Context, leagueKey string) 
 	}
 
 	if fc.League == nil || fc.League.Settings == nil {
-		return nil, nil
+		return &LeagueStatCatalog{Stats: []StatCatalogEntry{}, Modifiers: map[string]float64{}}, nil
+	}
+
+	// Parse <stat_categories><stats><stat> into our JSON-serializable form.
+	defs := fc.League.Settings.StatCategories.Stats.Stat
+	stats := make([]StatCatalogEntry, 0, len(defs))
+	for _, d := range defs {
+		if d.StatID == "" {
+			continue
+		}
+		// Enabled may be absent; when present only "1" counts.
+		if d.Enabled != "" && d.Enabled != "1" {
+			continue
+		}
+		sortOrder, _ := strconv.Atoi(d.SortOrder)
+		stats = append(stats, StatCatalogEntry{
+			StatID:       d.StatID,
+			DisplayName:  d.DisplayName,
+			Name:         d.Name,
+			PositionType: d.PositionType,
+			SortOrder:    sortOrder,
+			DisplayOnly:  d.IsOnlyDisplayStat == "1",
+		})
 	}
 
 	modifiers := map[string]float64{}
@@ -412,7 +435,8 @@ func (yc *YahooClient) GetLeagueSettings(ctx context.Context, leagueKey string) 
 		}
 		modifiers[mod.StatID] = v
 	}
-	return modifiers, nil
+
+	return &LeagueStatCatalog{Stats: stats, Modifiers: modifiers}, nil
 }
 
 // GetRoster fetches the live roster for a team. When `week` > 0 we request
@@ -422,7 +446,7 @@ func (yc *YahooClient) GetLeagueSettings(ctx context.Context, leagueKey string) 
 // `player_points` in that case.
 //
 // `statModifiers` is an optional stat_id -> point value map. When provided
-// (typically from GetLeagueSettings), serializeRoster uses it to compute
+// (typically from GetLeagueStatCatalog().Modifiers), serializeRoster uses it to compute
 // synthetic player points in category leagues where Yahoo doesn't ship
 // <player_points>. Pass nil for points-native leagues.
 //
@@ -677,9 +701,12 @@ func serializeMatchupTeam(t XMLMatchupTeam) map[string]any {
 //
 // `statModifiers` maps Yahoo stat_id -> point value. When non-nil and the
 // player's <player_points> element is missing (category leagues), we compute
-// a synthetic points total by summing stat_value * modifier across categories.
-// The raw per-stat values are also exposed as `player_stats` so the UI can
-// show categorical breakdowns when desired.
+// a synthetic points total by summing numeric_stat_value * modifier across
+// enabled stats. The raw per-stat values are also exposed as `player_stats`
+// so the UI can show categorical breakdowns verbatim — Yahoo ships strings
+// like "5/17" (H/AB), "3.2" (thirds-encoded IP), ".686" (OPS), and "-"
+// (no data) that aren't safely convertible to floats, so we preserve them
+// untouched.
 func serializeRoster(
 	players []XMLPlayer,
 	teamKey, teamName string,
@@ -708,32 +735,41 @@ func serializeRoster(
 			}
 		}
 
-		// Raw stats map for category leagues.
-		playerStats := map[string]float64{}
+		// Raw stats map — keep Yahoo's string values verbatim. Parsing to
+		// float would corrupt H/AB ("5/17"), IP ("3.2" = 3 2/3 innings),
+		// and no-data dashes ("-"). Frontend displays these as-is.
+		playerStats := map[string]string{}
 		if p.PlayerStats != nil {
 			for _, s := range p.PlayerStats.Stats.Stat {
 				if s.StatID == "" {
 					continue
 				}
-				v, err := strconv.ParseFloat(s.Value, 64)
-				if err != nil {
-					continue
-				}
-				playerStats[s.StatID] = v
+				playerStats[s.StatID] = s.Value
 			}
 		}
 
-		// Synthetic points for category leagues: sum(stat_value * modifier).
-		// Only populate when Yahoo didn't provide native player_points AND we
-		// have modifiers + stats to work with.
+		// Synthetic points for POINTS leagues: sum(numeric_stat_value * modifier).
+		// Only populates when:
+		//   - Yahoo didn't ship a native <player_points> total, AND
+		//   - the league defines scoring modifiers (H2H/rotisserie points
+		//     leagues), AND
+		//   - at least one stat value parses cleanly to a float.
+		// Categories leagues (empty modifiers) fall through with nil points
+		// and the UI shows raw category values instead.
 		if playerPoints == nil && len(statModifiers) > 0 && len(playerStats) > 0 {
 			var total float64
 			var matched int
-			for statID, val := range playerStats {
-				if mod, ok := statModifiers[statID]; ok {
-					total += val * mod
-					matched++
+			for statID, raw := range playerStats {
+				mod, ok := statModifiers[statID]
+				if !ok {
+					continue
 				}
+				v, err := strconv.ParseFloat(raw, 64)
+				if err != nil {
+					continue
+				}
+				total += v * mod
+				matched++
 			}
 			if matched > 0 {
 				playerPoints = &total

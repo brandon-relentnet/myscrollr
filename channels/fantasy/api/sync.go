@@ -350,13 +350,22 @@ func (a *App) syncUser(ctx context.Context, user yahooUser, clientID, clientSecr
 			continue
 		}
 
-		// Fetch league scoring modifiers once per league. These let us
-		// compute synthetic player_points in category leagues where Yahoo
-		// omits the native <player_points> element.
-		statModifiers, err := client.GetLeagueSettings(ctx, lk)
+		// Fetch the league's authoritative stat catalog + scoring modifiers
+		// once per league. The catalog drives label rendering in the UI;
+		// modifiers drive synthetic points for H2H/roto points leagues.
+		catalog, err := client.GetLeagueStatCatalog(ctx, lk)
 		if err != nil {
-			log.Printf("[Sync] Failed league settings for %s: %v (continuing without synthetic points)", lk, err)
-			statModifiers = nil
+			log.Printf("[Sync] Failed league stat catalog for %s: %v (continuing without it)", lk, err)
+			catalog = nil
+		}
+		var statModifiers map[string]float64
+		if catalog != nil {
+			statModifiers = catalog.Modifiers
+			// Persist the catalog onto the league row so the dashboard
+			// bundle can ship it to the frontend without a second call.
+			if err := a.upsertLeagueStatCatalog(ctx, lk, catalog); err != nil {
+				log.Printf("[Sync] Failed to persist stat catalog for %s: %v", lk, err)
+			}
 		}
 
 		for _, team := range teams {
@@ -476,6 +485,29 @@ func (a *App) upsertLeague(ctx context.Context, leagueKey, name, gameCode, seaso
 		 ON CONFLICT (league_key) DO UPDATE
 		 SET name = EXCLUDED.name, data = EXCLUDED.data, updated_at = CURRENT_TIMESTAMP`,
 		leagueKey, name, gameCode, season, string(jsonData),
+	)
+	return err
+}
+
+// upsertLeagueStatCatalog embeds the league's Yahoo stat_categories +
+// modifiers into yahoo_leagues.data under the `stat_catalog` key. Using a
+// JSONB merge avoids a migration — the catalog rides alongside existing
+// league metadata and is surfaced through LeagueResponse.
+func (a *App) upsertLeagueStatCatalog(ctx context.Context, leagueKey string, catalog *LeagueStatCatalog) error {
+	if catalog == nil {
+		return nil
+	}
+	jsonData, err := json.Marshal(catalog)
+	if err != nil {
+		return err
+	}
+	wrapper := fmt.Sprintf(`{"stat_catalog": %s}`, string(jsonData))
+	_, err = a.db.Exec(ctx,
+		`UPDATE yahoo_leagues
+		   SET data = data || $1::jsonb,
+		       updated_at = CURRENT_TIMESTAMP
+		 WHERE league_key = $2`,
+		wrapper, leagueKey,
 	)
 	return err
 }

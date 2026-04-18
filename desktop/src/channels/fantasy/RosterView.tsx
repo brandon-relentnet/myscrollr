@@ -18,7 +18,7 @@ import {
   statusColorClass,
   userRoster,
 } from "./types";
-import type { LeagueResponse, RosterEntry, RosterPlayer } from "./types";
+import type { LeagueResponse, RosterEntry, RosterPlayer, StatCatalog } from "./types";
 
 interface RosterViewProps {
   league: LeagueResponse | null;
@@ -172,7 +172,7 @@ export function RosterView({ league }: RosterViewProps) {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2, delay: i * 0.02 }}
                 >
-                  <PlayerRow player={p} gameCode={league.game_code} />
+                  <PlayerRow player={p} catalog={league.data.stat_catalog ?? null} />
                 </motion.div>
               ))}
             </div>
@@ -188,7 +188,7 @@ export function RosterView({ league }: RosterViewProps) {
           </div>
           <div className="overflow-hidden rounded-lg border border-edge/30 bg-surface-2/40">
             {bench.map((p) => (
-              <PlayerRow key={p.player_key} player={p} gameCode={league.game_code} subdued />
+              <PlayerRow key={p.player_key} player={p} catalog={league.data.stat_catalog ?? null} subdued />
             ))}
           </div>
         </section>
@@ -261,18 +261,18 @@ function TeamSelector({
 
 function PlayerRow({
   player,
-  gameCode,
+  catalog,
   subdued,
 }: {
   player: RosterPlayer;
-  gameCode: string;
+  catalog: StatCatalog | null;
   subdued?: boolean;
 }) {
   const injured = isInjuryStatus(player.status);
   const hasPoints = typeof player.player_points === "number";
   const pts = player.player_points ?? 0;
   const statsSummary = !hasPoints
-    ? fmtPlayerStats(player.player_stats, gameCode, player.position_type)
+    ? fmtPlayerStats(player.player_stats, catalog, player.position_type)
     : "";
   const showStatsInline = statsSummary.length > 0;
   return (

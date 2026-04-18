@@ -289,8 +289,32 @@ type XMLStatDef struct {
 	Enabled           string `xml:"enabled" json:"enabled"`
 	Name              string `xml:"name" json:"name"`
 	DisplayName       string `xml:"display_name" json:"display_name"`
+	SortOrder         string `xml:"sort_order" json:"sort_order"`
 	PositionType      string `xml:"position_type" json:"position_type"`
 	IsOnlyDisplayStat string `xml:"is_only_display_stat" json:"is_only_display_stat"`
+}
+
+// StatCatalogEntry is the trimmed, JSON-serializable stat definition we
+// persist per league and ship to the frontend. Mirrors Yahoo's
+// <stat_categories><stat> element but only the fields the UI actually
+// needs for labelling and ordering.
+type StatCatalogEntry struct {
+	StatID       string `json:"stat_id"`
+	DisplayName  string `json:"display_name"`
+	Name         string `json:"name,omitempty"`
+	PositionType string `json:"position_type"`
+	SortOrder    int    `json:"sort_order"`
+	DisplayOnly  bool   `json:"display_only"`
+}
+
+// LeagueStatCatalog is the full per-league stats definition (labels +
+// scoring modifiers) returned by GetLeagueStatCatalog. Shipped with each
+// LeagueResponse so the frontend can render stat labels authoritatively.
+type LeagueStatCatalog struct {
+	Stats []StatCatalogEntry `json:"stats"`
+	// Modifiers is stat_id → point multiplier for points leagues. Empty
+	// map (not nil) for categories-only leagues.
+	Modifiers map[string]float64 `json:"modifiers"`
 }
 
 type XMLStatModifiers struct {

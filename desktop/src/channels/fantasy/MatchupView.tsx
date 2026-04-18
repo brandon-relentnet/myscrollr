@@ -19,7 +19,7 @@ import {
   statusColorClass,
   userMatchupContext,
 } from "./types";
-import type { LeagueResponse, RosterEntry, RosterPlayer } from "./types";
+import type { LeagueResponse, RosterEntry, RosterPlayer, StatCatalog } from "./types";
 
 interface MatchupViewProps {
   league: LeagueResponse | null;
@@ -75,7 +75,12 @@ export function MatchupView({ league }: MatchupViewProps) {
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.2, delay: i * 0.015 }}
               >
-                <PlayerPairRow position={pair.position} left={pair.left} right={pair.right} gameCode={league.game_code} />
+                <PlayerPairRow
+                  position={pair.position}
+                  left={pair.left}
+                  right={pair.right}
+                  catalog={league.data.stat_catalog ?? null}
+                />
               </motion.div>
             ))}
           </div>
@@ -97,7 +102,7 @@ export function MatchupView({ league }: MatchupViewProps) {
                 position={pair.position}
                 left={pair.left}
                 right={pair.right}
-                gameCode={league.game_code}
+                catalog={league.data.stat_catalog ?? null}
                 subdued
               />
             ))}
@@ -196,13 +201,13 @@ function PlayerPairRow({
   position,
   left,
   right,
-  gameCode,
+  catalog,
   subdued,
 }: {
   position: string;
   left: RosterPlayer | null;
   right: RosterPlayer | null;
-  gameCode: string;
+  catalog: StatCatalog | null;
   subdued?: boolean;
 }) {
   const leftPts = left?.player_points ?? 0;
@@ -218,13 +223,13 @@ function PlayerPairRow({
         !subdued && "bg-surface hover:bg-surface-2",
       )}
     >
-      <PlayerSide player={left} leading={leftLeading} align="left" gameCode={gameCode} subdued={subdued} />
+      <PlayerSide player={left} leading={leftLeading} align="left" catalog={catalog} subdued={subdued} />
       <div className="flex items-center justify-center font-mono text-[9px] uppercase tracking-wider text-fg-3">
         <span className="rounded-full border border-edge/50 bg-surface-2 px-1.5 py-0.5">
           {position}
         </span>
       </div>
-      <PlayerSide player={right} leading={rightLeading} align="right" gameCode={gameCode} subdued={subdued} />
+      <PlayerSide player={right} leading={rightLeading} align="right" catalog={catalog} subdued={subdued} />
     </div>
   );
 }
@@ -233,13 +238,13 @@ function PlayerSide({
   player,
   leading,
   align,
-  gameCode,
+  catalog,
   subdued,
 }: {
   player: RosterPlayer | null;
   leading?: boolean;
   align: "left" | "right";
-  gameCode: string;
+  catalog: StatCatalog | null;
   subdued?: boolean;
 }) {
   if (!player) {
@@ -248,7 +253,7 @@ function PlayerSide({
   const injured = isInjuryStatus(player.status);
   const hasPoints = typeof player.player_points === "number";
   const statsSummary = !hasPoints
-    ? fmtPlayerStats(player.player_stats, gameCode, player.position_type)
+    ? fmtPlayerStats(player.player_stats, catalog, player.position_type)
     : "";
   const showStatsInline = statsSummary.length > 0;
   return (
