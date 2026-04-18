@@ -492,6 +492,65 @@ func (yc *YahooClient) GetRoster(
 	return serializeRoster(fc.Team.Roster.Players.Player, teamKey, teamName, statModifiers), nil
 }
 
+// GetTeamDailyStats fetches each player's stats for a single ISO-8601 date
+// on a given team. Returns a map of player_key -> {stat_id: raw_value}.
+//
+// Values stay as strings (Yahoo ships ratios, dashes, and fractions that
+// don't round-trip cleanly through float). `enabledStatIDs` optionally
+// filters the response down to just the league's scored categories; pass
+// nil to include every stat Yahoo returns.
+//
+// Used by the sync loop to hydrate `player_stats_today` alongside the
+// weekly roster, so the Matchup and Roster views can toggle between
+// "this week" and "today" without a separate fetch.
+func (yc *YahooClient) GetTeamDailyStats(
+	ctx context.Context,
+	teamKey, date string,
+	enabledStatIDs map[string]bool,
+) (map[string]map[string]string, error) {
+	urlPath := fmt.Sprintf("team/%s/roster;date=%s/players/stats;type=date;date=%s", teamKey, date, date)
+
+	var xmlBody []byte
+	err := yc.withRetry(ctx, fmt.Sprintf("roster-daily(%s,%s)", teamKey, date), func() error {
+		var reqErr error
+		xmlBody, reqErr = yc.makeRequest(ctx, urlPath)
+		return reqErr
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var fc FantasyContent
+	if err := xml.Unmarshal(xmlBody, &fc); err != nil {
+		return nil, fmt.Errorf("parse daily roster XML: %w", err)
+	}
+
+	if fc.Team == nil || fc.Team.Roster == nil {
+		return map[string]map[string]string{}, nil
+	}
+
+	out := make(map[string]map[string]string, len(fc.Team.Roster.Players.Player))
+	for _, p := range fc.Team.Roster.Players.Player {
+		if p.PlayerStats == nil {
+			continue
+		}
+		stats := make(map[string]string)
+		for _, s := range p.PlayerStats.Stats.Stat {
+			if s.StatID == "" {
+				continue
+			}
+			if enabledStatIDs != nil && !enabledStatIDs[s.StatID] {
+				continue
+			}
+			stats[s.StatID] = s.Value
+		}
+		if len(stats) > 0 {
+			out[p.PlayerKey] = stats
+		}
+	}
+	return out, nil
+}
+
 // GetUserGUID fetches the authenticated user's Yahoo GUID.
 func (yc *YahooClient) GetUserGUID(ctx context.Context) (string, error) {
 	xmlBody, err := yc.makeRequest(ctx, "users;use_login=1")

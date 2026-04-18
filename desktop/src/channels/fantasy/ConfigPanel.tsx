@@ -187,6 +187,12 @@ export default function FantasyConfigPanel({
       try {
         const result = await importLeagueMutation.mutateAsync(league);
         statuses[key] = result.error ? "error" : "done";
+        // Invalidate the dashboard as soon as each league finishes so the
+        // Feed tab can show the newly-synced data immediately rather than
+        // waiting for the next 120s sync cycle.
+        if (!result.error) {
+          queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+        }
       } catch {
         statuses[key] = "error";
       }
@@ -203,8 +209,14 @@ export default function FantasyConfigPanel({
       toast.error("League import failed");
     }
 
-    await queryClient.invalidateQueries({ queryKey: queryKeys.fantasy.leagues });
-    await queryClient.invalidateQueries({ queryKey: queryKeys.fantasy.status });
+    // The dashboard query is what powers the Feed tab — without this
+    // invalidation the user can go from Configure to Feed and see stale
+    // data until the 120s sync cycle or another refetch trigger fires.
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.fantasy.leagues }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.fantasy.status }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard }),
+    ]);
     setPhase("connected");
   }, [selectedKeys, discoveredLeagues, queryClient, importLeagueMutation, remainingCapacity]);
 

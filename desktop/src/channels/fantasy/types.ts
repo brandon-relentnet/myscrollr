@@ -124,7 +124,8 @@ export interface RosterPlayer {
    */
   player_points: number | null;
   /**
-   * Raw stat_id → value map, verbatim from Yahoo. Values are STRINGS, not
+   * Raw stat_id → value map for the current scoring window (week or
+   * season, depending on league coverage). Values are STRINGS, not
    * numbers, because Yahoo ships formats that don't parse as floats:
    *   - "5/17"  hits/at-bats ratio
    *   - "3.2"   innings pitched (fractional part encodes thirds, not tenths)
@@ -133,6 +134,13 @@ export interface RosterPlayer {
    * Render these verbatim. Never `parseFloat` them for display.
    */
   player_stats?: Record<string, string> | null;
+  /**
+   * Same shape as `player_stats`, but scoped to today (Eastern Time).
+   * Populated when the backend successfully fetched the daily coverage
+   * for this player's team. Absent for inactive teams or when Yahoo's
+   * daily endpoint isn't available.
+   */
+  player_stats_today?: Record<string, string> | null;
 }
 
 export interface RosterEntry {
@@ -344,43 +352,61 @@ export function fmtPlayerPoints(pts: number | null | undefined): string {
 }
 
 /**
+ * Return the league's stat columns for a given position type, sorted by
+ * Yahoo's own sort_order. Used as table column definitions in the
+ * Roster and Matchup views.
+ */
+export function statColumnsForPosition(
+  catalog: StatCatalog | null | undefined,
+  positionType: string | undefined,
+): StatCatalogEntry[] {
+  if (!catalog || catalog.stats.length === 0) return [];
+  return catalog.stats
+    .filter((def) => {
+      if (!def.position_type) return true;
+      if (!positionType) return true;
+      return def.position_type === positionType;
+    })
+    .sort((a, b) => a.sort_order - b.sort_order);
+}
+
+/**
+ * Read a single stat value from a player's raw stats map, returning "—"
+ * for missing or empty values.
+ */
+export function statValue(
+  stats: Record<string, string> | null | undefined,
+  statId: string,
+): string {
+  if (!stats) return "—";
+  const v = stats[statId];
+  if (v === undefined || v === null || v === "") return "—";
+  if (v === "-") return "—";
+  return v;
+}
+
+/**
  * Return a compact "H/AB 5/17 · R 2 · RBI 1" summary for a player using
- * the league's own Yahoo-provided stat catalog. Labels come from the
- * league's <stat_categories> and values are rendered verbatim (preserving
- * ratios like "5/17", IP thirds like "3.2", and leading-period decimals
- * like ".686"). Returns an empty string when nothing useful is available
- * — caller should render "—" in that case.
- *
- * Stats are filtered to those matching the player's position_type (B/P
- * in MLB) and sorted by the league's own sort_order. A leading
- * display-only stat (e.g. H/AB, IP) is rendered without its label since
- * Yahoo's value already encodes context (e.g. "5/17").
+ * the league's own Yahoo-provided stat catalog. Kept for cases (ticker
+ * chips, previews) where a single-line string is more appropriate than a
+ * table. Labels come from Yahoo's <stat_categories> and values render
+ * verbatim (preserving ratios like "5/17", IP thirds like "3.2", and
+ * leading-period decimals like ".686"). Returns "" when no data.
  */
 export function fmtPlayerStats(
   stats: Record<string, string> | null | undefined,
   catalog: StatCatalog | null | undefined,
   positionType?: string,
 ): string {
-  if (!stats || !catalog || catalog.stats.length === 0) return "";
+  const columns = statColumnsForPosition(catalog, positionType).filter(
+    (def) => stats && stats[def.stat_id] !== undefined,
+  );
+  if (columns.length === 0) return "";
 
-  const relevant = catalog.stats
-    .filter((def) => {
-      // Stats without a position_type apply to everyone (rare for MLB).
-      if (!def.position_type) return true;
-      if (!positionType) return true;
-      return def.position_type === positionType;
-    })
-    .filter((def) => stats[def.stat_id] !== undefined)
-    .sort((a, b) => a.sort_order - b.sort_order);
-
-  if (relevant.length === 0) return "";
-
-  return relevant
+  return columns
     .map((def) => {
-      const raw = stats[def.stat_id];
+      const raw = stats ? stats[def.stat_id] : undefined;
       if (raw === "" || raw === undefined || raw === null) return "";
-      // Display-only stats (H/AB, IP) already carry context in their value.
-      // Show the value without a label prefix so the UI reads "5/17 · R 2".
       if (def.display_only) return raw;
       return `${def.display_name} ${raw}`;
     })

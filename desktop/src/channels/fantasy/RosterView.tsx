@@ -1,24 +1,25 @@
 /**
- * RosterView — detailed view of any team's roster in the league.
+ * RosterView — table view of any team's roster in the league.
  *
- * Defaults to the user's team but lets them swap to any opponent. Groups
- * players by selected position, flags injured players, and shows live
- * vs projected points per player.
+ * Splits players into Hitters / Pitchers tables (or whatever
+ * position_types the sport uses), each with their own stat columns
+ * driven by the league's Yahoo stat catalog. Starters render in the
+ * primary table; bench/IR/NA players drop into a subdued section below.
+ *
+ * User can swap between any team in the league via the selector.
  */
 import { useMemo, useState } from "react";
 import { clsx } from "clsx";
 import { AlertTriangle, ChevronDown } from "lucide-react";
-import { motion } from "motion/react";
 import {
-  fmtPlayerPoints,
-  fmtPlayerStats,
   isBenchPosition,
   isInjuryStatus,
-  positionOrderIndex,
   statusColorClass,
   userRoster,
 } from "./types";
-import type { LeagueResponse, RosterEntry, RosterPlayer, StatCatalog } from "./types";
+import { PlayerStatsTable } from "./PlayerStatsTable";
+import type { StatsWindow } from "./PlayerStatsTable";
+import type { LeagueResponse, RosterEntry, RosterPlayer } from "./types";
 
 interface RosterViewProps {
   league: LeagueResponse | null;
@@ -32,6 +33,7 @@ export function RosterView({ league }: RosterViewProps) {
   const [teamKey, setTeamKey] = useState<string | null>(
     userRosterEntry?.team_key ?? null,
   );
+  const [window, setWindow] = useState<StatsWindow>("week");
 
   const activeRoster = useMemo(() => {
     if (!league?.rosters) return null;
@@ -51,43 +53,41 @@ export function RosterView({ league }: RosterViewProps) {
   }
 
   const isMe = activeRoster?.team_key === league.team_key;
-  const starters = activeRoster
-    ? activeRoster.data.players.filter((p) => !isBenchPosition(p.selected_position))
-    : [];
-  const bench = activeRoster
-    ? activeRoster.data.players.filter((p) => isBenchPosition(p.selected_position))
-    : [];
+  const allPlayers = activeRoster?.data.players ?? [];
+  const starters = allPlayers.filter((p) => !isBenchPosition(p.selected_position));
+  const bench = allPlayers.filter((p) => isBenchPosition(p.selected_position));
 
-  const groupedStarters = groupByDisplay(starters, league.game_code);
-  const totalPoints = starters.reduce(
-    (sum, p) => sum + (typeof p.player_points === "number" ? p.player_points : 0),
-    0,
+  const groupedStarters = groupByPositionType(starters);
+  const groupedBench = groupByPositionType(bench);
+  const injuries = allPlayers.filter((p) => isInjuryStatus(p.status));
+
+  const catalog = league.data.stat_catalog ?? null;
+  const hasTodayStats = allPlayers.some(
+    (p) => p.player_stats_today && Object.keys(p.player_stats_today).length > 0,
   );
-  const hasAnyPoints = starters.some((p) => typeof p.player_points === "number");
-  const injuries = activeRoster?.data.players.filter((p) => isInjuryStatus(p.status)) ?? [];
 
   return (
-    <div className="flex flex-col gap-3 p-4">
+    <div className="flex flex-col gap-4 p-4">
       {/* Team selector + quick stats */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <TeamSelector
           league={league}
           value={activeRoster?.team_key ?? null}
           onChange={setTeamKey}
         />
-        <div className="ml-auto flex items-center gap-3 text-[11px] text-fg-3">
+        <StatsWindowPicker
+          value={window}
+          onChange={setWindow}
+          todayDisabled={!hasTodayStats}
+        />
+        <div className="flex items-center gap-3 text-[11px] text-fg-3">
           <span>
             <span className="font-bold text-fg">{starters.length}</span> starters
           </span>
-          {hasAnyPoints && (
-            <>
-              <span>·</span>
-              <span>
-                <span className="font-bold text-fg">{totalPoints.toFixed(1)}</span>{" "}
-                pts
-              </span>
-            </>
-          )}
+          <span>·</span>
+          <span>
+            <span className="font-bold text-fg">{bench.length}</span> bench/IR
+          </span>
           {injuries.length > 0 && (
             <>
               <span>·</span>
@@ -100,7 +100,7 @@ export function RosterView({ league }: RosterViewProps) {
         </div>
       </div>
 
-      {/* Injury spotlight */}
+      {/* Injury spotlight (only for user's own team) */}
       {injuries.length > 0 && isMe && (
         <div className="rounded-lg border border-warn/30 bg-warn/[0.06] p-3">
           <div className="mb-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-warn">
@@ -144,55 +144,33 @@ export function RosterView({ league }: RosterViewProps) {
         </div>
       )}
 
-      {/* Starters grouped by position */}
-      <section className="space-y-2">
-        <div className="font-mono text-[10px] uppercase tracking-wider text-fg-3">
-          Starters
-        </div>
-        <div className="overflow-hidden rounded-lg border border-edge/40">
-          {groupedStarters.map(([position, players], gi) => (
-            <div key={position}>
-              <div
-                className={clsx(
-                  "flex items-center gap-2 bg-surface-2/60 px-3 py-1.5 font-mono text-[9px] uppercase tracking-wider text-fg-3",
-                  gi > 0 && "border-t border-edge/40",
-                )}
-              >
-                <span className="rounded bg-surface-3 px-1.5 py-[1px] text-fg-2">
-                  {position}
-                </span>
-                <span>
-                  {players.length} player{players.length === 1 ? "" : "s"}
-                </span>
-              </div>
-              {players.map((p, i) => (
-                <motion.div
-                  key={p.player_key}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2, delay: i * 0.02 }}
-                >
-                  <PlayerRow player={p} catalog={league.data.stat_catalog ?? null} />
-                </motion.div>
-              ))}
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* Starters — one table per position_type */}
+      {groupedStarters.map(({ positionType, title, players }) => (
+        <PlayerStatsTable
+          key={`starters-${positionType}`}
+          players={players}
+          positionType={positionType}
+          title={title}
+          subtitle={`${players.length} starter${players.length === 1 ? "" : "s"}`}
+          catalog={catalog}
+          highlightPlayerKey={null}
+          window={window}
+        />
+      ))}
 
-      {/* Bench */}
-      {bench.length > 0 && (
-        <section className="space-y-2">
-          <div className="font-mono text-[10px] uppercase tracking-wider text-fg-3">
-            Bench &amp; IR
-          </div>
-          <div className="overflow-hidden rounded-lg border border-edge/30 bg-surface-2/40">
-            {bench.map((p) => (
-              <PlayerRow key={p.player_key} player={p} catalog={league.data.stat_catalog ?? null} subdued />
-            ))}
-          </div>
-        </section>
-      )}
+      {/* Bench / IR — subdued tables */}
+      {groupedBench.map(({ positionType, title, players }) => (
+        <PlayerStatsTable
+          key={`bench-${positionType}`}
+          players={players}
+          positionType={positionType}
+          title={`${title} — bench & IR`}
+          subtitle={`${players.length}`}
+          catalog={catalog}
+          subdued
+          window={window}
+        />
+      ))}
     </div>
   );
 }
@@ -257,110 +235,117 @@ function TeamSelector({
   );
 }
 
-// ── Player row ──────────────────────────────────────────────────
+// Re-export RosterEntry so existing imports don't break.
+export type { RosterEntry };
 
-function PlayerRow({
-  player,
-  catalog,
-  subdued,
-}: {
-  player: RosterPlayer;
-  catalog: StatCatalog | null;
-  subdued?: boolean;
-}) {
-  const injured = isInjuryStatus(player.status);
-  const hasPoints = typeof player.player_points === "number";
-  const pts = player.player_points ?? 0;
-  const statsSummary = !hasPoints
-    ? fmtPlayerStats(player.player_stats, catalog, player.position_type)
-    : "";
-  const showStatsInline = statsSummary.length > 0;
+// ── Stats window picker ──────────────────────────────────────────
+
+interface StatsWindowPickerProps {
+  value: StatsWindow;
+  onChange: (v: StatsWindow) => void;
+  todayDisabled?: boolean;
+}
+
+export function StatsWindowPicker({
+  value,
+  onChange,
+  todayDisabled,
+}: StatsWindowPickerProps) {
   return (
-    <div
-      className={clsx(
-        "flex items-center gap-3 px-3 py-2 transition-colors",
-        subdued ? "text-fg-3 hover:bg-surface-2" : "hover:bg-surface-2",
-      )}
-    >
-      {player.image_url ? (
-        <img
-          src={player.image_url}
-          alt=""
-          className="h-8 w-8 shrink-0 rounded-full object-cover"
-        />
-      ) : (
-        <div className="h-8 w-8 shrink-0 rounded-full bg-surface-3" />
-      )}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <span
-            className={clsx(
-              "truncate text-[12px] font-medium",
-              subdued ? "text-fg-3" : "text-fg",
-            )}
-          >
-            {player.name.full}
-          </span>
-          {injured && (
-            <span
-              className={clsx(
-                "inline-flex items-center gap-1 rounded border px-1 py-[1px] font-mono text-[8px] font-semibold uppercase tracking-wider",
-                statusColorClass(player.status),
-              )}
-              title={player.status_full || player.injury_note || ""}
-            >
-              <AlertTriangle size={8} />
-              {player.status}
-            </span>
-          )}
-        </div>
-        <div className="truncate text-[10px] text-fg-3">
-          {player.editorial_team_abbr}
-          {player.display_position && ` · ${player.display_position}`}
-          {player.selected_position && !subdued && ` · slot ${player.selected_position}`}
-        </div>
-      </div>
-      {showStatsInline ? (
-        <div
-          className={clsx(
-            "shrink-0 font-mono text-[10px] tabular-nums",
-            subdued ? "text-fg-3" : "text-fg-2",
-          )}
-        >
-          {statsSummary}
-        </div>
-      ) : (
-        <div
-          className={clsx(
-            "shrink-0 font-mono tabular-nums",
-            subdued
-              ? "text-[11px] text-fg-3"
-              : hasPoints && pts > 0
-                ? "text-sm font-bold text-fg"
-                : "text-[11px] text-fg-3",
-          )}
-        >
-          {fmtPlayerPoints(player.player_points)}
-        </div>
-      )}
+    <div className="inline-flex overflow-hidden rounded-md border border-edge/40 text-[11px]">
+      <Pill active={value === "week"} onClick={() => onChange("week")}>
+        Week
+      </Pill>
+      <Pill
+        active={value === "today"}
+        onClick={() => onChange("today")}
+        disabled={todayDisabled}
+        title={todayDisabled ? "Today's stats are still syncing" : undefined}
+      >
+        Today
+      </Pill>
     </div>
   );
 }
 
-// ── Helpers ─────────────────────────────────────────────────────
+function Pill({
+  active,
+  disabled,
+  onClick,
+  title,
+  children,
+}: {
+  active: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  title?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className={clsx(
+        "px-2.5 py-1 font-medium transition-colors",
+        active
+          ? "bg-accent/15 text-accent"
+          : disabled
+            ? "cursor-not-allowed text-fg-4"
+            : "text-fg-3 hover:bg-surface-hover hover:text-fg-2 cursor-pointer",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
 
-function groupByDisplay(
-  players: RosterPlayer[],
-  gameCode: string,
-): [string, RosterPlayer[]][] {
-  const groups = new Map<string, RosterPlayer[]>();
+// ── Position-type grouping ───────────────────────────────────────
+
+interface PositionGroup {
+  positionType: string;
+  title: string;
+  players: RosterPlayer[];
+}
+
+/** Friendly labels per position_type for each Yahoo sport. */
+const POSITION_TYPE_LABELS: Record<string, string> = {
+  B: "Hitters",
+  P: "Pitchers",
+  O: "Offense",
+  D: "Defense",
+  K: "Kickers",
+};
+
+function groupByPositionType(players: RosterPlayer[]): PositionGroup[] {
+  const buckets = new Map<string, RosterPlayer[]>();
   for (const p of players) {
-    const key = p.selected_position || "FLEX";
-    const bucket = groups.get(key) ?? [];
+    const key = p.position_type || "B";
+    const bucket = buckets.get(key) ?? [];
     bucket.push(p);
-    groups.set(key, bucket);
+    buckets.set(key, bucket);
   }
-  return Array.from(groups.entries()).sort(([a], [b]) => {
-    return positionOrderIndex(gameCode, a) - positionOrderIndex(gameCode, b);
-  });
+  // Preserve a stable sport-friendly order: hitters before pitchers, etc.
+  const order = ["B", "O", "P", "D", "K"];
+  const groups: PositionGroup[] = [];
+  for (const key of order) {
+    if (buckets.has(key)) {
+      groups.push({
+        positionType: key,
+        title: POSITION_TYPE_LABELS[key] ?? key,
+        players: buckets.get(key)!,
+      });
+      buckets.delete(key);
+    }
+  }
+  // Any remaining unknown position_types get appended.
+  for (const [key, players] of buckets.entries()) {
+    groups.push({
+      positionType: key,
+      title: POSITION_TYPE_LABELS[key] ?? key,
+      players,
+    });
+  }
+  return groups;
 }

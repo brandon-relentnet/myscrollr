@@ -368,6 +368,19 @@ func (a *App) syncUser(ctx context.Context, user yahooUser, clientID, clientSecr
 			}
 		}
 
+		// Pre-compute the set of stat IDs this league scores so the daily
+		// fetch returns only relevant stats (Yahoo's date endpoint otherwise
+		// ships 30-50 stats per player, most of them unused).
+		var enabledStatIDs map[string]bool
+		if catalog != nil && len(catalog.Stats) > 0 {
+			enabledStatIDs = make(map[string]bool, len(catalog.Stats))
+			for _, s := range catalog.Stats {
+				enabledStatIDs[s.StatID] = true
+			}
+		}
+
+		todayDate := todayInEastern()
+
 		for _, team := range teams {
 			// Pass currentWeek so Yahoo populates per-player points for that
 			// week. If currentWeek is 0 (finished league or missing metadata)
@@ -377,6 +390,17 @@ func (a *App) syncUser(ctx context.Context, user yahooUser, clientID, clientSecr
 				log.Printf("[Sync] Failed roster for %s: %v", team.TeamKey, err)
 				continue
 			}
+
+			// Enrich each player with today's stats. One extra Yahoo call per
+			// team — not free, but the payoff is letting the UI toggle
+			// between week-to-date and today without a separate fetch path.
+			dailyStats, dErr := client.GetTeamDailyStats(ctx, team.TeamKey, todayDate, enabledStatIDs)
+			if dErr != nil {
+				log.Printf("[Sync] Failed daily stats for %s: %v (continuing without today)", team.TeamKey, dErr)
+			} else if len(dailyStats) > 0 {
+				mergeDailyStatsIntoRoster(roster, dailyStats)
+			}
+
 			if err := a.upsertRoster(ctx, team.TeamKey, lk, roster); err != nil {
 				log.Printf("[Sync] Failed upsert roster for %s: %v", team.TeamKey, err)
 			} else {
@@ -487,6 +511,29 @@ func (a *App) upsertLeague(ctx context.Context, leagueKey, name, gameCode, seaso
 		leagueKey, name, gameCode, season, string(jsonData),
 	)
 	return err
+}
+
+// mergeDailyStatsIntoRoster walks the serialized roster map and attaches
+// each player's today-stats under `player_stats_today`. The roster shape
+// comes from serializeRoster which returns a map[string]any; we mutate
+// the nested players slice in place.
+func mergeDailyStatsIntoRoster(roster map[string]any, dailyByPlayerKey map[string]map[string]string) {
+	if roster == nil {
+		return
+	}
+	players, ok := roster["players"].([]map[string]any)
+	if !ok {
+		return
+	}
+	for _, player := range players {
+		pkey, _ := player["player_key"].(string)
+		if pkey == "" {
+			continue
+		}
+		if stats, ok := dailyByPlayerKey[pkey]; ok && len(stats) > 0 {
+			player["player_stats_today"] = stats
+		}
+	}
 }
 
 // upsertLeagueStatCatalog embeds the league's Yahoo stat_categories +

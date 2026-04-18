@@ -613,6 +613,18 @@ func (a *App) ImportYahooLeague(c *fiber.Ctx) error {
 				}
 			}
 
+			// Pre-compute enabled stat IDs so the daily stats call returns
+			// only league-relevant columns.
+			var enabledStatIDs map[string]bool
+			if catalog != nil && len(catalog.Stats) > 0 {
+				enabledStatIDs = make(map[string]bool, len(catalog.Stats))
+				for _, s := range catalog.Stats {
+					enabledStatIDs[s.StatID] = true
+				}
+			}
+
+			todayDate := todayInEastern()
+
 			for _, team := range teams {
 				// Pass currentWeek so Yahoo populates per-player points for
 				// that week. Falls back to a plain roster fetch when the
@@ -621,6 +633,13 @@ func (a *App) ImportYahooLeague(c *fiber.Ctx) error {
 				if err != nil {
 					log.Printf("[Import] Failed roster for %s: %v", team.TeamKey, err)
 					continue
+				}
+				// Enrich with today's stats so the Feed can render them
+				// immediately after import without waiting on the next sync.
+				if dailyStats, dErr := client.GetTeamDailyStats(ctx, team.TeamKey, todayDate, enabledStatIDs); dErr != nil {
+					log.Printf("[Import] Failed daily stats for %s: %v", team.TeamKey, dErr)
+				} else if len(dailyStats) > 0 {
+					mergeDailyStatsIntoRoster(roster, dailyStats)
 				}
 				if err := a.upsertRoster(ctx, team.TeamKey, incoming.LeagueKey, roster); err != nil {
 					log.Printf("[Import] Failed upsert roster for %s: %v", team.TeamKey, err)

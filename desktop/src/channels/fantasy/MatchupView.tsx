@@ -1,25 +1,19 @@
 /**
- * MatchupView — full head-to-head with both rosters side by side.
+ * MatchupView — full head-to-head with both teams' rosters as tables.
  *
- * Shows the hero up top, then the user and opponent starting lineups
- * aligned by position slot. Each player row shows their status, live
- * points, and optionally projected points.
+ * Shows the MatchupHero up top, then one column per team. Within each
+ * team column: a Hitters table and a Pitchers table (or whatever
+ * position types the sport uses). Starters go in the main tables; bench
+ * and IR players render in subdued bench tables below.
  */
-import { useMemo } from "react";
-import { clsx } from "clsx";
-import { AlertTriangle, Minus } from "lucide-react";
-import { motion } from "motion/react";
+import { useMemo, useState } from "react";
+import { Minus } from "lucide-react";
 import { MatchupHero } from "./MatchupHero";
-import {
-  fmtPlayerPoints,
-  fmtPlayerStats,
-  isBenchPosition,
-  isInjuryStatus,
-  positionOrderIndex,
-  statusColorClass,
-  userMatchupContext,
-} from "./types";
-import type { LeagueResponse, RosterEntry, RosterPlayer, StatCatalog } from "./types";
+import { PlayerStatsTable } from "./PlayerStatsTable";
+import { StatsWindowPicker } from "./RosterView";
+import type { StatsWindow } from "./PlayerStatsTable";
+import { isBenchPosition, userMatchupContext } from "./types";
+import type { LeagueResponse, RosterEntry, RosterPlayer } from "./types";
 
 interface MatchupViewProps {
   league: LeagueResponse | null;
@@ -27,6 +21,7 @@ interface MatchupViewProps {
 
 export function MatchupView({ league }: MatchupViewProps) {
   const ctx = useMemo(() => (league ? userMatchupContext(league) : null), [league]);
+  const [window, setWindow] = useState<StatsWindow>("week");
 
   if (!league || !ctx) {
     return (
@@ -41,287 +36,173 @@ export function MatchupView({ league }: MatchupViewProps) {
   const opponentRoster =
     league.rosters?.find((r) => r.team_key === opponent.team_key) ?? null;
 
-  const pairs = useMemo(
-    () => buildStarterPairs(league.game_code, userRoster, opponentRoster),
-    [league.game_code, userRoster, opponentRoster],
-  );
-  const benchPairs = useMemo(
-    () => buildBenchPairs(league.game_code, userRoster, opponentRoster),
-    [league.game_code, userRoster, opponentRoster],
+  const catalog = league.data.stat_catalog ?? null;
+  const hasTodayStats = [userRoster, opponentRoster].some((r) =>
+    r?.data.players.some(
+      (p) => p.player_stats_today && Object.keys(p.player_stats_today).length > 0,
+    ),
   );
 
   return (
     <div className="flex flex-col gap-4 p-4">
       <MatchupHero league={league} />
 
-      {/* Starter comparison */}
-      {pairs.length > 0 && (
-        <section>
-          <div className="mb-2 flex items-center justify-between">
-            <h3 className="font-mono text-[10px] uppercase tracking-wider text-fg-3">
-              Starters
-            </h3>
-            <div className="flex items-center gap-2 text-[10px] text-fg-3">
-              <span>{user.name.split(" ").slice(0, 2).join(" ")}</span>
-              <Minus size={12} />
-              <span>{opponent.name.split(" ").slice(0, 2).join(" ")}</span>
-            </div>
-          </div>
-          <div className="overflow-hidden rounded-lg border border-edge/40">
-            {pairs.map((pair, i) => (
-              <motion.div
-                key={`${pair.position}-${i}`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.2, delay: i * 0.015 }}
-              >
-                <PlayerPairRow
-                  position={pair.position}
-                  left={pair.left}
-                  right={pair.right}
-                  catalog={league.data.stat_catalog ?? null}
-                />
-              </motion.div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Bench */}
-      {benchPairs.length > 0 && (
-        <section>
-          <div className="mb-2">
-            <h3 className="font-mono text-[10px] uppercase tracking-wider text-fg-3">
-              Bench &amp; IR
-            </h3>
-          </div>
-          <div className="overflow-hidden rounded-lg border border-edge/30 bg-surface-2/40">
-            {benchPairs.map((pair, i) => (
-              <PlayerPairRow
-                key={`bench-${pair.position}-${i}`}
-                position={pair.position}
-                left={pair.left}
-                right={pair.right}
-                catalog={league.data.stat_catalog ?? null}
-                subdued
-              />
-            ))}
-          </div>
-        </section>
-      )}
-    </div>
-  );
-}
-
-// ── Pair building ─────────────────────────────────────────────────
-
-interface PlayerPair {
-  position: string;
-  left: RosterPlayer | null;
-  right: RosterPlayer | null;
-}
-
-function buildStarterPairs(
-  gameCode: string,
-  leftRoster: RosterEntry | null,
-  rightRoster: RosterEntry | null,
-): PlayerPair[] {
-  const leftStarters = (leftRoster?.data.players ?? []).filter(
-    (p) => !isBenchPosition(p.selected_position),
-  );
-  const rightStarters = (rightRoster?.data.players ?? []).filter(
-    (p) => !isBenchPosition(p.selected_position),
-  );
-
-  const sorter = (a: RosterPlayer, b: RosterPlayer) =>
-    positionOrderIndex(gameCode, a.selected_position) -
-    positionOrderIndex(gameCode, b.selected_position);
-
-  const leftQueue = [...leftStarters].sort(sorter);
-  const rightQueue = [...rightStarters].sort(sorter);
-
-  const pairs: PlayerPair[] = [];
-  while (leftQueue.length > 0 || rightQueue.length > 0) {
-    const left = leftQueue[0] ?? null;
-    const right = rightQueue[0] ?? null;
-    if (left && right && left.selected_position === right.selected_position) {
-      pairs.push({ position: left.selected_position, left, right });
-      leftQueue.shift();
-      rightQueue.shift();
-    } else if (left && (!right || indexBefore(gameCode, left, right))) {
-      pairs.push({ position: left.selected_position, left, right: null });
-      leftQueue.shift();
-    } else if (right) {
-      pairs.push({ position: right.selected_position, left: null, right });
-      rightQueue.shift();
-    }
-  }
-  return pairs;
-}
-
-function buildBenchPairs(
-  gameCode: string,
-  leftRoster: RosterEntry | null,
-  rightRoster: RosterEntry | null,
-): PlayerPair[] {
-  const leftBench = (leftRoster?.data.players ?? []).filter((p) =>
-    isBenchPosition(p.selected_position),
-  );
-  const rightBench = (rightRoster?.data.players ?? []).filter((p) =>
-    isBenchPosition(p.selected_position),
-  );
-  const size = Math.max(leftBench.length, rightBench.length);
-  const pairs: PlayerPair[] = [];
-  for (let i = 0; i < size; i += 1) {
-    const left = leftBench[i] ?? null;
-    const right = rightBench[i] ?? null;
-    pairs.push({
-      position: left?.selected_position || right?.selected_position || "BN",
-      left,
-      right,
-    });
-  }
-  return pairs;
-}
-
-function indexBefore(
-  gameCode: string,
-  a: RosterPlayer,
-  b: RosterPlayer,
-): boolean {
-  return (
-    positionOrderIndex(gameCode, a.selected_position) <=
-    positionOrderIndex(gameCode, b.selected_position)
-  );
-}
-
-// ── Player pair row ─────────────────────────────────────────────
-
-function PlayerPairRow({
-  position,
-  left,
-  right,
-  catalog,
-  subdued,
-}: {
-  position: string;
-  left: RosterPlayer | null;
-  right: RosterPlayer | null;
-  catalog: StatCatalog | null;
-  subdued?: boolean;
-}) {
-  const leftPts = left?.player_points ?? 0;
-  const rightPts = right?.player_points ?? 0;
-  const leftLeading = leftPts > rightPts;
-  const rightLeading = rightPts > leftPts;
-
-  return (
-    <div
-      className={clsx(
-        "grid grid-cols-[minmax(0,1fr)_minmax(60px,auto)_minmax(0,1fr)] items-center gap-3 px-3 py-2 transition-colors",
-        subdued && "text-fg-3",
-        !subdued && "bg-surface hover:bg-surface-2",
-      )}
-    >
-      <PlayerSide player={left} leading={leftLeading} align="left" catalog={catalog} subdued={subdued} />
-      <div className="flex items-center justify-center font-mono text-[9px] uppercase tracking-wider text-fg-3">
-        <span className="rounded-full border border-edge/50 bg-surface-2 px-1.5 py-0.5">
-          {position}
+      <div className="flex items-center gap-3">
+        <StatsWindowPicker
+          value={window}
+          onChange={setWindow}
+          todayDisabled={!hasTodayStats}
+        />
+        <span className="font-mono text-[10px] uppercase tracking-wider text-fg-4">
+          {window === "today" ? "Today (Eastern)" : `Week ${ctx.matchup.week}`}
         </span>
       </div>
-      <PlayerSide player={right} leading={rightLeading} align="right" catalog={catalog} subdued={subdued} />
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <TeamColumn
+          title={user.name}
+          subtitle="Your team"
+          roster={userRoster}
+          catalog={catalog}
+          window={window}
+          highlight
+        />
+        <div className="relative">
+          <TeamColumn
+            title={opponent.name}
+            subtitle="Opponent"
+            roster={opponentRoster}
+            catalog={catalog}
+            window={window}
+          />
+          <div className="pointer-events-none absolute -left-5 top-1/2 hidden -translate-y-1/2 rounded-full border border-edge/50 bg-surface p-1 shadow-sm lg:block">
+            <Minus size={10} className="text-fg-3" />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-function PlayerSide({
-  player,
-  leading,
-  align,
+// ── Team column ──────────────────────────────────────────────────
+
+interface TeamColumnProps {
+  title: string;
+  subtitle: string;
+  roster: RosterEntry | null;
+  catalog: LeagueResponse["data"]["stat_catalog"];
+  window: StatsWindow;
+  /** Highlight this column (used for the user's own team). */
+  highlight?: boolean;
+}
+
+function TeamColumn({
+  title,
+  subtitle,
+  roster,
   catalog,
-  subdued,
-}: {
-  player: RosterPlayer | null;
-  leading?: boolean;
-  align: "left" | "right";
-  catalog: StatCatalog | null;
-  subdued?: boolean;
-}) {
-  if (!player) {
-    return <div className="text-right font-mono text-[10px] text-fg-3">—</div>;
-  }
-  const injured = isInjuryStatus(player.status);
-  const hasPoints = typeof player.player_points === "number";
-  const statsSummary = !hasPoints
-    ? fmtPlayerStats(player.player_stats, catalog, player.position_type)
-    : "";
-  const showStatsInline = statsSummary.length > 0;
+  window,
+  highlight,
+}: TeamColumnProps) {
+  const players = roster?.data.players ?? [];
+  const starters = players.filter((p) => !isBenchPosition(p.selected_position));
+  const bench = players.filter((p) => isBenchPosition(p.selected_position));
+
+  const starterGroups = groupByPositionType(starters);
+  const benchGroups = groupByPositionType(bench);
+
   return (
-    <div
-      className={clsx(
-        "flex min-w-0 items-center gap-2",
-        align === "right" && "flex-row-reverse text-right",
-      )}
-    >
-      <div
-        className={clsx(
-          "flex min-w-0 flex-1 flex-col leading-tight",
-          align === "right" && "items-end",
-        )}
-      >
-        <div
-          className={clsx(
-            "flex items-center gap-1.5",
-            align === "right" && "flex-row-reverse",
-          )}
-        >
-          <span
-            className={clsx(
-              "truncate text-[12px] font-medium",
-              subdued ? "text-fg-3" : "text-fg-2",
-            )}
-          >
-            {player.name.full}
+    <div className="flex flex-col gap-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <div className="min-w-0">
+          <div className="truncate text-[13px] font-bold text-fg">{title}</div>
+          <div className="font-mono text-[9px] uppercase tracking-wider text-fg-4">
+            {subtitle}
+          </div>
+        </div>
+        {highlight && (
+          <span className="rounded bg-accent/15 px-1.5 py-[1px] font-mono text-[9px] uppercase tracking-wider text-accent">
+            You
           </span>
-          {injured && (
-            <span
-              className={clsx(
-                "inline-flex items-center gap-1 rounded border px-1 py-[1px] font-mono text-[8px] font-semibold uppercase tracking-wider",
-                statusColorClass(player.status),
-              )}
-              title={player.status_full || player.injury_note || ""}
-            >
-              <AlertTriangle size={8} />
-              {player.status}
-            </span>
-          )}
-        </div>
-        <div className="truncate text-[9px] text-fg-3">
-          {player.editorial_team_abbr}
-          {player.display_position && ` · ${player.display_position}`}
-        </div>
+        )}
       </div>
-      {showStatsInline ? (
-        <div
-          className={clsx(
-            "shrink-0 font-mono text-[10px] tabular-nums",
-            subdued ? "text-fg-3" : "text-fg-2",
-          )}
-        >
-          {statsSummary}
-        </div>
-      ) : (
-        <div
-          className={clsx(
-            "shrink-0 font-mono tabular-nums",
-            subdued ? "text-[11px] text-fg-3" : "text-sm font-bold",
-            leading && !subdued && "text-up",
-            !hasPoints && "text-fg-3",
-          )}
-        >
-          {fmtPlayerPoints(player.player_points)}
+
+      {starterGroups.length === 0 && (
+        <div className="rounded-lg border border-edge/40 bg-surface-2 p-6 text-center text-[11px] text-fg-3">
+          Roster not available yet.
         </div>
       )}
+
+      {starterGroups.map(({ positionType, title, players }) => (
+        <PlayerStatsTable
+          key={`starters-${positionType}`}
+          players={players}
+          positionType={positionType}
+          title={title}
+          subtitle={`${players.length}`}
+          catalog={catalog ?? null}
+          window={window}
+        />
+      ))}
+
+      {benchGroups.map(({ positionType, title, players }) => (
+        <PlayerStatsTable
+          key={`bench-${positionType}`}
+          players={players}
+          positionType={positionType}
+          title={`${title} — bench & IR`}
+          subtitle={`${players.length}`}
+          catalog={catalog ?? null}
+          subdued
+          window={window}
+        />
+      ))}
     </div>
   );
+}
+
+// ── Position-type grouping (duplicated from RosterView for isolation) ──
+
+interface PositionGroup {
+  positionType: string;
+  title: string;
+  players: RosterPlayer[];
+}
+
+const POSITION_TYPE_LABELS: Record<string, string> = {
+  B: "Hitters",
+  P: "Pitchers",
+  O: "Offense",
+  D: "Defense",
+  K: "Kickers",
+};
+
+function groupByPositionType(players: RosterPlayer[]): PositionGroup[] {
+  const buckets = new Map<string, RosterPlayer[]>();
+  for (const p of players) {
+    const key = p.position_type || "B";
+    const bucket = buckets.get(key) ?? [];
+    bucket.push(p);
+    buckets.set(key, bucket);
+  }
+  const order = ["B", "O", "P", "D", "K"];
+  const groups: PositionGroup[] = [];
+  for (const key of order) {
+    if (buckets.has(key)) {
+      groups.push({
+        positionType: key,
+        title: POSITION_TYPE_LABELS[key] ?? key,
+        players: buckets.get(key)!,
+      });
+      buckets.delete(key);
+    }
+  }
+  for (const [key, players] of buckets.entries()) {
+    groups.push({
+      positionType: key,
+      title: POSITION_TYPE_LABELS[key] ?? key,
+      players,
+    });
+  }
+  return groups;
 }
