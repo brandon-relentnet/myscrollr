@@ -259,6 +259,8 @@ export default function App() {
         setPinned(next.window.pinned);
         savePref("feedPinned", next.window.pinned);
         invoke("pin_window", { pinned: next.window.pinned }).catch(() => {});
+        // Keep the tray's "Pin on Top" checkmark in sync with the pref.
+        invoke("sync_tray_pin", { pinned: next.window.pinned }).catch(() => {});
       }
 
       // Side effects: ticker position
@@ -300,6 +302,10 @@ export default function App() {
         .catch(() => {});
     }
     invoke("pin_window", { pinned }).catch(() => {});
+    // Initial state sync for the system-tray "Pin on Top" checkmark.
+    // The tray is built with checked=false by default; mirror the stored
+    // pref so the checkmark is accurate on app launch.
+    invoke("sync_tray_pin", { pinned }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -427,7 +433,14 @@ export default function App() {
     setPrefs(updated);
     savePrefs(updated);
     invoke("pin_window", { pinned: next }).catch(() => {});
+    // Mirror the new state back into the system-tray "Pin on Top"
+    // CheckMenuItem so its checkmark stays in sync with the right-click
+    // menu. Harmless if the tray command is unavailable (e.g. dev mode).
+    invoke("sync_tray_pin", { pinned: next }).catch(() => {});
   }, []);
+
+  // ── System tray "Pin on Top" → same handler as the right-click menu ──
+  useTauriListener("toggle-pin", () => handleToggleWindowPin());
 
   // ── Right-click → native context menu ──────────────────────────
 
