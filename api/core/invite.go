@@ -62,6 +62,18 @@ func HandleCompleteInvite(c *fiber.Ctx) error {
 
 	cfg := getM2MConfig()
 
+	// Server-side one-time token verification. This is the ONLY
+	// authorization gate that proves the caller actually received the
+	// emailed invite link for this address. The token is consumed by
+	// Logto on success — the frontend must sign the user in with their
+	// newly-set password afterward, NOT with signIn({one_time_token}).
+	if err := verifyOneTimeToken(cfg.Endpoint, m2mToken, req.Email, req.Token); err != nil {
+		log.Printf("[Invite] Token verification failed for %s: %v", req.Email, err)
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+			Error: "Invite link is invalid or has expired",
+		})
+	}
+
 	userID, _, err := findUserByEmail(cfg.Endpoint, m2mToken, req.Email)
 	if err != nil {
 		log.Printf("[Invite] User lookup failed for %s: %v", req.Email, err)
@@ -167,6 +179,45 @@ func HandleCheckUsernameAvailable(c *fiber.Ctx) error {
 }
 
 // ── Logto Management API helpers ────────────────────────────────────
+
+// verifyOneTimeToken validates a Logto one-time token against the given
+// email and consumes it on success. A consumed token cannot be verified
+// again or used by signIn({extraParams:{one_time_token}}). The caller
+// must ensure the user signs in via a different credential afterward
+// (in the invite flow, the password they just set).
+//
+// Returns nil when the token is valid and consumed; a non-nil error
+// when it's expired, malformed, unknown, or bound to a different email.
+func verifyOneTimeToken(endpoint, token, email, ott string) error {
+	payload, _ := json.Marshal(map[string]string{
+		"email": email,
+		"token": ott,
+	})
+
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("%s/api/one-time-tokens/verify", endpoint),
+		bytes.NewReader(payload),
+	)
+	if err != nil {
+		return fmt.Errorf("create verify request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: LogtoM2MTokenTimeout}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("verify request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		return nil
+	}
+	body, _ := io.ReadAll(resp.Body)
+	return fmt.Errorf("verify returned %d: %s", resp.StatusCode, string(body))
+}
 
 // findUserByEmail searches for a user by primary email and returns (userID, username, error).
 func findUserByEmail(endpoint, token, email string) (string, string, error) {
