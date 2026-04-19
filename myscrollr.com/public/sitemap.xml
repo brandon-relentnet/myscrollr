@@ -6,9 +6,14 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://myscrollr.com/discover</loc>
+    <loc>https://myscrollr.com/download</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://myscrollr.com/channels</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
   </url>
   <url>
     <loc>https://myscrollr.com/uplink</loc>
@@ -21,11 +26,6 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://myscrollr.com/integrations</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://myscrollr.com/architecture</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
@@ -33,11 +33,6 @@
   <url>
     <loc>https://myscrollr.com/status</loc>
     <changefreq>always</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://myscrollr.com/onboard</loc>
-    <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
