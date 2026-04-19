@@ -106,6 +106,7 @@ func (s *Server) setupMiddleware() {
 		"/webhooks/sequin":         true,
 		"/webhooks/stripe":         true,
 		"/channels":                true,
+		"/tier-limits":             true,
 		"/extension/token":         true,
 		"/extension/token/refresh": true,
 		"/support/ticket":          true,
@@ -172,6 +173,7 @@ func (s *Server) setupRoutes() {
 	s.App.Post("/extension/token/refresh", HandleExtensionTokenRefresh)
 
 	s.App.Get("/channels", s.listChannels)
+	s.App.Get("/tier-limits", HandleGetTierLimits)
 	s.App.Get("/", s.landingPage)
 
 	// --- Protected Routes ---

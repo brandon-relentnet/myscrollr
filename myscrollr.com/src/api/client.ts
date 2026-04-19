@@ -74,6 +74,35 @@ export async function authenticatedFetch<T>(
   return response.json()
 }
 
+// ── Tier Limits ──────────────────────────────────────────────────
+//
+// Source of truth lives in api/core/tier_limits.go (DefaultTierLimits).
+// Null means "unlimited" for that cap.
+
+export type TierKey =
+  | 'free'
+  | 'uplink'
+  | 'uplink_pro'
+  | 'uplink_ultimate'
+  | 'super_user'
+
+export interface ChannelLimits {
+  symbols: number | null
+  feeds: number | null
+  custom_feeds: number | null
+  leagues: number | null
+  fantasy: number | null
+}
+
+export interface TierLimitsResponse {
+  tiers: Record<TierKey, ChannelLimits>
+}
+
+export const tierLimitsApi = {
+  /** Fetch tier limits from the backend. Cached by the CDN for 5 min. */
+  get: () => request<TierLimitsResponse>('/tier-limits'),
+}
+
 // ── Channel Types ────────────────────────────────────────────────
 
 export type ChannelType = 'finance' | 'sports' | 'fantasy' | 'rss'
