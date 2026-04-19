@@ -206,6 +206,13 @@ func (s *Server) setupRoutes() {
 	s.App.Post("/users/me/channels", LogtoAuth, CreateChannel)
 	s.App.Put("/users/me/channels/:type", LogtoAuth, UpdateChannel)
 	s.App.Delete("/users/me/channels/:type", LogtoAuth, DeleteChannel)
+
+	// GDPR: data export + 30-day soft-delete lifecycle
+	s.App.Get("/users/me/export", LogtoAuth, HandleExportUserData)
+	s.App.Post("/users/me/delete", LogtoAuth, HandleRequestAccountDeletion)
+	s.App.Post("/users/me/delete/cancel", LogtoAuth, HandleCancelAccountDeletion)
+	s.App.Get("/users/me/delete/status", LogtoAuth, HandleAccountDeletionStatus)
+
 	s.App.Get("/users/:username", GetProfileByUsername)
 }
 

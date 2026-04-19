@@ -41,6 +41,11 @@ func main() {
 	// Start Redis-based channel discovery (ctx-aware)
 	core.StartDiscovery(ctx)
 
+	// Start GDPR purge worker — scans user_deletion_requests hourly for
+	// rows that have aged past their purge_at and cascades the permanent
+	// delete across local DB + Logto.
+	core.StartGDPRPurgeWorker(ctx)
+
 	// Build and start the gateway server
 	srv := core.NewServer()
 	srv.Setup()

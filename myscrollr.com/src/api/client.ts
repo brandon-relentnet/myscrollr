@@ -461,3 +461,101 @@ export const inviteApi = {
       `/invite/username-available?email=${encodeURIComponent(email)}&username=${encodeURIComponent(username)}`,
     ),
 }
+
+// ── GDPR Account Export + Delete ──────────────────────────────────
+//
+// 30-day soft-delete grace window. Users can cancel from the Account
+// page at any point before the purge runs. Export returns a JSON
+// download with everything we store about the user, minus security-
+// sensitive tokens and server-internal IDs.
+
+export type AccountDeletionStatus =
+  | { status: 'none' }
+  | {
+      status: 'pending'
+      requested_at: string
+      purge_at: string
+      canceled_at?: string
+      purged_at?: string
+    }
+  | {
+      status: 'canceled'
+      requested_at: string
+      purge_at: string
+      canceled_at: string
+      purged_at?: string
+    }
+  | {
+      status: 'purged'
+      requested_at: string
+      purge_at: string
+      canceled_at?: string
+      purged_at: string
+    }
+
+export interface RequestDeletionResponse {
+  status: 'pending'
+  requested_at: string
+  purge_at: string
+}
+
+export const gdprApi = {
+  /**
+   * Fetch and trigger browser download of a user-data archive.
+   * Resolves once the blob is saved; rejects on network / auth error.
+   */
+  exportData: async (getToken: () => Promise<string | null>) => {
+    const token = await getToken()
+    const response = await fetch(`${API_BASE}/users/me/export`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: 'include',
+    })
+    if (!response.ok) {
+      const error = await response
+        .json()
+        .catch(() => ({ error: 'Export failed' }))
+      throw new Error(error.error || 'Export failed')
+    }
+    const blob = await response.blob()
+    // Infer filename from Content-Disposition; fall back to a sensible default.
+    const disposition = response.headers.get('Content-Disposition') || ''
+    const match = disposition.match(/filename="?([^";]+)"?/)
+    const filename = match?.[1] ?? `myscrollr-export-${Date.now()}.json`
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = filename
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    URL.revokeObjectURL(url)
+  },
+
+  /** Schedule account deletion (30-day grace period). */
+  requestDeletion: (getToken: () => Promise<string | null>) =>
+    authenticatedFetch<RequestDeletionResponse>(
+      '/users/me/delete',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: 'DELETE MY ACCOUNT' }),
+      },
+      getToken,
+    ),
+
+  /** Cancel a pending deletion request. */
+  cancelDeletion: (getToken: () => Promise<string | null>) =>
+    authenticatedFetch<{ status: 'canceled'; canceled_at: string }>(
+      '/users/me/delete/cancel',
+      { method: 'POST' },
+      getToken,
+    ),
+
+  /** Current deletion request state — drives the pending banner. */
+  getDeletionStatus: (getToken: () => Promise<string | null>) =>
+    authenticatedFetch<AccountDeletionStatus>(
+      '/users/me/delete/status',
+      {},
+      getToken,
+    ),
+}
