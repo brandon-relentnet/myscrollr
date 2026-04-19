@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -267,6 +268,23 @@ func CreateChannel(c *fiber.Ctx) error {
 		req.Config = map[string]interface{}{}
 	}
 
+	// Tier-gate the config shape. Frontend already enforces these caps
+	// but the API is the only place that actually matters — the Rust
+	// ingestion services trust user_channels.config verbatim.
+	tier := tierFromRoles(GetUserRoles(c))
+	if err := ValidateChannelConfig(tier, req.ChannelType, req.Config); err != nil {
+		var tle *TierLimitError
+		if errors.As(err, &tle) {
+			log.Printf("[Channels] Tier limit exceeded for %s: %s", userID, tle.Error())
+			return c.Status(fiber.StatusForbidden).JSON(tierLimitErrorResponse(tle))
+		}
+		// Defensive — the validator should only return *TierLimitError.
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+			Status: "error",
+			Error:  err.Error(),
+		})
+	}
+
 	configJSON, _ := json.Marshal(req.Config)
 
 	var ch Channel
@@ -353,6 +371,25 @@ func UpdateChannel(c *fiber.Ctx) error {
 			Status: "error",
 			Error:  "Invalid request body",
 		})
+	}
+
+	// Tier-gate any incoming config. We only check when config is
+	// provided — updates that only toggle enabled/visible should not
+	// re-validate (they're expected to be cheap + frequent, e.g. pause
+	// the channel).
+	if req.Config != nil {
+		tier := tierFromRoles(GetUserRoles(c))
+		if err := ValidateChannelConfig(tier, channelType, req.Config); err != nil {
+			var tle *TierLimitError
+			if errors.As(err, &tle) {
+				log.Printf("[Channels] Tier limit exceeded for %s: %s", userID, tle.Error())
+				return c.Status(fiber.StatusForbidden).JSON(tierLimitErrorResponse(tle))
+			}
+			return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+				Status: "error",
+				Error:  err.Error(),
+			})
+		}
 	}
 
 	// Fetch old config before UPDATE so channels can diff
@@ -502,6 +539,57 @@ func DeleteChannel(c *fiber.Ctx) error {
 	InvalidateDashboardCache(userID)
 
 	return c.JSON(fiber.Map{"status": "ok", "message": "Channel removed"})
+}
+
+// PruneUserChannelsForTier walks all user_channels rows for a user and
+// trims each config to the caps of the given tier. UPDATEs are skipped
+// for rows that were already within-cap. Intended to be called from the
+// Stripe webhook whenever a subscription change demotes the user to a
+// lower tier — stops silent over-use of TwelveData/Yahoo budgets that
+// the frontend cap-gate can't protect against.
+//
+// Returns nothing — failures are logged but do not propagate, because
+// the webhook handler's primary job (role assignment, DB status update)
+// must complete even if a prune fails.
+func PruneUserChannelsForTier(ctx context.Context, logtoSub, tier string) {
+	channels, err := GetUserChannels(logtoSub)
+	if err != nil {
+		log.Printf("[Prune] Failed to list channels for %s: %v", logtoSub, err)
+		return
+	}
+	for _, ch := range channels {
+		newConfig, report := PruneChannelConfig(tier, ch.ChannelType, ch.Config)
+		if !report.Changed() {
+			continue
+		}
+		newJSON, err := json.Marshal(newConfig)
+		if err != nil {
+			log.Printf("[Prune] Failed to marshal pruned config for %s/%s: %v", logtoSub, ch.ChannelType, err)
+			continue
+		}
+		_, err = DBPool.Exec(ctx, `
+			UPDATE user_channels SET config = $3, updated_at = now()
+			WHERE logto_sub = $1 AND channel_type = $2
+		`, logtoSub, ch.ChannelType, newJSON)
+		if err != nil {
+			log.Printf("[Prune] Failed to UPDATE %s/%s: %v", logtoSub, ch.ChannelType, err)
+			continue
+		}
+		log.Printf("[Prune] %s/%s to tier %s: symbols=%d→%d feeds=%d→%d custom=%d→%d leagues=%d→%d",
+			logtoSub, ch.ChannelType, tier,
+			report.SymbolsBefore, report.SymbolsAfter,
+			report.FeedsBefore, report.FeedsAfter,
+			report.CustomFeedsBefore, report.CustomFeedsAfter,
+			report.LeaguesBefore, report.LeaguesAfter,
+		)
+		// Refresh subscriptions + lifecycle hook so the Rust service
+		// sees the trimmed config immediately instead of on next sync.
+		if ch.Enabled {
+			addChannelSubscriptions(ctx, logtoSub, ch.ChannelType, newConfig)
+		}
+		callChannelLifecycle(ctx, ch.ChannelType, "updated", logtoSub, newConfig, ch.Config, nil)
+	}
+	InvalidateDashboardCache(logtoSub)
 }
 
 // extractSportsLeaguesFromConfig reads the "leagues" array from a sports

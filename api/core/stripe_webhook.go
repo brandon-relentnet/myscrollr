@@ -217,6 +217,7 @@ func handleSubscriptionUpdated(event stripe.Event) {
 	}
 
 	// If subscription is active (not canceling), ensure correct role is assigned.
+	newTier := ""
 	if (status == "active" || status == "trialing") && !sub.CancelAtPeriodEnd {
 		if status == "trialing" {
 			// During trial, always grant Ultimate access regardless of selected plan.
@@ -226,6 +227,7 @@ func handleSubscriptionUpdated(event stripe.Event) {
 			if err := AssignUltimateRole(logtoSub); err != nil {
 				log.Printf("[Stripe Webhook] Failed to assign trial ultimate role to %s: %v", logtoSub, err)
 			}
+			newTier = "uplink_ultimate"
 		} else {
 			// Active subscription: remove stale roles first to handle plan
 			// up/downgrades cleanly, then assign only the current one.
@@ -243,16 +245,27 @@ func handleSubscriptionUpdated(event stripe.Event) {
 				if err := AssignUltimateRole(logtoSub); err != nil {
 					log.Printf("[Stripe Webhook] Failed to assign uplink_ultimate role to %s: %v", logtoSub, err)
 				}
+				newTier = "uplink_ultimate"
 			} else if isProPlan(plan) {
 				if err := AssignProRole(logtoSub); err != nil {
 					log.Printf("[Stripe Webhook] Failed to assign uplink_pro role to %s: %v", logtoSub, err)
 				}
+				newTier = "uplink_pro"
 			} else {
 				if err := AssignUplinkRole(logtoSub); err != nil {
 					log.Printf("[Stripe Webhook] Failed to assign uplink role to %s: %v", logtoSub, err)
 				}
+				newTier = "uplink"
 			}
 		}
+	}
+
+	// Auto-prune oversized channel configs to match the new tier's caps.
+	// This is a no-op for upgrades (higher caps = nothing to trim) and
+	// the safety net for downgrades. Called after role assignment so a
+	// failed Logto call doesn't block the prune.
+	if newTier != "" {
+		PruneUserChannelsForTier(context.Background(), logtoSub, newTier)
 	}
 }
 
@@ -301,6 +314,9 @@ func handleSubscriptionDeleted(event stripe.Event) {
 		if err := RemoveUltimateRole(logtoSub); err != nil {
 			log.Printf("[Stripe Webhook] Failed to remove uplink_ultimate role from %s: %v", logtoSub, err)
 		}
+		// Full cancellation drops the user to the free tier — trim any
+		// configs they accumulated while on a paid plan down to free caps.
+		PruneUserChannelsForTier(context.Background(), logtoSub, "free")
 	}
 }
 
