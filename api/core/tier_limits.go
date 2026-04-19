@@ -1,6 +1,10 @@
 package core
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"fmt"
+
+	"github.com/gofiber/fiber/v2"
+)
 
 // ChannelLimits is the per-tier cap for every channel feature the frontend
 // lets users configure. A nil pointer means "unlimited" — this lets us
@@ -58,4 +62,277 @@ func HandleGetTierLimits(c *fiber.Ctx) error {
 // above so each row stays readable.
 func intPtr(n int) *int {
 	return &n
+}
+
+// ─── Server-side enforcement ─────────────────────────────────────────
+
+// TierLimitError describes exactly which cap a config submission breached.
+// It implements `error` so it can thread through normal return paths, but
+// handlers also unwrap it via errors.As to surface a structured 403 body
+// the UI can render a precise message from.
+type TierLimitError struct {
+	Tier        string // "free", "uplink", etc.
+	ChannelType string // "finance", "sports", "rss"
+	Field       string // "symbols" | "feeds" | "custom_feeds" | "leagues"
+	Limit       int
+	Got         int
+}
+
+func (e *TierLimitError) Error() string {
+	return fmt.Sprintf(
+		"tier %q allows at most %d %s for %s; got %d",
+		e.Tier, e.Limit, e.Field, e.ChannelType, e.Got,
+	)
+}
+
+// UserFacingMessage returns copy suitable for the `error` field of a 403
+// response body. Kept short and specific so the UI can show it verbatim.
+func (e *TierLimitError) UserFacingMessage() string {
+	return fmt.Sprintf(
+		"Your %s plan allows %d %s; you tried to save %d.",
+		TierDisplayName(e.Tier), e.Limit, e.Field, e.Got,
+	)
+}
+
+// TierDisplayName maps a tier slug to the short name used in user-facing
+// copy. Unknown tiers fall back to the slug itself so we never silently
+// drop a label.
+func TierDisplayName(tier string) string {
+	switch tier {
+	case "free":
+		return "Free"
+	case "uplink":
+		return "Uplink"
+	case "uplink_pro":
+		return "Uplink Pro"
+	case "uplink_ultimate":
+		return "Uplink Ultimate"
+	case "super_user":
+		return "Super User"
+	default:
+		return tier
+	}
+}
+
+// ValidateChannelConfig rejects configs that exceed the caps for the
+// given tier. Returns nil on success, a *TierLimitError on violation.
+//
+// Unknown tiers fall back to the "free" row — a defensive default if
+// the JWT ever carries a role we don't recognize. Unknown channel types
+// are not validated (new channels can register dynamically; their shape
+// is not yet known to this file, and silently passing is safer than
+// hard-rejecting).
+func ValidateChannelConfig(tier, channelType string, config map[string]any) error {
+	limits, ok := DefaultTierLimits[tier]
+	if !ok {
+		limits = DefaultTierLimits["free"]
+		tier = "free"
+	}
+
+	switch channelType {
+	case "finance":
+		return validateArrayCap(tier, channelType, "symbols", config["symbols"], limits.Symbols)
+	case "sports":
+		return validateArrayCap(tier, channelType, "leagues", config["leagues"], limits.Leagues)
+	case "rss":
+		// RSS caps both total feeds and user-added ("custom") feeds.
+		// The custom cap is tighter than the total cap, so the natural
+		// error mode is custom-first when both are breached.
+		feedsRaw, _ := config["feeds"].([]any)
+		totalFeeds := len(feedsRaw)
+		customCount := 0
+		for _, item := range feedsRaw {
+			m, ok := item.(map[string]any)
+			if !ok {
+				continue
+			}
+			if isCustom, _ := m["is_custom"].(bool); isCustom {
+				customCount++
+			}
+		}
+		if limits.CustomFeeds != nil && customCount > *limits.CustomFeeds {
+			return &TierLimitError{
+				Tier:        tier,
+				ChannelType: channelType,
+				Field:       "custom_feeds",
+				Limit:       *limits.CustomFeeds,
+				Got:         customCount,
+			}
+		}
+		if limits.Feeds != nil && totalFeeds > *limits.Feeds {
+			return &TierLimitError{
+				Tier:        tier,
+				ChannelType: channelType,
+				Field:       "feeds",
+				Limit:       *limits.Feeds,
+				Got:         totalFeeds,
+			}
+		}
+	}
+	return nil
+}
+
+// validateArrayCap counts entries in an array-shaped JSONB value and
+// returns a *TierLimitError if it exceeds cap. A nil cap pointer means
+// "unlimited" — common case for Ultimate/super_user tiers.
+func validateArrayCap(tier, channelType, field string, raw any, cap *int) error {
+	if cap == nil {
+		return nil
+	}
+	arr, _ := raw.([]any)
+	if len(arr) <= *cap {
+		return nil
+	}
+	return &TierLimitError{
+		Tier:        tier,
+		ChannelType: channelType,
+		Field:       field,
+		Limit:       *cap,
+		Got:         len(arr),
+	}
+}
+
+// tierLimitErrorResponse builds the structured 403 body for a
+// *TierLimitError. Handlers use this so the UI can render a precise
+// message and, if desired, drill into the structured `detail` field.
+func tierLimitErrorResponse(e *TierLimitError) fiber.Map {
+	return fiber.Map{
+		"status": "tier_limit_exceeded",
+		"error":  e.UserFacingMessage(),
+		"detail": fiber.Map{
+			"tier":    e.Tier,
+			"channel": e.ChannelType,
+			"field":   e.Field,
+			"limit":   e.Limit,
+			"got":     e.Got,
+		},
+	}
+}
+
+// PruneReport describes what PruneChannelConfig trimmed. Fields are
+// zero when nothing of that kind was over-cap. Used for logging +
+// potential future "we removed these" notifications.
+type PruneReport struct {
+	SymbolsBefore, SymbolsAfter         int
+	FeedsBefore, FeedsAfter             int
+	CustomFeedsBefore, CustomFeedsAfter int
+	LeaguesBefore, LeaguesAfter         int
+}
+
+// Changed returns true if the prune report describes any actual trim.
+// Callers skip the UPDATE when false.
+func (r PruneReport) Changed() bool {
+	return r.SymbolsBefore != r.SymbolsAfter ||
+		r.FeedsBefore != r.FeedsAfter ||
+		r.CustomFeedsBefore != r.CustomFeedsAfter ||
+		r.LeaguesBefore != r.LeaguesAfter
+}
+
+// PruneChannelConfig returns a new config map trimmed to fit the given
+// tier's caps. Non-array fields pass through untouched. Reports what
+// was trimmed so callers can log the diff.
+//
+// RSS trims custom feeds first (the scarce resource) and then drops
+// non-custom feeds from the tail until the total fits too.
+func PruneChannelConfig(tier, channelType string, config map[string]any) (map[string]any, PruneReport) {
+	limits, ok := DefaultTierLimits[tier]
+	if !ok {
+		limits = DefaultTierLimits["free"]
+	}
+	report := PruneReport{}
+	out := cloneMap(config)
+
+	switch channelType {
+	case "finance":
+		if arr, capv := asArray(out["symbols"]), limits.Symbols; capv != nil {
+			report.SymbolsBefore = len(arr)
+			if len(arr) > *capv {
+				arr = arr[:*capv]
+			}
+			report.SymbolsAfter = len(arr)
+			out["symbols"] = arr
+		}
+	case "sports":
+		if arr, capv := asArray(out["leagues"]), limits.Leagues; capv != nil {
+			report.LeaguesBefore = len(arr)
+			if len(arr) > *capv {
+				arr = arr[:*capv]
+			}
+			report.LeaguesAfter = len(arr)
+			out["leagues"] = arr
+		}
+	case "rss":
+		feeds := asArray(out["feeds"])
+		report.FeedsBefore = len(feeds)
+		customCount := 0
+		for _, f := range feeds {
+			if m, ok := f.(map[string]any); ok {
+				if isCustom, _ := m["is_custom"].(bool); isCustom {
+					customCount++
+				}
+			}
+		}
+		report.CustomFeedsBefore = customCount
+
+		// Pass 1: enforce custom feed cap. Walk front-to-back, keeping
+		// non-custom feeds unconditionally and custom feeds only while
+		// the running custom count is under cap.
+		if limits.CustomFeeds != nil && customCount > *limits.CustomFeeds {
+			kept := make([]any, 0, len(feeds))
+			customKept := 0
+			for _, f := range feeds {
+				m, ok := f.(map[string]any)
+				isCustom := false
+				if ok {
+					isCustom, _ = m["is_custom"].(bool)
+				}
+				if isCustom {
+					if customKept >= *limits.CustomFeeds {
+						continue
+					}
+					customKept++
+				}
+				kept = append(kept, f)
+			}
+			feeds = kept
+		}
+
+		// Pass 2: enforce total feed cap by dropping from the tail.
+		if limits.Feeds != nil && len(feeds) > *limits.Feeds {
+			feeds = feeds[:*limits.Feeds]
+		}
+
+		report.FeedsAfter = len(feeds)
+		newCustom := 0
+		for _, f := range feeds {
+			if m, ok := f.(map[string]any); ok {
+				if isCustom, _ := m["is_custom"].(bool); isCustom {
+					newCustom++
+				}
+			}
+		}
+		report.CustomFeedsAfter = newCustom
+		out["feeds"] = feeds
+	}
+
+	return out, report
+}
+
+func asArray(v any) []any {
+	arr, _ := v.([]any)
+	return arr
+}
+
+// cloneMap returns a shallow copy. The channel configs we prune always
+// have array values (which we never mutate in place — we reslice), so
+// a shallow copy is sufficient.
+func cloneMap(m map[string]any) map[string]any {
+	if m == nil {
+		return map[string]any{}
+	}
+	out := make(map[string]any, len(m))
+	for k, v := range m {
+		out[k] = v
+	}
+	return out
 }

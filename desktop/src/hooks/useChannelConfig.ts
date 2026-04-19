@@ -38,8 +38,16 @@ export function useChannelConfig<T>(
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
     },
-    onError: () => {
-      toast.error("Failed to save \u2014 try again");
+    onError: (err) => {
+      // Tier-limit 403s come back as "Your Free plan allows..." — show
+      // the server's message verbatim instead of our generic toast so
+      // users understand why the save was refused and what to change.
+      const msg = err instanceof Error && err.message ? err.message : "";
+      if (msg && msg.toLowerCase().includes("plan allows")) {
+        toast.error(msg);
+      } else {
+        toast.error("Failed to save \u2014 try again");
+      }
     },
   });
 
