@@ -20,6 +20,7 @@ import { pageVariants, sectionVariants } from '@/lib/animations'
 import { channelsApi } from '@/api/client'
 import { useGetToken } from '@/hooks/useGetToken'
 import SubscriptionStatus from '@/components/billing/SubscriptionStatus'
+import AccountDangerZone from '@/components/account/AccountDangerZone'
 import { usePageMeta } from '@/lib/usePageMeta'
 
 export const Route = createFileRoute('/account')({
@@ -451,6 +452,9 @@ function AccountHub() {
           </div>
         </div>
       </section>
+
+      {/* ── GDPR: Export + Delete ── */}
+      <AccountDangerZone getToken={getToken} />
     </motion.main>
   )
 }

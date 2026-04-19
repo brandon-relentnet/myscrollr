@@ -343,3 +343,40 @@ func RemoveUplinkRole(logtoSub string) error {
 	log.Printf("[Logto M2M] Removed uplink role from user %s", logtoSub)
 	return nil
 }
+
+// DeleteLogtoUser permanently deletes a Logto user via the Management API.
+// Used by the Sprint 4 GDPR purge worker after the local DB cascade has
+// committed. Idempotent: treats a 404 as success since the user may have
+// already been deleted on a prior attempt (Logto failed, DB purge succeeded,
+// then Logto recovered before the retry hit).
+func DeleteLogtoUser(logtoSub string) error {
+	cfg := getM2MConfig()
+
+	token, err := getM2MToken()
+	if err != nil {
+		return err
+	}
+
+	reqURL := fmt.Sprintf("%s/api/users/%s", cfg.Endpoint, logtoSub)
+	req, err := http.NewRequest("DELETE", reqURL, nil)
+	if err != nil {
+		return fmt.Errorf("create delete user request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	client := &http.Client{Timeout: LogtoM2MTokenTimeout}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("delete user request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// 204 = deleted, 404 = already gone (idempotent replay is fine).
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusNotFound {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("delete user returned %d: %s", resp.StatusCode, string(body))
+	}
+
+	log.Printf("[Logto M2M] Deleted user %s", logtoSub)
+	return nil
+}
