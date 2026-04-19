@@ -8,7 +8,15 @@ import {
   useTransform,
 } from 'motion/react'
 import { AnimateNumber } from 'motion-plus/react'
-import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
+import {
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import {
   AlertTriangle,
   BarChart3,
@@ -38,11 +46,11 @@ import {
 } from 'lucide-react'
 
 import type { FAQItem } from '@/components/landing/FAQSection'
-import type { SubscriptionStatus } from '@/api/client'
+import type { SubscriptionStatus, TierLimitsResponse } from '@/api/client'
 import { usePageMeta } from '@/lib/usePageMeta'
 import { useScrollrAuth } from '@/hooks/useScrollrAuth'
 import { useGetToken } from '@/hooks/useGetToken'
-import { billingApi } from '@/api/client'
+import { billingApi, tierLimitsApi } from '@/api/client'
 import { FAQSection } from '@/components/landing/FAQSection'
 
 const CheckoutModal = lazy(() => import('@/components/billing/CheckoutModal'))
@@ -90,167 +98,185 @@ interface ComparisonRow {
   comingSoon?: boolean
 }
 
-const COMPARISON: Array<ComparisonRow> = [
-  {
-    label: 'Data Delivery',
-    free: '60s polling',
-    uplink: '30s polling',
-    pro: '10s polling',
-    ultimate: 'Real-time SSE',
-    uplinkUp: true,
-    proUp: true,
-    ultimateUp: true,
-  },
-  {
-    label: 'Tracked Symbols',
-    free: '10 symbols',
-    uplink: '25 symbols',
-    pro: '75 symbols',
-    ultimate: 'Unlimited',
-    uplinkUp: true,
-    proUp: true,
-    ultimateUp: true,
-  },
-  {
-    label: 'RSS Feeds',
-    free: '5 feeds',
-    uplink: '50 feeds',
-    pro: '150 feeds',
-    ultimate: 'Unlimited',
-    uplinkUp: true,
-    proUp: true,
-    ultimateUp: true,
-  },
-  {
-    label: 'Custom RSS Feeds',
-    free: 'None',
-    uplink: '10 custom',
-    pro: '25 custom',
-    ultimate: 'Unlimited',
-    uplinkUp: true,
-    proUp: true,
-    ultimateUp: true,
-  },
-  {
-    label: 'Sports Leagues',
-    free: 'Pro only',
-    uplink: 'Pro + College',
-    pro: 'Pro + College',
-    ultimate: 'Pro + College',
-    uplinkUp: true,
-    proUp: true,
-    ultimateUp: true,
-  },
-  {
-    label: 'Fantasy Leagues',
-    free: '1 league',
-    uplink: '3 leagues',
-    pro: '10 leagues',
-    ultimate: 'Unlimited',
-    uplinkUp: true,
-    proUp: true,
-    ultimateUp: true,
-  },
-  {
-    label: 'Site Filtering',
-    free: 'Blacklist',
-    uplink: 'Blacklist',
-    pro: 'Blacklist + Whitelist',
-    ultimate: 'Blacklist + Whitelist',
-    proUp: true,
-    ultimateUp: true,
-  },
-  {
-    label: 'Custom Alerts',
-    free: 'No',
-    uplink: 'No',
-    pro: 'Yes',
-    ultimate: 'Yes',
-    proUp: true,
-    ultimateUp: true,
-    comingSoon: true,
-  },
-  {
-    label: 'Feed Profiles',
-    free: 'No',
-    uplink: 'No',
-    pro: 'Yes',
-    ultimate: 'Yes',
-    proUp: true,
-    ultimateUp: true,
-    comingSoon: true,
-  },
-  {
-    label: 'Advanced Feed Controls',
-    free: 'No',
-    uplink: 'No',
-    pro: 'Yes',
-    ultimate: 'Yes',
-    proUp: true,
-    ultimateUp: true,
-  },
-  {
-    label: 'Priority RSS Refresh',
-    free: 'No',
-    uplink: 'No',
-    pro: 'Yes',
-    ultimate: 'Yes',
-    proUp: true,
-    ultimateUp: true,
-  },
-  {
-    label: 'Webhooks & Integrations',
-    free: 'No',
-    uplink: 'No',
-    pro: 'No',
-    ultimate: 'Yes',
-    ultimateUp: true,
-    comingSoon: true,
-  },
-  {
-    label: 'Data Export',
-    free: 'No',
-    uplink: 'No',
-    pro: 'No',
-    ultimate: 'CSV / JSON',
-    ultimateUp: true,
-    comingSoon: true,
-  },
-  {
-    label: 'API Access',
-    free: 'No',
-    uplink: 'No',
-    pro: 'No',
-    ultimate: 'Yes',
-    ultimateUp: true,
-    comingSoon: true,
-  },
-  {
-    label: 'Early Access',
-    free: 'No',
-    uplink: 'Yes',
-    pro: 'Yes',
-    ultimate: 'Yes',
-    uplinkUp: true,
-    proUp: true,
-    ultimateUp: true,
-  },
-  {
-    label: 'Priority Support',
-    free: 'No',
-    uplink: 'No',
-    pro: 'No',
-    ultimate: 'Yes',
-    ultimateUp: true,
-  },
-  {
-    label: 'Dashboard Access',
-    free: 'Full',
-    uplink: 'Full',
-    pro: 'Full',
-    ultimate: 'Full',
-  },
-]
+/**
+ * Build the comparison table rows using the live tier-limits from the API.
+ * Rows that describe limit-based features (symbols, feeds, leagues, etc.)
+ * get their numbers from `limits`; rows for non-limit features (alerts,
+ * priority support, etc.) are static.
+ */
+function buildComparison(limits: TierLimitsResponse): Array<ComparisonRow> {
+  const free = limits.tiers.free
+  const uplink = limits.tiers.uplink
+  const pro = limits.tiers.uplink_pro
+  const ult = limits.tiers.uplink_ultimate
+
+  const none = (n: number | null): string => {
+    if (n === null) return 'Unlimited'
+    return n === 0 ? 'None' : String(n)
+  }
+
+  return [
+    {
+      label: 'Data Delivery',
+      free: '60s polling',
+      uplink: '30s polling',
+      pro: '10s polling',
+      ultimate: 'Real-time SSE',
+      uplinkUp: true,
+      proUp: true,
+      ultimateUp: true,
+    },
+    {
+      label: 'Tracked Symbols',
+      free: fmtLimit(free.symbols, 'symbol'),
+      uplink: fmtLimit(uplink.symbols, 'symbol'),
+      pro: fmtLimit(pro.symbols, 'symbol'),
+      ultimate: fmtLimit(ult.symbols, 'symbol'),
+      uplinkUp: true,
+      proUp: true,
+      ultimateUp: true,
+    },
+    {
+      label: 'RSS Feeds',
+      free: fmtLimit(free.feeds, 'feed'),
+      uplink: fmtLimit(uplink.feeds, 'feed'),
+      pro: fmtLimit(pro.feeds, 'feed'),
+      ultimate: fmtLimit(ult.feeds, 'feed'),
+      uplinkUp: true,
+      proUp: true,
+      ultimateUp: true,
+    },
+    {
+      label: 'Custom RSS Feeds',
+      free: none(free.custom_feeds),
+      uplink: none(uplink.custom_feeds),
+      pro: none(pro.custom_feeds),
+      ultimate: none(ult.custom_feeds),
+      uplinkUp: true,
+      proUp: true,
+      ultimateUp: true,
+    },
+    {
+      label: 'Sports Leagues',
+      free: fmtLimit(free.leagues, 'league'),
+      uplink: fmtLimit(uplink.leagues, 'league'),
+      pro: fmtLimit(pro.leagues, 'league'),
+      ultimate: fmtLimit(ult.leagues, 'league'),
+      uplinkUp: true,
+      proUp: true,
+      ultimateUp: true,
+    },
+    {
+      label: 'Fantasy Leagues',
+      free: none(free.fantasy),
+      uplink: fmtLimit(uplink.fantasy, 'league'),
+      pro: fmtLimit(pro.fantasy, 'league'),
+      ultimate: fmtLimit(ult.fantasy, 'league'),
+      uplinkUp: true,
+      proUp: true,
+      ultimateUp: true,
+    },
+    {
+      label: 'Site Filtering',
+      free: 'Blacklist',
+      uplink: 'Blacklist',
+      pro: 'Blacklist + Whitelist',
+      ultimate: 'Blacklist + Whitelist',
+      proUp: true,
+      ultimateUp: true,
+    },
+    {
+      label: 'Custom Alerts',
+      free: 'No',
+      uplink: 'No',
+      pro: 'Yes',
+      ultimate: 'Yes',
+      proUp: true,
+      ultimateUp: true,
+      comingSoon: true,
+    },
+    {
+      label: 'Feed Profiles',
+      free: 'No',
+      uplink: 'No',
+      pro: 'Yes',
+      ultimate: 'Yes',
+      proUp: true,
+      ultimateUp: true,
+      comingSoon: true,
+    },
+    {
+      label: 'Advanced Feed Controls',
+      free: 'No',
+      uplink: 'No',
+      pro: 'Yes',
+      ultimate: 'Yes',
+      proUp: true,
+      ultimateUp: true,
+    },
+    {
+      label: 'Priority RSS Refresh',
+      free: 'No',
+      uplink: 'No',
+      pro: 'Yes',
+      ultimate: 'Yes',
+      proUp: true,
+      ultimateUp: true,
+    },
+    {
+      label: 'Webhooks & Integrations',
+      free: 'No',
+      uplink: 'No',
+      pro: 'No',
+      ultimate: 'Yes',
+      ultimateUp: true,
+      comingSoon: true,
+    },
+    {
+      label: 'Data Export',
+      free: 'No',
+      uplink: 'No',
+      pro: 'No',
+      ultimate: 'CSV / JSON',
+      ultimateUp: true,
+      comingSoon: true,
+    },
+    {
+      label: 'API Access',
+      free: 'No',
+      uplink: 'No',
+      pro: 'No',
+      ultimate: 'Yes',
+      ultimateUp: true,
+      comingSoon: true,
+    },
+    {
+      label: 'Early Access',
+      free: 'No',
+      uplink: 'Yes',
+      pro: 'Yes',
+      ultimate: 'Yes',
+      uplinkUp: true,
+      proUp: true,
+      ultimateUp: true,
+    },
+    {
+      label: 'Priority Support',
+      free: 'No',
+      uplink: 'No',
+      pro: 'No',
+      ultimate: 'Yes',
+      ultimateUp: true,
+    },
+    {
+      label: 'Dashboard Access',
+      free: 'Full',
+      uplink: 'Full',
+      pro: 'Full',
+      ultimate: 'Full',
+    },
+  ]
+}
 
 // ── Tier Feature Showcases ──────────────────────────────────────
 
@@ -266,66 +292,76 @@ interface TierShowcase {
   useCase: string
 }
 
-const TIER_SHOWCASES: Array<TierShowcase> = [
-  {
-    tier: 'uplink',
-    Icon: Rocket,
-    name: 'Uplink',
-    tagline: 'Check in every morning. Miss nothing.',
-    hex: '#00b8db',
-    delivery: '30s polling',
-    deliverySub: '2x faster than free',
-    useCase:
-      "You open Scrollr with your coffee, scan your watchlist, skim the morning RSS headlines, and check last night's scores. Data refreshes every 30 seconds — fast enough to catch a pre-market move before you leave for work.",
-    features: [
-      '25 tracked symbols',
-      '50 RSS feeds, 10 custom',
-      '3 fantasy leagues',
-      'Pro + College sports',
-      'Blacklist site filtering',
-      'Early access to features',
-    ],
-  },
-  {
-    tier: 'pro',
-    Icon: Gauge,
-    name: 'Pro',
-    tagline: 'Know the moment it happens',
-    hex: '#a78bfa',
-    delivery: '10s polling',
-    deliverySub: '6x faster than free',
-    useCase:
-      'You set an alert when TSLA crosses $280. You save a "Work" feed profile that hides sports. When the 4th quarter starts on a close game, you get notified without checking. Scrollr watches so you don\'t have to.',
-    features: [
-      '75 tracked symbols',
-      '150 RSS feeds, 25 custom',
-      '10 fantasy leagues',
-      'Custom alerts & notifications',
-      'Feed profiles & advanced controls',
-      'Priority RSS refresh',
-      'Blacklist + Whitelist filtering',
-    ],
-  },
-  {
-    tier: 'ultimate',
-    Icon: Crown,
-    name: 'Uplink Ultimate',
-    tagline: 'Everything. Zero limits.',
-    hex: '#34d399',
-    delivery: 'Real-time SSE',
-    deliverySub: 'Instant — zero delay',
-    useCase:
-      'Your data streams in real time via SSE. Webhooks push alerts to your Discord. You export weekly market data to a spreadsheet. Your personal dashboard pulls from the API. Scrollr becomes infrastructure, not just a feed.',
-    features: [
-      'Unlimited symbols, feeds & leagues',
-      'Webhooks & integrations',
-      'Data export (CSV / JSON)',
-      'API access',
-      'Priority support',
-      'Everything in Pro, plus more',
-    ],
-  },
-]
+/**
+ * Build the three tier showcase cards (Uplink / Pro / Ultimate). Feature
+ * bullets pull numeric caps from the live tier-limits; non-numeric
+ * features ('Early access', 'Priority support', etc.) stay static.
+ */
+function buildTierShowcases(limits: TierLimitsResponse): Array<TierShowcase> {
+  const uplink = limits.tiers.uplink
+  const pro = limits.tiers.uplink_pro
+
+  return [
+    {
+      tier: 'uplink',
+      Icon: Rocket,
+      name: 'Uplink',
+      tagline: 'Check in every morning. Miss nothing.',
+      hex: '#00b8db',
+      delivery: '30s polling',
+      deliverySub: '2x faster than free',
+      useCase:
+        "You open Scrollr with your coffee, scan your watchlist, skim the morning RSS headlines, and check last night's scores. Data refreshes every 30 seconds — fast enough to catch a pre-market move before you leave for work.",
+      features: [
+        `${fmtLimit(uplink.symbols, 'tracked symbol')}`,
+        `${fmtLimit(uplink.feeds, 'RSS feed')}, ${uplink.custom_feeds ?? 0} custom`,
+        `${fmtLimit(uplink.fantasy, 'fantasy league')}`,
+        'Pro + College sports',
+        'Blacklist site filtering',
+        'Early access to features',
+      ],
+    },
+    {
+      tier: 'pro',
+      Icon: Gauge,
+      name: 'Pro',
+      tagline: 'Know the moment it happens',
+      hex: '#a78bfa',
+      delivery: '10s polling',
+      deliverySub: '6x faster than free',
+      useCase:
+        'You set an alert when TSLA crosses $280. You save a "Work" feed profile that hides sports. When the 4th quarter starts on a close game, you get notified without checking. Scrollr watches so you don\'t have to.',
+      features: [
+        `${fmtLimit(pro.symbols, 'tracked symbol')}`,
+        `${fmtLimit(pro.feeds, 'RSS feed')}, ${pro.custom_feeds ?? 0} custom`,
+        `${fmtLimit(pro.fantasy, 'fantasy league')}`,
+        'Custom alerts & notifications',
+        'Feed profiles & advanced controls',
+        'Priority RSS refresh',
+        'Blacklist + Whitelist filtering',
+      ],
+    },
+    {
+      tier: 'ultimate',
+      Icon: Crown,
+      name: 'Uplink Ultimate',
+      tagline: 'Everything. Zero limits.',
+      hex: '#34d399',
+      delivery: 'Real-time SSE',
+      deliverySub: 'Instant — zero delay',
+      useCase:
+        'Your data streams in real time via SSE. Webhooks push alerts to your Discord. You export weekly market data to a spreadsheet. Your personal dashboard pulls from the API. Scrollr becomes infrastructure, not just a feed.',
+      features: [
+        'Unlimited symbols, feeds & leagues',
+        'Webhooks & integrations',
+        'Data export (CSV / JSON)',
+        'API access',
+        'Priority support',
+        'Everything in Pro, plus more',
+      ],
+    },
+  ]
+}
 
 // ── Pricing Plans ──────────────────────────────────────────────
 
@@ -386,6 +422,80 @@ function tierFromPlan(plan: string): TierKey | null {
   return null
 }
 
+// ── Tier Limits (fetched from /tier-limits, fallback for first paint) ──
+//
+// FALLBACK_LIMITS mirrors api/core/tier_limits.go DefaultTierLimits. It
+// only renders during the ~20-50ms between component mount and the fetch
+// response — after that the real API values take over. If you edit
+// this constant, also update api/core/tier_limits.go and
+// desktop/src/tierLimits.ts. Drift is billing-trust damage.
+
+const FALLBACK_LIMITS: TierLimitsResponse = {
+  tiers: {
+    free: {
+      symbols: 5,
+      feeds: 1,
+      custom_feeds: 0,
+      leagues: 1,
+      fantasy: 0,
+    },
+    uplink: {
+      symbols: 25,
+      feeds: 25,
+      custom_feeds: 1,
+      leagues: 8,
+      fantasy: 1,
+    },
+    uplink_pro: {
+      symbols: 75,
+      feeds: 100,
+      custom_feeds: 3,
+      leagues: 20,
+      fantasy: 3,
+    },
+    uplink_ultimate: {
+      symbols: null,
+      feeds: null,
+      custom_feeds: 10,
+      leagues: null,
+      fantasy: 10,
+    },
+    super_user: {
+      symbols: null,
+      feeds: null,
+      custom_feeds: null,
+      leagues: null,
+      fantasy: null,
+    },
+  },
+}
+
+/** Render a numeric cap in the form "25 feeds" / "Unlimited". */
+function fmtLimit(value: number | null, unit: string): string {
+  if (value === null) return 'Unlimited'
+  return `${value} ${unit}${value === 1 ? '' : 's'}`
+}
+
+/** Hook: fetch tier limits once on mount, fall back to embedded constant. */
+function useTierLimits(): TierLimitsResponse {
+  const [limits, setLimits] = useState<TierLimitsResponse>(FALLBACK_LIMITS)
+  useEffect(() => {
+    let cancelled = false
+    tierLimitsApi
+      .get()
+      .then((data) => {
+        if (!cancelled) setLimits(data)
+      })
+      .catch(() => {
+        // Fallback already in place; silently keep serving cached values.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  return limits
+}
+
 function getPriceId(tier: TierKey, plan: PlanKey): string {
   if (tier === 'ultimate') return ULTIMATE_PRICE_IDS[plan]
   if (tier === 'pro') return PRO_PRICE_IDS[plan]
@@ -406,114 +516,125 @@ const CTA_PARTICLES = Array.from({ length: 20 }, (_, i) => ({
 
 // ── Uplink FAQ ─────────────────────────────────────────────────
 
-const UPLINK_FAQ: Array<FAQItem> = [
-  {
-    icon: Zap,
-    question: 'What does "data delivery" mean?',
-    highlight:
-      'How fast new data reaches you — from 60-second polling to instant real-time streaming.',
-    answer:
-      'Free users get data refreshed every 60 seconds via polling. Uplink cuts that to 30 seconds. Pro pushes it to 10 seconds. Unlimited eliminates polling entirely — data arrives the instant it changes via Server-Sent Events (SSE), the same technology used by stock trading platforms.',
-    accent: 'emerald',
-  },
-  {
-    icon: BarChart3,
-    question: 'How many symbols can I track?',
-    highlight:
-      'Free gets 10, Uplink gets 25, Pro gets 75, and Unlimited has no cap at all.',
-    answer:
-      'Tracked symbols are the stocks, ETFs, and crypto tickers that appear in your finance feed. Free accounts can follow up to 10 at a time. Uplink raises that to 25. Pro gives you 75 — enough for a serious portfolio. With Unlimited, there is no cap — add every ticker you care about and they all stream in real time.',
-    accent: 'cyan',
-  },
-  {
-    icon: Rss,
-    question: 'How many RSS feeds can I follow?',
-    highlight: 'From 5 feeds on Free to completely unlimited on the top tier.',
-    answer:
-      'RSS feeds power the news channel. Free accounts can subscribe to 5 feeds from the default catalog. Uplink expands that to 50, Pro to 150, giving you broad coverage across topics. Unlimited removes the limit entirely — subscribe to as many sources as you want.',
-    accent: 'amber',
-  },
-  {
-    icon: Sparkles,
-    question: 'What are custom RSS feeds?',
-    highlight:
-      'Add any RSS URL you want — your own blogs, niche sources, anything with a feed.',
-    answer:
-      'Beyond the built-in catalog, custom feeds let you paste any RSS or Atom URL. Free accounts cannot add custom feeds. Uplink gives you 10, Pro gives you 25 — enough for niche industry sources, personal blogs, or company news. Unlimited removes the cap so you can add every source you follow.',
-    accent: 'orange',
-  },
-  {
-    icon: Trophy,
-    question: 'What sports leagues are included?',
-    highlight: 'Free covers pro leagues. All paid tiers add college sports.',
-    answer:
-      "Every tier includes live scores from the NFL, NBA, MLB, NHL, MLS, and Premier League. All paid tiers add college football (NCAAF) and college basketball (NCAAM), with scores updating at your tier's delivery speed.",
-    accent: 'violet',
-  },
-  {
-    icon: Crown,
-    question: 'How many fantasy leagues can I connect?',
-    highlight:
-      'Connect 1 Yahoo league for free, 3 with Uplink, 10 with Pro, or every league with Unlimited.',
-    answer:
-      'Scrollr syncs with Yahoo Fantasy Sports to show your standings, matchups, and roster updates. Free accounts connect 1 league. Uplink supports up to 3. Pro gives you 10 — enough for multi-sport managers. Unlimited connects every league across every sport with no restrictions.',
-    accent: 'rose',
-  },
-  {
-    icon: Bell,
-    question: 'What are custom alerts?',
-    highlight:
-      'Set price targets, score thresholds, and keyword triggers — Pro and Unlimited only.',
-    answer:
-      'Custom alerts let you define conditions that trigger notifications: a stock hitting a target price, a game entering the 4th quarter, or an RSS item matching a keyword. Alerts are evaluated in the app background — no server round-trip needed. Available on Pro and Unlimited tiers.',
-    accent: 'sky',
-  },
-  {
-    icon: Layers,
-    question: 'What are feed profiles and advanced controls?',
-    highlight:
-      'Save named configurations and fine-tune exactly what you see — Pro and Unlimited.',
-    answer:
-      'Feed profiles let you save different configurations — like "Work" showing only finance and RSS, or "Weekend" with sports and fantasy. Advanced controls add pinning, custom sort rules, and per-channel filtering within the feed. Both features are exclusive to Pro and Unlimited tiers.',
-    accent: 'fuchsia',
-  },
-  {
-    icon: Filter,
-    question: 'What is site filtering?',
-    highlight:
-      'Control which websites show the Scrollr feed bar, from blocklists to allowlists.',
-    answer:
-      'Site filtering controls where the feed bar appears. Every tier includes blacklist filtering — hide the bar on specific displays. Pro and Unlimited add whitelist mode on top, so you can restrict the bar to only the displays you choose.',
-    accent: 'cyan',
-  },
-  {
-    icon: Code2,
-    question: 'What about webhooks, data export, and API access?',
-    highlight:
-      'Unlimited-exclusive power features for integrations and automation.',
-    answer:
-      'Webhooks push your alerts to Discord, Slack, or any URL. Data export lets you download tracked symbols, historical prices, and game results as CSV or JSON. API access gives you programmatic read access to your MyScrollr data for personal dashboards or automation. All three are exclusive to Unlimited.',
-    accent: 'teal',
-  },
-  {
-    icon: Clock,
-    question: 'What does early access include?',
-    highlight:
-      'All paid subscribers get new features and channels before anyone else.',
-    answer:
-      'Every paid tier unlocks early access to new features, channels, and UI updates before they roll out to free users. This includes beta channels, experimental feed modes, and new dashboard widgets. You get to try everything first and provide feedback that shapes the final release.',
-    accent: 'orange',
-  },
-  {
-    icon: LayoutDashboard,
-    question: 'Does every tier get the full dashboard?',
-    highlight:
-      'Yes — the web dashboard is fully accessible on every tier, including free.',
-    answer:
-      'Every user gets complete access to the web dashboard at myscrollr.com. You can view all your channels, manage your watchlists, configure feeds, and adjust preferences regardless of your subscription tier. Paid tiers enhance the data flowing into the dashboard, not the dashboard itself.',
-    accent: 'lime',
-  },
-]
+/**
+ * Build the FAQ items. Answers and highlights that reference numeric
+ * caps interpolate them from the live tier-limits; purely descriptive
+ * items stay static.
+ */
+function buildUplinkFAQ(limits: TierLimitsResponse): Array<FAQItem> {
+  const free = limits.tiers.free
+  const uplink = limits.tiers.uplink
+  const pro = limits.tiers.uplink_pro
+
+  // "Connect N league" — "None" when free has zero fantasy leagues.
+  const freeFantasyCopy =
+    free.fantasy === 0
+      ? 'No Yahoo leagues'
+      : `${free.fantasy} Yahoo league${free.fantasy === 1 ? '' : 's'}`
+
+  return [
+    {
+      icon: Zap,
+      question: 'What does "data delivery" mean?',
+      highlight:
+        'How fast new data reaches you — from 60-second polling to instant real-time streaming.',
+      answer:
+        'Free users get data refreshed every 60 seconds via polling. Uplink cuts that to 30 seconds. Pro pushes it to 10 seconds. Unlimited eliminates polling entirely — data arrives the instant it changes via Server-Sent Events (SSE), the same technology used by stock trading platforms.',
+      accent: 'emerald',
+    },
+    {
+      icon: BarChart3,
+      question: 'How many symbols can I track?',
+      highlight: `Free gets ${free.symbols}, Uplink gets ${uplink.symbols}, Pro gets ${pro.symbols}, and Unlimited has no cap at all.`,
+      answer: `Tracked symbols are the stocks, ETFs, and crypto tickers that appear in your finance feed. Free accounts can follow up to ${free.symbols} at a time. Uplink raises that to ${uplink.symbols}. Pro gives you ${pro.symbols} — enough for a serious portfolio. With Unlimited, there is no cap — add every ticker you care about and they all stream in real time.`,
+      accent: 'cyan',
+    },
+    {
+      icon: Rss,
+      question: 'How many RSS feeds can I follow?',
+      highlight: `From ${free.feeds} feed${free.feeds === 1 ? '' : 's'} on Free to completely unlimited on the top tier.`,
+      answer: `RSS feeds power the news channel. Free accounts can subscribe to ${free.feeds} feed${free.feeds === 1 ? '' : 's'} from the default catalog. Uplink expands that to ${uplink.feeds}, Pro to ${pro.feeds}, giving you broad coverage across topics. Unlimited removes the limit entirely — subscribe to as many sources as you want.`,
+      accent: 'amber',
+    },
+    {
+      icon: Sparkles,
+      question: 'What are custom RSS feeds?',
+      highlight:
+        'Add any RSS URL you want — your own blogs, niche sources, anything with a feed.',
+      answer: `Beyond the built-in catalog, custom feeds let you paste any RSS or Atom URL. Free accounts cannot add custom feeds. Uplink gives you ${uplink.custom_feeds}, Pro gives you ${pro.custom_feeds} — enough for niche industry sources, personal blogs, or company news. Unlimited removes the cap so you can add every source you follow.`,
+      accent: 'orange',
+    },
+    {
+      icon: Trophy,
+      question: 'What sports leagues are included?',
+      highlight: 'Free covers pro leagues. All paid tiers add college sports.',
+      answer:
+        "Every tier includes live scores from the NFL, NBA, MLB, NHL, MLS, and Premier League. All paid tiers add college football (NCAAF) and college basketball (NCAAM), with scores updating at your tier's delivery speed.",
+      accent: 'violet',
+    },
+    {
+      icon: Crown,
+      question: 'How many fantasy leagues can I connect?',
+      highlight: `${freeFantasyCopy} on free, ${uplink.fantasy} with Uplink, ${pro.fantasy} with Pro, or every league with Unlimited.`,
+      answer: `Scrollr syncs with Yahoo Fantasy Sports to show your standings, matchups, and roster updates. Free accounts ${free.fantasy === 0 ? 'cannot connect Yahoo leagues' : `connect ${free.fantasy} league${free.fantasy === 1 ? '' : 's'}`}. Uplink supports up to ${uplink.fantasy}. Pro gives you ${pro.fantasy} — enough for multi-sport managers. Unlimited connects every league across every sport with no restrictions.`,
+      accent: 'rose',
+    },
+    {
+      icon: Bell,
+      question: 'What are custom alerts?',
+      highlight:
+        'Set price targets, score thresholds, and keyword triggers — Pro and Unlimited only.',
+      answer:
+        'Custom alerts let you define conditions that trigger notifications: a stock hitting a target price, a game entering the 4th quarter, or an RSS item matching a keyword. Alerts are evaluated in the app background — no server round-trip needed. Available on Pro and Unlimited tiers.',
+      accent: 'sky',
+    },
+    {
+      icon: Layers,
+      question: 'What are feed profiles and advanced controls?',
+      highlight:
+        'Save named configurations and fine-tune exactly what you see — Pro and Unlimited.',
+      answer:
+        'Feed profiles let you save different configurations — like "Work" showing only finance and RSS, or "Weekend" with sports and fantasy. Advanced controls add pinning, custom sort rules, and per-channel filtering within the feed. Both features are exclusive to Pro and Unlimited tiers.',
+      accent: 'fuchsia',
+    },
+    {
+      icon: Filter,
+      question: 'What is site filtering?',
+      highlight:
+        'Control which websites show the Scrollr feed bar, from blocklists to allowlists.',
+      answer:
+        'Site filtering controls where the feed bar appears. Every tier includes blacklist filtering — hide the bar on specific displays. Pro and Unlimited add whitelist mode on top, so you can restrict the bar to only the displays you choose.',
+      accent: 'cyan',
+    },
+    {
+      icon: Code2,
+      question: 'What about webhooks, data export, and API access?',
+      highlight:
+        'Unlimited-exclusive power features for integrations and automation.',
+      answer:
+        'Webhooks push your alerts to Discord, Slack, or any URL. Data export lets you download tracked symbols, historical prices, and game results as CSV or JSON. API access gives you programmatic read access to your MyScrollr data for personal dashboards or automation. All three are exclusive to Unlimited.',
+      accent: 'teal',
+    },
+    {
+      icon: Clock,
+      question: 'What does early access include?',
+      highlight:
+        'All paid subscribers get new features and channels before anyone else.',
+      answer:
+        'Every paid tier unlocks early access to new features, channels, and UI updates before they roll out to free users. This includes beta channels, experimental feed modes, and new dashboard widgets. You get to try everything first and provide feedback that shapes the final release.',
+      accent: 'orange',
+    },
+    {
+      icon: LayoutDashboard,
+      question: 'Does every tier get the full dashboard?',
+      highlight:
+        'Yes — the web dashboard is fully accessible on every tier, including free.',
+      answer:
+        'Every user gets complete access to the web dashboard at myscrollr.com. You can view all your channels, manage your watchlists, configure feeds, and adjust preferences regardless of your subscription tier. Paid tiers enhance the data flowing into the dashboard, not the dashboard itself.',
+      accent: 'lime',
+    },
+  ]
+}
 
 // ── Signal Bars ─────────────────────────────────────────────────
 
@@ -879,6 +1000,21 @@ function UplinkPage() {
 
   const { isAuthenticated, signIn } = useScrollrAuth()
   const getToken = useGetToken()
+
+  // Live tier limits from the backend (fallback-embedded for first paint).
+  // Rebuilds the comparison table, tier showcases, and FAQ whenever the
+  // fetch resolves or the cached response changes.
+  const tierLimits = useTierLimits()
+  const comparisonRows = useMemo(
+    () => buildComparison(tierLimits),
+    [tierLimits],
+  )
+  const tierShowcases = useMemo(
+    () => buildTierShowcases(tierLimits),
+    [tierLimits],
+  )
+  const uplinkFAQ = useMemo(() => buildUplinkFAQ(tierLimits), [tierLimits])
+
   const [checkoutPlan, setCheckoutPlan] = useState<{
     name: string
     tier: TierKey
@@ -2126,7 +2262,7 @@ function UplinkPage() {
                             '50% off Unlimited upgrade',
                             '30s polling delivery',
                             'Founding member badge',
-                            '25 symbols, 50 RSS feeds',
+                            `${tierLimits.tiers.uplink.symbols} symbols, ${tierLimits.tiers.uplink.feeds} RSS feeds`,
                             'Priority support',
                             'Pro + College sports',
                             'Early access to features',
@@ -2237,8 +2373,16 @@ function UplinkPage() {
 
                       <div className="space-y-2.5 mb-6">
                         <PricingFeature>60s polling delivery</PricingFeature>
-                        <PricingFeature>10 symbols, 5 RSS feeds</PricingFeature>
-                        <PricingFeature>1 fantasy league</PricingFeature>
+                        <PricingFeature>
+                          {tierLimits.tiers.free.symbols} symbols,{' '}
+                          {tierLimits.tiers.free.feeds} RSS feed
+                          {tierLimits.tiers.free.feeds === 1 ? '' : 's'}
+                        </PricingFeature>
+                        <PricingFeature>
+                          {tierLimits.tiers.free.fantasy === 0
+                            ? 'No fantasy leagues'
+                            : `${tierLimits.tiers.free.fantasy} fantasy league${tierLimits.tiers.free.fantasy === 1 ? '' : 's'}`}
+                        </PricingFeature>
                         <PricingFeature>Pro sports leagues</PricingFeature>
                         <PricingFeature>Full desktop app access</PricingFeature>
                       </div>
@@ -2396,10 +2540,19 @@ function UplinkPage() {
                       <div className="space-y-2.5 mb-6">
                         <PricingFeature>30s polling delivery</PricingFeature>
                         <PricingFeature>
-                          25 symbols, 50 RSS feeds
+                          {tierLimits.tiers.uplink.symbols} symbols,{' '}
+                          {tierLimits.tiers.uplink.feeds} RSS feeds
                         </PricingFeature>
-                        <PricingFeature>10 custom RSS feeds</PricingFeature>
-                        <PricingFeature>3 fantasy leagues</PricingFeature>
+                        <PricingFeature>
+                          {tierLimits.tiers.uplink.custom_feeds} custom RSS feed
+                          {tierLimits.tiers.uplink.custom_feeds === 1
+                            ? ''
+                            : 's'}
+                        </PricingFeature>
+                        <PricingFeature>
+                          {tierLimits.tiers.uplink.fantasy} fantasy league
+                          {tierLimits.tiers.uplink.fantasy === 1 ? '' : 's'}
+                        </PricingFeature>
                         <PricingFeature>Pro + College sports</PricingFeature>
                         <PricingFeature>Early access</PricingFeature>
                       </div>
@@ -2550,7 +2703,8 @@ function UplinkPage() {
                           10s polling delivery
                         </PricingFeature>
                         <PricingFeature highlight>
-                          75 symbols, 150 RSS feeds
+                          {tierLimits.tiers.uplink_pro.symbols} symbols,{' '}
+                          {tierLimits.tiers.uplink_pro.feeds} RSS feeds
                         </PricingFeature>
                         <PricingFeature highlight>
                           Custom alerts & notifications
@@ -2562,7 +2716,7 @@ function UplinkPage() {
                           Priority RSS refresh
                         </PricingFeature>
                         <PricingFeature highlight>
-                          10 fantasy leagues
+                          {tierLimits.tiers.uplink_pro.fantasy} fantasy leagues
                         </PricingFeature>
                       </div>
 
@@ -3232,7 +3386,7 @@ function UplinkPage() {
             </div>
 
             {/* Table Rows */}
-            {COMPARISON.map((row, i) => (
+            {comparisonRows.map((row, i) => (
               <motion.div
                 key={row.label}
                 style={{ opacity: 0 }}
@@ -3244,7 +3398,7 @@ function UplinkPage() {
                   duration: 0.4,
                   ease: EASE,
                 }}
-                className={`grid grid-cols-[1.4fr_1fr_1fr_1fr_1fr] ${i < COMPARISON.length - 1 ? 'border-b border-base-300/20' : ''} group hover:bg-base-200/40 transition-colors duration-200`}
+                className={`grid grid-cols-[1.4fr_1fr_1fr_1fr_1fr] ${i < comparisonRows.length - 1 ? 'border-b border-base-300/20' : ''} group hover:bg-base-200/40 transition-colors duration-200`}
               >
                 <div className="p-4 pl-6 flex items-center gap-2">
                   <span className="text-xs text-base-content/55 font-medium">
@@ -3389,7 +3543,7 @@ function UplinkPage() {
           </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            {TIER_SHOWCASES.map((tier, tierIdx) => (
+            {tierShowcases.map((tier, tierIdx) => (
               <motion.div
                 key={tier.tier}
                 style={{ opacity: 0 }}
@@ -3953,7 +4107,7 @@ function UplinkPage() {
           FAQ — TIER BREAKDOWN
           ================================================================ */}
       <FAQSection
-        items={UPLINK_FAQ}
+        items={uplinkFAQ}
         title="Tiers"
         titleHighlight="Explained"
         subtitle="Everything in the comparison table, broken down."

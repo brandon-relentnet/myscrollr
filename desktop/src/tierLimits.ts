@@ -2,6 +2,22 @@ import type { SubscriptionTier } from "./auth";
 
 // =====================================================================
 // Tier Limits
+//
+// SOURCE OF TRUTH: api/core/tier_limits.go (DefaultTierLimits)
+//
+// Channel config panels and the onboarding wizard read these synchronously
+// during render, so we keep a hardcoded mirror of the backend values here
+// rather than fetching them asynchronously from GET /tier-limits. Drift
+// between this file and the Go source becomes a billing-trust problem.
+//
+// If you change a number here, you MUST also update:
+//   - api/core/tier_limits.go        (the Go map)
+//   - api/core/tier_limits_test.go   (the assertion)
+//   - myscrollr.com/src/routes/uplink.tsx (the FALLBACK_LIMITS constant,
+//     for first-paint before the runtime fetch resolves)
+//
+// Infinity here corresponds to `null` on the wire (null round-trips
+// through JSON; Infinity does not).
 // =====================================================================
 
 interface ChannelLimits {
