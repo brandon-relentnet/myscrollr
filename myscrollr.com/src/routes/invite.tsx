@@ -109,11 +109,16 @@ function InvitePage() {
 
       sessionStorage.setItem('scrollr:returnTo', '/account')
 
+      // The backend already consumed the one-time token during its
+      // /invite/complete verification, so we must NOT pass it to
+      // signIn here — Logto would reject it as already used. Instead
+      // we hand the user to Logto's hosted sign-in with login_hint
+      // so their email is pre-filled; they type the password they
+      // just chose.
       const callbackUrl = `${window.location.origin}/callback`
       await signIn({
         redirectUri: callbackUrl,
         extraParams: {
-          one_time_token: token,
           login_hint: email,
         },
       })
@@ -137,10 +142,13 @@ function InvitePage() {
   if (state === 'signing-in') {
     return (
       <div className="min-h-screen text-base-content flex items-center justify-center font-mono">
-        <div className="text-center space-y-4">
+        <div className="text-center space-y-4 px-4 max-w-sm">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4" />
           <p className="uppercase tracking-[0.2em] text-primary animate-pulse">
-            Signing you in...
+            Redirecting to sign in...
+          </p>
+          <p className="text-xs text-base-content/50 font-sans normal-case tracking-normal">
+            Use the password you just created.
           </p>
         </div>
       </div>
@@ -384,8 +392,29 @@ function InvitePage() {
 
             {/* Error message */}
             {state === 'error' && error && (
-              <div className="px-3 py-2 bg-error/10 border border-error/20 rounded-lg text-sm text-error">
-                {error}
+              <div className="space-y-2">
+                <div className="px-3 py-2 bg-error/10 border border-error/20 rounded-lg text-sm text-error">
+                  {error}
+                </div>
+                {/* If the token was rejected (likely because the user
+                    already completed setup in another tab/session)
+                    offer them a sign-in path rather than a dead end. */}
+                {error.toLowerCase().includes('invalid') ||
+                error.toLowerCase().includes('expired') ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sessionStorage.setItem('scrollr:returnTo', '/account')
+                      void signIn({
+                        redirectUri: `${window.location.origin}/callback`,
+                        extraParams: { login_hint: email },
+                      })
+                    }}
+                    className="w-full text-xs text-primary hover:underline"
+                  >
+                    Already set up your account? Sign in here.
+                  </button>
+                ) : null}
               </div>
             )}
 
