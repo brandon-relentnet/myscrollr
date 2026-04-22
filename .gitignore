@@ -21,6 +21,9 @@ __pycache__/
 *.pyc
 .venv/
 channels/sports/api/scrollr-sports
+channels/finance/api/scrollr-finance
+channels/rss/api/scrollr-rss
+channels/fantasy/api/scrollr-fantasy
 scaling-changes/
 .worktrees/
 .superpowers/

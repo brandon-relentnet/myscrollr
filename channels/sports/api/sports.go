@@ -282,9 +282,56 @@ func (a *App) handleInternalDashboard(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"sports": games})
 }
 
-// handleInternalHealth is a simple liveness check for the core gateway.
+// handleInternalHealth is the endpoint the core gateway and k8s probes hit.
+//
+// It verifies that this API's own dependencies (Postgres, Redis) are reachable
+// and that the downstream Rust ingestion service's /health/ready returns 200.
+// Any failure returns HTTP 503 so the k8s readinessProbe can mark the pod
+// NotReady and route traffic elsewhere. Until PR #106, the previous version
+// of this handler returned a static `{"status":"healthy"}` no matter what,
+// which is what let the sports-service outage stay invisible for 3 days.
 func (a *App) handleInternalHealth(c *fiber.Ctx) error {
-	return c.JSON(fiber.Map{"status": "healthy"})
+	ctx, cancel := context.WithTimeout(c.Context(), InternalHealthTimeout)
+	defer cancel()
+
+	result := fiber.Map{"status": "healthy"}
+	degraded := false
+
+	if err := a.db.Ping(ctx); err != nil {
+		result["database"] = "unhealthy: " + err.Error()
+		degraded = true
+	} else {
+		result["database"] = "healthy"
+	}
+
+	if err := a.rdb.Ping(ctx).Err(); err != nil {
+		result["redis"] = "unhealthy: " + err.Error()
+		degraded = true
+	} else {
+		result["redis"] = "healthy"
+	}
+
+	// Check the ingestion service's /health/ready. A 503 here means the Rust
+	// service is alive-but-not-ingesting and we should refuse traffic.
+	if internalURL := os.Getenv("INTERNAL_SPORTS_URL"); internalURL != "" {
+		code, ingestErr := probeIngestion(ctx, internalURL)
+		result["ingestion_http_status"] = code
+		if ingestErr != nil {
+			result["ingestion"] = "unreachable: " + ingestErr.Error()
+			degraded = true
+		} else if code != fiber.StatusOK {
+			result["ingestion"] = fmt.Sprintf("not ready: HTTP %d", code)
+			degraded = true
+		} else {
+			result["ingestion"] = "healthy"
+		}
+	}
+
+	if degraded {
+		result["status"] = "degraded"
+		return c.Status(fiber.StatusServiceUnavailable).JSON(result)
+	}
+	return c.JSON(result)
 }
 
 // =============================================================================

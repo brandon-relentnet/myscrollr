@@ -29,12 +29,18 @@ const (
 )
 
 // syncHealth tracks the state of the sync loop for health reporting.
+//
+// `failed` is a dedicated atomic flag so the hot path in /internal/health
+// can check sync state without acquiring the mutex — readiness probes need
+// to be cheap. When the flag is true the pod is NotReady and Kubernetes
+// will stop routing traffic to it.
 type syncHealth struct {
 	mu             sync.RWMutex
 	status         string
 	lastCycleTime  time.Time
 	lastCycleUsers int
 	restartCount   int
+	failed         atomic.Bool
 }
 
 func (sh *syncHealth) setRunning(users int) {
@@ -43,6 +49,7 @@ func (sh *syncHealth) setRunning(users int) {
 	sh.status = "running"
 	sh.lastCycleTime = time.Now()
 	sh.lastCycleUsers = users
+	sh.failed.Store(false)
 }
 
 func (sh *syncHealth) setFailed(restarts int) {
@@ -50,6 +57,13 @@ func (sh *syncHealth) setFailed(restarts int) {
 	defer sh.mu.Unlock()
 	sh.status = "failed"
 	sh.restartCount = restarts
+	sh.failed.Store(true)
+}
+
+// IsFailed reports whether the sync loop has exhausted its restart budget
+// and given up. Safe to call from any goroutine without locking.
+func (sh *syncHealth) IsFailed() bool {
+	return sh.failed.Load()
 }
 
 func (sh *syncHealth) snapshot() map[string]any {

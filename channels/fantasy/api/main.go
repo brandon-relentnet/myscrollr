@@ -140,11 +140,18 @@ func main() {
 		}
 	}
 
-	if clientID != "" {
-		log.Printf("[Fantasy] Yahoo Client ID: %s... Redirect URI: %s", clientID[:min(5, len(clientID))], redirectURL)
-	} else {
-		log.Println("[Fantasy] Warning: YAHOO_CLIENT_ID not set")
+	// YAHOO_CLIENT_ID and YAHOO_CLIENT_SECRET are both required — the entire
+	// purpose of this service is Yahoo OAuth2 + sync. Booting without them
+	// leaves the sync goroutine in a permanent failure loop (`runSyncLoop`
+	// returns an error immediately if they're empty, crash-restart hits
+	// `maxSyncRestarts`, then sync gives up silently). Fail fast instead.
+	if clientID == "" {
+		log.Fatal("[Fantasy] YAHOO_CLIENT_ID is required")
 	}
+	if clientSecret == "" {
+		log.Fatal("[Fantasy] YAHOO_CLIENT_SECRET is required")
+	}
+	log.Printf("[Fantasy] Yahoo Client ID: %s... Redirect URI: %s", clientID[:min(5, len(clientID))], redirectURL)
 
 	// Use env-var-overridable token URL so tests can redirect to a mock server.
 	// The auth URL is only used for browser redirects (user-facing), so it
