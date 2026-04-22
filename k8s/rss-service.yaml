@@ -36,25 +36,39 @@ spec:
             limits:
               cpu: 500m
               memory: 256Mi
+          # Startup: first RSS poll cycle ingests 100+ feeds in parallel
+          # (~30-60s typically). 5 min runway is plenty.
           startupProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 3004
             initialDelaySeconds: 5
-            periodSeconds: 10
-            failureThreshold: 30
+            periodSeconds: 5
+            failureThreshold: 60
+            timeoutSeconds: 3
           livenessProbe:
             httpGet:
-              path: /health
+              path: /health/live
               port: 3004
             initialDelaySeconds: 15
             periodSeconds: 30
+            failureThreshold: 6
+            timeoutSeconds: 3
+          # Readiness: 503 when the 5-minute ingest interval has been
+          # exceeded by 2x (10 min). Pod drops out of the ready pool
+          # without restarting.
           readinessProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 3004
             initialDelaySeconds: 10
             periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 3
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 10"]
 ---
 apiVersion: v1
 kind: Service

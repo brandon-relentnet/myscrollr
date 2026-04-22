@@ -41,25 +41,42 @@ spec:
             limits:
               cpu: 500m
               memory: 256Mi
+          # Startup: wait for DB init + first WebSocket connect. 5 min
+          # runway is enough even when TwelveData is slow to respond.
           startupProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 3001
             initialDelaySeconds: 5
-            periodSeconds: 10
-            failureThreshold: 120
+            periodSeconds: 5
+            failureThreshold: 60
+            timeoutSeconds: 3
+          # Liveness: process-alive only. WebSocket reconnects are a
+          # runtime concern handled by the reconnect loop, not a reason
+          # to SIGTERM.
           livenessProbe:
             httpGet:
-              path: /health
+              path: /health/live
               port: 3001
             initialDelaySeconds: 15
             periodSeconds: 30
+            failureThreshold: 6
+            timeoutSeconds: 3
+          # Readiness: 503 when staleness threshold (10 min) is exceeded
+          # with no batches processed. Pod drops out of the ready pool
+          # without restarting.
           readinessProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 3001
             initialDelaySeconds: 10
             periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 3
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 10"]
 ---
 apiVersion: v1
 kind: Service
