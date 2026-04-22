@@ -377,3 +377,14 @@ jobs:
           rollout_if_needed rss-api "${{ needs.detect-changes.outputs.rss-api }}"
           rollout_if_needed rss-service "${{ needs.detect-changes.outputs.rss-service }}"
           rollout_if_needed fantasy-api "${{ needs.detect-changes.outputs.fantasy-api }}"
+
+      # Post-deploy smoke test. Fails the workflow if any service's
+      # readiness endpoint (the same one k8s probes) does not return 200.
+      # Uses the same kubeconfig the previous step set up. Intentionally
+      # runs AFTER rollout so a bad release surfaces as a failed deploy
+      # rather than a silently-degraded cluster.
+      - name: Production-readiness smoke test
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq jq
+          READINESS_TIMEOUT=180 ./scripts/smoke/production-readiness.sh
