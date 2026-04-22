@@ -32,8 +32,15 @@ import (
 func initStripe() {
 	key := os.Getenv("STRIPE_SECRET_KEY")
 	if key == "" {
-		log.Println("[Billing] Warning: STRIPE_SECRET_KEY not set — billing endpoints will fail")
-		return
+		// STRIPE_DISABLED is the escape hatch for local dev or staging
+		// environments that intentionally run without billing. Production
+		// must always have a key set; silently continuing used to leave
+		// the /users/me/subscription/* routes 500ing forever.
+		if os.Getenv("STRIPE_DISABLED") == "true" {
+			log.Println("[Billing] STRIPE_SECRET_KEY not set and STRIPE_DISABLED=true — billing endpoints will return errors")
+			return
+		}
+		log.Fatal("[Billing] STRIPE_SECRET_KEY is required (set STRIPE_DISABLED=true to run without billing)")
 	}
 	stripe.Key = key
 

@@ -16,6 +16,12 @@ import (
 // HealthProxyTimeout is the HTTP timeout for proxying health checks.
 const HealthProxyTimeout = 5 * time.Second
 
+// InternalHealthTimeout is the aggregate timeout for a /internal/health
+// request, covering DB ping + Redis ping + ingestion probe. Slightly shorter
+// than the k8s readiness probe timeout (default 1s per probe, but we bound it
+// here regardless so a slow Redis doesn't stall the pod).
+const InternalHealthTimeout = 3 * time.Second
+
 // GetCache attempts to retrieve and deserialize a value from Redis.
 // Returns true if the cache hit was successful.
 func GetCache(rdb *redis.Client, key string, target interface{}) bool {
@@ -66,16 +72,47 @@ func RemoveSubscriber(rdb *redis.Client, ctx context.Context, setKey, userSub st
 	}
 }
 
-// buildHealthURL ensures the URL ends with /health.
-func buildHealthURL(baseURL string) string {
+// buildReadyURL ensures the URL ends with /health/ready (the real readiness
+// endpoint; returns 503 if the ingestion service is starting, failed, or
+// hasn't completed a fresh poll). For back-compat with older services that
+// only expose /health, callers should fall back there on 404.
+func buildReadyURL(baseURL string) string {
 	url := strings.TrimSuffix(baseURL, "/")
-	if !strings.HasSuffix(url, "/health") {
-		url = url + "/health"
+	switch {
+	case strings.HasSuffix(url, "/health/ready"):
+		return url
+	case strings.HasSuffix(url, "/health"):
+		return url + "/ready"
+	default:
+		return url + "/health/ready"
 	}
-	return url
+}
+
+// probeIngestion checks the downstream Rust ingestion service's
+// /health/ready endpoint and returns the HTTP status code the upstream
+// emitted (200 when ready, 503 when starting/failed/stale). Used by the
+// channel API's own /internal/health to propagate ingestion readiness up
+// to Kubernetes.
+func probeIngestion(ctx context.Context, internalURL string) (int, error) {
+	if internalURL == "" {
+		return 0, nil
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, buildReadyURL(internalURL), nil)
+	if err != nil {
+		return 0, err
+	}
+	httpClient := &http.Client{Timeout: HealthProxyTimeout}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	return resp.StatusCode, nil
 }
 
 // ProxyInternalHealth proxies a health check to an internal service URL.
+// Used by the public /sports/health endpoint so operators can curl the full
+// Rust-side payload without having to exec into the cluster.
 func ProxyInternalHealth(c *fiber.Ctx, internalURL string) error {
 	if internalURL == "" {
 		return c.Status(fiber.StatusServiceUnavailable).JSON(ErrorResponse{
@@ -84,7 +121,7 @@ func ProxyInternalHealth(c *fiber.Ctx, internalURL string) error {
 		})
 	}
 
-	targetURL := buildHealthURL(internalURL)
+	targetURL := buildReadyURL(internalURL)
 	httpClient := &http.Client{Timeout: HealthProxyTimeout}
 	resp, err := httpClient.Get(targetURL)
 	if err != nil {

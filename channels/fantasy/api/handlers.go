@@ -3,9 +3,15 @@ package main
 import (
 	"context"
 	"log"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
+
+// InternalHealthTimeout is the aggregate timeout for a /internal/health
+// request, covering DB and Redis pings. Shorter than the k8s readiness
+// probe timeout so a slow downstream doesn't hold up the probe.
+const InternalHealthTimeout = 3 * time.Second
 
 // =============================================================================
 // Database Helpers
@@ -85,7 +91,49 @@ func (a *App) AddLeagueSubscriber(ctx context.Context, leagueKey, logtoSub strin
 // Internal Health Check
 // =============================================================================
 
-// handleInternalHealth is a simple liveness check for the core gateway.
+// handleInternalHealth is the endpoint the core gateway and k8s probes hit.
+//
+// It verifies that this API's own dependencies (Postgres, Redis) are
+// reachable and that the Yahoo sync loop has not exhausted its restart
+// budget. Any failure returns HTTP 503 so the k8s readinessProbe marks the
+// pod NotReady. Previously returned a static `{"status":"healthy"}` no
+// matter what, which meant a dead sync loop was invisible to Kubernetes
+// and the service kept receiving traffic it couldn't serve.
 func (a *App) handleInternalHealth(c *fiber.Ctx) error {
-	return c.JSON(fiber.Map{"status": "healthy"})
+	ctx, cancel := context.WithTimeout(c.Context(), InternalHealthTimeout)
+	defer cancel()
+
+	result := fiber.Map{"status": "healthy"}
+	degraded := false
+
+	if err := a.db.Ping(ctx); err != nil {
+		result["database"] = "unhealthy: " + err.Error()
+		degraded = true
+	} else {
+		result["database"] = "healthy"
+	}
+
+	if err := a.rdb.Ping(ctx).Err(); err != nil {
+		result["redis"] = "unhealthy: " + err.Error()
+		degraded = true
+	} else {
+		result["redis"] = "healthy"
+	}
+
+	// Sync-exhausted is a readiness failure: the pod is nominally alive,
+	// but no new Yahoo data will ever be written to Postgres. A restart
+	// is cheap and may clear a transient upstream error; if not, the
+	// sync will fail again and the pod will stay NotReady.
+	if a.syncState != nil && a.syncState.IsFailed() {
+		result["sync"] = "failed: exceeded max restarts"
+		degraded = true
+	} else if a.syncState != nil {
+		result["sync"] = "running"
+	}
+
+	if degraded {
+		result["status"] = "degraded"
+		return c.Status(fiber.StatusServiceUnavailable).JSON(result)
+	}
+	return c.JSON(result)
 }

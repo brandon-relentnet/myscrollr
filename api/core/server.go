@@ -218,12 +218,17 @@ func (s *Server) setupRoutes() {
 
 // healthCheck returns the aggregated health status.
 // Results are cached in Redis for 10s. Singleflight prevents thundering herd.
+//
+// Returns HTTP 503 when `status == "degraded"` so Kubernetes readiness
+// probes can actually see degradation. Previously returned 200 with
+// `{"status":"degraded",…}` in the body, which k8s never inspected —
+// making partial outages of the core API invisible to the orchestrator.
+// The body shape is unchanged; only the status code in the degraded case
+// differs.
 func (s *Server) healthCheck(c *fiber.Ctx) error {
 	// Check Redis cache first
 	if val, err := Rdb.Get(context.Background(), HealthCacheKey).Result(); err == nil {
-		c.Set("Content-Type", "application/json")
-		c.Set("X-Cache", "HIT")
-		return c.SendString(val)
+		return sendHealthCached(c, []byte(val), "HIT")
 	}
 
 	// Singleflight: only one goroutine computes; others wait and share the result
@@ -286,9 +291,24 @@ func (s *Server) healthCheck(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "health check failed"})
 	}
 
+	return sendHealthCached(c, result.([]byte), "MISS")
+}
+
+// sendHealthCached writes a cached HealthResponse body, inferring the HTTP
+// status code from the status field inside the JSON. "healthy" → 200,
+// anything else → 503. Extracted so the cache hit and cache miss paths
+// return consistent status codes.
+func sendHealthCached(c *fiber.Ctx, body []byte, cacheHeader string) error {
 	c.Set("Content-Type", "application/json")
-	c.Set("X-Cache", "MISS")
-	return c.Send(result.([]byte))
+	c.Set("X-Cache", cacheHeader)
+	status := fiber.StatusOK
+	var probe struct {
+		Status string `json:"status"`
+	}
+	if err := json.Unmarshal(body, &probe); err == nil && probe.Status != "healthy" {
+		status = fiber.StatusServiceUnavailable
+	}
+	return c.Status(status).Send(body)
 }
 
 // getDashboard retrieves aggregated data for the user dashboard.

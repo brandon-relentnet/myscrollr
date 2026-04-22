@@ -16,11 +16,15 @@ var (
 )
 
 // InitAuth initialises the JWKS keyfunc for JWT validation.
+//
+// LOGTO_JWKS_URL is required in all environments. The old behavior
+// (log a warning and continue) meant authenticated routes silently
+// 401'd at request time with "JWKS not initialized", which looked to
+// operators like a broken user rather than a broken deploy. Fail fast.
 func InitAuth() {
 	jwksURL := os.Getenv("LOGTO_JWKS_URL")
 	if jwksURL == "" {
-		log.Println("[Auth] LOGTO_JWKS_URL not set — authentication will fail")
-		return
+		log.Fatal("[Auth] LOGTO_JWKS_URL is required")
 	}
 
 	log.Printf("[Auth] Initializing with JWKS: %s", jwksURL)
