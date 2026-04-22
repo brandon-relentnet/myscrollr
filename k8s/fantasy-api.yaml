@@ -88,18 +88,38 @@ spec:
             limits:
               cpu: 500m
               memory: 256Mi
+          # /internal/health pings DB + Redis and returns 503 when the
+          # Yahoo sync loop has exhausted its restart budget (see
+          # PR #108). Fantasy has no Rust ingestion service — sync
+          # runs in-process.
+          startupProbe:
+            httpGet:
+              path: /internal/health
+              port: 8084
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            failureThreshold: 30
+            timeoutSeconds: 3
           livenessProbe:
             httpGet:
               path: /internal/health
               port: 8084
             initialDelaySeconds: 10
             periodSeconds: 30
+            failureThreshold: 6
+            timeoutSeconds: 3
           readinessProbe:
             httpGet:
               path: /internal/health
               port: 8084
             initialDelaySeconds: 5
             periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 3
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 10"]
 ---
 apiVersion: v1
 kind: Service

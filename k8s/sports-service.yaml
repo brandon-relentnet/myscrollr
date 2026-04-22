@@ -41,25 +41,52 @@ spec:
             limits:
               cpu: 500m
               memory: 256Mi
+          # Startup probe: wait until ingestion has completed its first
+          # successful poll. `failureThreshold: 60` * `periodSeconds: 5`
+          # = 5 minutes of runway — generous for the adaptive live poll
+          # and the 30-minute schedule poll's first iteration. If the
+          # pod isn't ready in 5 minutes, something is genuinely broken
+          # (bad migration, unreachable upstream, missing env var) and
+          # k8s should kill it and try again.
           startupProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 3002
             initialDelaySeconds: 5
-            periodSeconds: 10
+            periodSeconds: 5
             failureThreshold: 60
+            timeoutSeconds: 3
+          # Liveness probe targets /health/live (process alive only).
+          # A transient DB hiccup should NOT trigger a pod kill — that
+          # would mask the root cause. Use `failureThreshold: 6` so a
+          # brief stall doesn't restart the pod.
           livenessProbe:
             httpGet:
-              path: /health
+              path: /health/live
               port: 3002
             initialDelaySeconds: 15
             periodSeconds: 30
+            failureThreshold: 6
+            timeoutSeconds: 3
+          # Readiness probe targets /health/ready. Returns 503 when the
+          # service is starting, failed, or its last poll is older than
+          # 2x the widest expected interval. k8s stops routing traffic
+          # to a NotReady pod without restarting it — the right
+          # behavior for "ingestion stuck, service process fine".
           readinessProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: 3002
             initialDelaySeconds: 10
             periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 3
+          # preStop gives in-flight requests a grace period to complete
+          # before SIGTERM takes the process down.
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 10"]
 ---
 apiVersion: v1
 kind: Service
