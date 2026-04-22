@@ -1,13 +1,35 @@
-use axum::{routing::get, Router, Json, extract::State};
+use axum::{extract::State, http::StatusCode, routing::get, Json, Router};
 use dotenvy::dotenv;
-use std::sync::Arc;
+use serde::Serialize;
+use std::{sync::Arc, time::Duration};
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
-use rss_service::{start_rss_service, RssHealth, log::init_async_logger, database::initialize_pool};
+use rss_service::{
+    database::initialize_pool,
+    init::{fatal, spawn_supervised, ReadinessGate, ReadinessSnapshot},
+    log::init_async_logger,
+    start_rss_service, RssHealth,
+};
+
+/// RSS polls on a 5-minute loop. Staleness = 2x that, giving one full cycle
+/// of runway before the pod drops out of the ready pool.
+const INGEST_INTERVAL: Duration = Duration::from_secs(300);
+const MAX_POLL_STALENESS: Duration = Duration::from_secs(300 * 2);
+
+/// How often the bridge loop checks `RssHealth.last_poll` for progress.
+const READINESS_BRIDGE_INTERVAL: Duration = Duration::from_secs(10);
 
 #[derive(Clone)]
 struct AppState {
     health: Arc<Mutex<RssHealth>>,
+    readiness: Arc<ReadinessGate>,
+}
+
+#[derive(Serialize)]
+struct ReadyPayload {
+    #[serde(flatten)]
+    readiness: ReadinessSnapshot,
+    health: RssHealth,
 }
 
 #[tokio::main]
@@ -16,14 +38,21 @@ async fn main() {
     let _ = init_async_logger("./logs");
 
     let health = Arc::new(Mutex::new(RssHealth::new()));
+    let readiness = Arc::new(ReadinessGate::new(Some(MAX_POLL_STALENESS)));
 
     // Cancellation token for coordinated shutdown
     let cancel = CancellationToken::new();
 
-    // Start HTTP server immediately so K8s startup probes pass
-    let state = AppState { health: health.clone() };
+    // Start HTTP server immediately. Liveness always 200, readiness 503
+    // until init + first poll.
+    let state = AppState {
+        health: health.clone(),
+        readiness: readiness.clone(),
+    };
     let app = Router::new()
-        .route("/health", get(health_handler))
+        .route("/health", get(health_ready_handler))
+        .route("/health/live", get(health_live_handler))
+        .route("/health/ready", get(health_ready_handler))
         .with_state(state);
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3004".to_string());
@@ -31,49 +60,90 @@ async fn main() {
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     println!("RSS Service listening on {} (connecting to DB...)", addr);
 
-    // Spawn background task for DB connection + service init
-    let health_clone = health.clone();
-    let cancel_clone = cancel.clone();
-    tokio::spawn(async move {
-        let mut retries = 5;
+    // Spawn background task for DB connection + init + ingest loop.
+    // Supervised so a panic inside the task takes the process down.
+    let health_bg = health.clone();
+    let readiness_bg = readiness.clone();
+    let cancel_bg = cancel.clone();
+    spawn_supervised("rss-init", async move {
+        const RETRIES: u32 = 5;
+        let mut remaining = RETRIES;
         let pool = loop {
             match initialize_pool().await {
                 Ok(p) => break Arc::new(p),
+                Err(e) if remaining == 0 => {
+                    fatal(
+                        &readiness_bg,
+                        format!("DB init failed after {RETRIES} retries: {e:#}"),
+                    )
+                    .await;
+                }
                 Err(e) => {
-                    if retries == 0 {
-                        eprintln!("[FATAL] Failed to init DB after retries: {}", e);
-                        return;
-                    }
-                    eprintln!("[DB] Failed to connect, retrying in 2s... ({} attempts left) Error: {}", retries, e);
-                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-                    retries -= 1;
+                    eprintln!(
+                        "[DB] Connection attempt failed ({} remaining): {e:#}",
+                        remaining
+                    );
+                    tokio::time::sleep(Duration::from_secs(2)).await;
+                    remaining -= 1;
                 }
             }
         };
 
-        // Build HTTP client once and reuse across all cycles for connection pooling
-        let http_client = reqwest::Client::builder()
+        // Build HTTP client once and reuse across all cycles for connection pooling.
+        // reqwest's builder failing means the TLS stack is broken — no fallback,
+        // just exit so Kubernetes surfaces the problem.
+        let http_client = match reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(15))
             .connect_timeout(std::time::Duration::from_secs(5))
             .gzip(true)
             .user_agent("MyScrollr RSS Bot/1.0")
             .build()
-            .unwrap_or_else(|_| reqwest::Client::new());
+        {
+            Ok(c) => c,
+            Err(e) => {
+                fatal(&readiness_bg, format!("Failed to build reqwest client: {e:#}")).await;
+            }
+        };
 
-        // Start the background service (Periodic ingest)
-        let cancel_ingest = cancel_clone.clone();
+        // DB is up, client is built. Mark ready — /health/ready stays 503
+        // until the first ingest cycle records a poll timestamp.
+        readiness_bg.mark_ready().await;
+
+        // Bridge loop: forward RssHealth.last_poll to readiness gate.
+        let bridge_health = health_bg.clone();
+        let bridge_readiness = readiness_bg.clone();
+        let bridge_cancel = cancel_bg.clone();
+        tokio::spawn(async move {
+            let mut last_seen = None;
+            loop {
+                tokio::select! {
+                    _ = bridge_cancel.cancelled() => break,
+                    _ = tokio::time::sleep(READINESS_BRIDGE_INTERVAL) => {
+                        let snap = bridge_health.lock().await.get_health();
+                        if let Some(ts) = snap.last_poll {
+                            if last_seen != Some(ts) {
+                                bridge_readiness.record_poll().await;
+                                last_seen = Some(ts);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Periodic ingest loop.
         println!("Starting periodic RSS ingest loop (5 minute interval)...");
         let mut cycle: u64 = 0;
         loop {
             tokio::select! {
-                _ = cancel_ingest.cancelled() => {
+                _ = cancel_bg.cancelled() => {
                     println!("RSS ingest loop shutting down...");
                     break;
                 }
                 _ = async {
-                    start_rss_service(pool.clone(), health_clone.clone(), &http_client, cycle).await;
+                    start_rss_service(pool.clone(), health_bg.clone(), &http_client, cycle).await;
                     cycle += 1;
-                    tokio::time::sleep(std::time::Duration::from_secs(300)).await;
+                    tokio::time::sleep(INGEST_INTERVAL).await;
                 } => {}
             }
         }
@@ -112,7 +182,18 @@ async fn shutdown_signal() {
     }
 }
 
-async fn health_handler(State(state): State<AppState>) -> Json<RssHealth> {
+/// Liveness probe: 200 as long as the process is up.
+async fn health_live_handler() -> (StatusCode, Json<serde_json::Value>) {
+    (StatusCode::OK, Json(serde_json::json!({"status": "alive"})))
+}
+
+/// Readiness probe: 200 only when init succeeded AND the first poll cycle
+/// completed within `MAX_POLL_STALENESS`.
+async fn health_ready_handler(
+    State(state): State<AppState>,
+) -> (StatusCode, Json<ReadyPayload>) {
+    let readiness = state.readiness.snapshot().await;
+    let code = state.readiness.http_status().await;
     let health = state.health.lock().await.get_health();
-    Json(health)
+    (code, Json(ReadyPayload { readiness, health }))
 }

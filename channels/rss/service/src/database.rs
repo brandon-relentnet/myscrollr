@@ -6,10 +6,14 @@ use sqlx::{FromRow, query, query_as};
 use serde::Deserialize;
 use chrono::{DateTime, Utc};
 
+/// Build the sqlx migrator for this service.
+///
+/// `ignore_missing` is deliberately NOT set. A follow-up PR namespaces the
+/// `_sqlx_migrations` table per service, which eliminates the cross-service
+/// collision that `ignore_missing = true` used to paper over. Leaving it
+/// enabled now would just hide real migration drift.
 fn migrator() -> sqlx::migrate::Migrator {
-    let mut m = sqlx::migrate!("./migrations");
-    m.set_ignore_missing(true);
-    m
+    sqlx::migrate!("./migrations")
 }
 
 pub async fn initialize_pool() -> Result<PgPool> {
@@ -54,20 +58,20 @@ pub async fn initialize_pool() -> Result<PgPool> {
     .context("Failed to connect to the PostgreSQL database")?;
     eprintln!("[DB] Connected successfully, running migrations...");
 
-    // Run migrations with ignore_missing=true so multiple services sharing
-    // one PostgreSQL database don't fail on each other's migration records.
-    //
-    // A previous iteration of this code caught migration errors, wiped
-    // _sqlx_migrations, and re-ran the migrator. That recovery path was
-    // data-unsafe: on any checksum drift it would silently re-apply old
-    // migrations against a live schema, potentially duplicating or
-    // clobbering rows. Failed migrations now propagate — the service
-    // refuses to start and a human must diagnose before the ingestion
-    // loop writes anything.
+    // Run migrations. A previous iteration of this code caught migration
+    // errors, wiped `_sqlx_migrations`, and re-ran the migrator — that path
+    // was data-unsafe. Failed migrations now propagate with the full sqlx
+    // error chain (including `VersionMismatch(version)` and the colliding
+    // file name) so an on-call engineer can diagnose without having to
+    // re-run the binary under a debugger. See the long troubleshooting
+    // note in AGENTS.md under "Database Migrations".
     let m = migrator();
-    m.run(&pool)
-        .await
-        .context("Failed to run migrations (no automatic recovery — diagnose manually)")?;
+    if let Err(err) = m.run(&pool).await {
+        eprintln!("[DB] Migration failure: {err}");
+        eprintln!("[DB] Underlying error chain: {err:?}");
+        return Err(anyhow::Error::new(err)
+            .context("Failed to run migrations. No automatic recovery — inspect _sqlx_migrations"));
+    }
     eprintln!("[DB] Migrations complete");
 
     Ok(pool)

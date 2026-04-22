@@ -1,21 +1,49 @@
-use axum::{routing::get, Router, Json, extract::State};
+use axum::{extract::State, http::StatusCode, routing::get, Json, Router};
 use dotenv::dotenv;
-use std::sync::Arc;
+use serde::Serialize;
+use std::{sync::Arc, time::Duration};
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 use sports_service::{
-    init_sports_service, poll_live, poll_schedule, poll_standings, poll_teams,
-    SportsHealth, RateLimiter,
-    log::init_async_logger, database::initialize_pool,
+    database::initialize_pool,
+    init::{fatal, spawn_supervised, ReadinessGate, ReadinessSnapshot},
+    init_sports_service,
+    log::init_async_logger,
+    poll_live, poll_schedule, poll_standings, poll_teams,
+    RateLimiter, SportsHealth,
 };
 
 #[derive(Clone)]
 struct AppState {
     health: Arc<Mutex<SportsHealth>>,
+    readiness: Arc<ReadinessGate>,
+}
+
+#[derive(Serialize)]
+struct ReadyPayload {
+    #[serde(flatten)]
+    readiness: ReadinessSnapshot,
+    health: SportsHealth,
 }
 
 /// Interval for the schedule poll (upcoming games + cleanup).
 const SCHEDULE_POLL_SECS: u64 = 30 * 60; // 30 minutes
+
+/// Fastest "live" poll interval. Actual interval is adaptive (30s when
+/// leagues_live > 0, 60s otherwise) but for staleness calculations we use
+/// the widest reasonable gap.
+const LIVE_POLL_MAX_INTERVAL_SECS: u64 = 60;
+
+/// Maximum acceptable staleness before `/health/ready` returns 503. The
+/// staleness threshold is deliberately 2x the widest expected gap between
+/// successful polls, so transient rate-limits or a slow external API don't
+/// flap readiness. If no poll has succeeded in this window something is
+/// actually wrong.
+const MAX_POLL_STALENESS_SECS: u64 = LIVE_POLL_MAX_INTERVAL_SECS * 2;
+
+/// How often the bridge loop checks `SportsHealth.last_poll` and forwards
+/// it to the readiness gate. Cheap, runs on a tight interval.
+const READINESS_BRIDGE_INTERVAL: Duration = Duration::from_secs(10);
 
 #[tokio::main]
 async fn main() {
@@ -23,14 +51,25 @@ async fn main() {
     let _ = init_async_logger("./logs");
 
     let health = Arc::new(Mutex::new(SportsHealth::new()));
+    let readiness = Arc::new(ReadinessGate::new(Some(Duration::from_secs(
+        MAX_POLL_STALENESS_SECS,
+    ))));
 
     // Cancellation token for coordinated shutdown
     let cancel = CancellationToken::new();
 
-    // Start HTTP server immediately so K8s startup probes pass
-    let state = AppState { health: health.clone() };
+    // Start HTTP server immediately so the k8s liveness probe has something
+    // to talk to, but the readiness probe at /health/ready will return 503
+    // until the init task calls `readiness.mark_ready()` AND the first
+    // poll cycle completes.
+    let state = AppState {
+        health: health.clone(),
+        readiness: readiness.clone(),
+    };
     let app = Router::new()
-        .route("/health", get(health_handler))
+        .route("/health", get(health_ready_handler))
+        .route("/health/live", get(health_live_handler))
+        .route("/health/ready", get(health_ready_handler))
         .with_state(state);
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3002".to_string());
@@ -38,32 +77,43 @@ async fn main() {
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     println!("Sports Service listening on {} (connecting to DB...)", addr);
 
-    // Spawn background task for DB connection + service init
+    // Spawn background init. `spawn_supervised` catches panics so a bug
+    // inside init takes the process down instead of leaving a zombie pod.
     let health_bg = health.clone();
+    let readiness_bg = readiness.clone();
     let cancel_bg = cancel.clone();
-    tokio::spawn(async move {
-        let mut retries = 5;
+    spawn_supervised("sports-init", async move {
+        const RETRIES: u32 = 5;
+        let mut remaining = RETRIES;
         let pool = loop {
             match initialize_pool().await {
                 Ok(p) => break Arc::new(p),
+                Err(e) if remaining == 0 => {
+                    fatal(
+                        &readiness_bg,
+                        format!("DB init failed after {RETRIES} retries: {e:#}"),
+                    )
+                    .await;
+                }
                 Err(e) => {
-                    if retries == 0 {
-                        eprintln!("[FATAL] Failed to init DB after retries: {}", e);
-                        return;
-                    }
-                    eprintln!("[DB] Failed to connect, retrying in 2s... ({} attempts left) Error: {}", retries, e);
-                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-                    retries -= 1;
+                    eprintln!(
+                        "[DB] Connection attempt failed ({} remaining): {e:#}",
+                        remaining
+                    );
+                    tokio::time::sleep(Duration::from_secs(2)).await;
+                    remaining -= 1;
                 }
             }
         };
 
         // ── Initialize service (tables, migrations, seeding) ─────────────
         let (client, leagues) = match init_sports_service(&pool).await {
-            Some(result) => result,
-            None => {
-                println!("Sports service initialization failed. Serving health endpoint only.");
-                return;
+            Ok(result) => result,
+            Err(e) => {
+                // Misconfiguration: no leagues or missing API key. Exit so
+                // Kubernetes surfaces the error and operator attention is
+                // forced; the old behavior silently served /health as 200.
+                fatal(&readiness_bg, format!("Sports init failed: {e}")).await;
             }
         };
 
@@ -80,6 +130,33 @@ async fn main() {
         let client = Arc::new(client);
         let leagues = Arc::new(leagues);
 
+        // Init finished. Mark ready — but /health/ready stays 503 until the
+        // first poll records a timestamp via the bridge loop below.
+        readiness_bg.mark_ready().await;
+
+        // Bridge: watch SportsHealth.last_poll and forward to readiness
+        // gate. Cheap + keeps the poll functions untouched.
+        let bridge_health = health_bg.clone();
+        let bridge_readiness = readiness_bg.clone();
+        let bridge_cancel = cancel_bg.clone();
+        tokio::spawn(async move {
+            let mut last_seen = None;
+            loop {
+                tokio::select! {
+                    _ = bridge_cancel.cancelled() => break,
+                    _ = tokio::time::sleep(READINESS_BRIDGE_INTERVAL) => {
+                        let snap = bridge_health.lock().await.get_health();
+                        if let Some(ts) = snap.last_poll {
+                            if last_seen != Some(ts) {
+                                bridge_readiness.record_poll().await;
+                                last_seen = Some(ts);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
         // ── Fast poll: live scores (today only, 30s live / 1min idle) ─────
         let pool_live = pool.clone();
         let client_live = client.clone();
@@ -87,7 +164,7 @@ async fn main() {
         let health_live = health_bg.clone();
         let rl_live = rate_limiter.clone();
         let cancel_live = cancel_bg.clone();
-        tokio::spawn(async move {
+        spawn_supervised("sports-live-poll", async move {
             println!("Starting live poll loop (adaptive intervals)...");
             loop {
                 tokio::select! {
@@ -120,7 +197,7 @@ async fn main() {
         let leagues_sched = leagues.clone();
         let rl_sched = rate_limiter.clone();
         let cancel_sched = cancel_bg.clone();
-        tokio::spawn(async move {
+        spawn_supervised("sports-schedule-poll", async move {
             println!("Starting schedule poll loop (every {} min)...", SCHEDULE_POLL_SECS / 60);
             // Run immediately on startup to populate the schedule
             poll_schedule(&pool_sched, &client_sched, &leagues_sched, &rl_sched).await;
@@ -144,7 +221,7 @@ async fn main() {
         let leagues_standings = leagues.clone();
         let rl_standings = rate_limiter.clone();
         let cancel_standings = cancel_bg.clone();
-        tokio::spawn(async move {
+        spawn_supervised("sports-standings-poll", async move {
             println!("Starting standings poll loop (daily)...");
             poll_standings(&pool_standings, &client_standings, &leagues_standings, &rl_standings).await;
             loop {
@@ -167,7 +244,7 @@ async fn main() {
         let leagues_teams = leagues.clone();
         let rl_teams = rate_limiter.clone();
         let cancel_teams = cancel_bg.clone();
-        tokio::spawn(async move {
+        spawn_supervised("sports-teams-poll", async move {
             println!("Starting teams poll loop (weekly)...");
             poll_teams(&pool_teams, &client_teams, &leagues_teams, &rl_teams).await;
             loop {
@@ -218,7 +295,18 @@ async fn shutdown_signal() {
     }
 }
 
-async fn health_handler(State(state): State<AppState>) -> Json<SportsHealth> {
+/// Liveness probe: 200 as long as the process is up.
+async fn health_live_handler() -> (StatusCode, Json<serde_json::Value>) {
+    (StatusCode::OK, Json(serde_json::json!({"status": "alive"})))
+}
+
+/// Readiness probe: 200 only when DB init succeeded AND the first poll
+/// cycle completed within `MAX_POLL_STALENESS_SECS`.
+async fn health_ready_handler(
+    State(state): State<AppState>,
+) -> (StatusCode, Json<ReadyPayload>) {
+    let readiness = state.readiness.snapshot().await;
+    let code = state.readiness.http_status().await;
     let health = state.health.lock().await.get_health();
-    Json(health)
+    (code, Json(ReadyPayload { readiness, health }))
 }

@@ -1,9 +1,10 @@
-use std::{collections::HashMap, env, sync::Arc, time::{Duration, Instant}, pin::Pin};
+use std::{collections::HashMap, sync::Arc, time::{Duration, Instant}, pin::Pin};
 
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tokio::time::Sleep;
 use crate::database::PgPool;
+use crate::init::fatal_env;
 
 /// A symbol entry from configs/subscriptions.json (categorized format).
 #[derive(Debug, Deserialize, Clone)]
@@ -139,14 +140,25 @@ pub struct FinanceState {
 
 impl FinanceState {
     pub async fn new(pool: Arc<PgPool>) -> Self {
-        let api_key = env::var("TWELVEDATA_API_KEY")
-            .expect("TWELVEDATA_API_KEY must be set in the environment");
+        // `.expect()` here used to panic *inside a spawned tokio task*, which
+        // did not kill the process — leaving the pod nominally healthy while
+        // no finance work was happening. `fatal_env` exits(1) so Kubernetes
+        // restarts the pod and the misconfiguration is visible.
+        let api_key = fatal_env("TWELVEDATA_API_KEY");
 
         // TwelveData uses apikey as a query parameter, no custom headers needed.
-        let client = Client::builder()
+        // A reqwest builder failure here would indicate a broken TLS/dns
+        // subsystem — unrecoverable, exit rather than fall back silently.
+        let client = match Client::builder()
             .timeout(Duration::from_millis(10_000))
             .build()
-            .expect("Failed creating finance Reqwest Client");
+        {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("[FATAL] Failed to build finance reqwest client: {e:#}");
+                crate::init::log_flush_and_exit(1);
+            }
+        };
 
         // Load symbols from database instead of file
         let subscriptions = crate::database::get_tracked_symbols(pool.clone()).await;

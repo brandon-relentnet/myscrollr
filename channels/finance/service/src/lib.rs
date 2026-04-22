@@ -16,6 +16,7 @@ pub mod types;
 mod websocket;
 pub mod log;
 pub mod database;
+pub mod init;
 
 pub async fn start_finance_services(pool: Arc<PgPool>, health_state: Arc<Mutex<FinanceHealth>>) {
     info!("Starting finance service...");
