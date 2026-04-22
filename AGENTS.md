@@ -171,7 +171,9 @@ The migrator is run inside `initialize_pool()`:
 
 ```rust
 fn migrator() -> sqlx::migrate::Migrator {
-    sqlx::migrate!("./migrations")
+    let mut m = sqlx::migrate!("./migrations");
+    m.set_ignore_missing(true);
+    m
 }
 
 // inside initialize_pool():
@@ -183,7 +185,7 @@ if let Err(err) = m.run(&pool).await {
 }
 ```
 
-**Do NOT set `ignore_missing(true)`.** An earlier iteration used it to paper over the shared-table collision; it also hides real checksum drift, which caused sports-service to be silently dead for 3 days in April 2026. See PR #107.
+**`set_ignore_missing(true)` is required** because all three services share the `_sqlx_migrations` table. Without it, each service errors out with `VersionMissing` when it sees rows for other services' version prefixes (e.g. finance seeing sports' `12*` rows). The flag only tolerates versions recorded in the DB that have no matching local file; it does NOT suppress `VersionMismatch` (checksum drift on a row whose file *is* on disk), so the 3-day silent-failure mode from April 2026 stays fixed. See PRs #106 and #107.
 
 Each service has a `tests/migration_versions.rs` that asserts every on-disk migration falls inside its assigned numeric range. This runs as part of `cargo test` and fails the build if someone accidentally copy-pastes a filename across services.
 
