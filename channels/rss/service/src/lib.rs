@@ -12,6 +12,7 @@ pub use crate::types::RssHealth;
 
 pub mod log;
 pub mod database;
+pub mod init;
 pub mod types;
 
 pub async fn start_rss_service(pool: Arc<PgPool>, health_state: Arc<Mutex<RssHealth>>, client: &Client, cycle: u64) {

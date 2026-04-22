@@ -14,7 +14,11 @@ pub struct RssHealth {
 impl RssHealth {
     pub fn new() -> Self {
         Self {
-            status: String::from("healthy"),
+            // Start in "starting" so the informational payload agrees with
+            // readiness (which always starts as `Starting` regardless).
+            // `record_success` flips this to "healthy" after the first
+            // successful poll.
+            status: String::from("starting"),
             last_poll: None,
             feeds_polled: 0,
             items_ingested: 0,

@@ -4,7 +4,7 @@ use tokio::sync::Mutex;
 use chrono::{DateTime, Datelike, Duration, NaiveDate, NaiveDateTime, Utc};
 use crate::log::{error, info, warn};
 use crate::database::{
-    PgPool, truncate_games,
+    PgPool,
     get_tracked_leagues, seed_tracked_leagues, disable_stale_leagues,
     cleanup_old_games, get_live_yesterday_leagues,
     LeagueConfig, TrackedLeague, upsert_game, CleanedData, Team,
@@ -14,6 +14,7 @@ pub use crate::types::{SportsHealth, RateLimiter};
 
 pub mod log;
 pub mod database;
+pub mod init;
 pub mod types;
 
 /// Number of days ahead to poll in the schedule task.
@@ -29,10 +30,46 @@ const STARTUP_REQUEST_DELAY_MS: u64 = 200;
 // Service initialization (runs once on startup)
 // =============================================================================
 
-/// Initialize the sports service: create tables, run migrations, seed leagues,
-/// and handle any data source migration. Returns the API client and tracked
-/// leagues, or None if initialization failed.
-pub async fn init_sports_service(pool: &Arc<PgPool>) -> Option<(Client, Vec<TrackedLeague>)> {
+/// Outcome of `init_sports_service`. The failure variants name the exact
+/// condition so `main.rs` can surface a useful reason via the readiness
+/// gate before the process exits.
+#[derive(Debug)]
+pub enum InitError {
+    /// The `tracked_leagues` table has no enabled rows and `configs/leagues.json`
+    /// did not supply any either. There is no work to do and nothing to poll.
+    NoLeaguesConfigured,
+    /// `API_SPORTS_KEY` is missing or empty. The service literally cannot make
+    /// a single request.
+    MissingApiKey,
+}
+
+impl std::fmt::Display for InitError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            InitError::NoLeaguesConfigured => {
+                write!(f, "No leagues to track: tracked_leagues is empty and configs/leagues.json yielded no entries")
+            }
+            InitError::MissingApiKey => {
+                write!(f, "API_SPORTS_KEY is not set or empty")
+            }
+        }
+    }
+}
+
+/// Initialize the sports service: seed tracked leagues from the config file,
+/// then load the active set from the database. Returns the API client and
+/// tracked leagues on success, or an explicit [`InitError`] so the caller
+/// can surface the exact cause via the readiness gate before exiting.
+///
+/// Note: this function no longer inspects the `games` table for "old ESPN
+/// data" and truncates it. That startup-side effect existed during the
+/// ESPN → api-sports.io migration (early 2026). It is now an active
+/// foot-gun: anything that accidentally leaves a row with an empty `sport`
+/// field would wipe the whole table on the next pod restart. All production
+/// data has been in the new format for months.
+pub async fn init_sports_service(
+    pool: &Arc<PgPool>,
+) -> Result<(Client, Vec<TrackedLeague>), InitError> {
     info!("Starting sports service...");
 
     // Seed from JSON config — always upsert to pick up new leagues
@@ -55,40 +92,21 @@ pub async fn init_sports_service(pool: &Arc<PgPool>) -> Option<(Client, Vec<Trac
         warn!("Could not read ./configs/leagues.json");
     }
 
-    // Check for data source migration flag — truncate old ESPN data on first run
-    let migration_flag = pool.acquire().await.ok().map(|mut conn| async move {
-        sqlx::query_scalar::<_, bool>(
-            "SELECT EXISTS(SELECT 1 FROM games WHERE sport = '' OR sport IS NULL LIMIT 1)"
-        )
-        .fetch_one(&mut *conn)
-        .await
-        .unwrap_or(false)
-    });
-
-    if let Some(future) = migration_flag {
-        if future.await {
-            info!("Detected old ESPN data (games without sport field). Truncating for migration...");
-            if let Err(e) = truncate_games(pool).await {
-                error!("Failed to truncate games: {}", e);
-            }
-        }
-    }
-
     let leagues = get_tracked_leagues(pool.clone()).await;
     if leagues.is_empty() {
-        error!("No leagues to track. Sports service idling.");
-        return None;
+        error!("No leagues to track.");
+        return Err(InitError::NoLeaguesConfigured);
     }
 
     let api_key = env::var("API_SPORTS_KEY").unwrap_or_default();
     if api_key.is_empty() {
         error!("API_SPORTS_KEY not set. Cannot poll api-sports.io.");
-        return None;
+        return Err(InitError::MissingApiKey);
     }
 
     let client = build_client(&api_key);
     info!("Initialized with {} leagues", leagues.len());
-    Some((client, leagues))
+    Ok((client, leagues))
 }
 
 // =============================================================================
