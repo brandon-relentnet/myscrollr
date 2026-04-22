@@ -8,12 +8,23 @@ use serde::Deserialize;
 
 /// Build the sqlx migrator for this service.
 ///
-/// `ignore_missing` is deliberately NOT set. A follow-up PR namespaces the
-/// `_sqlx_migrations` table per service, which eliminates the cross-service
-/// collision that `ignore_missing = true` used to paper over. Leaving it
-/// enabled now would just hide real migration drift.
+/// `set_ignore_missing(true)` is required because all three Rust services
+/// (finance, sports, rss) share a single `_sqlx_migrations` table in the
+/// scrollr Postgres DB — sqlx 0.8.x has no API to name the table per
+/// service (see PRs #106 / #107). Without this flag, each service sees
+/// the other services' rows and errors out with `VersionMissing` because
+/// e.g. sports has no `11*` files on disk.
+///
+/// With each service on a unique numeric version prefix (finance 11*,
+/// sports 12*, rss 20250601*/13*), the flag tolerates "versions recorded
+/// for *other* services" without hiding checksum drift on *this*
+/// service's own rows — VersionMismatch (drift on an applied row whose
+/// file *is* on disk) still fires and fails the boot loudly, which is
+/// the behavior PR #106 was after.
 fn migrator() -> sqlx::migrate::Migrator {
-    sqlx::migrate!("./migrations")
+    let mut m = sqlx::migrate!("./migrations");
+    m.set_ignore_missing(true);
+    m
 }
 
 pub async fn initialize_pool() -> Result<PgPool> {
