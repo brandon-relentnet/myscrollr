@@ -159,18 +159,39 @@ m.Close()
 
 ### Rust Services (sqlx::migrate)
 
-Migration files live in `{crate}/migrations/` with naming convention `YYYYMMDDHHMMSS_description.up.sql` / `YYYYMMDDHHMMSS_description.down.sql`. The migrator is defined as a module-level constant and run inside `initialize_pool()`:
+All three Rust services share a single PostgreSQL database and a single `_sqlx_migrations` table (sqlx 0.8.x has no API to rename the migration table). To keep their versions from colliding, each service owns a **numeric version prefix**:
+
+| Service | Version prefix | Filename pattern |
+|---|---|---|
+| `channels/finance/service/` | `11*` | `110000000001_initial.up.sql`, `110000000002_add_name_category.up.sql`, … |
+| `channels/sports/service/` | `12*` | `120000000001_initial.up.sql`, `120000000002_add_columns.up.sql`, … |
+| `channels/rss/service/` | `20250601*` (legacy) → `13*` (new) | Existing rows stay; new rss migrations use `130000000001_*` and up. |
+
+The migrator is run inside `initialize_pool()`:
 
 ```rust
-const MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
+fn migrator() -> sqlx::migrate::Migrator {
+    sqlx::migrate!("./migrations")
+}
 
 // inside initialize_pool():
-MIGRATOR.run(&pool).await.context("Failed to run migrations")?;
+let m = migrator();
+if let Err(err) = m.run(&pool).await {
+    eprintln!("[DB] Migration failure: {err}");
+    eprintln!("[DB] Underlying error chain: {err:?}");
+    return Err(anyhow::Error::new(err).context("Failed to run migrations. No automatic recovery — inspect _sqlx_migrations"));
+}
 ```
+
+**Do NOT set `ignore_missing(true)`.** An earlier iteration used it to paper over the shared-table collision; it also hides real checksum drift, which caused sports-service to be silently dead for 3 days in April 2026. See PR #107.
+
+Each service has a `tests/migration_versions.rs` that asserts every on-disk migration falls inside its assigned numeric range. This runs as part of `cargo test` and fails the build if someone accidentally copy-pastes a filename across services.
 
 ### Adding a New Migration
 
 **Go**: Create `000NNN_description.up.sql` and `000NNN_description.down.sql` in the module's `migrations/` directory. Test with `migrate -path migrations -database "$DATABASE_URL" up` locally, then commit.
+
+**Rust**: Create `<prefix>NNNNNNNNNN_description.up.sql` and `.down.sql` in the crate's `migrations/` directory, using your service's numeric prefix (`11*` for finance, `12*` for sports, `13*` for new rss). Sequence numbers must increase. Run `cargo test` — the `migration_versions.rs` test will reject any version outside your service's range.
 
 **Rust**: Create `YYYYMMDDHHMMSS_description.up.sql` and `YYYYMMDDHHMMSS_description.down.sql` in the crate's `migrations/` directory. The `cargo build` will verify compilation.
 
