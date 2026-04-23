@@ -54,6 +54,12 @@ type osTicketAttachmentEntry struct {
 }
 
 // ===== Per-user rate limiting =====
+//
+// One accepted ticket per user per minute. "Accepted" means we
+// successfully pushed it to OS Ticket — if the OS Ticket API or our own
+// validation rejects the submission, the user isn't locked out for 60
+// seconds. Otherwise a single server-side glitch could silently trap a
+// user behind a cooldown they didn't earn.
 
 var (
 	supportRateMu    sync.Mutex
@@ -61,7 +67,12 @@ var (
 	supportRateLimit = 1 * time.Minute
 )
 
-func checkSupportRateLimit(userID string) bool {
+// allowedBySupportRateLimit returns true iff the user hasn't submitted
+// an accepted ticket within the last `supportRateLimit` window. Does
+// NOT record the submission — the caller must call
+// `recordSupportSubmission(userID)` AFTER the ticket is accepted by OS
+// Ticket.
+func allowedBySupportRateLimit(userID string) bool {
 	supportRateMu.Lock()
 	defer supportRateMu.Unlock()
 
@@ -70,8 +81,15 @@ func checkSupportRateLimit(userID string) bool {
 			return false
 		}
 	}
-	supportRateMap[userID] = time.Now()
 	return true
+}
+
+// recordSupportSubmission marks the user's most recent accepted
+// submission, starting the rate-limit window.
+func recordSupportSubmission(userID string) {
+	supportRateMu.Lock()
+	defer supportRateMu.Unlock()
+	supportRateMap[userID] = time.Now()
 }
 
 // ===== Handler =====
@@ -87,10 +105,10 @@ func HandleSubmitSupportTicket(c *fiber.Ctx) error {
 		})
 	}
 
-	if !checkSupportRateLimit(userID) {
+	if !allowedBySupportRateLimit(userID) {
 		return c.Status(fiber.StatusTooManyRequests).JSON(ErrorResponse{
 			Status: "error",
-			Error:  "Please wait before submitting another ticket",
+			Error:  "Please wait a minute before submitting another ticket",
 		})
 	}
 
@@ -309,6 +327,10 @@ func HandleSubmitSupportTicket(c *fiber.Ctx) error {
 
 		if resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusOK {
 			log.Printf("[Support] Ticket created for user %s (key %d)", userID, i+1)
+			// Only record the submission AFTER OS Ticket confirms. If the
+			// request fails upstream the user isn't trapped in a cooldown
+			// they didn't earn — see allowedBySupportRateLimit.
+			recordSupportSubmission(userID)
 			return c.JSON(fiber.Map{
 				"status":  "ok",
 				"message": "Bug report submitted successfully",

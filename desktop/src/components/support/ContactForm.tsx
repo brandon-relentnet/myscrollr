@@ -11,7 +11,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Bug, Lightbulb, MessageSquare, CreditCard, UserCog, Radio, Paperclip, X, Loader2 } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
-import { authFetch } from "../../api/client";
+import { authFetch, ApiError } from "../../api/client";
 import { getUserIdentity, isAuthenticated } from "../../auth";
 
 // ── Types ────────────────────────────────────────────────────────
@@ -304,26 +304,40 @@ export default function ContactForm({ onBack }: ContactFormProps) {
       });
 
       toast.success(SUCCESS_MESSAGES[category]);
-
-      // Start 60s cooldown
-      setCooldown(60);
-      cooldownRef.current = setInterval(() => {
-        setCooldown((prev) => {
-          if (prev <= 1) {
-            if (cooldownRef.current) clearInterval(cooldownRef.current);
-            cooldownRef.current = null;
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-
+      startCooldown(60);
       onBack();
-    } catch {
+    } catch (err) {
+      // HTTP 429 — backend's per-user rate limit rejected this submission.
+      // Surface the specific message AND start the client-side cooldown so
+      // the user can't immediately retry (which would just 429 again).
+      // Without this, the form's Submit button re-enables instantly and
+      // every retry fires another useless 429; the user's UX is "nothing
+      // works" when the real answer is "wait a minute."
+      if (err instanceof ApiError && err.status === 429) {
+        toast.error(err.message || "Please wait before submitting another ticket");
+        startCooldown(60);
+        return;
+      }
       toast.error(`Failed to submit ${SUBMIT_LABELS[category].toLowerCase()} — please try again`);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  /** Start the 60s submit-button cooldown. Used on both success and 429. */
+  const startCooldown = (seconds: number) => {
+    setCooldown(seconds);
+    if (cooldownRef.current) clearInterval(cooldownRef.current);
+    cooldownRef.current = setInterval(() => {
+      setCooldown((prev) => {
+        if (prev <= 1) {
+          if (cooldownRef.current) clearInterval(cooldownRef.current);
+          cooldownRef.current = null;
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
   };
 
   // ── Render helpers ──────────────────────────────────────────────
