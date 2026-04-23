@@ -40,7 +40,6 @@
   { "name": "Seeking Alpha", "url": "https://seekingalpha.com/market_currents.xml", "category": "Business & Finance" },
   { "name": "The Motley Fool", "url": "https://www.fool.com/feeds/index.aspx", "category": "Business & Finance" },
   { "name": "Kiplinger", "url": "https://www.kiplinger.com/feed/all", "category": "Business & Finance" },
-  { "name": "NerdWallet", "url": "https://www.nerdwallet.com/blog/feed/", "category": "Business & Finance" },
   { "name": "Forbes", "url": "https://www.forbes.com/innovation/feed/", "category": "Business & Finance" },
   { "name": "Inc.", "url": "https://www.inc.com/rss/", "category": "Business & Finance" },
   { "name": "Entrepreneur", "url": "https://www.entrepreneur.com/latest.rss", "category": "Business & Finance" },
@@ -83,11 +82,6 @@
   { "name": "Science Based Medicine", "url": "https://sciencebasedmedicine.org/feed/", "category": "Science & Health" },
   { "name": "MedPage Today", "url": "https://www.medpagetoday.com/rss/headlines.xml", "category": "Science & Health" },
 
-  { "name": "ESPN Top Headlines", "url": "https://www.espn.com/espn/rss/news", "category": "Sports" },
-  { "name": "ESPN NFL", "url": "https://www.espn.com/espn/rss/nfl/news", "category": "Sports" },
-  { "name": "ESPN NBA", "url": "https://www.espn.com/espn/rss/nba/news", "category": "Sports" },
-  { "name": "ESPN MLB", "url": "https://www.espn.com/espn/rss/mlb/news", "category": "Sports" },
-  { "name": "ESPN NHL", "url": "https://www.espn.com/espn/rss/nhl/news", "category": "Sports" },
   { "name": "Yahoo Sports", "url": "https://sports.yahoo.com/rss/", "category": "Sports" },
   { "name": "SB Nation", "url": "https://www.sbnation.com/rss/index.xml", "category": "Sports" },
   { "name": "Fox Sports", "url": "https://api.foxsports.com/v2/content/optimized-rss?partnerKey=MB0Wehpmuj2lUhuRhQaafhBjAJqaPU244mlTDK1i&size=30", "category": "Sports" },
@@ -113,6 +107,5 @@
   { "name": "Creative Bloq", "url": "https://www.creativebloq.com/feed", "category": "Design" },
   { "name": "Colossal", "url": "https://www.thisiscolossal.com/feed/", "category": "Design" },
   { "name": "UX Collective", "url": "https://uxdesign.cc/feed", "category": "Design" },
-  { "name": "Webdesigner Depot", "url": "https://www.webdesignerdepot.com/feed/", "category": "Design" },
   { "name": "SitePoint", "url": "https://www.sitepoint.com/feed/", "category": "Design" }
 ]

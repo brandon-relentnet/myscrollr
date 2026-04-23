@@ -7,5 +7,5 @@
   { "name": "BBC News", "url": "https://feeds.bbci.co.uk/news/rss.xml", "category": "News & Politics" },
   { "name": "NPR News", "url": "https://feeds.npr.org/1001/rss.xml", "category": "News & Politics" },
   { "name": "NASA Breaking News", "url": "https://www.nasa.gov/news-release/feed/", "category": "Science & Health" },
-  { "name": "ESPN Top Headlines", "url": "https://www.espn.com/espn/rss/news", "category": "Sports" }
+  { "name": "Yahoo Sports", "url": "https://sports.yahoo.com/rss/", "category": "Sports" }
 ]

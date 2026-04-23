@@ -57,7 +57,6 @@ export const RECOMMENDED_FEEDS: FeedPick[] = [
   { url: "https://www.theverge.com/rss/index.xml", name: "The Verge", category: "Tech" },
   // Business
   { url: "https://feeds.bloomberg.com/markets/news.rss", name: "Bloomberg Markets", category: "Business" },
-  { url: "https://www.reutersagency.com/feed/", name: "Reuters", category: "Business" },
   // News
   { url: "https://rss.app/feeds/v1.1/tDBXCLAcqDjHBmtx.xml", name: "AP News", category: "News" },
   { url: "https://feeds.bbci.co.uk/news/rss.xml", name: "BBC News", category: "News" },
