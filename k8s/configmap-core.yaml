@@ -32,10 +32,23 @@ data:
   STRIPE_LIFETIME_ULTIMATE_COUPON_ID: "BLMMYMix"
 
   # Support / OS Ticket
+  #
+  # Each `OSTICKET_TOPIC_ID_*` corresponds to a category value sent by the
+  # desktop client's Contact Us form (see ContactForm.tsx:23 — Category type):
+  #
+  #   - bug      -> OSTICKET_TOPIC_ID (the default for any unspecified/future category)
+  #   - feature  -> OSTICKET_TOPIC_ID_FEATURE
+  #   - feedback -> OSTICKET_TOPIC_ID_FEEDBACK
+  #   - billing  -> OSTICKET_TOPIC_ID_BILLING
+  #   - account  -> OSTICKET_TOPIC_ID_ACCOUNT
+  #   - channel  -> OSTICKET_TOPIC_ID_CHANNEL
+  #
+  # Routing lives in api/core/support.go::buildOSTicketPayload. An empty
+  # per-category value falls back to OSTICKET_TOPIC_ID.
   OSTICKET_URL: "https://support.myscrollr.com"
-  OSTICKET_TOPIC_ID: "12"
-  OSTICKET_TOPIC_ID_FEATURE: "12"
-  OSTICKET_TOPIC_ID_FEEDBACK: "12"
-  OSTICKET_TOPIC_ID_BILLING: ""
-  OSTICKET_TOPIC_ID_ACCOUNT: ""
-  OSTICKET_TOPIC_ID_CHANNEL: ""
+  OSTICKET_TOPIC_ID: "12"          # Bug Report (default fallback)
+  OSTICKET_TOPIC_ID_FEATURE: "13"  # Feature Request
+  OSTICKET_TOPIC_ID_FEEDBACK: "14" # General Feedback
+  OSTICKET_TOPIC_ID_BILLING: "15"  # Billing & Subscriptions
+  OSTICKET_TOPIC_ID_ACCOUNT: "16"  # Account Issues
+  OSTICKET_TOPIC_ID_CHANNEL: "17"  # Channel Data Issues
