@@ -164,6 +164,43 @@ kubectl -n scrollr run pg-touch --rm -i --restart=Never \
 Watch core-api logs — you should see the corresponding
 `[Sequin] ...` webhook delivery within 1-2 seconds.
 
+## Adding a new table to CDC
+
+The `sequin_pub` publication explicitly lists every table it covers
+(we can't use `FOR ALL TABLES` on DO managed Postgres — superuser-only).
+When you add a new table via migrations and want Sequin to stream
+its changes:
+
+```sql
+ALTER PUBLICATION sequin_pub ADD TABLE public.new_table_name;
+```
+
+Run this via the in-cluster psql pod pattern (same as the recovery
+steps above). No Sequin restart required — it picks up the new table
+at the next publication refresh (within ~30 seconds).
+
+If you forget, CDC just silently doesn't fire for the new table —
+harmless but surprising. Consider adding an assertion in your
+integration tests that every public table appears in the publication.
+
+## Publication settings
+
+The current `sequin_pub` is created with:
+
+```sql
+CREATE PUBLICATION sequin_pub FOR TABLE <explicit list>
+  WITH (publish_via_partition_root = true);
+```
+
+`publish_via_partition_root = true` is a forward-looking default —
+we don't have partitioned tables today, but if we add any later
+(e.g. time-series partitioning on `rss_items`), Sequin will stream
+changes via the root table instead of the individual leaf
+partitions, which is almost always what downstream consumers want.
+
+Sequin's health check explicitly requires this setting and will
+report the publication as unhealthy without it.
+
 ## Prevention: bounding WAL growth
 
 DO's managed Postgres defaults `max_slot_wal_keep_size` to `-1` (no
