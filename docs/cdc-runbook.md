@@ -1,0 +1,191 @@
+# CDC (Sequin) Runbook
+
+Operational guide for the change-data-capture pipeline that feeds real-time
+dashboard updates from Postgres to the core API's SSE endpoint.
+
+## Architecture
+
+```
+Postgres (DO Managed, scrollr-db)
+  └── publication: sequin_pub (16 tables)
+  └── replication slot: sequin_slot (logical, pgoutput)
+        │
+        │  WAL replication stream
+        ▼
+Sequin (self-hosted on scrollr-infra Coolify, sequin.myscrollr.com)
+  └── reads slot, forwards to:
+        │
+        │  HTTP POST /webhooks/sequin with SEQUIN_WEBHOOK_SECRET
+        ▼
+core-api (k8s, scrollr/core-api)
+  └── `handlers_webhook.go::HandleSequinWebhook`
+  └── routes to Redis topic PubSub: cdc:finance:*, cdc:sports:*, etc.
+        │
+        ▼
+Desktop client via SSE (`/events/dashboard`)
+```
+
+If Sequin stops consuming the slot, Postgres retains WAL indefinitely
+because `max_slot_wal_keep_size = -1`. This has caused two billing
+incidents on DO auto-scale already. See the "Failure modes" section.
+
+## Fallback when CDC is down
+
+The desktop client polls `/dashboard` via TanStack Query on a
+tier-based interval (10-60s). This is the *canonical* source of truth;
+CDC is an optimization for lower latency. **CDC being down is not a
+user-visible outage** — it just means updates are delayed by up to
+one polling interval.
+
+Confirmed this was true for the ~20 hours between 2026-04-22 and
+2026-04-23 when Sequin was in a broken replay loop; nobody noticed.
+
+## Failure modes
+
+### Mode 1: Sequin container stopped or crashed
+
+**Symptoms:**
+- `sequin.myscrollr.com` returns `503: no available server`
+- Postgres: `SELECT * FROM pg_replication_slots WHERE slot_name = 'sequin_slot'` shows `active = false`
+- `wal_retained` on the slot grows by ~1-2 GB/day
+- Core API receives zero `/webhooks/sequin` requests
+
+**Why it auto-scaled the DB on 2026-04-22:** after Sequin stopped
+(exact cause unknown, Coolify was restarted at some point), the slot
+accumulated 90 GB of WAL over ~3 weeks, triggering DO's 80%-full
+auto-scale. DO won't shrink the volume after scaling.
+
+### Mode 2: Sequin running but can't decode a WAL record
+
+**Symptoms:**
+- Sequin container is up, `/health` returns 200
+- Sequin logs: `[SlotProducer] Replication disconnected: Postgrex.Error ... publication "sequin_pub" does not exist ... in the truncate callback, associated LSN X/XXXXXX`
+- Sequin reconnects every ~10 seconds, fails immediately, never advances `confirmed_flush_lsn`
+- Slot stays `active = false` (Sequin disconnects after each failed decode)
+- WAL grows unbounded
+
+**Actual incident on 2026-04-23:** the sports service used to run a
+`TRUNCATE games` on startup as part of the ESPN→api-sports.io
+migration. That TRUNCATE got written to WAL with the publication's
+state at that moment. Sequin couldn't decode it ("publication does
+not exist" from pgoutput's TRUNCATE callback — this error fires when
+the publication OID in the WAL record doesn't match the current
+publication OID, typically after a publication drop-and-recreate
+cycle). **The ESPN truncate code was removed in PR #106**, so this
+specific cause won't recur — but other TRUNCATEs can reproduce the
+problem if someone runs one while reconfiguring the publication.
+
+## Recovery: drop + recreate the slot
+
+When Sequin is wedged, the cleanest fix is to drop the replication
+slot so Postgres frees the retained WAL, then have Sequin create a
+fresh slot starting from `current_wal_lsn`. Historical events between
+`restart_lsn` and `current_wal_lsn` are lost; this is acceptable
+because they were already unreachable (Sequin couldn't process them)
+and the polling fallback is the source of truth anyway.
+
+### Step 1 — Stop the bleeding (drop the slot)
+
+Run via an in-cluster psql pod so the private DB is reachable:
+
+```sh
+kubectl -n scrollr get secret scrollr-secrets \
+  -o jsonpath='{.data.DATABASE_URL}' | base64 -d > /tmp/db_url
+
+kubectl -n scrollr run pg-drop --rm -i --restart=Never \
+  --image=postgres:16-alpine \
+  --env="PGURL=$(cat /tmp/db_url)" \
+  --command -- sh -c 'psql "$PGURL" -c "SELECT pg_drop_replication_slot('"'"'sequin_slot'"'"');"'
+
+rm -f /tmp/db_url
+```
+
+Postgres frees the retained WAL on the next checkpoint (within ~5
+minutes). Verify:
+
+```sql
+SELECT slot_name, pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)) AS wal_retained
+FROM pg_replication_slots;
+-- Should show only pghoard_local with single-digit MB.
+```
+
+**Note:** DO will not shrink the volume after this. You'll stop
+accumulating bills for new auto-scales but the already-allocated
+storage stays. To shrink, you'd need to fork or restore to a smaller
+cluster (see `k8s-migration-runbook.md` for swap procedure).
+
+### Step 2 — Recreate the Sequin connector
+
+Sequin's admin UI at `https://sequin.myscrollr.com` (or whichever
+domain it's currently reachable on):
+
+1. Log in with admin credentials.
+2. Navigate to **Databases** → find the `scrollr_db` connector.
+3. Delete the existing database connector. This also removes
+   Sequin's internal record of the now-dropped replication slot.
+4. Click **Connect new database** and fill in:
+   - Host: `private-scrollr-db-do-user-35353936-0.e.db.ondigitalocean.com`
+   - Port: `25060`
+   - Database: `defaultdb`
+   - User: `doadmin` (or create a dedicated read-only replication user)
+   - Password: from the DATABASE_URL secret
+   - SSL mode: `require`
+   - Publication name: `sequin_pub` (already exists, Sequin will reuse it)
+   - Slot name: `sequin_slot` (Sequin will create a fresh one)
+5. Under **Sinks**, recreate the webhook sink pointing at
+   `https://api.myscrollr.com/webhooks/sequin`.
+6. Copy the `SEQUIN_WEBHOOK_SECRET` value from `scrollr-secrets` (or
+   rotate it — update both Sequin and the secret if you do).
+
+Sequin will create a new slot starting at the current WAL position
+and begin forwarding events immediately.
+
+### Step 3 — Verify CDC is flowing
+
+From a laptop with kubectl access:
+
+```sh
+kubectl -n scrollr logs -f deploy/core-api | grep -i sequin
+```
+
+You should see `[Sequin] ...` log lines within a few minutes of any
+write to a table in `sequin_pub`. Quick way to force a write:
+
+```sh
+# Cause a finance trade write (trade updates fire every few seconds)
+# OR touch a tracked_feeds row
+kubectl -n scrollr run pg-touch --rm -i --restart=Never \
+  --image=postgres:16-alpine \
+  --env="PGURL=$(kubectl -n scrollr get secret scrollr-secrets \
+         -o jsonpath='{.data.DATABASE_URL}' | base64 -d)" \
+  --command -- sh -c 'psql "$PGURL" -c "UPDATE tracked_feeds SET last_success_at = NOW() WHERE url = (SELECT url FROM tracked_feeds LIMIT 1);"'
+```
+
+Watch core-api logs — you should see the corresponding
+`[Sequin] ...` webhook delivery within 1-2 seconds.
+
+## Prevention: bounding WAL growth
+
+DO's managed Postgres defaults `max_slot_wal_keep_size` to `-1` (no
+limit). This means any stale slot holds WAL indefinitely. To cap the
+damage a future Sequin outage can do:
+
+1. Via DO control panel → your db cluster → **Settings** → **Database
+   configuration** → set `max_slot_wal_keep_size` to something like
+   `10GB` (or via `doctl databases configuration update`).
+2. With this set, Postgres will forcibly break any slot whose
+   `restart_lsn` falls more than 10 GB behind current WAL. Sequin
+   will then see a `wal_removed` error on reconnect — which is loud,
+   obvious, and fixable via slot recreate. Way better than silent
+   billing.
+
+This is a manual control-panel change; I can't set it via the regular
+DATABASE_URL path. Putting it on the "follow-up ops task" list.
+
+## Related
+
+- PR #106 — removed the ESPN `TRUNCATE games` on startup, the code
+  path that likely wrote the poisoned WAL record behind the 2026-04-23
+  incident.
+- `api/core/handlers_webhook.go` — the webhook receiver.
+- `api/core/constants.go` — CDC topic prefixes.
