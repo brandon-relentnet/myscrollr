@@ -16,13 +16,30 @@ export { API_BASE };
 
 // ── Request helpers ─────────────────────────────────────────────
 
+/**
+ * Error thrown by `request()` / `authFetch()` on non-2xx responses.
+ * Preserves the HTTP status code so callers can react to specific
+ * failures (e.g. 429 rate-limiting) without string-matching on the
+ * message.
+ */
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 /** Parse error body and throw — shared by request() and authFetch(). */
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const error = await response
       .json()
       .catch(() => ({ error: "Request failed" }));
-    throw new Error(
+    throw new ApiError(
+      response.status,
       (error as { error?: string }).error || "Request failed",
     );
   }
