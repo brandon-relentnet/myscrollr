@@ -164,6 +164,62 @@ kubectl -n scrollr run pg-touch --rm -i --restart=Never \
 Watch core-api logs — you should see the corresponding
 `[Sequin] ...` webhook delivery within 1-2 seconds.
 
+## Which tables should the Sequin sink forward?
+
+The `sequin_pub` publication covers all 23 user tables, but **only 9 of
+them produce CDC events that core-api actually routes to an SSE topic**.
+The rest are silently dropped in `api/core/handlers_webhook.go`'s
+`topicForRecord` function (`default: return ""`).
+
+The sink in Sequin should be configured to forward only these 9 tables,
+which keeps webhook volume low without losing functionality:
+
+| Table | Topic produced | Purpose |
+|---|---|---|
+| `trades` | `cdc:finance:{SYMBOL}` | Live price updates |
+| `games` | `cdc:sports:{LEAGUE}` | Live scores |
+| `rss_items` | `cdc:rss:{feed_url_fnv_hash}` | New RSS items |
+| `yahoo_leagues` | `cdc:fantasy:{league_key}` | Fantasy league updates |
+| `yahoo_standings` | `cdc:fantasy:{league_key}` | Fantasy standings |
+| `yahoo_matchups` | `cdc:fantasy:{league_key}` | Fantasy matchup scores |
+| `yahoo_rosters` | `cdc:fantasy:{league_key}` | Fantasy roster moves |
+| `user_preferences` | `cdc:core:user:{logto_sub}` | Cross-device pref sync |
+| `user_channels` | `cdc:core:user:{logto_sub}` | Channel enable/disable sync |
+
+### Why not forward everything?
+
+1. **No user-visible effect.** Routing decisions in `topicForRecord`
+   silently drop non-matching tables. Forwarding them burns webhook
+   volume and core-api CPU for zero benefit.
+2. **Billing/admin tables are noisy.** `stripe_webhook_events`,
+   `_sqlx_migrations`, `schema_migrations*` would spam the sink
+   without ever producing a topic payload.
+3. **Polling already covers config data.** `tracked_symbols`,
+   `tracked_leagues`, `tracked_feeds`, `teams`, `standings`,
+   `yahoo_users`, `yahoo_user_leagues`, `user_deletion_requests`,
+   `stripe_customers` all change rarely and are served by the normal
+   GET paths.
+
+### Why keep them in the publication?
+
+Adding a table to `sequin_pub` is cheap — Postgres still decodes the
+changes into WAL stream regardless. Keeping all 23 tables in the
+publication means: if you later want CDC for a new purpose (say, a
+real-time billing notification on `stripe_customers`), you only need
+to add the table to the sink filter and update `topicForRecord` — no
+Postgres publication change required.
+
+### Adding a new routed table
+
+When you want a new table to stream via CDC:
+
+1. Add a case to `topicForRecord` in
+   `api/core/handlers_webhook.go` and define a topic prefix constant
+   in `api/core/constants.go` if needed.
+2. Add the table to the Sequin sink's table-filter list.
+3. Verify via `kubectl logs deploy/core-api | grep '[Sequin]'` after
+   triggering a write to the table.
+
 ## Adding a new table to CDC
 
 The `sequin_pub` publication explicitly lists every table it covers
