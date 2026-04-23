@@ -239,6 +239,44 @@ If you forget, CDC just silently doesn't fire for the new table —
 harmless but surprising. Consider adding an assertion in your
 integration tests that every public table appears in the publication.
 
+## Replica identity
+
+Sequin populates the `changes` field in its webhook payload from the
+"old row" values of UPDATE/DELETE events. Postgres only logs those old
+values to WAL when the table's `REPLICA IDENTITY` is set to `FULL`
+(otherwise only the primary key is logged).
+
+**Current state** (set 2026-04-23 after Sequin's health check
+flagged it):
+
+| Table | Replica identity | Reason |
+|---|---|---|
+| `user_channels` | `FULL` | Enabled for CDC diagnostics |
+| `user_preferences` | `FULL` | Enabled for CDC diagnostics |
+| `yahoo_leagues` | `FULL` | Enabled for CDC diagnostics |
+| `yahoo_matchups` | `FULL` | Enabled for CDC diagnostics |
+| `yahoo_rosters` | `FULL` | Enabled for CDC diagnostics |
+| `yahoo_standings` | `FULL` | Enabled for CDC diagnostics |
+| `trades`, `games`, `rss_items` | default | High write volume; the `changes` field isn't used by the client anyway |
+
+**Why not all tables?** `REPLICA IDENTITY FULL` makes Postgres log
+the full old row on every UPDATE/DELETE. On `trades` that's ~40
+writes/second, and the extra WAL is non-trivial. The desktop client
+(`desktop/src/hooks/useDashboardCDC.ts`) only reads `cdc.record` and
+`cdc.action`, not `cdc.changes`, so enabling FULL on high-volume
+tables would be pure waste.
+
+If you add a new CDC table to the sink and Sequin's health check
+flags it:
+
+```sql
+ALTER TABLE public.<table> REPLICA IDENTITY FULL;
+```
+
+Only run this on low-volume tables (user settings, fantasy sync
+state). For high-throughput tables, accept the warning — the app
+doesn't need the `changes` field.
+
 ## Publication settings
 
 The current `sequin_pub` is created with:
