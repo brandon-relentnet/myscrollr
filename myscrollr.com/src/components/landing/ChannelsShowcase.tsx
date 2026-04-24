@@ -58,7 +58,7 @@ const CHANNELS: Array<ChannelInfo> = [
     scenarioTitle: 'Morning coffee, portfolio check',
     scenarioBody:
       "Glance at BTC, ETH, and your watchlist while reading the morning news. No apps to open, no tabs to switch. It's just there.",
-    stat: '50+',
+    stat: 'Up to ∞',
     statLabel: 'tracked symbols',
   },
   {

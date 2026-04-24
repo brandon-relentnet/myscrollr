@@ -23,9 +23,6 @@ export default defineConfig({
     viteReact(),
     tailwindcss(),
   ],
-  server: {
-    allowedHosts: ['dev.olvyx.com'],
-  },
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },

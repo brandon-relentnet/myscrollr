@@ -129,7 +129,7 @@ function AccountHub() {
   const fetchStats = useCallback(async () => {
     try {
       const data = await channelsApi.getAll(getToken)
-      const all = data.channels || []
+      const all = data.channels
       setChannelCount(all.length)
       setEnabledCount(all.filter((s) => s.enabled).length)
     } catch {
@@ -151,12 +151,14 @@ function AccountHub() {
       getIdTokenClaims()
         .then(setUserClaims)
         .catch((error: unknown) => {
-          console.warn('Failed to load account identity claims', error)
+          if (import.meta.env.DEV) {
+            console.warn('Failed to load account identity claims', error)
+          }
           setUserClaims(undefined)
         })
       fetchStats()
     }
-  }, [isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, getIdTokenClaims, fetchStats])
 
   // ── Loading / auth guards ─────────────────────────────────────
   if (isLoading && !hasLoaded.current) {
@@ -215,9 +217,27 @@ function AccountHub() {
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {HUB_CARDS.map((card, i) => (
-              <HubCard key={card.title} card={card} index={i} />
-            ))}
+            {HUB_CARDS.filter((card) => {
+              // Hide Public Profile if user has no username set —
+              // /u/me would otherwise expose the raw Logto sub UUID.
+              if (card.title === 'Public Profile') {
+                return Boolean(userClaims?.username)
+              }
+              return true
+            })
+              .map((card) => {
+                // Route Public Profile to the user's actual username
+                if (card.title === 'Public Profile' && userClaims?.username) {
+                  return {
+                    ...card,
+                    params: { username: userClaims.username },
+                  }
+                }
+                return card
+              })
+              .map((card, i) => (
+                <HubCard key={card.title} card={card} index={i} />
+              ))}
           </div>
         </div>
       </section>
@@ -564,8 +584,8 @@ function HubCard({ card, index }: { card: HubCardDef; index: number }) {
   return (
     <Link
       to={to}
-      params={params as any}
-      search={search as any}
+      params={params as Record<string, string>}
+      search={search as Record<string, unknown>}
       className="block h-full"
     >
       {inner}

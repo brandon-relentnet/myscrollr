@@ -1,5 +1,8 @@
 # https://www.robotstxt.org/robotstxt.html
 User-agent: *
-Disallow:
+Disallow: /account
+Disallow: /invite
+Disallow: /callback
+Disallow: /u/
 
 Sitemap: https://myscrollr.com/sitemap.xml

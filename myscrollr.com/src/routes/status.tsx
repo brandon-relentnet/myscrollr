@@ -56,21 +56,20 @@ interface ViewerData {
 type ServiceState = 'healthy' | 'unhealthy' | 'down' | 'unknown' | 'loading'
 
 /** Known channel metadata — used for descriptions and port display. */
-const CHANNEL_META: Record<
-  string,
-  {
-    description: string
-    port?: number
-    hex: string
-    Icon: ComponentType<{
-      size?: number
-      strokeWidth?: number
-      className?: string
-    }>
-  }
-> = {
+interface ChannelMeta {
+  description: string
+  port?: number
+  hex: string
+  Icon: ComponentType<{
+    size?: number
+    strokeWidth?: number
+    className?: string
+  }>
+}
+
+const CHANNEL_META: Partial<Record<string, ChannelMeta>> = {
   finance: {
-    description: 'Finnhub WebSocket — real-time market data',
+    description: 'TwelveData WebSocket — real-time market data',
     port: 3001,
     hex: HEX.primary,
     Icon: TrendingUpIcon,
@@ -82,8 +81,8 @@ const CHANNEL_META: Record<
     Icon: ActivityIcon,
   },
   fantasy: {
-    description: 'Yahoo Fantasy — active user sync',
-    port: 3003,
+    description: 'Yahoo Fantasy — Go-native sync, no Rust ingestion',
+    port: 8084,
     hex: HEX.accent,
     Icon: UsersIcon,
   },

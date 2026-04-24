@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
 import { wrap } from 'motion'
 import HeroTextSwap, { WORDS } from '@/components/Typewriter'
-import { HeroDesktopPreview } from '@/components/landing/HeroBrowserStack'
+import { HeroDesktopPreview } from '@/components/landing/HeroDesktopPreview'
 import { DownloadButton } from '@/components/DownloadButton'
 
 const CYCLE_MS = 4000

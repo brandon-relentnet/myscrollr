@@ -6,7 +6,7 @@ import {
   Calendar,
   CreditCard,
   Crown,
-  Infinity,
+  Infinity as InfinityIcon,
   Loader2,
   ShieldAlert,
   Zap,
@@ -48,14 +48,15 @@ const DOWNGRADE_PLAN_NAMES: Record<string, string> = {
   ultimate_annual: 'Uplink Ultimate',
 }
 
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  none: { label: 'No Subscription', color: 'text-base-content/40' },
-  active: { label: 'Active', color: 'text-success' },
-  canceling: { label: 'Canceling', color: 'text-warning' },
-  canceled: { label: 'Canceled', color: 'text-error' },
-  past_due: { label: 'Past Due', color: 'text-error' },
-  trialing: { label: 'Free Trial', color: 'text-info' },
-}
+const STATUS_LABELS: Partial<Record<string, { label: string; color: string }>> =
+  {
+    none: { label: 'No Subscription', color: 'text-base-content/40' },
+    active: { label: 'Active', color: 'text-success' },
+    canceling: { label: 'Canceling', color: 'text-warning' },
+    canceled: { label: 'Canceled', color: 'text-error' },
+    past_due: { label: 'Past Due', color: 'text-error' },
+    trialing: { label: 'Free Trial', color: 'text-info' },
+  }
 
 export default function SubscriptionStatus({
   getToken,
@@ -162,7 +163,8 @@ export default function SubscriptionStatus({
     )
   }
 
-  const statusInfo = STATUS_LABELS[subscription.status] || STATUS_LABELS.none
+  const statusInfo = STATUS_LABELS[subscription.status] ??
+    STATUS_LABELS.none ?? { label: 'Unknown', color: 'text-base-content/40' }
   const periodEnd = subscription.current_period_end
     ? new Date(subscription.current_period_end)
     : null
@@ -257,7 +259,7 @@ export default function SubscriptionStatus({
       {/* Period End / Lifetime */}
       {subscription.lifetime ? (
         <div className="flex items-center gap-2">
-          <Infinity size={14} className="text-base-content/30" />
+          <InfinityIcon size={14} className="text-base-content/30" />
           <span className="text-sm text-base-content/40">
             Lifetime access — no expiration
           </span>

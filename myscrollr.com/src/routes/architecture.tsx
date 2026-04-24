@@ -58,20 +58,20 @@ const PIPELINE_STEPS: Array<PipelineStep> = [
     Icon: Globe,
     title: 'Data Sources',
     description:
-      'Finnhub WebSocket for market data, ESPN API for scores, RSS/Atom feeds for news, Yahoo Fantasy API for leagues.',
+      'TwelveData WebSocket for market data, ESPN API for scores, RSS/Atom feeds for news, Yahoo Fantasy API for leagues.',
     hex: HEX.primary,
     label: 'INGEST',
-    items: ['Finnhub WS', 'ESPN HTTP', 'Yahoo API', 'RSS Feeds'],
+    items: ['TwelveData WS', 'ESPN HTTP', 'Yahoo API', 'RSS Feeds'],
     Watermark: Globe,
   },
   {
     Icon: Cpu,
     title: 'Ingestion Services',
     description:
-      'Four independent Rust services collect, normalize, and write data to PostgreSQL. Each runs its own schedule and connection strategy.',
+      'Three independent Rust services collect, normalize, and write data to PostgreSQL. Each runs its own schedule and connection strategy.',
     hex: HEX.info,
     label: 'PROCESS',
-    items: ['Finance :3001', 'Sports :3002', 'Fantasy :3003', 'RSS :3004'],
+    items: ['Finance :3001', 'Sports :3002', 'RSS :3004'],
     Watermark: Cpu,
   },
   {
@@ -213,7 +213,7 @@ const TECH_STACK: Array<TechGroup> = [
     Icon: Server,
     hex: HEX.primary,
     items: [
-      { name: 'Go 1.21', detail: 'Fiber v2, pgx, Redis' },
+      { name: 'Go 1.22', detail: 'Fiber v2, pgx, Redis' },
       { name: 'SSE Hub', detail: 'Per-user Redis Pub/Sub channels' },
       { name: 'Logto', detail: 'Self-hosted OIDC, JWT validation' },
     ],
@@ -225,7 +225,7 @@ const TECH_STACK: Array<TechGroup> = [
     hex: HEX.info,
     items: [
       { name: 'Rust', detail: 'tokio async runtime' },
-      { name: 'WebSocket', detail: 'Finnhub persistent connection' },
+      { name: 'WebSocket', detail: 'TwelveData persistent connection' },
       { name: 'HTTP Polling', detail: 'ESPN 60s, RSS 5min, Yahoo 120s' },
     ],
     Watermark: Cpu,
@@ -237,7 +237,7 @@ const TECH_STACK: Array<TechGroup> = [
     items: [
       { name: 'React 19', detail: 'Vite 7, TanStack Router' },
       { name: 'Tailwind v4', detail: 'daisyUI theme system' },
-      { name: 'Motion', detail: 'Framer Motion animations' },
+      { name: 'Motion', detail: 'Production-grade animations' },
     ],
     Watermark: MonitorSmartphone,
   },
@@ -569,8 +569,8 @@ function ArchitecturePage() {
                 aria-hidden
               >
                 {/* Grid dots */}
-                {Array.from({ length: 8 }).map((_, row) =>
-                  Array.from({ length: 6 }).map((_, col) => (
+                {Array.from({ length: 8 }).map((_row, row) =>
+                  Array.from({ length: 6 }).map((_col, col) => (
                     <circle
                       key={`dot-${row}-${col}`}
                       cx={30 + col * 52}

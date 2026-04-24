@@ -92,6 +92,8 @@ export interface ChannelLimits {
   custom_feeds: number | null
   leagues: number | null
   fantasy: number | null
+  max_ticker_rows: number
+  max_ticker_customization: boolean
 }
 
 export interface TierLimitsResponse {

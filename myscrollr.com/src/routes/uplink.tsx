@@ -438,6 +438,8 @@ const FALLBACK_LIMITS: TierLimitsResponse = {
       custom_feeds: 0,
       leagues: 1,
       fantasy: 0,
+      max_ticker_rows: 1,
+      max_ticker_customization: false,
     },
     uplink: {
       symbols: 25,
@@ -445,6 +447,8 @@ const FALLBACK_LIMITS: TierLimitsResponse = {
       custom_feeds: 1,
       leagues: 8,
       fantasy: 1,
+      max_ticker_rows: 2,
+      max_ticker_customization: false,
     },
     uplink_pro: {
       symbols: 75,
@@ -452,6 +456,8 @@ const FALLBACK_LIMITS: TierLimitsResponse = {
       custom_feeds: 3,
       leagues: 20,
       fantasy: 3,
+      max_ticker_rows: 3,
+      max_ticker_customization: false,
     },
     uplink_ultimate: {
       symbols: null,
@@ -459,6 +465,8 @@ const FALLBACK_LIMITS: TierLimitsResponse = {
       custom_feeds: 10,
       leagues: null,
       fantasy: 10,
+      max_ticker_rows: 3,
+      max_ticker_customization: true,
     },
     super_user: {
       symbols: null,
@@ -466,6 +474,8 @@ const FALLBACK_LIMITS: TierLimitsResponse = {
       custom_feeds: null,
       leagues: null,
       fantasy: null,
+      max_ticker_rows: 3,
+      max_ticker_customization: true,
     },
   },
 }
@@ -539,21 +549,21 @@ function buildUplinkFAQ(limits: TierLimitsResponse): Array<FAQItem> {
       highlight:
         'How fast new data reaches you — from 60-second polling to instant real-time streaming.',
       answer:
-        'Free users get data refreshed every 60 seconds via polling. Uplink cuts that to 30 seconds. Pro pushes it to 10 seconds. Unlimited eliminates polling entirely — data arrives the instant it changes via Server-Sent Events (SSE), the same technology used by stock trading platforms.',
+        'Free users get data refreshed every 60 seconds via polling. Uplink cuts that to 30 seconds. Pro pushes it to 10 seconds. Ultimate eliminates polling entirely — data arrives the instant it changes via Server-Sent Events (SSE), the same technology used by stock trading platforms.',
       accent: 'emerald',
     },
     {
       icon: BarChart3,
       question: 'How many symbols can I track?',
-      highlight: `Free gets ${free.symbols}, Uplink gets ${uplink.symbols}, Pro gets ${pro.symbols}, and Unlimited has no cap at all.`,
-      answer: `Tracked symbols are the stocks, ETFs, and crypto tickers that appear in your finance feed. Free accounts can follow up to ${free.symbols} at a time. Uplink raises that to ${uplink.symbols}. Pro gives you ${pro.symbols} — enough for a serious portfolio. With Unlimited, there is no cap — add every ticker you care about and they all stream in real time.`,
+      highlight: `Free gets ${free.symbols}, Uplink gets ${uplink.symbols}, Pro gets ${pro.symbols}, and Ultimate has no cap at all.`,
+      answer: `Tracked symbols are the stocks, ETFs, and crypto tickers that appear in your finance feed. Free accounts can follow up to ${free.symbols} at a time. Uplink raises that to ${uplink.symbols}. Pro gives you ${pro.symbols} — enough for a serious portfolio. With Ultimate, there is no cap — add every ticker you care about and they all stream in real time.`,
       accent: 'cyan',
     },
     {
       icon: Rss,
       question: 'How many RSS feeds can I follow?',
       highlight: `From ${free.feeds} feed${free.feeds === 1 ? '' : 's'} on Free to completely unlimited on the top tier.`,
-      answer: `RSS feeds power the news channel. Free accounts can subscribe to ${free.feeds} feed${free.feeds === 1 ? '' : 's'} from the default catalog. Uplink expands that to ${uplink.feeds}, Pro to ${pro.feeds}, giving you broad coverage across topics. Unlimited removes the limit entirely — subscribe to as many sources as you want.`,
+      answer: `RSS feeds power the news channel. Free accounts can subscribe to ${free.feeds} feed${free.feeds === 1 ? '' : 's'} from the default catalog. Uplink expands that to ${uplink.feeds}, Pro to ${pro.feeds}, giving you broad coverage across topics. Ultimate removes the limit entirely — subscribe to as many sources as you want.`,
       accent: 'amber',
     },
     {
@@ -561,7 +571,7 @@ function buildUplinkFAQ(limits: TierLimitsResponse): Array<FAQItem> {
       question: 'What are custom RSS feeds?',
       highlight:
         'Add any RSS URL you want — your own blogs, niche sources, anything with a feed.',
-      answer: `Beyond the built-in catalog, custom feeds let you paste any RSS or Atom URL. Free accounts cannot add custom feeds. Uplink gives you ${uplink.custom_feeds}, Pro gives you ${pro.custom_feeds} — enough for niche industry sources, personal blogs, or company news. Unlimited removes the cap so you can add every source you follow.`,
+      answer: `Beyond the built-in catalog, custom feeds let you paste any RSS or Atom URL. Free accounts cannot add custom feeds. Uplink gives you ${uplink.custom_feeds}, Pro gives you ${pro.custom_feeds} — enough for niche industry sources, personal blogs, or company news. Ultimate removes the cap so you can add every source you follow.`,
       accent: 'orange',
     },
     {
@@ -575,26 +585,26 @@ function buildUplinkFAQ(limits: TierLimitsResponse): Array<FAQItem> {
     {
       icon: Crown,
       question: 'How many fantasy leagues can I connect?',
-      highlight: `${freeFantasyCopy} on free, ${uplink.fantasy} with Uplink, ${pro.fantasy} with Pro, or every league with Unlimited.`,
-      answer: `Scrollr syncs with Yahoo Fantasy Sports to show your standings, matchups, and roster updates. Free accounts ${free.fantasy === 0 ? 'cannot connect Yahoo leagues' : `connect ${free.fantasy} league${free.fantasy === 1 ? '' : 's'}`}. Uplink supports up to ${uplink.fantasy}. Pro gives you ${pro.fantasy} — enough for multi-sport managers. Unlimited connects every league across every sport with no restrictions.`,
+      highlight: `${freeFantasyCopy} on free, ${uplink.fantasy} with Uplink, ${pro.fantasy} with Pro, or every league with Ultimate.`,
+      answer: `Scrollr syncs with Yahoo Fantasy Sports to show your standings, matchups, and roster updates. Free accounts ${free.fantasy === 0 ? 'cannot connect Yahoo leagues' : `connect ${free.fantasy} league${free.fantasy === 1 ? '' : 's'}`}. Uplink supports up to ${uplink.fantasy}. Pro gives you ${pro.fantasy} — enough for multi-sport managers. Ultimate connects every league across every sport with no restrictions.`,
       accent: 'rose',
     },
     {
       icon: Bell,
       question: 'What are custom alerts?',
       highlight:
-        'Set price targets, score thresholds, and keyword triggers — Pro and Unlimited only.',
+        'Set price targets, score thresholds, and keyword triggers — Pro and Ultimate only.',
       answer:
-        'Custom alerts let you define conditions that trigger notifications: a stock hitting a target price, a game entering the 4th quarter, or an RSS item matching a keyword. Alerts are evaluated in the app background — no server round-trip needed. Available on Pro and Unlimited tiers.',
+        'Custom alerts let you define conditions that trigger notifications: a stock hitting a target price, a game entering the 4th quarter, or an RSS item matching a keyword. Alerts are evaluated in the app background — no server round-trip needed. Available on Pro and Ultimate tiers.',
       accent: 'sky',
     },
     {
       icon: Layers,
       question: 'What are feed profiles and advanced controls?',
       highlight:
-        'Save named configurations and fine-tune exactly what you see — Pro and Unlimited.',
+        'Save named configurations and fine-tune exactly what you see — Pro and Ultimate.',
       answer:
-        'Feed profiles let you save different configurations — like "Work" showing only finance and RSS, or "Weekend" with sports and fantasy. Advanced controls add pinning, custom sort rules, and per-channel filtering within the feed. Both features are exclusive to Pro and Unlimited tiers.',
+        'Feed profiles let you save different configurations — like "Work" showing only finance and RSS, or "Weekend" with sports and fantasy. Advanced controls add pinning, custom sort rules, and per-channel filtering within the feed. Both features are exclusive to Pro and Ultimate tiers.',
       accent: 'fuchsia',
     },
     {
@@ -603,16 +613,16 @@ function buildUplinkFAQ(limits: TierLimitsResponse): Array<FAQItem> {
       highlight:
         'Control which websites show the Scrollr feed bar, from blocklists to allowlists.',
       answer:
-        'Site filtering controls where the feed bar appears. Every tier includes blacklist filtering — hide the bar on specific displays. Pro and Unlimited add whitelist mode on top, so you can restrict the bar to only the displays you choose.',
+        'Site filtering controls where the feed bar appears. Every tier includes blacklist filtering — hide the bar on specific displays. Pro and Ultimate add whitelist mode on top, so you can restrict the bar to only the displays you choose.',
       accent: 'cyan',
     },
     {
       icon: Code2,
       question: 'What about webhooks, data export, and API access?',
       highlight:
-        'Unlimited-exclusive power features for integrations and automation.',
+        'Ultimate-exclusive power features for integrations and automation.',
       answer:
-        'Webhooks push your alerts to Discord, Slack, or any URL. Data export lets you download tracked symbols, historical prices, and game results as CSV or JSON. API access gives you programmatic read access to your MyScrollr data for personal dashboards or automation. All three are exclusive to Unlimited.',
+        'Webhooks push your alerts to Discord, Slack, or any URL. Data export lets you download tracked symbols, historical prices, and game results as CSV or JSON. API access gives you programmatic read access to your MyScrollr data for personal dashboards or automation. All three are exclusive to Ultimate.',
       accent: 'teal',
     },
     {
@@ -836,7 +846,7 @@ function BottomCTA({
             transition={{ delay: 0.25, duration: 0.5, ease: EASE }}
             className="block mt-6 text-lg sm:text-xl text-base-content/50 max-w-lg leading-relaxed"
           >
-            The core is free forever. Uplink, Pro, and Unlimited are for those
+            The core is free forever. Uplink, Pro, and Ultimate are for those
             who want more data, faster delivery, and zero limits.
           </motion.span>
 
@@ -1242,7 +1252,8 @@ function UplinkPage() {
                     .
                   </p>
                   <p className="text-[10px] text-base-content/30">
-                    You&rsquo;ll keep full Uplink Ultimate access until your
+                    You&rsquo;ll keep full{' '}
+                    {TIER_NAMES[activeTier ?? 'ultimate']} access until your
                     trial ends.
                   </p>
                 </>
@@ -1573,8 +1584,8 @@ function UplinkPage() {
                   <span className="h-px w-6 bg-base-300/50" />
                   <span className="text-[10px] font-mono text-base-content/20">
                     {hadPriorSub
-                      ? 'From $6.67/mo \u00b7 Cancel anytime'
-                      : '7 days free \u00b7 From $6.67/mo \u00b7 Cancel anytime'}
+                      ? `From $${PRICING.uplink.annual.perMonth}/mo \u00b7 Cancel anytime`
+                      : `7 days free \u00b7 From $${PRICING.uplink.annual.perMonth}/mo \u00b7 Cancel anytime`}
                   </span>
                 </div>
               </motion.div>

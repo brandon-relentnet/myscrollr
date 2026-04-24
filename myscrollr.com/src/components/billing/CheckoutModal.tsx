@@ -15,32 +15,70 @@ const stripePromise = loadStripe(
   import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '',
 )
 
-// Stripe Elements appearance matching the site's dark theme
-const appearance: Appearance = {
-  theme: 'night',
-  variables: {
-    colorPrimary: '#6366f1',
-    colorBackground: '#1a1a2e',
-    colorText: '#e2e8f0',
-    colorDanger: '#ef4444',
-    fontFamily: 'system-ui, -apple-system, sans-serif',
-    borderRadius: '8px',
-    spacingUnit: '4px',
-  },
-  rules: {
-    '.Input': {
-      border: '1px solid rgba(255, 255, 255, 0.1)',
-      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+// Stripe Elements appearance. Must branch on the site theme so light-mode
+// users don't get an unreadable dark form embedded in a light modal (or vice
+// versa). Called whenever the theme changes.
+function getStripeAppearance(isDark: boolean): Appearance {
+  if (isDark) {
+    return {
+      theme: 'night',
+      variables: {
+        colorPrimary: '#6366f1',
+        colorBackground: '#1a1a2e',
+        colorText: '#e2e8f0',
+        colorDanger: '#ef4444',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        borderRadius: '8px',
+        spacingUnit: '4px',
+      },
+      rules: {
+        '.Input': {
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        },
+        '.Input:focus': {
+          border: '1px solid #6366f1',
+          boxShadow: '0 0 0 1px #6366f1',
+        },
+        '.Label': {
+          color: '#94a3b8',
+          fontSize: '12px',
+        },
+      },
+    }
+  }
+
+  return {
+    theme: 'stripe',
+    variables: {
+      colorPrimary: '#6366f1',
+      colorBackground: '#ffffff',
+      colorText: '#1f2937',
+      colorDanger: '#ef4444',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      borderRadius: '8px',
+      spacingUnit: '4px',
     },
-    '.Input:focus': {
-      border: '1px solid #6366f1',
-      boxShadow: '0 0 0 1px #6366f1',
+    rules: {
+      '.Input': {
+        border: '1px solid rgba(0, 0, 0, 0.1)',
+        backgroundColor: '#ffffff',
+      },
+      '.Input:focus': {
+        border: '1px solid #6366f1',
+        boxShadow: '0 0 0 1px #6366f1',
+      },
+      '.Label': {
+        color: '#6b7280',
+        fontSize: '12px',
+      },
     },
-    '.Label': {
-      color: '#94a3b8',
-      fontSize: '12px',
-    },
-  },
+  }
+}
+
+function detectDarkMode(): boolean {
+  if (typeof document === 'undefined') return true
+  return document.documentElement.classList.contains('dark')
 }
 
 // ── Types ──────────────────────────────────────────────────────────
@@ -118,7 +156,7 @@ function trialEndDate(days: number): string {
 interface PaymentFormProps {
   plan: PlanInfo
   hasTrial: boolean
-  setupIntent?: SetupIntentResponse
+  returnTo: string
   getToken: () => Promise<string | null>
   onReady: () => void
   onSuccess: () => void
@@ -128,7 +166,7 @@ interface PaymentFormProps {
 function PaymentForm({
   plan,
   hasTrial,
-  setupIntent: _setupIntent,
+  returnTo,
   getToken,
   onReady,
   onSuccess,
@@ -167,8 +205,7 @@ function PaymentForm({
         const { error: confirmError } = await stripe.confirmPayment({
           elements,
           confirmParams: {
-            return_url:
-              window.location.origin + '/uplink/lifetime?payment=complete',
+            return_url: `${window.location.origin}${returnTo}?payment=complete`,
           },
           redirect: 'if_required',
         })
@@ -184,7 +221,7 @@ function PaymentForm({
           await stripe.confirmSetup({
             elements,
             confirmParams: {
-              return_url: window.location.origin + '/uplink?setup=complete',
+              return_url: `${window.location.origin}${returnTo}?setup=complete`,
             },
             redirect: 'if_required',
           })
@@ -250,7 +287,7 @@ function PaymentForm({
 interface OrderSummaryProps {
   plan: PlanInfo
   hasTrial: boolean
-  amount: number // in cents, from Stripe
+  amount: number | undefined // in cents, from Stripe; undefined while loading
   currency: string
 }
 
@@ -262,6 +299,7 @@ function OrderSummary({
 }: OrderSummaryProps) {
   const colors = TIER_COLORS[plan.tier]
   const isLifetime = isLifetimePlan(plan)
+  const amountLabel = amount !== undefined ? formatCurrency(amount) : '—'
 
   return (
     <div className="flex flex-col gap-5">
@@ -283,26 +321,23 @@ function OrderSummary({
         <p className="text-xs text-base-content/40 mt-0.5">
           {isLifetime
             ? 'One-time payment — permanent access'
-            : `${(plan).interval === 'annual' ? 'Annual' : 'Monthly'} billing`}
+            : `${plan.interval === 'annual' ? 'Annual' : 'Monthly'} billing`}
         </p>
       </div>
 
       <div className="border-t border-base-content/10 pt-4">
         <div className="flex items-baseline justify-between">
           <span className="text-xs text-base-content/50">
-            {isLifetime
-              ? 'Lifetime Access'
-              : `${plan.name} — ${(plan).interval}`}
+            {isLifetime ? 'Lifetime Access' : `${plan.name} — ${plan.interval}`}
           </span>
           <span className="text-sm font-semibold text-base-content">
-            {formatCurrency(amount)}
-            {!isLifetime &&
-              `/${(plan).interval === 'annual' ? 'yr' : 'mo'}`}
+            {amountLabel}
+            {!isLifetime && `/${plan.interval === 'annual' ? 'yr' : 'mo'}`}
           </span>
         </div>
-        {!isLifetime && (plan).interval === 'annual' && (
+        {!isLifetime && plan.interval === 'annual' && (
           <p className="text-[10px] text-base-content/30 text-right mt-0.5">
-            ${(plan).perMonth.toFixed(2)}/mo
+            ${plan.perMonth.toFixed(2)}/mo
           </p>
         )}
       </div>
@@ -314,7 +349,7 @@ function OrderSummary({
           </p>
           <p className="text-[10px] text-base-content/40 leading-relaxed">
             You won&apos;t be charged today. Your card will be charged{' '}
-            {formatCurrency(amount)} on {trialEndDate(7)}.
+            {amountLabel} on {trialEndDate(7)}.
           </p>
         </div>
       )}
@@ -324,7 +359,7 @@ function OrderSummary({
           Due today
         </span>
         <span className={`text-lg font-bold ${colors.accent}`}>
-          {hasTrial && !isLifetime ? '$0.00' : formatCurrency(amount)}
+          {hasTrial && !isLifetime ? '$0.00' : amountLabel}
         </span>
       </div>
     </div>
@@ -347,9 +382,30 @@ export default function CheckoutModal({
   )
   const [paymentIntent, setPaymentIntent] =
     useState<PaymentIntentResponse | null>(null)
+  const [isDark, setIsDark] = useState<boolean>(detectDarkMode)
   const dialogRef = useRef<HTMLDivElement>(null)
 
   const isLifetime = isLifetimePlan(plan)
+
+  // Preserve the caller's pathname (e.g. /uplink or /uplink/lifetime) so
+  // Stripe redirects back to where the user actually started.
+  const returnTo =
+    typeof window !== 'undefined' ? window.location.pathname : '/uplink'
+
+  // Watch the <html> class for dark/light toggles so Stripe Elements
+  // re-mounts with a readable appearance when the user flips theme.
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const root = document.documentElement
+    const observer = new MutationObserver(() => {
+      setIsDark(root.classList.contains('dark'))
+    })
+    observer.observe(root, {
+      attributes: true,
+      attributeFilter: ['class'],
+    })
+    return () => observer.disconnect()
+  }, [])
 
   // Close on Escape
   useEffect(() => {
@@ -376,10 +432,7 @@ export default function CheckoutModal({
           const res = await billingApi.createPaymentIntent(getToken)
           if (!cancelled) setPaymentIntent(res)
         } else {
-          const res = await billingApi.createSetupIntent(
-            (plan).priceId,
-            getToken,
-          )
+          const res = await billingApi.createSetupIntent(plan.priceId, getToken)
           if (!cancelled) setSetupIntent(res)
         }
       } catch (err) {
@@ -400,7 +453,8 @@ export default function CheckoutModal({
     }
   }, [plan, isLifetime, getToken])
 
-  // Build Elements options
+  // Build Elements options — appearance re-derives whenever theme changes.
+  const appearance = getStripeAppearance(isDark)
   const elementsOptions: StripeElementsOptions | null =
     isLifetime && paymentIntent
       ? {
@@ -414,10 +468,9 @@ export default function CheckoutModal({
           }
         : null
 
-  // Amount for order summary (in cents)
-  const amount = isLifetime
-    ? (paymentIntent?.amount ?? 39900)
-    : (setupIntent?.amount ?? 0)
+  // Amount for order summary (in cents). We wait for the intent response
+  // rather than hardcoding a price that drifts out of date.
+  const amount = isLifetime ? paymentIntent?.amount : (setupIntent?.amount ?? 0)
   const currency = isLifetime
     ? (paymentIntent?.currency ?? 'usd')
     : (setupIntent?.currency ?? 'usd')
@@ -500,11 +553,16 @@ export default function CheckoutModal({
           {/* Right: Payment Form */}
           <div className="pt-6 md:pt-0">
             {elementsOptions ? (
-              <Elements stripe={stripePromise} options={elementsOptions}>
+              <Elements
+                // Re-mount when theme flips so Stripe picks up the new appearance.
+                key={isDark ? 'dark' : 'light'}
+                stripe={stripePromise}
+                options={elementsOptions}
+              >
                 <PaymentForm
                   plan={plan}
                   hasTrial={hasTrial}
-                  setupIntent={setupIntent ?? undefined}
+                  returnTo={returnTo}
                   getToken={getToken}
                   onReady={() => setState('ready')}
                   onSuccess={() => {

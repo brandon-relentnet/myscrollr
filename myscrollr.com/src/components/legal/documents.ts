@@ -253,7 +253,7 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
       {
         heading: 'Network Communication',
         content: [
-          'The desktop application communicates exclusively with Scrollr API servers (api.myscrollr.relentnet.dev) to retrieve real-time data via Server-Sent Events (SSE) and to synchronize your configuration.',
+          'The desktop application communicates exclusively with Scrollr API servers (api.myscrollr.com) to retrieve real-time data via Server-Sent Events (SSE) and to synchronize your configuration.',
           'All network communication uses HTTPS encryption. The application sends your authentication token and subscription tier with each request. It does not transmit any data about other applications, files, or activity on your device.',
         ],
       },
@@ -419,7 +419,7 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
         heading: 'Financial Market Data — TwelveData',
         content: [
           "Real-time and historical market data is provided by TwelveData (twelvedata.com). This includes stock prices, cryptocurrency prices, trade data, and derived calculations. TwelveData's data is sourced from various exchanges and data providers. Use of this data is subject to TwelveData's terms of service.",
-          'We track approximately 50 symbols including 45 stocks and 5 cryptocurrency pairs. Data is received via WebSocket connection for real-time updates.',
+          'We track a curated set of symbols spanning stocks and cryptocurrency pairs. Data is received via WebSocket connection for real-time updates.',
         ],
       },
       {
@@ -441,7 +441,7 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
         content: [
           'News articles and content summaries are sourced from publicly available RSS, Atom, and JSON feeds published by various news organizations and content creators. We display article titles, summaries, publication dates, and links to the original source.',
           'We do not reproduce full article content. All RSS content links back to the original publisher. The inclusion of an RSS feed does not imply endorsement of or affiliation with the publisher. Feed publishers who wish to have their feed removed from our default catalog may contact us.',
-          'We currently index over 100 default feeds across 8 categories. Articles are automatically removed from our database after 7 days.',
+          'We index a curated set of feeds across multiple categories. Articles are automatically removed from our database after 7 days.',
         ],
       },
       {
@@ -471,14 +471,9 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
     category: 'commerce',
     lastUpdated: 'February 2026',
     effectiveDate: 'February 11, 2026',
-    badge: 'Effective upon Uplink launch — Q3 2026',
     sections: [
       {
         heading: 'Overview',
-        callout: {
-          type: 'info',
-          text: 'Uplink is currently in development and not yet available for purchase. These terms will become effective when Uplink launches, targeted for Q3 2026. Pricing and features are subject to change before launch.',
-        },
         content: [
           'Uplink is the premium tier of the Scrollr platform, offering expanded limits, priority data refresh, and additional features. This document outlines the terms governing Uplink subscriptions.',
         ],
@@ -536,14 +531,9 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
     category: 'commerce',
     lastUpdated: 'February 2026',
     effectiveDate: 'February 11, 2026',
-    badge: 'Effective upon Uplink launch — Q3 2026',
     sections: [
       {
         heading: 'Overview',
-        callout: {
-          type: 'info',
-          text: 'This policy will become effective when Uplink launches, targeted for Q3 2026.',
-        },
         content: [
           'We want you to be satisfied with your Uplink subscription. This policy outlines the circumstances under which refunds may be granted.',
         ],
@@ -710,7 +700,7 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
       {
         heading: 'API Usage',
         content: [
-          'The Scrollr API is intended for use by the official Scrollr website and desktop application. While the source code is open and you may operate your own instance, you may not use our hosted API endpoints (api.myscrollr.relentnet.dev) for unauthorized third-party applications without permission.',
+          'The Scrollr API is intended for use by the official Scrollr website and desktop application. While the source code is open and you may operate your own instance, you may not use our hosted API endpoints (api.myscrollr.com) for unauthorized third-party applications without permission.',
           'Excessive API requests that degrade service for other users may be rate-limited or blocked.',
         ],
       },

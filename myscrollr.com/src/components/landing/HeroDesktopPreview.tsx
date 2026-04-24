@@ -328,7 +328,7 @@ function ChatContent() {
   )
 }
 
-const CONTENT_RENDERERS: Record<string, React.FC> = {
+const CONTENT_RENDERERS: Partial<Record<string, React.FC>> = {
   Scores: MusicPlayerContent,
   Markets: CodeEditorContent,
   Headlines: NotesContent,

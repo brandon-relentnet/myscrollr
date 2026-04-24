@@ -26,7 +26,7 @@ const REPO = 'brandon-relentnet/myscrollr'
 // ── "What we refuse" badges ─────────────────────────────────────
 
 const REFUSALS = [
-  'Track your browsing',
+  'Read other apps',
   'Collect personal data',
   'Show you ads',
   'Sell to data brokers',

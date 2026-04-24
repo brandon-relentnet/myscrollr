@@ -24,6 +24,15 @@ channels/sports/api/scrollr-sports
 channels/finance/api/scrollr-finance
 channels/rss/api/scrollr-rss
 channels/fantasy/api/scrollr-fantasy
+# Compiled Go binaries inside any channel api/ directory — `go build` in a
+# channel's api/ drops an executable named after the module (e.g. sports_api,
+# finance_api, rss_api, fantasy_api). The wildcard keeps them all out of git
+# regardless of what the local dev names the output file.
+channels/*/api/*_api
+channels/sports/api/sports_api
 scaling-changes/
 .worktrees/
 .superpowers/
+# Ad-hoc scratch data (email lists, test payloads, etc.) that must never
+# be committed — contains PII.
+scripts/*.json

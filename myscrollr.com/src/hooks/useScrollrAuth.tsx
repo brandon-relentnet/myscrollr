@@ -51,7 +51,9 @@ export function ScrollrAuthProvider({ children }: { children: ReactNode }) {
     }
     const callbackUrl = `${window.location.origin}/callback`
     void logtoRef.current.signIn(callbackUrl).catch((error: unknown) => {
-      console.error('Logto sign-in failed', error)
+      if (import.meta.env.DEV) {
+        console.error('Logto sign-in failed', error)
+      }
     })
   }, [])
 
@@ -59,7 +61,9 @@ export function ScrollrAuthProvider({ children }: { children: ReactNode }) {
     void logtoRef.current
       .signOut(postLogoutRedirectUri)
       .catch((error: unknown) => {
-        console.error('Logto sign-out failed', error)
+        if (import.meta.env.DEV) {
+          console.error('Logto sign-out failed', error)
+        }
       })
   }, [])
 

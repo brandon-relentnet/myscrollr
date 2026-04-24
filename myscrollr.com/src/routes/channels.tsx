@@ -68,7 +68,7 @@ const CHANNELS: Array<ChannelDef> = [
     name: 'Finance',
     description: 'Real-time market data',
     detail:
-      '50 tracked symbols across stocks and crypto via Finnhub WebSocket. Live price changes, percentage moves, and directional indicators.',
+      'Tracked symbols across stocks and crypto via TwelveData WebSocket. Live price changes, percentage moves, and directional indicators.',
     Icon: TrendingUp,
     hex: HEX.primary,
     Watermark: TrendingUp,

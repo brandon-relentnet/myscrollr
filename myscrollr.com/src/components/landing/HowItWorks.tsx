@@ -22,7 +22,7 @@ const STEPS = [
     id: 'download',
     title: 'Download the App',
     description:
-      'Grab the installer for macOS, Windows, or Linux. No sign-up, no account, nothing else.',
+      'Grab the installer for macOS, Windows, or Linux. No sign-up needed to try the basics — create a free account to unlock more channels.',
   },
   {
     id: 'choose',

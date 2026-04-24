@@ -42,14 +42,14 @@ tier-limit, billing, and legal endpoints are live and safe to read.
 
 ## Scripts
 
-| Script | What it does |
-|---|---|
-| `npm run dev` | Vite dev server on port 3000. |
-| `npm run build` | `vite build && tsc` — ships to `dist/`. |
-| `npm run serve` | Preview the production build locally. |
-| `npm run check` | `prettier --write . && eslint --fix` — run this before committing. |
-| `npm run lint` | ESLint only. |
-| `npm run format` | Prettier only. |
+| Script           | What it does                                                       |
+| ---------------- | ------------------------------------------------------------------ |
+| `npm run dev`    | Vite dev server on port 3000.                                      |
+| `npm run build`  | `vite build && tsc` — ships to `dist/`.                            |
+| `npm run serve`  | Preview the production build locally.                              |
+| `npm run check`  | `prettier --write . && eslint --fix` — run this before committing. |
+| `npm run lint`   | ESLint only.                                                       |
+| `npm run format` | Prettier only.                                                     |
 
 ## Deployment
 

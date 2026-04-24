@@ -22,8 +22,7 @@ export default function Footer() {
     resources: [
       { label: 'Status', href: '/status' },
       { label: 'Architecture', href: '/architecture' },
-      { label: 'Discover', href: '/discover' },
-      { label: 'Onboard', href: '/onboard' },
+      { label: 'Channels', href: '/channels' },
     ],
     company: [
       { label: 'Terms', href: '/legal?doc=terms' },

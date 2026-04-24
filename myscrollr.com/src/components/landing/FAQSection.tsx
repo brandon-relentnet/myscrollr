@@ -67,9 +67,9 @@ const FAQ_ITEMS: Array<FAQItem> = [
   {
     icon: UserX,
     question: 'Do I need an account?',
-    highlight: 'Just download and go. No sign-up required to start.',
+    highlight: 'Yes — a free account unlocks channel data.',
     answer:
-      "Download the app and you'll immediately receive live stock and sports data with no sign-up. Creating a free account unlocks all four channels (finance, sports, news, and fantasy), the web dashboard, and preference sync across devices.",
+      'A free Scrollr account is required to stream live channel data. Signing up takes under a minute, secures your config via our hosted auth, and unlocks all four channels (finance, sports, news, and fantasy), the web dashboard, and preference sync across devices.',
     accent: 'rose',
   },
   {

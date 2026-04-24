@@ -39,8 +39,8 @@ const BENEFITS: Array<Benefit> = [
   {
     icon: Layers,
     title: 'Your Focus Gets Deeper',
-    headline: 'No more tab juggling',
-    body: 'No switching to ESPN. No opening a crypto app. No refreshing Reuters. Everything flows to you, so you stay locked into whatever you were doing.',
+    headline: 'No more app-switching',
+    body: 'No jumping to ESPN. No opening a crypto app. No refreshing Reuters. Everything flows to you, so you stay locked into whatever you were doing.',
     accent: 'text-info',
     accentBg: 'bg-info/8',
     accentBorder: 'border-info/15',
@@ -287,7 +287,7 @@ function IllustrationFocusDeep() {
 
   return (
     <svg viewBox="0 0 200 200" className="w-full h-full" fill="none">
-      {/* Scattered browser tabs — animate to converge */}
+      {/* Scattered app windows — animate to converge */}
       {tabPositions.map((tab, i) => (
         <motion.g
           key={i}
