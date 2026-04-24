@@ -20,6 +20,7 @@ import { ScoresTab } from "./ScoresTab";
 import { ScheduleTab } from "./ScheduleTab";
 import { StandingsTab } from "./StandingsTab";
 import EmptyChannelState from "../../components/EmptyChannelState";
+import FreshnessPill from "../../components/FreshnessPill";
 import type { Game, FeedTabProps, ChannelManifest } from "../../types";
 import type { FavoriteTeam } from "../../hooks/useSportsConfig";
 
@@ -193,6 +194,17 @@ function SportsFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
     [favoriteTeams],
   );
 
+  // Most-recent update across all games — drives the FreshnessPill.
+  const latestUpdated = useMemo(() => {
+    let latest = 0;
+    for (const g of games) {
+      if (!g.updated_at) continue;
+      const ts = new Date(g.updated_at).getTime();
+      if (Number.isFinite(ts) && ts > latest) latest = ts;
+    }
+    return latest > 0 ? new Date(latest).toISOString() : null;
+  }, [games]);
+
   const toggleLeague = useCallback((league: string) => {
     setLeagueFilter((prev) => {
       const next = new Set(prev);
@@ -241,6 +253,12 @@ function SportsFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
             </button>
           ))}
         </div>
+
+        {tab !== "standings" && latestUpdated && (
+          <div className="ml-2">
+            <FreshnessPill lastUpdated={latestUpdated} label="score" />
+          </div>
+        )}
 
         {/* Status pills + league filter — far right (scores & schedule only) */}
         {tab !== "standings" && (

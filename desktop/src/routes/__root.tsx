@@ -26,6 +26,7 @@ import "sonner/dist/styles.css";
 // Shell components
 import TitleBar from "../components/TitleBar";
 import Sidebar from "../components/Sidebar";
+import ConnectionBanner from "../components/ConnectionBanner";
 
 // Onboarding
 import AuthGate from "../components/onboarding/AuthGate";
@@ -555,6 +556,8 @@ function RootLayout() {
             />
 
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+              <ConnectionBanner deliveryMode={deliveryMode} tier={auth.tier} />
+
               {auth.sessionExpired && (
                 <div className="flex items-center justify-between px-4 py-2 bg-warn/10 border-b border-warn/20 shrink-0">
                   <span className="text-xs text-warn">
