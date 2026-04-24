@@ -63,14 +63,22 @@ function league(opts: LeagueOpts): LeagueResponse {
 }
 
 const DEFAULT_PREFS: FantasyDisplayPrefs = {
+  matchupScore: "both",
+  winProbability: "both",
+  matchupStatus: "both",
+  projectedPoints: "both",
+  week: "both",
+  record: "both",
+  standingsPosition: "both",
+  streak: "both",
+  injuryCount: "both",
+  topScorer: "both",
   showStandings: true,
-  showInjuryCount: true,
   showMatchups: true,
   defaultSort: "name",
   defaultSubTab: "overview",
   primaryLeagueKey: null,
   enabledLeagueKeys: [],
-  tickerShowMatchup: true,
 };
 
 // ── filterEnabledLeagues ────────────────────────────────────────
@@ -178,16 +186,61 @@ describe("rankFantasyLeagues", () => {
 // ── selectFantasyForTicker ──────────────────────────────────────
 
 describe("selectFantasyForTicker", () => {
-  it("returns [] when tickerShowMatchup is false", () => {
+  it("returns [] when every per-item venue toggle is off", () => {
     const leagues = [league({ key: "a" })];
-    const result = selectFantasyForTicker(leagues, {
+    const allOff: FantasyDisplayPrefs = {
       ...DEFAULT_PREFS,
-      tickerShowMatchup: false,
-    });
-    expect(result).toEqual([]);
+      matchupScore: "off",
+      winProbability: "off",
+      matchupStatus: "off",
+      projectedPoints: "off",
+      week: "off",
+      record: "off",
+      standingsPosition: "off",
+      streak: "off",
+      injuryCount: "off",
+      topScorer: "off",
+    };
+    expect(selectFantasyForTicker(leagues, allOff)).toEqual([]);
   });
 
-  it("returns [] when tickerShowMatchup is true but filter eliminates all leagues", () => {
+  it("returns [] when every per-item venue toggle is feed-only (nothing routes to ticker)", () => {
+    const leagues = [league({ key: "a" })];
+    const allFeed: FantasyDisplayPrefs = {
+      ...DEFAULT_PREFS,
+      matchupScore: "feed",
+      winProbability: "feed",
+      matchupStatus: "feed",
+      projectedPoints: "feed",
+      week: "feed",
+      record: "feed",
+      standingsPosition: "feed",
+      streak: "feed",
+      injuryCount: "feed",
+      topScorer: "feed",
+    };
+    expect(selectFantasyForTicker(leagues, allFeed)).toEqual([]);
+  });
+
+  it("returns the leagues when at least one item is routed to the ticker", () => {
+    const leagues = [league({ key: "a" })];
+    const onlyScoreOnTicker: FantasyDisplayPrefs = {
+      ...DEFAULT_PREFS,
+      matchupScore: "ticker",
+      winProbability: "off",
+      matchupStatus: "off",
+      projectedPoints: "off",
+      week: "off",
+      record: "off",
+      standingsPosition: "off",
+      streak: "off",
+      injuryCount: "off",
+      topScorer: "off",
+    };
+    expect(selectFantasyForTicker(leagues, onlyScoreOnTicker)).toHaveLength(1);
+  });
+
+  it("returns [] when the enabledLeagueKeys filter eliminates all leagues", () => {
     const leagues = [league({ key: "a" })];
     const result = selectFantasyForTicker(leagues, {
       ...DEFAULT_PREFS,
@@ -220,15 +273,6 @@ describe("selectFantasyForTicker", () => {
     // resolvePrimaryLeague selects `live` (first with live matchup), becoming the primary,
     // so live goes first. Remaining: pre (40) > fin (0).
     expect(result.map((l) => l.league_key)).toEqual(["live", "pre", "fin"]);
-  });
-
-  it("handles undefined tickerShowMatchup as default true", () => {
-    // Build prefs without tickerShowMatchup; the selector uses ?? true.
-    const leagues = [league({ key: "a" })];
-    const { tickerShowMatchup: _unused, ...rest } = DEFAULT_PREFS;
-    const prefs = rest as unknown as FantasyDisplayPrefs;
-    const result = selectFantasyForTicker(leagues, prefs);
-    expect(result).toHaveLength(1);
   });
 });
 

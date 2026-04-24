@@ -3,6 +3,7 @@ import { clsx } from "clsx";
 import { CalendarOff } from "lucide-react";
 import TeamLogo from "../../components/TeamLogo";
 import { isPre, formatCountdown, displayTeamCode } from "../../utils/gameHelpers";
+import { shouldShowOnFeed } from "../../preferences";
 import type { Game } from "../../types";
 import type { SportsDisplayPrefs } from "../../hooks/useSportsConfig";
 import type { StatusFilter } from "./FeedTab";
@@ -112,7 +113,7 @@ export function ScheduleTab({
                   )}
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    {display.showLogos && (
+                    {shouldShowOnFeed(display.showLogos) && (
                       <TeamLogo src={g.away_team_logo} alt={g.away_team_name} size="md" />
                     )}
                     <span className="font-mono font-bold text-fg-2">
@@ -122,7 +123,7 @@ export function ScheduleTab({
                     <span className="font-mono font-bold text-fg-2">
                       {displayTeamCode(g.home_team_code, g.home_team_name)}
                     </span>
-                    {display.showLogos && (
+                    {shouldShowOnFeed(display.showLogos) && (
                       <TeamLogo src={g.home_team_logo} alt={g.home_team_name} size="md" />
                     )}
                   </div>

@@ -12,11 +12,12 @@ import type {
   ChannelDisplayPrefs,
   TickerRowConfig,
 } from "../preferences";
+import { shouldShowOnTicker } from "../preferences";
 import type { LeagueResponse as FantasyLeague } from "../channels/fantasy/types";
 import TradeChip from "./chips/TradeChip";
 import GameChip from "./chips/GameChip";
 import RssChip from "./chips/RssChip";
-import FantasyChip from "./chips/FantasyChip";
+import FantasyStatChip from "./chips/FantasyStatChip";
 import ConsolidatedChip from "./chips/ConsolidatedChip";
 import { selectRssForTicker } from "../channels/rss/view";
 import { selectFinanceForTicker } from "../channels/finance/view";
@@ -186,23 +187,16 @@ export default function ScrollrTicker({
           ? (fantasyPayload.leagues as FantasyLeague[])
           : [];
         if (leagues.length === 0) continue;
-        const fantasyPrefs = channelDisplay?.fantasy ?? {
-          tickerShowMatchup: true,
-          enabledLeagueKeys: [],
-          primaryLeagueKey: null,
-          defaultSubTab: "overview" as const,
-          defaultSort: "name" as const,
-          showStandings: true,
-          showMatchups: true,
-          showInjuryCount: true,
-        };
+        const fantasyPrefs = channelDisplay?.fantasy;
+        if (!fantasyPrefs) continue;
         const ranked = selectFantasyForTicker(leagues, fantasyPrefs);
         if (ranked.length === 0) continue;
         for (const league of ranked) {
           bucket.push(
             wrap(`fan-${league.league_key}`,
-              <FantasyChip
+              <FantasyStatChip
                 league={league}
+                prefs={fantasyPrefs}
                 comfort={comfort}
                 colorMode={chipColorMode}
                 onClick={() => onChipClick?.("fantasy", league.league_key)}
@@ -218,14 +212,12 @@ export default function ScrollrTicker({
 
       switch (tab) {
         case "finance": {
-          // Apply Display prefs: `defaultSort` from the Finance Display tab
-          // now affects both the feed page AND the ticker.
-          const financePrefs = channelDisplay?.finance ?? {
-            showChange: true,
-            showPrevClose: false,
-            showLastUpdated: false,
-            defaultSort: "alpha" as const,
-          };
+          // Apply Display prefs: `defaultSort` affects both feed and
+          // ticker (universal sort). Per-field visibility (showChange,
+          // showPrevClose, showLastUpdated) consults the Venue enum —
+          // the ticker only renders what's set to "both" or "ticker".
+          const financePrefs = channelDisplay?.finance;
+          if (!financePrefs) continue;
           const sorted = selectFinanceForTicker(data as Trade[], financePrefs);
           for (const trade of sorted) {
             bucket.push(
@@ -234,7 +226,7 @@ export default function ScrollrTicker({
                   trade={trade}
                   comfort={comfort}
                   colorMode={chipColorMode}
-                  showChange={financePrefs.showChange ?? true}
+                  showChange={shouldShowOnTicker(financePrefs.showChange)}
                   onClick={() => onChipClick?.("finance", trade.symbol)}
                 />
               )
@@ -245,10 +237,10 @@ export default function ScrollrTicker({
 
         case "sports": {
           // Sports display prefs live server-side on channel config.display.
-          // `selectSportsForTicker` applies showUpcoming/showFinal filters
-          // and engagement sort — the same pipeline used in FeedTab.
+          // Per-field visibility uses the Venue enum mirroring the client-
+          // only channels; read each field through shouldShowOnTicker.
           const sportsConfig = getSportsDisplayConfig(dashboard);
-          const showLogos = sportsConfig.showLogos ?? true;
+          const showLogos = shouldShowOnTicker(sportsConfig.showLogos ?? "both");
           const sorted = selectSportsForTicker(data as Game[], sportsConfig);
           for (const game of sorted) {
             bucket.push(
@@ -267,14 +259,12 @@ export default function ScrollrTicker({
         }
 
         case "rss": {
-          // Apply Display prefs: `articlesPerSource` now affects the ticker
-          // too — this was the primary "display tab not universal" bug.
-          const rssPrefs = channelDisplay?.rss ?? {
-            showDescription: false,
-            showSource: true,
-            showTimestamps: true,
-            articlesPerSource: 4,
-          };
+          // Apply Display prefs: `articlesPerSource` is feed-structural
+          // but still applies universally (both surfaces cap at the same
+          // per-source count). Per-field visibility (showSource, etc.)
+          // consults the Venue enum.
+          const rssPrefs = channelDisplay?.rss;
+          if (!rssPrefs) continue;
           const curated = selectRssForTicker(data as RssItem[], rssPrefs);
           for (const item of curated) {
             bucket.push(
@@ -283,8 +273,8 @@ export default function ScrollrTicker({
                   item={item}
                   comfort={comfort}
                   colorMode={chipColorMode}
-                  showSource={rssPrefs.showSource ?? true}
-                  showTimestamps={rssPrefs.showTimestamps ?? true}
+                  showSource={shouldShowOnTicker(rssPrefs.showSource)}
+                  showTimestamps={shouldShowOnTicker(rssPrefs.showTimestamps)}
                   onClick={() => onChipClick?.("rss", item.id)}
                 />
               )

@@ -10,14 +10,21 @@
  */
 import type { Game } from "../../types";
 import { isLive, isCloseGame, isFinal, isPre } from "../../utils/gameHelpers";
+import { migrateVenue, shouldShowOnFeed, shouldShowOnTicker } from "../../preferences";
+import type { Venue } from "../../preferences";
 
 // ── Display prefs shape (mirrors server-side channel config.display) ─
+//
+// Stored per-user in `user_channels.config.display` as JSONB. v1.0.2
+// switched each field from boolean → Venue. Old boolean-era values still
+// deserialize correctly because `normalizeSportsDisplayConfig` runs the
+// read through `migrateVenue`.
 
 export interface SportsDisplayConfig {
-  showUpcoming?: boolean;
-  showFinal?: boolean;
-  showLogos?: boolean;
-  showTimer?: boolean;
+  showUpcoming?: Venue;
+  showFinal?: Venue;
+  showLogos?: Venue;
+  showTimer?: Venue;
 }
 
 // ── Pure: engagement score ──────────────────────────────────────
@@ -44,14 +51,18 @@ export function gameEngagement(g: Game): number {
  * Baseline pipeline used by the ticker: applies `showUpcoming`/`showFinal`
  * filters from the channel config.display blob, then sorts by engagement
  * (live/close-game games float to the top).
+ *
+ * Filters only apply when the venue is `off` or ticker-only-excluded
+ * ("feed"). `both` and `ticker` both permit the category to show on the
+ * ticker.
  */
 export function selectSportsForTicker(
   games: Game[],
   config: SportsDisplayConfig | null | undefined,
 ): Game[] {
   const cfg = config ?? {};
-  const showUpcoming = cfg.showUpcoming ?? true;
-  const showFinal = cfg.showFinal ?? true;
+  const showUpcoming = shouldShowOnTicker(cfg.showUpcoming ?? "both");
+  const showFinal = shouldShowOnTicker(cfg.showFinal ?? "both");
 
   const filtered = games.filter((g) => {
     if (!showUpcoming && isPre(g)) return false;
@@ -62,13 +73,50 @@ export function selectSportsForTicker(
   return filtered.sort((a, b) => gameEngagement(b) - gameEngagement(a));
 }
 
+/**
+ * Feed-side filter mirroring `selectSportsForTicker`. Filters apply
+ * when a category's venue is `off` or ticker-only.
+ */
+export function selectSportsForFeed(
+  games: Game[],
+  config: SportsDisplayConfig | null | undefined,
+): Game[] {
+  const cfg = config ?? {};
+  const showUpcoming = shouldShowOnFeed(cfg.showUpcoming ?? "both");
+  const showFinal = shouldShowOnFeed(cfg.showFinal ?? "both");
+
+  return games.filter((g) => {
+    if (!showUpcoming && isPre(g)) return false;
+    if (!showFinal && isFinal(g)) return false;
+    return true;
+  });
+}
+
 // ── Helper: extract sports display config from dashboard ────────
 
 import type { DashboardResponse } from "../../types";
 
+/**
+ * Read the sports channel's display config from the dashboard payload
+ * and normalize every field through `migrateVenue` so old boolean-era
+ * configs (stored by clients before v1.0.2) still deserialize to valid
+ * Venue values.
+ */
 export function getSportsDisplayConfig(
   dashboard: DashboardResponse | null | undefined,
 ): SportsDisplayConfig {
   const channel = dashboard?.channels?.find((c) => c.channel_type === "sports");
-  return (channel?.config?.display ?? {}) as SportsDisplayConfig;
+  return normalizeSportsDisplayConfig(channel?.config?.display);
+}
+
+export function normalizeSportsDisplayConfig(
+  raw: unknown,
+): SportsDisplayConfig {
+  const obj = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  return {
+    showUpcoming: migrateVenue(obj.showUpcoming),
+    showFinal: migrateVenue(obj.showFinal),
+    showLogos: migrateVenue(obj.showLogos),
+    showTimer: migrateVenue(obj.showTimer),
+  };
 }

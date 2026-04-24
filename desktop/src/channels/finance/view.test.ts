@@ -15,9 +15,9 @@ function mk(partial: Partial<Trade> & { symbol: string }): Trade {
 }
 
 const DEFAULT_PREFS: FinanceDisplayPrefs = {
-  showChange: true,
-  showPrevClose: true,
-  showLastUpdated: true,
+  showChange: "both",
+  showPrevClose: "both",
+  showLastUpdated: "both",
   defaultSort: "alpha",
 };
 

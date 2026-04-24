@@ -22,6 +22,7 @@ import { useShell } from "../../shell-context";
 import { useNow } from "../../hooks/useNow";
 import { applyFinancePipeline, type FinanceSortKey, type FinanceDirectionFilter } from "./view";
 import type { Trade, FeedTabProps, ChannelManifest } from "../../types";
+import { shouldShowOnFeed } from "../../preferences";
 import type { FinanceDisplayPrefs } from "../../preferences";
 
 // ── Channel manifest ─────────────────────────────────────────────
@@ -423,7 +424,7 @@ const TradeItem = memo(function TradeItem({ trade, mode, display, category, now 
         <span className="text-fg-2 tabular-nums">
           {formatPrice(trade.price)}
         </span>
-        {display.showChange && (
+        {shouldShowOnFeed(display.showChange) && (
           <span className={clsx("tabular-nums", dirColor)}>
             {formatChange(trade.percentage_change)}
           </span>
@@ -456,7 +457,7 @@ const TradeItem = memo(function TradeItem({ trade, mode, display, category, now 
             {category}
           </span>
         )}
-        {display.showPrevClose && trade.previous_close != null && Number(trade.previous_close) > 0 && (
+        {shouldShowOnFeed(display.showPrevClose) && trade.previous_close != null && Number(trade.previous_close) > 0 && (
           <span className="text-[10px] font-mono text-fg-3 tabular-nums">
             Prev close {formatPrice(trade.previous_close)}
           </span>
@@ -468,7 +469,7 @@ const TradeItem = memo(function TradeItem({ trade, mode, display, category, now 
           {formatPrice(trade.price)}
         </span>
         <div className="flex items-center gap-2">
-          {display.showChange && (
+          {shouldShowOnFeed(display.showChange) && (
             <span
               className={clsx(
                 "text-[11px] font-mono font-medium tabular-nums",
@@ -478,7 +479,7 @@ const TradeItem = memo(function TradeItem({ trade, mode, display, category, now 
               {formatChange(trade.percentage_change)}
             </span>
           )}
-          {display.showLastUpdated && trade.last_updated && (
+          {shouldShowOnFeed(display.showLastUpdated) && trade.last_updated && (
             <span
               className="text-[9px] font-mono text-fg-3 tabular-nums"
               title="Last price update"
@@ -497,7 +498,7 @@ const TradeItem = memo(function TradeItem({ trade, mode, display, category, now 
   // `now` must trigger a re-render while the "Xs ago" label is visible
   // so it advances on every tick. When the label is hidden the tick
   // is irrelevant — skip it to avoid churning the whole list.
-  (!next.display.showLastUpdated || next.mode !== "comfort" || prev.now === next.now) &&
+  (!shouldShowOnFeed(next.display.showLastUpdated) || next.mode !== "comfort" || prev.now === next.now) &&
   prev.trade.symbol === next.trade.symbol &&
   prev.trade.price === next.trade.price &&
   prev.trade.percentage_change === next.trade.percentage_change &&

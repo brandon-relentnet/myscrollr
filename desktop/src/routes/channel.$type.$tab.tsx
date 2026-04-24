@@ -15,12 +15,13 @@ import { getChannel, getAllChannels } from "../channels/registry";
 import { dashboardQueryOptions } from "../api/queries";
 import ChannelConfigPanel from "../channels/ChannelConfigPanel";
 import { useShell, useShellData } from "../shell-context";
-import { Section, ToggleRow, ResetButton, SegmentedRow } from "../components/settings/SettingsControls";
+import { Section, ToggleRow, ResetButton, SegmentedRow, VenueRow } from "../components/settings/SettingsControls";
 import { useSportsConfig } from "../hooks/useSportsConfig";
 import { loadPref } from "../preferences";
 import type { Channel, ChannelType } from "../api/client";
 import type { DashboardResponse, DeliveryMode } from "../types";
-import type { FinanceDisplayPrefs, RssDisplayPrefs, FantasyDisplayPrefs } from "../preferences";
+import type { FinanceDisplayPrefs, RssDisplayPrefs, FantasyDisplayPrefs, Venue } from "../preferences";
+import type { SportsDisplayPrefs } from "../hooks/useSportsConfig";
 
 export const Route = createFileRoute("/channel/$type/$tab")({
   loader: ({ context: { queryClient } }) =>
@@ -155,16 +156,22 @@ function ChannelDisplayTab({ type }: { type: string }) {
   }
 }
 
+// Label copy shared by all Display pages: "Feed" / "Both" / "Ticker" /
+// "Off" — see VenueRow. Description text sets user expectations that
+// the toggle affects both surfaces universally.
+const VENUE_DESCRIPTION =
+  "Off: hidden · Feed: only on feed page · Both: everywhere · Ticker: only on the ticker";
+
 function FinanceDisplay() {
   const { prefs, onPrefsChange } = useShell();
   const dp = prefs.channelDisplay.finance;
 
-  function toggle(key: keyof Pick<FinanceDisplayPrefs, "showChange" | "showPrevClose" | "showLastUpdated">) {
+  function setVenue(key: "showChange" | "showPrevClose" | "showLastUpdated", venue: Venue) {
     onPrefsChange({
       ...prefs,
       channelDisplay: {
         ...prefs.channelDisplay,
-        finance: { ...dp, [key]: !dp[key] },
+        finance: { ...dp, [key]: venue },
       },
     });
   }
@@ -184,7 +191,7 @@ function FinanceDisplay() {
       ...prefs,
       channelDisplay: {
         ...prefs.channelDisplay,
-        finance: { showChange: true, showPrevClose: true, showLastUpdated: true, defaultSort: "alpha" },
+        finance: { showChange: "both", showPrevClose: "both", showLastUpdated: "both", defaultSort: "alpha" },
       },
     });
   }
@@ -198,15 +205,15 @@ function FinanceDisplay() {
 
   return (
     <div className="p-4 max-w-2xl mx-auto">
-      <Section title="Appearance">
-        <ToggleRow label="Show % change" checked={dp.showChange} onChange={() => toggle("showChange")} />
-        <ToggleRow label="Show previous close" checked={dp.showPrevClose} onChange={() => toggle("showPrevClose")} />
-        <ToggleRow label="Show last updated" checked={dp.showLastUpdated} onChange={() => toggle("showLastUpdated")} />
+      <Section title="Display items">
+        <VenueRow label="Show % change" description={VENUE_DESCRIPTION} value={dp.showChange} onChange={(v) => setVenue("showChange", v)} />
+        <VenueRow label="Show previous close" description={VENUE_DESCRIPTION} value={dp.showPrevClose} onChange={(v) => setVenue("showPrevClose", v)} />
+        <VenueRow label="Show last updated" description={VENUE_DESCRIPTION} value={dp.showLastUpdated} onChange={(v) => setVenue("showLastUpdated", v)} />
       </Section>
-      <Section title="Default Sort">
+      <Section title="Feed behavior">
         <SegmentedRow
           label="Sort order"
-          description="Default sort when opening the feed"
+          description="Default sort for both feed and ticker"
           value={dp.defaultSort}
           options={SORT_OPTIONS}
           onChange={setDefaultSort}
@@ -220,28 +227,28 @@ function FinanceDisplay() {
 function SportsDisplay() {
   const { display, setDisplay } = useSportsConfig();
 
-  function toggle(key: keyof Pick<typeof display, "showLogos" | "showTimer" | "showUpcoming" | "showFinal">) {
-    setDisplay({ [key]: !display[key] });
+  function setVenue(key: keyof SportsDisplayPrefs, venue: Venue) {
+    setDisplay({ [key]: venue });
   }
 
   function handleReset() {
     setDisplay({
-      showUpcoming: true,
-      showFinal: true,
-      showLogos: true,
-      showTimer: true,
+      showUpcoming: "both",
+      showFinal: "both",
+      showLogos: "both",
+      showTimer: "both",
     });
   }
 
   return (
     <div className="p-4 max-w-2xl mx-auto">
-      <Section title="Appearance">
-        <ToggleRow label="Show team logos" checked={display.showLogos} onChange={() => toggle("showLogos")} />
-        <ToggleRow label="Show game clock / status" checked={display.showTimer} onChange={() => toggle("showTimer")} />
+      <Section title="Display items">
+        <VenueRow label="Show team logos" description={VENUE_DESCRIPTION} value={display.showLogos} onChange={(v) => setVenue("showLogos", v)} />
+        <VenueRow label="Show game clock / status" description={VENUE_DESCRIPTION} value={display.showTimer} onChange={(v) => setVenue("showTimer", v)} />
       </Section>
-      <Section title="Default Filters">
-        <ToggleRow label="Include upcoming games" checked={display.showUpcoming} onChange={() => toggle("showUpcoming")} />
-        <ToggleRow label="Include final scores" checked={display.showFinal} onChange={() => toggle("showFinal")} />
+      <Section title="Game filters">
+        <VenueRow label="Include upcoming games" description={VENUE_DESCRIPTION} value={display.showUpcoming} onChange={(v) => setVenue("showUpcoming", v)} />
+        <VenueRow label="Include final scores" description={VENUE_DESCRIPTION} value={display.showFinal} onChange={(v) => setVenue("showFinal", v)} />
       </Section>
       <ResetButton label="Reset display settings" onClick={handleReset} />
     </div>
@@ -252,12 +259,12 @@ function RssDisplay() {
   const { prefs, onPrefsChange } = useShell();
   const dp = prefs.channelDisplay.rss;
 
-  function toggle(key: keyof Pick<RssDisplayPrefs, "showDescription" | "showSource" | "showTimestamps">) {
+  function setVenue(key: "showDescription" | "showSource" | "showTimestamps", venue: Venue) {
     onPrefsChange({
       ...prefs,
       channelDisplay: {
         ...prefs.channelDisplay,
-        rss: { ...dp, [key]: !dp[key] },
+        rss: { ...dp, [key]: venue },
       },
     });
   }
@@ -277,7 +284,7 @@ function RssDisplay() {
       ...prefs,
       channelDisplay: {
         ...prefs.channelDisplay,
-        rss: { showDescription: true, showSource: true, showTimestamps: true, articlesPerSource: 4 },
+        rss: { showDescription: "both", showSource: "both", showTimestamps: "both", articlesPerSource: 4 },
       },
     });
   }
@@ -292,12 +299,12 @@ function RssDisplay() {
 
   return (
     <div className="p-4 max-w-2xl mx-auto">
-      <Section title="Feed & Ticker">
-        <ToggleRow label="Show description" checked={dp.showDescription} onChange={() => toggle("showDescription")} />
-        <ToggleRow label="Show source name" checked={dp.showSource} onChange={() => toggle("showSource")} />
-        <ToggleRow label="Show timestamps" checked={dp.showTimestamps} onChange={() => toggle("showTimestamps")} />
+      <Section title="Display items">
+        <VenueRow label="Show description" description={VENUE_DESCRIPTION} value={dp.showDescription} onChange={(v) => setVenue("showDescription", v)} />
+        <VenueRow label="Show source name" description={VENUE_DESCRIPTION} value={dp.showSource} onChange={(v) => setVenue("showSource", v)} />
+        <VenueRow label="Show timestamps" description={VENUE_DESCRIPTION} value={dp.showTimestamps} onChange={(v) => setVenue("showTimestamps", v)} />
       </Section>
-      <Section title="Feed Balance">
+      <Section title="Feed behavior">
         <SegmentedRow
           label="Articles per source"
           description="Limit how many articles appear from each feed"
@@ -310,6 +317,34 @@ function RssDisplay() {
     </div>
   );
 }
+
+// Keys on FantasyDisplayPrefs that are venue-typed. Drives the
+// per-item rows below — adding a new venue-typed field here and in the
+// interface is all it takes to expose it on the Display page.
+type FantasyVenueKey =
+  | "matchupScore"
+  | "winProbability"
+  | "matchupStatus"
+  | "projectedPoints"
+  | "week"
+  | "record"
+  | "standingsPosition"
+  | "streak"
+  | "injuryCount"
+  | "topScorer";
+
+const FANTASY_VENUE_ROWS: Array<{ key: FantasyVenueKey; label: string; description: string }> = [
+  { key: "matchupScore", label: "Matchup score", description: "Your team vs. opponent, live or final" },
+  { key: "winProbability", label: "Win probability", description: "62% chance to win" },
+  { key: "matchupStatus", label: "Matchup status", description: "LIVE / FINAL / PRE badge" },
+  { key: "projectedPoints", label: "Projected points", description: "Your projected total this week" },
+  { key: "week", label: "Week number", description: "Current matchup week label" },
+  { key: "record", label: "Team record", description: "Season wins / losses (optionally ties)" },
+  { key: "standingsPosition", label: "Standings position", description: "3rd of 10" },
+  { key: "streak", label: "Current streak", description: "W3 / L2 badge" },
+  { key: "injuryCount", label: "Injury count", description: "Count of IR / DTD players on your roster" },
+  { key: "topScorer", label: "Top scorer", description: "Highest-scoring active player on your team" },
+];
 
 function FantasyDisplay() {
   const { prefs, onPrefsChange } = useShell();
@@ -325,7 +360,7 @@ function FantasyDisplay() {
     });
   }
 
-  function toggle(key: keyof Pick<FantasyDisplayPrefs, "showStandings" | "showInjuryCount" | "showMatchups" | "tickerShowMatchup">) {
+  function toggle(key: keyof Pick<FantasyDisplayPrefs, "showStandings" | "showMatchups">) {
     patch({ [key]: !dp[key] } as Partial<FantasyDisplayPrefs>);
   }
 
@@ -335,14 +370,22 @@ function FantasyDisplay() {
       channelDisplay: {
         ...prefs.channelDisplay,
         fantasy: {
+          matchupScore: "both",
+          winProbability: "both",
+          matchupStatus: "both",
+          projectedPoints: "both",
+          week: "both",
+          record: "both",
+          standingsPosition: "both",
+          streak: "both",
+          injuryCount: "both",
+          topScorer: "both",
           showStandings: true,
-          showInjuryCount: true,
           showMatchups: true,
           defaultSort: "name",
           defaultSubTab: "overview",
           primaryLeagueKey: null,
           enabledLeagueKeys: [],
-          tickerShowMatchup: true,
         },
       },
     });
@@ -357,7 +400,18 @@ function FantasyDisplay() {
 
   return (
     <div className="p-4 max-w-2xl mx-auto">
-      <Section title="Feed Layout">
+      <Section title="Display items">
+        {FANTASY_VENUE_ROWS.map((row) => (
+          <VenueRow
+            key={row.key}
+            label={row.label}
+            description={row.description}
+            value={dp[row.key]}
+            onChange={(v) => patch({ [row.key]: v } as Partial<FantasyDisplayPrefs>)}
+          />
+        ))}
+      </Section>
+      <Section title="Feed layout">
         <SegmentedRow
           label="Default view"
           description="Which sub-tab opens when you enter the Fantasy feed"
@@ -365,18 +419,8 @@ function FantasyDisplay() {
           options={SUB_TAB_OPTIONS}
           onChange={(value) => patch({ defaultSubTab: value as FantasyDisplayPrefs["defaultSubTab"] })}
         />
-      </Section>
-      <Section title="Secondary displays">
-        <ToggleRow label="Show standings" checked={dp.showStandings} onChange={() => toggle("showStandings")} />
-        <ToggleRow label="Show matchups" checked={dp.showMatchups} onChange={() => toggle("showMatchups")} />
-        <ToggleRow label="Show injury alerts" checked={dp.showInjuryCount} onChange={() => toggle("showInjuryCount")} />
-      </Section>
-      <Section title="Always-on-top ticker">
-        <ToggleRow
-          label="Show live matchups on ticker"
-          checked={dp.tickerShowMatchup}
-          onChange={() => toggle("tickerShowMatchup")}
-        />
+        <ToggleRow label="Show standings section" checked={dp.showStandings} onChange={() => toggle("showStandings")} />
+        <ToggleRow label="Show matchups section" checked={dp.showMatchups} onChange={() => toggle("showMatchups")} />
       </Section>
       <ResetButton label="Reset display settings" onClick={handleReset} />
     </div>

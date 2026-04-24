@@ -194,25 +194,91 @@ export interface WidgetPrefs {
 // Controls what data is shown in FeedTabs and ticker chips.
 // Sports display prefs live server-side (useSportsConfig), not here.
 
+/**
+ * Four-state visibility control for channel display settings.
+ *
+ *   off     — hidden everywhere
+ *   feed    — shown on the feed page only; hidden from the ticker
+ *   both    — shown in both places (default for migrated `true` booleans)
+ *   ticker  — shown on the always-on-top ticker only; hidden from the feed
+ *
+ * See docs/superpowers/specs/2026-04-25-display-venue-toggle-design.md
+ * for the rationale. The `VenueRow` component in SettingsControls
+ * renders a segmented control for switching between these states.
+ */
+export type Venue = "off" | "feed" | "both" | "ticker";
+
+/** True when the venue indicates the setting should render on the ticker. */
+export function shouldShowOnTicker(venue: Venue): boolean {
+  return venue === "both" || venue === "ticker";
+}
+
+/** True when the venue indicates the setting should render on the feed page. */
+export function shouldShowOnFeed(venue: Venue): boolean {
+  return venue === "both" || venue === "feed";
+}
+
+/**
+ * Coerce a saved value (boolean from the pre-v1.0.2 era, or any other
+ * shape the prefs file might have) into a well-formed `Venue`.
+ *
+ *   true  → "both"   (keep visible everywhere; matches "Conservative"
+ *                     migration option from the spec brainstorm)
+ *   false → "off"    (preserve hide-everywhere behavior exactly)
+ *   other → "both"   (unknown / new setting → default visible)
+ */
+export function migrateVenue(raw: unknown): Venue {
+  if (raw === "off" || raw === "feed" || raw === "both" || raw === "ticker") {
+    return raw;
+  }
+  if (raw === true) return "both";
+  if (raw === false) return "off";
+  return "both";
+}
+
 export interface FinanceDisplayPrefs {
-  showChange: boolean;
-  showPrevClose: boolean;
-  showLastUpdated: boolean;
+  showChange: Venue;
+  showPrevClose: Venue;
+  showLastUpdated: Venue;
   defaultSort: "alpha" | "price" | "change" | "updated";
 }
 
 export interface RssDisplayPrefs {
-  showDescription: boolean;
-  showSource: boolean;
-  showTimestamps: boolean;
-  articlesPerSource: number; // 1, 3, 5, 10, or 0 (all)
+  showDescription: Venue;
+  showSource: Venue;
+  showTimestamps: Venue;
+  articlesPerSource: number; // 1, 3, 5, 10, or 0 (all) — feed-only structural
 }
 
 export type FantasySubTab = "overview" | "matchup" | "standings" | "roster";
 
 export interface FantasyDisplayPrefs {
+  // ── Per-item venue controls (visibility) ──
+  /** Live matchup score: "My Team 89.5 — 76.2 Opponent". */
+  matchupScore: Venue;
+  /** "62% win" — uses estimateWinProbability. */
+  winProbability: Venue;
+  /** LIVE / FINAL / PRE badge on the matchup summary. */
+  matchupStatus: Venue;
+  /** "Proj 95.2" on the user's team this week. */
+  projectedPoints: Venue;
+  /** "Week 5" label. */
+  week: Venue;
+  /** Season record "6-3-1". */
+  record: Venue;
+  /** "3rd of 10" standings position. */
+  standingsPosition: Venue;
+  /** Streak badge ("W3" / "L2"). */
+  streak: Venue;
+  /** Injury count on the user's roster ("2 injured"). */
+  injuryCount: Venue;
+  /** Top scorer on the user's active roster this week ("LeBron 42.3"). */
+  topScorer: Venue;
+
+  // ── Feed-structural settings (not venue-toggled) ──
+  /** Render the standings section inside the Fantasy feed view. */
   showStandings: boolean;
-  showInjuryCount: boolean;
+  /** Render the matchups section inside the Fantasy feed view. */
   showMatchups: boolean;
   defaultSort: "name" | "season" | "record" | "matchup";
   /** Which sub-tab the Feed view opens on. Defaults to overview when in 2+ leagues, matchup otherwise. */
@@ -221,8 +287,6 @@ export interface FantasyDisplayPrefs {
   primaryLeagueKey: string | null;
   /** Explicit list of league keys the user wants visible. Empty array means "all imported leagues". */
   enabledLeagueKeys: string[];
-  /** Show matchups on the always-on-top ticker chip. */
-  tickerShowMatchup: boolean;
 }
 
 export interface ChannelDisplayPrefs {
@@ -341,17 +405,35 @@ export const DEFAULT_GITHUB_TICKER: GitHubTickerConfig = {
 };
 
 const DEFAULT_CHANNEL_DISPLAY: ChannelDisplayPrefs = {
-  finance: { showChange: true, showPrevClose: true, showLastUpdated: true, defaultSort: "alpha" },
-  rss: { showDescription: true, showSource: true, showTimestamps: true, articlesPerSource: 4 },
+  finance: {
+    showChange: "both",
+    showPrevClose: "both",
+    showLastUpdated: "both",
+    defaultSort: "alpha",
+  },
+  rss: {
+    showDescription: "both",
+    showSource: "both",
+    showTimestamps: "both",
+    articlesPerSource: 4,
+  },
   fantasy: {
+    matchupScore: "both",
+    winProbability: "both",
+    matchupStatus: "both",
+    projectedPoints: "both",
+    week: "both",
+    record: "both",
+    standingsPosition: "both",
+    streak: "both",
+    injuryCount: "both",
+    topScorer: "both",
     showStandings: true,
-    showInjuryCount: true,
     showMatchups: true,
     defaultSort: "name",
     defaultSubTab: "overview",
     primaryLeagueKey: null,
     enabledLeagueKeys: [],
-    tickerShowMatchup: true,
   },
 };
 
@@ -589,6 +671,107 @@ function migrateTickerLayout(
   return { rows };
 }
 
+// ── Channel display migrations (v1.0.2 venue-enum migration) ────
+//
+// Each channel's display prefs went from all-booleans to `Venue` strings
+// in v1.0.2 (see 2026-04-25-display-venue-toggle-design.md). These
+// helpers run `migrateVenue` on every field that was previously a
+// boolean; unknown and never-seen fields get the `"both"` default so new
+// channels and new fields are visible immediately post-upgrade.
+
+export function migrateFinanceDisplay(
+  saved: Partial<FinanceDisplayPrefs> | undefined,
+): FinanceDisplayPrefs {
+  const raw = (saved ?? {}) as Record<string, unknown>;
+  return {
+    ...DEFAULT_CHANNEL_DISPLAY.finance,
+    showChange: migrateVenue(raw.showChange),
+    showPrevClose: migrateVenue(raw.showPrevClose),
+    showLastUpdated: migrateVenue(raw.showLastUpdated),
+    defaultSort:
+      (raw.defaultSort as FinanceDisplayPrefs["defaultSort"] | undefined) ??
+      DEFAULT_CHANNEL_DISPLAY.finance.defaultSort,
+  };
+}
+
+export function migrateRssDisplay(
+  saved: Partial<RssDisplayPrefs> | undefined,
+): RssDisplayPrefs {
+  const raw = (saved ?? {}) as Record<string, unknown>;
+  return {
+    ...DEFAULT_CHANNEL_DISPLAY.rss,
+    showDescription: migrateVenue(raw.showDescription),
+    showSource: migrateVenue(raw.showSource),
+    showTimestamps: migrateVenue(raw.showTimestamps),
+    articlesPerSource:
+      typeof raw.articlesPerSource === "number"
+        ? raw.articlesPerSource
+        : DEFAULT_CHANNEL_DISPLAY.rss.articlesPerSource,
+  };
+}
+
+export function migrateFantasyDisplay(
+  saved: Partial<FantasyDisplayPrefs> | undefined,
+): FantasyDisplayPrefs {
+  const raw = (saved ?? {}) as Record<string, unknown>;
+
+  // tickerShowMatchup (pre-v1.0.2 boolean) folds into matchupScore:
+  //   true  → "both" (score visible everywhere)
+  //   false → "feed" (hide from ticker; keep in feed cards)
+  // If the user already has a `matchupScore` Venue stored, use it.
+  const legacyTickerMatchup = raw.tickerShowMatchup;
+  const explicitMatchupScore = raw.matchupScore;
+  const matchupScore: Venue = explicitMatchupScore
+    ? migrateVenue(explicitMatchupScore)
+    : legacyTickerMatchup === false
+      ? "feed"
+      : "both";
+
+  // showInjuryCount (pre-v1.0.2 boolean) folds into injuryCount.
+  const legacyInjuryCount = raw.showInjuryCount;
+  const explicitInjuryCount = raw.injuryCount;
+  const injuryCount: Venue = explicitInjuryCount
+    ? migrateVenue(explicitInjuryCount)
+    : legacyInjuryCount === false
+      ? "off"
+      : "both";
+
+  return {
+    ...DEFAULT_CHANNEL_DISPLAY.fantasy,
+    matchupScore,
+    winProbability: migrateVenue(raw.winProbability),
+    matchupStatus: migrateVenue(raw.matchupStatus),
+    projectedPoints: migrateVenue(raw.projectedPoints),
+    week: migrateVenue(raw.week),
+    record: migrateVenue(raw.record),
+    standingsPosition: migrateVenue(raw.standingsPosition),
+    streak: migrateVenue(raw.streak),
+    injuryCount,
+    topScorer: migrateVenue(raw.topScorer),
+    showStandings:
+      typeof raw.showStandings === "boolean"
+        ? raw.showStandings
+        : DEFAULT_CHANNEL_DISPLAY.fantasy.showStandings,
+    showMatchups:
+      typeof raw.showMatchups === "boolean"
+        ? raw.showMatchups
+        : DEFAULT_CHANNEL_DISPLAY.fantasy.showMatchups,
+    defaultSort:
+      (raw.defaultSort as FantasyDisplayPrefs["defaultSort"] | undefined) ??
+      DEFAULT_CHANNEL_DISPLAY.fantasy.defaultSort,
+    defaultSubTab:
+      (raw.defaultSubTab as FantasyDisplayPrefs["defaultSubTab"] | undefined) ??
+      DEFAULT_CHANNEL_DISPLAY.fantasy.defaultSubTab,
+    primaryLeagueKey:
+      typeof raw.primaryLeagueKey === "string" || raw.primaryLeagueKey === null
+        ? (raw.primaryLeagueKey as string | null)
+        : DEFAULT_CHANNEL_DISPLAY.fantasy.primaryLeagueKey,
+    enabledLeagueKeys: Array.isArray(raw.enabledLeagueKeys)
+      ? (raw.enabledLeagueKeys as string[])
+      : DEFAULT_CHANNEL_DISPLAY.fantasy.enabledLeagueKeys,
+  };
+}
+
 export function loadPrefs(): AppPreferences {
   try {
     const saved = getStore<Record<string, unknown> | null>(PREFIX, null);
@@ -616,9 +799,9 @@ export function loadPrefs(): AppPreferences {
       taskbar: { ...DEFAULT_TASKBAR, ...source.taskbar },
       widgets: mergeWidgetPrefs(source.widgets as Partial<WidgetPrefs> | undefined),
       channelDisplay: {
-        finance: { ...DEFAULT_CHANNEL_DISPLAY.finance, ...savedDisplay?.finance },
-        rss: { ...DEFAULT_CHANNEL_DISPLAY.rss, ...savedDisplay?.rss },
-        fantasy: { ...DEFAULT_CHANNEL_DISPLAY.fantasy, ...savedDisplay?.fantasy },
+        finance: migrateFinanceDisplay(savedDisplay?.finance),
+        rss: migrateRssDisplay(savedDisplay?.rss),
+        fantasy: migrateFantasyDisplay(savedDisplay?.fantasy),
       },
       pinnedSources: Array.isArray(source.pinnedSources) ? source.pinnedSources : [],
       homePreview:

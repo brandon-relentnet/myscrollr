@@ -1,4 +1,5 @@
 import { clsx } from "clsx";
+import type { Venue } from "../../preferences";
 
 // ── Section heading ─────────────────────────────────────────────
 // Open layout: just a label + thin divider. No bordered card.
@@ -119,6 +120,74 @@ export function SegmentedRow<T extends string>({
             {opt.label}
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Venue row ───────────────────────────────────────────────────
+// Four-state segmented control for visibility settings that can be
+// routed to the feed page, the always-on-top ticker, both, or hidden.
+//
+// Uses the same visual language as SegmentedRow, with "Off" visually
+// muted when selected (emphasizing the setting is silenced everywhere
+// rather than just routed away).
+//
+// See docs/superpowers/specs/2026-04-25-display-venue-toggle-design.md
+// for the full rationale.
+
+const VENUE_OPTIONS: { value: Venue; label: string }[] = [
+  { value: "off", label: "Off" },
+  { value: "feed", label: "Feed" },
+  { value: "both", label: "Both" },
+  { value: "ticker", label: "Ticker" },
+];
+
+interface VenueRowProps {
+  label: string;
+  description?: string;
+  value: Venue;
+  onChange: (venue: Venue) => void;
+}
+
+export function VenueRow({ label, description, value, onChange }: VenueRowProps) {
+  return (
+    <div className="flex items-center justify-between px-3 py-2.5 rounded-lg">
+      <div className="flex flex-col gap-0.5">
+        <span className="text-[12px] text-fg-2 leading-tight">{label}</span>
+        {description && (
+          <span className="text-[11px] text-fg-4 leading-tight">
+            {description}
+          </span>
+        )}
+      </div>
+      <div
+        role="radiogroup"
+        aria-label={label}
+        className="inline-flex items-center rounded-lg bg-base-200 p-0.5 shrink-0 ml-4"
+      >
+        {VENUE_OPTIONS.map((opt) => {
+          const selected = value === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => onChange(opt.value)}
+              className={clsx(
+                "px-2.5 py-1 text-[11px] font-medium rounded-md transition-all duration-200 cursor-pointer leading-none",
+                selected && opt.value === "off"
+                  ? "bg-base-300/60 text-fg-3 shadow-sm"
+                  : selected
+                    ? "bg-base-300 text-fg shadow-sm"
+                    : "text-fg-3 hover:text-fg-2",
+              )}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

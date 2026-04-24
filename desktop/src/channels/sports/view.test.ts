@@ -144,37 +144,37 @@ describe("selectSportsForTicker", () => {
     expect(result).toHaveLength(2);
   });
 
-  it("hides upcoming games when showUpcoming=false", () => {
+  it("hides upcoming games when showUpcoming is feed-only", () => {
     const games = [
       preGame(1, 10 * 60_000),
       liveGame(2),
       finalGame(3, 60 * 60_000),
     ];
-    const config: SportsDisplayConfig = { showUpcoming: false };
+    const config: SportsDisplayConfig = { showUpcoming: "feed" };
     const result = selectSportsForTicker(games, config);
     expect(result.map((g) => g.id)).toEqual([2, 3]);
   });
 
-  it("hides final games when showFinal=false", () => {
+  it("hides final games when showFinal is feed-only", () => {
     const games = [
       preGame(1, 10 * 60_000),
       liveGame(2),
       finalGame(3, 60 * 60_000),
     ];
-    const config: SportsDisplayConfig = { showFinal: false };
+    const config: SportsDisplayConfig = { showFinal: "feed" };
     const result = selectSportsForTicker(games, config);
     expect(result.map((g) => g.id)).toEqual([2, 1]);
   });
 
-  it("can hide both upcoming and final at once (live only)", () => {
+  it("can hide both upcoming and final from the ticker at once (live only)", () => {
     const games = [
       preGame(1, 10 * 60_000),
       liveGame(2),
       finalGame(3, 60 * 60_000),
     ];
     const result = selectSportsForTicker(games, {
-      showUpcoming: false,
-      showFinal: false,
+      showUpcoming: "off",
+      showFinal: "off",
     });
     expect(result.map((g) => g.id)).toEqual([2]);
   });

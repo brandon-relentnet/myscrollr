@@ -26,9 +26,9 @@ function mk(
 }
 
 const DEFAULT_PREFS: RssDisplayPrefs = {
-  showDescription: true,
-  showSource: true,
-  showTimestamps: true,
+  showDescription: "both",
+  showSource: "both",
+  showTimestamps: "both",
   articlesPerSource: 4,
 };
 

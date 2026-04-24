@@ -10,6 +10,8 @@ import { toast } from "sonner";
 import { channelsApi } from "../api/client";
 import { queryKeys } from "../api/queries";
 import { useShellData } from "../shell-context";
+import { normalizeSportsDisplayConfig } from "../channels/sports/view";
+import type { Venue } from "../preferences";
 
 export interface FavoriteTeam {
   teamId: number;
@@ -17,10 +19,10 @@ export interface FavoriteTeam {
 }
 
 export interface SportsDisplayPrefs {
-  showUpcoming: boolean;
-  showFinal: boolean;
-  showLogos: boolean;
-  showTimer: boolean;
+  showUpcoming: Venue;
+  showFinal: Venue;
+  showLogos: Venue;
+  showTimer: Venue;
 }
 
 export interface SportsConfig {
@@ -30,10 +32,10 @@ export interface SportsConfig {
 }
 
 const DEFAULT_DISPLAY: SportsDisplayPrefs = {
-  showUpcoming: true,
-  showFinal: true,
-  showLogos: true,
-  showTimer: true,
+  showUpcoming: "both",
+  showFinal: "both",
+  showLogos: "both",
+  showTimer: "both",
 };
 
 export function useSportsConfig() {
@@ -44,22 +46,26 @@ export function useSportsConfig() {
   const sportsChannel = channels.find((c) => c.channel_type === "sports");
   const raw = (sportsChannel?.config ?? {}) as Record<string, unknown>;
 
-  const config: SportsConfig = useMemo(
-    () => ({
+  const config: SportsConfig = useMemo(() => {
+    // v1.0.2: normalize raw.display through `migrateVenue` so
+    // pre-venue-enum boolean configs (stored server-side by clients on
+    // <v1.0.2) deserialize to valid Venue values. `normalizeSportsDisplayConfig`
+    // returns a SportsDisplayConfig with all four fields populated.
+    const normalizedDisplay = normalizeSportsDisplayConfig(raw.display);
+    return {
       leagues: Array.isArray(raw.leagues) ? (raw.leagues as string[]) : [],
       display: {
-        ...DEFAULT_DISPLAY,
-        ...(typeof raw.display === "object" && raw.display !== null
-          ? (raw.display as Partial<SportsDisplayPrefs>)
-          : {}),
+        showUpcoming: normalizedDisplay.showUpcoming ?? DEFAULT_DISPLAY.showUpcoming,
+        showFinal: normalizedDisplay.showFinal ?? DEFAULT_DISPLAY.showFinal,
+        showLogos: normalizedDisplay.showLogos ?? DEFAULT_DISPLAY.showLogos,
+        showTimer: normalizedDisplay.showTimer ?? DEFAULT_DISPLAY.showTimer,
       },
       favoriteTeams:
         typeof raw.favoriteTeams === "object" && raw.favoriteTeams !== null
           ? (raw.favoriteTeams as Record<string, FavoriteTeam>)
           : {},
-    }),
-    [raw],
-  );
+    };
+  }, [raw]);
 
   const mutation = useMutation({
     mutationFn: (next: SportsConfig) =>

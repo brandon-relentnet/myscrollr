@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { clsx } from "clsx";
 import { GameItem } from "./GameItem";
 import { isLive, isPre, isFinal } from "../../utils/gameHelpers";
+import { shouldShowOnFeed } from "../../preferences";
 import type { Game, FeedMode } from "../../types";
 import type { SportsDisplayPrefs } from "../../hooks/useSportsConfig";
 import type { StatusFilter } from "./FeedTab";
@@ -38,8 +39,8 @@ export function ScoresTab({
       if (statusFilter === "final") return isFinal(g);
 
       // "all" — use display prefs
-      if (!display.showUpcoming && isPre(g)) return false;
-      if (!display.showFinal && isFinal(g)) return false;
+      if (!shouldShowOnFeed(display.showUpcoming) && isPre(g)) return false;
+      if (!shouldShowOnFeed(display.showFinal) && isFinal(g)) return false;
       return true;
     });
   }, [games, display.showUpcoming, display.showFinal, leagueFilter, statusFilter]);
@@ -105,8 +106,8 @@ export function ScoresTab({
                 game={game}
                 mode={mode}
                 isFavorite={isFavoriteGame(game, favoriteTeams)}
-                showLogos={display.showLogos}
-                showTimer={display.showTimer}
+                showLogos={shouldShowOnFeed(display.showLogos)}
+                showTimer={shouldShowOnFeed(display.showTimer)}
               />
             ))}
           </div>

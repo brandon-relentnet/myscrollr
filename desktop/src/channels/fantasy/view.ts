@@ -91,17 +91,35 @@ export function rankFantasyLeagues(
 
 // ── Selector for the ticker ─────────────────────────────────────
 
+import { shouldShowOnTicker } from "../../preferences";
+
 /**
  * Baseline pipeline used by the ticker: applies `enabledLeagueKeys`
  * filter, promotes `primaryLeagueKey` to the front, sorts remaining
- * by engagement. Respects `tickerShowMatchup` — returns [] when off.
+ * by engagement.
+ *
+ * Returns `[]` when NONE of the per-item venue toggles are set to
+ * "both" or "ticker" — no point rendering a chip with no content. The
+ * per-item filtering (which fields actually render) happens downstream
+ * in `FantasyStatChip` / `ScrollrTicker`.
  */
 export function selectFantasyForTicker(
   leagues: LeagueResponse[],
   prefs: FantasyDisplayPrefs,
 ): LeagueResponse[] {
-  const showOnTicker = prefs.tickerShowMatchup ?? true;
-  if (!showOnTicker) return [];
+  const anyItemOnTicker =
+    shouldShowOnTicker(prefs.matchupScore) ||
+    shouldShowOnTicker(prefs.winProbability) ||
+    shouldShowOnTicker(prefs.matchupStatus) ||
+    shouldShowOnTicker(prefs.projectedPoints) ||
+    shouldShowOnTicker(prefs.week) ||
+    shouldShowOnTicker(prefs.record) ||
+    shouldShowOnTicker(prefs.standingsPosition) ||
+    shouldShowOnTicker(prefs.streak) ||
+    shouldShowOnTicker(prefs.injuryCount) ||
+    shouldShowOnTicker(prefs.topScorer);
+  if (!anyItemOnTicker) return [];
+
   const visible = filterEnabledLeagues(leagues, prefs.enabledLeagueKeys);
   if (visible.length === 0) return [];
   const primary = resolvePrimaryLeague(visible, prefs.primaryLeagueKey);

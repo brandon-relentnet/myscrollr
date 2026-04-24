@@ -23,6 +23,7 @@ import type {
   FeedMode,
   ChannelManifest,
 } from "../../types";
+import { shouldShowOnFeed } from "../../preferences";
 import type { RssDisplayPrefs } from "../../preferences";
 
 // ── Channel manifest ─────────────────────────────────────────────
@@ -544,9 +545,12 @@ interface RssArticleProps {
 }
 
 const RssArticle = memo(function RssArticle({ item, mode, display, category, now }: RssArticleProps) {
-  const ago = display.showTimestamps ? relativeTime(item.published_at, now) : null;
+  const showSource = shouldShowOnFeed(display.showSource);
+  const showTimestamps = shouldShowOnFeed(display.showTimestamps);
+  const showDescription = shouldShowOnFeed(display.showDescription);
+  const ago = showTimestamps ? relativeTime(item.published_at, now) : null;
 
-  const categoryBadge = display.showSource && category ? (
+  const categoryBadge = showSource && category ? (
     <span className="px-1.5 py-px rounded text-[9px] text-fg-3 bg-accent/10 shrink-0 whitespace-nowrap">
       {category}
     </span>
@@ -560,7 +564,7 @@ const RssArticle = memo(function RssArticle({ item, mode, display, category, now
         rel="noopener noreferrer"
         className="flex items-center gap-2 px-3 py-1.5 bg-surface text-xs hover:bg-surface-hover transition-colors cursor-pointer"
       >
-        {display.showSource && (
+        {showSource && (
           <span className="font-mono text-[9px] text-accent shrink-0 min-w-[56px] max-w-[80px] truncate uppercase tracking-wider font-bold">
             {item.source_name}
           </span>
@@ -587,14 +591,14 @@ const RssArticle = memo(function RssArticle({ item, mode, display, category, now
       <span className="text-sm font-medium text-fg leading-snug line-clamp-2">
         {item.title}
       </span>
-      {display.showDescription && item.description && (
+      {showDescription && item.description && (
         <p className="mt-1 text-xs text-fg-2 leading-relaxed line-clamp-2">
           {truncate(item.description, 160)}
         </p>
       )}
-      {(display.showSource || ago) && (
+      {(showSource || ago) && (
         <div className="flex items-center gap-2 mt-1.5">
-          {display.showSource && (
+          {showSource && (
             <span className="text-[9px] font-mono font-bold text-accent/80 uppercase tracking-wider">
               {item.source_name}
             </span>
@@ -616,7 +620,7 @@ const RssArticle = memo(function RssArticle({ item, mode, display, category, now
   // Only re-render on the `now` tick when this row actually renders
   // a timestamp — otherwise the tick would churn the whole list for
   // no visible change.
-  (!next.display.showTimestamps || prev.now === next.now) &&
+  (!shouldShowOnFeed(next.display.showTimestamps) || prev.now === next.now) &&
   prev.item.guid === next.item.guid &&
   prev.item.feed_url === next.item.feed_url &&
   prev.item.title === next.item.title &&
