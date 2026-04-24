@@ -57,6 +57,7 @@ with `${VAR:-default}` use the default if not set.
 | `LOGTO_UPLINK_ROLE_ID` | `mock_uplink_role` | Test role ID |
 | `LOGTO_PRO_ROLE_ID` | `mock_pro_role` | Test role ID |
 | `LOGTO_ULTIMATE_ROLE_ID` | `mock_ultimate_role` | Test role ID |
+| `LOGTO_SUPER_USER_ROLE_ID` | `mock_super_user_role` | Test role ID for super-user invite gating |
 | `TWELVEDATA_API_KEY` | `test_twelvedata_key` | Any non-empty string |
 | `API_SPORTS_KEY` | `test_api_sports_key` | Any non-empty string |
 | `YAHOO_CLIENT_ID` | `test_yahoo_client_id` | Any non-empty string |

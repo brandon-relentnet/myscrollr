@@ -19,6 +19,7 @@ services:
       - LOGTO_UPLINK_ROLE_ID=${LOGTO_UPLINK_ROLE_ID:-mock_uplink_role}
       - LOGTO_PRO_ROLE_ID=${LOGTO_PRO_ROLE_ID:-mock_pro_role}
       - LOGTO_ULTIMATE_ROLE_ID=${LOGTO_ULTIMATE_ROLE_ID:-mock_ultimate_role}
+      - LOGTO_SUPER_USER_ROLE_ID=${LOGTO_SUPER_USER_ROLE_ID:-mock_super_user_role}
       - STRIPE_SECRET_KEY=sk_test_mock
       - STRIPE_API_URL=http://mock-stripe:12111
       - STRIPE_PUBLISHABLE_KEY=pk_test_mock

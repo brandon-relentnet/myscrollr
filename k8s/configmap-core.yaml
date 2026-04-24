@@ -20,6 +20,7 @@ data:
   LOGTO_UPLINK_ROLE_ID: "x8qz9zmdthw19n10dqnr5"
   LOGTO_PRO_ROLE_ID: "mpp4isevqg194srzrhjha"
   LOGTO_ULTIMATE_ROLE_ID: "saxuo1hnzn43jtbt33zou"
+  LOGTO_SUPER_USER_ROLE_ID: "saaf40fy2iaxu1bwhy0m8"
 
   # Stripe price IDs (not secret) — LIVE mode
   STRIPE_PRICE_MONTHLY: "price_1TMyBUFk6czwHVgrocQKaBHD"
