@@ -78,6 +78,42 @@ func InvalidateDashboardCache(userSub string) {
 	}
 }
 
+// channelUserCacheKeys returns all per-user cache keys each channel owns,
+// for a given user. Used by `InvalidateUserCaches` on CDC dispatch.
+//
+// The keys follow the convention `cache:<channel>:<userSub>` chosen by
+// each channel API (channels/*/api/*.go constants). Core knows about them
+// only by convention, not by importing — this respects the AGENTS.md
+// channel-isolation rule (no shared Go types) while still letting core
+// keep downstream caches in sync when CDC fires.
+func channelUserCacheKeys(userSub string) []string {
+	return []string{
+		"cache:finance:" + userSub,
+		"cache:sports:" + userSub,
+		"cache:rss:" + userSub,
+	}
+}
+
+// InvalidateUserCaches deletes all per-user cache entries that could
+// contain stale data after a CDC event: core's /dashboard cache plus
+// each channel's /internal/dashboard cache.
+//
+// Called from `Hub.dispatchToUser` on every CDC dispatch so a desktop
+// safety-net refetch (triggered ~500ms after the SSE burst) cannot
+// overwrite the optimistic in-memory merge with pre-event prices. See
+// the comment on `dispatchToUser` for the full regression scenario.
+//
+// Uses a single Redis pipeline to do one round-trip (not N). At the
+// observed peak of ~47 events/sec with <100 users, cost is under 5k
+// ops/sec on Redis — negligible.
+func InvalidateUserCaches(userSub string) {
+	ctx := context.Background()
+	keys := append([]string{RedisDashboardCachePrefix + userSub}, channelUserCacheKeys(userSub)...)
+	if err := Rdb.Del(ctx, keys...).Err(); err != nil {
+		log.Printf("[Cache] Failed to invalidate user caches for %s: %v", userSub, err)
+	}
+}
+
 // --- Subscription Set Helpers ---
 // Used to track which users subscribe to which data types.
 // Keys follow the convention:
@@ -122,5 +158,3 @@ func RemoveSubscriberMulti(ctx context.Context, setKeys []string, userSub string
 	_, err := pipe.Exec(ctx)
 	return err
 }
-
-

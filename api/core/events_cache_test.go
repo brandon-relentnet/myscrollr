@@ -25,6 +25,20 @@ func setupMiniRedis(t *testing.T) (*miniredis.Miniredis, func()) {
 	}
 }
 
+// userCacheKeysFor is the contract the production helper implements: for a
+// given user, which cache keys must be invalidated on CDC dispatch so no
+// stale reply escapes. Kept as a test-local slice so future additions must
+// update BOTH this slice AND the production `InvalidateUserCaches` /
+// `channelUserCacheKeys`. Mismatch → test fails → we notice the drift.
+func userCacheKeysFor(userSub string) []string {
+	return []string{
+		RedisDashboardCachePrefix + userSub,
+		"cache:finance:" + userSub,
+		"cache:sports:" + userSub,
+		"cache:rss:" + userSub,
+	}
+}
+
 // TestInvalidateDashboardCache is the baseline happy-path — the helper should
 // delete the expected key so future fetches re-populate the cache with fresh
 // data.
@@ -48,32 +62,63 @@ func TestInvalidateDashboardCache(t *testing.T) {
 	}
 }
 
-// TestCDCDispatchInvalidatesCache is the regression test for the 2026-04-24
-// "finance symbols jitter" bug.
+// TestInvalidateUserCaches verifies the combined helper deletes every
+// per-user cache key a CDC event could have staled — not just the
+// top-level dashboard, but the per-channel caches that get merged into
+// a dashboard rebuild.
+func TestInvalidateUserCaches(t *testing.T) {
+	mr, cleanup := setupMiniRedis(t)
+	defer cleanup()
+
+	const userSub = "user_multi_layer"
+	keys := userCacheKeysFor(userSub)
+
+	for _, k := range keys {
+		mr.Set(k, `{"stale":true}`)
+	}
+	for _, k := range keys {
+		if !mr.Exists(k) {
+			t.Fatalf("precondition: key %q should exist after seed", k)
+		}
+	}
+
+	InvalidateUserCaches(userSub)
+
+	for _, k := range keys {
+		if mr.Exists(k) {
+			t.Errorf("InvalidateUserCaches left key %q in Redis; stale data could still serve", k)
+		}
+	}
+}
+
+// TestDispatchToUserInvalidatesAllCaches is the regression test for the
+// 2026-04-24 "finance symbols jitter" bug.
 //
 // Scenario the bug produced:
 //
-//  1. GET /dashboard caches response in Redis for 30s (DashboardCacheTTL)
-//  2. Prices for AAPL update in Postgres
-//  3. Sequin publishes a CDC event to Redis topic cdc:finance:AAPL
-//  4. Hub's listenToTopics fans out to subscribed users via dispatchToUser
+//  1. GET /dashboard caches the aggregated response in Redis for 30s
+//     (DashboardCacheTTL). That response is BUILT by fan-out to each
+//     channel's /internal/dashboard — and THOSE are ALSO cached per-user
+//     for 30s (cache:finance:<user>, cache:sports:<user>, cache:rss:<user>).
+//  2. Prices for AAPL update in Postgres.
+//  3. Sequin publishes a CDC event to Redis topic cdc:finance:AAPL.
+//  4. Hub's listenToTopics fans out to subscribed users via dispatchToUser.
 //  5. Desktop receives the SSE event and merges it into its TanStack
-//     Query cache (optimistic UI update — UI shows new price)
-//  6. Desktop's safety-net `invalidateQueries` fires ~500ms later,
-//     causing a fresh GET /dashboard
-//  7. WITHOUT the fix: the 30s Redis cache returns STALE pre-CDC data
-//     and the optimistic merge is overwritten → UI visibly regresses
-//     to the old price → next CDC event pushes forward again → endless
-//     jitter for up to 30s.
+//     Query cache (optimistic UI update — UI shows new price).
+//  6. Desktop's safety-net `invalidateQueries` fires ~500ms later, so
+//     GET /dashboard runs on the server. Cache miss rebuilds by calling
+//     each channel. The finance channel serves its OWN still-warm
+//     30s cache with pre-event prices. Rebuilt response is persisted
+//     — now looks fresh but is actually stale.
+//  7. Stale response overwrites the optimistic merge → UI visibly
+//     regresses. Next CDC event pushes forward again → endless jitter
+//     for up to 30s per cache layer.
 //
-// The fix: dispatchToUser invalidates the dashboard cache for the target
-// user immediately before (or during) the SSE send. Any refetch that
-// lands after will see cache-miss and serve fresh data.
-//
-// This test asserts: after dispatchToUser is invoked for a user, that
-// user's dashboard cache key is gone from Redis, regardless of whether
-// the user has any live SSE clients attached.
-func TestDispatchToUserInvalidatesDashboardCache(t *testing.T) {
+// Fix: dispatchToUser invalidates EVERY per-user cache layer (dashboard
+// + all three channel caches) immediately before sending the SSE
+// payload. Any refetch lands on cold caches → fresh data from Postgres
+// → optimistic merge and refetch agree.
+func TestDispatchToUserInvalidatesAllCaches(t *testing.T) {
 	mr, cleanup := setupMiniRedis(t)
 	defer cleanup()
 
@@ -88,10 +133,9 @@ func TestDispatchToUserInvalidatesDashboardCache(t *testing.T) {
 	defer func() { globalHub = prevHub }()
 
 	const userSub = "user_jitter_test"
-	cacheKey := RedisDashboardCachePrefix + userSub
+	keys := userCacheKeysFor(userSub)
 
-	// Seed a "stale" cached dashboard — simulates a recent poll having
-	// populated Redis with data from BEFORE the incoming CDC event.
+	// Seed a "stale" cached dashboard AND stale per-channel caches.
 	stale, _ := json.Marshal(map[string]interface{}{
 		"data": map[string]interface{}{
 			"finance": []map[string]interface{}{
@@ -99,9 +143,8 @@ func TestDispatchToUserInvalidatesDashboardCache(t *testing.T) {
 			},
 		},
 	})
-	mr.Set(cacheKey, string(stale))
-	if !mr.Exists(cacheKey) {
-		t.Fatalf("precondition: stale dashboard cache must exist in redis")
+	for _, k := range keys {
+		mr.Set(k, string(stale))
 	}
 
 	// Simulate a CDC event being dispatched to this user. We don't
@@ -111,18 +154,27 @@ func TestDispatchToUserInvalidatesDashboardCache(t *testing.T) {
 	payload := []byte(`{"data":[{"action":"update","record":{"symbol":"AAPL","price":150.60},"metadata":{"table_name":"trades"}}]}`)
 	globalHub.dispatchToUser(userSub, payload)
 
-	// Cache invalidation may be kicked off in a goroutine to keep the
-	// dispatch hot-path non-blocking. Give it a tiny window to complete.
+	// Invalidation is kicked off in a goroutine so the dispatch hot path
+	// stays non-blocking. Give it a tiny window to complete.
 	deadline := time.Now().Add(500 * time.Millisecond)
 	for time.Now().Before(deadline) {
-		if !mr.Exists(cacheKey) {
+		anyExists := false
+		for _, k := range keys {
+			if mr.Exists(k) {
+				anyExists = true
+				break
+			}
+		}
+		if !anyExists {
 			break
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
 
-	if mr.Exists(cacheKey) {
-		t.Errorf("dispatchToUser(%q, ...) left dashboard cache in Redis; stale data would now overwrite optimistic UI updates", userSub)
+	for _, k := range keys {
+		if mr.Exists(k) {
+			t.Errorf("dispatchToUser left cache key %q in Redis; stale data could still serve on the next refetch", k)
+		}
 	}
 }
 
@@ -169,10 +221,11 @@ func TestInvalidateIdempotent(t *testing.T) {
 	_, cleanup := setupMiniRedis(t)
 	defer cleanup()
 
-	// Key does not exist.
+	// Keys do not exist.
 	InvalidateDashboardCache("never_cached_user")
+	InvalidateUserCaches("never_cached_user")
 
-	// Verify Redis is reachable after the op (sanity check).
+	// Verify Redis is reachable after the ops (sanity check).
 	if err := Rdb.Ping(context.Background()).Err(); err != nil {
 		t.Errorf("Redis ping failed after no-op invalidate: %v", err)
 	}

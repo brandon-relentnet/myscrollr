@@ -193,25 +193,33 @@ func (h *Hub) listenToTopics(ctx context.Context) {
 }
 
 // dispatchToUser sends a payload to all SSE clients for a given user AND
-// invalidates that user's dashboard cache.
+// invalidates every cache layer that could serve stale data for them.
 //
 // The cache invalidation fixes the 2026-04-24 "finance symbols jitter"
-// bug: every CDC event means the last cached /dashboard response is now
-// stale, so we must delete it to prevent a follow-up refetch from the
-// desktop (triggered by its SSE safety-net `invalidateQueries`) from
-// overwriting the optimistic in-memory merge with pre-event prices.
+// bug. Every CDC event means three separate cache entries are now stale:
 //
-// We invalidate even when the user has no live SSE clients (offline / app
-// closed). The cache key might still be warm from a recent poll, and we
-// want their next /dashboard request to see fresh data rather than a
-// stale entry that doesn't reflect the change they were about to observe.
+//	cache:dashboard:<user>   — core's aggregated /dashboard response
+//	cache:finance:<user>     — finance-api's /internal/dashboard cache
+//	cache:sports:<user>      — sports-api's /internal/dashboard cache
+//	cache:rss:<user>         — rss-api's /internal/dashboard cache
 //
-// `Rdb.Del` is O(1) and executed on a goroutine so this never blocks the
-// dispatch hot path. A failed DEL logs inside `InvalidateDashboardCache`
-// but does not propagate — data correctness falls back to the 30s TTL
-// as it did before this commit.
+// Without clearing ALL of them, a desktop safety-net refetch (triggered
+// ~500ms after the SSE burst) can see the dashboard cache cleared, go
+// rebuild the response, and still get stale prices from the per-channel
+// caches, then persist those back into the dashboard cache — undoing
+// the optimistic merge the SSE event just applied. The UI visibly
+// regresses for up to 30s (the TTL) before the next CDC event "fixes"
+// it, repeat.
+//
+// Invalidation happens even when the user has no live SSE clients
+// (offline / app closed). Cached entries are still warm from their
+// last poll; we want the NEXT poll after they reconnect to see fresh
+// data rather than a stale entry from minutes or hours ago.
+//
+// All DELs are pipelined into a single Redis round-trip and executed on
+// a goroutine so this never blocks the dispatch hot path.
 func (h *Hub) dispatchToUser(userID string, payload []byte) {
-	go InvalidateDashboardCache(userID)
+	go InvalidateUserCaches(userID)
 
 	value, ok := h.clients.Load(userID)
 	if !ok {
