@@ -53,9 +53,16 @@ pub fn run() {
             }
         }));
 
-    // MCP bridge is dev-only and excluded on Windows — its WebSocket
-    // server is architecturally incompatible with Windows COM threading.
-    #[cfg(all(debug_assertions, not(target_os = "windows")))]
+    // MCP bridge is opt-in (feature `dev-mcp-bridge`), dev-only, and
+    // excluded on Windows — its WebSocket server is architecturally
+    // incompatible with Windows COM threading. Release builds never
+    // link the crate at all; development builds only pull it in when
+    // explicitly enabled with `--features dev-mcp-bridge`.
+    #[cfg(all(
+        feature = "dev-mcp-bridge",
+        debug_assertions,
+        not(target_os = "windows")
+    ))]
     {
         builder = builder.plugin(tauri_plugin_mcp_bridge::init());
     }

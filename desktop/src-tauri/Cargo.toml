@@ -16,6 +16,14 @@ crate-type = ["lib", "cdylib", "staticlib"]
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
+[features]
+# Default features intentionally exclude the MCP bridge so that release
+# builds never ship the dev automation plugin. Enable explicitly with
+# `cargo build --features dev-mcp-bridge` (or `npm run tauri:dev --
+# --features dev-mcp-bridge`) while doing end-to-end automation work.
+default = []
+dev-mcp-bridge = ["dep:tauri-plugin-mcp-bridge"]
+
 [dependencies]
 tauri = { version = "2", features = ["tray-icon", "image-png"] }
 tauri-plugin-shell = "2"
@@ -28,7 +36,7 @@ tokio = { version = "1", features = ["sync", "time"] }
 tauri-plugin-autostart = "2.5.1"
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
-tauri-plugin-mcp-bridge = "0.9"
+tauri-plugin-mcp-bridge = { version = "0.9", optional = true }
 tauri-plugin-store = "2"
 tauri-plugin-single-instance = "2"
 tauri-plugin-log = "2"

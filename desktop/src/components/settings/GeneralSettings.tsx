@@ -1,8 +1,27 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
-import { getStore, setStore } from "../../lib/store";
+import { getStore, setStore, removeStore } from "../../lib/store";
 import clsx from "clsx";
+
+// ── Updater storage keys ────────────────────────────────────────
+//
+// `lastUpdateDate` is the pub_date of the currently running build, used
+// to distinguish "up to date" from "same version, different pub_date"
+// (rebuild without version bump).
+//
+// `pendingUpdate` is written when `downloadAndInstall` completes but
+// BEFORE the new build is actually running (the user still needs to
+// relaunch). On next mount we promote it to `lastUpdateDate` only
+// when the running version matches — otherwise we know the download
+// never took effect (user dismissed relaunch, app crashed, etc.).
+const KEY_LAST_UPDATE_DATE = "scrollr:lastUpdateDate";
+const KEY_PENDING_UPDATE = "scrollr:pendingUpdate";
+
+interface PendingUpdate {
+  version: string;
+  date: string;
+}
 import type {
   AppearancePrefs,
   WindowPrefs,
@@ -80,6 +99,21 @@ export default function GeneralSettings({
   const [status, setStatus] = useState<UpdateStatus>({ step: "idle" });
   const pendingUpdate = useRef<Update | null>(null);
 
+  // Reconcile pending-update state: if we previously downloaded an update
+  // and the app is now running that exact version, promote the pending
+  // pub_date to `lastUpdateDate`. If versions don't match, the user never
+  // relaunched — drop the pending record so subsequent "check" calls don't
+  // falsely report up-to-date.
+  useEffect(() => {
+    if (!appVersion) return;
+    const pending = getStore<PendingUpdate | null>(KEY_PENDING_UPDATE, null);
+    if (!pending) return;
+    if (pending.version === appVersion) {
+      setStore(KEY_LAST_UPDATE_DATE, pending.date);
+    }
+    removeStore(KEY_PENDING_UPDATE);
+  }, [appVersion]);
+
   const setApp = <K extends keyof AppearancePrefs>(
     key: K,
     value: AppearancePrefs[K],
@@ -100,7 +134,7 @@ export default function GeneralSettings({
       // Same-version patch detection: if the remote version matches the
       // installed version AND the pub_date matches what we stored after
       // our last install, the user already has this exact build.
-      const storedDate = getStore<string | null>("scrollr:lastUpdateDate", null);
+      const storedDate = getStore<string | null>(KEY_LAST_UPDATE_DATE, null);
       if (
         update.version === appVersion &&
         storedDate &&
@@ -153,10 +187,18 @@ export default function GeneralSettings({
         }
       });
 
-      // Store the pub_date of the build we just installed so future
-      // same-version checks can tell we already have this build.
-      if (update.date) {
-        setStore("scrollr:lastUpdateDate", update.date);
+      // The new build is downloaded but NOT YET RUNNING — the user still
+      // has to relaunch. Write to `pendingUpdate` instead of `lastUpdateDate`
+      // so that if the user never relaunches we don't falsely report the
+      // new build as installed on the next check. The reconcile useEffect
+      // above promotes pending → lastUpdateDate once a later session is
+      // actually running at `update.version`.
+      if (update.date && update.version) {
+        const pending: PendingUpdate = {
+          version: update.version,
+          date: update.date,
+        };
+        setStore(KEY_PENDING_UPDATE, pending);
       }
 
       setStatus({ step: "ready" });

@@ -16,6 +16,9 @@ export { API_BASE };
 
 // ── Request helpers ─────────────────────────────────────────────
 
+/** Default hard timeout for all outbound requests (ms). */
+const DEFAULT_TIMEOUT_MS = 15_000;
+
 /**
  * Error thrown by `request()` / `authFetch()` on non-2xx responses.
  * Preserves the HTTP status code so callers can react to specific
@@ -29,6 +32,36 @@ export class ApiError extends Error {
   ) {
     super(message);
     this.name = "ApiError";
+  }
+}
+
+/**
+ * Wrap `fetch` with an AbortController-driven timeout. Prevents hung
+ * requests (slow backend, dropped connection, frozen proxy) from
+ * stalling the UI indefinitely. Callers may still pass their own
+ * `signal`; if both are set, whichever fires first wins.
+ */
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit = {},
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  // Honor any caller-provided signal by aborting the controller when it fires.
+  const callerSignal = options.signal ?? undefined;
+  const onCallerAbort = () => controller.abort(callerSignal?.reason);
+  if (callerSignal) {
+    if (callerSignal.aborted) controller.abort(callerSignal.reason);
+    else callerSignal.addEventListener("abort", onCallerAbort, { once: true });
+  }
+
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+    if (callerSignal) callerSignal.removeEventListener("abort", onCallerAbort);
   }
 }
 
@@ -52,7 +85,7 @@ export async function request<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetchWithTimeout(`${API_BASE}${path}`, {
     ...options,
     headers: { ...options.headers },
   });
@@ -76,10 +109,13 @@ export async function authFetch<T>(
   if (token) {
     (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   } else {
-    console.warn("[authFetch] No valid token — request will be unauthenticated:", path);
+    console.debug(
+      "[authFetch] Token unavailable for authed endpoint; proceeding unauthenticated (may 401):",
+      path,
+    );
   }
 
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetchWithTimeout(`${API_BASE}${path}`, {
     ...options,
     headers,
   });
@@ -88,7 +124,7 @@ export async function authFetch<T>(
   if (response.status === 401 && token) {
     const newToken = await getValidToken(true);
     if (newToken && newToken !== token) {
-      const retryResponse = await fetch(`${API_BASE}${path}`, {
+      const retryResponse = await fetchWithTimeout(`${API_BASE}${path}`, {
         ...options,
         headers: { ...options.headers, Authorization: `Bearer ${newToken}` },
       });

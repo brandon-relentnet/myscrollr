@@ -60,7 +60,13 @@ struct SystemInfo {
     gpu: GpuInfo,
     memory: MemoryInfo,
     os_name: String,
-    hostname: String,
+    /// Stable anonymous identifier derived from the real hostname via
+    /// a non-cryptographic hash. We deliberately do NOT send the raw
+    /// hostname because it frequently contains the user's real name
+    /// (`Jane's MacBook Pro`) or a workplace asset tag. The hash is
+    /// stable across diagnostic reports for the same machine, so
+    /// multiple reports from one user can still be correlated.
+    hostname_hash: String,
 }
 
 #[derive(Serialize)]
@@ -237,7 +243,20 @@ pub async fn collect_diagnostics(app: AppHandle) -> Result<DiagnosticReport, Str
         System::name().unwrap_or_default(),
         System::os_version().unwrap_or_default()
     );
-    let hostname = System::host_name().unwrap_or_default();
+    // Anonymize hostname via DefaultHasher (std-only, no new deps).
+    // Stable per-machine, reveals nothing about the original value.
+    let hostname_hash = {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let raw = System::host_name().unwrap_or_default();
+        if raw.is_empty() {
+            String::new()
+        } else {
+            let mut hasher = DefaultHasher::new();
+            raw.hash(&mut hasher);
+            format!("{:016x}", hasher.finish())
+        }
+    };
 
     drop(sys);
     drop(static_info);
@@ -311,7 +330,7 @@ pub async fn collect_diagnostics(app: AppHandle) -> Result<DiagnosticReport, Str
             gpu,
             memory,
             os_name,
-            hostname,
+            hostname_hash,
         },
         environment,
         windows,

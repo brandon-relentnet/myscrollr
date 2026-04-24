@@ -21,7 +21,7 @@ pub fn position_ticker(
         return Err(format!("invalid position: {position}"));
     }
     if let Some(h) = height {
-        if !h.is_finite() || h < 1.0 || h > 10_000.0 {
+        if !h.is_finite() || !(1.0..=10_000.0).contains(&h) {
             return Err("height out of range".into());
         }
     }

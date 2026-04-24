@@ -258,6 +258,13 @@ export default function FantasyConfigPanel({
       return;
     }
 
+    // TODO(Stream 3 coordination): /yahoo/start is becoming Auth: true on the
+    // server. We need to change the server to return JSON with the Yahoo
+    // consent URL instead of 302, then use shell::open on that URL. Currently
+    // this flow will 401 after the server-side change lands because external
+    // browser navigation doesn't carry the Authorization bearer header.
+    // Passing ?logto_sub= is the v1.0 workaround; remove once the server
+    // exposes { redirect_url } as JSON.
     const popupUrl = `${API_BASE}/yahoo/start?logto_sub=${sub}`;
     try {
       await open(popupUrl);

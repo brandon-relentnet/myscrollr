@@ -27,7 +27,7 @@ export default function AuthGate({ onLogin }: AuthGateProps) {
         {/* Sign in button */}
         <button
           onClick={onLogin}
-          className="w-full px-6 py-2.5 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent/90 transition-colors"
+          className="w-full px-6 py-2.5 rounded-lg bg-accent text-surface text-sm font-medium hover:bg-accent/90 transition-colors"
         >
           Sign In
         </button>
