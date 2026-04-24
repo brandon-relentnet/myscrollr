@@ -105,17 +105,35 @@ async fn main() {
         // first batch is processed (staleness guard).
         readiness_bg.mark_ready().await;
 
-        // Bridge loop: only forward a `record_poll()` when the websocket is
-        // connected AND has made batch progress. The previous version also
-        // recorded polls on "connected but stalled" which meant a silently
-        // wedged websocket — connection alive, no messages flowing — still
-        // looked healthy. Now if progress stops, staleness fires after
-        // `MAX_POLL_STALENESS` and Kubernetes pulls the pod out of rotation.
+        // Bridge loop: forward `record_poll()` whenever the websocket is
+        // connected OR the batch counter advanced. The `OR` is deliberate:
         //
-        // Weekend / off-hours freshness: TwelveData still sends heartbeat
-        // events which increment the batch counter when queued trades
-        // flush, so even a quiet market registers some progress within
-        // the staleness window.
+        //   - Market-hours: batches flush every ~5 seconds as trades come
+        //     through; `progressed` fires and we record.
+        //   - Off-hours / pre-market / weekends: no trades, so `progressed`
+        //     stays false but the websocket is still connected — we still
+        //     record so the pod stays Ready. Without this, the Saturday
+        //     pods would flap NotReady every 10 minutes (MAX_POLL_STALENESS).
+        //   - Startup: batch_number starts at 0, so `progressed` is false
+        //     for the first iteration. `connected` becomes true once the
+        //     subscribe handshake completes, typically within ~2s of the
+        //     init task finishing. That's why we rely on the OR for the
+        //     startup probe to pass within its 5-minute window.
+        //
+        // The earlier "AND" variant broke all three cases because the
+        // readiness gate returns 503 until `record_poll()` is called at
+        // least once (see `init::ReadinessGate::http_status`), so a quiet
+        // market could fail the k8s startup probe even though the service
+        // was functioning correctly. See fix commit 2026-04-24 for context.
+        //
+        // Silent-wedge detection: a websocket that's TCP-alive but not
+        // receiving messages is NOT caught by this bridge loop (by design
+        // of the OR). The reconnect logic in `start_finance_services`
+        // handles it — tungstenite surfaces the stalled connection as an
+        // error eventually (e.g. TCP keepalive failure) and we tear down
+        // and reconnect with error_count incremented. Operators who want
+        // stricter detection should watch `snap.batch_number` via the
+        // `/health/ready` JSON payload and alert on flat-lining.
         let bridge_health = health_bg.clone();
         let bridge_readiness = readiness_bg.clone();
         let bridge_cancel = cancel_bg.clone();
@@ -129,14 +147,13 @@ async fn main() {
                         let connected = snap.connection_status == "connected";
                         let progressed = snap.batch_number > last_batch;
 
-                        if connected && progressed {
+                        if connected || progressed {
                             bridge_readiness.record_poll().await;
                             last_batch = snap.batch_number;
                         }
-                        // else: do nothing. The staleness timeout in
-                        // ReadinessGate handles degradation by flipping
-                        // /health/ready to 503 once MAX_POLL_STALENESS
-                        // elapses without a record_poll() call.
+                        // else: websocket is disconnected AND no progress.
+                        // Don't record — staleness will fire after
+                        // MAX_POLL_STALENESS and k8s pulls us from rotation.
                     }
                 }
             }
