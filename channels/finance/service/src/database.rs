@@ -28,9 +28,18 @@ fn migrator() -> sqlx::migrate::Migrator {
 
 /// Numeric version range that uniquely identifies finance-service migrations
 /// in the shared `_sqlx_migrations` table. Must match the prefix enforced by
-/// `tests/migration_versions.rs`.
-const FINANCE_MIGRATION_MIN: i64 = 11_000_000_000;
-const FINANCE_MIGRATION_MAX: i64 = 11_999_999_999;
+/// `tests/migration_versions.rs` (PREFIX_LO / PREFIX_HI).
+///
+/// Finance migration filenames start with `11` and are 12 digits long, e.g.
+/// `110000000001_initial.up.sql`. That's a version of 110_000_000_001
+/// (one hundred ten billion and one), so the prefix range is 110B..<120B.
+/// An earlier version of these constants was 11_000_000_000..=11_999_999_999
+/// which is off by exactly 10× and silently matches NO real migration rows;
+/// that caused the invariant check below to reliably fail on production
+/// boot because `recorded` was always 0. See tests/migration_versions.rs
+/// for the matching test-side constants.
+pub const FINANCE_MIGRATION_MIN: i64 = 110_000_000_000;
+pub const FINANCE_MIGRATION_MAX: i64 = 119_999_999_999;
 
 pub async fn initialize_pool() -> Result<PgPool> {
     let pool_options = PgPoolOptions::new()

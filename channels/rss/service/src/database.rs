@@ -31,10 +31,10 @@ fn migrator() -> sqlx::migrate::Migrator {
 /// `20250601*` migrations that are already applied in production. Any new
 /// rss migration lives in `13*`. Both ranges must be counted for the
 /// invariant check below. Must stay in sync with `tests/migration_versions.rs`.
-const RSS_MIGRATION_LEGACY_MIN: i64 = 20_250_601_000_000;
-const RSS_MIGRATION_LEGACY_MAX: i64 = 20_250_601_999_999;
-const RSS_MIGRATION_NEW_MIN: i64 = 130_000_000_000;
-const RSS_MIGRATION_NEW_MAX: i64 = 139_999_999_999;
+pub const RSS_MIGRATION_LEGACY_MIN: i64 = 20_250_601_000_000;
+pub const RSS_MIGRATION_LEGACY_MAX: i64 = 20_250_601_999_999;
+pub const RSS_MIGRATION_NEW_MIN: i64 = 130_000_000_000;
+pub const RSS_MIGRATION_NEW_MAX: i64 = 139_999_999_999;
 
 pub async fn initialize_pool() -> Result<PgPool> {
     let pool_options = PgPoolOptions::new()
