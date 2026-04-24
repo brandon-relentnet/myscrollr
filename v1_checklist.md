@@ -150,19 +150,101 @@ All paid tiers include a 7-day free trial.
 ## Track 5 — Ship Readiness
 
 ### Security
-- [x] Configure CSP headers in Tauri webview (`script-src 'self'`, Google Fonts allowlisted, `connect-src https://*` for user-provided Kuma URLs)
+- [x] Configure CSP headers in Tauri webview (`script-src 'self'`, Google Fonts allowlisted, `connect-src https://*` for user-provided Kuma URLs; v1.1 tightening path documented in `desktop/src-tauri/CSP_NOTES.md`)
+- [x] `withGlobalTauri: false` (2026-04 polish)
+- [x] Move `tauri-plugin-mcp-bridge` to optional `dev-mcp-bridge` feature (release binary no longer links dev plugin)
 
 ### Legal
 - [x] Bundle AGPL license with binary (`"resources": ["../../LICENSE"]` in `tauri.conf.json`)
-- [ ] Final legal review pass after Track 3 legal doc updates
+- [x] Final legal review pass — `api.myscrollr.relentnet.dev` → `api.myscrollr.com` in docs; removed stale "Effective Q3 2026" callouts; Finnhub → TwelveData across marketing/legal
+- [ ] Final legal review by counsel (external)
 
 ### Testing & Release
+- [x] Vitest installed + 112 passing tests on desktop pure functions (selectors, tierLimits, stableStringify)
 - [ ] Cross-platform testing (macOS arm64, Windows x64, Linux x64 — all three CI targets)
 - [ ] Performance baseline (startup time, idle memory usage, no memory leaks on long runs)
 - [ ] Verify rollback plan (unpublish GitHub release + push hotfix via auto-updater if critical bug found)
-- [ ] Create root README.md (none exists — only `myscrollr.com/README.md` which still says "Chrome extension")
+- [x] Create root README.md (2026-04)
 - [ ] Prepare release notes
 - [ ] Draft launch announcement
+
+---
+
+## 2026-04-25 Polish Pass — Shipped
+
+> Comprehensive pre-super-user polish pass. Driven by audit across 4 codebases.
+> See commit history for each stream.
+
+### Security fixes
+- [x] Stripe webhook replay tolerance wired (`api/core/stripe_webhook.go`)
+- [x] Stripe webhook idempotency refactored to atomic INSERT ON CONFLICT
+- [x] Yahoo OAuth `/yahoo/start` now requires auth header (account-hijack vector closed)
+- [x] `crypto/rand.Read` error now checked in OAuth state generation
+- [x] `GetDel` (atomic consume) on Yahoo state logto Redis key
+- [x] `api/Dockerfile.test` deleted (Go-1.21 + dev-URL landmine)
+- [x] Logto M2M token mutex replaced with singleflight (no more webhook stall)
+- [x] Proxy strips `access_token`/`refresh_token` cookies except for `/yahoo/*`
+- [x] Health no longer cached when degraded (probe sees outage immediately)
+- [x] `superUserRoleID` moved from hardcoded to env
+- [x] Email PII masking helper (`maskEmail` → `u***@d***.com`)
+- [x] Dispatch-drop rate-limited log in `events.go` (no more silent drops)
+- [x] Hostname hashed in desktop diagnostics payload
+- [x] Fetch timeouts (15s AbortController) on all desktop API calls
+- [x] ConfirmDialog focus trap (react-focus-lock)
+- [x] RouteError sanitization (details behind `<details>` disclosure)
+- [x] Channel docker-compose ports bound to 127.0.0.1 (dev-mode hardening)
+- [x] Committed `sports_api` 17MB binary removed from repo
+
+### Reliability fixes
+- [x] All 3 channel Go APIs now have sized pgxpool (was defaults)
+- [x] Subscriber Redis TTLs on finance/sports/rss channel APIs (7-day, mirrors fantasy)
+- [x] RSS `deleteCustomFeed` now transactional (no more orphaned feed rows)
+- [x] Connect timeout on core API DB pool (5s)
+- [x] `pruneWebhookEvents` now runs every 6h (was startup-only)
+- [x] New migration: `stripe_customers.lifetime` partial index (no more full-scan on webhook)
+- [x] Rust services: RSS body cap 8 MiB streaming + `.error_for_status()` + Accept header
+- [x] Rust services: async logger fallback to `eprintln!` (no more silent log drops)
+- [x] Rust services: finance bridge no longer marks healthy without actual batch progress
+- [x] Rust services: finance error_count increments on reconnect failure
+- [x] Rust services: finance WebSocket 1 MiB message size cap
+- [x] Rust services: sports API_SPORTS_KEY trimmed; `expect()` replaced with `?`
+- [x] Rust services: sports `dates.first().unwrap()` guarded
+- [x] Rust services: sports PCT formatting fixed (`1.000` not `.1000`)
+- [x] Rust services: sports standings parser no longer guesses via `.values().next()`
+- [x] Rust services: sports cleanup_old_games live threshold 4h → 24h
+- [x] Rust services: silent `db.` prefix stripping removed from DB URL parsing
+- [x] Rust services: pool sizing tuned (20/1, explicit idle_timeout secs)
+- [x] Rust services: new `REPLICA IDENTITY FULL` migration for sports standings/teams
+- [x] Rust services: migration startup invariant check (guards against deleted files)
+- [x] Rust services: log level Debug → Info for finance (prod-appropriate)
+- [x] Rust services: file logger removed (no more disk fill)
+- [x] Rust services: TLS standardized on rustls (dropped native-tls)
+- [x] Rust services: feeds.test.json no longer shipped in prod image
+- [x] Rust services: RSS seed_tracked_feeds re-enables disabled defaults on deploy
+- [x] Rust services: RSS retries quarantined feeds at cycle 0 too
+- [x] Rust services: all clippy warnings fixed across 3 services
+
+### User-facing fixes
+- [x] **Universal display sorting** — Display tab prefs (`articlesPerSource`, `defaultSort`, `enabledLeagueKeys`, `primaryLeagueKey`) now apply to the ticker, not just feed pages. Shared selectors in `src/channels/*/view.ts`. *(user request)*
+- [x] **Fantasy tier enforcement** on `/users/me/yahoo-leagues/import` (server-side count cap)
+- [x] **Multi-deck ticker redesign** — per-row source selection, tier-gated (free=1, uplink=2, pro=3, ultimate=3+customization), pin row-scoping, migration from legacy `tickerRows`. UI ships without per-row scroll customization UI (data path wired, UI deferred to v1.0.2 per spec). *(user request)*
+- [x] **Pinned widget duplication fix** — was rendering identically on every row; now correctly row-scoped
+- [x] FreshnessPill mounted on finance/sports/rss feed pages (green→amber→red by staleness)
+- [x] ConnectionBanner in main window when Ultimate user falls back to polling
+- [x] CheckoutModal Stripe appearance now honors light/dark theme (was dark-hardcoded)
+- [x] NotFound page rewritten with project Tailwind tokens (was rendering with undefined shadcn tokens)
+- [x] Auto-updater `lastUpdateDate` fix (no more phantom "up to date")
+- [x] AuthGate `text-white` → `text-surface` (high-contrast safe)
+- [x] Legal docs: `api.myscrollr.relentnet.dev` → `api.myscrollr.com`
+- [x] Legal docs: removed "Effective upon Uplink launch — Q3 2026" badges
+- [x] Marketing copy: Finnhub → TwelveData (3 user-facing pages)
+- [x] Marketing copy: removed extension-era references (tab juggling, browsing, etc.)
+- [x] Footer: removed broken `/discover` and `/onboard` links (now 404-free)
+- [x] `Unlimited` → `Ultimate` tier-name consistency across pricing + FAQ
+- [x] Marketing site: 15 lint errors fixed (Infinity shadow, unnecessary conditions, stale rules)
+- [x] Marketing site: `pk_live_` → `pk_test_REPLACE_ME` in `.env.example`
+- [x] Marketing site: robots.txt Disallow for auth routes; sitemap.xml lastmod
+- [x] Desktop diagnostics: hostname hashed before send
 
 ---
 
@@ -171,19 +253,23 @@ All paid tiers include a 7-day free trial.
 > Deferred items. Important but not launch-blocking.
 
 ### Enforcement
-- [ ] Server-side item count limits (channel APIs read `X-User-Tier` and validate counts on add — ~2-3 hours)
+- [ ] Server-side item count limits on finance/sports/rss channels (fantasy done 2026-04-25)
 - [ ] Server-side polling rate enforcement (Free=60s, Uplink=30s, Pro=10s, Ultimate=SSE — separate half-day)
 - [ ] ~~Server-side SSE access gating~~ *(promoted to Track 4)*
 
 ### Stability & Polish
 - [ ] Crash reporting (Sentry or equivalent — desktop + Go APIs + Rust services)
-- [ ] Offline detection + graceful degradation (show cached data, pause queries)
+- [ ] Offline detection + graceful degradation (show cached data, pause queries; `ConnectionBanner` already supports "offline" mode — just needs navigator-online detection)
 - [ ] Window state persistence (main window size/position across restarts)
 - [ ] API retry with custom backoff (currently TanStack Query `retry:1` default only)
 - [ ] 429 rate limit handling on frontend
-- [ ] Stale data visual indicators in UI
+- [x] ~~Stale data visual indicators in UI~~ *(shipped 2026-04-25 — FreshnessPill)*
 - [ ] Loading state audit (skeleton/shimmer components — currently text-based only)
 - [ ] Fix configure page flash when adding items from catalog
+- [ ] Ticker multi-deck Phase 2: per-row scroll customization UI (Ultimate) — data path already wired, just needs the UI controls in TickerSettings
+- [ ] CSP connect-src tightening (user-configurable Kuma URL needs runtime CSP or Rust-side proxy — see `desktop/src-tauri/CSP_NOTES.md`)
+- [ ] Yahoo OAuth desktop flow needs server-side JSON redirect_url (currently 302 which loses auth header on external nav — `/yahoo/start` is Auth: true on the server)
+- [ ] `scrollr:navigate` payload fix so tray "Customize Ticker" opens the Ticker settings tab
 
 ### Features
 - [ ] First-run onboarding wizard (beyond current welcome empty state + ghost cards)
