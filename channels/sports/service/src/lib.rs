@@ -1,4 +1,5 @@
 use std::{env, fs, sync::Arc};
+use anyhow::{Context, Result};
 use reqwest::{Client, header};
 use tokio::sync::Mutex;
 use chrono::{DateTime, Datelike, Duration, NaiveDate, NaiveDateTime, Utc};
@@ -41,6 +42,10 @@ pub enum InitError {
     /// `API_SPORTS_KEY` is missing or empty. The service literally cannot make
     /// a single request.
     MissingApiKey,
+    /// HTTP client construction failed — either the TLS stack is broken or the
+    /// API key contains bytes that aren't valid in an HTTP header. Both are
+    /// unrecoverable config/env problems.
+    ClientBuild(String),
 }
 
 impl std::fmt::Display for InitError {
@@ -51,6 +56,9 @@ impl std::fmt::Display for InitError {
             }
             InitError::MissingApiKey => {
                 write!(f, "API_SPORTS_KEY is not set or empty")
+            }
+            InitError::ClientBuild(msg) => {
+                write!(f, "Failed to build HTTP client: {msg}")
             }
         }
     }
@@ -98,13 +106,16 @@ pub async fn init_sports_service(
         return Err(InitError::NoLeaguesConfigured);
     }
 
-    let api_key = env::var("API_SPORTS_KEY").unwrap_or_default();
+    // Trim the API key so a trailing newline (common when pasted from a web
+    // UI or interpolated via `echo`) doesn't cause `HeaderValue::from_str`
+    // to fail deeper in `build_client` with a cryptic error.
+    let api_key = env::var("API_SPORTS_KEY").unwrap_or_default().trim().to_string();
     if api_key.is_empty() {
         error!("API_SPORTS_KEY not set. Cannot poll api-sports.io.");
         return Err(InitError::MissingApiKey);
     }
 
-    let client = build_client(&api_key);
+    let client = build_client(&api_key).map_err(|e| InitError::ClientBuild(format!("{e:#}")))?;
     info!("Initialized with {} leagues", leagues.len());
     Ok((client, leagues))
 }
@@ -224,6 +235,15 @@ pub async fn poll_schedule(
     let mut dates = Vec::with_capacity((SCHEDULE_DAYS_AHEAD + 1) as usize);
     for offset in 0..=SCHEDULE_DAYS_AHEAD {
         dates.push((now + Duration::days(offset)).format("%Y-%m-%d").to_string());
+    }
+
+    // Defensive guard: the loop above always pushes at least one date when
+    // `SCHEDULE_DAYS_AHEAD >= 0`, but if the constant were ever changed to a
+    // negative value the `.first().unwrap() / .last().unwrap()` below would
+    // panic. Bail out with a warning instead.
+    if dates.is_empty() {
+        warn!("[Sports] poll_schedule invoked with no dates to query");
+        return;
     }
 
     info!("Schedule poll: fetching {} days ({} to {}) for {} leagues",
@@ -520,10 +540,14 @@ async fn parse_v1_standing_item(
         None
     };
 
-    // Calculate PCT for NFL: wins / games_played
+    // Calculate PCT using standard sports-notation formatting (.{3}).
+    // The old `format!(".{:03}", (pct_val * 1000.0).round() as i32)` path
+    // emitted `.1000` for a perfect 1.000 record because `:03` only pads
+    // to three *minimum* digits; `{:.3}` naturally yields `1.000`, `0.500`,
+    // `0.750`, matching what operators expect to see in an NFL standing.
     let pct = if games_played > 0 {
         let pct_val = (wins as f64) / (games_played as f64);
-        Some(format!(".{:03}", (pct_val * 1000.0).round() as i32))
+        Some(format!("{:.3}", pct_val))
     } else {
         None
     };
@@ -605,28 +629,43 @@ async fn parse_basketball_standing_item(
         None => return,
     };
 
+    // Resolve a wins / losses count from a `games.win` or `games.lose`
+    // object. The api-sports.io response typically looks like:
+    //   {"total": 50}   (NBA) or
+    //   {"home": 25, "road": 25, "all": 50}  (MLB)
+    // The previous implementation fell back to `.values().next()` which
+    // picked an arbitrary field — breaking determinism (the map iteration
+    // order is unspecified) and occasionally returning a home-only number
+    // as if it were the full season total. Explicitly prefer `total`, then
+    // fall back to `home + road` when `total` isn't in the payload.
+    fn resolve_wl(node: Option<&serde_json::Value>) -> i64 {
+        let Some(n) = node else { return 0 };
+        if let Some(total) = n.get("total").and_then(|v| v.as_i64()) {
+            return total;
+        }
+        let home = n.get("home").and_then(|v| v.as_i64()).unwrap_or(0);
+        let road = n.get("road").and_then(|v| v.as_i64()).unwrap_or(0);
+        home + road
+    }
+
     // NBA/MLB: games object has nested win/lose with {total, percentage}
     let games = item.get("games");
     let (wins, losses, games_played, pct) = if let Some(g) = games {
-        let w = g.get("win").and_then(|w| {
-            w.get("total").or_else(|| w.as_object().map(|o| o.values().next().unwrap_or(&serde_json::Value::Null)))
-        }).and_then(|v| v.as_i64()).unwrap_or(0) as i32;
-        let l = g.get("lose").and_then(|l| {
-            l.get("total").or_else(|| l.as_object().map(|o| o.values().next().unwrap_or(&serde_json::Value::Null)))
-        }).and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+        let w = resolve_wl(g.get("win")) as i32;
+        let l = resolve_wl(g.get("lose")) as i32;
         let gp = g.get("played").and_then(|p| p.as_i64()).unwrap_or(0) as i32;
-        
-        // Extract percentage from win.percentage
+
+        // Extract percentage from win.percentage. The feed may send it as
+        // a string (already formatted) or a raw float — normalize both to
+        // the `.NNN` convention used elsewhere.
         let pct_str = g.get("win").and_then(|w| w.get("percentage")).and_then(|p| {
             if let Some(pct_str) = p.as_str() {
                 Some(pct_str.to_string())
-            } else if let Some(pct_f) = p.as_f64() {
-                Some(format!(".{:.3}", pct_f).trim_start_matches("0").to_string())
             } else {
-                None
+                p.as_f64().map(|pct_f| format!("{:.3}", pct_f))
             }
         });
-        
+
         (w, l, gp, pct_str)
     } else {
         (0, 0, 0, None)
@@ -648,10 +687,8 @@ async fn parse_basketball_standing_item(
     let games_behind = item.get("games_behind").and_then(|gb| {
         if let Some(gb_str) = gb.as_str() {
             Some(gb_str.to_string())
-        } else if let Some(gb_f) = gb.as_f64() {
-            Some(format!("{:.1}", gb_f))
         } else {
-            None
+            gb.as_f64().map(|gb_f| format!("{:.1}", gb_f))
         }
     });
 
@@ -775,10 +812,12 @@ async fn parse_hockey_standing_item(
         None
     };
 
-    // Calculate PCT
+    // Calculate PCT using standard sports-notation formatting — see the
+    // equivalent comment in parse_v1_standing_item for why `{:.3}` instead
+    // of `.{:03}`.
     let pct = if games_played > 0 {
         let pct_val = (wins as f64) / (games_played as f64);
-        Some(format!(".{:03}", (pct_val * 1000.0).round() as i32))
+        Some(format!("{:.3}", pct_val))
     } else {
         None
     };
@@ -937,18 +976,21 @@ async fn upsert_games(
 // HTTP client
 // =============================================================================
 
-fn build_client(api_key: &str) -> Client {
+/// Build the HTTP client used for all api-sports.io requests. Fails with
+/// context rather than panicking so `init_sports_service` can surface the
+/// error through the readiness gate instead of taking the process down via
+/// an uncaught `.expect()`.
+fn build_client(api_key: &str) -> Result<Client> {
     let mut headers = header::HeaderMap::new();
-    headers.insert(
-        "x-apisports-key",
-        header::HeaderValue::from_str(api_key).expect("Invalid API key"),
-    );
+    let header_value = header::HeaderValue::from_str(api_key)
+        .context("API_SPORTS_KEY contains bytes that aren't valid in an HTTP header value")?;
+    headers.insert("x-apisports-key", header_value);
 
     Client::builder()
         .default_headers(headers)
         .timeout(std::time::Duration::from_secs(15))
         .build()
-        .expect("Failed to build HTTP client")
+        .context("reqwest client build failed (TLS stack? DNS resolver?)")
 }
 
 // =============================================================================
@@ -988,10 +1030,11 @@ async fn poll_league(
         .cloned()
         .unwrap_or_default();
 
-    if let Some(errors) = body.get("errors") {
-        if errors.is_object() && errors.as_object().map_or(false, |m| !m.is_empty()) {
-            warn!("[{}] API returned errors: {}", league.name, errors);
-        }
+    if let Some(errors) = body.get("errors")
+        && errors.is_object()
+        && errors.as_object().is_some_and(|m| !m.is_empty())
+    {
+        warn!("[{}] API returned errors: {}", league.name, errors);
     }
 
     let mut cleaned_games = Vec::new();

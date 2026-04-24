@@ -23,15 +23,15 @@ pub async fn start_finance_services(pool: Arc<PgPool>, health_state: Arc<Mutex<F
 
     // Seed from JSON if database is empty, or update name/category for existing symbols
     let existing = get_tracked_symbols(pool.clone()).await;
-    if let Ok(file_contents) = fs::read_to_string("./configs/subscriptions.json") {
-        if let Ok(entries) = serde_json::from_str::<Vec<TrackedSymbolConfig>>(&file_contents) {
-            if existing.is_empty() {
-                info!("Database tracked_symbols is empty, seeding from local config...");
-            } else {
-                info!("Syncing name/category metadata for tracked symbols...");
-            }
-            let _ = seed_tracked_symbols(pool.clone(), entries).await;
+    if let Ok(file_contents) = fs::read_to_string("./configs/subscriptions.json")
+        && let Ok(entries) = serde_json::from_str::<Vec<TrackedSymbolConfig>>(&file_contents)
+    {
+        if existing.is_empty() {
+            info!("Database tracked_symbols is empty, seeding from local config...");
+        } else {
+            info!("Syncing name/category metadata for tracked symbols...");
         }
+        let _ = seed_tracked_symbols(pool.clone(), entries).await;
     }
 
     // Initialization with database-driven state
@@ -59,7 +59,17 @@ pub async fn start_finance_services(pool: Arc<PgPool>, health_state: Arc<Mutex<F
                 error!("WebSocket disconnected, attempting reconnect in 5 minutes...");
             }
             Err(e) => {
-                error!("WebSocket connection failed: {}, retrying in 5 minutes...", e);
+                // Surface connect() failures in the health payload so the
+                // /health/ready response actually reflects the pod's state.
+                // The previous version only logged to stderr, which meant
+                // a pod stuck in a connect-fail loop looked fine to humans
+                // scraping /health/ready.
+                {
+                    let mut h = health_state.lock().await;
+                    h.error_count += 1;
+                    h.last_error = Some(format!("{e:#}"));
+                }
+                error!("WebSocket connect failed: {e:#}, retrying in 5 minutes...");
             }
         }
         sleep(Duration::from_secs(300)).await;

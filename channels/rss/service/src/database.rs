@@ -27,12 +27,27 @@ fn migrator() -> sqlx::migrate::Migrator {
     m
 }
 
+/// RSS has two legitimate numeric ranges because of the pre-cleanup legacy
+/// `20250601*` migrations that are already applied in production. Any new
+/// rss migration lives in `13*`. Both ranges must be counted for the
+/// invariant check below. Must stay in sync with `tests/migration_versions.rs`.
+const RSS_MIGRATION_LEGACY_MIN: i64 = 20_250_601_000_000;
+const RSS_MIGRATION_LEGACY_MAX: i64 = 20_250_601_999_999;
+const RSS_MIGRATION_NEW_MIN: i64 = 130_000_000_000;
+const RSS_MIGRATION_NEW_MAX: i64 = 139_999_999_999;
+
 pub async fn initialize_pool() -> Result<PgPool> {
     let pool_options = PgPoolOptions::new()
-        .max_connections(10)
-        .min_connections(0)
+        // Pool sizing rationale: rss runs up to 20 concurrent feed polls
+        // per cycle (see the semaphore in lib.rs), each doing a batch
+        // upsert. Ten connections left us fighting for them; 20 matches
+        // the concurrency ceiling and removes the contention.
+        .max_connections(20)
+        // Keep one warm connection so the first query after an idle period
+        // doesn't eat the TLS/auth handshake latency.
+        .min_connections(1)
         .acquire_timeout(Duration::from_secs(10))
-        .idle_timeout(Duration::from_millis(30_000));
+        .idle_timeout(Duration::from_secs(30));
 
     let database_url = if let Ok(url) = env::var("DATABASE_URL") {
         let mut url = url.trim().trim_matches('"').trim_matches('\'').to_string();
@@ -53,10 +68,14 @@ pub async fn initialize_pool() -> Result<PgPool> {
         let password = get_env_var("DB_PASSWORD")?;
         let database = get_env_var("DB_DATABASE")?;
 
-        let host = if let Some(fixed) = raw_host.strip_prefix("db.") { fixed } else { &raw_host };
+        // Use the raw host as-is. Older code stripped a `db.` prefix as a
+        // holdover from Supabase-era hostnames; that was silently rewriting
+        // any legitimate host starting with `db.`, which is undefined
+        // behaviour with no logging. If the host is wrong the operator
+        // should see a connect failure, not magical rewriting.
         let port: u16 = port_str.parse().context("DB_PORT must be a valid u16 integer")?;
 
-        format!("postgres://{}:{}@{}:{}/{}", user, password, host, port, database)
+        format!("postgres://{}:{}@{}:{}/{}", user, password, raw_host, port, database)
     };
 
     eprintln!("[DB] Connecting to database...");
@@ -84,6 +103,40 @@ pub async fn initialize_pool() -> Result<PgPool> {
             .context("Failed to run migrations. No automatic recovery — inspect _sqlx_migrations"));
     }
     eprintln!("[DB] Migrations complete");
+
+    // Startup invariant: every on-disk migration for *this* service's
+    // version range(s) must have a corresponding recorded row in
+    // `_sqlx_migrations`. `set_ignore_missing(true)` silently tolerates
+    // rows for other services, but would also hide the case where an
+    // on-disk file was deleted locally while its row is still in the DB —
+    // the drift pattern that caused the April 2026 silent migration
+    // failure. This check refuses to boot when the counts disagree.
+    let on_disk: i64 = migrator().iter().count() as i64;
+    let recorded: i64 = sqlx::query_scalar::<_, i64>(
+        "SELECT count(*) FROM _sqlx_migrations \
+         WHERE (version >= $1 AND version <= $2) OR (version >= $3 AND version <= $4)",
+    )
+    .bind(RSS_MIGRATION_LEGACY_MIN)
+    .bind(RSS_MIGRATION_LEGACY_MAX)
+    .bind(RSS_MIGRATION_NEW_MIN)
+    .bind(RSS_MIGRATION_NEW_MAX)
+    .fetch_one(&pool)
+    .await
+    .context("query migration count")?;
+
+    if recorded != on_disk {
+        anyhow::bail!(
+            "migration invariant violated: {} on disk but {} recorded in DB (rss legacy \
+             {}-{} / new {}-{}). Someone deleted a migration file, or this service is \
+             pointing at a DB whose migrations haven't been applied.",
+            on_disk,
+            recorded,
+            RSS_MIGRATION_LEGACY_MIN,
+            RSS_MIGRATION_LEGACY_MAX,
+            RSS_MIGRATION_NEW_MIN,
+            RSS_MIGRATION_NEW_MAX
+        );
+    }
 
     Ok(pool)
 }
@@ -130,12 +183,30 @@ pub async fn seed_tracked_feeds(pool: Arc<PgPool>, feeds: Vec<FeedConfig>) -> Re
     let names: Vec<&str> = feeds.iter().map(|f| f.name.as_str()).collect();
     let categories: Vec<&str> = feeds.iter().map(|f| f.category.as_str()).collect();
 
+    // On conflict we want a default feed to always end up `is_enabled = true`
+    // and `is_default = true`, even if somebody previously flipped it off or
+    // it got quarantined. Before this change a default feed that hit the 288
+    // consecutive-failure quarantine threshold would stay quarantined forever
+    // because the upsert only touched name/category.
+    //
+    // Quarantine reset uses a CASE that clamps to 287 instead of 0 so we
+    // don't lose the "this feed has been flaky" signal entirely — one more
+    // failure still re-quarantines it, which is what we want for a source
+    // that's been down all week and is only temporarily back up.
     let statement = "
-        INSERT INTO tracked_feeds (url, name, category, is_default, is_enabled)
+        INSERT INTO tracked_feeds (url, name, category, is_default, is_enabled, consecutive_failures)
         SELECT * FROM UNNEST($1::text[], $2::text[], $3::text[])
             AS t(url, name, category),
-            LATERAL (SELECT true AS is_default, true AS is_enabled) defaults
-        ON CONFLICT (url) DO UPDATE SET category = EXCLUDED.category, name = EXCLUDED.name
+            LATERAL (SELECT true AS is_default, true AS is_enabled, 0 AS consecutive_failures) defaults
+        ON CONFLICT (url) DO UPDATE SET
+            name = EXCLUDED.name,
+            category = EXCLUDED.category,
+            is_default = true,
+            is_enabled = true,
+            consecutive_failures = CASE
+                WHEN tracked_feeds.consecutive_failures >= 288 THEN 287
+                ELSE tracked_feeds.consecutive_failures
+            END
     ";
     let mut connection = pool.acquire().await?;
     query(statement)

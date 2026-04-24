@@ -7,8 +7,8 @@ RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
 COPY --from=planner /app/recipe.json recipe.json
-# Build dependencies
-RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
+# No OpenSSL dependency needed — we're on rustls for both reqwest and
+# tokio-tungstenite.
 RUN cargo chef cook --release --recipe-path recipe.json
 
 # Build application
@@ -18,7 +18,7 @@ RUN cargo build --release --bin finance_service
 FROM debian:trixie-slim
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y ca-certificates libssl-dev curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y ca-certificates curl && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/target/release/finance_service .
 COPY --from=builder /app/configs ./configs
 

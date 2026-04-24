@@ -14,6 +14,12 @@ pub struct SportsHealth {
     pub last_error: Option<String>,
 }
 
+impl Default for SportsHealth {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SportsHealth {
     pub fn new() -> Self {
         Self {
@@ -149,9 +155,7 @@ mod tests {
 
     #[test]
     fn test_rate_limiter_concurrent_updates() {
-        use std::collections::HashMap;
         use std::sync::Arc;
-        use tokio::sync::Mutex;
 
         let sports = vec!["basketball".to_string()];
         let rl = Arc::new(RateLimiter::new(&sports, 1000));

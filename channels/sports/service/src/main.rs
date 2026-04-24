@@ -146,11 +146,11 @@ async fn main() {
                     _ = bridge_cancel.cancelled() => break,
                     _ = tokio::time::sleep(READINESS_BRIDGE_INTERVAL) => {
                         let snap = bridge_health.lock().await.get_health();
-                        if let Some(ts) = snap.last_poll {
-                            if last_seen != Some(ts) {
-                                bridge_readiness.record_poll().await;
-                                last_seen = Some(ts);
-                            }
+                        if let Some(ts) = snap.last_poll
+                            && last_seen != Some(ts)
+                        {
+                            bridge_readiness.record_poll().await;
+                            last_seen = Some(ts);
                         }
                     }
                 }

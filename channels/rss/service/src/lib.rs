@@ -1,4 +1,5 @@
 use std::{sync::Arc, fs};
+use bytes::BytesMut;
 use reqwest::Client;
 use tokio::sync::Mutex;
 use crate::log::{error, info, warn};
@@ -14,6 +15,12 @@ pub mod log;
 pub mod database;
 pub mod init;
 pub mod types;
+
+/// Upper bound on a single feed HTTP body. Anything larger is almost certainly
+/// either a misconfigured source streaming logs, a CDN serving us an error
+/// page as HTML, or an outright denial-of-service attempt. We cap streaming
+/// rather than reject late to avoid buffering hundreds of MB into memory.
+const MAX_FEED_BODY_BYTES: usize = 8 * 1024 * 1024; // 8 MiB
 
 pub async fn start_rss_service(pool: Arc<PgPool>, health_state: Arc<Mutex<RssHealth>>, client: &Client, cycle: u64) {
     info!("Starting RSS service (cycle {})...", cycle);
@@ -37,8 +44,11 @@ pub async fn start_rss_service(pool: Arc<PgPool>, health_state: Arc<Mutex<RssHea
 
     let mut feeds = get_tracked_feeds(pool.clone()).await;
 
-    // Every 288 cycles (~24 hours), retry quarantined feeds to see if they've recovered
-    if cycle % 288 == 0 && cycle > 0 {
+    // On cycle 0 (startup) and every 288 cycles (~24 hours) afterwards, retry
+    // quarantined feeds to see if they've recovered. Retrying at cycle 0 is
+    // important because a pod restart shouldn't strand feeds that would
+    // otherwise wait another full day before being touched again.
+    if cycle == 0 || cycle.is_multiple_of(288) {
         let quarantined = get_quarantined_feeds(pool.clone()).await;
         if !quarantined.is_empty() {
             info!("Retrying {} quarantined feeds...", quarantined.len());
@@ -131,8 +141,21 @@ pub async fn start_rss_service(pool: Arc<PgPool>, health_state: Arc<Mutex<RssHea
 }
 
 async fn poll_feed(client: &Client, pool: &Arc<PgPool>, feed: &TrackedFeed) -> anyhow::Result<usize> {
-    let response = client.get(&feed.url).send().await?;
-    let bytes = response.bytes().await?;
+    // Stream the body into a bounded buffer so a hostile or misbehaving feed
+    // can't OOM the pod. `.error_for_status()?` also surfaces 4xx/5xx as
+    // errors up front so we don't try to parse an HTML error page as RSS.
+    let mut response = client.get(&feed.url).send().await?.error_for_status()?;
+    let mut buf = BytesMut::with_capacity(64 * 1024);
+    while let Some(chunk) = response.chunk().await? {
+        if buf.len() + chunk.len() > MAX_FEED_BODY_BYTES {
+            anyhow::bail!(
+                "feed body exceeded {}MiB cap",
+                MAX_FEED_BODY_BYTES / 1024 / 1024
+            );
+        }
+        buf.extend_from_slice(&chunk);
+    }
+    let bytes = buf.freeze();
 
     let parsed = feed_rs::parser::parse(&bytes[..])?;
 
@@ -188,10 +211,10 @@ async fn poll_feed(client: &Client, pool: &Arc<PgPool>, feed: &TrackedFeed) -> a
         // Skip articles older than the cleanup threshold (7 days) so we never
         // re-insert rows that cleanup already deleted — avoids a CDC
         // INSERT→DELETE storm every poll cycle.
-        if let Some(pub_date) = &published_at {
-            if *pub_date < cutoff {
-                continue;
-            }
+        if let Some(pub_date) = &published_at
+            && *pub_date < cutoff
+        {
+            continue;
         }
 
         articles.push(ParsedArticle {

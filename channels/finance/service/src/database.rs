@@ -26,12 +26,25 @@ fn migrator() -> sqlx::migrate::Migrator {
     m
 }
 
+/// Numeric version range that uniquely identifies finance-service migrations
+/// in the shared `_sqlx_migrations` table. Must match the prefix enforced by
+/// `tests/migration_versions.rs`.
+const FINANCE_MIGRATION_MIN: i64 = 11_000_000_000;
+const FINANCE_MIGRATION_MAX: i64 = 11_999_999_999;
+
 pub async fn initialize_pool() -> Result<PgPool> {
     let pool_options = PgPoolOptions::new()
-        .max_connections(10)
-        .min_connections(0)
+        // Pool sizing rationale: on a busy minute finance can run 500+ WS
+        // price events through `process_single_trade` which each open a
+        // connection to update `trades`. Ten connections was creating
+        // `acquire_timeout` pressure. Twenty is still well within Postgres'
+        // per-database connection budget and leaves headroom.
+        .max_connections(20)
+        // Keep one warm connection so the first query after an idle period
+        // doesn't eat the 200-500ms TLS/auth handshake latency.
+        .min_connections(1)
         .acquire_timeout(Duration::from_secs(10))
-        .idle_timeout(Duration::from_millis(30_000));
+        .idle_timeout(Duration::from_secs(30));
 
     let database_url = if let Ok(url) = env::var("DATABASE_URL") {
         let mut url = url.trim().trim_matches('"').trim_matches('\'').to_string();
@@ -52,10 +65,14 @@ pub async fn initialize_pool() -> Result<PgPool> {
         let password = get_env_var("DB_PASSWORD")?;
         let database = get_env_var("DB_DATABASE")?;
 
-        let host = if let Some(fixed) = raw_host.strip_prefix("db.") { fixed } else { &raw_host };
+        // Use the raw host as-is. Older code stripped a `db.` prefix as a
+        // holdover from Supabase-era hostnames; that was silently rewriting
+        // any legitimate host starting with `db.`, which is undefined
+        // behaviour with no logging. If the host is wrong the operator
+        // should see a connect failure, not magical rewriting.
         let port: u16 = port_str.parse().context("DB_PORT must be a valid u16 integer")?;
 
-        format!("postgres://{}:{}@{}:{}/{}", user, password, host, port, database)
+        format!("postgres://{}:{}@{}:{}/{}", user, password, raw_host, port, database)
     };
 
     eprintln!("[DB] Connecting to database...");
@@ -83,6 +100,36 @@ pub async fn initialize_pool() -> Result<PgPool> {
             .context("Failed to run migrations. No automatic recovery — inspect _sqlx_migrations"));
     }
     eprintln!("[DB] Migrations complete");
+
+    // Startup invariant: every on-disk migration for *this* service's
+    // version range must have a corresponding recorded row in
+    // `_sqlx_migrations`. We use `set_ignore_missing(true)` on the migrator
+    // so it tolerates rows for *other* services, but that same flag would
+    // also silently hide "someone deleted a migration file locally but the
+    // row is still in the DB" — which is exactly the kind of drift that
+    // caused the April 2026 silent migration failure. This check catches
+    // the mismatch loudly and refuses to boot.
+    let on_disk: i64 = migrator().iter().count() as i64;
+    let recorded: i64 = sqlx::query_scalar::<_, i64>(
+        "SELECT count(*) FROM _sqlx_migrations WHERE version >= $1 AND version <= $2",
+    )
+    .bind(FINANCE_MIGRATION_MIN)
+    .bind(FINANCE_MIGRATION_MAX)
+    .fetch_one(&pool)
+    .await
+    .context("query migration count")?;
+
+    if recorded != on_disk {
+        anyhow::bail!(
+            "migration invariant violated: {} on disk but {} recorded in DB (finance prefix \
+             {}-{}). Someone deleted a migration file, or this service is pointing at a DB \
+             whose migrations haven't been applied.",
+            on_disk,
+            recorded,
+            FINANCE_MIGRATION_MIN,
+            FINANCE_MIGRATION_MAX
+        );
+    }
 
     Ok(pool)
 }

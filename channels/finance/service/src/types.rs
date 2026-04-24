@@ -181,6 +181,12 @@ pub struct FinanceHealth {
     pub last_error: Option<String>,
 }
 
+impl Default for FinanceHealth {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FinanceHealth {
     pub fn new() -> Self {
         Self {

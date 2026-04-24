@@ -19,6 +19,5 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y ca-certificates curl && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/target/release/rss_service .
 COPY --from=builder /app/configs/feeds.json ./configs/feeds.json
-COPY --from=builder /app/configs/feeds.test.json ./configs/feeds.test.json
 
 CMD ["./rss_service"]

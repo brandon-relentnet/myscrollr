@@ -11,6 +11,12 @@ pub struct RssHealth {
     pub last_error: Option<String>,
 }
 
+impl Default for RssHealth {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RssHealth {
     pub fn new() -> Self {
         Self {

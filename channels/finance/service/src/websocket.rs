@@ -1,10 +1,19 @@
-use std::{collections::HashMap, future::pending, sync::{Arc, atomic::{AtomicU64, Ordering}}, time::{Duration, Instant}};
+use std::{collections::HashMap, sync::{Arc, atomic::{AtomicU64, Ordering}}, time::{Duration, Instant}};
 
 use reqwest::Client;
 use tokio::{net::TcpStream, sync::{Mutex, RwLock}, time};
-use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::protocol::Message};
+use tokio_tungstenite::{
+    MaybeTlsStream, WebSocketStream, connect_async_with_config,
+    tungstenite::protocol::{Message, WebSocketConfig},
+};
 use futures_util::{SinkExt, StreamExt, stream::{self, SplitSink, SplitStream}};
 use crate::{database::{PgPool, DatabaseTradeData, Utc, get_trades, insert_symbol, update_previous_close, update_trade}, log::{error, info, warn}};
+
+/// Maximum WebSocket message / frame size we will accept from TwelveData.
+/// The real feed sends ~200 byte price events; anything larger is either a
+/// protocol error or a hostile server trying to pin memory. 1 MiB is a huge
+/// safety margin — more than enough for malformed but legitimate messages.
+const MAX_WS_MESSAGE_BYTES: usize = 1 << 20;
 
 use crate::{get_quote, types::{FinanceHealth, PriceEvent, TradeData, WebSocketState}};
 
@@ -24,7 +33,15 @@ pub(crate) async fn connect(subscriptions: Vec<String>, api_key: String, client:
         .unwrap_or_else(|_| "wss://ws.twelvedata.com/v1/quotes/price".to_string());
     let url = format!("{}?apikey={}", ws_base, api_key);
 
-    let (ws_stream, _) = connect_async(url).await.map_err(|e| {
+    // Cap message and frame sizes so a misbehaving server can't stream an
+    // unbounded blob into memory. TwelveData events are tiny (~200B).
+    // `WebSocketConfig` is `#[non_exhaustive]` in tungstenite 0.28 so we
+    // have to use the builder methods instead of struct-literal syntax.
+    let ws_config = WebSocketConfig::default()
+        .max_message_size(Some(MAX_WS_MESSAGE_BYTES))
+        .max_frame_size(Some(MAX_WS_MESSAGE_BYTES));
+
+    let (ws_stream, _) = connect_async_with_config(url, Some(ws_config), false).await.map_err(|e| {
         error!("Failed to connect to TwelveData WebSocket: {}", e);
         e
     })?;
@@ -44,8 +61,10 @@ pub(crate) async fn connect(subscriptions: Vec<String>, api_key: String, client:
     let (writer, reader) = ws_stream.split();
     let writer = Arc::new(Mutex::new(writer));
 
-    // Subscribe to all symbols in one message
-    tokio::spawn(ws_send(Arc::clone(&writer), subscriptions));
+    // Subscribe to all symbols in one message. Done inline rather than
+    // via `tokio::spawn` — the send is a few microseconds and we want its
+    // failure to surface here instead of vanishing into a detached task.
+    ws_send(Arc::clone(&writer), subscriptions).await?;
 
     // Spawn heartbeat task
     tokio::spawn(ws_heartbeat(Arc::clone(&writer)));
@@ -56,7 +75,14 @@ pub(crate) async fn connect(subscriptions: Vec<String>, api_key: String, client:
 }
 
 /// Send a single subscribe message for all symbols (TwelveData accepts comma-separated).
-async fn ws_send(writer: Arc<Mutex<SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>>>, subscriptions: Vec<String>) {
+///
+/// Returns an error when the send fails so the caller can surface the
+/// failure through the readiness gate instead of quietly running without
+/// any subscriptions.
+async fn ws_send(
+    writer: Arc<Mutex<SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>>>,
+    subscriptions: Vec<String>,
+) -> anyhow::Result<()> {
     let symbols_csv = subscriptions.join(",");
     let sub_msg = format!(
         r#"{{"action":"subscribe","params":{{"symbols":"{}"}}}}"#,
@@ -66,9 +92,10 @@ async fn ws_send(writer: Arc<Mutex<SplitSink<WebSocketStream<MaybeTlsStream<TcpS
     info!("Subscribing to {} symbols", subscriptions.len());
 
     let mut w = writer.lock().await;
-    if let Err(e) = w.send(Message::Text(sub_msg.into())).await {
-        error!("Error sending subscription message: {e}");
-    }
+    w.send(Message::Text(sub_msg.into()))
+        .await
+        .map_err(|e| anyhow::anyhow!("failed to send subscription message: {e}"))?;
+    Ok(())
 }
 
 /// Send periodic heartbeats to keep the TwelveData connection alive.
@@ -95,27 +122,47 @@ async fn ws_read(
     info!("Now listening for TwelveData price events...");
 
     loop {
+        // Poll the batch timer without holding the state lock across the
+        // await. We snapshot the deadline under a short read lock, then
+        // sleep until that instant outside the lock. The previous version
+        // did `read → is_some() → drop → write → unwrap()` which would
+        // panic if another task cleared the timer in the gap. If the
+        // deadline we sleep on is stale (timer was reset while we waited),
+        // the post-wake check below treats a missing timer as a benign
+        // spurious wake and falls through.
+        let timer_deadline = state.read().await.batch_timer.as_ref().map(|t| t.deadline());
+        let timer_branch = async {
+            match timer_deadline {
+                Some(deadline) => time::sleep_until(deadline).await,
+                // No timer armed — park forever so select! picks another branch.
+                None => std::future::pending::<()>().await,
+            }
+        };
+
         tokio::select! {
             biased;
-            _ = async {
-                let timer_exists = state.read().await.batch_timer.is_some();
-                if timer_exists {
-                    state.write().await.batch_timer.as_mut().unwrap().as_mut().await
-                } else {
-                    pending().await
-                }} => {
-                // Timer fired
+            _ = timer_branch => {
+                // After the sleep fires, re-check state under a single write
+                // guard. The timer may have been reset (deadline pushed out)
+                // or cleared entirely while we slept — in either case treat
+                // this as a spurious wake and loop back to re-arm.
                 let mut state_w = state.write().await;
+                let fire_now = match state_w.batch_timer.as_ref() {
+                    Some(t) => t.deadline() <= time::Instant::now(),
+                    None => false,
+                };
+                if !fire_now {
+                    continue;
+                }
                 state_w.batch_timer = None;
 
                 if !state_w.is_processing_batch {
                     info!("Timer fired, processing batch.");
                     let state_clone = Arc::clone(&state);
-
                     drop(state_w);
                     tokio::spawn(process_batch(state_clone, client.clone(), api_key.clone(), pool.clone(), health_state.clone()));
                 } else {
-                    info!("Timer fired, but a batch is already in process. Waiting.")
+                    info!("Timer fired, but a batch is already in process. Waiting.");
                 }
             }
 
@@ -207,10 +254,10 @@ async fn handle_trade_update(trade: TradeData, state_arc: &Arc<RwLock<WebSocketS
 
     let ref_in_queue = state.update_queue.get(&trade.symbol);
 
-    if let Some(trade_in_queue) = ref_in_queue {
-        if trade_in_queue.timestamp >= trade.timestamp {
-            return;
-        }
+    if let Some(trade_in_queue) = ref_in_queue
+        && trade_in_queue.timestamp >= trade.timestamp
+    {
+        return;
     }
 
     state.update_queue.insert(trade.symbol.clone(), trade);
@@ -316,7 +363,7 @@ async fn process_batch(state_arc: Arc<RwLock<WebSocketState>>, client: Arc<Clien
             }
 
             let now = Instant::now();
-            let should_log = state.last_log_time.map_or(true, |last| {
+            let should_log = state.last_log_time.is_none_or(|last| {
                 now.duration_since(last) >= LOG_THROTTLE_INTERVAL
             });
 

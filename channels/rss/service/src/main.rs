@@ -1,5 +1,6 @@
 use axum::{extract::State, http::StatusCode, routing::get, Json, Router};
 use dotenvy::dotenv;
+use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, USER_AGENT};
 use serde::Serialize;
 use std::{sync::Arc, time::Duration};
 use tokio::sync::Mutex;
@@ -92,11 +93,27 @@ async fn main() {
         // Build HTTP client once and reuse across all cycles for connection pooling.
         // reqwest's builder failing means the TLS stack is broken — no fallback,
         // just exit so Kubernetes surfaces the problem.
+        //
+        // The default Accept header is critical: some CDN-fronted feeds will
+        // serve an HTML error page when no Accept is set. Advertising RSS/Atom
+        // mime types first pushes those CDNs into returning the XML we want.
+        let mut default_headers = HeaderMap::new();
+        default_headers.insert(
+            ACCEPT,
+            HeaderValue::from_static(
+                "application/rss+xml, application/atom+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.5",
+            ),
+        );
+        default_headers.insert(
+            USER_AGENT,
+            HeaderValue::from_static("Scrollr/1.0 RSS Fetcher (+https://myscrollr.com)"),
+        );
+
         let http_client = match reqwest::Client::builder()
+            .default_headers(default_headers)
             .timeout(std::time::Duration::from_secs(15))
             .connect_timeout(std::time::Duration::from_secs(5))
             .gzip(true)
-            .user_agent("MyScrollr RSS Bot/1.0")
             .build()
         {
             Ok(c) => c,
@@ -120,11 +137,11 @@ async fn main() {
                     _ = bridge_cancel.cancelled() => break,
                     _ = tokio::time::sleep(READINESS_BRIDGE_INTERVAL) => {
                         let snap = bridge_health.lock().await.get_health();
-                        if let Some(ts) = snap.last_poll {
-                            if last_seen != Some(ts) {
-                                bridge_readiness.record_poll().await;
-                                last_seen = Some(ts);
-                            }
+                        if let Some(ts) = snap.last_poll
+                            && last_seen != Some(ts)
+                        {
+                            bridge_readiness.record_poll().await;
+                            last_seen = Some(ts);
                         }
                     }
                 }

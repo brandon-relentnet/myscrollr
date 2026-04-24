@@ -105,37 +105,38 @@ async fn main() {
         // first batch is processed (staleness guard).
         readiness_bg.mark_ready().await;
 
-        // Bridge loop: copy FinanceHealth.batch_number → readiness.record_poll()
-        // whenever the batch counter advances. This is how the readiness
-        // gate learns about "real work happening" without threading the
-        // gate through every websocket callsite.
+        // Bridge loop: only forward a `record_poll()` when the websocket is
+        // connected AND has made batch progress. The previous version also
+        // recorded polls on "connected but stalled" which meant a silently
+        // wedged websocket — connection alive, no messages flowing — still
+        // looked healthy. Now if progress stops, staleness fires after
+        // `MAX_POLL_STALENESS` and Kubernetes pulls the pod out of rotation.
+        //
+        // Weekend / off-hours freshness: TwelveData still sends heartbeat
+        // events which increment the batch counter when queued trades
+        // flush, so even a quiet market registers some progress within
+        // the staleness window.
         let bridge_health = health_bg.clone();
         let bridge_readiness = readiness_bg.clone();
         let bridge_cancel = cancel_bg.clone();
         tokio::spawn(async move {
             let mut last_batch: u64 = 0;
-            let mut last_status = String::from("disconnected");
             loop {
                 tokio::select! {
                     _ = bridge_cancel.cancelled() => break,
                     _ = tokio::time::sleep(READINESS_BRIDGE_INTERVAL) => {
                         let snap = bridge_health.lock().await.get_health();
-                        // Websocket-connected counts as liveness progress
-                        // even when no trades are flowing (weekends,
-                        // off-hours, etc.). Otherwise we'd mark the pod
-                        // NotReady every Saturday.
                         let connected = snap.connection_status == "connected";
                         let progressed = snap.batch_number > last_batch;
-                        if connected || progressed {
+
+                        if connected && progressed {
                             bridge_readiness.record_poll().await;
                             last_batch = snap.batch_number;
-                            last_status = snap.connection_status.clone();
-                        } else if last_status == "connected" && !connected {
-                            // Lost connection recently; don't record a
-                            // poll so staleness kicks in after the
-                            // configured window.
-                            last_status = snap.connection_status.clone();
                         }
+                        // else: do nothing. The staleness timeout in
+                        // ReadinessGate handles degradation by flipping
+                        // /health/ready to 503 once MAX_POLL_STALENESS
+                        // elapses without a record_poll() call.
                     }
                 }
             }
