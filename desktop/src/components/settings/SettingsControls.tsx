@@ -126,15 +126,17 @@ export function SegmentedRow<T extends string>({
 }
 
 // ── Venue row ───────────────────────────────────────────────────
-// Four-state segmented control for visibility settings that can be
-// routed to the feed page, the always-on-top ticker, both, or hidden.
+// @deprecated as of 2026-04-25.
+// Use `<DisplayLocationGrid>` instead — it renders the same persisted
+// `Venue` enum as two checkboxes (Feed | Ticker) under a single column
+// header strip, which dropped the redundant per-row "Off / Feed / Both
+// / Ticker" legend. This component is kept only for backwards-compat
+// with anything still importing it; new code should NOT use it.
 //
-// Uses the same visual language as SegmentedRow, with "Off" visually
-// muted when selected (emphasizing the setting is silenced everywhere
-// rather than just routed away).
-//
-// See docs/superpowers/specs/2026-04-25-display-venue-toggle-design.md
-// for the full rationale.
+// Original four-state segmented control for visibility settings that
+// can be routed to the feed page, the always-on-top ticker, both, or
+// hidden. See docs/superpowers/specs/2026-04-25-display-venue-toggle-design.md
+// for the venue-routing rationale.
 
 const VENUE_OPTIONS: { value: Venue; label: string }[] = [
   { value: "off", label: "Off" },

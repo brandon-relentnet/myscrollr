@@ -236,6 +236,40 @@ export function migrateVenue(raw: unknown): Venue {
   return "both";
 }
 
+/**
+ * Decompose a `Venue` enum into the two booleans used by
+ * `<DisplayLocationGrid>` (one checkbox per surface). The grid renders
+ * each row as `[Feed checkbox] [Ticker checkbox]` and writes back via
+ * `boolsToEnum`. Keeping the conversion in one place prevents drift
+ * between the persisted enum and the UI's two-checkbox view.
+ */
+export function enumToBools(venue: Venue): {
+  feed: boolean;
+  ticker: boolean;
+} {
+  return {
+    feed: shouldShowOnFeed(venue),
+    ticker: shouldShowOnTicker(venue),
+  };
+}
+
+/**
+ * Inverse of `enumToBools`. Combines the two surface checkboxes back
+ * into a single `Venue` for storage. The four combinations exhaust
+ * the enum:
+ *
+ *   feed=false ticker=false → "off"
+ *   feed=true  ticker=false → "feed"
+ *   feed=false ticker=true  → "ticker"
+ *   feed=true  ticker=true  → "both"
+ */
+export function boolsToEnum(feed: boolean, ticker: boolean): Venue {
+  if (feed && ticker) return "both";
+  if (feed) return "feed";
+  if (ticker) return "ticker";
+  return "off";
+}
+
 export interface FinanceDisplayPrefs {
   showChange: Venue;
   showPrevClose: Venue;

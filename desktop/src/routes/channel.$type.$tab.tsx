@@ -15,7 +15,9 @@ import { getChannel, getAllChannels } from "../channels/registry";
 import { dashboardQueryOptions } from "../api/queries";
 import ChannelConfigPanel from "../channels/ChannelConfigPanel";
 import { useShell, useShellData } from "../shell-context";
-import { Section, ToggleRow, ResetButton, SegmentedRow, VenueRow } from "../components/settings/SettingsControls";
+import { Section, ToggleRow, ResetButton, SegmentedRow } from "../components/settings/SettingsControls";
+import { DisplayLocationGrid } from "../components/settings/DisplayLocationGrid";
+import type { DisplayGridSection } from "../components/settings/DisplayLocationGrid";
 import { useSportsConfig } from "../hooks/useSportsConfig";
 import { loadPref } from "../preferences";
 import type { Channel, ChannelType } from "../api/client";
@@ -156,12 +158,6 @@ function ChannelDisplayTab({ type }: { type: string }) {
   }
 }
 
-// Label copy shared by all Display pages: "Feed" / "Both" / "Ticker" /
-// "Off" — see VenueRow. Description text sets user expectations that
-// the toggle affects both surfaces universally.
-const VENUE_DESCRIPTION =
-  "Off: hidden · Feed: only on feed page · Both: everywhere · Ticker: only on the ticker";
-
 function FinanceDisplay() {
   const { prefs, onPrefsChange } = useShell();
   const dp = prefs.channelDisplay.finance;
@@ -203,12 +199,20 @@ function FinanceDisplay() {
     { value: "updated", label: "Updated" },
   ];
 
+  const sections: DisplayGridSection[] = [
+    {
+      rows: [
+        { key: "showChange", label: "% change", description: "Daily price change percent", value: dp.showChange, onChange: (v) => setVenue("showChange", v) },
+        { key: "showPrevClose", label: "Previous close", description: "Last session's closing price", value: dp.showPrevClose, onChange: (v) => setVenue("showPrevClose", v) },
+        { key: "showLastUpdated", label: "Last updated", description: "Relative time since the last tick", value: dp.showLastUpdated, onChange: (v) => setVenue("showLastUpdated", v) },
+      ],
+    },
+  ];
+
   return (
     <div className="p-4 max-w-2xl mx-auto">
       <Section title="Display items">
-        <VenueRow label="Show % change" description={VENUE_DESCRIPTION} value={dp.showChange} onChange={(v) => setVenue("showChange", v)} />
-        <VenueRow label="Show previous close" description={VENUE_DESCRIPTION} value={dp.showPrevClose} onChange={(v) => setVenue("showPrevClose", v)} />
-        <VenueRow label="Show last updated" description={VENUE_DESCRIPTION} value={dp.showLastUpdated} onChange={(v) => setVenue("showLastUpdated", v)} />
+        <DisplayLocationGrid sections={sections} />
       </Section>
       <Section title="Feed behavior">
         <SegmentedRow
@@ -240,15 +244,27 @@ function SportsDisplay() {
     });
   }
 
+  const sections: DisplayGridSection[] = [
+    {
+      title: "Display items",
+      rows: [
+        { key: "showLogos", label: "Team logos", description: "Show team logos on cards and ticker chips", value: display.showLogos, onChange: (v) => setVenue("showLogos", v) },
+        { key: "showTimer", label: "Game clock / status", description: "Quarter, period, or final-time indicator", value: display.showTimer, onChange: (v) => setVenue("showTimer", v) },
+      ],
+    },
+    {
+      title: "Game filters",
+      rows: [
+        { key: "showUpcoming", label: "Upcoming games", description: "Pre-event games (scheduled but not yet started)", value: display.showUpcoming, onChange: (v) => setVenue("showUpcoming", v) },
+        { key: "showFinal", label: "Final scores", description: "Completed games", value: display.showFinal, onChange: (v) => setVenue("showFinal", v) },
+      ],
+    },
+  ];
+
   return (
     <div className="p-4 max-w-2xl mx-auto">
       <Section title="Display items">
-        <VenueRow label="Show team logos" description={VENUE_DESCRIPTION} value={display.showLogos} onChange={(v) => setVenue("showLogos", v)} />
-        <VenueRow label="Show game clock / status" description={VENUE_DESCRIPTION} value={display.showTimer} onChange={(v) => setVenue("showTimer", v)} />
-      </Section>
-      <Section title="Game filters">
-        <VenueRow label="Include upcoming games" description={VENUE_DESCRIPTION} value={display.showUpcoming} onChange={(v) => setVenue("showUpcoming", v)} />
-        <VenueRow label="Include final scores" description={VENUE_DESCRIPTION} value={display.showFinal} onChange={(v) => setVenue("showFinal", v)} />
+        <DisplayLocationGrid sections={sections} />
       </Section>
       <ResetButton label="Reset display settings" onClick={handleReset} />
     </div>
@@ -297,12 +313,20 @@ function RssDisplay() {
     { value: "0", label: "All" },
   ];
 
+  const sections: DisplayGridSection[] = [
+    {
+      rows: [
+        { key: "showDescription", label: "Article description", description: "Snippet beneath the headline", value: dp.showDescription, onChange: (v) => setVenue("showDescription", v) },
+        { key: "showSource", label: "Source name", description: "Publisher / feed name", value: dp.showSource, onChange: (v) => setVenue("showSource", v) },
+        { key: "showTimestamps", label: "Timestamps", description: "Relative publish time on each item", value: dp.showTimestamps, onChange: (v) => setVenue("showTimestamps", v) },
+      ],
+    },
+  ];
+
   return (
     <div className="p-4 max-w-2xl mx-auto">
       <Section title="Display items">
-        <VenueRow label="Show description" description={VENUE_DESCRIPTION} value={dp.showDescription} onChange={(v) => setVenue("showDescription", v)} />
-        <VenueRow label="Show source name" description={VENUE_DESCRIPTION} value={dp.showSource} onChange={(v) => setVenue("showSource", v)} />
-        <VenueRow label="Show timestamps" description={VENUE_DESCRIPTION} value={dp.showTimestamps} onChange={(v) => setVenue("showTimestamps", v)} />
+        <DisplayLocationGrid sections={sections} />
       </Section>
       <Section title="Feed behavior">
         <SegmentedRow
@@ -318,9 +342,9 @@ function RssDisplay() {
   );
 }
 
-// Keys on FantasyDisplayPrefs that are venue-typed. Drives the
-// per-item rows below — adding a new venue-typed field here and in the
-// interface is all it takes to expose it on the Display page.
+// Keys on FantasyDisplayPrefs that are venue-typed. Drives the per-item
+// rows below — adding a new venue-typed field here and in the interface
+// is all it takes to expose it on the Display page.
 type FantasyVenueKey =
   | "matchupScore"
   | "winProbability"
@@ -333,17 +357,47 @@ type FantasyVenueKey =
   | "injuryCount"
   | "topScorer";
 
-const FANTASY_VENUE_ROWS: Array<{ key: FantasyVenueKey; label: string; description: string }> = [
-  { key: "matchupScore", label: "Matchup score", description: "Your team vs. opponent, live or final" },
-  { key: "winProbability", label: "Win probability", description: "62% chance to win" },
-  { key: "matchupStatus", label: "Matchup status", description: "LIVE / FINAL / PRE badge" },
-  { key: "projectedPoints", label: "Projected points", description: "Your projected total this week" },
-  { key: "week", label: "Week number", description: "Current matchup week label" },
-  { key: "record", label: "Team record", description: "Season wins / losses (optionally ties)" },
-  { key: "standingsPosition", label: "Standings position", description: "3rd of 10" },
-  { key: "streak", label: "Current streak", description: "W3 / L2 badge" },
-  { key: "injuryCount", label: "Injury count", description: "Count of IR / DTD players on your roster" },
-  { key: "topScorer", label: "Top scorer", description: "Highest-scoring active player on your team" },
+interface FantasyVenueRow {
+  key: FantasyVenueKey;
+  label: string;
+  description: string;
+}
+
+interface FantasyVenueGroup {
+  title: string;
+  rows: FantasyVenueRow[];
+}
+
+// Visual sub-grouping inside the grid. The Display tab has 10 venue
+// items; flat-listing them is overwhelming. Three groups (Score &
+// status / Standings / Roster) match the user's mental model of which
+// feeds are about live game state, season-wide rank, and roster health.
+const FANTASY_VENUE_GROUPS: FantasyVenueGroup[] = [
+  {
+    title: "Score & status",
+    rows: [
+      { key: "matchupScore", label: "Matchup score", description: "Your team vs. opponent, live or final" },
+      { key: "winProbability", label: "Win probability", description: "62% chance to win" },
+      { key: "matchupStatus", label: "Matchup status", description: "LIVE / FINAL / PRE badge" },
+      { key: "projectedPoints", label: "Projected points", description: "Your projected total this week" },
+      { key: "week", label: "Week number", description: "Current matchup week label" },
+    ],
+  },
+  {
+    title: "Standings",
+    rows: [
+      { key: "record", label: "Team record", description: "Season wins / losses (optionally ties)" },
+      { key: "standingsPosition", label: "Standings position", description: "3rd of 10" },
+      { key: "streak", label: "Current streak", description: "W3 / L2 badge" },
+    ],
+  },
+  {
+    title: "Roster",
+    rows: [
+      { key: "injuryCount", label: "Injury count", description: "Count of IR / DTD players on your roster" },
+      { key: "topScorer", label: "Top scorer", description: "Highest-scoring active player on your team" },
+    ],
+  },
 ];
 
 function FantasyDisplay() {
@@ -398,18 +452,21 @@ function FantasyDisplay() {
     { value: "roster", label: "Roster" },
   ];
 
+  const sections: DisplayGridSection[] = FANTASY_VENUE_GROUPS.map((group) => ({
+    title: group.title,
+    rows: group.rows.map((row) => ({
+      key: row.key,
+      label: row.label,
+      description: row.description,
+      value: dp[row.key],
+      onChange: (v) => patch({ [row.key]: v } as Partial<FantasyDisplayPrefs>),
+    })),
+  }));
+
   return (
     <div className="p-4 max-w-2xl mx-auto">
       <Section title="Display items">
-        {FANTASY_VENUE_ROWS.map((row) => (
-          <VenueRow
-            key={row.key}
-            label={row.label}
-            description={row.description}
-            value={dp[row.key]}
-            onChange={(v) => patch({ [row.key]: v } as Partial<FantasyDisplayPrefs>)}
-          />
-        ))}
+        <DisplayLocationGrid sections={sections} />
       </Section>
       <Section title="Feed layout">
         <SegmentedRow

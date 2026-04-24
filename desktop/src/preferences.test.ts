@@ -17,10 +17,13 @@ import {
   migrateVenue,
   shouldShowOnFeed,
   shouldShowOnTicker,
+  enumToBools,
+  boolsToEnum,
   migrateFinanceDisplay,
   migrateRssDisplay,
   migrateFantasyDisplay,
 } from "./preferences";
+import type { Venue } from "./preferences";
 
 describe("migrateVenue", () => {
   it("keeps valid venue strings as-is", () => {
@@ -57,6 +60,62 @@ describe("shouldShowOnFeed / shouldShowOnTicker", () => {
     expect(shouldShowOnTicker("feed")).toBe(false);
     expect(shouldShowOnTicker("both")).toBe(true);
     expect(shouldShowOnTicker("ticker")).toBe(true);
+  });
+});
+
+describe("enumToBools / boolsToEnum (DisplayLocationGrid adapter)", () => {
+  // The two-checkbox grid component reads via enumToBools and writes back
+  // via boolsToEnum. Drift between these two functions would silently
+  // corrupt user prefs on every interaction, so the test pins down all
+  // four cases explicitly AND confirms a round trip is identity.
+
+  it("enumToBools — off maps to {feed: false, ticker: false}", () => {
+    expect(enumToBools("off")).toEqual({ feed: false, ticker: false });
+  });
+
+  it("enumToBools — feed maps to {feed: true, ticker: false}", () => {
+    expect(enumToBools("feed")).toEqual({ feed: true, ticker: false });
+  });
+
+  it("enumToBools — ticker maps to {feed: false, ticker: true}", () => {
+    expect(enumToBools("ticker")).toEqual({ feed: false, ticker: true });
+  });
+
+  it("enumToBools — both maps to {feed: true, ticker: true}", () => {
+    expect(enumToBools("both")).toEqual({ feed: true, ticker: true });
+  });
+
+  it("boolsToEnum — false/false maps to off", () => {
+    expect(boolsToEnum(false, false)).toBe("off");
+  });
+
+  it("boolsToEnum — true/false maps to feed", () => {
+    expect(boolsToEnum(true, false)).toBe("feed");
+  });
+
+  it("boolsToEnum — false/true maps to ticker", () => {
+    expect(boolsToEnum(false, true)).toBe("ticker");
+  });
+
+  it("boolsToEnum — true/true maps to both", () => {
+    expect(boolsToEnum(true, true)).toBe("both");
+  });
+
+  it("round-trip: enumToBools → boolsToEnum is the identity for every Venue", () => {
+    const venues: Venue[] = ["off", "feed", "ticker", "both"];
+    for (const v of venues) {
+      const { feed, ticker } = enumToBools(v);
+      expect(boolsToEnum(feed, ticker)).toBe(v);
+    }
+  });
+
+  it("round-trip: boolsToEnum → enumToBools is the identity for every (feed, ticker) pair", () => {
+    for (const feed of [false, true]) {
+      for (const ticker of [false, true]) {
+        const venue = boolsToEnum(feed, ticker);
+        expect(enumToBools(venue)).toEqual({ feed, ticker });
+      }
+    }
   });
 });
 

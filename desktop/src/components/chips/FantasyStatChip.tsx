@@ -40,7 +40,8 @@ interface StatSegment {
  * This chip replaces the older `FantasyChip` for ticker use. It keeps
  * the same visual footprint (single row when `comfort=false`, two rows
  * when true) but composes the contents from whichever items the user
- * has routed to the ticker via the Display page's `VenueRow` controls.
+ * has routed to the ticker via the Display page's `<DisplayLocationGrid>`
+ * controls.
  *
  * Each segment is opt-in:
  *   - `matchupScore` — "My Team 89.5 — 76.2 Opp"
