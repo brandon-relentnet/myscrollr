@@ -3,6 +3,8 @@
 // All prefs are persisted via Tauri plugin-store (disk-backed).
 
 import { getStore, setStore } from "./lib/store";
+import { getTier } from "./auth";
+import { getMaxTickerRows } from "./tierLimits";
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -20,10 +22,34 @@ export type PinSide = "left" | "right";
 
 export type FontWeight = "normal" | "medium" | "bold";
 
+/** Content + optional customization for a single ticker row. */
+export interface TickerRowConfig {
+  /**
+   * Channel/widget IDs shown on this row. Empty array falls back to
+   * "all sources visible in activeTabs" — behaves like 1-row mode.
+   */
+  sources: string[];
+
+  // ── Per-row scroll overrides (Ultimate-only) ──
+  // When undefined, the row inherits the global prefs (prefs.ticker.*).
+  scrollMode?: ScrollMode;
+  direction?: TickerDirection;
+  speed?: number;
+  mixMode?: MixMode;
+}
+
+export interface TickerLayout {
+  /** length 1..MaxTickerRows (tier-clamped on read) */
+  rows: TickerRowConfig[];
+}
+
 export interface AppearancePrefs {
   theme: Theme;
   uiScale: number; // 75–150, default 100
+  /** @deprecated derived from tickerLayout.rows.length. Kept in sync during the deprecation window. */
   tickerRows: TickerRows;
+  /** Source of truth for the multi-deck ticker layout. */
+  tickerLayout: TickerLayout;
   fontWeight: FontWeight;
   highContrast: boolean;
 }
@@ -145,6 +171,8 @@ export interface GitHubWidgetConfig {
 
 export interface WidgetPinConfig {
   side: PinSide;
+  /** Which ticker row this pin belongs to (0-indexed). Defaults to 0. */
+  row?: number;
 }
 
 export interface WidgetPrefs {
@@ -230,10 +258,15 @@ export interface AppPreferences {
 
 // ── Defaults ────────────────────────────────────────────────────
 
+const DEFAULT_TICKER_LAYOUT: TickerLayout = {
+  rows: [{ sources: [] }],
+};
+
 const DEFAULT_APPEARANCE: AppearancePrefs = {
   theme: "dark",
   uiScale: 100,
   tickerRows: 1,
+  tickerLayout: { rows: [{ sources: [] }] },
   fontWeight: "normal",
   highContrast: false,
 };
@@ -485,6 +518,77 @@ function mergeWidgetPrefs(saved?: Partial<WidgetPrefs>): WidgetPrefs {
   };
 }
 
+// ── Ticker layout migration ─────────────────────────────────────
+
+/** Narrow any number to the TickerRows union (1|2|3). */
+function clampTickerRows(n: number): TickerRows {
+  if (n <= 1) return 1;
+  if (n >= 3) return 3;
+  return 2;
+}
+
+/**
+ * Build or migrate `tickerLayout` from a saved AppearancePrefs fragment.
+ *
+ * Responsibilities:
+ *   1. Synthesize a layout when none exists (derive length from legacy
+ *      `tickerRows`; sources default to [] = "show all visible tabs").
+ *   2. Tier-clamp the row count — if the current tier allows fewer rows
+ *      than stored, drop from the BOTTOM so row 0 is preserved.
+ */
+function migrateTickerLayout(
+  saved: Partial<AppearancePrefs> | undefined,
+): TickerLayout {
+  const fallbackRowCount = clampTickerRows(
+    typeof saved?.tickerRows === "number" ? saved.tickerRows : 1,
+  );
+
+  const savedLayout = saved?.tickerLayout;
+  let rows: TickerRowConfig[];
+
+  const isValidRow = (r: unknown): r is TickerRowConfig => {
+    if (r == null || typeof r !== "object") return false;
+    const rec = r as Record<string, unknown>;
+    return Array.isArray(rec.sources) && rec.sources.every((s) => typeof s === "string");
+  };
+
+  if (
+    savedLayout &&
+    typeof savedLayout === "object" &&
+    Array.isArray((savedLayout as TickerLayout).rows) &&
+    (savedLayout as TickerLayout).rows.every(isValidRow) &&
+    (savedLayout as TickerLayout).rows.length > 0
+  ) {
+    rows = (savedLayout as TickerLayout).rows.map((r) => ({ ...r, sources: [...r.sources] }));
+  } else {
+    // Synthesize N empty-sourced rows from the legacy tickerRows field.
+    rows = Array.from({ length: fallbackRowCount }, () => ({ sources: [] }));
+  }
+
+  // Tier-clamp on read. Reading auth synchronously; if auth isn't ready
+  // yet (e.g. first paint) getTier() returns "free" — which just clamps
+  // to 1 row, the safest fallback. Subsequent loads post-auth will reflect
+  // the real tier.
+  let maxRows = 3;
+  try {
+    maxRows = getMaxTickerRows(getTier());
+  } catch {
+    maxRows = 3;
+  }
+
+  if (rows.length > maxRows) {
+    // eslint-disable-next-line no-console
+    console.info(
+      `[prefs] tickerLayout clamped from ${rows.length} to ${maxRows} rows (tier cap)`,
+    );
+    rows = rows.slice(0, maxRows);
+  }
+
+  if (rows.length === 0) rows = [{ sources: [] }];
+
+  return { rows };
+}
+
 export function loadPrefs(): AppPreferences {
   try {
     const saved = getStore<Record<string, unknown> | null>(PREFIX, null);
@@ -496,8 +600,16 @@ export function loadPrefs(): AppPreferences {
 
     // Deep merge with defaults so new keys are always present
     const savedDisplay = source.channelDisplay as Partial<ChannelDisplayPrefs> | undefined;
+    const mergedAppearance: AppearancePrefs = {
+      ...DEFAULT_APPEARANCE,
+      ...source.appearance,
+      tickerLayout: migrateTickerLayout(source.appearance as Partial<AppearancePrefs> | undefined),
+    };
+    // Keep the deprecated `tickerRows` in lockstep with the layout so
+    // legacy consumers (window-height math) keep working.
+    mergedAppearance.tickerRows = clampTickerRows(mergedAppearance.tickerLayout.rows.length);
     const merged: AppPreferences = {
-      appearance: { ...DEFAULT_APPEARANCE, ...source.appearance },
+      appearance: mergedAppearance,
       ticker: { ...DEFAULT_TICKER, ...source.ticker },
       startup: { ...DEFAULT_STARTUP, ...source.startup },
       window: { ...DEFAULT_WINDOW, ...source.window },
@@ -515,6 +627,26 @@ export function loadPrefs(): AppPreferences {
           : {},
       showSetupOnLogin: typeof source.showSetupOnLogin === "boolean" ? source.showSetupOnLogin : true,
     };
+
+    // Clamp any widget pin rows that reference rows above the current
+    // layout's row count (e.g. user downgraded from Pro to Uplink and
+    // lost row 2). See spec §Edge Cases #2 — pins on dropped rows
+    // reassign to row 0, not silently reduced, so the user sees them.
+    const layoutRowCount = merged.appearance.tickerLayout.rows.length;
+    let pinsChanged = false;
+    const clampedPins: Record<string, WidgetPinConfig> = {};
+    for (const [widgetId, pin] of Object.entries(merged.widgets.pinnedWidgets)) {
+      const currentRow = pin.row ?? 0;
+      if (currentRow >= layoutRowCount) {
+        clampedPins[widgetId] = { ...pin, row: 0 };
+        pinsChanged = true;
+      } else {
+        clampedPins[widgetId] = pin;
+      }
+    }
+    if (pinsChanged) {
+      merged.widgets = { ...merged.widgets, pinnedWidgets: clampedPins };
+    }
 
     // If migrated from v1, persist the new format
     if (isV1) {
@@ -546,7 +678,7 @@ export function resetCategory<K extends keyof AppPreferences>(
 /** Reset everything to defaults. */
 export function resetAll(): AppPreferences {
   const defaults: AppPreferences = {
-    appearance: { ...DEFAULT_APPEARANCE },
+    appearance: { ...DEFAULT_APPEARANCE, tickerLayout: { rows: [{ sources: [] }] } },
     ticker: { ...DEFAULT_TICKER },
     startup: { ...DEFAULT_STARTUP },
     window: { ...DEFAULT_WINDOW },
@@ -592,6 +724,68 @@ export const TICKER_HEIGHTS: Record<TickerMode, number> = {
   compact: 44,
   comfort: 64,
 };
+
+// ── Ticker layout helpers ───────────────────────────────────────
+
+/**
+ * Write a new `tickerLayout` while keeping the deprecated `tickerRows`
+ * field in sync. Use this everywhere instead of mutating the layout
+ * in-place so both fields never drift.
+ */
+export function setTickerLayout(
+  prefs: AppPreferences,
+  layout: TickerLayout,
+): AppPreferences {
+  const rows = layout.rows.length > 0 ? layout.rows : [{ sources: [] }];
+  return {
+    ...prefs,
+    appearance: {
+      ...prefs.appearance,
+      tickerLayout: { rows },
+      tickerRows: clampTickerRows(rows.length),
+    },
+  };
+}
+
+/**
+ * Drop a row from the layout at `index`. Any pinned widgets that
+ * target the removed row (or any row above it) are re-mapped:
+ *   - Pins on the removed row → row 0
+ *   - Pins on rows above `index` → row - 1 (shifted up)
+ *
+ * See spec §Edge Cases #3 — removed-row pins fall back to row 0, not
+ * a neighbour, so users notice the widget rather than silently moving
+ * it somewhere they didn't expect.
+ */
+export function removeTickerRow(
+  prefs: AppPreferences,
+  index: number,
+): AppPreferences {
+  const rows = prefs.appearance.tickerLayout.rows;
+  if (rows.length <= 1) return prefs; // never drop the last row
+  if (index < 0 || index >= rows.length) return prefs;
+
+  const nextRows = rows.filter((_, i) => i !== index);
+  const nextPinned: Record<string, WidgetPinConfig> = {};
+  for (const [widgetId, pin] of Object.entries(prefs.widgets.pinnedWidgets)) {
+    const currentRow = pin.row ?? 0;
+    let nextRow: number;
+    if (currentRow === index) {
+      nextRow = 0;
+    } else if (currentRow > index) {
+      nextRow = currentRow - 1;
+    } else {
+      nextRow = currentRow;
+    }
+    nextPinned[widgetId] = { ...pin, row: nextRow };
+  }
+
+  const withLayout = setTickerLayout(prefs, { rows: nextRows });
+  return {
+    ...withLayout,
+    widgets: { ...withLayout.widgets, pinnedWidgets: nextPinned },
+  };
+}
 
 // ── Pure preference updaters ────────────────────────────────────
 

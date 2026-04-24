@@ -613,30 +613,41 @@ export default function App() {
             onTogglePosition={handleTogglePosition}
             onHideTicker={() => handleToggleTicker(true)}
           />
-          {Array.from({ length: prefs.appearance.tickerRows }, (_, i) => (
-            <ScrollrTicker
-              key={`row${i}`}
-              dashboard={dashboard ?? null}
-              activeTabs={activeTabs}
-              widgetData={widgetData}
-              onChipClick={handleChipClick}
-              onTogglePin={handleTogglePin}
-              pinnedWidgets={prefs.widgets.pinnedWidgets}
-              speed={prefs.ticker.tickerSpeed}
-              gap={TICKER_GAPS[prefs.ticker.tickerGap]}
-              pauseOnHover={prefs.ticker.pauseOnHover}
-              hoverSpeed={prefs.ticker.hoverSpeed}
-              mixMode={prefs.ticker.mixMode}
-              chipColorMode={prefs.ticker.chipColors}
-              channelDisplay={prefs.channelDisplay}
-              comfort={prefs.ticker.tickerMode === "comfort"}
-              rowIndex={i}
-              totalRows={prefs.appearance.tickerRows}
-              direction={prefs.ticker.tickerDirection}
-              scrollMode={prefs.ticker.scrollMode}
-              stepPause={prefs.ticker.stepPause}
-            />
-          ))}
+          {prefs.appearance.tickerLayout.rows.map((row, i) => {
+            // Empty sources = "show everything on this row" (1-row behaviour).
+            // Otherwise filter activeTabs down to only the row's configured
+            // sources. We pass activeTabs (not row.sources directly) so the
+            // downstream pipeline still respects onboarding-level visibility.
+            const rowTabs = row.sources.length > 0
+              ? activeTabs.filter((tab) => row.sources.includes(tab))
+              : activeTabs;
+            return (
+              <ScrollrTicker
+                key={`row${i}`}
+                dashboard={dashboard ?? null}
+                activeTabs={rowTabs}
+                widgetData={widgetData}
+                onChipClick={handleChipClick}
+                onTogglePin={handleTogglePin}
+                pinnedWidgets={prefs.widgets.pinnedWidgets}
+                speed={prefs.ticker.tickerSpeed}
+                gap={TICKER_GAPS[prefs.ticker.tickerGap]}
+                pauseOnHover={prefs.ticker.pauseOnHover}
+                hoverSpeed={prefs.ticker.hoverSpeed}
+                mixMode={prefs.ticker.mixMode}
+                chipColorMode={prefs.ticker.chipColors}
+                channelDisplay={prefs.channelDisplay}
+                comfort={prefs.ticker.tickerMode === "comfort"}
+                rowIndex={i}
+                totalRows={prefs.appearance.tickerLayout.rows.length}
+                direction={prefs.ticker.tickerDirection}
+                scrollMode={prefs.ticker.scrollMode}
+                stepPause={prefs.ticker.stepPause}
+                rowConfig={row}
+                rowHasExplicitSources={row.sources.length > 0}
+              />
+            );
+          })}
         </>
       )}
     </div>

@@ -11,8 +11,10 @@ import type { AppPreferences, PinSide } from "../preferences";
 interface UseWidgetPinResult {
   isPinned: boolean;
   pinSide: PinSide;
+  pinRow: number;
   togglePin: (pinned: boolean) => void;
   setPinSide: (side: PinSide) => void;
+  setPinRow: (row: number) => void;
 }
 
 export function useWidgetPin(
@@ -20,14 +22,16 @@ export function useWidgetPin(
   prefs: AppPreferences,
   onPrefsChange: (prefs: AppPreferences) => void,
 ): UseWidgetPinResult {
-  const isPinned = !!prefs.widgets.pinnedWidgets[widgetId];
-  const pinSide = prefs.widgets.pinnedWidgets[widgetId]?.side ?? "left";
+  const pinConfig = prefs.widgets.pinnedWidgets[widgetId];
+  const isPinned = !!pinConfig;
+  const pinSide = pinConfig?.side ?? "left";
+  const pinRow = pinConfig?.row ?? 0;
 
   const togglePin = useCallback(
     (pinned: boolean) => {
       const pw = { ...prefs.widgets.pinnedWidgets };
       if (pinned) {
-        pw[widgetId] = { side: pinSide };
+        pw[widgetId] = { side: pinSide, row: pinRow };
       } else {
         delete pw[widgetId];
       }
@@ -38,12 +42,12 @@ export function useWidgetPin(
       onPrefsChange(next);
       savePrefs(next);
     },
-    [prefs, pinSide, onPrefsChange, widgetId],
+    [prefs, pinSide, pinRow, onPrefsChange, widgetId],
   );
 
   const setPinSide = useCallback(
     (side: PinSide) => {
-      const pw = { ...prefs.widgets.pinnedWidgets, [widgetId]: { side } };
+      const pw = { ...prefs.widgets.pinnedWidgets, [widgetId]: { side, row: pinRow } };
       const next: AppPreferences = {
         ...prefs,
         widgets: { ...prefs.widgets, pinnedWidgets: pw },
@@ -51,8 +55,21 @@ export function useWidgetPin(
       onPrefsChange(next);
       savePrefs(next);
     },
-    [prefs, onPrefsChange, widgetId],
+    [prefs, pinRow, onPrefsChange, widgetId],
   );
 
-  return { isPinned, pinSide, togglePin, setPinSide };
+  const setPinRow = useCallback(
+    (row: number) => {
+      const pw = { ...prefs.widgets.pinnedWidgets, [widgetId]: { side: pinSide, row } };
+      const next: AppPreferences = {
+        ...prefs,
+        widgets: { ...prefs.widgets, pinnedWidgets: pw },
+      };
+      onPrefsChange(next);
+      savePrefs(next);
+    },
+    [prefs, pinSide, onPrefsChange, widgetId],
+  );
+
+  return { isPinned, pinSide, pinRow, togglePin, setPinSide, setPinRow };
 }

@@ -160,12 +160,26 @@ function migrateFromLocalStorage(): void {
 
 // ── Utilities ───────────────────────────────────────────────────
 
-/** JSON serialization for equality comparison.
- *  Note: key order is not guaranteed stable, but in practice both
- *  windows serialize identically since they share the same source. */
-function stableStringify(value: unknown): string {
+/** Deterministic JSON serialization for equality comparison.
+ *  Recursively sorts object keys so that two semantically-identical objects
+ *  produced by different code paths (e.g. different preference init orders)
+ *  compare equal. Arrays preserve order. Primitives and cyclic refs fall
+ *  back to `String(value)`.
+ *
+ *  Exported solely so the unit-test suite can lock down this behavior. The
+ *  runtime only uses it internally from `onStoreChange` — do not take a new
+ *  dependency on this helper from feature code. */
+export function stableStringify(value: unknown): string {
   try {
-    return JSON.stringify(value);
+    return JSON.stringify(value, (_key, val) => {
+      if (val && typeof val === "object" && !Array.isArray(val)) {
+        const obj = val as Record<string, unknown>;
+        const sorted: Record<string, unknown> = {};
+        for (const k of Object.keys(obj).sort()) sorted[k] = obj[k];
+        return sorted;
+      }
+      return val;
+    });
   } catch {
     return String(value);
   }

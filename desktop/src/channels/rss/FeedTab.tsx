@@ -12,9 +12,11 @@ import { useQuery } from "@tanstack/react-query";
 import { dashboardQueryOptions, rssCatalogOptions } from "../../api/queries";
 import { relativeTime, truncate } from "../../utils/format";
 import EmptyChannelState from "../../components/EmptyChannelState";
+import FreshnessPill from "../../components/FreshnessPill";
 import CategoryFilter from "./CategoryFilter";
 import { useShell } from "../../shell-context";
 import { useNow } from "../../hooks/useNow";
+import { applyRssPipeline, type RssSortOrder } from "./view";
 import type {
   RssItem as RssItemType,
   FeedTabProps,
@@ -47,7 +49,7 @@ export const rssChannel: ChannelManifest = {
 
 // ── Sort type ────────────────────────────────────────────────────
 
-type SortOrder = "newest" | "oldest" | "by-source";
+type SortOrder = RssSortOrder;
 
 // ── SourceFilter ─────────────────────────────────────────────────
 
@@ -245,76 +247,34 @@ function RssFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
 
   const hasFilters = selectedSources.size > 0 || selectedCategories.size > 0;
 
+  // Most-recent item timestamp (published_at ?? created_at) — drives the FreshnessPill.
+  const latestUpdated = useMemo(() => {
+    let latest = 0;
+    for (const item of rssItems) {
+      const raw = item.published_at ?? item.created_at;
+      if (!raw) continue;
+      const ts = new Date(raw).getTime();
+      if (Number.isFinite(ts) && ts > latest) latest = ts;
+    }
+    return latest > 0 ? new Date(latest).toISOString() : null;
+  }, [rssItems]);
+
   // ── Data pipeline ────────────────────────────────────────────
-  const { visibleItems, overflowCounts, totalHidden } = useMemo(() => {
-    let items = rssItems;
-
-    // Source filter
-    if (selectedSources.size > 0) {
-      items = items.filter((i) => selectedSources.has(i.source_name));
-    }
-
-    // Category filter
-    if (selectedCategories.size > 0) {
-      items = items.filter((i) => {
-        const cat = categoryMap.get(i.feed_url);
-        return cat != null && selectedCategories.has(cat);
-      });
-    }
-
-    // Sort
-    if (sortOrder === "oldest") {
-      items = [...items].sort((a, b) => {
-        const aTime = a.published_at ?? a.created_at;
-        const bTime = b.published_at ?? b.created_at;
-        return aTime.localeCompare(bTime);
-      });
-    } else if (sortOrder === "by-source") {
-      items = [...items].sort((a, b) => {
-        const cmp = a.source_name.localeCompare(b.source_name, undefined, { sensitivity: "base" });
-        if (cmp !== 0) return cmp;
-        const aTime = a.published_at ?? a.created_at;
-        const bTime = b.published_at ?? b.created_at;
-        return bTime.localeCompare(aTime);
-      });
-    }
-    // "newest" is the default order from the dashboard/CDC pipeline — no re-sort needed
-
-    // Per-source limit
-    const limit = dp.articlesPerSource;
-    const overflow = new Map<string, number>();
-    const isBySource = sortOrder === "by-source";
-
-    // For chronological sorts: silently limit unless user clicked "Show all".
-    // For "by-source": use expandable per-source groups.
-    if (limit > 0 && !showAll) {
-      const sourceCounts = new Map<string, number>();
-      const limited: RssItemType[] = [];
-
-      for (const item of items) {
-        const count = sourceCounts.get(item.source_name) ?? 0;
-        const isExpanded = isBySource && expandedSources.has(item.source_name);
-
-        if (isExpanded || count < limit) {
-          limited.push(item);
-        }
-        sourceCounts.set(item.source_name, count + 1);
-      }
-
-      let hidden = 0;
-      for (const [source, total] of sourceCounts) {
-        const expanded = isBySource && expandedSources.has(source);
-        if (total > limit && !expanded) {
-          overflow.set(source, total - limit);
-          hidden += total - limit;
-        }
-      }
-
-      return { visibleItems: limited, overflowCounts: overflow, totalHidden: hidden };
-    }
-
-    return { visibleItems: items, overflowCounts: overflow, totalHidden: 0 };
-  }, [rssItems, selectedSources, selectedCategories, sortOrder, dp.articlesPerSource, categoryMap, expandedSources, showAll]);
+  // Delegates to the shared `applyRssPipeline` selector so the feed page
+  // and the ticker apply the same filter/sort/limit logic.
+  const { visibleItems, overflowCounts, totalHidden } = useMemo(
+    () =>
+      applyRssPipeline(rssItems, {
+        selectedSources,
+        selectedCategories,
+        categoryMap,
+        sortOrder,
+        articlesPerSource: dp.articlesPerSource,
+        showAll,
+        expandedSources,
+      }),
+    [rssItems, selectedSources, selectedCategories, sortOrder, dp.articlesPerSource, categoryMap, expandedSources, showAll],
+  );
 
   // ── Build render list ──────────────────────────────────────────
   type RenderEntry =
@@ -394,6 +354,7 @@ function RssFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
           onToggle={toggleCategory}
           onClearAll={clearCategories}
         />
+        {latestUpdated && <FreshnessPill lastUpdated={latestUpdated} label="article" />}
         <div className="ml-auto">
           <select
             value={sortOrder}

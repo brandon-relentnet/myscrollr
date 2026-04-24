@@ -26,18 +26,48 @@ interface ChannelLimits {
   customFeeds: number;
   leagues: number;
   fantasy: number;
+  /** Max simultaneous ticker rows this tier can configure (1..3). */
+  maxTickerRows: number;
+  /** Can configure per-row scroll mode/direction/speed/mix overrides. */
+  maxTickerCustomization: boolean;
 }
 
 export const TIER_LIMITS: Record<SubscriptionTier, ChannelLimits> = {
-  free: { symbols: 5, feeds: 1, customFeeds: 0, leagues: 1, fantasy: 0 },
-  uplink: { symbols: 25, feeds: 25, customFeeds: 1, leagues: 8, fantasy: 1 },
-  uplink_pro: { symbols: 75, feeds: 100, customFeeds: 3, leagues: 20, fantasy: 3 },
+  free: {
+    symbols: 5,
+    feeds: 1,
+    customFeeds: 0,
+    leagues: 1,
+    fantasy: 0,
+    maxTickerRows: 1,
+    maxTickerCustomization: false,
+  },
+  uplink: {
+    symbols: 25,
+    feeds: 25,
+    customFeeds: 1,
+    leagues: 8,
+    fantasy: 1,
+    maxTickerRows: 2,
+    maxTickerCustomization: false,
+  },
+  uplink_pro: {
+    symbols: 75,
+    feeds: 100,
+    customFeeds: 3,
+    leagues: 20,
+    fantasy: 3,
+    maxTickerRows: 3,
+    maxTickerCustomization: false,
+  },
   uplink_ultimate: {
     symbols: Infinity,
     feeds: Infinity,
     customFeeds: 10,
     leagues: Infinity,
     fantasy: 10,
+    maxTickerRows: 3,
+    maxTickerCustomization: true,
   },
   super_user: {
     symbols: Infinity,
@@ -45,10 +75,30 @@ export const TIER_LIMITS: Record<SubscriptionTier, ChannelLimits> = {
     customFeeds: Infinity,
     leagues: Infinity,
     fantasy: Infinity,
+    maxTickerRows: 3,
+    maxTickerCustomization: true,
   },
 };
 
-type LimitKey = keyof ChannelLimits;
+// Numeric-only keys (excludes the boolean `maxTickerCustomization` field so
+// downstream `getLimit` / `isUnlimited` / `maxItemsForBrowser` keep their
+// simple `number` signatures). Exported so callers can constrain their own
+// helpers: e.g. `const LIMIT_ROWS: { key: NumericLimitKey }[] = [...]`.
+export type NumericLimitKey = {
+  [K in keyof ChannelLimits]: ChannelLimits[K] extends number ? K : never;
+}[keyof ChannelLimits];
+
+type LimitKey = NumericLimitKey;
+
+/** Max ticker rows for the tier (1..3). */
+export function getMaxTickerRows(tier: SubscriptionTier): number {
+  return TIER_LIMITS[tier].maxTickerRows;
+}
+
+/** Whether the tier may configure per-row scroll prefs. */
+export function canCustomizeTickerRows(tier: SubscriptionTier): boolean {
+  return TIER_LIMITS[tier].maxTickerCustomization;
+}
 
 /** Get the numeric limit for a tier + channel feature. */
 export function getLimit(tier: SubscriptionTier, key: LimitKey): number {

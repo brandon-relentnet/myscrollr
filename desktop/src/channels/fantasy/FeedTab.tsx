@@ -37,6 +37,7 @@ import {
   isMatchupLive,
   userMatchupContext,
 } from "./types";
+import { filterEnabledLeagues, resolvePrimaryLeague } from "./view";
 import type { FeedTabProps, ChannelManifest } from "../../types";
 import type { FantasySubTab } from "../../preferences";
 import type { LeagueResponse, MyLeaguesResponse } from "./types";
@@ -99,13 +100,14 @@ function FantasyFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
   const leagues = useMemo(() => extractLeagues(fantasyData), [fantasyData]);
 
   // Apply the user's per-league visibility filter: empty = show all.
-  const visibleLeagues = useMemo(() => {
-    if (!dp.enabledLeagueKeys || dp.enabledLeagueKeys.length === 0) return leagues;
-    const allowed = new Set(dp.enabledLeagueKeys);
-    return leagues.filter((l) => allowed.has(l.league_key));
-  }, [leagues, dp.enabledLeagueKeys]);
+  // Shared with the ticker via `filterEnabledLeagues`.
+  const visibleLeagues = useMemo(
+    () => filterEnabledLeagues(leagues, dp.enabledLeagueKeys),
+    [leagues, dp.enabledLeagueKeys],
+  );
 
   // Resolve the "primary" league — user override, else first active, else first.
+  // Shared with the ticker via `resolvePrimaryLeague`.
   const primaryLeague = useMemo(
     () => resolvePrimaryLeague(visibleLeagues, dp.primaryLeagueKey),
     [visibleLeagues, dp.primaryLeagueKey],
@@ -313,24 +315,5 @@ function LeagueSwitcher({ leagues, activeKey, primaryKey, onSelect }: LeagueSwit
   );
 }
 
-// ── Helpers ──────────────────────────────────────────────────────
-
-function resolvePrimaryLeague(
-  leagues: LeagueResponse[],
-  configuredKey: string | null,
-): LeagueResponse | null {
-  if (!leagues.length) return null;
-  if (configuredKey) {
-    const match = leagues.find((l) => l.league_key === configuredKey);
-    if (match) return match;
-  }
-  const activeWithLive = leagues.find((l) => {
-    const ctx = userMatchupContext(l);
-    return ctx && isMatchupLive(ctx.matchup);
-  });
-  if (activeWithLive) return activeWithLive;
-  const activeWithMatchup = leagues.find((l) => userMatchupContext(l));
-  if (activeWithMatchup) return activeWithMatchup;
-  const active = leagues.find((l) => !l.data.is_finished);
-  return active ?? leagues[0];
-}
+// Note: `resolvePrimaryLeague` now lives in ./view.ts so the ticker
+// can consume the same logic.

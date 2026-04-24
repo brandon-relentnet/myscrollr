@@ -5,7 +5,7 @@ import { Zap } from "lucide-react";
 import { channelsApi } from "../../api/client";
 import { RECOMMENDED_FEEDS } from "./curated-picks";
 import { queryKeys } from "../../api/queries";
-import { getLimit, TIER_LIMITS } from "../../tierLimits";
+import { getLimit, TIER_LIMITS, type NumericLimitKey } from "../../tierLimits";
 import { TIER_LABELS } from "../../auth";
 import type { ChannelType } from "../../api/client";
 import type { AppPreferences } from "../../preferences";
@@ -124,7 +124,7 @@ export default function OnboardingWizard({ prefs, tier, onComplete }: Onboarding
   const queryClient = useQueryClient();
 
   // ── Tier-based channel locks ──
-  const channelLimitKeys: Record<ChannelType, keyof typeof TIER_LIMITS["free"]> = {
+  const channelLimitKeys: Record<ChannelType, NumericLimitKey> = {
     finance: "symbols",
     sports: "leagues",
     rss: "feeds",
@@ -134,7 +134,7 @@ export default function OnboardingWizard({ prefs, tier, onComplete }: Onboarding
   const lockedChannels = new Set<ChannelType>();
   const minTierLabels: Record<string, string> = {};
 
-  for (const [ch, limitKey] of Object.entries(channelLimitKeys) as [ChannelType, keyof typeof TIER_LIMITS["free"]][]) {
+  for (const [ch, limitKey] of Object.entries(channelLimitKeys) as [ChannelType, NumericLimitKey][]) {
     if (getLimit(tier, limitKey) === 0) {
       lockedChannels.add(ch);
       // Find the minimum tier that unlocks this channel

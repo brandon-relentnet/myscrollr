@@ -11,20 +11,22 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { Ticker } from "motion-plus/react";
 import { motion, AnimatePresence, useMotionValue, animate } from "motion/react";
 import { clsx } from "clsx";
-import { ChevronDown } from "lucide-react";
-import { resetCategory } from "../../preferences";
+import { ChevronDown, Plus, Trash2, Lock } from "lucide-react";
+import { resetCategory, setTickerLayout, removeTickerRow } from "../../preferences";
 import { ResetButton } from "./SettingsControls";
+import { getTier } from "../../auth";
+import { getMaxTickerRows, canCustomizeTickerRows } from "../../tierLimits";
+import { getAllChannels } from "../../channels/registry";
+import { getAllWidgets } from "../../widgets/registry";
 import type {
   AppPreferences,
-  AppearancePrefs,
   TickerPrefs,
-  TickerRows,
   TickerGap,
-  TickerMode,
   MixMode,
   ChipColorMode,
   TickerDirection,
   ScrollMode,
+  TickerRowConfig,
 } from "../../preferences";
 
 // ── Props ───────────────────────────────────────────────────────
@@ -135,19 +137,63 @@ const MIX_OPTIONS: { value: MixMode; label: string }[] = [
 export default function TickerSettings({ prefs, onPrefsChange }: TickerSettingsProps) {
   const { appearance, ticker } = prefs;
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const tier = getTier();
+  const maxRows = getMaxTickerRows(tier);
+  const canCustomize = canCustomizeTickerRows(tier);
 
   const setTicker = useCallback(<K extends keyof TickerPrefs>(key: K, value: TickerPrefs[K]) => {
     onPrefsChange({ ...prefs, ticker: { ...ticker, [key]: value } });
   }, [prefs, ticker, onPrefsChange]);
 
-  const setAppearance = useCallback(<K extends keyof AppearancePrefs>(key: K, value: AppearancePrefs[K]) => {
-    onPrefsChange({ ...prefs, appearance: { ...appearance, [key]: value } });
-  }, [prefs, appearance, onPrefsChange]);
-
   const handleReset = useCallback(() => {
     const next = resetCategory(prefs, "ticker");
     onPrefsChange(next);
   }, [prefs, onPrefsChange]);
+
+  const layout = appearance.tickerLayout;
+  const rows = layout.rows;
+
+  // ── Row mutations ─────────────────────────────────────────────
+  const addRow = useCallback(() => {
+    if (rows.length >= maxRows) return;
+    onPrefsChange(setTickerLayout(prefs, {
+      rows: [...rows, { sources: [] }],
+    }));
+  }, [prefs, rows, maxRows, onPrefsChange]);
+
+  const updateRow = useCallback((index: number, patch: Partial<TickerRowConfig>) => {
+    const nextRows = rows.map((r, i) => (i === index ? { ...r, ...patch } : r));
+    onPrefsChange(setTickerLayout(prefs, { rows: nextRows }));
+  }, [prefs, rows, onPrefsChange]);
+
+  const toggleRowSource = useCallback((index: number, sourceId: string) => {
+    const row = rows[index];
+    const next = row.sources.includes(sourceId)
+      ? row.sources.filter((s) => s !== sourceId)
+      : [...row.sources, sourceId];
+    updateRow(index, { sources: next });
+  }, [rows, updateRow]);
+
+  const deleteRow = useCallback((index: number) => {
+    onPrefsChange(removeTickerRow(prefs, index));
+  }, [prefs, onPrefsChange]);
+
+  // ── Available sources (channels + enabled widgets) ────────────
+  const availableSources = useMemo(() => {
+    const channels = getAllChannels().map((ch) => ({
+      id: ch.id,
+      label: ch.tabLabel,
+      hex: ch.hex,
+    }));
+    const widgets = getAllWidgets()
+      .filter((w) => prefs.widgets.enabledWidgets.includes(w.id))
+      .map((w) => ({
+        id: w.id,
+        label: w.tabLabel,
+        hex: w.hex,
+      }));
+    return [...channels, ...widgets];
+  }, [prefs.widgets.enabledWidgets]);
 
   // Compute preview params — reflect all settings
   const gapPx = ticker.tickerGap === "tight" ? 8 : ticker.tickerGap === "spacious" ? 20 : 12;
@@ -188,14 +234,21 @@ export default function TickerSettings({ prefs, onPrefsChange }: TickerSettingsP
           )}
         >
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent z-10" />
-          {Array.from({ length: appearance.tickerRows }, (_, rowIdx) => {
-            const orderedChips = orderChips(SAMPLE_CHIPS, ticker.mixMode);
-            const rowChips = orderedChips.filter((_, i) =>
-              appearance.tickerRows <= 1 ? true : i % appearance.tickerRows === rowIdx
-            );
+          {rows.map((row, rowIdx) => {
+            // Filter the sample chips to match the row's configured sources.
+            // Empty sources = show everything (matches runtime behaviour).
+            // Label-to-source matching is case-insensitive because the chip
+            // label ("FINANCE") differs from the source id ("finance").
+            const rowEffectiveMixMode = row.mixMode ?? ticker.mixMode;
+            const orderedChips = orderChips(SAMPLE_CHIPS, rowEffectiveMixMode);
+            const rowChips = row.sources.length === 0
+              ? orderedChips
+              : orderedChips.filter((c) =>
+                  row.sources.some((s) => s.toLowerCase() === c.label.toLowerCase()),
+                );
             return (
               <div
-                key={`row-${rowIdx}-${appearance.tickerRows}`}
+                key={`row-${rowIdx}-${rows.length}`}
                 className={clsx(
                   "flex items-center relative",
                   rowIdx > 0 && "border-t border-edge/30",
@@ -203,25 +256,31 @@ export default function TickerSettings({ prefs, onPrefsChange }: TickerSettingsP
               >
                 <AnimatePresence mode="wait">
                   <motion.div
-                    key={`${ticker.scrollMode}-${ticker.tickerDirection}-${ticker.mixMode}`}
+                    key={`${row.scrollMode ?? ticker.scrollMode}-${row.direction ?? ticker.tickerDirection}-${rowEffectiveMixMode}`}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.15 }}
                     className="w-full"
                   >
-                    <PreviewRow
-                      chips={rowChips}
-                      comfort={comfort}
-                      colorMode={ticker.chipColors}
-                      scrollMode={ticker.scrollMode}
-                      speed={ticker.tickerSpeed}
-                      direction={ticker.tickerDirection}
-                      stepPause={ticker.stepPause}
-                      pauseOnHover={ticker.pauseOnHover}
-                      hoverSpeed={ticker.hoverSpeed}
-                      gap={gapPx}
-                    />
+                    {rowChips.length > 0 ? (
+                      <PreviewRow
+                        chips={rowChips}
+                        comfort={comfort}
+                        colorMode={ticker.chipColors}
+                        scrollMode={row.scrollMode ?? ticker.scrollMode}
+                        speed={row.speed ?? ticker.tickerSpeed}
+                        direction={row.direction ?? ticker.tickerDirection}
+                        stepPause={ticker.stepPause}
+                        pauseOnHover={ticker.pauseOnHover}
+                        hoverSpeed={ticker.hoverSpeed}
+                        gap={gapPx}
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center py-3 text-[11px] font-mono text-fg-4">
+                        Row {rowIdx + 1} has no sources selected
+                      </div>
+                    )}
                   </motion.div>
                 </AnimatePresence>
               </div>
@@ -233,32 +292,46 @@ export default function TickerSettings({ prefs, onPrefsChange }: TickerSettingsP
       {/* ── Settings ──────────────────────────────────────────── */}
       <motion.div layout="position" transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }} className="space-y-6">
 
-        {/* ── Layout ────────────────────────────────────────── */}
-        <SettingGroup label="Layout">
-          {/* Rows */}
-          <div className="flex gap-2">
-            {([1, 2, 3] as const).map((n) => (
-              <VisualCard
-                key={n}
-                selected={appearance.tickerRows === n}
-                onClick={() => setAppearance("tickerRows", n as TickerRows)}
-                label={`${n} Row${n > 1 ? "s" : ""}`}
-              >
-                <div className="flex flex-col gap-1 w-full">
-                  {Array.from({ length: n }, (_, i) => (
-                    <div key={i} className="flex gap-1">
-                      <div className={clsx("h-1.5 rounded-[2px] flex-1", appearance.tickerRows === n ? "bg-accent/50" : "bg-fg-4/20")} />
-                      <div className={clsx("h-1.5 rounded-[2px] w-2/5", appearance.tickerRows === n ? "bg-accent/30" : "bg-fg-4/10")} />
-                      <div className={clsx("h-1.5 rounded-[2px] flex-1", appearance.tickerRows === n ? "bg-accent/40" : "bg-fg-4/15")} />
-                    </div>
-                  ))}
-                </div>
-              </VisualCard>
+        {/* ── Rows (multi-deck builder) ─────────────────────── */}
+        <SettingGroup label={`Rows (${rows.length}/${maxRows})`}>
+          <div className="space-y-2">
+            {rows.map((row, rowIdx) => (
+              <RowCard
+                key={rowIdx}
+                rowIndex={rowIdx}
+                row={row}
+                sources={availableSources}
+                canRemove={rows.length > 1}
+                canCustomize={canCustomize}
+                onToggleSource={(id) => toggleRowSource(rowIdx, id)}
+                onRemove={() => deleteRow(rowIdx)}
+              />
             ))}
+            <button
+              type="button"
+              onClick={addRow}
+              disabled={rows.length >= maxRows}
+              className={clsx(
+                "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed text-[11px] font-mono uppercase tracking-wider transition-colors",
+                rows.length >= maxRows
+                  ? "border-edge/30 text-fg-4/40 cursor-not-allowed"
+                  : "border-edge/60 text-fg-3 hover:text-accent hover:border-accent/60 cursor-pointer",
+              )}
+            >
+              <Plus size={12} />
+              {rows.length >= maxRows ? "Tier cap reached" : "Add row"}
+            </button>
+            {rows.length >= maxRows && maxRows < 3 && (
+              <p className="text-[10px] font-mono text-fg-4/70 text-center pt-1">
+                Upgrade to Uplink Pro for up to 3 ticker rows.
+              </p>
+            )}
           </div>
+        </SettingGroup>
 
-          {/* Detail level */}
-          <div className="flex gap-2 mt-2">
+        {/* ── Detail level ──────────────────────────────────── */}
+        <SettingGroup label="Detail level">
+          <div className="flex gap-2">
             <VisualCard
               selected={ticker.tickerMode === "compact"}
               onClick={() => setTicker("tickerMode", "compact")}
@@ -716,6 +789,115 @@ function SegmentedPicker<T extends string>({
           {opt.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+// ── Row card (multi-deck builder) ───────────────────────────────
+
+interface RowSource {
+  id: string;
+  label: string;
+  hex: string;
+}
+
+interface RowCardProps {
+  rowIndex: number;
+  row: TickerRowConfig;
+  sources: RowSource[];
+  canRemove: boolean;
+  canCustomize: boolean;
+  onToggleSource: (id: string) => void;
+  onRemove: () => void;
+}
+
+function RowCard({
+  rowIndex,
+  row,
+  sources,
+  canRemove,
+  canCustomize,
+  onToggleSource,
+  onRemove,
+}: RowCardProps) {
+  const showingAll = row.sources.length === 0;
+
+  return (
+    <div className="rounded-xl border border-edge/40 bg-surface-2/30 p-3">
+      {/* Row header */}
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-fg-3">
+          Row {rowIndex + 1}
+        </span>
+        {canRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="text-fg-4 hover:text-accent-red transition-colors cursor-pointer p-1 rounded"
+            aria-label={`Remove row ${rowIndex + 1}`}
+          >
+            <Trash2 size={12} />
+          </button>
+        )}
+      </div>
+
+      {/* Sources grid */}
+      <div>
+        <div className="text-[10px] font-mono uppercase tracking-wider text-fg-4 mb-1.5">
+          Sources {showingAll && <span className="text-fg-4/60">(all visible)</span>}
+        </div>
+        {sources.length === 0 ? (
+          <div className="text-[11px] font-mono text-fg-4/70 py-2">
+            No channels or widgets enabled. Enable some in the main settings first.
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-1.5">
+            {sources.map((src) => {
+              const selected = row.sources.includes(src.id);
+              return (
+                <button
+                  key={src.id}
+                  type="button"
+                  onClick={() => onToggleSource(src.id)}
+                  className={clsx(
+                    "flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-[11px] font-mono transition-all cursor-pointer",
+                    selected
+                      ? "border-accent/60 bg-accent/10 text-fg"
+                      : "border-edge/40 bg-transparent text-fg-3 hover:border-edge/60 hover:text-fg-2",
+                  )}
+                >
+                  <span
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: src.hex }}
+                  />
+                  <span className="truncate">{src.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Customize (Ultimate) — data path wired via rowConfig overrides.
+          Full per-row scroll-mode/direction/speed/mix UI is Phase 2
+          (spec §Rollout). For now we show a locked teaser so Ultimate
+          users discover the capability exists. */}
+      <div className="mt-3 pt-3 border-t border-edge/30">
+        <div
+          className={clsx(
+            "flex items-center justify-between text-[11px] font-mono",
+            canCustomize ? "text-fg-3" : "text-fg-4/60",
+          )}
+        >
+          <span className="flex items-center gap-1.5">
+            {!canCustomize && <Lock size={11} />}
+            Customize scroll
+          </span>
+          <span className="text-[10px] uppercase tracking-wider">
+            {canCustomize ? "Coming soon" : "Ultimate"}
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

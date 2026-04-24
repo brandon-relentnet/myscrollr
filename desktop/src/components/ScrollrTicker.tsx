@@ -3,38 +3,30 @@ import clsx from "clsx";
 import { Ticker } from "motion-plus/react";
 import { useMotionValue, animate, AnimatePresence, motion } from "motion/react";
 import type { DashboardResponse, Trade, Game, RssItem, WidgetTickerData } from "../types";
-import type { MixMode, ChipColorMode, TickerDirection, ScrollMode, WidgetPinConfig, ChannelDisplayPrefs } from "../preferences";
+import type {
+  MixMode,
+  ChipColorMode,
+  TickerDirection,
+  ScrollMode,
+  WidgetPinConfig,
+  ChannelDisplayPrefs,
+  TickerRowConfig,
+} from "../preferences";
 import type { LeagueResponse as FantasyLeague } from "../channels/fantasy/types";
-import { isMatchupLive as isFantasyMatchupLive, userMatchupContext as fantasyMatchupContext } from "../channels/fantasy/types";
 import TradeChip from "./chips/TradeChip";
 import GameChip from "./chips/GameChip";
-import { isLive, isCloseGame, isFinal, isPre } from "../utils/gameHelpers";
 import RssChip from "./chips/RssChip";
 import FantasyChip from "./chips/FantasyChip";
 import ConsolidatedChip from "./chips/ConsolidatedChip";
+import { selectRssForTicker } from "../channels/rss/view";
+import { selectFinanceForTicker } from "../channels/finance/view";
+import { selectFantasyForTicker } from "../channels/fantasy/view";
+import { selectSportsForTicker, getSportsDisplayConfig } from "../channels/sports/view";
 
 // ── Module-level constants ───────────────────────────────────────
 
 const WIDGET_TYPES = ["clock", "weather", "sysmon", "uptime", "github"] as const;
 type WidgetType = (typeof WIDGET_TYPES)[number];
-
-// ── Sport engagement scoring (higher = more prominent in ticker) ─
-
-function gameEngagement(g: Game): number {
-  if (isLive(g)) return isCloseGame(g) ? 100 : 80;
-  if (g.state === "pre") {
-    const until = new Date(g.start_time).getTime() - Date.now();
-    if (until < 3_600_000) return 60;  // within 1 hour
-    if (until < 86_400_000) return 40; // within 24 hours
-    return 20;
-  }
-  if (g.state === "final") {
-    const ago = Date.now() - new Date(g.start_time).getTime();
-    if (ago < 7_200_000) return 30; // finished within 2 hours
-    return 10;
-  }
-  return 0;
-}
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -74,17 +66,19 @@ interface ScrollrTickerProps {
   scrollMode?: ScrollMode;
   /** Seconds to pause between transitions in step/flip modes (default 2) */
   stepPause?: number;
-}
-
-// ── Fantasy engagement ─────────────────────────────────────────
-
-function fantasyEngagement(league: FantasyLeague): number {
-  const ctx = fantasyMatchupContext(league);
-  if (!ctx) return league.data.is_finished ? 0 : 5;
-  if (isFantasyMatchupLive(ctx.matchup)) return 100;
-  if (ctx.matchup.status === "preevent") return 40;
-  if (ctx.matchup.status === "postevent") return 20;
-  return 10;
+  /**
+   * Per-row config for the multi-deck ticker. When present, `sources`
+   * lives on `row.sources` (but App.tsx already pre-filtered activeTabs
+   * to match) and row-level scroll overrides (Ultimate-only) are read
+   * from here. When `undefined`, this behaves like the legacy single-row.
+   */
+  rowConfig?: TickerRowConfig;
+  /**
+   * True when `rowConfig.sources` was non-empty AND at least one
+   * source was configured. Used to decide whether to show the
+   * "empty row" CTA when all of a row's sources get filtered away.
+   */
+  rowHasExplicitSources?: boolean;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────
@@ -125,9 +119,21 @@ export default function ScrollrTicker({
   direction = "left",
   scrollMode = "continuous",
   stepPause = 5,
+  rowConfig,
+  rowHasExplicitSources = false,
 }: ScrollrTickerProps) {
+  // Per-row overrides shadow the globals. The Ultimate-gate is enforced
+  // upstream — Settings only lets Ultimate/super_user WRITE these fields,
+  // so reading them unconditionally here is safe. (If a downgraded user
+  // still has row overrides in their prefs, we honour them until they
+  // edit the row — no surprise resets.)
+  const effectiveScrollMode: ScrollMode = rowConfig?.scrollMode ?? scrollMode;
+  const effectiveDirection: TickerDirection = rowConfig?.direction ?? direction;
+  const effectiveSpeed: number = rowConfig?.speed ?? speed;
+  const effectiveMixMode: MixMode = rowConfig?.mixMode ?? mixMode;
   // Build chip arrays per channel/widget, then combine based on mixMode.
-  // When totalRows > 1, items are distributed round-robin across rows.
+  // Row filtering (multi-deck) happens UPSTREAM in App.tsx — activeTabs
+  // here is already the per-row source list. No round-robin split.
   const chips = useMemo(() => {
     const wrap = (key: string, chip: React.ReactNode) => (
       <div key={key} className="py-1">
@@ -140,11 +146,15 @@ export default function ScrollrTicker({
     for (const tab of activeTabs) {
       const bucket: React.ReactNode[] = [];
 
+      // Pinned widgets never scroll — they render in a pinned zone on
+      // their assigned row (pin.row). See render-time pinned loop below.
+      const isPinnedAnywhere = !!pinnedWidgets[tab];
+
       // ── Widget tabs: consolidated chips (skip if pinned) ────────
       if (WIDGET_TYPES.includes(tab as WidgetType)) {
         const wt = tab as WidgetType;
         const items = widgetData?.[wt];
-        if (items?.length && !pinnedWidgets[wt]) {
+        if (items?.length && !isPinnedAnywhere) {
           bucket.push(
             wrap(`${wt}-consolidated`,
               <ConsolidatedChip
@@ -167,17 +177,27 @@ export default function ScrollrTicker({
 
       // Fantasy arrives as a structured { leagues: [...] } object, so it
       // needs its own branch before the generic array check below.
+      // Uses `selectFantasyForTicker` which honours enabledLeagueKeys +
+      // primaryLeagueKey from Display prefs — so the ticker stays in sync
+      // with the Fantasy feed page.
       if (tab === "fantasy") {
-        const fantasyTicker = channelDisplay?.fantasy?.tickerShowMatchup ?? true;
-        if (!fantasyTicker) continue;
         const fantasyPayload = data as { leagues?: unknown } | undefined;
         const leagues = Array.isArray(fantasyPayload?.leagues)
           ? (fantasyPayload.leagues as FantasyLeague[])
           : [];
         if (leagues.length === 0) continue;
-        // Prioritise live matchups, then leagues with a scheduled matchup,
-        // then alphabetical.
-        const ranked = [...leagues].sort((a, b) => fantasyEngagement(b) - fantasyEngagement(a));
+        const fantasyPrefs = channelDisplay?.fantasy ?? {
+          tickerShowMatchup: true,
+          enabledLeagueKeys: [],
+          primaryLeagueKey: null,
+          defaultSubTab: "overview" as const,
+          defaultSort: "name" as const,
+          showStandings: true,
+          showMatchups: true,
+          showInjuryCount: true,
+        };
+        const ranked = selectFantasyForTicker(leagues, fantasyPrefs);
+        if (ranked.length === 0) continue;
         for (const league of ranked) {
           bucket.push(
             wrap(`fan-${league.league_key}`,
@@ -197,43 +217,39 @@ export default function ScrollrTicker({
       if (!Array.isArray(data) || data.length === 0) continue;
 
       switch (tab) {
-        case "finance":
-          for (const trade of data as Trade[]) {
+        case "finance": {
+          // Apply Display prefs: `defaultSort` from the Finance Display tab
+          // now affects both the feed page AND the ticker.
+          const financePrefs = channelDisplay?.finance ?? {
+            showChange: true,
+            showPrevClose: false,
+            showLastUpdated: false,
+            defaultSort: "alpha" as const,
+          };
+          const sorted = selectFinanceForTicker(data as Trade[], financePrefs);
+          for (const trade of sorted) {
             bucket.push(
               wrap(`fin-${trade.symbol}`,
                 <TradeChip
                   trade={trade}
                   comfort={comfort}
                   colorMode={chipColorMode}
-                  showChange={channelDisplay?.finance?.showChange ?? true}
+                  showChange={financePrefs.showChange ?? true}
                   onClick={() => onChipClick?.("finance", trade.symbol)}
                 />
               )
             );
           }
           break;
+        }
 
         case "sports": {
-          // Read sports display prefs from dashboard channel config
-          const sportsChannel = dashboard?.channels?.find(
-            (c) => c.channel_type === "sports",
-          );
-          const sportsDisplay = (sportsChannel?.config?.display ?? {}) as {
-            showUpcoming?: boolean;
-            showFinal?: boolean;
-            showLogos?: boolean;
-          };
-          const showUpcoming = sportsDisplay.showUpcoming ?? true;
-          const showFinal = sportsDisplay.showFinal ?? true;
-          const showLogos = sportsDisplay.showLogos ?? true;
-
-          // Filter by display prefs, then sort by engagement
-          const filtered = (data as Game[]).filter((g) => {
-            if (!showUpcoming && isPre(g)) return false;
-            if (!showFinal && isFinal(g)) return false;
-            return true;
-          });
-          const sorted = filtered.sort((a, b) => gameEngagement(b) - gameEngagement(a));
+          // Sports display prefs live server-side on channel config.display.
+          // `selectSportsForTicker` applies showUpcoming/showFinal filters
+          // and engagement sort — the same pipeline used in FeedTab.
+          const sportsConfig = getSportsDisplayConfig(dashboard);
+          const showLogos = sportsConfig.showLogos ?? true;
+          const sorted = selectSportsForTicker(data as Game[], sportsConfig);
           for (const game of sorted) {
             bucket.push(
               wrap(`spo-${game.id}`,
@@ -250,37 +266,46 @@ export default function ScrollrTicker({
           break;
         }
 
-        case "rss":
-          for (const item of data as RssItem[]) {
+        case "rss": {
+          // Apply Display prefs: `articlesPerSource` now affects the ticker
+          // too — this was the primary "display tab not universal" bug.
+          const rssPrefs = channelDisplay?.rss ?? {
+            showDescription: false,
+            showSource: true,
+            showTimestamps: true,
+            articlesPerSource: 4,
+          };
+          const curated = selectRssForTicker(data as RssItem[], rssPrefs);
+          for (const item of curated) {
             bucket.push(
               wrap(`rss-${item.id}`,
                 <RssChip
                   item={item}
                   comfort={comfort}
                   colorMode={chipColorMode}
-                  showSource={channelDisplay?.rss?.showSource ?? true}
-                  showTimestamps={channelDisplay?.rss?.showTimestamps ?? true}
+                  showSource={rssPrefs.showSource ?? true}
+                  showTimestamps={rssPrefs.showTimestamps ?? true}
                   onClick={() => onChipClick?.("rss", item.id)}
                 />
               )
             );
           }
           break;
+        }
 
       }
 
       buckets.push(bucket);
     }
 
-    // Combine based on mix mode
-    const allItems: React.ReactNode[] = mixMode === "weave"
+    // Combine based on mix mode. Row filtering is handled upstream now,
+    // so no round-robin distribution here.
+    const allItems: React.ReactNode[] = effectiveMixMode === "weave"
       ? weave(buckets)
       : buckets.flat();
 
-    // When multiple rows, distribute items round-robin
-    if (totalRows <= 1) return allItems;
-    return allItems.filter((_, i) => i % totalRows === rowIndex);
-  }, [dashboard, activeTabs, widgetData, onChipClick, onTogglePin, pinnedWidgets, comfort, mixMode, chipColorMode, channelDisplay, rowIndex, totalRows]);
+    return allItems;
+  }, [dashboard, activeTabs, widgetData, onChipClick, onTogglePin, pinnedWidgets, comfort, effectiveMixMode, chipColorMode, channelDisplay, rowIndex]);
 
   // ── Shared refs ─────────────────────────────────────────────────
   const containerRef = useRef<HTMLDivElement>(null);
@@ -290,7 +315,7 @@ export default function ScrollrTicker({
   const offset = useMotionValue(0);
   const stepLoopRef = useRef(false);
 
-  const transitionDuration = speedToTransitionDuration(speed);
+  const transitionDuration = speedToTransitionDuration(effectiveSpeed);
 
   // Measure the width of the first ticker item + gap to determine step size.
   // Queries .ticker-item inside containerRef — works because <Ticker> renders
@@ -307,12 +332,12 @@ export default function ScrollrTicker({
   // Reset step offset when entering step mode or when direction changes,
   // so the ticker doesn't start from a stale accumulated position.
   useEffect(() => {
-    if (scrollMode === "step") offset.set(0);
-  }, [scrollMode, direction, offset]);
+    if (effectiveScrollMode === "step") offset.set(0);
+  }, [effectiveScrollMode, effectiveDirection, offset]);
 
   // Step loop: animate offset by one item width, pause, repeat
   useEffect(() => {
-    if (scrollMode !== "step" || chips.length === 0) return;
+    if (effectiveScrollMode !== "step" || chips.length === 0) return;
 
     stepLoopRef.current = true;
     let cancelled = false;
@@ -329,7 +354,7 @@ export default function ScrollrTicker({
         }
 
         const stepSize = measureStepSize();
-        const sign = direction === "left" ? 1 : -1;
+        const sign = effectiveDirection === "left" ? 1 : -1;
         const current = offset.get();
         const target = current + sign * stepSize;
 
@@ -352,7 +377,7 @@ export default function ScrollrTicker({
       cancelled = true;
       stepLoopRef.current = false;
     };
-  }, [scrollMode, direction, stepPause, pauseOnHover, speed, chips.length, measureStepSize, offset, transitionDuration]);
+  }, [effectiveScrollMode, effectiveDirection, stepPause, pauseOnHover, effectiveSpeed, chips.length, measureStepSize, offset, transitionDuration]);
 
   // ── Flip mode: paginated vertical slide ───────────────────────
   const [flipPage, setFlipPage] = useState(0);
@@ -374,7 +399,7 @@ export default function ScrollrTicker({
   // Also resets flipPage when chips change (chips.length in deps triggers
   // cleanup → fresh start) avoiding a separate effect with ordering concerns.
   useEffect(() => {
-    if (scrollMode !== "flip" || chips.length === 0) return;
+    if (effectiveScrollMode !== "flip" || chips.length === 0) return;
 
     setFlipPage(0);
 
@@ -384,20 +409,24 @@ export default function ScrollrTicker({
     }, stepPause * 1000);
 
     return () => clearInterval(timer);
-  }, [scrollMode, stepPause, pauseOnHover, chips.length]);
+  }, [effectiveScrollMode, stepPause, pauseOnHover, chips.length]);
 
   // ── Build pinned chip arrays (rendered inside this row) ─────────
+  //
+  // Pinned widgets are visually static, single-instance elements. With
+  // multi-deck layout, each pin targets exactly one row (pin.row). This
+  // replaces the old "only render on row 0" bandaid — now we scope by
+  // pin.row so users can pin widgets to any row independently.
 
   const pinnedLeft: React.ReactNode[] = [];
   const pinnedRight: React.ReactNode[] = [];
 
-  for (const tab of activeTabs) {
-    const pin = pinnedWidgets[tab];
-    if (!pin) continue;
+  for (const [widgetId, pin] of Object.entries(pinnedWidgets)) {
+    if ((pin.row ?? 0) !== rowIndex) continue;
     const target = pin.side === "left" ? pinnedLeft : pinnedRight;
 
-    if (WIDGET_TYPES.includes(tab as WidgetType)) {
-      const wt = tab as WidgetType;
+    if (WIDGET_TYPES.includes(widgetId as WidgetType)) {
+      const wt = widgetId as WidgetType;
       const items = widgetData?.[wt];
       if (items?.length) {
         target.push(
@@ -421,10 +450,28 @@ export default function ScrollrTicker({
   const hasPinnedRight = pinnedRight.length > 0;
   const hasScrollingChips = chips.length > 0;
 
-  // Nothing to show at all
-  if (!hasScrollingChips && !hasPinnedLeft && !hasPinnedRight) return null;
+  // Empty-row CTA: the user explicitly configured sources for this row
+  // but none of them produced any chips (e.g. they deleted the channel
+  // from their subscription). Show a dismissible CTA rather than silently
+  // pretending the row doesn't exist — per spec §Edge Cases #1.
+  const isEmptyRowWithExplicitSources =
+    !hasScrollingChips && !hasPinnedLeft && !hasPinnedRight && rowHasExplicitSources;
 
   const containerClass = `ticker-container ${comfort ? "h-16" : "h-11"} flex items-center bg-base-150 border-b border-edge/50 flex-shrink-0 relative w-full overflow-hidden`;
+
+  if (isEmptyRowWithExplicitSources) {
+    return (
+      <div className={containerClass}>
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent z-10" />
+        <div className="flex items-center justify-center w-full h-full px-4 text-[11px] font-mono text-fg-4">
+          <span>This row has no sources to show. Edit it in Settings &rarr; Ticker.</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Nothing to show at all
+  if (!hasScrollingChips && !hasPinnedLeft && !hasPinnedRight) return null;
   const accentLine = (
     <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent z-10" />
   );
@@ -444,7 +491,7 @@ export default function ScrollrTicker({
     ) : null;
 
   // ── Flip mode: AnimatePresence with vertical slide ────────────
-  if (scrollMode === "flip") {
+  if (effectiveScrollMode === "flip") {
     return (
       <div
         ref={containerRef}
@@ -475,8 +522,8 @@ export default function ScrollrTicker({
   }
 
   // ── Continuous / Step mode: motion-plus Ticker ────────────────
-  const velocity = direction === "left" ? speed : -speed;
-  const isStepMode = scrollMode === "step";
+  const velocity = effectiveDirection === "left" ? effectiveSpeed : -effectiveSpeed;
+  const isStepMode = effectiveScrollMode === "step";
 
   return (
     <div

@@ -16,9 +16,11 @@ import { useQuery } from "@tanstack/react-query";
 import { dashboardQueryOptions, financeCatalogOptions } from "../../api/queries";
 import { formatPrice, formatChange, relativeTime } from "../../utils/format";
 import EmptyChannelState from "../../components/EmptyChannelState";
+import FreshnessPill from "../../components/FreshnessPill";
 import CategoryFilter from "../rss/CategoryFilter";
 import { useShell } from "../../shell-context";
 import { useNow } from "../../hooks/useNow";
+import { applyFinancePipeline, type FinanceSortKey, type FinanceDirectionFilter } from "./view";
 import type { Trade, FeedTabProps, ChannelManifest } from "../../types";
 import type { FinanceDisplayPrefs } from "../../preferences";
 
@@ -46,8 +48,8 @@ export const financeChannel: ChannelManifest = {
 
 // ── Types ────────────────────────────────────────────────────────
 
-type DirectionFilter = "all" | "gainers" | "losers";
-type SortKey = "alpha" | "price" | "change" | "updated";
+type DirectionFilter = FinanceDirectionFilter;
+type SortKey = FinanceSortKey;
 
 const DIRECTION_OPTIONS: { value: DirectionFilter; label: string }[] = [
   { value: "all", label: "All" },
@@ -141,65 +143,18 @@ function FinanceFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
   }, [directionFilter, selectedCategories, sortKey]);
 
   // ── Data pipeline ────────────────────────────────────────────
-  const filtered = useMemo(() => {
-    let items = trades;
-
-    // Direction filter
-    if (directionFilter === "gainers") {
-      items = items.filter((t) => {
-        const pct = typeof t.percentage_change === "string"
-          ? parseFloat(t.percentage_change)
-          : (t.percentage_change ?? 0);
-        return pct > 0;
-      });
-    } else if (directionFilter === "losers") {
-      items = items.filter((t) => {
-        const pct = typeof t.percentage_change === "string"
-          ? parseFloat(t.percentage_change)
-          : (t.percentage_change ?? 0);
-        return pct < 0;
-      });
-    }
-
-    // Category filter
-    if (selectedCategories.size > 0) {
-      items = items.filter((t) => {
-        const cat = categoryMap.get(t.symbol);
-        return cat != null && selectedCategories.has(cat);
-      });
-    }
-
-    // Sort
-    items = [...items].sort((a, b) => {
-      switch (sortKey) {
-        case "alpha":
-          return a.symbol.localeCompare(b.symbol);
-        case "price": {
-          const ap = typeof a.price === "string" ? parseFloat(a.price) : a.price;
-          const bp = typeof b.price === "string" ? parseFloat(b.price) : b.price;
-          return bp - ap; // highest first
-        }
-        case "change": {
-          const ac = typeof a.percentage_change === "string"
-            ? parseFloat(a.percentage_change)
-            : (a.percentage_change ?? 0);
-          const bc = typeof b.percentage_change === "string"
-            ? parseFloat(b.percentage_change)
-            : (b.percentage_change ?? 0);
-          return bc - ac; // biggest gain first, biggest loss last
-        }
-        case "updated": {
-          const at = a.last_updated ?? "";
-          const bt = b.last_updated ?? "";
-          return bt.localeCompare(at); // most recent first
-        }
-        default:
-          return 0;
-      }
-    });
-
-    return items;
-  }, [trades, directionFilter, selectedCategories, categoryMap, sortKey]);
+  // Shared with the ticker via `applyFinancePipeline` so `defaultSort`
+  // from the Display tab takes effect in both places.
+  const filtered = useMemo(
+    () =>
+      applyFinancePipeline(trades, {
+        directionFilter,
+        selectedCategories,
+        categoryMap,
+        sortKey,
+      }),
+    [trades, directionFilter, selectedCategories, categoryMap, sortKey],
+  );
 
   // ── Pagination ───────────────────────────────────────────────
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -211,6 +166,17 @@ function FinanceFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
       containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
     }
   }, [page]);
+
+  // Most-recent update across filtered trades — drives the FreshnessPill.
+  const latestUpdated = useMemo(() => {
+    let latest = 0;
+    for (const t of filtered) {
+      if (!t.last_updated) continue;
+      const ts = new Date(t.last_updated).getTime();
+      if (Number.isFinite(ts) && ts > latest) latest = ts;
+    }
+    return latest > 0 ? new Date(latest).toISOString() : null;
+  }, [filtered]);
 
   // ── Summary counts ───────────────────────────────────────────
   const { upCount, downCount, unchangedCount } = useMemo(() => {
@@ -261,6 +227,8 @@ function FinanceFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
             </button>
           ))}
         </div>
+
+        {latestUpdated && <FreshnessPill lastUpdated={latestUpdated} label="price" />}
 
         {/* Sort + category filter — right side */}
         <div className="flex items-center gap-2 ml-auto">

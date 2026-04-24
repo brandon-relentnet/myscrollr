@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { open } from "@tauri-apps/plugin-shell";
 import { TIER_LABELS, getUserIdentity } from "../../auth";
 import { authFetch } from "../../api/client";
-import { TIER_LIMITS, isUnlimited } from "../../tierLimits";
+import { TIER_LIMITS, isUnlimited, type NumericLimitKey } from "../../tierLimits";
 import type { SubscriptionTier } from "../../auth";
 import type { SubscriptionInfo } from "../../api/client";
 import { Section, DisplayRow, ActionRow, ResetButton } from "./SettingsControls";
@@ -311,7 +311,7 @@ export default function AccountSettings({
 
 // ── Tier limits table ───────────────────────────────────────────
 
-const LIMIT_ROWS: { label: string; key: keyof typeof TIER_LIMITS.free }[] = [
+const LIMIT_ROWS: { label: string; key: NumericLimitKey }[] = [
   { label: "Finance symbols", key: "symbols" },
   { label: "News feeds", key: "feeds" },
   { label: "Custom feeds", key: "customFeeds" },
