@@ -14,10 +14,11 @@ import { clsx } from "clsx";
 import { TrendingUp } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { dashboardQueryOptions, financeCatalogOptions } from "../../api/queries";
-import { formatPrice, formatChange, timeAgo } from "../../utils/format";
+import { formatPrice, formatChange, relativeTime } from "../../utils/format";
 import EmptyChannelState from "../../components/EmptyChannelState";
 import CategoryFilter from "../rss/CategoryFilter";
 import { useShell } from "../../shell-context";
+import { useNow } from "../../hooks/useNow";
 import type { Trade, FeedTabProps, ChannelManifest } from "../../types";
 import type { FinanceDisplayPrefs } from "../../preferences";
 
@@ -71,6 +72,11 @@ function FinanceFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
 
   const { data: dashboard } = useQuery(dashboardQueryOptions());
   const { data: catalog } = useQuery(financeCatalogOptions());
+
+  // One subscription for the whole list — passed down to each row so
+  // every `TradeItem` re-renders together on the 1s tick. Without this
+  // the per-row "Xs ago" labels never advance between price updates.
+  const now = useNow();
 
   const trades = useMemo(
     () => (dashboard?.data?.finance as Trade[] | undefined) ?? [],
@@ -348,6 +354,7 @@ function FinanceFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
                 mode={mode}
                 display={dp}
                 category={categoryMap.get(trade.symbol)}
+                now={now}
               />
             ))}
           </div>
@@ -395,13 +402,17 @@ interface TradeItemProps {
   mode: "comfort" | "compact";
   display: FinanceDisplayPrefs;
   category?: string;
+  /** Shared "now" from `useNow()` in the parent list — drives the `Xs ago` label. */
+  now: number;
 }
 
-const TradeItem = memo(function TradeItem({ trade, mode, display, category }: TradeItemProps) {
+const TradeItem = memo(function TradeItem({ trade, mode, display, category, now }: TradeItemProps) {
   const isUp = trade.direction === "up";
   const isDown = trade.direction === "down";
 
-  // Track previous price for flash animation
+  // Track previous price for flash animation. Single effect owns the ref —
+  // the previous split-effect version could overwrite the ref before the
+  // flash branch ran on rapid back-to-back CDC events, swallowing flashes.
   const prevPriceRef = useRef<number | null>(null);
   const [flash, setFlash] = useState<"up" | "down" | null>(null);
 
@@ -409,25 +420,19 @@ const TradeItem = memo(function TradeItem({ trade, mode, display, category }: Tr
     const currentPrice =
       typeof trade.price === "string" ? parseFloat(trade.price) : trade.price;
     const prevPrice = prevPriceRef.current;
+    prevPriceRef.current = currentPrice;
 
     if (
-      prevPrice !== null &&
-      !isNaN(currentPrice) &&
-      currentPrice !== prevPrice
+      prevPrice === null ||
+      isNaN(currentPrice) ||
+      currentPrice === prevPrice
     ) {
-      setFlash(currentPrice > prevPrice ? "up" : "down");
-      const timer = setTimeout(() => setFlash(null), 800);
-      return () => clearTimeout(timer);
+      return;
     }
 
-    prevPriceRef.current = currentPrice;
-  }, [trade.price]);
-
-  // Keep ref in sync after flash logic
-  useEffect(() => {
-    const currentPrice =
-      typeof trade.price === "string" ? parseFloat(trade.price) : trade.price;
-    prevPriceRef.current = currentPrice;
+    setFlash(currentPrice > prevPrice ? "up" : "down");
+    const timer = setTimeout(() => setFlash(null), 800);
+    return () => clearTimeout(timer);
   }, [trade.price]);
 
   const dirColor = isUp ? "text-up" : isDown ? "text-down" : "text-fg-3";
@@ -506,8 +511,11 @@ const TradeItem = memo(function TradeItem({ trade, mode, display, category }: Tr
             </span>
           )}
           {display.showLastUpdated && trade.last_updated && (
-            <span className="text-[9px] font-mono text-fg-3 tabular-nums">
-              {timeAgo(trade.last_updated, { includeSeconds: true })}
+            <span
+              className="text-[9px] font-mono text-fg-3 tabular-nums"
+              title="Last price update"
+            >
+              {relativeTime(trade.last_updated, now, { includeSeconds: true })}
             </span>
           )}
         </div>
@@ -518,6 +526,10 @@ const TradeItem = memo(function TradeItem({ trade, mode, display, category }: Tr
   prev.mode === next.mode &&
   prev.display === next.display &&
   prev.category === next.category &&
+  // `now` must trigger a re-render while the "Xs ago" label is visible
+  // so it advances on every tick. When the label is hidden the tick
+  // is irrelevant — skip it to avoid churning the whole list.
+  (!next.display.showLastUpdated || next.mode !== "comfort" || prev.now === next.now) &&
   prev.trade.symbol === next.trade.symbol &&
   prev.trade.price === next.trade.price &&
   prev.trade.percentage_change === next.trade.percentage_change &&

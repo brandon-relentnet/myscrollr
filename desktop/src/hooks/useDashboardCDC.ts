@@ -12,6 +12,7 @@
  * bus and are merged in-place, giving instant UI updates without
  * waiting for the next polling cycle.
  */
+import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTauriListener } from "./useTauriListener";
 import { queryKeys } from "../api/queries";
@@ -120,6 +121,21 @@ const FANTASY_REFETCH_DELAY_MS = 250;
 export function useDashboardCDC(): void {
   const queryClient = useQueryClient();
 
+  // Debounce state for the safety-net and fantasy refetches. Production
+  // SSE throughput can hit ~47 events/sec; without coalescing, every
+  // event scheduled its own `setTimeout(invalidate, 500)` and we'd queue
+  // ~24 simultaneous refetch timers per burst. Trailing-edge debounce
+  // collapses a burst into one refetch fired after the storm settles.
+  const pendingSafetyRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingFantasyRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (pendingSafetyRef.current) clearTimeout(pendingSafetyRef.current);
+      if (pendingFantasyRef.current) clearTimeout(pendingFantasyRef.current);
+    };
+  }, []);
+
   useTauriListener<SSEPayload>(
     "sse-event",
     (event) => {
@@ -177,22 +193,24 @@ export function useDashboardCDC(): void {
         (r) => r.metadata?.table_name && FANTASY_CDC_TABLES.has(r.metadata.table_name),
       );
       if (fantasyTouched) {
-        setTimeout(
-          () => queryClient.invalidateQueries({ queryKey: queryKeys.dashboard }),
-          FANTASY_REFETCH_DELAY_MS,
-        );
+        if (pendingFantasyRef.current) clearTimeout(pendingFantasyRef.current);
+        pendingFantasyRef.current = setTimeout(() => {
+          pendingFantasyRef.current = null;
+          queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+        }, FANTASY_REFETCH_DELAY_MS);
         return;
       }
 
       // ── Safety-net refetch ──────────────────────────────────
       // A full dashboard re-fetch after a short delay ensures the
-      // optimistic cache stays consistent with the server. This is
-      // the same pattern the ticker window used previously.
-      setTimeout(
-        () =>
-          queryClient.invalidateQueries({ queryKey: queryKeys.dashboard }),
-        SSE_REFETCH_DELAY_MS,
-      );
+      // optimistic cache stays consistent with the server. Trailing-edge
+      // debounced so a burst of CDC events produces one refetch, not
+      // one-per-event.
+      if (pendingSafetyRef.current) clearTimeout(pendingSafetyRef.current);
+      pendingSafetyRef.current = setTimeout(() => {
+        pendingSafetyRef.current = null;
+        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+      }, SSE_REFETCH_DELAY_MS);
     },
     [queryClient],
   );
