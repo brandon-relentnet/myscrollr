@@ -35,8 +35,12 @@ interface SSEPayload {
 
 // ── Merge helpers ────────────────────────────────────────────────
 
-/** Apply CDC records for a single table config into the data slice. */
-function mergeTableRecords(
+/** Apply CDC records for a single table config into the data slice.
+ *
+ * Exported so `useDashboardCDC.test.ts` can exercise this pure function
+ * directly. Not part of the public API — callers outside the hook and
+ * its test should keep using the hook. */
+export function mergeTableRecords(
   items: unknown[],
   records: CDCRecord[],
   config: CDCTableConfig,

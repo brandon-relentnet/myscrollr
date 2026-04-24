@@ -192,8 +192,27 @@ func (h *Hub) listenToTopics(ctx context.Context) {
 	}
 }
 
-// dispatchToUser sends a payload to all SSE clients for a given user.
+// dispatchToUser sends a payload to all SSE clients for a given user AND
+// invalidates that user's dashboard cache.
+//
+// The cache invalidation fixes the 2026-04-24 "finance symbols jitter"
+// bug: every CDC event means the last cached /dashboard response is now
+// stale, so we must delete it to prevent a follow-up refetch from the
+// desktop (triggered by its SSE safety-net `invalidateQueries`) from
+// overwriting the optimistic in-memory merge with pre-event prices.
+//
+// We invalidate even when the user has no live SSE clients (offline / app
+// closed). The cache key might still be warm from a recent poll, and we
+// want their next /dashboard request to see fresh data rather than a
+// stale entry that doesn't reflect the change they were about to observe.
+//
+// `Rdb.Del` is O(1) and executed on a goroutine so this never blocks the
+// dispatch hot path. A failed DEL logs inside `InvalidateDashboardCache`
+// but does not propagate — data correctness falls back to the 30s TTL
+// as it did before this commit.
 func (h *Hub) dispatchToUser(userID string, payload []byte) {
+	go InvalidateDashboardCache(userID)
+
 	value, ok := h.clients.Load(userID)
 	if !ok {
 		return

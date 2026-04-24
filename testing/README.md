@@ -7,42 +7,52 @@ No real third-party APIs are called — everything runs against mock servers.
 
 ## Overview
 
+As of 2026-04, the test stack is deployed per-app on Coolify
+(`dev.enanimate.dev`). Each app deploys independently from its own
+`docker-compose.dev.yml` file; infrastructure (postgres, redis,
+stripe-mock) is provisioned directly in Coolify. There is NO longer a
+single monolithic `compose.test.yml` — it was split in commit 8ddbb25.
+
 ```
-dev.enanimate.dev
-└── Docker Compose (compose.test.yml)
-    ├── Core API           → api/Dockerfile.test
-    ├── Finance API         → channels/finance/api/Dockerfile
-    ├── Finance Service    → channels/finance/service/Dockerfile
-    ├── Sports API         → channels/sports/api/Dockerfile
-    ├── Sports Service     → channels/sports/service/Dockerfile
-    ├── RSS API            → channels/rss/api/Dockerfile
-    ├── RSS Service       → channels/rss/service/Dockerfile
-    ├── Fantasy API        → channels/fantasy/api/Dockerfile
-    ├── mock-logto         → testing/mocks/logto/
-    ├── mock-twelvedata    → testing/mocks/twelvedata/
-    ├── mock-apisports     → testing/mocks/apisports/
-    ├── mock-yahoo         → testing/mocks/yahoo/
-    ├── mock-stripe        → stripe/stripe-mock:v0.182.0
-    ├── test-postgres      → postgres:16-alpine
-    └── test-redis         → redis:7-alpine
+dev.enanimate.dev (Coolify)
+├── Services (one app each)
+│   ├── Core API          → api/docker-compose.dev.yml
+│   ├── Finance           → channels/finance/docker-compose.dev.yml (api + service)
+│   ├── Sports            → channels/sports/docker-compose.dev.yml (api + service)
+│   ├── RSS               → channels/rss/docker-compose.dev.yml    (api + service)
+│   ├── Fantasy           → channels/fantasy/docker-compose.dev.yml (api only)
+│   └── Website           → myscrollr.com/docker-compose.dev.yml (if present)
+├── Mocks (one app each)
+│   ├── mock-logto        → testing/mocks/mock-logto.docker-compose.yml
+│   ├── mock-twelvedata   → testing/mocks/mock-twelvedata.docker-compose.yml
+│   ├── mock-apisports    → testing/mocks/mock-apisports.docker-compose.yml
+│   └── mock-yahoo        → testing/mocks/mock-yahoo.docker-compose.yml
+└── Infrastructure (Coolify-managed)
+    ├── postgres
+    ├── redis
+    └── stripe-mock
 ```
+
+Every app's Dockerfile is the SAME one used in prod. The only thing that
+differs between dev and prod is environment variables (mock URLs pointed
+at the mock containers).
 
 ---
 
 ## Deploying on Coolify (`dev.enanimate.dev`)
 
-### 1. Create the Coolify app
+### 1. Create one Coolify app per service
 
 In the Coolify dashboard for your second server (`dev.enanimate.dev`):
 
+For each service (core-api, finance, sports, rss, fantasy) and each mock:
+
 1. **New Application** → **Docker Compose**
-2. Repository: `https://github.com/Enanimate/myscrollr`
-3. Branch: `feature/test-infrastructure` (or `main` once merged)
-4. Compose path: `compose.test.yml`
-5. **Build Dockerfile override** for `core-api` service:
-   - Dockerfile: `api/Dockerfile.test`
-   - Build arguments: `COOLIFY_FQDN=dev.enanimate.dev`
-   - All other services: use their default Dockerfiles
+2. Repository: `https://github.com/brandon-relentnet/myscrollr`
+3. Branch: `main` (or a feature branch for experimental changes)
+4. Compose path: `api/docker-compose.dev.yml` (or the appropriate per-app file)
+5. No Dockerfile override needed — each compose file points at the
+   app's standard `Dockerfile`
 
 ### 2. Environment variables
 
@@ -67,10 +77,10 @@ with `${VAR:-default}` use the default if not set.
 
 ### 3. Deploy
 
-Click **Deploy**. Coolify will:
-1. Build all Go and Rust services from their Dockerfiles
-2. Build the mock servers from `testing/mocks/*/Dockerfile`
-3. Start all containers on the server
+Click **Deploy** on each Coolify app. Coolify will:
+1. Build from the selected repo/branch
+2. Start the containers
+3. Rolling-update on subsequent pushes to the branch
 
 ### 4. Verify
 
@@ -91,17 +101,54 @@ curl http://dev.enanimate.dev:9005/health
 
 ---
 
-## Running locally
+## Running locally (single service at a time)
+
+Because the compose files depend on Coolify-managed infra (postgres, redis,
+stripe-mock) and a Coolify-internal network, running the full stack locally
+via docker-compose is NOT supported. You have three options:
+
+### Option A — Unit tests (fastest, runs in seconds)
+
+Use this for pure logic / state bugs (CDC merging, cache invalidation,
+tier-limit checks, selector hooks). Adding a failing test + fix is usually
+the fastest path to a bug that's reproducible at all.
 
 ```sh
-# Start the stack
-docker compose -f compose.test.yml up -d
+# Core API Go tests
+cd api && go test ./...
 
-# Follow logs
-docker compose -f compose.test.yml logs -f
+# Rust service tests (pure ones that don't need a DB)
+cd channels/finance/service && cargo test --test migration_versions
 
-# Stop
-docker compose -f compose.test.yml down
+# Desktop vitest
+cd desktop && npm test
+```
+
+Examples of bugs caught this way:
+- `api/core/events_cache_test.go` — the 2026-04-24 finance-jitter bug
+  (stale dashboard cache overwriting optimistic SSE merges) was
+  reproduced in a failing test BEFORE being fixed, then used as the
+  regression guard.
+- `desktop/src/hooks/useDashboardCDC.test.ts` — asserts the CDC merge
+  contract the server fix depends on.
+
+### Option B — Deploy to dev.enanimate.dev
+
+For end-to-end validation, push to a branch on your fork, create a
+Coolify app against that branch, and exercise the /control/ endpoints
+below to inject scenarios.
+
+### Option C — One service locally, rest in dev
+
+Run ONE service locally against dev-deployed infra:
+
+```sh
+# Example: run a modified finance-service against dev DB + mock TwelveData
+cd channels/finance/service
+export DATABASE_URL="postgres://...dev.enanimate.dev/..."    # from dev secrets
+export TWELVEDATA_WS_URL="ws://dev.enanimate.dev:9003/v1/quotes/price"
+export TWELVEDATA_API_KEY="test_twelvedata_key"
+cargo run --release
 ```
 
 ---
@@ -210,21 +257,39 @@ which hits mock servers — no real APIs involved.
 
 | File | Purpose |
 |---|---|
-| `compose.test.yml` | Top-level compose for Coolify deployment |
-| `testing/docker-compose.test.yml` | Local-only compose (no backend services) |
-| `testing/.env.test` | Env vars for local service runs |
-| `testing/mocks/*/main.go` | Custom mock server source code |
-| `api/Dockerfile.test` | Core API Dockerfile for test env |
-| `channels/rss/service/configs/feeds.test.json` | Seeded RSS feeds for test env |
+| `api/docker-compose.dev.yml` | Core API (for `dev.enanimate.dev`) |
+| `channels/*/docker-compose.dev.yml` | Per-channel dev deploys |
+| `testing/mocks/*.docker-compose.yml` | Per-mock dev deploys |
+| `testing/mocks/*/main.go` | Mock server source code |
+| `testing/.env.test` | Env-var reference for local service runs (Option C) |
+| `channels/rss/service/configs/feeds.test.json` | Seed RSS feeds (dev-only) |
+
+---
+
+## Debugging workflow (recommended)
+
+When you find a bug in prod:
+
+1. **Write a failing unit test** that reproduces the bug. This is almost
+   always possible for data/state bugs. Reference `events_cache_test.go`
+   for a worked example of reproducing a CDC-driven UI regression.
+2. **Apply the fix** — the test turns green.
+3. **Push to main** — CI runs the test; prod gets the fix on next deploy.
+4. **Only use dev.enanimate.dev for issues that can't be reproduced in
+   a unit test** (e.g., UI/UX bugs, browser-specific issues, race
+   conditions between live external APIs).
+
+When the test infrastructure flags a regression, treat the test as the
+source of truth — it captures the invariant you want to preserve.
 
 ---
 
 ## Swapping between test and prod
 
-All mock URL overrides are environment variables. Production uses the same
-codebase with real API keys and no mock URL overrides set.
+All mock URL overrides are environment variables. Production uses the
+same codebase with real API keys and no mock URL overrides set.
 
-Test env: `compose.test.yml` with mock URLs set
-Prod env: existing deploys (unchanged)
+Test env (`dev.enanimate.dev`): Coolify apps with mock URLs set in env
+Prod env (`do-nyc3-scrollr-cluster`): k8s deployments with real API keys
 
 No code changes needed to switch. The only thing that differs is env vars.
