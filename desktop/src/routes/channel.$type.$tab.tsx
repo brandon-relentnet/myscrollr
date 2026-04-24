@@ -162,12 +162,16 @@ function FinanceDisplay() {
   const { prefs, onPrefsChange } = useShell();
   const dp = prefs.channelDisplay.finance;
 
-  function setVenue(key: "showChange" | "showPrevClose" | "showLastUpdated", venue: Venue) {
+  // Apply a batch of Venue changes from the grid in ONE state update.
+  // This is what makes bulk "All / None" toggles flip every row in a
+  // single render — calling per-row setters in a loop caused stale-
+  // state overwrites (each setter spread the same old prefs).
+  function applyDisplayChanges(changes: Record<string, Venue>) {
     onPrefsChange({
       ...prefs,
       channelDisplay: {
         ...prefs.channelDisplay,
-        finance: { ...dp, [key]: venue },
+        finance: { ...dp, ...(changes as Partial<FinanceDisplayPrefs>) },
       },
     });
   }
@@ -202,9 +206,9 @@ function FinanceDisplay() {
   const sections: DisplayGridSection[] = [
     {
       rows: [
-        { key: "showChange", label: "% change", description: "Daily price change percent", value: dp.showChange, onChange: (v) => setVenue("showChange", v) },
-        { key: "showPrevClose", label: "Previous close", description: "Last session's closing price", value: dp.showPrevClose, onChange: (v) => setVenue("showPrevClose", v) },
-        { key: "showLastUpdated", label: "Last updated", description: "Relative time since the last tick", value: dp.showLastUpdated, onChange: (v) => setVenue("showLastUpdated", v) },
+        { key: "showChange", label: "% change", description: "Daily price change percent", value: dp.showChange },
+        { key: "showPrevClose", label: "Previous close", description: "Last session's closing price", value: dp.showPrevClose },
+        { key: "showLastUpdated", label: "Last updated", description: "Relative time since the last tick", value: dp.showLastUpdated },
       ],
     },
   ];
@@ -212,7 +216,7 @@ function FinanceDisplay() {
   return (
     <div className="p-4 max-w-2xl mx-auto">
       <Section title="Display items">
-        <DisplayLocationGrid sections={sections} />
+        <DisplayLocationGrid sections={sections} onChange={applyDisplayChanges} />
       </Section>
       <Section title="Feed behavior">
         <SegmentedRow
@@ -231,8 +235,10 @@ function FinanceDisplay() {
 function SportsDisplay() {
   const { display, setDisplay } = useSportsConfig();
 
-  function setVenue(key: keyof SportsDisplayPrefs, venue: Venue) {
-    setDisplay({ [key]: venue });
+  // setDisplay already accepts a Partial; the grid's batched changes
+  // spread cleanly into it.
+  function applyDisplayChanges(changes: Record<string, Venue>) {
+    setDisplay(changes as Partial<SportsDisplayPrefs>);
   }
 
   function handleReset() {
@@ -248,15 +254,15 @@ function SportsDisplay() {
     {
       title: "Display items",
       rows: [
-        { key: "showLogos", label: "Team logos", description: "Show team logos on cards and ticker chips", value: display.showLogos, onChange: (v) => setVenue("showLogos", v) },
-        { key: "showTimer", label: "Game clock / status", description: "Quarter, period, or final-time indicator", value: display.showTimer, onChange: (v) => setVenue("showTimer", v) },
+        { key: "showLogos", label: "Team logos", description: "Show team logos on cards and ticker chips", value: display.showLogos },
+        { key: "showTimer", label: "Game clock / status", description: "Quarter, period, or final-time indicator", value: display.showTimer },
       ],
     },
     {
       title: "Game filters",
       rows: [
-        { key: "showUpcoming", label: "Upcoming games", description: "Pre-event games (scheduled but not yet started)", value: display.showUpcoming, onChange: (v) => setVenue("showUpcoming", v) },
-        { key: "showFinal", label: "Final scores", description: "Completed games", value: display.showFinal, onChange: (v) => setVenue("showFinal", v) },
+        { key: "showUpcoming", label: "Upcoming games", description: "Pre-event games (scheduled but not yet started)", value: display.showUpcoming },
+        { key: "showFinal", label: "Final scores", description: "Completed games", value: display.showFinal },
       ],
     },
   ];
@@ -264,7 +270,7 @@ function SportsDisplay() {
   return (
     <div className="p-4 max-w-2xl mx-auto">
       <Section title="Display items">
-        <DisplayLocationGrid sections={sections} />
+        <DisplayLocationGrid sections={sections} onChange={applyDisplayChanges} />
       </Section>
       <ResetButton label="Reset display settings" onClick={handleReset} />
     </div>
@@ -275,12 +281,12 @@ function RssDisplay() {
   const { prefs, onPrefsChange } = useShell();
   const dp = prefs.channelDisplay.rss;
 
-  function setVenue(key: "showDescription" | "showSource" | "showTimestamps", venue: Venue) {
+  function applyDisplayChanges(changes: Record<string, Venue>) {
     onPrefsChange({
       ...prefs,
       channelDisplay: {
         ...prefs.channelDisplay,
-        rss: { ...dp, [key]: venue },
+        rss: { ...dp, ...(changes as Partial<RssDisplayPrefs>) },
       },
     });
   }
@@ -316,9 +322,9 @@ function RssDisplay() {
   const sections: DisplayGridSection[] = [
     {
       rows: [
-        { key: "showDescription", label: "Article description", description: "Snippet beneath the headline", value: dp.showDescription, onChange: (v) => setVenue("showDescription", v) },
-        { key: "showSource", label: "Source name", description: "Publisher / feed name", value: dp.showSource, onChange: (v) => setVenue("showSource", v) },
-        { key: "showTimestamps", label: "Timestamps", description: "Relative publish time on each item", value: dp.showTimestamps, onChange: (v) => setVenue("showTimestamps", v) },
+        { key: "showDescription", label: "Article description", description: "Snippet beneath the headline", value: dp.showDescription },
+        { key: "showSource", label: "Source name", description: "Publisher / feed name", value: dp.showSource },
+        { key: "showTimestamps", label: "Timestamps", description: "Relative publish time on each item", value: dp.showTimestamps },
       ],
     },
   ];
@@ -326,7 +332,7 @@ function RssDisplay() {
   return (
     <div className="p-4 max-w-2xl mx-auto">
       <Section title="Display items">
-        <DisplayLocationGrid sections={sections} />
+        <DisplayLocationGrid sections={sections} onChange={applyDisplayChanges} />
       </Section>
       <Section title="Feed behavior">
         <SegmentedRow
@@ -459,14 +465,21 @@ function FantasyDisplay() {
       label: row.label,
       description: row.description,
       value: dp[row.key],
-      onChange: (v) => patch({ [row.key]: v } as Partial<FantasyDisplayPrefs>),
     })),
   }));
+
+  // Apply ALL grid changes in a single patch — bulk All/None toggles
+  // emit a Record with every changed row in one shot, and per-row
+  // clicks emit a single-entry Record. Both spread cleanly into the
+  // fantasy slice via patch().
+  function applyDisplayChanges(changes: Record<string, Venue>) {
+    patch(changes as Partial<FantasyDisplayPrefs>);
+  }
 
   return (
     <div className="p-4 max-w-2xl mx-auto">
       <Section title="Display items">
-        <DisplayLocationGrid sections={sections} />
+        <DisplayLocationGrid sections={sections} onChange={applyDisplayChanges} />
       </Section>
       <Section title="Feed layout">
         <SegmentedRow
