@@ -5,23 +5,33 @@
  */
 
 /**
- * Format a date string as relative time.
+ * Format a date string as relative time against an injected `now`.
  *
- * Returns "now" for < 1 min, "Xm" for minutes, "Xh" for hours,
- * "Xd" for days < 7, then a short date for older.
+ * Prefer this over `timeAgo` for any label that needs to advance
+ * between renders — pair it with the `useNow()` hook so React
+ * re-renders once per second and the label counts up naturally.
  *
- * @param includeSeconds  Show seconds granularity (e.g. "12s") for < 1 min.
- * @param suffix          Append " ago" to the result (e.g. "5m ago").
+ * Returns "now" for < 1 min (or < 5s with `includeSeconds`),
+ * "Xs" / "Xm" / "Xh" / "Xd" for progressively older values, then
+ * a short locale date ("Apr 23") after 7 days.
+ *
+ * @param dateStr        ISO-8601 timestamp, or `null` / `undefined`.
+ * @param now            Reference "now" in epoch-ms (usually from `useNow()`).
+ * @param includeSeconds Show seconds granularity ("12s") for < 1 min.
+ * @param suffix         Append " ago" to the result (e.g. "5m ago").
  */
-export function timeAgo(
+export function relativeTime(
   dateStr: string | null | undefined,
+  now: number,
   options?: { includeSeconds?: boolean; suffix?: boolean },
 ): string {
   if (!dateStr) return "";
   const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return "";
+  const t = d.getTime();
+  if (isNaN(t)) return "";
 
-  const diff = Date.now() - d.getTime();
+  // Clamp negative diffs (clock skew — server slightly ahead of client).
+  const diff = Math.max(0, now - t);
   const secs = Math.floor(diff / 1000);
   const mins = Math.floor(secs / 60);
   const hours = Math.floor(mins / 60);
@@ -44,6 +54,21 @@ export function timeAgo(
     month: "short",
     day: "numeric",
   });
+}
+
+/**
+ * Format a date string as relative time against the current wall clock.
+ *
+ * Thin wrapper around {@link relativeTime} for static callers that
+ * don't need the label to tick (e.g. toasts, one-shot messages).
+ * Components that render ongoing timestamps should use `relativeTime`
+ * directly with `useNow()` so labels advance between CDC events.
+ */
+export function timeAgo(
+  dateStr: string | null | undefined,
+  options?: { includeSeconds?: boolean; suffix?: boolean },
+): string {
+  return relativeTime(dateStr, Date.now(), options);
 }
 
 /**

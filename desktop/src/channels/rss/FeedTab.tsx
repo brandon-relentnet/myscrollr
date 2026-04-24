@@ -10,10 +10,11 @@ import { Rss, ChevronDown, ChevronUp } from "lucide-react";
 import { clsx } from "clsx";
 import { useQuery } from "@tanstack/react-query";
 import { dashboardQueryOptions, rssCatalogOptions } from "../../api/queries";
-import { timeAgo, truncate } from "../../utils/format";
+import { relativeTime, truncate } from "../../utils/format";
 import EmptyChannelState from "../../components/EmptyChannelState";
 import CategoryFilter from "./CategoryFilter";
 import { useShell } from "../../shell-context";
+import { useNow } from "../../hooks/useNow";
 import type {
   RssItem as RssItemType,
   FeedTabProps,
@@ -153,6 +154,10 @@ function RssFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
 
   const { data: dashboard } = useQuery(dashboardQueryOptions());
   const { data: catalog } = useQuery(rssCatalogOptions());
+
+  // Shared 1s tick so every `RssArticle` advances its "Xm ago" label in
+  // sync without each row spawning its own timer.
+  const now = useNow();
 
   const rssItems = useMemo(
     () => (dashboard?.data?.rss as RssItemType[] | undefined) ?? [],
@@ -511,6 +516,7 @@ function RssFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
                 mode={mode}
                 display={dp}
                 category={entry.category}
+                now={now}
               />
             );
           })}
@@ -572,10 +578,12 @@ interface RssArticleProps {
   mode: FeedMode;
   display: RssDisplayPrefs;
   category?: string;
+  /** Shared "now" from `useNow()` so the "Xm ago" label advances between renders. */
+  now: number;
 }
 
-const RssArticle = memo(function RssArticle({ item, mode, display, category }: RssArticleProps) {
-  const ago = display.showTimestamps ? timeAgo(item.published_at) : null;
+const RssArticle = memo(function RssArticle({ item, mode, display, category, now }: RssArticleProps) {
+  const ago = display.showTimestamps ? relativeTime(item.published_at, now) : null;
 
   const categoryBadge = display.showSource && category ? (
     <span className="px-1.5 py-px rounded text-[9px] text-fg-3 bg-accent/10 shrink-0 whitespace-nowrap">
@@ -644,6 +652,10 @@ const RssArticle = memo(function RssArticle({ item, mode, display, category }: R
   prev.mode === next.mode &&
   prev.display === next.display &&
   prev.category === next.category &&
+  // Only re-render on the `now` tick when this row actually renders
+  // a timestamp — otherwise the tick would churn the whole list for
+  // no visible change.
+  (!next.display.showTimestamps || prev.now === next.now) &&
   prev.item.guid === next.item.guid &&
   prev.item.feed_url === next.item.feed_url &&
   prev.item.title === next.item.title &&
