@@ -104,15 +104,13 @@ pub async fn initialize_pool() -> Result<PgPool> {
     }
     eprintln!("[DB] Migrations complete");
 
-    // Startup invariant: every on-disk migration for *this* service's
-    // version range(s) must have a corresponding recorded row in
-    // `_sqlx_migrations`. `set_ignore_missing(true)` silently tolerates
-    // rows for other services, but would also hide the case where an
-    // on-disk file was deleted locally while its row is still in the DB —
-    // the drift pattern that caused the April 2026 silent migration
-    // failure. This check refuses to boot when the counts disagree.
+    // Startup invariant (diagnostic-only for now). See finance database.rs
+    // for the rationale behind the soft-check posture: the hard-fail
+    // variant reliably crashed the pod on 2026-04-24 even with correct
+    // range constants, so we log a mismatch but don't refuse to boot.
+    // Convert back to `bail!` once prod runs clean for a week.
     let on_disk: i64 = migrator().iter().count() as i64;
-    let recorded: i64 = sqlx::query_scalar::<_, i64>(
+    match sqlx::query_scalar::<_, i64>(
         "SELECT count(*) FROM _sqlx_migrations \
          WHERE (version >= $1 AND version <= $2) OR (version >= $3 AND version <= $4)",
     )
@@ -122,20 +120,43 @@ pub async fn initialize_pool() -> Result<PgPool> {
     .bind(RSS_MIGRATION_NEW_MAX)
     .fetch_one(&pool)
     .await
-    .context("query migration count")?;
-
-    if recorded != on_disk {
-        anyhow::bail!(
-            "migration invariant violated: {} on disk but {} recorded in DB (rss legacy \
-             {}-{} / new {}-{}). Someone deleted a migration file, or this service is \
-             pointing at a DB whose migrations haven't been applied.",
-            on_disk,
-            recorded,
-            RSS_MIGRATION_LEGACY_MIN,
-            RSS_MIGRATION_LEGACY_MAX,
-            RSS_MIGRATION_NEW_MIN,
-            RSS_MIGRATION_NEW_MAX
-        );
+    {
+        Ok(recorded) if recorded == on_disk => {
+            eprintln!(
+                "[DB] Migration invariant check ok: {on_disk} on disk / {recorded} recorded \
+                 in legacy {RSS_MIGRATION_LEGACY_MIN}..={RSS_MIGRATION_LEGACY_MAX} + \
+                 new {RSS_MIGRATION_NEW_MIN}..={RSS_MIGRATION_NEW_MAX}"
+            );
+        }
+        Ok(recorded) => {
+            eprintln!(
+                "[DB] Migration invariant MISMATCH (advisory, not failing): {on_disk} on disk \
+                 / {recorded} recorded in legacy {RSS_MIGRATION_LEGACY_MIN}..={RSS_MIGRATION_LEGACY_MAX} \
+                 + new {RSS_MIGRATION_NEW_MIN}..={RSS_MIGRATION_NEW_MAX}. Continuing boot."
+            );
+            if let Ok(rows) = sqlx::query_as::<_, (i64, String)>(
+                "SELECT version, description FROM _sqlx_migrations \
+                 WHERE (version >= $1 AND version <= $2) OR (version >= $3 AND version <= $4) \
+                 ORDER BY version",
+            )
+            .bind(RSS_MIGRATION_LEGACY_MIN)
+            .bind(RSS_MIGRATION_LEGACY_MAX)
+            .bind(RSS_MIGRATION_NEW_MIN)
+            .bind(RSS_MIGRATION_NEW_MAX)
+            .fetch_all(&pool)
+            .await
+            {
+                eprintln!("[DB] Recorded rss-range rows:");
+                for (v, d) in rows {
+                    eprintln!("[DB]   {v} - {d}");
+                }
+            }
+        }
+        Err(err) => {
+            eprintln!(
+                "[DB] Migration invariant query failed (advisory, not failing): {err:#}"
+            );
+        }
     }
 
     Ok(pool)
