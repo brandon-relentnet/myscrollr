@@ -76,6 +76,35 @@ func dynamicProxyHandler(c *fiber.Ctx) error {
 	})
 }
 
+// stripAuthCookies removes the core's own auth cookies (access_token and
+// refresh_token, case-insensitive) from a Cookie header value. Returns the
+// filtered header (empty if no cookies remain) so callers can decide
+// whether to set a Cookie header at all on the proxied request.
+//
+// Cookies in the header are separated by "; ". Each cookie is "name=value".
+// We split on ";", trim whitespace, and drop entries whose name matches
+// access_token or refresh_token.
+func stripAuthCookies(cookieHeader string) string {
+	parts := strings.Split(cookieHeader, ";")
+	kept := make([]string, 0, len(parts))
+	for _, p := range parts {
+		trimmed := strings.TrimSpace(p)
+		if trimmed == "" {
+			continue
+		}
+		name := trimmed
+		if eq := strings.IndexByte(trimmed, '='); eq >= 0 {
+			name = trimmed[:eq]
+		}
+		switch strings.ToLower(name) {
+		case "access_token", "refresh_token":
+			continue
+		}
+		kept = append(kept, trimmed)
+	}
+	return strings.Join(kept, "; ")
+}
+
 // matchRoute matches a Fiber-style route pattern (e.g. "/yahoo/league/:league_key/standings")
 // against an actual request path. Returns extracted params and whether it matched.
 func matchRoute(pattern, path string) (map[string]string, bool) {
@@ -143,9 +172,20 @@ func proxyRequest(c *fiber.Ctx, intg *ChannelInfo, route ChannelRoute, targetPat
 		req.Header.Set("Authorization", auth)
 	}
 
-	// Forward cookies (needed for Yahoo OAuth)
+	// Forward cookies — but strip the core's own auth cookies (access_token,
+	// refresh_token) before sending to channel services. Channels have no
+	// business seeing the user's JWT; they identify the user via the
+	// X-User-Sub header set below.
+	//
+	// Exception: /yahoo/* routes handled by the Fantasy channel legitimately
+	// need the user's session cookies for the Yahoo OAuth state handshake,
+	// so we forward the full Cookie header there.
 	if cookie := c.Get("Cookie"); cookie != "" {
-		req.Header.Set("Cookie", cookie)
+		if strings.HasPrefix(c.Path(), "/yahoo/") {
+			req.Header.Set("Cookie", cookie)
+		} else if filtered := stripAuthCookies(cookie); filtered != "" {
+			req.Header.Set("Cookie", filtered)
+		}
 	}
 
 	// Add user identity and tier for authenticated routes

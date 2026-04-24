@@ -170,8 +170,20 @@ func (a *App) deleteCustomFeed(c *fiber.Ctx) error {
 		})
 	}
 
-	// Delete items first — if this fails, abort before deleting the feed
-	if _, err := a.db.Exec(ctx, "DELETE FROM rss_items WHERE feed_url = $1", req.URL); err != nil {
+	// Wrap both deletes in a transaction so a failure partway through
+	// cannot leave rss_items gone while tracked_feeds still points at a
+	// now-empty feed row. Rollback is always safe to call after Commit.
+	tx, err := a.db.Begin(ctx)
+	if err != nil {
+		log.Printf("[RSS] Failed to begin delete transaction for feed %s: %v", req.URL, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Status: "error",
+			Error:  "Failed to delete feed",
+		})
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, "DELETE FROM rss_items WHERE feed_url = $1", req.URL); err != nil {
 		log.Printf("[RSS] Failed to delete items for feed %s: %v", req.URL, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
 			Status: "error",
@@ -179,8 +191,16 @@ func (a *App) deleteCustomFeed(c *fiber.Ctx) error {
 		})
 	}
 
-	if _, err := a.db.Exec(ctx, "DELETE FROM tracked_feeds WHERE url = $1 AND is_default = false", req.URL); err != nil {
+	if _, err := tx.Exec(ctx, "DELETE FROM tracked_feeds WHERE url = $1 AND is_default = false", req.URL); err != nil {
 		log.Printf("[RSS] Failed to delete custom feed %s: %v", req.URL, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Status: "error",
+			Error:  "Failed to delete feed",
+		})
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		log.Printf("[RSS] Failed to commit delete transaction for feed %s: %v", req.URL, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Failed to delete feed",

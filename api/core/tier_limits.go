@@ -11,11 +11,13 @@ import (
 // round-trip cleanly through JSON (where Go's Infinity has no analogue)
 // and lets clients treat null as "no cap."
 type ChannelLimits struct {
-	Symbols     *int `json:"symbols"`
-	Feeds       *int `json:"feeds"`
-	CustomFeeds *int `json:"custom_feeds"`
-	Leagues     *int `json:"leagues"`
-	Fantasy     *int `json:"fantasy"`
+	Symbols                *int `json:"symbols"`
+	Feeds                  *int `json:"feeds"`
+	CustomFeeds            *int `json:"custom_feeds"`
+	Leagues                *int `json:"leagues"`
+	Fantasy                *int `json:"fantasy"`
+	MaxTickerRows          int  `json:"max_ticker_rows"`          // 0 means "inherit free default of 1"
+	MaxTickerCustomization bool `json:"max_ticker_customization"` // per-row scroll mode/direction/speed overrides
 }
 
 // TierLimitsResponse is the payload of GET /tier-limits.
@@ -37,11 +39,11 @@ type TierLimitsResponse struct {
 // these values directly gate what the DB will accept, so drift is
 // unforgiving.
 var DefaultTierLimits = map[string]ChannelLimits{
-	"free":            {Symbols: intPtr(5), Feeds: intPtr(1), CustomFeeds: intPtr(0), Leagues: intPtr(1), Fantasy: intPtr(0)},
-	"uplink":          {Symbols: intPtr(25), Feeds: intPtr(25), CustomFeeds: intPtr(1), Leagues: intPtr(8), Fantasy: intPtr(1)},
-	"uplink_pro":      {Symbols: intPtr(75), Feeds: intPtr(100), CustomFeeds: intPtr(3), Leagues: intPtr(20), Fantasy: intPtr(3)},
-	"uplink_ultimate": {Symbols: nil, Feeds: nil, CustomFeeds: intPtr(10), Leagues: nil, Fantasy: intPtr(10)},
-	"super_user":      {Symbols: nil, Feeds: nil, CustomFeeds: nil, Leagues: nil, Fantasy: nil},
+	"free":            {Symbols: intPtr(5), Feeds: intPtr(1), CustomFeeds: intPtr(0), Leagues: intPtr(1), Fantasy: intPtr(0), MaxTickerRows: 1, MaxTickerCustomization: false},
+	"uplink":          {Symbols: intPtr(25), Feeds: intPtr(25), CustomFeeds: intPtr(1), Leagues: intPtr(8), Fantasy: intPtr(1), MaxTickerRows: 2, MaxTickerCustomization: false},
+	"uplink_pro":      {Symbols: intPtr(75), Feeds: intPtr(100), CustomFeeds: intPtr(3), Leagues: intPtr(20), Fantasy: intPtr(3), MaxTickerRows: 3, MaxTickerCustomization: false},
+	"uplink_ultimate": {Symbols: nil, Feeds: nil, CustomFeeds: intPtr(10), Leagues: nil, Fantasy: intPtr(10), MaxTickerRows: 3, MaxTickerCustomization: true},
+	"super_user":      {Symbols: nil, Feeds: nil, CustomFeeds: nil, Leagues: nil, Fantasy: nil, MaxTickerRows: 3, MaxTickerCustomization: true},
 }
 
 // HandleGetTierLimits serves the tier limits map to any caller — clients

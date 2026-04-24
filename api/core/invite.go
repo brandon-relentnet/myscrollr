@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 
 	"github.com/gofiber/fiber/v2"
@@ -29,7 +30,32 @@ type CompleteInviteRequest struct {
 	LastName  string `json:"last_name"`
 }
 
-const superUserRoleID = "saaf40fy2iaxu1bwhy0m8"
+// superUserRoleID is the Logto role ID that gates super-user onboarding.
+// Read lazily from LOGTO_SUPER_USER_ROLE_ID so the value isn't baked into
+// the binary. Mirrors how the other role IDs (LOGTO_ULTIMATE_ROLE_ID,
+// LOGTO_PRO_ROLE_ID, LOGTO_UPLINK_ROLE_ID) are loaded in logto_admin.go.
+//
+// Returns the empty string when unset — callers treat that as "no user
+// can pass the gate" so missing config fails closed.
+func superUserRoleID() string {
+	return os.Getenv("LOGTO_SUPER_USER_ROLE_ID")
+}
+
+// warnIfSuperUserRoleUnset emits a one-time startup-ish warning when the
+// env var is missing. Not fatal — the super-user invite flow may not be
+// needed in every environment (e.g. local dev).
+var superUserRoleWarnOnce = func() func() {
+	var done bool
+	return func() {
+		if done {
+			return
+		}
+		done = true
+		if superUserRoleID() == "" {
+			log.Println("[Invite] Warning: LOGTO_SUPER_USER_ROLE_ID is not set; super-user invite flow is disabled")
+		}
+	}
+}()
 
 var usernameRegex = regexp.MustCompile(`^[a-z0-9_]{3,24}$`)
 
@@ -68,7 +94,7 @@ func HandleCompleteInvite(c *fiber.Ctx) error {
 	// Logto on success — the frontend must sign the user in with their
 	// newly-set password afterward, NOT with signIn({one_time_token}).
 	if err := verifyOneTimeToken(cfg.Endpoint, m2mToken, req.Email, req.Token); err != nil {
-		log.Printf("[Invite] Token verification failed for %s: %v", req.Email, err)
+		log.Printf("[Invite] Token verification failed for %s: %v", maskEmail(req.Email), err)
 		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
 			Error: "Invite link is invalid or has expired",
 		})
@@ -76,13 +102,18 @@ func HandleCompleteInvite(c *fiber.Ctx) error {
 
 	userID, _, err := findUserByEmail(cfg.Endpoint, m2mToken, req.Email)
 	if err != nil {
-		log.Printf("[Invite] User lookup failed for %s: %v", req.Email, err)
+		log.Printf("[Invite] User lookup failed for %s: %v", maskEmail(req.Email), err)
 		return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{Error: "Invite not found"})
 	}
 
-	hasSuperUser, err := userHasRole(cfg.Endpoint, m2mToken, userID, superUserRoleID)
+	roleID := superUserRoleID()
+	if roleID == "" {
+		superUserRoleWarnOnce()
+		return c.Status(fiber.StatusForbidden).JSON(ErrorResponse{Error: "Not authorized"})
+	}
+	hasSuperUser, err := userHasRole(cfg.Endpoint, m2mToken, userID, roleID)
 	if err != nil {
-		log.Printf("[Invite] Role check failed for %s: %v", req.Email, err)
+		log.Printf("[Invite] Role check failed for %s: %v", maskEmail(req.Email), err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "Internal server error"})
 	}
 	if !hasSuperUser {
@@ -99,12 +130,12 @@ func HandleCompleteInvite(c *fiber.Ctx) error {
 	}
 
 	if err := updateUserPassword(cfg.Endpoint, m2mToken, userID, req.Password); err != nil {
-		log.Printf("[Invite] Password update failed for %s: %v", req.Email, err)
+		log.Printf("[Invite] Password update failed for %s: %v", maskEmail(req.Email), err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "Failed to set password"})
 	}
 
 	if err := updateUserProfile(cfg.Endpoint, m2mToken, userID, req.Gender, req.Birthday, req.FirstName, req.LastName); err != nil {
-		log.Printf("[Invite] Profile update failed for %s: %v", req.Email, err)
+		log.Printf("[Invite] Profile update failed for %s: %v", maskEmail(req.Email), err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "Failed to update profile"})
 	}
 
@@ -113,11 +144,11 @@ func HandleCompleteInvite(c *fiber.Ctx) error {
 		if err.Error() == "username_taken" {
 			return c.Status(fiber.StatusConflict).JSON(ErrorResponse{Error: "Username was taken, please choose another"})
 		}
-		log.Printf("[Invite] Identity update failed for %s: %v", req.Email, err)
+		log.Printf("[Invite] Identity update failed for %s: %v", maskEmail(req.Email), err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "Failed to set username"})
 	}
 
-	log.Printf("[Invite] Completed invite for %s (user: %s, username: %s)", req.Email, userID, req.Username)
+	log.Printf("[Invite] Completed invite for %s (user: %s, username: %s)", maskEmail(req.Email), userID, req.Username)
 
 	return c.JSON(fiber.Map{
 		"success":  true,
@@ -155,7 +186,12 @@ func HandleCheckUsernameAvailable(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusForbidden).JSON(ErrorResponse{Error: "Not authorized"})
 	}
 
-	hasSuperUser, err := userHasRole(cfg.Endpoint, m2mToken, userID, superUserRoleID)
+	roleID := superUserRoleID()
+	if roleID == "" {
+		superUserRoleWarnOnce()
+		return c.Status(fiber.StatusForbidden).JSON(ErrorResponse{Error: "Not authorized"})
+	}
+	hasSuperUser, err := userHasRole(cfg.Endpoint, m2mToken, userID, roleID)
 	if err != nil || !hasSuperUser {
 		return c.Status(fiber.StatusForbidden).JSON(ErrorResponse{Error: "Not authorized"})
 	}

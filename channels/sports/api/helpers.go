@@ -58,9 +58,18 @@ func GetSubscribers(rdb *redis.Client, ctx context.Context, setKey string) ([]st
 	return rdb.SMembers(ctx, setKey).Result()
 }
 
-// AddSubscriber adds a user to a Redis subscriber set.
+// SubscriberSetTTL bounds how long per-league subscriber sets persist in
+// Redis without being refreshed. Without a TTL, stale memberships leak
+// forever when cleanup is missed. Sets are refreshed on every config
+// save, so 7 days is generous.
+const SubscriberSetTTL = 7 * 24 * time.Hour
+
+// AddSubscriber adds a user to a Redis subscriber set and (re)sets its TTL.
 func AddSubscriber(rdb *redis.Client, ctx context.Context, setKey, userSub string) {
-	if err := rdb.SAdd(ctx, setKey, userSub).Err(); err != nil {
+	pipe := rdb.Pipeline()
+	pipe.SAdd(ctx, setKey, userSub)
+	pipe.Expire(ctx, setKey, SubscriberSetTTL)
+	if _, err := pipe.Exec(ctx); err != nil {
 		log.Printf("[Redis] Failed to add subscriber %s to %s: %v", userSub, setKey, err)
 	}
 }

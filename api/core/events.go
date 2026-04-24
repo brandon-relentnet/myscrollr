@@ -8,7 +8,29 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 )
+
+// dispatchDropLog rate-limits the "dispatch queue full" log line to at most
+// once per 60s. The drop itself is kept (intentional backpressure on a full
+// fan-out queue) but without a log it was silently invisible, which is
+// exactly the kind of failure mode Scrollr has been bitten by before.
+var (
+	dispatchDropLogMu   sync.Mutex
+	dispatchDropLogLast time.Time
+)
+
+const dispatchDropLogInterval = 60 * time.Second
+
+func logDispatchDrop() {
+	dispatchDropLogMu.Lock()
+	defer dispatchDropLogMu.Unlock()
+	if time.Since(dispatchDropLogLast) < dispatchDropLogInterval {
+		return
+	}
+	dispatchDropLogLast = time.Now()
+	log.Printf("[CDC] Dispatch queue full, dropped event (rate-limited log)")
+}
 
 // Client represents a single SSE connection tied to an authenticated user.
 type Client struct {
@@ -142,7 +164,10 @@ func (h *Hub) listenToTopics(ctx context.Context) {
 				select {
 				case h.dispatchCh <- dispatchJob{userID: userID, payload: payload}:
 				default:
-					// Queue full — drop to avoid blocking the listener
+					// Queue full — drop to avoid blocking the listener.
+					// Rate-limited log so the drop is observable without
+					// flooding logs when the queue saturates.
+					logDispatchDrop()
 				}
 				continue
 			}
@@ -158,7 +183,9 @@ func (h *Hub) listenToTopics(ctx context.Context) {
 				select {
 				case h.dispatchCh <- dispatchJob{userID: userID, payload: payload}:
 				default:
-					// Queue full — drop oldest-style backpressure
+					// Queue full — drop oldest-style backpressure.
+					// Rate-limited log so the drop is observable.
+					logDispatchDrop()
 				}
 			}
 		}

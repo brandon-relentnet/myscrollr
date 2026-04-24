@@ -65,9 +65,21 @@ func main() {
 		log.Fatal("DATABASE_URL must be set")
 	}
 
-	dbPool, err := pgxpool.New(context.Background(), databaseURL)
+	// Bounded pool — see finance/sports for rationale. Defaults vary
+	// across boxes and don't set a connect deadline, which allows a
+	// stalled Postgres to block startup indefinitely.
+	poolConfig, err := pgxpool.ParseConfig(databaseURL)
 	if err != nil {
-		log.Fatalf("Unable to connect to PostgreSQL: %v", err)
+		log.Fatalf("[DB] parse config: %v", err)
+	}
+	poolConfig.MaxConns = 10
+	poolConfig.MinConns = 2
+	poolConfig.MaxConnLifetime = 30 * time.Minute
+	poolConfig.MaxConnIdleTime = 5 * time.Minute
+	poolConfig.ConnConfig.ConnectTimeout = 5 * time.Second
+	dbPool, err := pgxpool.NewWithConfig(context.Background(), poolConfig)
+	if err != nil {
+		log.Fatalf("[DB] new pool: %v", err)
 	}
 	defer dbPool.Close()
 

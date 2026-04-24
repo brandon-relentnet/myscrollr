@@ -15,18 +15,20 @@ import (
 // Null (unlimited) is checked by pointer-nil, finite caps by *int value.
 func TestDefaultTierLimits_Exact(t *testing.T) {
 	cases := []struct {
-		tier        string
-		symbols     *int
-		feeds       *int
-		customFeeds *int
-		leagues     *int
-		fantasy     *int
+		tier                   string
+		symbols                *int
+		feeds                  *int
+		customFeeds            *int
+		leagues                *int
+		fantasy                *int
+		maxTickerRows          int
+		maxTickerCustomization bool
 	}{
-		{"free", intPtr(5), intPtr(1), intPtr(0), intPtr(1), intPtr(0)},
-		{"uplink", intPtr(25), intPtr(25), intPtr(1), intPtr(8), intPtr(1)},
-		{"uplink_pro", intPtr(75), intPtr(100), intPtr(3), intPtr(20), intPtr(3)},
-		{"uplink_ultimate", nil, nil, intPtr(10), nil, intPtr(10)},
-		{"super_user", nil, nil, nil, nil, nil},
+		{"free", intPtr(5), intPtr(1), intPtr(0), intPtr(1), intPtr(0), 1, false},
+		{"uplink", intPtr(25), intPtr(25), intPtr(1), intPtr(8), intPtr(1), 2, false},
+		{"uplink_pro", intPtr(75), intPtr(100), intPtr(3), intPtr(20), intPtr(3), 3, false},
+		{"uplink_ultimate", nil, nil, intPtr(10), nil, intPtr(10), 3, true},
+		{"super_user", nil, nil, nil, nil, nil, 3, true},
 	}
 
 	for _, c := range cases {
@@ -40,6 +42,12 @@ func TestDefaultTierLimits_Exact(t *testing.T) {
 		assertIntPtrEq(t, c.tier+".custom_feeds", c.customFeeds, got.CustomFeeds)
 		assertIntPtrEq(t, c.tier+".leagues", c.leagues, got.Leagues)
 		assertIntPtrEq(t, c.tier+".fantasy", c.fantasy, got.Fantasy)
+		if got.MaxTickerRows != c.maxTickerRows {
+			t.Errorf("%s.max_ticker_rows: want %d, got %d", c.tier, c.maxTickerRows, got.MaxTickerRows)
+		}
+		if got.MaxTickerCustomization != c.maxTickerCustomization {
+			t.Errorf("%s.max_ticker_customization: want %v, got %v", c.tier, c.maxTickerCustomization, got.MaxTickerCustomization)
+		}
 	}
 
 	if len(DefaultTierLimits) != len(cases) {

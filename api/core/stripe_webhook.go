@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/jackc/pgx/v5"
 	"github.com/stripe/stripe-go/v82"
 	stripesubscription "github.com/stripe/stripe-go/v82/subscription"
 	"github.com/stripe/stripe-go/v82/webhook"
@@ -30,25 +31,37 @@ func HandleStripeWebhook(c *fiber.Ctx) error {
 	sigHeader := c.Get("Stripe-Signature")
 
 	event, err := webhook.ConstructEventWithOptions(payload, sigHeader, webhookSecret,
-		webhook.ConstructEventOptions{IgnoreAPIVersionMismatch: true})
+		webhook.ConstructEventOptions{
+			IgnoreAPIVersionMismatch: true,
+			Tolerance:                StripeWebhookTolerance * time.Second,
+		})
 	if err != nil {
 		log.Printf("[Stripe Webhook] Signature verification failed: %v", err)
 		return c.SendStatus(fiber.StatusBadRequest)
 	}
 
-	// Idempotency: skip already-processed events (Stripe may redeliver)
-	var exists bool
-	err = DBPool.QueryRow(context.Background(),
-		`SELECT EXISTS(SELECT 1 FROM stripe_webhook_events WHERE event_id = $1)`,
+	// Idempotency: atomically claim the event via INSERT ... ON CONFLICT DO NOTHING
+	// RETURNING. If RETURNING yields a row, this worker owns the event and should
+	// process it. If it yields no row, another concurrent worker already claimed
+	// it — skip to avoid double-processing. This collapses the previous
+	// check-then-insert flow (which had a race window between the EXISTS probe
+	// and the INSERT) into a single atomic statement.
+	var claimedID string
+	claimErr := DBPool.QueryRow(context.Background(),
+		`INSERT INTO stripe_webhook_events (event_id) VALUES ($1)
+		 ON CONFLICT (event_id) DO NOTHING
+		 RETURNING event_id`,
 		event.ID,
-	).Scan(&exists)
-	if err != nil {
-		log.Printf("[Stripe Webhook] Failed to check event idempotency: %v", err)
-		// Proceed anyway — better to double-process than to drop events
-	}
-	if exists {
+	).Scan(&claimedID)
+	if claimErr == pgx.ErrNoRows {
+		// Another worker already claimed this event. Skip.
 		log.Printf("[Stripe Webhook] Skipping duplicate event %s (type: %s)", event.ID, event.Type)
 		return c.SendStatus(fiber.StatusOK)
+	}
+	if claimErr != nil {
+		// Some other DB error. Log and proceed — better to double-process than to
+		// drop events. The handlers below are all idempotent.
+		log.Printf("[Stripe Webhook] Failed to claim event idempotency slot: %v", claimErr)
 	}
 
 	switch event.Type {
@@ -70,13 +83,8 @@ func HandleStripeWebhook(c *fiber.Ctx) error {
 		log.Printf("[Stripe Webhook] Unhandled event type: %s", event.Type)
 	}
 
-	// Mark event as processed AFTER successful handling
-	if _, err := DBPool.Exec(context.Background(),
-		`INSERT INTO stripe_webhook_events (event_id) VALUES ($1) ON CONFLICT DO NOTHING`,
-		event.ID,
-	); err != nil {
-		log.Printf("[Stripe Webhook] Failed to record event %s: %v", event.ID, err)
-	}
+	// Event slot was already claimed atomically above via INSERT ... ON CONFLICT
+	// RETURNING. No second write needed.
 
 	return c.SendStatus(fiber.StatusOK)
 }

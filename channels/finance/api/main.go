@@ -64,9 +64,23 @@ func main() {
 		log.Fatal("DATABASE_URL must be set")
 	}
 
-	dbPool, err := pgxpool.New(context.Background(), databaseURL)
+	// Bounded pool — the default pgxpool.New sizing (max=4 from runtime.NumCPU)
+	// is too variable across environments and doesn't expose a connect
+	// timeout. A 10-conn ceiling with fast-fail on connect prevents this
+	// service from running the shared Postgres dry when Coolify schedules
+	// multiple channel APIs on the same node.
+	poolConfig, err := pgxpool.ParseConfig(databaseURL)
 	if err != nil {
-		log.Fatalf("Unable to connect to PostgreSQL: %v", err)
+		log.Fatalf("[DB] parse config: %v", err)
+	}
+	poolConfig.MaxConns = 10
+	poolConfig.MinConns = 2
+	poolConfig.MaxConnLifetime = 30 * time.Minute
+	poolConfig.MaxConnIdleTime = 5 * time.Minute
+	poolConfig.ConnConfig.ConnectTimeout = 5 * time.Second
+	dbPool, err := pgxpool.NewWithConfig(context.Background(), poolConfig)
+	if err != nil {
+		log.Fatalf("[DB] new pool: %v", err)
 	}
 	defer dbPool.Close()
 

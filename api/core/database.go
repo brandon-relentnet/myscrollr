@@ -41,6 +41,10 @@ func ConnectDB() {
 	config.MaxConns = DBMaxConns
 	config.MinConns = DBMinConns
 	config.MaxConnIdleTime = DBMaxConnIdleTime
+	// Cap individual connection attempts at 5 seconds. Without this, a
+	// transient Postgres blip lets requests pile up behind indefinitely
+	// pending connection dials — the default is effectively unbounded.
+	config.ConnConfig.ConnectTimeout = 5 * time.Second
 
 	var pool *pgxpool.Pool
 	retries := DBMaxRetries
@@ -96,14 +100,39 @@ func ConnectDB() {
 	m.Close()
 	log.Println("[Database] Migrations applied")
 
-	pruneWebhookEvents()
+	// Best-effort initial prune so the table doesn't sit with stale rows
+	// until the first periodic tick fires. Errors are logged inside.
+	pruneWebhookEvents(context.Background())
 }
 
-func pruneWebhookEvents() {
-	_, err := DBPool.Exec(context.Background(), `
+// pruneWebhookEvents deletes Stripe webhook event rows older than 7 days.
+// Stripe re-delivers events for up to ~3 days on failure, so 7 days is
+// a generous idempotency window that still keeps the table bounded.
+func pruneWebhookEvents(ctx context.Context) {
+	_, err := DBPool.Exec(ctx, `
 		DELETE FROM stripe_webhook_events WHERE created_at < now() - interval '7 days';
 	`)
 	if err != nil {
 		log.Printf("[Database] Failed to prune old webhook events: %v", err)
 	}
+}
+
+// StartWebhookEventsPruner runs pruneWebhookEvents every 6 hours for the
+// lifetime of ctx. Long-lived pods need this — otherwise the events table
+// grows for 7 days (idempotency window) between restarts on a healthy
+// deployment. The ticker drains on ctx.Done().
+func StartWebhookEventsPruner(ctx context.Context) {
+	go func() {
+		ticker := time.NewTicker(6 * time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				pruneWebhookEvents(ctx)
+			}
+		}
+	}()
+	log.Println("[Database] Webhook events pruner started (6h interval)")
 }

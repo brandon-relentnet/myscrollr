@@ -46,6 +46,10 @@ func main() {
 	// delete across local DB + Logto.
 	core.StartGDPRPurgeWorker(ctx)
 
+	// Periodic prune of the Stripe webhook idempotency table. Long-lived
+	// pods otherwise grow this table unboundedly between restarts.
+	core.StartWebhookEventsPruner(ctx)
+
 	// Build and start the gateway server
 	srv := core.NewServer()
 	srv.Setup()

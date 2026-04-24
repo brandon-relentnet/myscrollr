@@ -68,9 +68,21 @@ func main() {
 		log.Fatal("[Sports] DATABASE_URL is required")
 	}
 
-	pool, err := pgxpool.New(context.Background(), dbURL)
+	// Bounded pool — default sizing varies with runtime.NumCPU and doesn't
+	// set a connect timeout. Capping at 10 with a 5s connect deadline keeps
+	// this channel from starving the shared Postgres.
+	poolConfig, err := pgxpool.ParseConfig(dbURL)
 	if err != nil {
-		log.Fatalf("[Sports] Failed to connect to PostgreSQL: %v", err)
+		log.Fatalf("[DB] parse config: %v", err)
+	}
+	poolConfig.MaxConns = 10
+	poolConfig.MinConns = 2
+	poolConfig.MaxConnLifetime = 30 * time.Minute
+	poolConfig.MaxConnIdleTime = 5 * time.Minute
+	poolConfig.ConnConfig.ConnectTimeout = 5 * time.Second
+	pool, err := pgxpool.NewWithConfig(context.Background(), poolConfig)
+	if err != nil {
+		log.Fatalf("[DB] new pool: %v", err)
 	}
 	defer pool.Close()
 

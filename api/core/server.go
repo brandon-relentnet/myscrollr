@@ -283,7 +283,13 @@ func (s *Server) healthCheck(c *fiber.Ctx) error {
 		wg.Wait()
 
 		cacheData, _ := json.Marshal(res)
-		Rdb.Set(context.Background(), HealthCacheKey, cacheData, HealthCacheTTL)
+		// Only cache fully-healthy results. When degraded, we want every
+		// subsequent probe to re-check so k8s readiness flips NotReady
+		// immediately instead of waiting up to HealthCacheTTL for a stale
+		// "healthy" cache entry to expire.
+		if res.Status == "healthy" {
+			Rdb.Set(context.Background(), HealthCacheKey, cacheData, HealthCacheTTL)
+		}
 		return cacheData, nil
 	})
 

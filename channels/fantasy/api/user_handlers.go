@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/oauth2"
 )
 
@@ -22,32 +23,37 @@ import (
 // =============================================================================
 
 // YahooStart initiates the Yahoo OAuth flow.
+//
+// Authentication is REQUIRED. The caller must already be logged in to
+// Scrollr; the core gateway sets X-User-Sub based on the verified Logto
+// session before proxying here. The old `?logto_sub=` query fallback was
+// removed because it allowed an attacker to bind their own Yahoo
+// credentials to an arbitrary victim's Scrollr account.
 func (a *App) YahooStart(c *fiber.Ctx) error {
-	log.Printf("[YahooStart] Hit — query logto_sub=%q, X-User-Sub=%q",
-		c.Query("logto_sub"), GetUserSub(c))
-
-	// Extract logto_sub from query parameter (passed by frontend) or X-User-Sub header
-	logtoSub := c.Query("logto_sub")
+	logtoSub := GetUserSub(c)
 	if logtoSub == "" {
-		logtoSub = GetUserSub(c)
+		log.Println("[YahooStart] Rejected — no X-User-Sub header (unauthenticated)")
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{
+			Status: "unauthorized",
+			Error:  "authentication required",
+		})
 	}
-
-	if logtoSub == "" {
-		log.Println("[YahooStart] Warning: no logto_sub resolved from any source")
-	} else {
-		log.Printf("[YahooStart] Resolved logto_sub=%s", logtoSub)
-	}
+	log.Printf("[YahooStart] Hit — logto_sub=%s", logtoSub)
 
 	b := make([]byte, OAuthStateBytes)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		log.Printf("[YahooStart] Failed to generate CSRF state: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Status: "error",
+			Error:  "failed to generate state",
+		})
+	}
 	state := fmt.Sprintf("%x", b)
 
 	// Store state and logto_sub mapping
 	pipe := a.rdb.Pipeline()
 	pipe.Set(context.Background(), RedisCSRFPrefix+state, "1", OAuthStateExpiry)
-	if logtoSub != "" {
-		pipe.Set(context.Background(), RedisYahooStateLogtoPrefix+state, logtoSub, OAuthStateExpiry)
-	}
+	pipe.Set(context.Background(), RedisYahooStateLogtoPrefix+state, logtoSub, OAuthStateExpiry)
 	_, err := pipe.Exec(context.Background())
 	if err != nil {
 		log.Printf("[YahooStart] Redis pipeline failed: %v", err)
@@ -81,11 +87,16 @@ func (a *App) YahooCallback(c *fiber.Ctx) error {
 	}
 	log.Printf("[YahooCallback] CSRF validated for state=%s…", state[:8])
 
-	// Retrieve logto_sub associated with this state
-	logtoSub, err := a.rdb.Get(context.Background(), RedisYahooStateLogtoPrefix+state).Result()
-	if err != nil {
+	// Retrieve (and atomically consume) the logto_sub associated with this
+	// state. GetDel prevents replay of the same state value within the 10-
+	// minute OAuth state window.
+	logtoSub, err := a.rdb.GetDel(context.Background(), RedisYahooStateLogtoPrefix+state).Result()
+	if err == redis.Nil {
+		logtoSub = ""
+		log.Printf("[YahooCallback] No logto_sub found for state=%s (expired or already consumed)", state[:8])
+	} else if err != nil {
 		log.Printf("[YahooCallback] Warning: Failed to retrieve logto_sub from Redis for state %s: %v", state, err)
-	} else {
+	} else if logtoSub != "" {
 		log.Printf("[YahooCallback] Retrieved logto_sub=%s for state=%s…", logtoSub, state[:8])
 	}
 
@@ -176,7 +187,9 @@ func (a *App) fetchAndLinkYahooUser(accessToken, refreshToken, logtoSub string) 
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[fetchAndLinkYahooUser] Yahoo API error — status=%d body=%s", resp.StatusCode, string(body))
+		// Do NOT log the body — Yahoo error responses sometimes contain
+		// account context (emails, GUIDs) that would leak PII to ops logs.
+		log.Printf("[fetchAndLinkYahooUser] Yahoo exchange failed: status=%d", resp.StatusCode)
 		return fmt.Errorf("Yahoo API returned status %d", resp.StatusCode)
 	}
 
@@ -455,6 +468,50 @@ func (a *App) ImportYahooLeague(c *fiber.Ctx) error {
 			Status: "error",
 			Error:  "league_key, game_code, and season are required",
 		})
+	}
+
+	// -------------------------------------------------------------------------
+	// Tier enforcement — cap on number of imported leagues per user.
+	//
+	// Re-importing an already-linked league does NOT count against the cap
+	// (it's effectively a refresh), so we only block when the user is
+	// adding a *new* league that would push them over their tier's limit.
+	// -------------------------------------------------------------------------
+	tier := GetUserTier(c)
+	cap := FantasyLeagueCap(tier)
+	if cap != -1 {
+		var alreadyLinked bool
+		if err := a.db.QueryRow(context.Background(),
+			"SELECT EXISTS(SELECT 1 FROM yahoo_user_leagues WHERE guid = $1 AND league_key = $2)",
+			guid, incoming.LeagueKey,
+		).Scan(&alreadyLinked); err != nil {
+			log.Printf("[Import] Failed to check existing league link for guid=%s league=%s: %v", guid, incoming.LeagueKey, err)
+			return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+				Status: "error",
+				Error:  "Failed to verify league subscription",
+			})
+		}
+		if !alreadyLinked {
+			var currentCount int
+			if err := a.db.QueryRow(context.Background(),
+				"SELECT count(*) FROM yahoo_user_leagues WHERE guid = $1", guid,
+			).Scan(&currentCount); err != nil {
+				log.Printf("[Import] Failed to count leagues for guid=%s: %v", guid, err)
+				return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+					Status: "error",
+					Error:  "Failed to verify league count",
+				})
+			}
+			if currentCount >= cap {
+				log.Printf("[Import] Tier cap reached — guid=%s tier=%s current=%d cap=%d", guid, tier, currentCount, cap)
+				return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+					"error":   "league limit reached for your tier",
+					"current": currentCount,
+					"max":     cap,
+					"tier":    tier,
+				})
+			}
+		}
 	}
 
 	// Fetch + decrypt refresh token

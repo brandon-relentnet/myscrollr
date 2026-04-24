@@ -244,7 +244,16 @@ func main() {
 		DisableStartupMessage: false,
 	})
 
-	// Public routes (proxied by core gateway, no auth required)
+	// Yahoo OAuth routes.
+	//   /yahoo/start    — Auth REQUIRED. Core gateway verifies the Scrollr
+	//                     session and sets X-User-Sub before proxying.
+	//                     Dropping this requirement previously allowed an
+	//                     attacker to bind their Yahoo credentials to any
+	//                     Logto sub via `?logto_sub=victim`.
+	//   /yahoo/callback — Public. Called by Yahoo's servers; identity is
+	//                     established via the CSRF state cookie which was
+	//                     issued during /yahoo/start.
+	//   /yahoo/health   — Public health probe.
 	fiberApp.Get("/yahoo/start", app.YahooStart)
 	fiberApp.Get("/yahoo/callback", app.YahooCallback)
 	fiberApp.Get("/yahoo/health", app.healthHandler)
@@ -310,8 +319,12 @@ func startRegistration(ctx context.Context, rdb *redis.Client) {
 		Capabilities: []string{"cdc_handler", "dashboard_provider", "health_checker"},
 		CDCTables:    []string{"yahoo_leagues", "yahoo_standings", "yahoo_matchups", "yahoo_rosters"},
 		Routes: []registrationRoute{
-			// Public (no auth)
-			{Method: "GET", Path: "/yahoo/start", Auth: false},
+			// Auth required: initiating Yahoo OAuth binds the Yahoo
+			// identity to the authenticated Scrollr user. Must be a
+			// verified session, never an arbitrary query param.
+			{Method: "GET", Path: "/yahoo/start", Auth: true},
+			// Public: Yahoo's servers call the callback; the state
+			// cookie issued during /yahoo/start is the identity proof.
 			{Method: "GET", Path: "/yahoo/callback", Auth: false},
 			{Method: "GET", Path: "/yahoo/health", Auth: false},
 			// Protected (auth required)

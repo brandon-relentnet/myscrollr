@@ -12,6 +12,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/singleflight"
 )
 
 // =============================================================================
@@ -21,7 +23,13 @@ import (
 var (
 	m2mToken       string
 	m2mTokenExpiry time.Time
-	m2mMu          sync.Mutex
+	m2mMu          sync.RWMutex
+
+	// m2mGroup coalesces concurrent token refreshes so the HTTP call to
+	// Logto's /oidc/token runs once under burst traffic. Previously, all
+	// callers serialized on a single mutex held across the HTTP request,
+	// producing head-of-line blocking during webhook spikes.
+	m2mGroup singleflight.Group
 )
 
 // logtoM2MConfig holds the env-derived configuration for M2M calls.
@@ -59,16 +67,22 @@ func getM2MConfig() logtoM2MConfig {
 	}
 }
 
-// getM2MToken returns a cached M2M access token, refreshing if expired.
-func getM2MToken() (string, error) {
-	m2mMu.Lock()
-	defer m2mMu.Unlock()
-
-	// Return cached token if still valid (with buffer)
+// readCachedM2MToken returns the currently-cached token if it's still valid,
+// or the empty string otherwise. Uses a read lock so repeated fast-path
+// lookups don't serialize on the token mutex.
+func readCachedM2MToken() string {
+	m2mMu.RLock()
+	defer m2mMu.RUnlock()
 	if m2mToken != "" && time.Now().Before(m2mTokenExpiry) {
-		return m2mToken, nil
+		return m2mToken
 	}
+	return ""
+}
 
+// refreshM2MToken performs the actual HTTP call to Logto's token endpoint
+// and swaps the new token into the cache under a write lock. Returns the
+// fresh token on success.
+func refreshM2MToken() (string, error) {
 	cfg := getM2MConfig()
 	if cfg.AppID == "" || cfg.AppSecret == "" {
 		return "", fmt.Errorf("LOGTO_M2M_APP_ID and LOGTO_M2M_APP_SECRET must be set")
@@ -106,11 +120,40 @@ func getM2MToken() (string, error) {
 		return "", fmt.Errorf("parse M2M token response: %w", err)
 	}
 
+	m2mMu.Lock()
 	m2mToken = tokenResp.AccessToken
 	m2mTokenExpiry = time.Now().Add(time.Duration(tokenResp.ExpiresIn-LogtoM2MTokenBufferSecs) * time.Second)
+	m2mMu.Unlock()
 
 	log.Println("[Logto M2M] Acquired new management API token")
-	return m2mToken, nil
+	return tokenResp.AccessToken, nil
+}
+
+// getM2MToken returns a cached M2M access token, refreshing if expired.
+// Concurrent callers share a single in-flight refresh via singleflight,
+// so a burst of webhooks during role assignment doesn't fan out into
+// parallel /oidc/token calls.
+func getM2MToken() (string, error) {
+	// Fast path: cache hit under read lock.
+	if token := readCachedM2MToken(); token != "" {
+		return token, nil
+	}
+
+	// Slow path: coalesce concurrent refreshes. All callers that miss the
+	// cache at the same time share one HTTP request and the same result.
+	v, err, _ := m2mGroup.Do("m2m", func() (interface{}, error) {
+		// Re-check under the read lock: another goroutine's refresh may
+		// have completed between our fast-path check and our singleflight
+		// entry.
+		if token := readCachedM2MToken(); token != "" {
+			return token, nil
+		}
+		return refreshM2MToken()
+	})
+	if err != nil {
+		return "", err
+	}
+	return v.(string), nil
 }
 
 // AssignUplinkRole assigns the "uplink" role to a Logto user via Management API.
