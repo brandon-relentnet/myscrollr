@@ -18,6 +18,7 @@ import TradeChip from "./chips/TradeChip";
 import GameChip from "./chips/GameChip";
 import RssChip from "./chips/RssChip";
 import FantasyStatChip from "./chips/FantasyStatChip";
+import FollowedPlayerChip from "./chips/FollowedPlayerChip";
 import ConsolidatedChip from "./chips/ConsolidatedChip";
 import { selectRssForTicker } from "../channels/rss/view";
 import { selectFinanceForTicker } from "../channels/finance/view";
@@ -189,8 +190,26 @@ export default function ScrollrTicker({
         if (leagues.length === 0) continue;
         const fantasyPrefs = channelDisplay?.fantasy;
         if (!fantasyPrefs) continue;
+
+        // ── Followed-player chips render FIRST so the user's tracked
+        //    players lead the fantasy bucket. They render even when
+        //    the league-summary chips are gated off (the user
+        //    explicitly opted in to per-player tracking).
+        for (const playerKey of fantasyPrefs.followedPlayerKeys ?? []) {
+          bucket.push(
+            wrap(`follow-${playerKey}`,
+              <FollowedPlayerChip
+                playerKey={playerKey}
+                leagues={leagues}
+                comfort={comfort}
+                colorMode={chipColorMode}
+                onClick={() => onChipClick?.("fantasy", playerKey)}
+              />
+            )
+          );
+        }
+
         const ranked = selectFantasyForTicker(leagues, fantasyPrefs);
-        if (ranked.length === 0) continue;
         for (const league of ranked) {
           bucket.push(
             wrap(`fan-${league.league_key}`,
@@ -204,7 +223,10 @@ export default function ScrollrTicker({
             )
           );
         }
-        buckets.push(bucket);
+
+        // Only push the bucket when something is actually in it (no
+        // league chips AND no followed players → empty bucket → skip).
+        if (bucket.length > 0) buckets.push(bucket);
         continue;
       }
 

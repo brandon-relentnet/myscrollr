@@ -309,6 +309,38 @@ export interface FantasyDisplayPrefs {
   /** Top scorer on the user's active roster this week ("LeBron 42.3"). */
   topScorer: Venue;
 
+  // ── Player-stats segments (Phase 1, 2026-04-25) ──
+  /** Top three active starters by current points
+   *  ("Mahomes 32 · Hill 18 · CMC 14"). One combined segment, not three. */
+  topThreeScorers: Venue;
+  /** Lowest-scoring active starter ("Worst: Andrews 0.0"). Surfaces
+   *  sit/start regret. Skipped silently when there are no starters. */
+  worstStarter: Venue;
+  /** Highest-scoring bench player ("Bench top: Pacheco 18.0"). Hidden
+   *  when no bench player has any points yet — avoids a meaningless
+   *  "Bench top: someone 0.0" cluttering the chip pre-kickoff. */
+  benchOpportunity: Venue;
+  /** Names + statuses for injured players on the roster
+   *  ("🚨 Saquon OUT, Mixon DTD"). Capped at 3 names; spillover shown
+   *  as "+N more". Complementary to `injuryCount` — both can be on. */
+  injuryDetail: Venue;
+
+  // ── Followed players (Phase 2, 2026-04-25) ──
+  /**
+   * Yahoo player_keys the user wants surfaced as their own dedicated
+   * ticker chips, separate from the league-summary chips. Use case:
+   * track specific players (CMC, Mahomes) live without parsing
+   * league-summary segments. Each entry renders one
+   * `FollowedPlayerChip` next to the league chips in the ticker.
+   *
+   * Stored as an array (not a Set) so the JSON round-trips cleanly
+   * through the prefs store. Order is preservation-only (no inherent
+   * meaning to position).
+   *
+   * Empty array = no followed players, no chips render.
+   */
+  followedPlayerKeys: string[];
+
   // ── Feed-structural settings (not venue-toggled) ──
   /** Render the standings section inside the Fantasy feed view. */
   showStandings: boolean;
@@ -462,6 +494,17 @@ const DEFAULT_CHANNEL_DISPLAY: ChannelDisplayPrefs = {
     streak: "both",
     injuryCount: "both",
     topScorer: "both",
+    // Phase 1 player-stats: all default to "both" — users have been
+    // explicitly asking for these, so make them visible on the ticker
+    // out of the box. Users who find the chip too dense can flip
+    // individual ones to "feed" or "off" via Display tab. The
+    // migration helper also defaults these to "both" via its
+    // unknown-input fallback, so existing users see them post-upgrade.
+    topThreeScorers: "both",
+    worstStarter: "both",
+    benchOpportunity: "both",
+    injuryDetail: "both",
+    followedPlayerKeys: [],
     showStandings: true,
     showMatchups: true,
     defaultSort: "name",
@@ -782,6 +825,24 @@ export function migrateFantasyDisplay(
     streak: migrateVenue(raw.streak),
     injuryCount,
     topScorer: migrateVenue(raw.topScorer),
+    // Phase 1 player-stats fields. New fields default to "both" via
+    // migrateVenue's fallback for unknown inputs, so existing prefs
+    // files (which won't have these keys) get the new segments
+    // visible by default. The DEFAULT_CHANNEL_DISPLAY values above
+    // are what fresh installs and `handleReset` produce; this
+    // migration is what existing users see post-upgrade.
+    topThreeScorers: migrateVenue(raw.topThreeScorers),
+    worstStarter: migrateVenue(raw.worstStarter),
+    benchOpportunity: migrateVenue(raw.benchOpportunity),
+    injuryDetail: migrateVenue(raw.injuryDetail),
+    // Followed players is just a string array — no enum migration.
+    // Filter to strings defensively in case the persisted shape is
+    // garbled (older prefs files with no key get [] from the default).
+    followedPlayerKeys: Array.isArray(raw.followedPlayerKeys)
+      ? (raw.followedPlayerKeys as unknown[]).filter(
+          (k): k is string => typeof k === "string",
+        )
+      : DEFAULT_CHANNEL_DISPLAY.fantasy.followedPlayerKeys,
     showStandings:
       typeof raw.showStandings === "boolean"
         ? raw.showStandings

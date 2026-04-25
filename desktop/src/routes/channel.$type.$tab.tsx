@@ -18,6 +18,7 @@ import { useShell, useShellData } from "../shell-context";
 import { Section, ToggleRow, ResetButton, SegmentedRow } from "../components/settings/SettingsControls";
 import { DisplayLocationGrid } from "../components/settings/DisplayLocationGrid";
 import type { DisplayGridSection } from "../components/settings/DisplayLocationGrid";
+import FollowedPlayersPicker from "../components/settings/FollowedPlayersPicker";
 import { useSportsConfig } from "../hooks/useSportsConfig";
 import { loadPref } from "../preferences";
 import type { Channel, ChannelType } from "../api/client";
@@ -361,7 +362,12 @@ type FantasyVenueKey =
   | "standingsPosition"
   | "streak"
   | "injuryCount"
-  | "topScorer";
+  | "topScorer"
+  // Phase 1 player-stats (2026-04-25):
+  | "topThreeScorers"
+  | "worstStarter"
+  | "benchOpportunity"
+  | "injuryDetail";
 
 interface FantasyVenueRow {
   key: FantasyVenueKey;
@@ -404,6 +410,31 @@ const FANTASY_VENUE_GROUPS: FantasyVenueGroup[] = [
       { key: "topScorer", label: "Top scorer", description: "Highest-scoring active player on your team" },
     ],
   },
+  {
+    title: "Player stats",
+    rows: [
+      {
+        key: "topThreeScorers",
+        label: "Top 3 starters",
+        description: "Mahomes 32, Hill 18, CMC 14 — each as its own segment",
+      },
+      {
+        key: "worstStarter",
+        label: "Lowest starter",
+        description: "↓ Andrews 0 — the dud you couldn't sit (red)",
+      },
+      {
+        key: "benchOpportunity",
+        label: "Bench leader",
+        description: "BN Pacheco 18 — points your bench is producing",
+      },
+      {
+        key: "injuryDetail",
+        label: "Injury report",
+        description: "🚨 Saquon OUT, Mixon DTD — names + status (max 2 + overflow)",
+      },
+    ],
+  },
 ];
 
 function FantasyDisplay() {
@@ -440,6 +471,16 @@ function FantasyDisplay() {
           streak: "both",
           injuryCount: "both",
           topScorer: "both",
+          // Phase 1 player-stats — same default as the rest.
+          topThreeScorers: "both",
+          worstStarter: "both",
+          benchOpportunity: "both",
+          injuryDetail: "both",
+          // Phase 2 followed players — reset clears the list.
+          // Users explicitly picked these; resetting display settings
+          // shouldn't preserve them, otherwise "reset" wouldn't fully
+          // restore defaults.
+          followedPlayerKeys: [],
           showStandings: true,
           showMatchups: true,
           defaultSort: "name",
@@ -480,6 +521,17 @@ function FantasyDisplay() {
     <div className="p-4 max-w-2xl mx-auto">
       <Section title="Display items">
         <DisplayLocationGrid sections={sections} onChange={applyDisplayChanges} />
+      </Section>
+      <Section title="Followed players">
+        <p className="text-[11px] text-fg-4 px-3 pb-2 leading-snug">
+          Pick specific players from your rosters to track on the ticker.
+          Each player gets their own chip showing their name, team, and
+          current points.
+        </p>
+        <FollowedPlayersPicker
+          followedPlayerKeys={dp.followedPlayerKeys}
+          onChange={(next) => patch({ followedPlayerKeys: next })}
+        />
       </Section>
       <Section title="Feed layout">
         <SegmentedRow

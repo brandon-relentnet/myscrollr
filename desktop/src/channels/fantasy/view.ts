@@ -117,7 +117,14 @@ export function selectFantasyForTicker(
     shouldShowOnTicker(prefs.standingsPosition) ||
     shouldShowOnTicker(prefs.streak) ||
     shouldShowOnTicker(prefs.injuryCount) ||
-    shouldShowOnTicker(prefs.topScorer);
+    shouldShowOnTicker(prefs.topScorer) ||
+    // Phase 1 player-stats segments — same OR-gate semantics: if any
+    // of these is on the ticker, the league chip should render so
+    // FantasyStatChip can compose the enabled segments.
+    shouldShowOnTicker(prefs.topThreeScorers) ||
+    shouldShowOnTicker(prefs.worstStarter) ||
+    shouldShowOnTicker(prefs.benchOpportunity) ||
+    shouldShowOnTicker(prefs.injuryDetail);
   if (!anyItemOnTicker) return [];
 
   const visible = filterEnabledLeagues(leagues, prefs.enabledLeagueKeys);

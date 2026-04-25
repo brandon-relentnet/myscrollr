@@ -73,6 +73,14 @@ const DEFAULT_PREFS: FantasyDisplayPrefs = {
   streak: "both",
   injuryCount: "both",
   topScorer: "both",
+  // Phase 1 player-stats fields. Match production defaults so any
+  // selectFantasyForTicker test using DEFAULT_PREFS exercises the
+  // anyItemOnTicker check the same way as a real install.
+  topThreeScorers: "both",
+  worstStarter: "both",
+  benchOpportunity: "both",
+  injuryDetail: "both",
+  followedPlayerKeys: [],
   showStandings: true,
   showMatchups: true,
   defaultSort: "name",
@@ -200,6 +208,12 @@ describe("selectFantasyForTicker", () => {
       streak: "off",
       injuryCount: "off",
       topScorer: "off",
+      // Phase 1 player-stats — must also be off, otherwise the
+      // selector should still return leagues.
+      topThreeScorers: "off",
+      worstStarter: "off",
+      benchOpportunity: "off",
+      injuryDetail: "off",
     };
     expect(selectFantasyForTicker(leagues, allOff)).toEqual([]);
   });
@@ -218,6 +232,10 @@ describe("selectFantasyForTicker", () => {
       streak: "feed",
       injuryCount: "feed",
       topScorer: "feed",
+      topThreeScorers: "feed",
+      worstStarter: "feed",
+      benchOpportunity: "feed",
+      injuryDetail: "feed",
     };
     expect(selectFantasyForTicker(leagues, allFeed)).toEqual([]);
   });
@@ -236,8 +254,39 @@ describe("selectFantasyForTicker", () => {
       streak: "off",
       injuryCount: "off",
       topScorer: "off",
+      topThreeScorers: "off",
+      worstStarter: "off",
+      benchOpportunity: "off",
+      injuryDetail: "off",
     };
     expect(selectFantasyForTicker(leagues, onlyScoreOnTicker)).toHaveLength(1);
+  });
+
+  it("renders leagues when ONLY a player-stats segment is on the ticker", () => {
+    // Phase 1 player-stats are part of the OR-gate. If a user disabled
+    // every "old" item but turned on, e.g. injuryDetail for the ticker,
+    // their league chip must still render.
+    const leagues = [league({ key: "a" })];
+    const onlyInjuryDetailOnTicker: FantasyDisplayPrefs = {
+      ...DEFAULT_PREFS,
+      matchupScore: "off",
+      winProbability: "off",
+      matchupStatus: "off",
+      projectedPoints: "off",
+      week: "off",
+      record: "off",
+      standingsPosition: "off",
+      streak: "off",
+      injuryCount: "off",
+      topScorer: "off",
+      topThreeScorers: "off",
+      worstStarter: "off",
+      benchOpportunity: "off",
+      injuryDetail: "ticker",
+    };
+    expect(
+      selectFantasyForTicker(leagues, onlyInjuryDetailOnTicker),
+    ).toHaveLength(1);
   });
 
   it("returns [] when the enabledLeagueKeys filter eliminates all leagues", () => {

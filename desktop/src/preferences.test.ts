@@ -297,4 +297,30 @@ describe("migrateFantasyDisplay", () => {
     } as unknown as Parameters<typeof migrateFantasyDisplay>[0]);
     expect(migrated.matchupScore).toBe("ticker");
   });
+
+  it("Phase 1 player-stats fields default to 'both' for upgrading users", () => {
+    // A user upgrading from a build that predates these fields will have
+    // no key for them in their prefs file. migrateVenue's unknown-input
+    // fallback returns "both" — fields appear visible-everywhere by
+    // default, matching what users have been asking for ("when can we
+    // see player stats on the ticker?").
+    const migrated = migrateFantasyDisplay({});
+    expect(migrated.topThreeScorers).toBe("both");
+    expect(migrated.worstStarter).toBe("both");
+    expect(migrated.benchOpportunity).toBe("both");
+    expect(migrated.injuryDetail).toBe("both");
+  });
+
+  it("Phase 1 player-stats fields preserve user choices on subsequent loads", () => {
+    const migrated = migrateFantasyDisplay({
+      topThreeScorers: "ticker",
+      worstStarter: "feed",
+      benchOpportunity: "off",
+      injuryDetail: "both",
+    });
+    expect(migrated.topThreeScorers).toBe("ticker");
+    expect(migrated.worstStarter).toBe("feed");
+    expect(migrated.benchOpportunity).toBe("off");
+    expect(migrated.injuryDetail).toBe("both");
+  });
 });
