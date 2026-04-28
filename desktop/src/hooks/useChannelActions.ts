@@ -10,9 +10,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { channelsApi, toggleChannelVisibility } from "../api/client";
 import { queryKeys } from "../api/queries";
-import { savePrefs } from "../preferences";
 import type { ChannelType } from "../api/client";
-import type { AppPreferences } from "../preferences";
 
 const channelName: Record<string, string> = {
   finance: "Finance",
@@ -27,10 +25,10 @@ interface ChannelActions {
   handleDeleteChannel: (channelType: ChannelType) => Promise<void>;
 }
 
-export function useChannelActions(
-  prefs: AppPreferences,
-  setPrefs: React.Dispatch<React.SetStateAction<AppPreferences>>,
-): ChannelActions {
+// `prefs` and `setPrefs` were used to clean up `pinnedSources` on
+// channel delete. With pin-to-sidebar removed, the hook no longer
+// needs them — sidebar updates flow from the dashboard refetch.
+export function useChannelActions(): ChannelActions {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -70,13 +68,9 @@ export function useChannelActions(
       try {
         await channelsApi.delete(channelType);
         await queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
-        // Remove from pinned sidebar
-        setPrefs((prev) => {
-          if (!prev.pinnedSources.includes(channelType)) return prev;
-          const next = { ...prev, pinnedSources: prev.pinnedSources.filter((id) => id !== channelType) };
-          savePrefs(next);
-          return next;
-        });
+        // Sidebar now derives from dashboard.channels (filtered to
+        // enabled), so no preference cleanup is needed here — the
+        // dashboard refetch above triggers the sidebar update.
         navigate({ to: "/feed" });
         toast.success(`${channelName[channelType] ?? channelType} channel removed`);
       } catch (err) {
@@ -84,7 +78,7 @@ export function useChannelActions(
         toast.error(`Couldn't remove ${channelName[channelType] ?? channelType} channel`);
       }
     },
-    [queryClient, navigate, setPrefs],
+    [queryClient, navigate],
   );
 
   return { handleToggleChannel, handleAddChannel, handleDeleteChannel };

@@ -378,8 +378,6 @@ export interface AppPreferences {
   taskbar: TaskbarPrefs;
   widgets: WidgetPrefs;
   channelDisplay: ChannelDisplayPrefs;
-  /** Channel/widget IDs pinned to the sidebar for quick access. */
-  pinnedSources: string[];
   /** Per-channel homepage preview selections (up to 5 group keys). */
   homePreview: HomePreview;
   /** Show the setup wizard when signing in. Users can disable this. */
@@ -552,7 +550,6 @@ const DEFAULT_PREFS: AppPreferences = {
   taskbar: DEFAULT_TASKBAR,
   widgets: DEFAULT_WIDGETS,
   channelDisplay: DEFAULT_CHANNEL_DISPLAY,
-  pinnedSources: [],
   homePreview: {},
   showSetupOnLogin: true,
 };
@@ -898,7 +895,6 @@ export function loadPrefs(): AppPreferences {
         rss: migrateRssDisplay(savedDisplay?.rss),
         fantasy: migrateFantasyDisplay(savedDisplay?.fantasy),
       },
-      pinnedSources: Array.isArray(source.pinnedSources) ? source.pinnedSources : [],
       homePreview:
         source.homePreview && typeof source.homePreview === "object" && !Array.isArray(source.homePreview)
           ? (source.homePreview as HomePreview)
@@ -963,7 +959,6 @@ export function resetAll(): AppPreferences {
     taskbar: { ...DEFAULT_TASKBAR },
     widgets: { ...DEFAULT_WIDGETS },
     channelDisplay: { ...DEFAULT_CHANNEL_DISPLAY },
-    pinnedSources: [],
     homePreview: {},
     showSetupOnLogin: true,
   };
