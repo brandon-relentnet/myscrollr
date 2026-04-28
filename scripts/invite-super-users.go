@@ -71,30 +71,44 @@ func loadEnvFile() {
 // ── Configuration ───────────────────────────────────────────────────
 
 type config struct {
-	LogtoEndpoint  string
-	LogtoAppID     string
-	LogtoAppSecret string
-	LogtoResource  string
-	ResendAPIKey   string
-	ResendFrom     string
-	FrontendURL    string
+	LogtoEndpoint   string
+	LogtoAppID      string
+	LogtoAppSecret  string
+	LogtoResource   string
+	ResendAPIKey    string
+	ResendFrom      string
+	FrontendURL     string
+	SuperUserRoleID string
 }
+
+// Last-known production value for the Logto super_user role. Used as a
+// fallback when LOGTO_SUPER_USER_ROLE_ID is unset so the script keeps
+// working out of the box for the current Logto deployment. If you ever
+// rotate the role ID in Logto, set the env var rather than editing
+// this constant — the API server reads the same env var
+// (api/core/invite.go) so keeping them aligned avoids drift.
+const fallbackSuperUserRoleID = "saaf40fy2iaxu1bwhy0m8"
 
 func loadConfig() config {
 	c := config{
-		LogtoEndpoint:  os.Getenv("LOGTO_ENDPOINT"),
-		LogtoAppID:     os.Getenv("LOGTO_M2M_APP_ID"),
-		LogtoAppSecret: os.Getenv("LOGTO_M2M_APP_SECRET"),
-		LogtoResource:  os.Getenv("LOGTO_M2M_RESOURCE"),
-		ResendAPIKey:   os.Getenv("RESEND_API_KEY"),
-		ResendFrom:     os.Getenv("RESEND_FROM_EMAIL"),
-		FrontendURL:    os.Getenv("FRONTEND_URL"),
+		LogtoEndpoint:   os.Getenv("LOGTO_ENDPOINT"),
+		LogtoAppID:      os.Getenv("LOGTO_M2M_APP_ID"),
+		LogtoAppSecret:  os.Getenv("LOGTO_M2M_APP_SECRET"),
+		LogtoResource:   os.Getenv("LOGTO_M2M_RESOURCE"),
+		ResendAPIKey:    os.Getenv("RESEND_API_KEY"),
+		ResendFrom:      os.Getenv("RESEND_FROM_EMAIL"),
+		FrontendURL:     os.Getenv("FRONTEND_URL"),
+		SuperUserRoleID: os.Getenv("LOGTO_SUPER_USER_ROLE_ID"),
 	}
 	if c.LogtoResource == "" {
 		c.LogtoResource = "https://default.logto.app/api"
 	}
 	if c.FrontendURL == "" {
 		c.FrontendURL = "https://myscrollr.com"
+	}
+	if c.SuperUserRoleID == "" {
+		c.SuperUserRoleID = fallbackSuperUserRoleID
+		fmt.Printf("LOGTO_SUPER_USER_ROLE_ID not set; falling back to %q\n", fallbackSuperUserRoleID)
 	}
 	c.FrontendURL = strings.TrimSuffix(c.FrontendURL, "/")
 	c.LogtoEndpoint = strings.TrimSuffix(c.LogtoEndpoint, "/")
@@ -318,8 +332,6 @@ func sendInviteEmail(apiKey, from, toEmail, inviteURL string) error {
 
 // ── Main ────────────────────────────────────────────────────────────
 
-const superUserRoleID = "saaf40fy2iaxu1bwhy0m8"
-
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Fprintf(os.Stderr, "Usage: go run scripts/invite-super-users.go <emails.json>\n")
@@ -373,7 +385,7 @@ func main() {
 		fmt.Printf("  → user ID: %s\n", userID)
 
 		// 2. Assign super_user role
-		if err := assignRole(cfg.LogtoEndpoint, m2mToken, userID, superUserRoleID); err != nil {
+		if err := assignRole(cfg.LogtoEndpoint, m2mToken, userID, cfg.SuperUserRoleID); err != nil {
 			fmt.Printf("  ✗ Role assignment failed: %v\n", err)
 			failures++
 			continue
