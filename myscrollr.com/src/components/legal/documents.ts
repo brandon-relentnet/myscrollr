@@ -12,6 +12,7 @@ import {
   Scale,
   Shield,
   ShieldAlert,
+  Sparkles,
   TrendingUp,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -874,6 +875,99 @@ export const LEGAL_DOCUMENTS: Array<LegalDocument> = [
         heading: 'Continuous Improvement',
         content: [
           'Accessibility is an ongoing effort. As we develop new features and update existing ones, we will continue to evaluate and improve the accessibility of the Platform. We are committed to making Scrollr usable by as many people as possible.',
+        ],
+      },
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // 15. SUPER USER EARLY ACCESS TERMS
+  // ─────────────────────────────────────────────────────────────
+  {
+    slug: 'super-user',
+    title: 'Super User Early Access Terms',
+    shortTitle: 'Super User',
+    icon: Sparkles,
+    category: 'community',
+    lastUpdated: 'April 2026',
+    effectiveDate: 'April 25, 2026',
+    badge: 'Invite only',
+    sections: [
+      {
+        heading: 'Overview',
+        content: [
+          'These Super User Early Access Terms ("Super User Terms") supplement the Scrollr Terms of Service. They apply to accounts that have been added to the Scrollr Super User early-access program by invitation. The program exists so that a small group of trusted testers can use Scrollr ahead of public launch, report issues, and shape the product before broader release.',
+          'When these Super User Terms conflict with the general Terms of Service, these Super User Terms control for the limited matters they address (eligibility, complimentary tier access, revocation). Everything else continues to be governed by the main Terms of Service.',
+        ],
+        callout: {
+          type: 'info',
+          text: 'You become a Super User by accepting an invite emailed to you from invites@myscrollr.com. There is no public sign-up.',
+        },
+      },
+      {
+        heading: 'Eligibility and Account',
+        content: [
+          'Super User access is granted by invitation only. Each invitation is tied to a single email address and is non-transferable. You may not sell, lend, gift, or otherwise transfer your Super User account or its associated benefits to another person.',
+          'You must use a single account for your own personal access to the Platform. Sharing credentials, automating account use to circumvent rate limits, or operating multiple Super User accounts to multiply benefits is a material violation of these Super User Terms and grounds for revocation under the section below.',
+          'You must meet the eligibility requirements stated in the main Terms of Service.',
+        ],
+      },
+      {
+        heading: 'Complimentary Ultimate Tier Access',
+        content: [
+          'For as long as you remain in good standing under these Super User Terms and the general Terms of Service, your account will receive complimentary access at the Ultimate tier (or its equivalent successor tier, if Scrollr renames or restructures its tier system in the future).',
+          'Tier access means access at the tier level. Specific features, limits, providers, and capabilities included in the Ultimate tier may change over time as the Platform evolves. We may add, remove, replace, or modify the features delivered at the Ultimate tier without prior notice. Your continued benefit is the equivalent tier-level access offered to paying Ultimate subscribers from time to time, not any specific feature or quota that exists at the moment of your invite.',
+          'This benefit is provided at no cost to you and is not refundable, exchangeable, or convertible to monetary value. Taxes, if any apply in your jurisdiction, are your responsibility.',
+        ],
+      },
+      {
+        heading: 'Duration of the Benefit',
+        content: [
+          'We commit to maintaining your complimentary Ultimate tier access for the lifetime of the program, subject to the conditions in this document. "Lifetime of the program" means the continuous period during which Scrollr operates the Super User early-access offering or operates the Platform at all.',
+          'If we permanently discontinue the Platform, are acquired by or merged into another company that ceases to operate the Platform, dissolve, or otherwise cease commercial operation of Scrollr in any form, the complimentary Ultimate tier access ends at the same time as the underlying offering. We will provide reasonable advance notice (no less than thirty days where commercially practicable) before such a discontinuation, except in cases of insolvency or events outside our reasonable control.',
+          'In the event of a sale or transfer of substantially all of the Scrollr business or assets to a successor that continues to operate the Platform, your Super User benefits will transfer to the successor and these Super User Terms will continue to apply, subject to any reasonable, non-material modifications the successor may publish.',
+        ],
+      },
+      {
+        heading: 'Revocation',
+        content: [
+          'We may suspend or revoke your Super User status, including the complimentary Ultimate tier access, immediately and without refund (none is owed) if any of the following occur:',
+          'You materially violate the Terms of Service or these Super User Terms; you engage in fraud, abuse, or illegal activity; you attempt to circumvent rate limits, billing, security, or access controls; you operate multiple accounts to multiply benefits; you transfer or attempt to transfer your account; you use the Platform to harm other users, ourselves, or third parties; you fail to respond to lawful requests for information needed to verify your eligibility; you have not used the account for a continuous period of twelve months or more (in which case we may, at our discretion, deactivate the account with at least thirty days advance notice and an opportunity to reactivate).',
+          'Where the issue is correctable and not severe, we will typically warn you before revoking. Where the issue is severe, ongoing, fraudulent, or illegal, we may act without warning. After revocation you may appeal in writing within thirty days; we are not obligated to reinstate but will consider appeals in good faith.',
+        ],
+      },
+      {
+        heading: 'No Service Level Guarantees',
+        content: [
+          'The Super User program is an early-access program. The Platform is in active development. We do not provide service-level agreements, uptime guarantees, response-time guarantees, or any guarantee that specific features, integrations, providers, or behaviors will continue to work as expected. Bugs, downtime, data delays, and breaking changes are expected during this period and are part of the reason we recruit Super Users.',
+          'We provide the Platform on an "as is" and "as available" basis as set forth more fully in the general Terms of Service.',
+        ],
+      },
+      {
+        heading: 'Feedback You Provide',
+        content: [
+          'Feedback you submit through the in-app Contact Us flow, by email reply, or through any other channel may be used by us to improve the Platform without compensation, attribution, or further notice to you. By submitting feedback you grant us a perpetual, worldwide, royalty-free, non-exclusive license to use, reproduce, modify, and incorporate that feedback into the Platform and related materials.',
+          'You retain ownership of any pre-existing intellectual property contained in your feedback. This grant covers our use of the feedback for product improvement; it does not transfer ownership of your underlying ideas to us.',
+        ],
+      },
+      {
+        heading: 'Personal, Non-Commercial Use',
+        content: [
+          'The complimentary Ultimate tier access is for your personal, non-commercial use. You may not resell access, expose the Platform as part of a commercial product or service offered by you to third parties, or use Super User access to substitute for a commercial agreement that would otherwise apply.',
+          'We may impose reasonable use limits if individual usage is materially out of line with typical Ultimate-tier usage and shows signs of abuse or commercial use. We will attempt to discuss any such limits with you before applying them.',
+        ],
+      },
+      {
+        heading: 'Changes to These Super User Terms',
+        content: [
+          'We may update these Super User Terms from time to time as the program evolves. Material changes will be communicated to your Super User account email address and posted at this URL. The "Last Updated" date at the top of this document reflects the most recent revision.',
+          'Continued use of your Super User account after a posted revision becomes effective constitutes acceptance of the revised Super User Terms. If you do not agree with the revisions, you may discontinue use; doing so does not entitle you to any compensation since the program is provided at no charge.',
+        ],
+      },
+      {
+        heading: 'Contact',
+        content: [
+          'For questions about the Super User program, reply to your invitation email. For product feedback, please use the in-app Contact Us flow so submissions are tracked. For legal or compliance questions, see the contact details in the main Terms of Service.',
         ],
       },
     ],
