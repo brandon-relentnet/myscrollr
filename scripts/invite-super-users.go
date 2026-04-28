@@ -85,7 +85,7 @@ type config struct {
 // fallback when LOGTO_SUPER_USER_ROLE_ID is unset so the script keeps
 // working out of the box for the current Logto deployment. If you ever
 // rotate the role ID in Logto, set the env var rather than editing
-// this constant — the API server reads the same env var
+// this constant. The API server reads the same env var
 // (api/core/invite.go) so keeping them aligned avoids drift.
 const fallbackSuperUserRoleID = "saaf40fy2iaxu1bwhy0m8"
 
@@ -210,7 +210,15 @@ func randomPassword() string {
 	return hex.EncodeToString(b) + "Aa1!" // Ensure complexity requirements
 }
 
-// createUser creates a Logto user and returns the user ID.
+// userAlreadyExistsErr is returned by `createUser` when Logto's
+// `POST /api/users` rejects the request with `user.email_already_in_use`
+// (HTTP 422). Callers can switch on this to gracefully recover by
+// looking up the existing user by email and proceeding with a
+// re-invite instead of treating it as a fatal error.
+var userAlreadyExistsErr = fmt.Errorf("user already exists")
+
+// createUser creates a Logto user and returns the user ID. Returns
+// `userAlreadyExistsErr` if the email is already registered.
 func createUser(endpoint, token, email, password string) (string, error) {
 	payload := map[string]interface{}{
 		"primaryEmail": email,
@@ -219,6 +227,9 @@ func createUser(endpoint, token, email, password string) (string, error) {
 	body, status, err := logtoRequest("POST", endpoint+"/api/users", token, payload)
 	if err != nil {
 		return "", fmt.Errorf("create user: %w", err)
+	}
+	if status == http.StatusUnprocessableEntity && strings.Contains(string(body), "email_already_in_use") {
+		return "", userAlreadyExistsErr
 	}
 	if status != http.StatusOK {
 		return "", fmt.Errorf("create user returned %d: %s", status, string(body))
@@ -231,6 +242,33 @@ func createUser(endpoint, token, email, password string) (string, error) {
 		return "", fmt.Errorf("parse create user response: %w", err)
 	}
 	return user.ID, nil
+}
+
+// findUserIDByEmail looks up an existing Logto user by primary email
+// and returns their `id`. Used to recover from `userAlreadyExistsErr`
+// during re-invite flows. The `search.primaryEmail` exact-match query
+// param is the same pattern used by the API server in
+// `api/core/invite.go:findUserByEmail`.
+func findUserIDByEmail(endpoint, token, email string) (string, error) {
+	searchURL := fmt.Sprintf("%s/api/users?search.primaryEmail=%s", endpoint, url.QueryEscape(email))
+	body, status, err := logtoRequest("GET", searchURL, token, nil)
+	if err != nil {
+		return "", fmt.Errorf("find user: %w", err)
+	}
+	if status != http.StatusOK {
+		return "", fmt.Errorf("find user returned %d: %s", status, string(body))
+	}
+
+	var users []struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(body, &users); err != nil {
+		return "", fmt.Errorf("parse find user response: %w", err)
+	}
+	if len(users) == 0 {
+		return "", fmt.Errorf("no user found with email %s", email)
+	}
+	return users[0].ID, nil
 }
 
 // assignRole assigns a role to a Logto user.
@@ -275,26 +313,32 @@ func createOneTimeToken(endpoint, token, email string) (string, error) {
 // inviteSubject keeps the recipient's inbox preview readable. Inboxes
 // typically render ~50 chars of subject + ~80 chars of preheader, so
 // the subject states what / preheader states why-bother.
-const inviteSubject = "Welcome to MyScrollr Early Access"
+const inviteSubject = "We'd love for you to test out MyScrollr"
 
-const invitePreheader = "Your Super User account is ready. Setup takes about a minute."
+const invitePreheader = "You're literally one of our first users. Your account is ready and setup takes about a minute."
 
-const inviteSupportAddress = "support@myscrollr.com"
+// Feedback channel is the in-app Contact Us flow, NOT a public-facing
+// email address. The invite-only audience for this script knows the
+// app is unreleased and we want feedback consolidated through the
+// Contact Us pipeline (which produces tickets) rather than scattered
+// across email threads. The "reply to this email" footer line below
+// is for invite-flow problems only (lost link, wrong email, etc.)
+// and not for product feedback.
 
 // inviteHTMLTemplate is the production HTML body. Two `%s` placeholders:
 //  1. preheader text (hidden in body, shown in inbox preview)
 //  2. invite URL (used in CTA button)
 //
 // Design notes:
-//   - Table-based layout (max email-client compatibility — Outlook
-//     for Windows still chokes on flexbox/grid).
+//   - Table-based layout (max email-client compatibility, since
+//     Outlook for Windows still chokes on flexbox/grid).
 //   - Light-mode by default (most clients render light by default);
 //     `prefers-color-scheme: dark` media query overrides for dark
-//     clients. Some clients ignore the media query — that's why the
+//     clients. Some clients ignore the media query, which is why the
 //     light-mode palette is the safe baseline.
 //   - 560px max width (standard email column; mobile media query
 //     drops to full-width with reduced padding).
-//   - Brand color #10b981 (emerald-500) — matches Scrollr's accent.
+//   - Brand color #10b981 (emerald-500) matches Scrollr's accent.
 //   - Body uses neutral system fonts to avoid web-font load issues
 //     in clients that block external assets.
 //   - All styles are inlined except the <style> block in <head>,
@@ -307,7 +351,7 @@ const inviteHTMLTemplate = `<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="x-apple-disable-message-reformatting">
-<title>Welcome to MyScrollr Early Access</title>
+<title>We'd love for you to test out MyScrollr</title>
 <style>
   body { margin: 0; padding: 0; background: #f5f5f5; }
   @media only screen and (max-width: 600px) {
@@ -319,11 +363,12 @@ const inviteHTMLTemplate = `<!DOCTYPE html>
     body { background: #0a0a0a !important; }
     .card { background: #141414 !important; border-color: #262626 !important; }
     .footer-bg { background: #0f0f0f !important; }
-    .step-bg { background: #1a1a1a !important; border-color: #262626 !important; }
-    .h1, .step-num { color: #ffffff !important; }
+    .step-bg, .feedback-bg { background: #1a1a1a !important; border-color: #262626 !important; }
+    .h1, .step-num, .h2 { color: #ffffff !important; }
     .text-secondary { color: #a0a0a0 !important; }
     .text-muted { color: #666666 !important; }
     .text-strong { color: #e5e5e5 !important; }
+    .bullet { color: #10b981 !important; }
   }
 </style>
 </head>
@@ -359,23 +404,24 @@ const inviteHTMLTemplate = `<!DOCTYPE html>
               </td>
             </tr>
 
-            <!-- Hero -->
+            <!-- Hero + warm intro -->
             <tr>
               <td class="px" style="padding:16px 32px 8px;">
                 <h1 class="h1" style="margin:0 0 12px;font-size:28px;font-weight:700;line-height:1.15;color:#111111;letter-spacing:-0.5px;">
                   You're in.
                 </h1>
-                <p class="text-secondary" style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#555555;">
-                  You've been picked to test MyScrollr before public launch. Your
+                <p class="text-secondary" style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#555555;">
+                  Hey, thank you for testing MyScrollr. You are <em>literally</em> one of our first users, and we
+                  really need your help before we ship to the public. Your
                   <strong class="text-strong" style="color:#111111;font-weight:600;">Super User</strong>
-                  account is ready &mdash; setup takes about a minute.
+                  account is ready and setup takes about a minute.
                 </p>
               </td>
             </tr>
 
             <!-- CTA -->
             <tr>
-              <td align="center" style="padding:0 32px 28px;">
+              <td align="center" style="padding:8px 32px 28px;">
                 <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                   <tr><td style="background:#10b981;border-radius:8px;">
                     <a href="%s" style="display:inline-block;padding:14px 32px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;letter-spacing:0.2px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
@@ -400,8 +446,8 @@ const inviteHTMLTemplate = `<!DOCTYPE html>
                           <span class="step-num" style="display:inline-block;color:#10b981;font-weight:700;font-size:13px;">1.</span>
                         </td>
                         <td style="padding:4px 0;font-size:13.5px;color:#444444;line-height:1.55;">
-                          <strong class="text-strong" style="color:#111111;font-weight:600;">Pick a username</strong>
-                          &mdash; yours to keep, used as your public profile handle.
+                          <strong class="text-strong" style="color:#111111;font-weight:600;">Pick a username.</strong>
+                          Yours to keep, used as your public profile handle.
                         </td>
                       </tr>
                       <tr>
@@ -410,7 +456,7 @@ const inviteHTMLTemplate = `<!DOCTYPE html>
                         </td>
                         <td style="padding:4px 0;font-size:13.5px;color:#444444;line-height:1.55;">
                           <strong class="text-strong" style="color:#111111;font-weight:600;">Download the desktop app</strong>
-                          &mdash; macOS, Windows, or Linux. The link's on the welcome screen.
+                          for macOS, Windows, or Linux. The link is on the welcome screen.
                         </td>
                       </tr>
                       <tr>
@@ -428,15 +474,70 @@ const inviteHTMLTemplate = `<!DOCTYPE html>
               </td>
             </tr>
 
-            <!-- Value prop -->
+            <!-- Your job -->
             <tr>
-              <td class="px" style="padding:0 32px 28px;">
-                <p class="text-secondary" style="margin:0;font-size:13px;line-height:1.65;color:#666666;">
-                  <strong class="text-strong" style="color:#111111;font-weight:600;">Quick context:</strong>
-                  MyScrollr is an always-on-top desktop ticker that streams live financial markets, sports scores,
-                  RSS headlines, and your Yahoo Fantasy leagues &mdash; without browser-tab juggling. As a Super User
-                  you get every paid tier free during the testing period plus a direct line to the team. Reply to this
-                  email any time with feedback or bugs.
+              <td class="px" style="padding:8px 32px 8px;">
+                <h2 class="h2" style="margin:0 0 8px;font-size:17px;font-weight:600;color:#111111;letter-spacing:-0.2px;">
+                  Your job: try to break it.
+                </h2>
+                <p class="text-secondary" style="margin:0 0 12px;font-size:13.5px;line-height:1.6;color:#555555;">
+                  Honestly, we want you to push the app until something cracks. If you find any bugs or glitches,
+                  let us know. Beyond just finding errors, we would love your honest take on:
+                </p>
+                <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" border="0">
+                  <tr><td style="padding:0 0 4px;font-size:13.5px;color:#444444;line-height:1.6;">
+                    <span class="bullet" style="color:#10b981;font-weight:700;">&bull;</span>&nbsp;&nbsp;What new features would actually be useful to you?
+                  </td></tr>
+                  <tr><td style="padding:0 0 4px;font-size:13.5px;color:#444444;line-height:1.6;">
+                    <span class="bullet" style="color:#10b981;font-weight:700;">&bull;</span>&nbsp;&nbsp;Is there anything you flat out dislike?
+                  </td></tr>
+                  <tr><td style="padding:0 0 4px;font-size:13.5px;color:#444444;line-height:1.6;">
+                    <span class="bullet" style="color:#10b981;font-weight:700;">&bull;</span>&nbsp;&nbsp;How does the design look to you?
+                  </td></tr>
+                  <tr><td style="padding:0 0 4px;font-size:13.5px;color:#444444;line-height:1.6;">
+                    <span class="bullet" style="color:#10b981;font-weight:700;">&bull;</span>&nbsp;&nbsp;Is the app easy to navigate?
+                  </td></tr>
+                  <tr><td style="padding:0 0 4px;font-size:13.5px;color:#444444;line-height:1.6;">
+                    <span class="bullet" style="color:#10b981;font-weight:700;">&bull;</span>&nbsp;&nbsp;Do you actually find it useful?
+                  </td></tr>
+                  <tr><td style="padding:0 0 0;font-size:13.5px;color:#444444;line-height:1.6;">
+                    <span class="bullet" style="color:#10b981;font-weight:700;">&bull;</span>&nbsp;&nbsp;Is it cool?
+                  </td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Where to send feedback (in-app, NOT email) -->
+            <tr>
+              <td class="px" style="padding:20px 32px 4px;">
+                <table role="presentation" class="feedback-bg" width="100%%" cellspacing="0" cellpadding="0" border="0" style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:10px;">
+                  <tr><td style="padding:16px 20px;">
+                    <p style="margin:0 0 4px;font-size:13px;font-weight:600;color:#10b981;">
+                      Where to send feedback
+                    </p>
+                    <p class="text-secondary" style="margin:0;font-size:13px;line-height:1.55;color:#555555;">
+                      Hit
+                      <strong class="text-strong" style="color:#111111;font-weight:600;">Contact Us</strong>
+                      inside the app whenever something pops into your head: bug, idea, complaint,
+                      &ldquo;this is sweet,&rdquo; whatever. We are reading every single submission and using
+                      it to shape the public release.
+                    </p>
+                  </td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Thank-you / Ultimate forever -->
+            <tr>
+              <td class="px" style="padding:18px 32px 28px;">
+                <p class="text-secondary" style="margin:0 0 10px;font-size:13px;line-height:1.65;color:#666666;">
+                  <strong class="text-strong" style="color:#111111;font-weight:600;">A massive thank you in advance.</strong>
+                  We put you on the
+                  <strong class="text-strong" style="color:#10b981;font-weight:600;">Ultimate tier</strong>:
+                  zero restrictions, fastest data, every feature unlocked. As our way of saying thanks
+                  for being one of our first testers, your account keeps complimentary Ultimate access for as
+                  long as we operate the early-access program. The fine print lives at
+                  <a href="https://myscrollr.com/legal?doc=super-user" style="color:#10b981;text-decoration:none;font-weight:500;">myscrollr.com/legal</a>.
                 </p>
               </td>
             </tr>
@@ -444,12 +545,8 @@ const inviteHTMLTemplate = `<!DOCTYPE html>
             <!-- Inner footer -->
             <tr>
               <td class="footer-bg px" style="padding:20px 32px;border-top:1px solid #e5e5e5;background:#fafafa;">
-                <p class="text-muted" style="margin:0 0 6px;font-size:11.5px;color:#888888;line-height:1.55;">
-                  This invite expires in 7 days. Need a fresh one? Reply &mdash; we'll send another.
-                </p>
                 <p class="text-muted" style="margin:0;font-size:11.5px;color:#888888;line-height:1.55;">
-                  Questions or feedback? Reply to this email or write to
-                  <a href="mailto:` + inviteSupportAddress + `" style="color:#10b981;text-decoration:none;font-weight:500;">` + inviteSupportAddress + `</a>.
+                  This invite expires in 7 days. Lost it? Just reply to this email and we'll send a new one.
                 </p>
               </td>
             </tr>
@@ -475,10 +572,12 @@ const inviteHTMLTemplate = `<!DOCTYPE html>
 // inviteTextTemplate mirrors the HTML body for clients that strip
 // HTML or for users who view plain-text mode. One `%s` placeholder
 // for the invite URL.
-const inviteTextTemplate = `Welcome to MyScrollr Early Access
+const inviteTextTemplate = `We'd love for you to test out MyScrollr
 
-You've been picked to test MyScrollr before public launch. Your
-Super User account is ready — setup takes about a minute.
+Hey, thank you for testing MyScrollr! You are literally one of our
+first users, and we really need your help before we ship to the
+public. Your Super User account is ready and setup takes about a
+minute.
 
 ➜ Set up your account
    %s
@@ -486,22 +585,42 @@ Super User account is ready — setup takes about a minute.
 WHAT HAPPENS NEXT
 ─────────────────────────────────────────────
 1. Pick a username (yours to keep)
-2. Download the desktop app — macOS, Windows, or Linux
+2. Download the desktop app for macOS, Windows, or Linux
 3. Sign in once and start tracking what matters
 
-QUICK CONTEXT
+YOUR JOB: TRY TO BREAK IT
 ─────────────────────────────────────────────
-MyScrollr is an always-on-top desktop ticker that streams live
-financial markets, sports scores, RSS headlines, and your Yahoo
-Fantasy leagues — without browser-tab juggling. As a Super User
-you get every paid tier free during the testing period plus a
-direct line to the team. Reply with feedback any time.
+Honestly, we want you to push the app until something cracks.
+If you find bugs or glitches, let us know. Beyond just finding
+errors, we would love your honest take on:
+
+  • What new features would actually be useful to you?
+  • Is there anything you flat out dislike?
+  • How does the design look to you?
+  • Is the app easy to navigate?
+  • Do you actually find it useful?
+  • Is it cool?
+
+WHERE TO SEND FEEDBACK
+─────────────────────────────────────────────
+Hit "Contact Us" inside the app whenever something pops into your
+head: bug, idea, complaint, "this is sweet," whatever. We are
+reading every single submission and using it to shape the public
+release.
+
+A MASSIVE THANK YOU IN ADVANCE
+─────────────────────────────────────────────
+We put you on the Ultimate tier: zero restrictions, fastest data,
+every feature unlocked. As our way of saying thanks for being one
+of our first testers, your account keeps complimentary Ultimate
+access for as long as we operate the early-access program. The
+fine print lives at:
+
+   https://myscrollr.com/legal?doc=super-user
 
 ─────────────────────────────────────────────
-This invite expires in 7 days. Need a fresh one? Reply and we'll
-send another.
-
-Questions? Reply or write to ` + inviteSupportAddress + `.
+This invite expires in 7 days. Lost it? Just reply and we will
+send a new one.
 
 MyScrollr · You received this because your email was added to the
 early access list.
@@ -585,10 +704,23 @@ func main() {
 
 		fmt.Printf("[%d/%d] %s\n", i+1, len(emails), email)
 
-		// 1. Create user (no username — user picks it during onboarding)
+		// 1. Create user (no username; user picks it during onboarding).
+		// If the email already exists in Logto (re-invite scenario, or
+		// the user signed up directly), look them up and re-issue an
+		// invite token instead of failing. The role assign + token
+		// generation steps below are idempotent so this Just Works.
 		password := randomPassword()
 		userID, err := createUser(cfg.LogtoEndpoint, m2mToken, email, password)
-		if err != nil {
+		if err == userAlreadyExistsErr {
+			fmt.Printf("  → user already exists, looking up ID...\n")
+			existingID, lookupErr := findUserIDByEmail(cfg.LogtoEndpoint, m2mToken, email)
+			if lookupErr != nil {
+				fmt.Printf("  ✗ Could not locate existing user: %v\n", lookupErr)
+				failures++
+				continue
+			}
+			userID = existingID
+		} else if err != nil {
 			fmt.Printf("  ✗ User creation failed: %v\n", err)
 			failures++
 			continue
