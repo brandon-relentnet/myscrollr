@@ -272,38 +272,249 @@ func createOneTimeToken(endpoint, token, email string) (string, error) {
 
 // ── Resend email ────────────────────────────────────────────────────
 
-func sendInviteEmail(apiKey, from, toEmail, inviteURL string) error {
-	htmlBody := fmt.Sprintf(`<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background-color:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <div style="max-width:480px;margin:40px auto;padding:32px;background-color:#141414;border:1px solid #262626;border-radius:16px;">
-    <div style="text-align:center;margin-bottom:24px;">
-      <div style="display:inline-block;width:48px;height:48px;background-color:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.2);border-radius:12px;line-height:48px;font-size:24px;">&#x1f6e1;</div>
-    </div>
-    <h1 style="color:#ffffff;font-size:22px;text-align:center;margin:0 0 8px;">You're Invited to MyScrollr</h1>
-    <p style="color:#a0a0a0;font-size:14px;text-align:center;margin:0 0 24px;line-height:1.5;">
-      You've been granted <span style="color:#34d399;font-weight:600;">Super User</span> access.
-      Click below to set up your profile and choose a username.
-    </p>
-    <div style="text-align:center;margin-bottom:24px;">
-      <a href="%s" style="display:inline-block;padding:12px 32px;background-color:#34d399;color:#0a0a0a;font-weight:600;font-size:14px;text-decoration:none;border-radius:8px;">
-        Complete Your Account
-      </a>
-    </div>
-    <p style="color:#666;font-size:12px;text-align:center;margin:0;line-height:1.4;">
-      This link expires in 7 days. If you didn't expect this invitation, you can ignore this email.
-    </p>
-  </div>
-</body>
-</html>`, inviteURL)
+// inviteSubject keeps the recipient's inbox preview readable. Inboxes
+// typically render ~50 chars of subject + ~80 chars of preheader, so
+// the subject states what / preheader states why-bother.
+const inviteSubject = "Welcome to MyScrollr Early Access"
 
-	textBody := fmt.Sprintf("You've been invited to MyScrollr as a Super User!\n\nComplete your account and choose a username: %s\n\nThis link expires in 7 days.", inviteURL)
+const invitePreheader = "Your Super User account is ready. Setup takes about a minute."
+
+const inviteSupportAddress = "support@myscrollr.com"
+
+// inviteHTMLTemplate is the production HTML body. Two `%s` placeholders:
+//  1. preheader text (hidden in body, shown in inbox preview)
+//  2. invite URL (used in CTA button)
+//
+// Design notes:
+//   - Table-based layout (max email-client compatibility — Outlook
+//     for Windows still chokes on flexbox/grid).
+//   - Light-mode by default (most clients render light by default);
+//     `prefers-color-scheme: dark` media query overrides for dark
+//     clients. Some clients ignore the media query — that's why the
+//     light-mode palette is the safe baseline.
+//   - 560px max width (standard email column; mobile media query
+//     drops to full-width with reduced padding).
+//   - Brand color #10b981 (emerald-500) — matches Scrollr's accent.
+//   - Body uses neutral system fonts to avoid web-font load issues
+//     in clients that block external assets.
+//   - All styles are inlined except the <style> block in <head>,
+//     which only handles dark-mode and mobile responsiveness (Gmail
+//     keeps these; clients that strip <style> still get the inlined
+//     light-mode baseline).
+const inviteHTMLTemplate = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="x-apple-disable-message-reformatting">
+<title>Welcome to MyScrollr Early Access</title>
+<style>
+  body { margin: 0; padding: 0; background: #f5f5f5; }
+  @media only screen and (max-width: 600px) {
+    .container { width: 100%% !important; }
+    .px { padding-left: 20px !important; padding-right: 20px !important; }
+    .h1 { font-size: 22px !important; }
+  }
+  @media (prefers-color-scheme: dark) {
+    body { background: #0a0a0a !important; }
+    .card { background: #141414 !important; border-color: #262626 !important; }
+    .footer-bg { background: #0f0f0f !important; }
+    .step-bg { background: #1a1a1a !important; border-color: #262626 !important; }
+    .h1, .step-num { color: #ffffff !important; }
+    .text-secondary { color: #a0a0a0 !important; }
+    .text-muted { color: #666666 !important; }
+    .text-strong { color: #e5e5e5 !important; }
+  }
+</style>
+</head>
+<body>
+<!-- Preheader: hidden in body, shown in inbox preview -->
+<div style="display:none;max-height:0;overflow:hidden;font-size:1px;line-height:1px;color:#f5f5f5;mso-hide:all;">%s</div>
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">&#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847;</div>
+
+<table role="presentation" width="100%%" cellspacing="0" cellpadding="0" border="0" style="background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <tr>
+    <td align="center" style="padding:40px 16px;">
+      <table role="presentation" class="container" width="560" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;">
+
+        <!-- Card -->
+        <tr><td class="card" style="background:#ffffff;border:1px solid #e5e5e5;border-radius:12px;overflow:hidden;">
+          <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" border="0">
+
+            <!-- Header: brand + super-user pill -->
+            <tr>
+              <td class="px" style="padding:28px 32px 12px;">
+                <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" border="0">
+                  <tr>
+                    <td valign="middle" style="font-size:18px;font-weight:700;letter-spacing:-0.4px;color:#10b981;">
+                      MyScrollr
+                    </td>
+                    <td valign="middle" align="right">
+                      <span style="display:inline-block;padding:4px 10px;background:rgba(16,185,129,0.1);color:#10b981;border-radius:999px;font-size:10px;font-weight:600;letter-spacing:0.6px;text-transform:uppercase;">
+                        Early Access
+                      </span>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Hero -->
+            <tr>
+              <td class="px" style="padding:16px 32px 8px;">
+                <h1 class="h1" style="margin:0 0 12px;font-size:28px;font-weight:700;line-height:1.15;color:#111111;letter-spacing:-0.5px;">
+                  You're in.
+                </h1>
+                <p class="text-secondary" style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#555555;">
+                  You've been picked to test MyScrollr before public launch. Your
+                  <strong class="text-strong" style="color:#111111;font-weight:600;">Super User</strong>
+                  account is ready &mdash; setup takes about a minute.
+                </p>
+              </td>
+            </tr>
+
+            <!-- CTA -->
+            <tr>
+              <td align="center" style="padding:0 32px 28px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                  <tr><td style="background:#10b981;border-radius:8px;">
+                    <a href="%s" style="display:inline-block;padding:14px 32px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;letter-spacing:0.2px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                      Set up your account &rarr;
+                    </a>
+                  </td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Onboarding Steps -->
+            <tr>
+              <td class="px" style="padding:0 32px 24px;">
+                <table role="presentation" class="step-bg" width="100%%" cellspacing="0" cellpadding="0" border="0" style="background:#fafafa;border:1px solid #efefef;border-radius:10px;">
+                  <tr><td style="padding:18px 20px;">
+                    <p style="margin:0 0 12px;font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#999999;">
+                      What happens next
+                    </p>
+                    <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td valign="top" width="24" style="padding:4px 0;">
+                          <span class="step-num" style="display:inline-block;color:#10b981;font-weight:700;font-size:13px;">1.</span>
+                        </td>
+                        <td style="padding:4px 0;font-size:13.5px;color:#444444;line-height:1.55;">
+                          <strong class="text-strong" style="color:#111111;font-weight:600;">Pick a username</strong>
+                          &mdash; yours to keep, used as your public profile handle.
+                        </td>
+                      </tr>
+                      <tr>
+                        <td valign="top" width="24" style="padding:4px 0;">
+                          <span class="step-num" style="display:inline-block;color:#10b981;font-weight:700;font-size:13px;">2.</span>
+                        </td>
+                        <td style="padding:4px 0;font-size:13.5px;color:#444444;line-height:1.55;">
+                          <strong class="text-strong" style="color:#111111;font-weight:600;">Download the desktop app</strong>
+                          &mdash; macOS, Windows, or Linux. The link's on the welcome screen.
+                        </td>
+                      </tr>
+                      <tr>
+                        <td valign="top" width="24" style="padding:4px 0;">
+                          <span class="step-num" style="display:inline-block;color:#10b981;font-weight:700;font-size:13px;">3.</span>
+                        </td>
+                        <td style="padding:4px 0;font-size:13.5px;color:#444444;line-height:1.55;">
+                          <strong class="text-strong" style="color:#111111;font-weight:600;">Sign in once</strong>
+                          and start tracking markets, scores, news, and your fantasy teams from the always-on-top ticker.
+                        </td>
+                      </tr>
+                    </table>
+                  </td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Value prop -->
+            <tr>
+              <td class="px" style="padding:0 32px 28px;">
+                <p class="text-secondary" style="margin:0;font-size:13px;line-height:1.65;color:#666666;">
+                  <strong class="text-strong" style="color:#111111;font-weight:600;">Quick context:</strong>
+                  MyScrollr is an always-on-top desktop ticker that streams live financial markets, sports scores,
+                  RSS headlines, and your Yahoo Fantasy leagues &mdash; without browser-tab juggling. As a Super User
+                  you get every paid tier free during the testing period plus a direct line to the team. Reply to this
+                  email any time with feedback or bugs.
+                </p>
+              </td>
+            </tr>
+
+            <!-- Inner footer -->
+            <tr>
+              <td class="footer-bg px" style="padding:20px 32px;border-top:1px solid #e5e5e5;background:#fafafa;">
+                <p class="text-muted" style="margin:0 0 6px;font-size:11.5px;color:#888888;line-height:1.55;">
+                  This invite expires in 7 days. Need a fresh one? Reply &mdash; we'll send another.
+                </p>
+                <p class="text-muted" style="margin:0;font-size:11.5px;color:#888888;line-height:1.55;">
+                  Questions or feedback? Reply to this email or write to
+                  <a href="mailto:` + inviteSupportAddress + `" style="color:#10b981;text-decoration:none;font-weight:500;">` + inviteSupportAddress + `</a>.
+                </p>
+              </td>
+            </tr>
+
+          </table>
+        </td></tr>
+
+        <!-- Outer footer -->
+        <tr><td align="center" style="padding:16px 8px 0;">
+          <p class="text-muted" style="margin:0;font-size:11px;color:#aaaaaa;line-height:1.5;">
+            MyScrollr &middot; You received this because your email was added to the early access list.
+          </p>
+        </td></tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>`
+
+// inviteTextTemplate mirrors the HTML body for clients that strip
+// HTML or for users who view plain-text mode. One `%s` placeholder
+// for the invite URL.
+const inviteTextTemplate = `Welcome to MyScrollr Early Access
+
+You've been picked to test MyScrollr before public launch. Your
+Super User account is ready — setup takes about a minute.
+
+➜ Set up your account
+   %s
+
+WHAT HAPPENS NEXT
+─────────────────────────────────────────────
+1. Pick a username (yours to keep)
+2. Download the desktop app — macOS, Windows, or Linux
+3. Sign in once and start tracking what matters
+
+QUICK CONTEXT
+─────────────────────────────────────────────
+MyScrollr is an always-on-top desktop ticker that streams live
+financial markets, sports scores, RSS headlines, and your Yahoo
+Fantasy leagues — without browser-tab juggling. As a Super User
+you get every paid tier free during the testing period plus a
+direct line to the team. Reply with feedback any time.
+
+─────────────────────────────────────────────
+This invite expires in 7 days. Need a fresh one? Reply and we'll
+send another.
+
+Questions? Reply or write to ` + inviteSupportAddress + `.
+
+MyScrollr · You received this because your email was added to the
+early access list.
+`
+
+func sendInviteEmail(apiKey, from, toEmail, inviteURL string) error {
+	htmlBody := fmt.Sprintf(inviteHTMLTemplate, invitePreheader, inviteURL)
+	textBody := fmt.Sprintf(inviteTextTemplate, inviteURL)
 
 	payload := map[string]interface{}{
 		"from":    from,
 		"to":      []string{toEmail},
-		"subject": "You've been invited to MyScrollr",
+		"subject": inviteSubject,
 		"html":    htmlBody,
 		"text":    textBody,
 	}
