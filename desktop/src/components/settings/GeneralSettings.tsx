@@ -131,18 +131,33 @@ export default function GeneralSettings({
         return;
       }
 
-      // Same-version patch detection: if the remote version matches the
-      // installed version AND the pub_date matches what we stored after
-      // our last install, the user already has this exact build.
-      const storedDate = getStore<string | null>(KEY_LAST_UPDATE_DATE, null);
-      if (
-        update.version === appVersion &&
-        storedDate &&
-        update.date === storedDate
-      ) {
-        pendingUpdate.current = null;
-        setStatus({ step: "up-to-date" });
-        return;
+      // Same-version patch detection: when the remote version matches
+      // the installed version, we suppress the "update available" UI
+      // unless the remote pub_date has changed since we last recorded
+      // it. KEY_LAST_UPDATE_DATE is normally seeded by the
+      // post-downloadAndInstall reconcile loop above (lines 107-115).
+      // For users who installed via a manual download (Windows MSI in
+      // particular), that loop never runs, so the store stays empty
+      // and every check used to false-positive. The empty-store branch
+      // below seeds the date once on first check, then the existing
+      // match-suppression takes over on subsequent checks.
+      if (update.version === appVersion) {
+        const storedDate = getStore<string | null>(KEY_LAST_UPDATE_DATE, null);
+        if (storedDate === null) {
+          // First in-app check on a build the in-app updater never
+          // installed. Trust the remote pub_date and seed.
+          setStore(KEY_LAST_UPDATE_DATE, update.date);
+          pendingUpdate.current = null;
+          setStatus({ step: "up-to-date" });
+          return;
+        }
+        if (update.date === storedDate) {
+          pendingUpdate.current = null;
+          setStatus({ step: "up-to-date" });
+          return;
+        }
+        // Stored date differs from remote: a genuine same-version
+        // patched rebuild has shipped. Fall through to "available".
       }
 
       const isPatch = update.version === appVersion;
