@@ -2,38 +2,40 @@
  * Direct-download URL resolution for the Scrollr desktop app.
  *
  * Tauri-built asset filenames embed the version number, so a static URL
- * cannot be hardcoded. The Tauri auto-updater manifest at
- * `releases/latest/download/latest.json` has a STABLE filename that
- * GitHub redirects to the latest release, and the JSON contains the
- * current version string. We use that to construct a per-platform
- * download URL on demand.
+ * cannot be hardcoded into source. The version comes from
+ * `latestVersion.generated.ts`, written at build time by
+ * `scripts/fetch-latest-version.mjs` (which queries the GitHub API
+ * server-side, where there is no CORS or rate-limit issue).
  *
- * The fetch is memoized at module scope so multiple Download buttons
- * on the same page share a single network request. The Promise is
- * cached forever within the page lifetime; if the user keeps the tab
- * open across a release boundary they may briefly download the
- * previous version, which is acceptable.
+ * Why not fetch at runtime: the Tauri auto-updater manifest at
+ * `releases/latest/download/latest.json` redirects through GitHub to
+ * an Azure Blob URL that does NOT return any Access-Control-Allow-Origin
+ * header. The browser blocks JavaScript from reading the response,
+ * so a runtime fetch always rejects with a CORS error and the click
+ * fell through to the releases-page fallback. Build-time resolution
+ * is the simplest correct path.
  *
- * Errors fall through to the caller, which can fall back to opening
- * the GitHub releases page in a new tab.
+ * Browser navigation (`window.location.href = url`) is not subject to
+ * CORS — the browser follows the redirect chain, downloads the
+ * binary, and the user gets a save dialog. This is what we want.
+ *
+ * Trade-off: the marketing site needs to rebuild after each desktop
+ * release for the latest version to be served. The deploy workflow
+ * rebuilds on every push to main, so this happens within ~5 minutes
+ * of any commit (including the desktop version-bump commits themselves
+ * which touch tracked files). During the brief gap, downloads point
+ * at the still-existing previous release, which keeps working
+ * because we don't unlist old releases.
  */
 
+import { LATEST_DESKTOP_VERSION } from './latestVersion.generated'
+
 const REPO_URL = 'https://github.com/brandon-relentnet/myscrollr'
-const LATEST_JSON_URL = `${REPO_URL}/releases/latest/download/latest.json`
 export const FALLBACK_RELEASES_URL = `${REPO_URL}/releases/latest`
 
 export type DesktopPlatform = 'macos' | 'windows' | 'linux'
 export type LinuxFormat = 'appimage' | 'deb' | 'rpm'
 
-/**
- * Platform-specific asset filename patterns. The version placeholder is
- * filled with the value returned by `latest.json`.
- *
- * macOS ships only an Apple Silicon (aarch64) build today. Intel Mac
- * users get the same DMG with an in-page warning that it will not run.
- * Adding an x86_64 macOS target later means adding a second entry here
- * + extending the platform discriminator.
- */
 const MACOS_ASSET = (v: string) => `Scrollr_${v}_aarch64.dmg`
 const WINDOWS_ASSET = (v: string) => `Scrollr_${v}_x64-setup.exe`
 const LINUX_ASSET: Record<LinuxFormat, (version: string) => string> = {
@@ -53,101 +55,51 @@ export interface DownloadInfo {
   url: string
 }
 
-interface LatestManifest {
-  version: string
-}
-
-let cachedFetch: Promise<LatestManifest> | null = null
-
-function fetchLatestManifest(signal?: AbortSignal): Promise<LatestManifest> {
-  if (cachedFetch) return cachedFetch
-  cachedFetch = fetch(LATEST_JSON_URL, { signal })
-    .then(async (res) => {
-      if (!res.ok) {
-        throw new Error(
-          `latest.json fetch failed: ${res.status} ${res.statusText}`,
-        )
-      }
-      const data = (await res.json()) as Partial<LatestManifest>
-      if (typeof data.version !== 'string' || data.version.length === 0) {
-        throw new Error('latest.json missing version field')
-      }
-      return { version: data.version }
-    })
-    .catch((err) => {
-      // Reset the cache on failure so a retry attempt can re-fetch
-      // rather than serving the cached rejection forever.
-      cachedFetch = null
-      throw err
-    })
-  return cachedFetch
-}
-
 /**
- * Resolve the direct download URL for the given platform.
- *
- * @param platform   `'macos' | 'windows' | 'linux'`
- * @param linuxFormat For Linux only: `'appimage' | 'deb' | 'rpm'`. Ignored
- *                    for other platforms. Defaults to `'appimage'`.
- * @param signal     Optional AbortSignal for caller-side cancellation.
- *
- * @throws when the manifest fetch fails, the response is malformed, or
- *         the AbortSignal fires.
+ * Resolve the direct download URL for the given platform. Synchronous
+ * because the version is baked in at build time.
  */
-export async function getDownloadInfo(
+export function getDownloadInfo(
   platform: DesktopPlatform,
   linuxFormat: LinuxFormat = LINUX_DEFAULT,
-  signal?: AbortSignal,
-): Promise<DownloadInfo> {
-  const manifest = await fetchLatestManifest(signal)
+): DownloadInfo {
+  const version = LATEST_DESKTOP_VERSION
   let filename: string
   switch (platform) {
     case 'macos':
-      filename = MACOS_ASSET(manifest.version)
+      filename = MACOS_ASSET(version)
       break
     case 'windows':
-      filename = WINDOWS_ASSET(manifest.version)
+      filename = WINDOWS_ASSET(version)
       break
     case 'linux':
-      filename = LINUX_ASSET[linuxFormat](manifest.version)
+      filename = LINUX_ASSET[linuxFormat](version)
       break
   }
   return {
-    version: manifest.version,
+    version,
     filename,
-    url: `${REPO_URL}/releases/download/desktop-v${manifest.version}/${filename}`,
+    url: `${REPO_URL}/releases/download/desktop-v${version}/${filename}`,
   }
 }
 
 /**
- * Trigger a download for the given platform. Resolves once the
- * navigation has been initiated; rejects if the manifest fetch fails
- * (caller should fall back to opening the releases page).
- *
- * Implements a 3 second timeout per session policy: if the manifest
- * fetch hasn't completed in that window, we abort and let the caller
- * use the fallback URL instead. Browsers require the navigation to
- * happen synchronously inside the user-gesture handler, so the caller
- * is responsible for ensuring this function is invoked inside a click
- * event listener.
+ * Trigger a download for the given platform. Synchronous - the click
+ * handler immediately navigates the browser to the asset URL, which
+ * starts the download. Browsers require the navigation to happen
+ * inside the user-gesture handler, so this MUST be invoked directly
+ * from a click event listener.
  */
-export const DOWNLOAD_TIMEOUT_MS = 3000
-
-export async function triggerDownload(
+export function triggerDownload(
   platform: DesktopPlatform,
   linuxFormat: LinuxFormat = LINUX_DEFAULT,
-): Promise<DownloadInfo> {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS)
-  try {
-    const info = await getDownloadInfo(platform, linuxFormat, controller.signal)
-    // `window.location.href = url` triggers a same-tab navigation that
-    // the browser recognizes as a download because the URL serves a
-    // binary content-disposition. We avoid `window.open` so the user
-    // doesn't see a flash of a new tab they have to close.
-    window.location.href = info.url
-    return info
-  } finally {
-    clearTimeout(timer)
-  }
+): DownloadInfo {
+  const info = getDownloadInfo(platform, linuxFormat)
+  // `window.location.href = url` triggers a same-tab navigation that
+  // the browser recognizes as a download because the URL serves
+  // content with `Content-Disposition: attachment`. Using location
+  // assignment (rather than `window.open`) avoids a flash of a new
+  // tab the user has to close.
+  window.location.href = info.url
+  return info
 }

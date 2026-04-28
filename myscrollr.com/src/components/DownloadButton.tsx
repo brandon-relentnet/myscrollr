@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Apple, ChevronDown, Download, Loader2, Monitor } from 'lucide-react'
+import { Apple, ChevronDown, Download, Monitor } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import type { LinuxFormat } from '@/lib/getDownloadInfo'
-import type { PlatformInfo } from '@/lib/detectPlatform'
-import { detectIsIntelMac, detectPlatform } from '@/lib/detectPlatform'
-import { FALLBACK_RELEASES_URL, triggerDownload } from '@/lib/getDownloadInfo'
+import type {LinuxFormat} from '@/lib/getDownloadInfo';
+import type {PlatformInfo} from '@/lib/detectPlatform';
+import {
+  
+  detectIsIntelMac,
+  detectPlatform
+} from '@/lib/detectPlatform'
+import {
+  FALLBACK_RELEASES_URL,
+  
+  triggerDownload
+} from '@/lib/getDownloadInfo'
 
 const LINUX_FORMATS: ReadonlyArray<{
   format: LinuxFormat
@@ -20,14 +28,12 @@ const LINUX_FORMATS: ReadonlyArray<{
   { format: 'rpm', label: '.rpm', hint: 'Fedora / RHEL / openSUSE' },
 ] as const
 
-type ButtonState = 'idle' | 'loading'
-
 /**
  * Primary "Download Scrollr" CTA used in the Hero, How It Works, and
  * Call To Action sections. Replaces the previous static GitHub-releases
- * link with a click-to-download flow that resolves the latest version
- * via `latest.json` and points the browser straight at the right
- * Tauri-built asset.
+ * link with a click-to-download flow that uses a build-time-resolved
+ * version (see `lib/getDownloadInfo.ts` for the rationale) to point
+ * the browser straight at the right Tauri-built asset.
  *
  * Behavior breakdown:
  *
@@ -40,9 +46,10 @@ type ButtonState = 'idle' | 'loading'
  *   stacked card listing all three desktop platforms plus a "switch
  *   to desktop to install" subtitle.
  *
- * Network failures (manifest fetch timeout, GitHub down, malformed
- * response) fall back to opening the GitHub releases page in a new
- * tab so the user can still grab a build manually.
+ * Synchronous click semantics: because the version is baked in at
+ * build time, the click handler navigates directly to the asset URL
+ * inside the user-gesture event without any awaitable network call.
+ * No loading state, no timeout, no in-page fallback needed.
  */
 export function DownloadButton() {
   const [info, setInfo] = useState<PlatformInfo>(() => detectPlatform())
@@ -92,39 +99,22 @@ interface SingleDownloadButtonProps {
 }
 
 function SingleDownloadButton({ platform, label }: SingleDownloadButtonProps) {
-  const [state, setState] = useState<ButtonState>('idle')
-
-  const handleClick = useCallback(async () => {
-    if (state === 'loading') return
-    setState('loading')
-    try {
-      await triggerDownload(platform)
-    } catch {
-      // Manifest fetch failed (timeout / network / 404 / invalid JSON).
-      // Open the releases page in a new tab so the visitor can still get the build.
-      window.open(FALLBACK_RELEASES_URL, '_blank', 'noopener,noreferrer')
-    } finally {
-      setState('idle')
-    }
-  }, [platform, state])
+  const handleClick = useCallback(() => {
+    triggerDownload(platform)
+  }, [platform])
 
   return (
     <button
       type="button"
       onClick={handleClick}
-      disabled={state === 'loading'}
       aria-label={`Download Scrollr for ${label}`}
-      className="group relative inline-flex cursor-pointer items-center gap-3 rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-content! shadow-lg transition-all duration-200 hover:brightness-110 hover:shadow-xl active:scale-[0.98] disabled:cursor-wait disabled:opacity-90"
+      className="group relative inline-flex cursor-pointer items-center gap-3 rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-content! shadow-lg transition-all duration-200 hover:brightness-110 hover:shadow-xl active:scale-[0.98]"
     >
-      {state === 'loading' ? (
-        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-      ) : (
-        <Download
-          className="h-4 w-4 transition-transform duration-200 group-hover:-translate-y-0.5"
-          aria-hidden="true"
-        />
-      )}
-      {state === 'loading' ? 'Preparing\u2026' : `Download for ${label}`}
+      <Download
+        className="h-4 w-4 transition-transform duration-200 group-hover:-translate-y-0.5"
+        aria-hidden="true"
+      />
+      Download for {label}
     </button>
   )
 }
@@ -132,7 +122,6 @@ function SingleDownloadButton({ platform, label }: SingleDownloadButtonProps) {
 // ── Linux button + format dropdown ───────────────────────────────
 
 function LinuxDownloadButton() {
-  const [state, setState] = useState<ButtonState>('idle')
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -159,25 +148,14 @@ function LinuxDownloadButton() {
     }
   }, [open])
 
-  const handleSelect = useCallback(
-    async (format: LinuxFormat) => {
-      if (state === 'loading') return
-      setOpen(false)
-      setState('loading')
-      try {
-        await triggerDownload('linux', format)
-      } catch {
-        window.open(FALLBACK_RELEASES_URL, '_blank', 'noopener,noreferrer')
-      } finally {
-        setState('idle')
-      }
-    },
-    [state],
-  )
+  const handleSelect = useCallback((format: LinuxFormat) => {
+    setOpen(false)
+    triggerDownload('linux', format)
+  }, [])
 
   // Default click on the main button surface uses the AppImage variant.
   const handleDefaultClick = useCallback(() => {
-    void handleSelect('appimage')
+    handleSelect('appimage')
   }, [handleSelect])
 
   return (
@@ -186,28 +164,22 @@ function LinuxDownloadButton() {
         <button
           type="button"
           onClick={handleDefaultClick}
-          disabled={state === 'loading'}
           aria-label="Download Scrollr AppImage for Linux"
-          className="group inline-flex cursor-pointer items-center gap-3 rounded-l-full pl-7 pr-4 py-3.5 text-sm font-semibold transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:cursor-wait disabled:opacity-90"
+          className="group inline-flex cursor-pointer items-center gap-3 rounded-l-full pl-7 pr-4 py-3.5 text-sm font-semibold transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
         >
-          {state === 'loading' ? (
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <Download
-              className="h-4 w-4 transition-transform duration-200 group-hover:-translate-y-0.5"
-              aria-hidden="true"
-            />
-          )}
-          {state === 'loading' ? 'Preparing\u2026' : 'Download for Linux'}
+          <Download
+            className="h-4 w-4 transition-transform duration-200 group-hover:-translate-y-0.5"
+            aria-hidden="true"
+          />
+          Download for Linux
         </button>
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
-          disabled={state === 'loading'}
           aria-label="Choose Linux package format"
           aria-expanded={open}
           aria-haspopup="menu"
-          className="cursor-pointer rounded-r-full border-l border-primary-content/15 px-3 py-3.5 transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:cursor-wait disabled:opacity-90"
+          className="cursor-pointer rounded-r-full border-l border-primary-content/15 px-3 py-3.5 transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
         >
           <ChevronDown
             className={`h-4 w-4 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
@@ -231,7 +203,7 @@ function LinuxDownloadButton() {
                 key={format}
                 type="button"
                 role="menuitem"
-                onClick={() => void handleSelect(format)}
+                onClick={() => handleSelect(format)}
                 className="flex w-full cursor-pointer flex-col items-start gap-0.5 px-4 py-3 text-left transition-colors hover:bg-base-200"
               >
                 <span className="text-sm font-semibold text-base-content">
@@ -254,8 +226,8 @@ function IntelMacWarning() {
     <div className="flex max-w-md items-start gap-2 rounded-xl border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning">
       <span aria-hidden="true">⚠</span>
       <span>
-        Apple Silicon only. Scrollr does not run on Intel Macs yet — the
-        download will not launch on your machine.
+        Apple Silicon only. Scrollr does not run on Intel Macs yet. The download
+        will not launch on your machine.
       </span>
     </div>
   )

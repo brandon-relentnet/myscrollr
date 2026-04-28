@@ -14,7 +14,9 @@
   "bugs": "https://github.com/brandon-relentnet/myscrollr/issues",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/fetch-latest-version.mjs",
     "dev": "vite --port 3000",
+    "prebuild": "node scripts/fetch-latest-version.mjs",
     "build": "vite build && tsc",
     "serve": "vite preview",
     "lint": "eslint",

@@ -6,7 +6,6 @@ import {
   ChevronDown,
   Download,
   ExternalLink,
-  Loader2,
   Monitor,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
@@ -14,7 +13,7 @@ import type { LinuxFormat } from '@/lib/getDownloadInfo'
 import { usePageMeta } from '@/lib/usePageMeta'
 import { DownloadButton } from '@/components/DownloadButton'
 import { detectIsIntelMac, detectPlatform } from '@/lib/detectPlatform'
-import { FALLBACK_RELEASES_URL, triggerDownload } from '@/lib/getDownloadInfo'
+import { triggerDownload } from '@/lib/getDownloadInfo'
 
 export const Route = createFileRoute('/download')({
   component: DownloadPage,
@@ -244,10 +243,7 @@ interface PlatformCardProps {
   index: number
 }
 
-type CardState = 'idle' | 'loading'
-
 function PlatformCard({ platform, detected, index }: PlatformCardProps) {
-  const [state, setState] = useState<CardState>('idle')
   const [linuxOpen, setLinuxOpen] = useState(false)
   const [showIntelWarning, setShowIntelWarning] = useState(false)
 
@@ -264,19 +260,11 @@ function PlatformCard({ platform, detected, index }: PlatformCardProps) {
   }, [platform.id])
 
   const handleDownload = useCallback(
-    async (linuxFormat?: LinuxFormat) => {
-      if (state === 'loading') return
-      setState('loading')
+    (linuxFormat?: LinuxFormat) => {
       setLinuxOpen(false)
-      try {
-        await triggerDownload(platform.id, linuxFormat)
-      } catch {
-        window.open(FALLBACK_RELEASES_URL, '_blank', 'noopener,noreferrer')
-      } finally {
-        setState('idle')
-      }
+      triggerDownload(platform.id, linuxFormat)
     },
-    [platform.id, state],
+    [platform.id],
   )
 
   const isLinux = platform.id === 'linux'
@@ -344,25 +332,19 @@ function PlatformCard({ platform, detected, index }: PlatformCardProps) {
           <div className="flex">
             <button
               type="button"
-              onClick={() => void handleDownload('appimage')}
-              disabled={state === 'loading'}
-              className="flex flex-1 cursor-pointer items-center gap-2 rounded-l-lg bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/15 disabled:cursor-wait disabled:opacity-90"
+              onClick={() => handleDownload('appimage')}
+              className="flex flex-1 cursor-pointer items-center gap-2 rounded-l-lg bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/15"
             >
-              {state === 'loading' ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Download className="h-4 w-4" aria-hidden="true" />
-              )}
-              {state === 'loading' ? 'Preparing\u2026' : 'AppImage'}
+              <Download className="h-4 w-4" aria-hidden="true" />
+              AppImage
             </button>
             <button
               type="button"
               onClick={() => setLinuxOpen((o) => !o)}
-              disabled={state === 'loading'}
               aria-label="Choose Linux package format"
               aria-expanded={linuxOpen}
               aria-haspopup="menu"
-              className="cursor-pointer rounded-r-lg border-l border-primary/15 bg-primary/10 px-2.5 text-primary transition-colors hover:bg-primary/15 disabled:cursor-wait disabled:opacity-90"
+              className="cursor-pointer rounded-r-lg border-l border-primary/15 bg-primary/10 px-2.5 text-primary transition-colors hover:bg-primary/15"
             >
               <ChevronDown
                 className={`h-4 w-4 transition-transform ${linuxOpen ? 'rotate-180' : ''}`}
@@ -386,7 +368,7 @@ function PlatformCard({ platform, detected, index }: PlatformCardProps) {
                     key={format}
                     type="button"
                     role="menuitem"
-                    onClick={() => void handleDownload(format)}
+                    onClick={() => handleDownload(format)}
                     className="flex w-full cursor-pointer flex-col items-start gap-0.5 px-3 py-2.5 text-left transition-colors hover:bg-base-200"
                   >
                     <span className="text-sm font-semibold text-base-content">
@@ -402,18 +384,11 @@ function PlatformCard({ platform, detected, index }: PlatformCardProps) {
       ) : (
         <button
           type="button"
-          onClick={() => void handleDownload()}
-          disabled={state === 'loading'}
-          className="mt-4 flex cursor-pointer items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/15 disabled:cursor-wait disabled:opacity-90"
+          onClick={() => handleDownload()}
+          className="mt-4 flex cursor-pointer items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/15"
         >
-          {state === 'loading' ? (
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <Download className="h-4 w-4" aria-hidden="true" />
-          )}
-          {state === 'loading'
-            ? 'Preparing\u2026'
-            : `Download for ${platform.name}`}
+          <Download className="h-4 w-4" aria-hidden="true" />
+          Download for {platform.name}
         </button>
       )}
     </motion.div>
