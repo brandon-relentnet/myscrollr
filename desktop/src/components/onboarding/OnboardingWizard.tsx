@@ -255,9 +255,10 @@ export default function OnboardingWizard({ prefs, tier, onComplete }: Onboarding
       await provisionChannel(ch);
     }
 
-    // Build final prefs
+    // Build final prefs. Sidebar visibility is now derived from
+    // enabled state (channels via dashboard.channels, widgets via
+    // enabledWidgets) so we no longer write pinnedSources here.
     const widgetIds = [...selectedWidgets];
-    const pinnedIds = [...Array.from(selectedChannels), ...widgetIds];
 
     const nextPrefs: AppPreferences = {
       ...prefs,
@@ -267,7 +268,6 @@ export default function OnboardingWizard({ prefs, tier, onComplete }: Onboarding
         enabledWidgets: widgetIds,
         widgetsOnTicker: widgetIds,
       },
-      pinnedSources: pinnedIds,
     };
 
     queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });

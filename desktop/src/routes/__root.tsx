@@ -35,6 +35,7 @@ import OnboardingWizard from "../components/onboarding/OnboardingWizard";
 // Registries
 import { getAllChannels } from "../channels/registry";
 import { getAllWidgets, getWidget } from "../widgets/registry";
+import { CANONICAL_ORDER } from "../marketplace";
 
 // Data
 import { dashboardQueryOptions } from "../api/queries";
@@ -232,7 +233,7 @@ function RootLayout() {
 
   // ── Extracted hooks ─────────────────────────────────────────
 
-  const channelActions = useChannelActions(prefs, setPrefs);
+  const channelActions = useChannelActions();
   const widgetActions = useWidgetActions(prefs, setPrefs, route.activeItem);
 
   // Shell-level weather polling — keeps data fresh regardless of which page is visible.
@@ -373,22 +374,44 @@ function RootLayout() {
     [navigate],
   );
 
-  // Resolve pinned source IDs to manifest data for the sidebar
-  const resolvedPinnedSources = useMemo(() => {
-    return prefs.pinnedSources
-      .map((id) => {
-        const chManifest = allChannelManifests.find((m) => m.id === id);
-        if (chManifest) {
-          return { id, name: chManifest.name, hex: chManifest.hex, icon: chManifest.icon, kind: "channel" as const };
+  // Build the sidebar source list from the user's enabled channels and
+  // widgets. Channels come from the live `dashboard.channels` payload
+  // (filtered to `enabled === true`); widgets come from
+  // `prefs.widgets.enabledWidgets`. Both are sorted via the shared
+  // CANONICAL_ORDER so the sidebar matches the catalog grid order.
+  // `Channel.visible` is intentionally NOT consulted here — visibility
+  // is a feed-level filter, not a navigation gate.
+  const sidebarSources = useMemo(() => {
+    const enabledChannelIds = new Set<string>(
+      (dashboard?.channels ?? [])
+        .filter((c) => c.enabled === true)
+        .map((c) => c.channel_type),
+    );
+    const enabledWidgetIds = new Set(prefs.widgets.enabledWidgets);
+
+    const sources: Array<{
+      id: string;
+      name: string;
+      hex: string;
+      icon: React.ComponentType<{ size?: number; className?: string }>;
+      kind: "channel" | "widget";
+    }> = [];
+
+    for (const id of CANONICAL_ORDER) {
+      if (enabledChannelIds.has(id)) {
+        const m = allChannelManifests.find((m) => m.id === id);
+        if (m) {
+          sources.push({ id, name: m.name, hex: m.hex, icon: m.icon, kind: "channel" });
         }
-        const wManifest = allWidgets.find((w) => w.id === id);
-        if (wManifest) {
-          return { id, name: wManifest.name, hex: wManifest.hex, icon: wManifest.icon, kind: "widget" as const };
+      } else if (enabledWidgetIds.has(id)) {
+        const m = allWidgets.find((w) => w.id === id);
+        if (m) {
+          sources.push({ id, name: m.name, hex: m.hex, icon: m.icon, kind: "widget" });
         }
-        return null;
-      })
-      .filter(Boolean) as Array<{ id: string; name: string; hex: string; icon: React.ComponentType<{ size?: number; className?: string }>; kind: "channel" | "widget" }>;
-  }, [prefs.pinnedSources, allChannelManifests, allWidgets]);
+      }
+    }
+    return sources;
+  }, [dashboard?.channels, prefs.widgets.enabledWidgets, allChannelManifests, allWidgets]);
 
   // ── Keyboard shortcuts ──────────────────────────────────────
   useEffect(() => {
@@ -545,7 +568,7 @@ function RootLayout() {
               isMarketplace={route.isMarketplace}
               isSupport={route.isSupport}
               activeItem={route.activeItem}
-              pinnedSources={resolvedPinnedSources}
+              sources={sidebarSources}
               deliveryMode={deliveryMode}
               tickerAlive={prefs.ticker.showTicker}
               onNavigateToFeed={handleNavigateToFeed}

@@ -3,8 +3,13 @@
 import type { ComponentType } from "react";
 import type { SourceInfo } from "./types";
 import type { SubscriptionTier } from "./auth";
-import { getAllChannels } from "./channels/registry";
-import { getAllWidgets } from "./widgets/registry";
+import { getAllChannels, CHANNEL_ORDER } from "./channels/registry";
+import { getAllWidgets, WIDGET_ORDER } from "./widgets/registry";
+
+/** Canonical sort order for catalog items, sidebar entries, and any
+ * other UI that lists channels and widgets together. Channels first,
+ * then widgets, both in their per-registry-defined order. */
+export const CANONICAL_ORDER = [...CHANNEL_ORDER, ...WIDGET_ORDER];
 
 // ── Types ───────────────────────────────────────────────────────
 

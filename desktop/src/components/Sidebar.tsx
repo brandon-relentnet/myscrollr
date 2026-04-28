@@ -70,7 +70,7 @@ function ScrollLogo({ alive }: { alive: boolean }) {
 
 // ── Props ───────────────────────────────────────────────────────
 
-interface PinnedSource {
+interface SidebarSource {
   id: string;
   name: string;
   hex: string;
@@ -90,8 +90,8 @@ interface SidebarProps {
   /** Currently active channel or widget ID (for pinned item highlighting). */
   activeItem: string;
 
-  /** Resolved pinned sources with manifest data. */
-  pinnedSources: PinnedSource[];
+  /** Resolved enabled-source manifest data, in canonical order. */
+  sources: SidebarSource[];
 
   /** Current data delivery mode for status footer. */
   deliveryMode: DeliveryMode;
@@ -118,7 +118,7 @@ export default function Sidebar({
   isMarketplace,
   isSupport,
   activeItem,
-  pinnedSources,
+  sources,
   deliveryMode,
   tickerAlive,
   onNavigateToFeed,
@@ -190,10 +190,10 @@ export default function Sidebar({
           onClick={onNavigateToMarketplace}
         />
 
-        {/* Pinned sources */}
-        {pinnedSources.length > 0 && (
+        {/* Enabled channels + widgets */}
+        {sources.length > 0 && (
           <div className="mt-2 pt-2 border-t border-edge/20 space-y-0.5">
-            {pinnedSources.map((source) => (
+            {sources.map((source) => (
               <NavItem
                 key={source.id}
                 icon={<span style={{ color: source.hex }}><source.icon size={15} /></span>}

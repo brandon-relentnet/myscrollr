@@ -5,14 +5,12 @@ import { LayoutGrid } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
 
-import { getCatalogItems, CATEGORY_LABELS } from "../marketplace";
+import { getCatalogItems, CATEGORY_LABELS, CANONICAL_ORDER } from "../marketplace";
 import type { CatalogCategory, CatalogItem } from "../marketplace";
 import { channelsApi } from "../api/client";
 import type { ChannelType } from "../api/client";
 import { dashboardQueryOptions, queryKeys } from "../api/queries";
 import { useShell, useShellData } from "../shell-context";
-import { CHANNEL_ORDER } from "../channels/registry";
-import { WIDGET_ORDER } from "../widgets/registry";
 import CatalogCard from "../components/marketplace/CatalogCard";
 import QueryErrorBanner from "../components/QueryErrorBanner";
 import RouteError from "../components/RouteError";
@@ -33,8 +31,8 @@ const FILTER_TABS: { key: FilterTab; label: string }[] = [
 ];
 
 // ── Sort order: enabled first, then canonical order ─────────────
-
-const CANONICAL_ORDER = [...CHANNEL_ORDER, ...WIDGET_ORDER];
+// (CANONICAL_ORDER is exported from marketplace.ts; we import it
+//  alongside the other catalog primitives below.)
 
 function sortItems(items: CatalogItem[], enabledIds: Set<string>): CatalogItem[] {
   return [...items].sort((a, b) => {
@@ -85,14 +83,9 @@ function CatalogPage() {
 
   const handleAdd = useCallback(
     async (item: CatalogItem) => {
-      const nextPinned = prefs.pinnedSources.includes(item.id)
-        ? prefs.pinnedSources
-        : [...prefs.pinnedSources, item.id];
-
       if (item.kind === "channel") {
         await channelsApi.create(item.id as ChannelType);
         await queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
-        onPrefsChange({ ...prefs, pinnedSources: nextPinned });
         toast.success(`${item.name} added`);
         navigate({ to: "/channel/$type/$tab", params: { type: item.id, tab: "feed" } });
       } else {
@@ -100,7 +93,6 @@ function CatalogPage() {
         const nextOnTicker = [...prefs.widgets.widgetsOnTicker, item.id];
         onPrefsChange({
           ...prefs,
-          pinnedSources: nextPinned,
           widgets: { ...prefs.widgets, enabledWidgets: nextEnabled, widgetsOnTicker: nextOnTicker },
         });
         toast.success(`${item.name} added`);
@@ -110,30 +102,13 @@ function CatalogPage() {
     [navigate, queryClient, prefs, onPrefsChange],
   );
 
-  // ── Pin toggle ──────────────────────────────────────────────
-
-  const handleTogglePin = useCallback(
-    (item: CatalogItem) => {
-      const pinned = prefs.pinnedSources.includes(item.id);
-      const nextPinned = pinned
-        ? prefs.pinnedSources.filter((id) => id !== item.id)
-        : [...prefs.pinnedSources, item.id];
-      onPrefsChange({ ...prefs, pinnedSources: nextPinned });
-    },
-    [prefs, onPrefsChange],
-  );
-
   // ── Remove handler ──────────────────────────────────────────
 
   const handleRemove = useCallback(
     async (item: CatalogItem) => {
-      const nextPinned = prefs.pinnedSources.filter((id) => id !== item.id);
       if (item.kind === "channel") {
         await channelsApi.delete(item.id as ChannelType);
         await queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
-        if (nextPinned.length !== prefs.pinnedSources.length) {
-          onPrefsChange({ ...prefs, pinnedSources: nextPinned });
-        }
         toast.success(`${item.name} removed`);
       } else {
         const nextEnabled = prefs.widgets.enabledWidgets.filter((id) => id !== item.id);
@@ -141,7 +116,6 @@ function CatalogPage() {
         onPrefsChange({
           ...prefs,
           widgets: { ...prefs.widgets, enabledWidgets: nextEnabled, widgetsOnTicker: nextOnTicker },
-          pinnedSources: nextPinned,
         });
         toast.success(`${item.name} removed`);
       }
@@ -195,14 +169,12 @@ function CatalogPage() {
             key={item.id}
             item={item}
             enabled={allEnabledIds.has(item.id)}
-            pinned={prefs.pinnedSources.includes(item.id)}
             tier={tier}
             authenticated={authenticated}
             dashboardLoading={isLoading}
             onAdd={handleAdd}
             onRemove={handleRemove}
             onLogin={onLogin}
-            onTogglePin={handleTogglePin}
             onOpen={(it) => {
               if (it.kind === "channel") {
                 navigate({ to: "/channel/$type/$tab", params: { type: it.id, tab: "feed" } });
