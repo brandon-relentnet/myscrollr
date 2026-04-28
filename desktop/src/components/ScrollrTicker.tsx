@@ -24,6 +24,7 @@ import { selectRssForTicker } from "../channels/rss/view";
 import { selectFinanceForTicker } from "../channels/finance/view";
 import { selectFantasyForTicker } from "../channels/fantasy/view";
 import { selectSportsForTicker, getSportsDisplayConfig } from "../channels/sports/view";
+import { buildYahooLeagueUrl, buildYahooPlayerUrl, chipUrlForFinance, chipUrlForSports, chipUrlForRss } from "../utils/chipUrl";
 
 // ── Module-level constants ───────────────────────────────────────
 
@@ -37,7 +38,11 @@ interface ScrollrTickerProps {
   activeTabs: string[];
   /** Pre-built widget chip data (clock, weather, sysmon). */
   widgetData?: WidgetTickerData;
-  onChipClick?: (channelType: string, itemId: string | number) => void;
+  /** Click handler. The optional `url` argument is set when the
+   * underlying chip has an external destination (article link, game
+   * page, etc.). When undefined, the consumer should fall back to
+   * opening the in-app channel page. */
+  onChipClick?: (channelType: string, itemId: string | number, url?: string) => void;
   /** Toggle pin state for a widget (hover pin icon). */
   onTogglePin?: (widgetId: string) => void;
   /** Which widgets are pinned (excluded from scrolling ticker). */
@@ -165,6 +170,9 @@ export default function ScrollrTicker({
                 comfort={comfort}
                 colorMode={chipColorMode}
                 onTogglePin={onTogglePin ? () => onTogglePin(wt) : undefined}
+                // Widget chips don't have a meaningful external URL —
+                // omit the third argument so handleChipClick falls back
+                // to opening the desktop app on the widget's page.
                 onClick={() => onChipClick?.(wt, wt)}
               />
             )
@@ -203,7 +211,7 @@ export default function ScrollrTicker({
                 leagues={leagues}
                 comfort={comfort}
                 colorMode={chipColorMode}
-                onClick={() => onChipClick?.("fantasy", playerKey)}
+                onClick={() => onChipClick?.("fantasy", playerKey, buildYahooPlayerUrl(playerKey))}
               />
             )
           );
@@ -218,7 +226,7 @@ export default function ScrollrTicker({
                 prefs={fantasyPrefs}
                 comfort={comfort}
                 colorMode={chipColorMode}
-                onClick={() => onChipClick?.("fantasy", league.league_key)}
+                onClick={() => onChipClick?.("fantasy", league.league_key, buildYahooLeagueUrl(league.league_key))}
               />
             )
           );
@@ -249,7 +257,7 @@ export default function ScrollrTicker({
                   comfort={comfort}
                   colorMode={chipColorMode}
                   showChange={shouldShowOnTicker(financePrefs.showChange)}
-                  onClick={() => onChipClick?.("finance", trade.symbol)}
+                  onClick={() => onChipClick?.("finance", trade.symbol, chipUrlForFinance(trade))}
                 />
               )
             );
@@ -272,7 +280,7 @@ export default function ScrollrTicker({
                   comfort={comfort}
                   colorMode={chipColorMode}
                   showLogos={showLogos}
-                  onClick={() => onChipClick?.("sports", game.id)}
+                  onClick={() => onChipClick?.("sports", game.id, chipUrlForSports(game))}
                 />
               )
             );
@@ -297,7 +305,7 @@ export default function ScrollrTicker({
                   colorMode={chipColorMode}
                   showSource={shouldShowOnTicker(rssPrefs.showSource)}
                   showTimestamps={shouldShowOnTicker(rssPrefs.showTimestamps)}
-                  onClick={() => onChipClick?.("rss", item.id)}
+                  onClick={() => onChipClick?.("rss", item.id, chipUrlForRss(item))}
                 />
               )
             );
@@ -450,6 +458,9 @@ export default function ScrollrTicker({
             colorMode={chipColorMode}
             pinned
             onTogglePin={onTogglePin ? () => onTogglePin(wt) : undefined}
+            // Widget chips don't have a meaningful external URL —
+            // omit the third argument so handleChipClick falls back
+            // to opening the desktop app on the widget's page.
             onClick={() => onChipClick?.(wt, wt)}
           />
         );

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-shell";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTauriListener } from "./hooks/useTauriListener";
 import { useDashboardCDC } from "./hooks/useDashboardCDC";
@@ -341,10 +342,18 @@ export default function App() {
     }
   }, [prefs.ticker.showTicker]);
 
-  // ── Chip click → open app window on that channel ───────────────
+  // ── Chip click → open external URL (or fall back to app) ───────
 
   const handleChipClick = useCallback(
-    (channelType: string, _itemId: string | number) => {
+    (channelType: string, _itemId: string | number, url?: string) => {
+      if (url) {
+        open(url).catch((err) => {
+          console.error("[Scrollr] Failed to open external URL:", err);
+        });
+        return;
+      }
+      // No URL (widget chip, missing data) — fall back to opening
+      // the desktop app on the relevant channel/widget page.
       savePref("activeItem", channelType);
       invoke("show_app_window").catch(() => {});
     },
