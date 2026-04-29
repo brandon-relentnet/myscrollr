@@ -1,15 +1,22 @@
 import { useState, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-shell";
+import { toast } from "sonner";
+import { Check, KeyRound, Loader2 } from "lucide-react";
 import { TIER_LABELS, getUserIdentity } from "../../auth";
-import { authFetch } from "../../api/client";
-import { userOverviewQueryOptions } from "../../api/queries";
+import {
+  authFetch,
+  requestPasswordReset,
+  updateProfile,
+} from "../../api/client";
+import { queryKeys, userOverviewQueryOptions } from "../../api/queries";
 import { TIER_LIMITS, isUnlimited, type NumericLimitKey } from "../../tierLimits";
 import type { SubscriptionTier } from "../../auth";
 import type { SubscriptionInfo } from "../../api/client";
 import { Section, DisplayRow, ActionRow } from "./SettingsControls";
 import AccountStatsRow from "./AccountStatsRow";
 import AccountExportButton from "./AccountExportButton";
+import ProfileField from "./ProfileField";
 
 // ── Types ───────────────────────────────────────────────────────
 
@@ -66,8 +73,12 @@ export default function AccountSettings({
 }: AccountSettingsProps) {
   const [openingPortal, setOpeningPortal] = useState(false);
   const [portalError, setPortalError] = useState<string | null>(null);
+  const [resetState, setResetState] = useState<
+    "idle" | "sending" | "sent"
+  >("idle");
   const identity = authenticated ? getUserIdentity() : null;
   const userLabel = identity?.email ?? identity?.name ?? null;
+  const queryClient = useQueryClient();
 
   // Aggregated overview: channels count, fantasy summary, GDPR state.
   // Only fires when authenticated; query is cheap (cached server-side, 30s stale).
@@ -75,6 +86,34 @@ export default function AccountSettings({
     ...userOverviewQueryOptions(),
     enabled: authenticated,
   });
+
+  const handleProfileSave = useCallback(
+    async (payload: { name?: string; email?: string }, label: string) => {
+      await updateProfile(payload);
+      // Force a refetch so the new value lands in the UI immediately
+      // — the server-side overview cache was already invalidated by
+      // the handler, so this hits a fresh read.
+      await queryClient.invalidateQueries({ queryKey: queryKeys.userOverview });
+      toast.success(`${label} updated`);
+    },
+    [queryClient],
+  );
+
+  const handleSendReset = useCallback(async () => {
+    try {
+      setResetState("sending");
+      await requestPasswordReset();
+      setResetState("sent");
+      toast.success("Password reset email sent");
+    } catch (err) {
+      setResetState("idle");
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Failed to send password reset email",
+      );
+    }
+  }, []);
 
   const handleOpenPortal = useCallback(async () => {
     try {
@@ -145,6 +184,67 @@ export default function AccountSettings({
           />
         )}
       </Section>
+
+      {/* ── Profile (inline edit) ────────────────────────────── */}
+      {authenticated && (
+        <Section title="Profile">
+          <ProfileField
+            label="Display name"
+            value={overview?.identity.name ?? ""}
+            placeholder="Add a display name"
+            onSave={(next) =>
+              handleProfileSave({ name: next }, "Display name")
+            }
+          />
+          <ProfileField
+            label="Email"
+            type="email"
+            value={overview?.identity.email ?? ""}
+            placeholder="you@example.com"
+            onSave={(next) => handleProfileSave({ email: next }, "Email")}
+          />
+          <DisplayRow
+            label="Username"
+            value={overview?.identity.username || "—"}
+            valueClass="text-xs text-fg-3 font-mono truncate max-w-[180px]"
+          />
+        </Section>
+      )}
+
+      {/* ── Security ─────────────────────────────────────────── */}
+      {authenticated && (
+        <Section title="Security">
+          <div className="px-3 py-2.5 flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="text-[12px] text-fg-2 leading-tight">
+                Password
+              </div>
+              <div className="text-[11px] text-fg-4 leading-snug mt-0.5">
+                We&apos;ll email you a reset link.
+              </div>
+            </div>
+            <button
+              onClick={handleSendReset}
+              disabled={resetState !== "idle"}
+              className="shrink-0 flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-md bg-base-250 text-fg-3 hover:text-fg-2 hover:bg-base-300 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            >
+              {resetState === "sending" ? (
+                <>
+                  <Loader2 size={11} className="animate-spin" /> Sending…
+                </>
+              ) : resetState === "sent" ? (
+                <>
+                  <Check size={11} /> Email sent
+                </>
+              ) : (
+                <>
+                  <KeyRound size={11} /> Send reset email
+                </>
+              )}
+            </button>
+          </div>
+        </Section>
+      )}
 
       {/* ── Quick stats ──────────────────────────────────────── */}
       {authenticated && overview && (
