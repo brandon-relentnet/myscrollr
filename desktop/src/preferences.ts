@@ -1105,4 +1105,159 @@ export function updateWidgetPrefs(
   };
 }
 
+// ── Unified ticker row selector helpers ─────────────────────────
+//
+// Stream 3 of Batch D collapses three duplicate ticker visibility
+// surfaces (tray Channels submenu, feed page Eye/EyeOff button,
+// Settings source picker) into a single mental model:
+//
+//     "Where should this source appear?  Off / Row 1 / Row 2 / Row 3"
+//
+// The new RowSelector UI calls these helpers. They keep BOTH data
+// layers in sync:
+//   - `tickerLayout.rows[i].sources[]` (client-side prefs) — controls
+//     per-row inclusion. Source of truth for which row a source
+//     appears on.
+//   - `Channel.ticker_enabled` (server-side) — controls the master
+//     gate via App.tsx's filter on `ch.enabled && isChannelTickerEnabled`.
+//     Set to true when row != null, false when row == null. Callers
+//     issue `channelsApi.update` separately; these helpers only mutate
+//     the client-side AppPreferences.
+//
+// Widgets only have the client-side layer (no server-side ticker_enabled),
+// so `setWidgetTickerRow` is just an alias to the source-id-based helper.
+// See docs/superpowers/specs/2026-04-28-batch-d-…-design.md §Stream 3.
+
+/** Minimal shape of a Channel record used by `getChannelTickerRow`. */
+interface ChannelTickerInfo {
+  channel_type: string;
+  ticker_enabled?: boolean;
+  /** @deprecated server-side legacy alias for ticker_enabled. */
+  visible?: boolean;
+}
+
+/**
+ * Read the row index where this source currently appears, or null if off.
+ *
+ * Resolution order:
+ *   1. If `sourceId` appears in any `tickerLayout.rows[i].sources[]`,
+ *      return that row index `i`.
+ *   2. Else, if `channelInfo` is provided and its `ticker_enabled` flag
+ *      is true (legacy default), return 0.
+ *   3. Else return null (off).
+ *
+ * `channelInfo` is optional because widgets don't have a server-side
+ * ticker_enabled flag — pass `null` for widget IDs.
+ */
+export function getSourceTickerRow(
+  prefs: AppPreferences,
+  channelInfo: ChannelTickerInfo | null,
+  sourceId: string,
+): number | null {
+  // Step 1: explicit assignment in tickerLayout
+  const rows = prefs.appearance.tickerLayout?.rows ?? [];
+  for (let i = 0; i < rows.length; i++) {
+    if ((rows[i]?.sources ?? []).includes(sourceId)) {
+      return i;
+    }
+  }
+
+  // Step 2: legacy fallback via Channel.ticker_enabled (channels only)
+  if (!channelInfo) return null;
+  const tickerEnabled =
+    typeof channelInfo.ticker_enabled === "boolean"
+      ? channelInfo.ticker_enabled
+      : typeof channelInfo.visible === "boolean"
+        ? channelInfo.visible
+        : true;
+  return tickerEnabled ? 0 : null;
+}
+
+/**
+ * Convenience wrapper around `getSourceTickerRow` for channels — accepts
+ * a Channel-like object (with `channel_type` + `ticker_enabled`).
+ */
+export function getChannelTickerRow(
+  prefs: AppPreferences,
+  channel: ChannelTickerInfo,
+): number | null {
+  return getSourceTickerRow(prefs, channel, channel.channel_type);
+}
+
+/**
+ * Convenience wrapper around `getSourceTickerRow` for widgets — widgets
+ * only check the client-side `tickerLayout.rows[i].sources[]` layer.
+ */
+export function getWidgetTickerRow(
+  prefs: AppPreferences,
+  widgetId: string,
+): number | null {
+  return getSourceTickerRow(prefs, null, widgetId);
+}
+
+/**
+ * Move a source to the given row, removing it from any other row first.
+ *
+ * - `row = null` removes the source from every row (off).
+ * - `row = 0..(rows.length-1)` puts the source in that row exclusively.
+ * - Out-of-bounds row returns `prefs` unchanged (caller must ensure the
+ *   row exists per tier limits).
+ *
+ * Pure: returns a new AppPreferences. Does NOT issue any API calls;
+ * channel-level callers must additionally invoke `channelsApi.update`
+ * to flip `ticker_enabled` server-side (true if row !== null).
+ *
+ * `tickerRows` is kept in sync via `setTickerLayout`.
+ */
+export function setSourceTickerRow(
+  prefs: AppPreferences,
+  sourceId: string,
+  row: number | null,
+): AppPreferences {
+  const rows = prefs.appearance.tickerLayout?.rows ?? [];
+
+  if (row !== null && (row < 0 || row >= rows.length)) {
+    return prefs;
+  }
+
+  // Remove sourceId from every row's sources array
+  const cleanedRows: TickerRowConfig[] = rows.map((r) => ({
+    ...r,
+    sources: (r.sources ?? []).filter((s) => s !== sourceId),
+  }));
+
+  if (row !== null) {
+    cleanedRows[row] = {
+      ...cleanedRows[row],
+      sources: [...cleanedRows[row].sources, sourceId],
+    };
+  }
+
+  return setTickerLayout(prefs, { rows: cleanedRows });
+}
+
+/**
+ * Move a channel to the given row. See `setSourceTickerRow`. Caller is
+ * responsible for the matching `channelsApi.update({ ticker_enabled })`
+ * call to keep the server-side flag in sync.
+ */
+export function setChannelTickerRow(
+  prefs: AppPreferences,
+  channelType: string,
+  row: number | null,
+): AppPreferences {
+  return setSourceTickerRow(prefs, channelType, row);
+}
+
+/**
+ * Move a widget to the given row. Widgets have no server-side
+ * ticker_enabled — only the client-side layer is touched.
+ */
+export function setWidgetTickerRow(
+  prefs: AppPreferences,
+  widgetId: string,
+  row: number | null,
+): AppPreferences {
+  return setSourceTickerRow(prefs, widgetId, row);
+}
 

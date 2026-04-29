@@ -27,9 +27,13 @@ import {
   savePrefs,
   TICKER_GAPS,
   TICKER_HEIGHTS,
-  toggleWidgetOnTicker,
   toggleWidgetPin,
+  setChannelTickerRow,
+  setWidgetTickerRow,
+  getChannelTickerRow,
+  getWidgetTickerRow,
 } from "./preferences";
+import { getMaxTickerRows } from "./tierLimits";
 import type { SubscriptionTier } from "./auth";
 import type { ChannelType } from "./api/client";
 import type { DeliveryMode } from "./types";
@@ -366,30 +370,39 @@ export default function App() {
 
   // ── Channel quick-toggle (for context menu) ────────────────────
 
-  const handleChannelToggle = useCallback(
-    async (channelType: ChannelType, visible: boolean) => {
+  // ── Unified row-selector handlers (for tray submenus) ──────────
+  // Both feed.tsx and the tray menu now use the same mental model
+  // ("Where should this source live? Off / Row 1 / 2 / 3"), so these
+  // handlers mirror the row-change logic in routes/feed.tsx exactly.
+  // See preferences.ts §"Unified ticker row selector helpers".
+
+  const handleChannelRowChange = useCallback(
+    async (channelType: ChannelType, row: number | null) => {
+      // 1) Client-side: assign / unassign in tickerLayout. Optimistic update
+      //    so the next tray menu rebuild reflects the change immediately.
+      setPrefs((prev) => {
+        const updated = setChannelTickerRow(prev, channelType, row);
+        savePrefs(updated);
+        return updated;
+      });
+      // 2) Server-side: flip Channel.ticker_enabled (true if row is set).
       try {
-        await toggleChannelVisibility(channelType, visible);
+        await toggleChannelVisibility(channelType, row !== null);
         queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
       } catch {
-        // Silently fail — will sync on next poll
+        // Silently fail — will sync on next dashboard poll/CDC event.
       }
     },
     [queryClient],
   );
 
-  // ── Widget quick-toggle (for context menu) ─────────────────────
-
-  const handleWidgetToggle = useCallback(
-    (widgetId: string) => {
-      setPrefs((prev) => {
-        const updated = toggleWidgetOnTicker(prev, widgetId);
-        savePrefs(updated);
-        return updated;
-      });
-    },
-    [],
-  );
+  const handleWidgetRowChange = useCallback((widgetId: string, row: number | null) => {
+    setPrefs((prev) => {
+      const updated = setWidgetTickerRow(prev, widgetId, row);
+      savePrefs(updated);
+      return updated;
+    });
+  }, []);
 
   // ── Widget pin toggle (hover icon on consolidated chip) ─────────
 
@@ -476,53 +489,100 @@ export default function App() {
 
       items.push(await PredefinedMenuItem.new({ item: "Separator" }));
 
+      // Per-source row picker — same mental model as the feed page
+      // RowSelector. Each channel/widget gets its own submenu with
+      // [Off, Row 1, Row 2, …] CheckMenuItems where exactly one is
+      // checked at any time. The maxRows entries reflect the user's
+      // tier (Free=1, Uplink=2, Pro/Ultimate=3).
+      const maxRows = getMaxTickerRows(tierRef.current);
+
+      // Build one submenu of row CheckMenuItems for a source. The "Off"
+      // entry is always present; row entries 1..maxRows follow.
+      async function buildRowSubmenuItems(
+        currentRow: number | null,
+        onPick: (row: number | null) => void,
+        disabled: boolean,
+      ): Promise<CheckMenuItem[]> {
+        const rowItems: CheckMenuItem[] = [];
+        rowItems.push(
+          await CheckMenuItem.new({
+            text: "Off",
+            checked: currentRow === null,
+            enabled: !disabled,
+            action: () => onPick(null),
+          }),
+        );
+        if (maxRows === 1) {
+          rowItems.push(
+            await CheckMenuItem.new({
+              text: "On",
+              checked: currentRow === 0,
+              enabled: !disabled,
+              action: () => onPick(0),
+            }),
+          );
+        } else {
+          for (let i = 0; i < maxRows; i++) {
+            rowItems.push(
+              await CheckMenuItem.new({
+                text: `Row ${i + 1}`,
+                checked: currentRow === i,
+                enabled: !disabled,
+                action: () => onPick(i),
+              }),
+            );
+          }
+        }
+        return rowItems;
+      }
+
       // Channels submenu (only when authenticated with channels)
       if (chs.length > 0) {
-        const channelItems: CheckMenuItem[] = [];
+        const channelSubmenus: Submenu[] = [];
         for (const ch of chs) {
           const channelType = ch.channel_type;
-          const isVisible = ch.enabled && isChannelTickerEnabled(ch);
           const label =
             channelType.charAt(0).toUpperCase() + channelType.slice(1);
-          channelItems.push(
-            await CheckMenuItem.new({
-              text: label,
-              checked: isVisible,
-              action: () => {
-                // Optimistic update — flip the ref immediately so the next
-                // menu build reflects the change without waiting for the API
-                const target = channelsRef.current.find(
-                  (c) => c.channel_type === channelType,
-                );
-                if (target) target.ticker_enabled = !isVisible;
-                handleChannelToggle(channelType, !isVisible);
-              },
-            }),
+          const currentRow = getChannelTickerRow(prefsRef.current, ch);
+          const rowItems = await buildRowSubmenuItems(
+            currentRow,
+            (row) => {
+              // Optimistic update — flip the ref immediately so the next
+              // menu build reflects the change without waiting for the API.
+              const target = channelsRef.current.find(
+                (c) => c.channel_type === channelType,
+              );
+              if (target) target.ticker_enabled = row !== null;
+              handleChannelRowChange(channelType, row);
+            },
+            !ch.enabled,
+          );
+          channelSubmenus.push(
+            await Submenu.new({ text: label, items: rowItems }),
           );
         }
         items.push(
-          await Submenu.new({ text: "Channels", items: channelItems }),
+          await Submenu.new({ text: "Channels", items: channelSubmenus }),
         );
       }
 
-      // Widgets submenu
+      // Widgets submenu — same row-picker pattern.
       const allWidgets = getAllWidgets();
       if (allWidgets.length > 0) {
-        const widgetItems: CheckMenuItem[] = [];
+        const widgetSubmenus: Submenu[] = [];
         for (const widget of allWidgets) {
-          const isEnabled = prefsRef.current.widgets.widgetsOnTicker.includes(widget.id);
-          widgetItems.push(
-            await CheckMenuItem.new({
-              text: widget.name,
-              checked: isEnabled,
-              action: () => {
-                handleWidgetToggle(widget.id);
-              },
-            }),
+          const currentRow = getWidgetTickerRow(prefsRef.current, widget.id);
+          const rowItems = await buildRowSubmenuItems(
+            currentRow,
+            (row) => handleWidgetRowChange(widget.id, row),
+            false,
+          );
+          widgetSubmenus.push(
+            await Submenu.new({ text: widget.name, items: rowItems }),
           );
         }
         items.push(
-          await Submenu.new({ text: "Widgets", items: widgetItems }),
+          await Submenu.new({ text: "Widgets", items: widgetSubmenus }),
         );
       }
 
@@ -597,7 +657,7 @@ export default function App() {
     }
     document.addEventListener("contextmenu", onContextMenu);
     return () => document.removeEventListener("contextmenu", onContextMenu);
-  }, [handleChannelToggle, handleWidgetToggle, handleTogglePosition]);
+  }, [handleChannelRowChange, handleWidgetRowChange, handleTogglePosition]);
 
   // ── Merge channel + widget tabs ──────────────────────────────
   const activeTabs = useMemo(

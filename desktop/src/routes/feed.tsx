@@ -8,8 +8,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
-  Eye,
-  EyeOff,
   Pencil,
   Check,
   ChevronRight,
@@ -18,6 +16,7 @@ import {
 import clsx from "clsx";
 import RouteError from "../components/RouteError";
 import Tooltip from "../components/Tooltip";
+import RowSelector from "../components/RowSelector";
 import { useShell, useShellData } from "../shell-context";
 import { CHANNEL_ORDER } from "../channels/registry";
 import { WIDGET_ORDER } from "../widgets/registry";
@@ -32,7 +31,13 @@ import {
   LS_WEATHER_UNIT,
   LS_SYSMON_DATA,
 } from "../constants";
-import { isChannelTickerEnabled } from "../api/client";
+import {
+  setChannelTickerRow,
+  setWidgetTickerRow,
+  getChannelTickerRow,
+  getWidgetTickerRow,
+} from "../preferences";
+import { getMaxTickerRows } from "../tierLimits";
 import type { ChannelType, Channel } from "../api/client";
 import type {
   ChannelManifest,
@@ -63,13 +68,12 @@ function HomePage() {
     allWidgets,
     authenticated,
     onToggleChannelTicker,
-    onToggleWidgetTicker,
     onLogin,
   } = shell;
 
   const enabledWidgets = shell.prefs.widgets.enabledWidgets;
-  const widgetsOnTicker = shell.prefs.widgets.widgetsOnTicker;
   const homePreview = shell.prefs.homePreview;
+  const maxRows = getMaxTickerRows(shell.tier);
 
   const setHomePreview = useCallback(
     (channelType: string, keys: string[]) => {
@@ -77,6 +81,31 @@ function HomePage() {
       shell.onPrefsChange({ ...shell.prefs, homePreview: next });
     },
     [homePreview, shell],
+  );
+
+  // ── Unified ticker row selector handlers ────────────────────────
+  // Channel row change updates BOTH layers atomically:
+  //   1. tickerLayout.rows[i].sources[]   (client-side prefs)
+  //   2. Channel.ticker_enabled            (server-side master gate)
+  // See preferences.ts §"Unified ticker row selector helpers".
+  const handleChannelRowChange = useCallback(
+    (channelType: ChannelType, row: number | null) => {
+      const nextPrefs = setChannelTickerRow(shell.prefs, channelType, row);
+      shell.onPrefsChange(nextPrefs);
+      // Server-side flag: enable when assigned to any row, disable for "off".
+      // onToggleChannelTicker is async but fire-and-forget here — the existing
+      // handler shows a toast on failure and re-syncs from the dashboard refetch.
+      onToggleChannelTicker(channelType, row !== null);
+    },
+    [shell, onToggleChannelTicker],
+  );
+
+  const handleWidgetRowChange = useCallback(
+    (widgetId: string, row: number | null) => {
+      const nextPrefs = setWidgetTickerRow(shell.prefs, widgetId, row);
+      shell.onPrefsChange(nextPrefs);
+    },
+    [shell],
   );
 
   const orderedChannels = useMemo(
@@ -143,18 +172,17 @@ function HomePage() {
         const channelData = dashboard?.data?.[ch.channel_type];
         const hasData = Array.isArray(channelData) && channelData.length > 0;
         const targetTab = hasData ? "feed" : "configuration";
+        const currentRow = getChannelTickerRow(shell.prefs, ch);
         return (
           <ChannelSection
             key={ch.channel_type}
             channel={ch}
             manifest={manifest}
             data={dashboard?.data}
-            tickerEnabled={isChannelTickerEnabled(ch)}
-            onToggleTicker={() =>
-              onToggleChannelTicker(
-                ch.channel_type as ChannelType,
-                !isChannelTickerEnabled(ch),
-              )
+            currentRow={currentRow}
+            maxRows={maxRows}
+            onRowChange={(next) =>
+              handleChannelRowChange(ch.channel_type as ChannelType, next)
             }
             selectedKeys={homePreview[ch.channel_type] ?? []}
             onSelectionChange={(keys) =>
@@ -186,8 +214,9 @@ function HomePage() {
       {orderedWidgets.length > 0 && (
         <WidgetStrip
           widgets={orderedWidgets}
-          widgetsOnTicker={widgetsOnTicker}
-          onToggleTicker={onToggleWidgetTicker}
+          maxRows={maxRows}
+          getWidgetRow={(id) => getWidgetTickerRow(shell.prefs, id)}
+          onWidgetRowChange={handleWidgetRowChange}
           onNavigate={(id) =>
             navigate({
               to: "/widget/$id/$tab",
@@ -240,8 +269,12 @@ interface ChannelSectionProps {
   channel: Channel;
   manifest: ChannelManifest;
   data: Record<string, unknown> | undefined;
-  tickerEnabled: boolean;
-  onToggleTicker: () => void;
+  /** Currently assigned ticker row, or null for off. */
+  currentRow: number | null;
+  /** Max rows the user's tier allows (1, 2, or 3). */
+  maxRows: number;
+  /** Called when the user picks a different row or "Off". */
+  onRowChange: (row: number | null) => void;
   selectedKeys: string[];
   onSelectionChange: (keys: string[]) => void;
   onViewAll: () => void;
@@ -253,8 +286,9 @@ function ChannelSection({
   channel,
   manifest,
   data,
-  tickerEnabled,
-  onToggleTicker,
+  currentRow,
+  maxRows,
+  onRowChange,
   selectedKeys,
   onSelectionChange,
   onViewAll,
@@ -310,25 +344,20 @@ function ChannelSection({
           </Tooltip>
         )}
 
-        {/* Eye toggle */}
-        <Tooltip content={tickerEnabled ? "Hide from ticker" : "Show on ticker"}>
-          <button
-            onClick={onToggleTicker}
-            aria-label={
-              tickerEnabled
-                ? `Hide ${manifest.name} from ticker`
-                : `Show ${manifest.name} on ticker`
-            }
-            className={clsx(
-              "w-7 h-7 flex items-center justify-center rounded-lg transition-colors",
-              tickerEnabled
-                ? "text-fg-3 hover:text-fg hover:bg-surface-hover"
-                : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover",
-            )}
-          >
-            {tickerEnabled ? <Eye size={14} /> : <EyeOff size={14} />}
-          </button>
-        </Tooltip>
+        {/* Row selector — replaces the legacy Eye/EyeOff toggle so users
+            can pick exactly which ticker row a channel appears on (Off /
+            Row 1 / 2 / 3) instead of a binary visibility flip that
+            silently fought with the Settings source picker. */}
+        <RowSelector
+          value={currentRow}
+          maxRows={maxRows}
+          disabled={!channel.enabled}
+          disabledHint={
+            !channel.enabled ? "Enable from the Catalog first" : undefined
+          }
+          onChange={onRowChange}
+          ariaLabel={`${manifest.name} ticker row`}
+        />
 
         {/* View all */}
         {!editing && (
@@ -670,15 +699,20 @@ function EmptyDataRow({
 
 interface WidgetStripProps {
   widgets: WidgetManifest[];
-  widgetsOnTicker: string[];
-  onToggleTicker: (id: string) => void;
+  /** Max rows the user's tier allows. */
+  maxRows: number;
+  /** Read the row a widget is currently assigned to (null = off). */
+  getWidgetRow: (id: string) => number | null;
+  /** Move a widget to the given row (null = off). */
+  onWidgetRowChange: (id: string, row: number | null) => void;
   onNavigate: (id: string) => void;
 }
 
 function WidgetStrip({
   widgets,
-  widgetsOnTicker,
-  onToggleTicker,
+  maxRows,
+  getWidgetRow,
+  onWidgetRowChange,
   onNavigate,
 }: WidgetStripProps) {
   return (
@@ -694,8 +728,9 @@ function WidgetStrip({
           <WidgetChip
             key={widget.id}
             widget={widget}
-            tickerEnabled={widgetsOnTicker.includes(widget.id)}
-            onToggleTicker={() => onToggleTicker(widget.id)}
+            currentRow={getWidgetRow(widget.id)}
+            maxRows={maxRows}
+            onRowChange={(row) => onWidgetRowChange(widget.id, row)}
             onClick={() => onNavigate(widget.id)}
           />
         ))}
@@ -706,23 +741,38 @@ function WidgetStrip({
 
 interface WidgetChipProps {
   widget: WidgetManifest;
-  tickerEnabled: boolean;
-  onToggleTicker: () => void;
+  currentRow: number | null;
+  maxRows: number;
+  onRowChange: (row: number | null) => void;
   onClick: () => void;
 }
 
 function WidgetChip({
   widget,
-  tickerEnabled,
-  onToggleTicker,
+  currentRow,
+  maxRows,
+  onRowChange,
   onClick,
 }: WidgetChipProps) {
   const Icon = widget.icon;
   const value = getWidgetValue(widget.id);
 
+  // Note: this used to be a single <button> wrapping the whole chip, but
+  // the RowSelector is a radiogroup of <button>s — nesting buttons is
+  // invalid HTML. The outer container is now a div with role="button"
+  // + tabIndex so the chip body still acts as a click target while the
+  // RowSelector renders cleanly inside it.
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       className="group rounded-lg border bg-base-200/40 border-edge/20 hover:bg-base-200/60 p-3 transition-colors text-left cursor-pointer w-full"
     >
       <div className="flex items-center gap-2 mb-1.5">
@@ -732,41 +782,22 @@ function WidgetChip({
         <span className="text-xs font-medium text-fg truncate flex-1">
           {widget.tabLabel}
         </span>
-
-        {/* Eye toggle */}
-        <Tooltip content={tickerEnabled ? "Hide from ticker" : "Show on ticker"}>
-          <div
-            role="switch"
-            aria-checked={tickerEnabled}
-            aria-label={tickerEnabled ? "Hide from ticker" : "Show on ticker"}
-            tabIndex={0}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleTicker();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                e.stopPropagation();
-                onToggleTicker();
-              }
-            }}
-            className={clsx(
-              "w-6 h-6 flex items-center justify-center rounded transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 shrink-0",
-              tickerEnabled
-                ? "text-fg-3 hover:text-fg hover:bg-surface-hover"
-                : "text-fg-4/60 hover:text-fg-2 hover:bg-surface-hover",
-            )}
-          >
-            {tickerEnabled ? <Eye size={12} /> : <EyeOff size={12} />}
-          </div>
-        </Tooltip>
       </div>
 
-      <p className="text-sm font-medium text-fg-2 tabular-nums truncate">
+      <p className="text-sm font-medium text-fg-2 tabular-nums truncate mb-2">
         {value}
       </p>
-    </button>
+
+      {/* Row selector — replaces the legacy Eye/EyeOff toggle. Click events
+          inside the radiogroup are stopPropagation'd by RowSelector itself
+          so they don't trigger the chip's navigate-on-click. */}
+      <RowSelector
+        value={currentRow}
+        maxRows={maxRows}
+        onChange={onRowChange}
+        ariaLabel={`${widget.tabLabel} ticker row`}
+      />
+    </div>
   );
 }
 

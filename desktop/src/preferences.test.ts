@@ -22,8 +22,14 @@ import {
   migrateFinanceDisplay,
   migrateRssDisplay,
   migrateFantasyDisplay,
+  getSourceTickerRow,
+  getChannelTickerRow,
+  getWidgetTickerRow,
+  setSourceTickerRow,
+  setChannelTickerRow,
+  setWidgetTickerRow,
 } from "./preferences";
-import type { Venue } from "./preferences";
+import type { Venue, AppPreferences } from "./preferences";
 
 describe("migrateVenue", () => {
   it("keeps valid venue strings as-is", () => {
@@ -322,5 +328,148 @@ describe("migrateFantasyDisplay", () => {
     expect(migrated.worstStarter).toBe("feed");
     expect(migrated.benchOpportunity).toBe("off");
     expect(migrated.injuryDetail).toBe("both");
+  });
+});
+
+// ── Unified ticker row selector helpers (Stream 3 of Batch D) ────
+//
+// These tests lock in the contract for the new row-selector mental model:
+//   "Where should this source appear? Off / Row 1 / Row 2 / Row 3"
+//
+// The helpers must:
+//  - return the correct row for a source explicitly listed in tickerLayout
+//  - fall back to legacy `Channel.ticker_enabled` (or `visible`) when the
+//    source isn't in any row, so users upgrading from pre-multi-deck
+//    builds don't see all their channels suddenly go dark
+//  - move a source between rows atomically (remove from old row, add to new)
+//  - silently ignore out-of-bounds row indices (caller's job to clamp to tier)
+
+/**
+ * Build a minimal AppPreferences fixture with the given ticker rows. Other
+ * fields are set to whatever shape the helpers don't touch — the tests
+ * cast to AppPreferences because they only exercise the appearance.tickerLayout
+ * branch.
+ */
+function makePrefs(rows: { sources: string[] }[]): AppPreferences {
+  return {
+    appearance: {
+      tickerLayout: { rows },
+      tickerRows: Math.max(1, Math.min(3, rows.length)),
+    },
+  } as unknown as AppPreferences;
+}
+
+describe("getSourceTickerRow / getChannelTickerRow / getWidgetTickerRow", () => {
+  it("returns the row index when the source is in tickerLayout sources", () => {
+    const prefs = makePrefs([
+      { sources: ["finance"] },
+      { sources: ["sports", "rss"] },
+    ]);
+    expect(getSourceTickerRow(prefs, null, "rss")).toBe(1);
+    expect(getSourceTickerRow(prefs, null, "finance")).toBe(0);
+    expect(getSourceTickerRow(prefs, null, "sports")).toBe(1);
+  });
+
+  it("falls back to ticker_enabled=true for channels missing from rows", () => {
+    const prefs = makePrefs([{ sources: [] }]);
+    const ch = { channel_type: "finance", ticker_enabled: true };
+    expect(getSourceTickerRow(prefs, ch, "finance")).toBe(0);
+    expect(getChannelTickerRow(prefs, ch)).toBe(0);
+  });
+
+  it("returns null when ticker_enabled is false and the channel isn't in any row", () => {
+    const prefs = makePrefs([{ sources: [] }]);
+    const ch = { channel_type: "finance", ticker_enabled: false };
+    expect(getSourceTickerRow(prefs, ch, "finance")).toBeNull();
+    expect(getChannelTickerRow(prefs, ch)).toBeNull();
+  });
+
+  it("honours the legacy `visible` alias when ticker_enabled is missing", () => {
+    const prefs = makePrefs([{ sources: [] }]);
+    const ch = { channel_type: "finance", visible: false };
+    expect(getSourceTickerRow(prefs, ch, "finance")).toBeNull();
+    expect(getChannelTickerRow(prefs, ch)).toBeNull();
+  });
+
+  it("returns null for widgets that aren't in any row", () => {
+    const prefs = makePrefs([{ sources: ["finance"] }]);
+    expect(getWidgetTickerRow(prefs, "clock")).toBeNull();
+  });
+
+  it("returns the row index for widgets that are in a row", () => {
+    const prefs = makePrefs([{ sources: ["finance"] }, { sources: ["clock"] }]);
+    expect(getWidgetTickerRow(prefs, "clock")).toBe(1);
+  });
+
+  it("explicit row assignment beats the legacy ticker_enabled fallback", () => {
+    // Channel has ticker_enabled=true, but it's pinned to row 1 explicitly.
+    const prefs = makePrefs([{ sources: [] }, { sources: ["finance"] }]);
+    const ch = { channel_type: "finance", ticker_enabled: true };
+    expect(getChannelTickerRow(prefs, ch)).toBe(1);
+  });
+});
+
+describe("setSourceTickerRow / setChannelTickerRow / setWidgetTickerRow", () => {
+  it("removes the source from any other row when moving it", () => {
+    const prefs = makePrefs([
+      { sources: ["finance", "sports"] },
+      { sources: ["rss"] },
+    ]);
+    const next = setSourceTickerRow(prefs, "finance", 1);
+    expect(next.appearance.tickerLayout.rows[0].sources).toEqual(["sports"]);
+    expect(next.appearance.tickerLayout.rows[1].sources).toEqual([
+      "rss",
+      "finance",
+    ]);
+  });
+
+  it("removes the source from every row when row is null", () => {
+    const prefs = makePrefs([{ sources: ["finance"] }, { sources: ["rss"] }]);
+    const next = setSourceTickerRow(prefs, "finance", null);
+    expect(next.appearance.tickerLayout.rows[0].sources).toEqual([]);
+    expect(next.appearance.tickerLayout.rows[1].sources).toEqual(["rss"]);
+  });
+
+  it("returns prefs unchanged when row is out of bounds", () => {
+    const prefs = makePrefs([{ sources: [] }]);
+    const next = setSourceTickerRow(prefs, "finance", 5);
+    expect(next).toBe(prefs);
+  });
+
+  it("returns prefs unchanged for negative rows", () => {
+    const prefs = makePrefs([{ sources: [] }]);
+    const next = setSourceTickerRow(prefs, "finance", -1);
+    expect(next).toBe(prefs);
+  });
+
+  it("setChannelTickerRow forwards to setSourceTickerRow", () => {
+    const prefs = makePrefs([{ sources: [] }, { sources: [] }]);
+    const next = setChannelTickerRow(prefs, "sports", 1);
+    expect(next.appearance.tickerLayout.rows[1].sources).toEqual(["sports"]);
+  });
+
+  it("setWidgetTickerRow places a widget id alongside channels in the same sources array", () => {
+    const prefs = makePrefs([{ sources: ["finance"] }]);
+    const next = setWidgetTickerRow(prefs, "clock", 0);
+    expect(next.appearance.tickerLayout.rows[0].sources).toEqual([
+      "finance",
+      "clock",
+    ]);
+  });
+
+  it("does not mutate the original prefs object", () => {
+    const prefs = makePrefs([{ sources: ["finance"] }]);
+    const before = JSON.stringify(prefs);
+    setSourceTickerRow(prefs, "finance", null);
+    expect(JSON.stringify(prefs)).toBe(before);
+  });
+
+  it("keeps the deprecated tickerRows field in sync after row mutations", () => {
+    // setTickerLayout (which setSourceTickerRow funnels through) clamps
+    // tickerRows to the row count. Round-tripping through the helper
+    // shouldn't drift this value.
+    const prefs = makePrefs([{ sources: [] }, { sources: [] }]);
+    const next = setSourceTickerRow(prefs, "finance", 1);
+    expect(next.appearance.tickerRows).toBe(2);
   });
 });
