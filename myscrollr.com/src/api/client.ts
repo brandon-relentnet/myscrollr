@@ -559,7 +559,14 @@ export interface SupportTicketResponse {
 }
 
 export const supportApi = {
-  /** Submit a ticket as an authenticated user. Token required. */
+  /**
+   * Submit a ticket as an authenticated user. Token required.
+   *
+   * The authed `/support/ticket` endpoint expects `description` (or
+   * `what_went_wrong`) — NOT `message`. Map our marketing-side
+   * `message` field to both so the server validator accepts it
+   * regardless of which legacy field it prefers.
+   */
   submitTicket: (
     payload: SupportTicketPayload,
     getToken: () => Promise<string | null>,
@@ -569,7 +576,12 @@ export const supportApi = {
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          ...payload,
+          // Authed handler legacy field names — keep both for safety:
+          description: payload.message,
+          what_went_wrong: payload.message,
+        }),
       },
       getToken,
     ),
