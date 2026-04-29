@@ -311,6 +311,56 @@ export async function fetchOverview(): Promise<UserOverview> {
   return authFetch<UserOverview>("/users/me/overview");
 }
 
+// ── Account self-service ────────────────────────────────────────
+//
+// Update display name and/or primary email via Logto Management API
+// (proxied through our own `/users/me/profile` so we don't ship the
+// M2M secret to the desktop client). Username is intentionally not
+// exposed — the server rejects it with 403.
+
+export interface UpdateProfileResponse {
+  status: string;
+  name?: string;
+  email?: string;
+}
+
+export async function updateProfile(payload: {
+  name?: string;
+  email?: string;
+}): Promise<UpdateProfileResponse> {
+  return authFetch<UpdateProfileResponse>("/users/me/profile", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * Trigger a password-reset email. The server emails the user a link
+ * to the Logto sign-in page where they can use the standard "Forgot
+ * password?" affordance — we don't reveal a token client-side.
+ *
+ * `authFetch` parses JSON; this endpoint returns 204 No Content, so
+ * skip it and use the raw token-aware fetch path.
+ */
+export async function requestPasswordReset(): Promise<void> {
+  const token = await getValidToken();
+  const headers: HeadersInit = {};
+  if (token) {
+    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+  }
+  const response = await fetchWithTimeout(
+    `${API_BASE}/users/me/password/reset`,
+    { method: "POST", headers },
+  );
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      `password reset failed: ${response.status}`,
+    );
+  }
+}
+
 /**
  * Fetch the GDPR data export ZIP. Bypasses `authFetch` because that helper
  * parses JSON; we need the raw Response to call `.blob()`.

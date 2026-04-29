@@ -3,13 +3,19 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ArrowRight,
   BarChart3,
+  Check,
   Crown,
   Globe,
+  KeyRound,
+  Loader2,
   Lock,
+  Pencil,
   Radio,
   Settings,
   TrendingUp,
+  User,
   Wifi,
+  X,
 } from 'lucide-react'
 import { motion } from 'motion/react'
 import type { ComponentType } from 'react'
@@ -63,7 +69,7 @@ const HUB_CARDS: Array<HubCardDef> = [
   {
     title: 'Desktop App',
     desc: 'Download the Scrollr desktop app',
-    href: 'https://github.com/brandon-relentnet/myscrollr/releases/latest',
+    to: '/download',
     Icon: BarChart3,
     hex: HEX.primary,
     WatermarkIcon: BarChart3,
@@ -266,6 +272,58 @@ function AccountHub() {
           </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Identity & Security Card */}
+            <motion.div
+              className="relative bg-base-200/40 border border-base-300/25 rounded-xl p-8 overflow-hidden lg:col-span-2"
+              style={{ opacity: 0 }}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-80px' }}
+              transition={{ duration: 0.6, ease: EASE }}
+            >
+              <div
+                className="absolute top-0 left-0 right-0 h-px"
+                style={{
+                  background: `linear-gradient(90deg, transparent, ${HEX.info} 50%, transparent)`,
+                }}
+              />
+              <div
+                className="absolute top-0 right-0 w-20 h-20 opacity-[0.04] text-base-content"
+                style={{
+                  backgroundImage:
+                    'radial-gradient(circle, currentColor 1px, transparent 1px)',
+                  backgroundSize: '8px 8px',
+                }}
+              />
+
+              <div className="flex items-center gap-3 mb-6">
+                <div
+                  className="w-11 h-11 rounded-xl flex items-center justify-center"
+                  style={{
+                    background: `${HEX.info}15`,
+                    boxShadow: `0 0 20px ${HEX.info}15, 0 0 0 1px ${HEX.info}20`,
+                  }}
+                >
+                  <User size={20} className="text-base-content/80" />
+                </div>
+                <h3 className="text-lg font-black tracking-tight text-base-content">
+                  Identity &amp; Security
+                </h3>
+              </div>
+
+              <IdentityEditor
+                getToken={getToken}
+                overview={overview}
+                onUpdated={fetchOverview}
+              />
+
+              <Lock
+                size={130}
+                strokeWidth={0.4}
+                className="absolute -bottom-4 -right-4 text-base-content/[0.025] pointer-events-none"
+              />
+            </motion.div>
+
             {/* System Status Link Card */}
             <motion.div
               style={{ opacity: 0 }}
@@ -455,7 +513,10 @@ function AccountHub() {
                 </h3>
               </div>
 
-              <SubscriptionStatus getToken={getToken} />
+              <SubscriptionStatus
+                getToken={getToken}
+                tier={overview?.tier.current}
+              />
 
               <Link
                 to="/uplink"
@@ -484,6 +545,223 @@ function AccountHub() {
         onDeletionChange={fetchOverview}
       />
     </motion.main>
+  )
+}
+
+// ── Identity Editor ─────────────────────────────────────────────
+//
+// Inline-edit pattern for display name + primary email, plus a
+// password-reset trigger. The reset button doesn't reveal a token —
+// it asks the API to email the user a link to the Logto sign-in page
+// where they can use the standard "Forgot password?" flow. The
+// username row is read-only (immutable).
+
+interface IdentityEditorProps {
+  getToken: () => Promise<string | null>
+  overview: UserOverview | null
+  onUpdated: () => void | Promise<void>
+}
+
+function IdentityEditor({
+  getToken,
+  overview,
+  onUpdated,
+}: IdentityEditorProps) {
+  const [resetState, setResetState] = useState<
+    'idle' | 'sending' | 'sent' | 'error'
+  >('idle')
+  const [resetError, setResetError] = useState<string | null>(null)
+
+  async function handleSendReset() {
+    try {
+      setResetState('sending')
+      setResetError(null)
+      await userApi.requestPasswordReset(getToken)
+      setResetState('sent')
+    } catch (err) {
+      setResetError(err instanceof Error ? err.message : 'Failed to send')
+      setResetState('error')
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <EditableField
+        label="Display name"
+        value={overview?.identity.name ?? ''}
+        placeholder="Add a display name"
+        onSave={async (next) => {
+          await userApi.updateProfile({ name: next }, getToken)
+          await onUpdated()
+        }}
+      />
+      <EditableField
+        label="Email"
+        type="email"
+        value={overview?.identity.email ?? ''}
+        placeholder="you@example.com"
+        onSave={async (next) => {
+          await userApi.updateProfile({ email: next }, getToken)
+          await onUpdated()
+        }}
+      />
+      <div className="flex items-center justify-between gap-3 py-2">
+        <div className="min-w-0">
+          <div className="text-xs uppercase tracking-wide text-base-content/40 mb-1">
+            Username
+          </div>
+          <div className="text-sm text-base-content/70 font-mono truncate">
+            {overview?.identity.username || '—'}
+          </div>
+        </div>
+        <span className="text-[10px] uppercase tracking-wider text-base-content/30 px-2 py-1 rounded-md bg-base-content/5 shrink-0">
+          Immutable
+        </span>
+      </div>
+
+      <div className="pt-3 border-t border-base-300/30">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-xs uppercase tracking-wide text-base-content/40 mb-1">
+              Password
+            </div>
+            <div className="text-sm text-base-content/60 leading-relaxed">
+              We&apos;ll email you a link to reset it from the sign-in page.
+            </div>
+          </div>
+          <button
+            onClick={handleSendReset}
+            disabled={resetState === 'sending' || resetState === 'sent'}
+            className="shrink-0 flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border border-base-content/10 rounded-lg text-base-content/60 hover:text-primary hover:border-primary/30 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+          >
+            {resetState === 'sending' ? (
+              <>
+                <Loader2 size={12} className="animate-spin" /> Sending…
+              </>
+            ) : resetState === 'sent' ? (
+              <>
+                <Check size={12} /> Email sent
+              </>
+            ) : (
+              <>
+                <KeyRound size={12} /> Send reset email
+              </>
+            )}
+          </button>
+        </div>
+        {resetState === 'error' && resetError && (
+          <p className="mt-2 text-xs text-error/80">{resetError}</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+interface EditableFieldProps {
+  label: string
+  value: string
+  placeholder?: string
+  type?: 'text' | 'email'
+  onSave: (next: string) => Promise<void>
+}
+
+function EditableField({
+  label,
+  value,
+  placeholder,
+  type = 'text',
+  onSave,
+}: EditableFieldProps) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Keep the draft in sync if the parent re-fetches the overview while
+  // we're not editing.
+  useEffect(() => {
+    if (!editing) setDraft(value)
+  }, [value, editing])
+
+  async function handleSave() {
+    const trimmed = draft.trim()
+    if (!trimmed || trimmed === value) {
+      setEditing(false)
+      setError(null)
+      return
+    }
+    try {
+      setSaving(true)
+      setError(null)
+      await onSave(trimmed)
+      setEditing(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Save failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="py-2">
+      <div className="text-xs uppercase tracking-wide text-base-content/40 mb-1.5">
+        {label}
+      </div>
+      {editing ? (
+        <div className="flex items-center gap-2">
+          <input
+            type={type}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder={placeholder}
+            disabled={saving}
+            autoFocus
+            className="flex-1 px-3 py-2 text-sm bg-base-300/50 border border-base-300/60 rounded-lg text-base-content focus:outline-none focus:border-primary/50 disabled:opacity-60"
+          />
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            aria-label="Save"
+            className="p-2 rounded-lg border border-primary/30 text-primary hover:bg-primary/10 disabled:opacity-60 transition-colors"
+          >
+            {saving ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Check size={14} />
+            )}
+          </button>
+          <button
+            onClick={() => {
+              setDraft(value)
+              setEditing(false)
+              setError(null)
+            }}
+            disabled={saving}
+            aria-label="Cancel"
+            className="p-2 rounded-lg border border-base-content/10 text-base-content/40 hover:text-base-content/70 disabled:opacity-60 transition-colors"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-sm text-base-content/80 truncate min-w-0">
+            {value || (
+              <span className="text-base-content/30 italic">
+                {placeholder ?? 'Not set'}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => setEditing(true)}
+            className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-base-content/40 hover:text-base-content/70 rounded-md transition-colors"
+          >
+            <Pencil size={12} /> Edit
+          </button>
+        </div>
+      )}
+      {error && <p className="mt-1.5 text-xs text-error/80">{error}</p>}
+    </div>
   )
 }
 

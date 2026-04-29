@@ -204,6 +204,10 @@ func (s *Server) setupRoutes() {
 	s.App.Post("/users/me/subscription/cancel", LogtoAuth, HandleCancelSubscription)
 	s.App.Post("/users/me/subscription/portal", LogtoAuth, HandleCreatePortalSession)
 
+	// Account self-service: profile (name/email) + password reset email
+	s.App.Put("/users/me/profile", LogtoAuth, HandleUpdateProfile)
+	s.App.Post("/users/me/password/reset", LogtoAuth, HandleRequestPasswordReset)
+
 	// User Routes — specific /users/me/* paths BEFORE parameterized /users/:username
 	s.App.Get("/users/me/preferences", LogtoAuth, HandleGetPreferences)
 	s.App.Put("/users/me/preferences", LogtoAuth, HandleUpdatePreferences)

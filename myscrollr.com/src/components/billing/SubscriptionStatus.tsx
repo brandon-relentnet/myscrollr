@@ -9,6 +9,7 @@ import {
   Infinity as InfinityIcon,
   Loader2,
   ShieldAlert,
+  Sparkles,
   Zap,
 } from 'lucide-react'
 import type { SubscriptionStatus as SubStatus } from '@/api/client'
@@ -16,6 +17,9 @@ import { billingApi, getPreferences } from '@/api/client'
 
 interface SubscriptionStatusProps {
   getToken: () => Promise<string | null>
+  /** Optional tier hint from the parent's overview fetch — short-circuits
+   *  the internal `getPreferences` round-trip when supplied. */
+  tier?: string
 }
 
 const PLAN_LABELS: Record<string, string> = {
@@ -60,9 +64,10 @@ const STATUS_LABELS: Partial<Record<string, { label: string; color: string }>> =
 
 export default function SubscriptionStatus({
   getToken,
+  tier: tierProp,
 }: SubscriptionStatusProps) {
   const [subscription, setSubscription] = useState<SubStatus | null>(null)
-  const [tier, setTier] = useState<string>('free')
+  const [tier, setTier] = useState<string>(tierProp ?? 'free')
   const [loading, setLoading] = useState(true)
   const [canceling, setCanceling] = useState(false)
   const [openingPortal, setOpeningPortal] = useState(false)
@@ -78,16 +83,24 @@ export default function SubscriptionStatus({
     subscription?.plan === 'pro_monthly' ||
     subscription?.plan === 'pro_annual'
 
+  // Re-runs when the parent passes a new tier hint (e.g. once the
+  // overview fetch settles). loadSubscription is intentionally not in
+  // the deps array — it's stable per render and capturing it would
+  // cause an infinite refetch loop.
   useEffect(() => {
     loadSubscription()
-  }, [])
+    if (tierProp) setTier(tierProp)
+  }, [tierProp])
 
   async function loadSubscription() {
     try {
       setLoading(true)
+      // Skip the prefs round-trip when the parent already supplied a tier.
       const [sub, prefs] = await Promise.all([
         billingApi.getSubscription(getToken),
-        getPreferences(getToken).catch(() => null),
+        tierProp
+          ? Promise.resolve(null)
+          : getPreferences(getToken).catch(() => null),
       ])
       setSubscription(sub)
       if (prefs?.subscription_tier) setTier(prefs.subscription_tier)
@@ -142,6 +155,24 @@ export default function SubscriptionStatus({
       <div className="flex items-center gap-2 py-6">
         <AlertTriangle size={16} className="text-error" />
         <span className="text-sm text-error">{error}</span>
+      </div>
+    )
+  }
+
+  // Super users get a dedicated card — no upgrade/cancel CTAs, no tie
+  // to a Stripe subscription. The tier is granted via Logto role and
+  // unlocks every cap the system enforces.
+  if (tier === 'super_user') {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Sparkles size={16} className="text-success" />
+          <span className="text-sm font-semibold text-success">Super User</span>
+        </div>
+        <p className="text-sm text-base-content/40 leading-relaxed">
+          You have full access to every feature as a thank-you for early-access
+          testing. No subscription required.
+        </p>
       </div>
     )
   }

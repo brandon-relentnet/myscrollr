@@ -11,7 +11,12 @@ export interface UserPreferences {
   feed_enabled: boolean
   enabled_sites: Array<string>
   disabled_sites: Array<string>
-  subscription_tier: 'free' | 'uplink' | 'uplink_pro' | 'uplink_ultimate'
+  subscription_tier:
+    | 'free'
+    | 'uplink'
+    | 'uplink_pro'
+    | 'uplink_ultimate'
+    | 'super_user'
   updated_at: string
 }
 
@@ -489,10 +494,51 @@ export interface UserOverview {
   links: UserOverviewLinks
 }
 
+export interface UpdateProfileResponse {
+  status: string
+  name?: string
+  email?: string
+}
+
 export const userApi = {
   /** Unified read for the /account hub — identity, tier, channels, GDPR, fantasy. */
   overview: (getToken: () => Promise<string | null>) =>
     authenticatedFetch<UserOverview>('/users/me/overview', {}, getToken),
+
+  /** Update display name and/or primary email via Logto Management API. */
+  updateProfile: (
+    payload: { name?: string; email?: string },
+    getToken: () => Promise<string | null>,
+  ) =>
+    authenticatedFetch<UpdateProfileResponse>(
+      '/users/me/profile',
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      },
+      getToken,
+    ),
+
+  /** Trigger a password-reset email pointing at the Logto sign-in page. */
+  requestPasswordReset: async (getToken: () => Promise<string | null>) => {
+    const token = await getToken()
+    const headers: HeadersInit = {}
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    const response = await fetch(`${API_BASE}/users/me/password/reset`, {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+    })
+    if (!response.ok) {
+      const error = await response
+        .json()
+        .catch(() => ({ error: 'Request failed' }))
+      throw new Error(error.error || 'Request failed')
+    }
+  },
 }
 
 // ── Invite API ───────────────────────────────────────────────────
