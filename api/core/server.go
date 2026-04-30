@@ -187,6 +187,13 @@ func (s *Server) setupRoutes() {
 	// hourly Redis counter inside the handler both protect this route.
 	s.App.Post("/support/ticket/public", HandleSubmitPublicSupportTicket)
 
+	// Partner-approval URLs for AI-drafted replies. No auth — these are
+	// HMAC-signed single-use tokens that the partner clicks from email.
+	s.App.Get("/support/send", HandleSupportSend)
+	s.App.Get("/support/edit", HandleSupportEdit)
+	s.App.Get("/support/skip", HandleSupportSkip)
+	s.App.Post("/support/edit/submit", HandleSupportEditSubmit)
+
 	// Invite (no auth — user isn't logged in yet, token-verified server-side)
 	s.App.Post("/invite/complete", HandleCompleteInvite)
 	s.App.Get("/invite/username-available", HandleCheckUsernameAvailable)
