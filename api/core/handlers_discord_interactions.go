@@ -112,11 +112,17 @@ type discordModalComponentInput struct {
 
 // HandleDiscordInteractions verifies the signature, dispatches by
 // interaction type, returns the appropriate response.
+//
+// Only requires DISCORD_PUBLIC_KEY to be set — Discord's URL
+// verification PING uses only the public key. Outbound paths invoked
+// from button + modal handlers (e.g. discordArchiveThread) gate on
+// loadDiscordConfig themselves and degrade gracefully when the bot
+// token isn't yet wired.
 func HandleDiscordInteractions(c *fiber.Ctx) error {
-	cfg, ok := loadDiscordConfig()
+	publicKey, ok := loadDiscordPublicKey()
 	if !ok {
 		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
-			"error": "discord not configured",
+			"error": "DISCORD_PUBLIC_KEY not configured",
 		})
 	}
 
@@ -127,7 +133,7 @@ func HandleDiscordInteractions(c *fiber.Ctx) error {
 	}
 
 	body := c.Body()
-	if err := verifyDiscordSignature(cfg.PublicKey, signature, timestamp, body); err != nil {
+	if err := verifyDiscordSignature(publicKey, signature, timestamp, body); err != nil {
 		log.Printf("[DiscordInteraction] signature verify failed: %v", err)
 		return c.Status(fiber.StatusUnauthorized).SendString("invalid signature")
 	}

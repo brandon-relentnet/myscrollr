@@ -76,6 +76,24 @@ func loadDiscordConfig() (DiscordConfig, bool) {
 	return cfg, true
 }
 
+// loadDiscordPublicKey returns just the public key, which is the only
+// field strictly required for handling inbound interactions (PING +
+// signature verification on button + modal events). Returns ("", false)
+// when DISCORD_PUBLIC_KEY isn't set.
+//
+// Decoupled from loadDiscordConfig so that URL verification in the
+// Discord developer portal can succeed even before all 5 secrets are
+// wired — the verification PING only needs the public key. Outbound
+// paths (thread creation, message posting, etc.) still gate on the
+// full loadDiscordConfig.
+func loadDiscordPublicKey() (string, bool) {
+	pk := os.Getenv("DISCORD_PUBLIC_KEY")
+	if pk == "" {
+		return "", false
+	}
+	return pk, true
+}
+
 // notifyMode returns the SUPPORT_NOTIFY env var value. Defaults to
 // "both" so existing email notifications keep flowing during rollout.
 //
