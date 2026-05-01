@@ -177,6 +177,73 @@ func discordRequest(ctx context.Context, method, path string, body interface{}) 
 }
 
 // =============================================================================
+// Forum tags — category + status taxonomy on the support channel
+// =============================================================================
+//
+// Forum-channel parents support up to 20 named "tags" with optional
+// emoji + colour. We use them to surface ticket category and partner
+// action state at-a-glance in the thread list. No extra writes needed
+// at runtime once cached — tag IDs live in tagIDByName for the life of
+// the pod.
+
+// supportForumTagSpec is one tag we expect to exist on the support
+// forum channel. ensureSupportForumTags creates any missing entries
+// at startup.
+type supportForumTagSpec struct {
+	name      string // canonical name (lowercase, matches AI category names)
+	emojiName string // unicode emoji rendered in the tag pill
+}
+
+// supportForumTagSpecs is the canonical set of tags we apply to
+// support threads. Order matters only for UX: status tags first
+// (they're the most-glanceable), then category tags.
+var supportForumTagSpecs = []supportForumTagSpec{
+	// Status tags (mutually exclusive — exactly one applied at any time)
+	{"pending", "⏳"},
+	{"sent", "✅"},
+	{"edited", "✏️"},
+	{"skipped", "⏭️"},
+	{"closed", "🔒"},
+	// Category tags (mutually exclusive within their category set)
+	{"bug", "🐛"},
+	{"feature", "💡"},
+	{"feedback", "💬"},
+	{"billing", "💳"},
+	{"account", "👤"},
+	{"channel", "📡"},
+}
+
+// tagIDByName caches the resolved tag IDs after ensureSupportForumTags
+// runs. Populated once at startup; lookups in hot paths are O(1).
+// Empty when Discord isn't configured or the parent channel isn't a
+// forum (Text channels don't support tags) — callers must tolerate
+// missing tags.
+var tagIDByName sync.Map // map[name string] -> tagID string
+
+// supportForumTagID returns the cached tag ID for a name, or "" when
+// not present (Text channel parent, ensure call hasn't run, or unknown
+// tag name).
+func supportForumTagID(name string) string {
+	if v, ok := tagIDByName.Load(name); ok {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
+// statusTagNames returns the set of status-tag names so callers can
+// strip whichever status the thread currently has before applying a
+// new one (status tags are mutually exclusive).
+var statusTagNames = map[string]struct{}{
+	"pending": {},
+	"sent":    {},
+	"edited":  {},
+	"skipped": {},
+	"closed":  {},
+}
+
+// =============================================================================
 // Thread + message primitives
 // =============================================================================
 
@@ -215,6 +282,7 @@ func discordCreateThread(
 	channelID, name string,
 	starterContent string,
 	starterComponents []DiscordActionRow,
+	appliedTagIDs []string,
 ) (*DiscordThread, error) {
 	if len(name) > 100 {
 		// Discord's hard limit on thread names is 100 chars.
@@ -228,8 +296,11 @@ func discordCreateThread(
 
 	switch parentType {
 	case discordChannelTypeForum, discordChannelTypeMedia:
-		return discordCreateForumThread(ctx, channelID, name, starterContent, starterComponents)
+		return discordCreateForumThread(ctx, channelID, name, starterContent, starterComponents, appliedTagIDs)
 	default:
+		// Text channels don't support tags — appliedTagIDs is silently
+		// dropped. Caller should still pass them; supports the case
+		// where someone migrates a forum-channel parent to text.
 		return discordCreateTextThread(ctx, channelID, name, starterContent, starterComponents)
 	}
 }
@@ -280,6 +351,7 @@ func discordCreateForumThread(
 	ctx context.Context,
 	channelID, name, starterContent string,
 	starterComponents []DiscordActionRow,
+	appliedTagIDs []string,
 ) (*DiscordThread, error) {
 	if starterContent == "" {
 		// Forum threads require a starter message; fall back to a
@@ -297,6 +369,9 @@ func discordCreateForumThread(
 		"name":                  name,
 		"auto_archive_duration": 4320,
 		"message":               msg,
+	}
+	if len(appliedTagIDs) > 0 {
+		body["applied_tags"] = appliedTagIDs
 	}
 	respBody, status, err := discordRequest(ctx, http.MethodPost,
 		"/channels/"+channelID+"/threads", body)
@@ -473,6 +548,19 @@ func registerDiscordSlashCommands(ctx context.Context) error {
 				},
 			},
 		},
+		{
+			Name:        "stats",
+			Description: "Show AI support pipeline activity for a window (default 24h)",
+			Type:        1,
+			Options: []discordSlashCommandOption{
+				{
+					Name:        "hours",
+					Description: "Lookback window in hours (default 24, max 168)",
+					Type:        3,
+					Required:    false,
+				},
+			},
+		},
 	}
 
 	path := fmt.Sprintf("/applications/%s/guilds/%s/commands",
@@ -490,16 +578,250 @@ func registerDiscordSlashCommands(ctx context.Context) error {
 // RegisterDiscordSlashCommandsAtBoot is the public boot hook called
 // from main.go. No-op when Discord isn't configured. Errors are logged
 // but never fatal — the API stays up either way.
+//
+// Also bootstraps forum tags on the support channel so threads can be
+// tagged with category + status from creation. Tag bootstrap is
+// idempotent: existing tags are preserved, only missing ones are
+// added in a single PATCH.
 func RegisterDiscordSlashCommandsAtBoot(ctx context.Context) {
-	if _, ok := loadDiscordConfig(); !ok {
+	cfg, ok := loadDiscordConfig()
+	if !ok {
 		log.Println("[Discord] not configured; skipping slash command registration")
 		return
 	}
 	if err := registerDiscordSlashCommands(ctx); err != nil {
 		log.Printf("[Discord] register slash commands: %v", err)
+		// Continue to tag bootstrap even if commands failed.
+	} else {
+		log.Println("[Discord] slash commands registered (/inbox, /ticket, /stats)")
+	}
+
+	if err := ensureSupportForumTags(ctx, cfg.SupportChannelID); err != nil {
+		log.Printf("[Discord] ensure forum tags: %v", err)
 		return
 	}
-	log.Println("[Discord] slash commands registered (/inbox, /ticket)")
+}
+
+// ensureSupportForumTags makes sure every tag in supportForumTagSpecs
+// exists on the support channel. Caches resolved IDs in tagIDByName.
+//
+// No-op when the parent channel isn't a forum (text channels don't
+// support tags). When some tags exist already, only the missing ones
+// are added — existing IDs are preserved so already-tagged threads
+// don't lose their tags.
+func ensureSupportForumTags(ctx context.Context, channelID string) error {
+	parentType, err := discordGetChannelType(ctx, channelID)
+	if err != nil {
+		return fmt.Errorf("get channel type: %w", err)
+	}
+	if parentType != discordChannelTypeForum && parentType != discordChannelTypeMedia {
+		log.Printf("[Discord] channel type=%d (not forum); skipping tag bootstrap", parentType)
+		return nil
+	}
+
+	// Fetch the channel's current tag set.
+	body, status, err := discordRequest(ctx, http.MethodGet, "/channels/"+channelID, nil)
+	if err != nil {
+		return fmt.Errorf("get channel: %w", err)
+	}
+	if status >= 400 {
+		return fmt.Errorf("get channel: status %d body %s", status, string(body))
+	}
+	var ch struct {
+		AvailableTags []discordForumTag `json:"available_tags"`
+	}
+	if err := json.Unmarshal(body, &ch); err != nil {
+		return fmt.Errorf("parse channel: %w", err)
+	}
+
+	// Index existing tags by name (case-sensitive).
+	existing := make(map[string]discordForumTag, len(ch.AvailableTags))
+	for _, t := range ch.AvailableTags {
+		existing[t.Name] = t
+	}
+
+	// Determine what we need to add. Preserve all existing tags.
+	desired := append([]discordForumTag(nil), ch.AvailableTags...)
+	added := 0
+	for _, spec := range supportForumTagSpecs {
+		if _, ok := existing[spec.name]; ok {
+			continue
+		}
+		desired = append(desired, discordForumTag{
+			Name:      spec.name,
+			EmojiName: spec.emojiName,
+			Moderated: false,
+		})
+		added++
+	}
+
+	// Patch only when we actually added something.
+	if added > 0 {
+		patchBody := map[string]interface{}{
+			"available_tags": desired,
+		}
+		respBody, status, err := discordRequest(ctx, http.MethodPatch, "/channels/"+channelID, patchBody)
+		if err != nil {
+			return fmt.Errorf("patch tags: %w", err)
+		}
+		if status >= 400 {
+			return fmt.Errorf("patch tags: status %d body %s", status, string(respBody))
+		}
+		var updated struct {
+			AvailableTags []discordForumTag `json:"available_tags"`
+		}
+		if err := json.Unmarshal(respBody, &updated); err != nil {
+			return fmt.Errorf("parse patched channel: %w", err)
+		}
+		for _, t := range updated.AvailableTags {
+			tagIDByName.Store(t.Name, t.ID)
+		}
+		log.Printf("[Discord] forum tag bootstrap: created %d tags (total %d)", added, len(updated.AvailableTags))
+	} else {
+		// No additions needed — cache the existing IDs.
+		for _, t := range ch.AvailableTags {
+			tagIDByName.Store(t.Name, t.ID)
+		}
+		log.Printf("[Discord] forum tag bootstrap: %d tags already in place", len(ch.AvailableTags))
+	}
+
+	return nil
+}
+
+// discordForumTag mirrors Discord's tag object on a forum channel.
+// `id` is empty when we're sending a new tag to be created (Discord
+// assigns the ID on PATCH); populated when we read existing tags.
+type discordForumTag struct {
+	ID        string `json:"id,omitempty"`
+	Name      string `json:"name"`
+	EmojiName string `json:"emoji_name,omitempty"`
+	Moderated bool   `json:"moderated"`
+}
+
+// priorityEmojiPrefix returns the lead emoji to glue to the front of
+// thread names so partners can scan priority at a glance. Empty for
+// "normal" so most threads stay un-prefixed (signal vs noise).
+func priorityEmojiPrefix(priority string) string {
+	switch strings.ToLower(strings.TrimSpace(priority)) {
+	case "emergency":
+		return "🔴 "
+	case "high":
+		return "🟠 "
+	case "low":
+		return "🟢 "
+	default:
+		return "" // normal — no emoji, keeps the name short
+	}
+}
+
+// discordUpdateThreadName renames a thread by patching the name
+// field. Used when transitioning between states (sent/closed/skipped)
+// so the prefix flips visibly in the thread list.
+func discordUpdateThreadName(ctx context.Context, threadID, newName string) error {
+	if len(newName) > 100 {
+		newName = newName[:100]
+	}
+	body := map[string]interface{}{"name": newName}
+	respBody, status, err := discordRequest(ctx, http.MethodPatch, "/channels/"+threadID, body)
+	if err != nil {
+		return err
+	}
+	if status >= 400 {
+		return fmt.Errorf("rename thread: status %d body %s", status, string(respBody))
+	}
+	return nil
+}
+
+// discordSetThreadTags replaces the applied_tags on a thread with the
+// given IDs. Discord requires the FULL desired set on every PATCH —
+// can't add/remove individually.
+func discordSetThreadTags(ctx context.Context, threadID string, tagIDs []string) error {
+	body := map[string]interface{}{"applied_tags": tagIDs}
+	respBody, status, err := discordRequest(ctx, http.MethodPatch, "/channels/"+threadID, body)
+	if err != nil {
+		return err
+	}
+	if status >= 400 {
+		return fmt.Errorf("set thread tags: status %d body %s", status, string(respBody))
+	}
+	return nil
+}
+
+// transitionThreadStatus applies a new status tag (and optionally a
+// thread-name prefix update) on state change. Removes any previous
+// status tags so we don't accumulate.
+//
+// applied_tags is the existing thread's tag set; we strip status tags,
+// add the new one, and PATCH. When the thread isn't on a forum parent
+// (and thus has no tags), this is a no-op.
+//
+// closing=true ALSO appends the closed tag so a sent+closed thread
+// shows as both sent and closed in the thread list.
+func transitionThreadStatus(
+	ctx context.Context,
+	thread *SupportTicketThread,
+	newStatus string,
+	closing bool,
+) {
+	newStatusTagID := supportForumTagID(newStatus)
+	if newStatusTagID == "" {
+		// Not on a forum, or tag bootstrap hasn't run, or unknown name.
+		// Skip the tag part — status name change at the title level
+		// (handled separately by the caller) is enough to communicate.
+		return
+	}
+
+	// Fetch the thread's current applied tags so we preserve the
+	// category tag (and any other moderator-applied tag) while only
+	// flipping the status piece.
+	respBody, status, err := discordRequest(ctx, http.MethodGet, "/channels/"+thread.DiscordThreadID, nil)
+	if err != nil {
+		log.Printf("[Discord] fetch thread for status transition %s: %v", thread.DiscordThreadID, err)
+		return
+	}
+	if status >= 400 {
+		log.Printf("[Discord] fetch thread for status transition %s: status %d body %s",
+			thread.DiscordThreadID, status, string(respBody))
+		return
+	}
+	var t struct {
+		AppliedTags []string `json:"applied_tags"`
+	}
+	if err := json.Unmarshal(respBody, &t); err != nil {
+		log.Printf("[Discord] parse thread for status transition %s: %v", thread.DiscordThreadID, err)
+		return
+	}
+
+	// Build the new tag set: keep non-status tags, add new status tag,
+	// optionally append closed.
+	closedTagID := supportForumTagID("closed")
+	keep := make([]string, 0, len(t.AppliedTags)+2)
+	for _, id := range t.AppliedTags {
+		if isStatusTagID(id) || id == closedTagID {
+			continue
+		}
+		keep = append(keep, id)
+	}
+	keep = append(keep, newStatusTagID)
+	if closing && closedTagID != "" && newStatusTagID != closedTagID {
+		keep = append(keep, closedTagID)
+	}
+
+	if err := discordSetThreadTags(ctx, thread.DiscordThreadID, keep); err != nil {
+		log.Printf("[Discord] update thread tags for %s: %v", thread.DiscordThreadID, err)
+	}
+}
+
+// isStatusTagID returns true if the given ID corresponds to one of
+// our mutually-exclusive status tags. Used to strip the previous
+// status before applying the new one.
+func isStatusTagID(id string) bool {
+	for name := range statusTagNames {
+		if supportForumTagID(name) == id {
+			return true
+		}
+	}
+	return false
 }
 
 // =============================================================================
@@ -693,9 +1015,24 @@ func getOrCreateThreadForTicket(
 	if len(subject) > 70 {
 		subject = subject[:70] + "..."
 	}
-	name := fmt.Sprintf("[#%s] %s", draft.TicketNumber, subject)
+	// Format: "<priority-emoji> [#NNNNNN] <subject>"
+	// Priority emoji is empty for "normal" so most threads stay clean.
+	name := fmt.Sprintf("%s[#%s] %s",
+		priorityEmojiPrefix(draft.AIPriority),
+		draft.TicketNumber,
+		subject)
 
-	thread, err := discordCreateThread(ctx, cfg.SupportChannelID, name, starterContent, starterComponents)
+	// Initial tags: category (if known) + pending status.
+	// Empty IDs are silently skipped by discordCreateThread.
+	initialTags := []string{}
+	if id := supportForumTagID(strings.ToLower(draft.AICategory)); id != "" {
+		initialTags = append(initialTags, id)
+	}
+	if id := supportForumTagID("pending"); id != "" {
+		initialTags = append(initialTags, id)
+	}
+
+	thread, err := discordCreateThread(ctx, cfg.SupportChannelID, name, starterContent, starterComponents, initialTags)
 	if err != nil {
 		return "", false, fmt.Errorf("create thread: %w", err)
 	}

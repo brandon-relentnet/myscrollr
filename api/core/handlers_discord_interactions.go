@@ -223,9 +223,10 @@ func handleDiscordSendAction(c *fiber.Ctx, ix *discordInteraction, draftID int64
 	// Reload to get the post-mark state (status='approved').
 	draft, _ = loadSupportDraft(ctx, draftID)
 
-	// Fire-and-forget the actual reply send. body="" tells
-	// sendApprovedReply to use draft.DraftBodyHTML as-is. On success it
-	// will markDraftSent; on failure markDraftFailed.
+	// Fire-and-forget the actual reply send + thread state transition.
+	// On send success: flip thread to "sent" tag, prefix [SENT] in name.
+	// If close-flag also set: append "closed" tag, archive thread.
+	// On send failure: leave thread in "pending" so partner can retry.
 	go func() {
 		bgCtx, bgCancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer bgCancel()
@@ -234,24 +235,115 @@ func handleDiscordSendAction(c *fiber.Ctx, ix *discordInteraction, draftID int64
 				draft.TicketNumber, err)
 			return
 		}
-		// On close, archive the Discord thread.
-		if draft.ShouldClose {
-			if t, err := loadSupportTicketThread(bgCtx, draft.TicketNumber); err == nil && t != nil {
-				if err := discordArchiveThread(bgCtx, t.DiscordThreadID); err != nil {
-					log.Printf("[DiscordInteraction] archive thread for ticket %s: %v",
-						draft.TicketNumber, err)
-				} else {
-					_ = markSupportTicketThreadArchived(bgCtx, draft.TicketNumber)
-				}
-			}
-		}
+		applySendStateToThread(bgCtx, draft, draft.ShouldClose)
 	}()
 
-	suffix := ""
+	// Render a richer confirmation than just "✅ Sent" — give the
+	// partner the recipient + ticket-number + auto-close indicator
+	// without making them re-read the thread header.
+	confirmation := buildSendConfirmation(draft)
+	return discordVisibleResponse(c, confirmation)
+}
+
+// buildSendConfirmation renders the post-Send message visible in the
+// thread. Includes the ticket number, recipient, and close-state hint
+// so the partner doesn't need to scroll back up to see what they sent.
+func buildSendConfirmation(draft *SupportDraft) string {
+	var b strings.Builder
+	b.WriteString("✅ Sent to ")
+	b.WriteString(draft.UserEmail)
+	b.WriteString(" — ticket #")
+	b.WriteString(draft.TicketNumber)
+	b.WriteString(" marked answered in osTicket.")
 	if draft.ShouldClose {
-		suffix = " — ticket auto-closing"
+		b.WriteString("\n🔒 Ticket auto-closing (AI flagged resolution).")
 	}
-	return discordVisibleResponse(c, "✅ Sent to user"+suffix)
+	return b.String()
+}
+
+// applySendStateToThread updates the thread's tags + name after a
+// successful send. Used by both the regular Send and the Edit-then-
+// Send paths. closing=true also archives the thread (terminal state).
+//
+// All Discord operations here are fail-open — log + continue. The
+// reply has already been sent to the user; thread cosmetics shouldn't
+// block that success.
+func applySendStateToThread(ctx context.Context, draft *SupportDraft, closing bool) {
+	t, err := loadSupportTicketThread(ctx, draft.TicketNumber)
+	if err != nil || t == nil {
+		return
+	}
+
+	// Status tag transition: pending → sent (or pending → closed).
+	newStatus := "sent"
+	if closing {
+		// "closed" tag is appended on top of "sent" so the thread is
+		// visually marked both — partner can scan for closed-out
+		// tickets in the tag filter.
+		newStatus = "sent"
+	}
+	transitionThreadStatus(ctx, t, newStatus, closing)
+
+	// Thread-name prefix: [SENT] or [CLOSED] so the thread list
+	// reflects state without clicking in.
+	prefix := "[SENT] "
+	if closing {
+		prefix = "[CLOSED] "
+	}
+	if newName := buildPrefixedThreadName(prefix, draft); newName != "" {
+		if err := discordUpdateThreadName(ctx, t.DiscordThreadID, newName); err != nil {
+			log.Printf("[DiscordInteraction] rename thread for ticket %s: %v",
+				draft.TicketNumber, err)
+		}
+	}
+
+	// Final step on close: archive the thread.
+	if closing {
+		if err := discordArchiveThread(ctx, t.DiscordThreadID); err != nil {
+			log.Printf("[DiscordInteraction] archive thread for ticket %s: %v",
+				draft.TicketNumber, err)
+		} else {
+			_ = markSupportTicketThreadArchived(ctx, draft.TicketNumber)
+		}
+	}
+}
+
+// applySkipStateToThread updates tags + name on the Skip path.
+func applySkipStateToThread(ctx context.Context, draft *SupportDraft) {
+	t, err := loadSupportTicketThread(ctx, draft.TicketNumber)
+	if err != nil || t == nil {
+		return
+	}
+	transitionThreadStatus(ctx, t, "skipped", false)
+	if newName := buildPrefixedThreadName("[SKIPPED] ", draft); newName != "" {
+		if err := discordUpdateThreadName(ctx, t.DiscordThreadID, newName); err != nil {
+			log.Printf("[DiscordInteraction] rename thread (skip) for ticket %s: %v",
+				draft.TicketNumber, err)
+		}
+	}
+}
+
+// buildPrefixedThreadName composes a new thread name with the given
+// prefix in front of the existing format. Preserves priority emoji
+// + ticket number + truncated subject. Returns "" if name would
+// exceed Discord's 100-char limit even after truncation (defensive).
+func buildPrefixedThreadName(prefix string, draft *SupportDraft) string {
+	subject := draft.OriginalSubject
+	if subject == "" {
+		subject = "support ticket"
+	}
+	priority := priorityEmojiPrefix(draft.AIPriority)
+	// Compute remaining budget: 100 - prefix - priority - "[#NNNNNN] "
+	overhead := len(prefix) + len(priority) + len(draft.TicketNumber) + 4 // "[#] "
+	budget := 100 - overhead
+	if budget < 10 {
+		// Extreme case — drop subject entirely.
+		return fmt.Sprintf("%s%s[#%s]", prefix, priority, draft.TicketNumber)
+	}
+	if len(subject) > budget {
+		subject = subject[:budget-3] + "..."
+	}
+	return fmt.Sprintf("%s%s[#%s] %s", prefix, priority, draft.TicketNumber, subject)
 }
 
 // handleDiscordEditOpenModal opens a modal so the partner can edit the
@@ -332,7 +424,15 @@ func handleDiscordSkipAction(c *fiber.Ctx, ix *discordInteraction, draftID int64
 		return discordEphemeralResponse(c, "Could not skip draft.")
 	}
 
-	return discordVisibleResponse(c, "⏭️ Skipped — draft will not be sent")
+	// Update thread cosmetics fire-and-forget.
+	go func() {
+		bgCtx, bgCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer bgCancel()
+		applySkipStateToThread(bgCtx, draft)
+	}()
+
+	return discordVisibleResponse(c,
+		fmt.Sprintf("⏭️ Skipped — ticket #%s left without an AI reply.", draft.TicketNumber))
 }
 
 // =============================================================================
@@ -400,16 +500,63 @@ func handleDiscordModalSubmit(c *fiber.Ctx, ix *discordInteraction) error {
 		if err := sendApprovedReply(bgCtx, draft, editedBodyHTML); err != nil {
 			log.Printf("[DiscordInteraction] sendApprovedReply (edited) for ticket %s: %v",
 				draft.TicketNumber, err)
+			return
 		}
-		if draft.ShouldClose {
-			if t, err := loadSupportTicketThread(bgCtx, draft.TicketNumber); err == nil && t != nil {
-				_ = discordArchiveThread(bgCtx, t.DiscordThreadID)
-				_ = markSupportTicketThreadArchived(bgCtx, draft.TicketNumber)
-			}
-		}
+		// Edit-then-send still goes through the same thread state
+		// transitions as plain Send. Tag flips to "edited" instead of
+		// "sent" so we can distinguish them in /stats.
+		applyEditStateToThread(bgCtx, draft, draft.ShouldClose)
 	}()
 
-	return discordVisibleResponse(c, "✏️ Edited and sent")
+	confirmation := buildEditConfirmation(draft)
+	return discordVisibleResponse(c, confirmation)
+}
+
+// buildEditConfirmation parallels buildSendConfirmation for the
+// edited-then-sent path so the partner sees the same level of detail.
+func buildEditConfirmation(draft *SupportDraft) string {
+	var b strings.Builder
+	b.WriteString("✏️ Edited and sent to ")
+	b.WriteString(draft.UserEmail)
+	b.WriteString(" — ticket #")
+	b.WriteString(draft.TicketNumber)
+	b.WriteString(" marked answered in osTicket.")
+	if draft.ShouldClose {
+		b.WriteString("\n🔒 Ticket auto-closing (AI flagged resolution).")
+	}
+	return b.String()
+}
+
+// applyEditStateToThread is the Edit-then-Send analog of
+// applySendStateToThread. Identical logic except the tag transition
+// uses "edited" instead of "sent" so we can tell the difference in
+// thread filters + stats queries.
+func applyEditStateToThread(ctx context.Context, draft *SupportDraft, closing bool) {
+	t, err := loadSupportTicketThread(ctx, draft.TicketNumber)
+	if err != nil || t == nil {
+		return
+	}
+	transitionThreadStatus(ctx, t, "edited", closing)
+
+	prefix := "[EDITED] "
+	if closing {
+		prefix = "[CLOSED] "
+	}
+	if newName := buildPrefixedThreadName(prefix, draft); newName != "" {
+		if err := discordUpdateThreadName(ctx, t.DiscordThreadID, newName); err != nil {
+			log.Printf("[DiscordInteraction] rename thread (edited) for ticket %s: %v",
+				draft.TicketNumber, err)
+		}
+	}
+
+	if closing {
+		if err := discordArchiveThread(ctx, t.DiscordThreadID); err != nil {
+			log.Printf("[DiscordInteraction] archive thread (edited) for ticket %s: %v",
+				draft.TicketNumber, err)
+		} else {
+			_ = markSupportTicketThreadArchived(ctx, draft.TicketNumber)
+		}
+	}
 }
 
 // =============================================================================
@@ -425,10 +572,174 @@ func handleDiscordSlashCommand(c *fiber.Ctx, ix *discordInteraction) error {
 		return handleDiscordInboxCommand(c, ix)
 	case "ticket":
 		return handleDiscordTicketCommand(c, ix)
+	case "stats":
+		return handleDiscordStatsCommand(c, ix)
 	default:
 		return discordEphemeralResponse(c,
 			fmt.Sprintf("Unknown command: %s", ix.Data.Name))
 	}
+}
+
+// handleDiscordStatsCommand returns a breakdown of AI-support
+// pipeline activity over a configurable window (default 24h, max 7d).
+//
+// Reports:
+//   - Total drafts created
+//   - Status breakdown (pending / approved-and-sent / edited-and-sent / skipped / failed)
+//   - Category breakdown (top 5)
+//   - Auto-close rate
+//   - Average AI confidence (high/medium/low distribution)
+func handleDiscordStatsCommand(c *fiber.Ctx, ix *discordInteraction) error {
+	if ix.Data == nil {
+		return discordEphemeralResponse(c, "missing data")
+	}
+
+	hours := 24
+	for _, opt := range ix.Data.Options {
+		if opt.Name == "hours" {
+			if h, err := strconv.Atoi(strings.TrimSpace(opt.Value)); err == nil {
+				if h < 1 {
+					h = 1
+				}
+				if h > 168 {
+					h = 168
+				}
+				hours = h
+			}
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	since := time.Now().UTC().Add(-time.Duration(hours) * time.Hour)
+
+	// Aggregate query: counts by status, by category, plus confidence
+	// histogram. Three CTEs for clarity. Postgres handles this in one
+	// query — no N+1 concern.
+	const q = `
+		WITH drafts AS (
+			SELECT id, status, ai_category, ai_confidence, should_close
+			FROM support_drafts
+			WHERE created_at >= $1
+		),
+		by_status AS (
+			SELECT status, COUNT(*) AS n FROM drafts GROUP BY status
+		),
+		by_category AS (
+			SELECT COALESCE(NULLIF(ai_category, ''), 'unknown') AS cat,
+				   COUNT(*) AS n
+			FROM drafts
+			GROUP BY 1
+			ORDER BY n DESC
+			LIMIT 5
+		),
+		by_confidence AS (
+			SELECT COALESCE(NULLIF(ai_confidence, ''), 'unknown') AS conf,
+				   COUNT(*) AS n
+			FROM drafts
+			GROUP BY 1
+		)
+		SELECT
+			(SELECT COUNT(*) FROM drafts) AS total,
+			(SELECT json_agg(json_build_object('status', status, 'n', n)) FROM by_status) AS status_breakdown,
+			(SELECT json_agg(json_build_object('cat', cat, 'n', n)) FROM by_category) AS category_breakdown,
+			(SELECT json_agg(json_build_object('conf', conf, 'n', n)) FROM by_confidence) AS confidence_breakdown,
+			(SELECT COUNT(*) FROM drafts WHERE should_close = TRUE) AS close_count
+	`
+
+	var (
+		total          int
+		statusJSON     []byte
+		categoryJSON   []byte
+		confidenceJSON []byte
+		closeCount     int
+	)
+	err := DBPool.QueryRow(ctx, q, since).Scan(&total, &statusJSON, &categoryJSON, &confidenceJSON, &closeCount)
+	if err != nil {
+		log.Printf("[DiscordInteraction] /stats query: %v", err)
+		return discordEphemeralResponse(c, "Database query failed.")
+	}
+
+	if total == 0 {
+		return discordEphemeralResponse(c,
+			fmt.Sprintf("📊 No drafts in the last %dh.", hours))
+	}
+
+	// Decode JSON aggregates for friendly rendering.
+	type statusRow struct {
+		Status string `json:"status"`
+		N      int    `json:"n"`
+	}
+	type catRow struct {
+		Cat string `json:"cat"`
+		N   int    `json:"n"`
+	}
+	type confRow struct {
+		Conf string `json:"conf"`
+		N    int    `json:"n"`
+	}
+	var statuses []statusRow
+	var cats []catRow
+	var confs []confRow
+	_ = json.Unmarshal(statusJSON, &statuses)
+	_ = json.Unmarshal(categoryJSON, &cats)
+	_ = json.Unmarshal(confidenceJSON, &confs)
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "📊 **AI support pipeline — last %dh**\n", hours)
+	fmt.Fprintf(&b, "Total drafts: **%d**\n\n", total)
+
+	if len(statuses) > 0 {
+		b.WriteString("**Status breakdown:**\n")
+		statusEmoji := map[string]string{
+			"pending":  "⏳",
+			"approved": "✅",
+			"edited":   "✏️",
+			"skipped":  "⏭️",
+			"sent":     "📨",
+			"failed":   "❌",
+		}
+		for _, s := range statuses {
+			emoji := statusEmoji[s.Status]
+			if emoji == "" {
+				emoji = "•"
+			}
+			fmt.Fprintf(&b, "%s `%s`: %d\n", emoji, s.Status, s.N)
+		}
+		b.WriteString("\n")
+	}
+
+	if closeCount > 0 {
+		fmt.Fprintf(&b, "🔒 **Auto-close rate:** %d / %d (%.0f%%)\n\n",
+			closeCount, total, float64(closeCount)*100.0/float64(total))
+	}
+
+	if len(cats) > 0 {
+		b.WriteString("**Top categories:**\n")
+		for _, c := range cats {
+			fmt.Fprintf(&b, "• `%s`: %d\n", c.Cat, c.N)
+		}
+		b.WriteString("\n")
+	}
+
+	if len(confs) > 0 {
+		b.WriteString("**AI confidence:**\n")
+		confEmoji := map[string]string{
+			"high":   "🟢",
+			"medium": "🟡",
+			"low":    "🔴",
+		}
+		for _, cf := range confs {
+			emoji := confEmoji[cf.Conf]
+			if emoji == "" {
+				emoji = "•"
+			}
+			fmt.Fprintf(&b, "%s `%s`: %d\n", emoji, cf.Conf, cf.N)
+		}
+	}
+
+	return discordEphemeralResponse(c, b.String())
 }
 
 // handleDiscordInboxCommand lists the 5 most recent pending drafts.
