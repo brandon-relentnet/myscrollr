@@ -85,8 +85,34 @@ Adjust the `COPY` source path to wherever you stage the plugin during the build.
 2. You should see "Scrollr Reply API" in the list. Click it.
 3. Click **Enable** (or Install + Enable if it shows as not-yet-installed).
 4. Confirm the plugin status shows as Active.
+5. **Create at least one Plugin Instance** — this is critical and easy to miss. osTicket's `PluginManager::bootstrap()` only fires `Plugin::bootstrap()` for plugins with at least one ENABLED instance. A plugin can be installed and active in the database (`ost_plugin.isactive=1`) but if there are no enabled rows in `ost_plugin_instance`, the plugin's URL hooks never register.
+   - On the plugin's page, look for **Instances** or **Add a New Instance**.
+   - Create one with any name (e.g. "default"). The plugin has no per-instance config, so the form is effectively empty.
+   - Toggle the instance to **Enabled** and save.
+6. Restart the osTicket container/PHP-FPM so OPcache reloads the plugin classes.
 
 The endpoint is now live at `https://<osticket-host>/api/tickets/{number}/reply.json`.
+
+**Quick database verification** (skip if installing via admin UI worked first try):
+
+```sql
+SELECT id, name, install_path, isactive FROM ost_plugin
+  WHERE install_path LIKE '%scrollr-reply-api%';
+-- Expect: 1 row with isactive=1
+
+SELECT id, plugin_id, flags, name FROM ost_plugin_instance
+  WHERE plugin_id = (SELECT id FROM ost_plugin WHERE install_path LIKE '%scrollr-reply-api%');
+-- Expect: at least 1 row with flags=1 (FLAG_ENABLED)
+```
+
+If the second query returns 0 rows, no instance exists — bootstrap won't run. Add one via the admin UI, or directly:
+
+```sql
+INSERT INTO ost_plugin_instance (plugin_id, flags, name, notes, created, updated)
+VALUES (<plugin_id>, 1, 'default', '', NOW(), NOW());
+```
+
+Then restart the osTicket container.
 
 ### Verifying the install
 
@@ -167,11 +193,12 @@ For deeper debugging:
 osticket-plugins/scrollr-reply-api/
 ├── plugin.php                       # Manifest (osTicket-discoverable)
 ├── class.ScrollrReplyPlugin.php     # Plugin subclass; hooks Signal::connect('api', ...)
+├── config.php                       # Stub PluginConfig (required by osTicket bootstrap chain)
 ├── api.reply.php                    # ScrollrReplyController; wraps Ticket::postReply()
 └── README.md                        # This file
 ```
 
-The implementation is ~150 lines of PHP across three files. No external dependencies beyond osTicket itself.
+The implementation is ~200 lines of PHP across four files. No external dependencies beyond osTicket itself.
 
 ## Future work
 
