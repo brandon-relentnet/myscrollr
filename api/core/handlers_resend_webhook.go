@@ -143,14 +143,18 @@ func HandleResendWebhook(c *fiber.Ctx) error {
 		recipient = ev.Data.To[0]
 	}
 
-	// Determine direction by inspecting the From address. osTicket's
-	// outbound mail comes from the support address; partner notifications
-	// and AI replies come from one of our own send addresses. Tagging
-	// these correctly matters because fetchOSTicketMessageIDForReply
-	// filters by direction='outbound_osticket' to find the In-Reply-To
-	// target. If we tag a partner notification as outbound_osticket, the
-	// AI reply ends up threaded against the wrong message.
-	direction := classifyMessageDirection(ev.Data.From)
+	// Determine direction by inspecting recipient + subject + from. Since
+	// osTicket auto-responses, partner notifications, and AI replies can
+	// all originate from the same support@ address, the from-address
+	// alone is not enough to disambiguate. We use:
+	//   1. Recipient = SUPPORT_AGENT_EMAIL  -> partner notification
+	//   2. Subject starts with "Re: "       -> AI reply (we always prefix Re:)
+	//   3. From contains support inbox       -> osTicket auto-response
+	//   4. otherwise                         -> unknown
+	// This matters for fetchOSTicketMessageIDForReply, which filters
+	// strictly to direction='outbound_osticket' to find the In-Reply-To
+	// target. Mistagging would thread AI replies against the wrong msg.
+	direction := classifyMessageDirection(ev.Data.From, recipient, ev.Data.Subject)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -165,54 +169,56 @@ func HandleResendWebhook(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusOK)
 }
 
-// classifyMessageDirection inspects the from-address on a Resend
-// webhook event and decides which direction tag to store with the
-// captured Message-ID.
+// classifyMessageDirection looks at recipient, subject, and from to
+// decide which direction tag to store with the captured Message-ID.
+//
+// Why all three? Because in a typical setup the from-address for
+// osTicket auto-responses, partner notifications, AND AI replies all
+// resolve to the same support@ address. Distinguishing them requires
+// the recipient (agent vs user) and the subject pattern (Re: prefix).
 //
 // Direction values:
 //
-//   - outbound_osticket: osTicket sent the email (auto-response or
-//     status update to the user). These are the only ones we want to
-//     pull when computing In-Reply-To headers for AI replies, so we
-//     can thread cleanly into the existing osTicket conversation.
-//   - outbound_partner_notification: our backend sent an internal
-//     notification to the support agent (the partner approval email).
-//     Recorded for visibility but excluded from In-Reply-To lookups.
-//   - outbound_ai: our backend sent an AI-drafted reply to the user.
-//     Recorded so we can still match if the user replies to that
-//     specific message.
-//   - unknown: anything we cannot classify. Recorded for diagnostic
-//     visibility but never used for threading.
+//   - outbound_partner_notification: recipient matches SUPPORT_AGENT_EMAIL.
+//     Our backend sent this internal approval email. Excluded from
+//     In-Reply-To lookups.
+//   - outbound_ai: subject starts with "Re: " AND recipient is not
+//     the support agent. Our backend sent an AI reply to the user.
+//   - outbound_osticket: from contains the support inbox AND not
+//     classified above. osTicket sent the user an auto-response or
+//     status update. These are the messages fetchOSTicketMessageIDForReply
+//     filters for when computing In-Reply-To.
+//   - unknown: anything else. Recorded for diagnostic visibility but
+//     never used for threading.
 //
-// The set of "ours" addresses is read from env vars at runtime so the
-// classifier stays in sync with whatever Resend addresses we are
-// actually configured to send from.
-func classifyMessageDirection(fromAddress string) string {
+// All env vars are read at runtime so the classifier stays in sync
+// with whatever the configmap currently holds.
+func classifyMessageDirection(fromAddress, recipient, subject string) string {
 	from := strings.ToLower(fromAddress)
+	to := strings.ToLower(recipient)
+	subj := strings.ToLower(strings.TrimSpace(subject))
 
 	supportFrom := strings.ToLower(getenvOr("OSTICKET_BCC_EMAIL", "support@myscrollr.com"))
-	replyFrom := strings.ToLower(getenvOr("SUPPORT_REPLY_FROM_EMAIL", "support@myscrollr.com"))
-	notificationFrom := strings.ToLower(os.Getenv("RESEND_FROM_EMAIL"))
+	agentEmail := strings.ToLower(os.Getenv("SUPPORT_AGENT_EMAIL"))
 
-	// AI reply check first because the reply-from address typically
-	// equals the support inbox address; we want the AI reply tag to
-	// win when both match (ours, going to user).
-	if replyFrom != "" && strings.Contains(from, replyFrom) && replyFrom != supportFrom {
-		return "outbound_ai"
-	}
-
-	// Partner notification: from address matches the global RESEND_FROM_EMAIL
-	// (commonly invites@myscrollr.com or similar) and is NOT the support inbox.
-	if notificationFrom != "" && strings.Contains(from, notificationFrom) && notificationFrom != supportFrom {
+	// 1. Partner notification: recipient is the support agent.
+	if agentEmail != "" && strings.Contains(to, agentEmail) {
 		return "outbound_partner_notification"
 	}
 
-	// osTicket-originated email: from-address contains the support inbox.
+	// 2. AI reply: subject begins with "Re: " (we always prefix replies
+	// this way; osTicket's auto-response subjects do not).
+	if strings.HasPrefix(subj, "re:") {
+		return "outbound_ai"
+	}
+
+	// 3. osTicket auto-response or status update: from contains support@.
 	if supportFrom != "" && strings.Contains(from, supportFrom) {
 		return "outbound_osticket"
 	}
 
-	log.Printf("[ResendWebhook] could not classify from address: %s", fromAddress)
+	log.Printf("[ResendWebhook] could not classify from=%s to=%s subject=%q",
+		fromAddress, recipient, subject)
 	return "unknown"
 }
 
