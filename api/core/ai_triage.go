@@ -156,15 +156,21 @@ func triageTicket(ctx context.Context, input TriageInput) *TriageResult {
 		return nil
 	}
 
-	// Claude sometimes wraps JSON in markdown fences despite instructions.
+	// Claude sometimes wraps JSON in markdown fences AND/OR appends a
+	// "note on categorization" or similar commentary after the JSON
+	// object — both despite the prompt's "no markdown, no commentary"
+	// instruction. Strip leading fences then use json.Decoder.Decode
+	// which reads ONE JSON value and ignores everything after it.
+	// (json.Unmarshal would fail with "invalid character ... after
+	// top-level value" when commentary follows.)
 	rawJSON := strings.TrimSpace(apiResp.Content[0].Text)
 	rawJSON = strings.TrimPrefix(rawJSON, "```json")
 	rawJSON = strings.TrimPrefix(rawJSON, "```")
-	rawJSON = strings.TrimSuffix(rawJSON, "```")
 	rawJSON = strings.TrimSpace(rawJSON)
 
 	var result TriageResult
-	if err := json.Unmarshal([]byte(rawJSON), &result); err != nil {
+	dec := json.NewDecoder(strings.NewReader(rawJSON))
+	if err := dec.Decode(&result); err != nil {
 		log.Printf("[Triage] parse triage JSON: %v\nraw: %s", err, rawJSON)
 		return nil
 	}
@@ -266,7 +272,14 @@ YOUR TASKS:
 
 6. Output confidence: "high" if you're very sure of category/priority, "medium" if some ambiguity, "low" if you'd want a human to double-check
 
-OUTPUT EXACTLY THIS JSON (no markdown fences, no commentary):
+OUTPUT FORMAT — STRICT:
+- Output ONLY a single JSON object. Nothing before it. Nothing after it.
+- Do NOT wrap in markdown code fences (no triple-backtick blocks, no "json" language tags).
+- No prose, no commentary, no "Note on categorization", no follow-up explanation.
+- The output must START with an opening curly brace and END with a closing curly brace, with nothing else around it.
+- After the closing brace, your turn ENDS. Do not write another sentence.
+
+JSON SCHEMA:
 {
   "category": "bug|feature|feedback|billing|account|channel",
   "channel": "finance|sports|rss|fantasy" or null,
