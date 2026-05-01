@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -188,16 +189,140 @@ type DiscordThread struct {
 	ParentID string `json:"parent_id"`
 }
 
-// discordCreateThread starts a public thread WITHOUT a starting message
-// in the support channel.
+// discordCreateThread starts a public thread under the support channel.
+// Auto-detects parent channel type and uses the appropriate endpoint:
 //
-// Returns the new thread's ID. Discord's "thread without a message"
-// endpoint requires the `auto_archive_duration` field; 4320 = 3 days.
-func discordCreateThread(ctx context.Context, channelID, name string) (*DiscordThread, error) {
+//   - Forum channel (type=15): single call to POST /channels/{id}/threads
+//     with `message` body (REQUIRED for forums) — the starter message
+//     content + buttons go inline. No second message-post needed.
+//
+//   - Text channel (type=0): two-step flow — POST /threads with `type=11`
+//     and no message, then POST /messages to the new thread. The starter
+//     content + components are posted as the first thread message.
+//
+// Returns the thread metadata. Even when the API returns extra info
+// (like the starter message), we only need the thread ID downstream.
+//
+// auto_archive_duration: 4320 = 3 days. Threads auto-archive after this
+// many minutes of inactivity. Coupled with our explicit archive-on-close
+// path so resolved tickets vanish quickly.
+//
+// starterContent + starterComponents are required for forum channels and
+// optional for text channels. When non-empty on a text channel, we post
+// them as a follow-up message after creating the thread.
+func discordCreateThread(
+	ctx context.Context,
+	channelID, name string,
+	starterContent string,
+	starterComponents []DiscordActionRow,
+) (*DiscordThread, error) {
 	if len(name) > 100 {
 		// Discord's hard limit on thread names is 100 chars.
 		name = name[:100]
 	}
+
+	parentType, err := discordGetChannelType(ctx, channelID)
+	if err != nil {
+		return nil, fmt.Errorf("inspect parent channel: %w", err)
+	}
+
+	switch parentType {
+	case discordChannelTypeForum, discordChannelTypeMedia:
+		return discordCreateForumThread(ctx, channelID, name, starterContent, starterComponents)
+	default:
+		return discordCreateTextThread(ctx, channelID, name, starterContent, starterComponents)
+	}
+}
+
+// Discord channel types we branch on.
+const (
+	discordChannelTypeText  = 0
+	discordChannelTypeForum = 15
+	discordChannelTypeMedia = 16
+)
+
+// channelTypeCache memoises channel-type lookups so we only hit
+// GET /channels/{id} once per channel per pod lifetime. Channel type
+// can't change without recreating the channel, so caching forever is
+// safe within a single process.
+var channelTypeCache sync.Map // map[channelID string] -> int
+
+// discordGetChannelType returns the channel's type (0=Text, 15=Forum,
+// 16=Media, etc.) by hitting GET /channels/{id}. Cached after first call.
+func discordGetChannelType(ctx context.Context, channelID string) (int, error) {
+	if cached, ok := channelTypeCache.Load(channelID); ok {
+		return cached.(int), nil
+	}
+
+	respBody, status, err := discordRequest(ctx, http.MethodGet,
+		"/channels/"+channelID, nil)
+	if err != nil {
+		return 0, err
+	}
+	if status >= 400 {
+		return 0, fmt.Errorf("discord get channel: status %d body %s", status, string(respBody))
+	}
+	var ch struct {
+		Type int `json:"type"`
+	}
+	if err := json.Unmarshal(respBody, &ch); err != nil {
+		return 0, fmt.Errorf("parse channel response: %w", err)
+	}
+	channelTypeCache.Store(channelID, ch.Type)
+	return ch.Type, nil
+}
+
+// discordCreateForumThread creates a thread in a Forum / Media channel.
+// Discord's "Start Thread in Forum or Media Channel" endpoint REQUIRES
+// the `message` field — the starter message that becomes the first post.
+// Buttons go in the starter message's components.
+func discordCreateForumThread(
+	ctx context.Context,
+	channelID, name, starterContent string,
+	starterComponents []DiscordActionRow,
+) (*DiscordThread, error) {
+	if starterContent == "" {
+		// Forum threads require a starter message; fall back to a
+		// placeholder so the create call doesn't 400.
+		starterContent = "(creating thread)"
+	}
+	msg := map[string]interface{}{
+		"content":          starterContent,
+		"allowed_mentions": map[string]interface{}{"parse": []string{}},
+	}
+	if len(starterComponents) > 0 {
+		msg["components"] = starterComponents
+	}
+	body := map[string]interface{}{
+		"name":                  name,
+		"auto_archive_duration": 4320,
+		"message":               msg,
+	}
+	respBody, status, err := discordRequest(ctx, http.MethodPost,
+		"/channels/"+channelID+"/threads", body)
+	if err != nil {
+		return nil, err
+	}
+	if status >= 400 {
+		return nil, fmt.Errorf("discord create forum thread: status %d body %s", status, string(respBody))
+	}
+	var t DiscordThread
+	if err := json.Unmarshal(respBody, &t); err != nil {
+		return nil, fmt.Errorf("parse thread response: %w", err)
+	}
+	return &t, nil
+}
+
+// discordCreateTextThread creates a thread under a Text channel.
+// Discord's "Start Thread without Message" endpoint accepts
+// `name` + `type` + `auto_archive_duration`, but does NOT accept a
+// `message` field. After creation we post the starter content as a
+// follow-up message in the new thread.
+func discordCreateTextThread(
+	ctx context.Context,
+	channelID, name, starterContent string,
+	starterComponents []DiscordActionRow,
+) (*DiscordThread, error) {
 	body := map[string]interface{}{
 		"name":                  name,
 		"type":                  11, // PUBLIC_THREAD
@@ -209,11 +334,21 @@ func discordCreateThread(ctx context.Context, channelID, name string) (*DiscordT
 		return nil, err
 	}
 	if status >= 400 {
-		return nil, fmt.Errorf("discord create thread: status %d body %s", status, string(respBody))
+		return nil, fmt.Errorf("discord create text thread: status %d body %s", status, string(respBody))
 	}
 	var t DiscordThread
 	if err := json.Unmarshal(respBody, &t); err != nil {
 		return nil, fmt.Errorf("parse thread response: %w", err)
+	}
+
+	// Post starter content as the first thread message.
+	if starterContent != "" {
+		if _, err := discordPostMessage(ctx, t.ID, starterContent, starterComponents); err != nil {
+			// Thread is created in Discord; we just couldn't post the
+			// starter message. Return the thread anyway — caller
+			// shouldn't fail the whole flow over this.
+			log.Printf("[Discord] post starter message in text thread %s: %v", t.ID, err)
+		}
 	}
 	return &t, nil
 }
@@ -480,9 +615,17 @@ func markSupportTicketThreadArchived(ctx context.Context, ticketNumber string) e
 // =============================================================================
 
 // notifyDiscordForDraft posts a new ticket draft to Discord. Creates a
-// thread if one doesn't exist for this ticket, posts a follow-up
-// message if it does. Either way, the message includes the user's body,
-// the AI summary + drafted reply, and three action buttons.
+// thread WITH the draft inline as starter message if no thread exists
+// for this ticket; posts a follow-up message in the existing thread on
+// subsequent drafts (e.g., user replies). Either way, the message
+// includes the user's body, the AI summary + drafted reply, and three
+// action buttons.
+//
+// Forum channels REQUIRE the starter message inline at thread creation
+// (Discord rejects no-message thread creates with code 50035). For
+// existing threads, we use the regular post-message path. discordCreateThread
+// branches by parent channel type internally and handles both forum
+// and text parents transparently.
 //
 // Fail-open: any error here is logged and swallowed. The email path
 // (if enabled) covers us.
@@ -492,31 +635,53 @@ func notifyDiscordForDraft(ctx context.Context, draft *SupportDraft) {
 	}
 	cfg, _ := loadDiscordConfig() // ok already verified by shouldNotifyDiscord
 
-	threadID, err := getOrCreateThreadForTicket(ctx, cfg, draft)
+	content := buildDraftMessageContent(draft)
+	components := buildDraftActionButtons(draft.ID)
+
+	threadID, isNew, err := getOrCreateThreadForTicket(ctx, cfg, draft, content, components)
 	if err != nil {
 		log.Printf("[Discord] getOrCreateThread for ticket %s: %v", draft.TicketNumber, err)
 		return
 	}
 
-	content := buildDraftMessageContent(draft)
-	components := buildDraftActionButtons(draft.ID)
-
-	if _, err := discordPostMessage(ctx, threadID, content, components); err != nil {
-		log.Printf("[Discord] post draft message for ticket %s: %v", draft.TicketNumber, err)
-		return
+	// If we just created the thread, the starter message IS the draft
+	// content; no separate post-message call needed (and posting again
+	// would duplicate). Only post follow-up when threading into an
+	// existing thread.
+	if !isNew {
+		if _, err := discordPostMessage(ctx, threadID, content, components); err != nil {
+			log.Printf("[Discord] post draft message for ticket %s: %v", draft.TicketNumber, err)
+			return
+		}
 	}
 }
 
 // getOrCreateThreadForTicket looks up an existing thread or creates a
 // new one. Threads that have been archived (via the close path) are
 // treated as not-existing and a new thread is created.
-func getOrCreateThreadForTicket(ctx context.Context, cfg DiscordConfig, draft *SupportDraft) (string, error) {
+//
+// Returns (threadID, isNewlyCreated, error). When isNewlyCreated=true
+// the caller MUST NOT separately post the starter content — it was
+// already posted as part of thread creation. When isNewlyCreated=false
+// the caller should post-message into the existing thread.
+//
+// starterContent + starterComponents are required for forum-channel
+// parents (Discord 50035 if missing). They're also used for text
+// channels' first message, so the caller doesn't need to know the
+// channel type.
+func getOrCreateThreadForTicket(
+	ctx context.Context,
+	cfg DiscordConfig,
+	draft *SupportDraft,
+	starterContent string,
+	starterComponents []DiscordActionRow,
+) (string, bool, error) {
 	existing, err := loadSupportTicketThread(ctx, draft.TicketNumber)
 	if err != nil {
-		return "", fmt.Errorf("load existing thread: %w", err)
+		return "", false, fmt.Errorf("load existing thread: %w", err)
 	}
 	if existing != nil && !existing.Archived {
-		return existing.DiscordThreadID, nil
+		return existing.DiscordThreadID, false, nil
 	}
 
 	// Create a new thread.
@@ -530,9 +695,9 @@ func getOrCreateThreadForTicket(ctx context.Context, cfg DiscordConfig, draft *S
 	}
 	name := fmt.Sprintf("[#%s] %s", draft.TicketNumber, subject)
 
-	thread, err := discordCreateThread(ctx, cfg.SupportChannelID, name)
+	thread, err := discordCreateThread(ctx, cfg.SupportChannelID, name, starterContent, starterComponents)
 	if err != nil {
-		return "", fmt.Errorf("create thread: %w", err)
+		return "", false, fmt.Errorf("create thread: %w", err)
 	}
 
 	// Persist the mapping.
@@ -549,7 +714,7 @@ func getOrCreateThreadForTicket(ctx context.Context, cfg DiscordConfig, draft *S
 		log.Printf("[Discord] persist thread mapping for ticket %s: %v", draft.TicketNumber, err)
 	}
 
-	return thread.ID, nil
+	return thread.ID, true, nil
 }
 
 // buildDraftMessageContent renders the user message + AI metadata +
