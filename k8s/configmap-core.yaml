@@ -58,10 +58,20 @@ data:
   #
   # The following secrets MUST be added manually to k8s/secrets.yaml:
   #   - ANTHROPIC_API_KEY              (Claude Haiku for triage; sk-ant-...)
-  #   - RESEND_WEBHOOK_SECRET          (Svix-style secret from Resend → Webhooks)
   #   - SUPPORT_APPROVAL_HMAC_SECRET   (any high-entropy string ≥32 chars)
+  #
+  # Approved AI replies post directly to osTicket via the
+  # scrollr-reply-api plugin (POST /api/tickets/{number}/reply.json).
+  # That path uses OSTICKET_URL + OSTICKET_API_KEY (above) for auth and
+  # routes outbound user-notification emails through osTicket's own
+  # mailer, so RESEND_API_KEY is no longer used for the reply leg
+  # (only for the partner-notification email; that's still Resend).
   AI_TRIAGE_ENABLED: "true"                       # set "false" to bypass triage and fall back to legacy flow
   SUPPORT_AGENT_EMAIL: "phil@myscrollr.com"       # CHANGEME — partner's email for approval notifications
   APPROVAL_BASE_URL: "https://api.myscrollr.com"  # base URL embedded in Send/Edit/Skip links
-  OSTICKET_BCC_EMAIL: "support@myscrollr.com"     # the inbox osTicket polls for inbound piping
-  SUPPORT_REPLY_FROM_EMAIL: "support@myscrollr.com"
+  SUPPORT_REPLY_FROM_EMAIL: "support@myscrollr.com"  # FROM address for partner-notification emails (Resend)
+  # Optional: pin the staff agent who posts AI replies via the plugin.
+  # When unset, the plugin falls back to the ticket's currently-assigned
+  # agent. Use the staff_id you can see in osTicket admin → Agents.
+  # Example: SUPPORT_AGENT_STAFF_ID: "1"
+  # SUPPORT_AGENT_STAFF_ID: ""

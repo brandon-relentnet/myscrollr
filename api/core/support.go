@@ -430,10 +430,8 @@ var (
 	errOSTicketAllKeysFailed = errors.New("osticket: all API keys rejected")
 )
 
-// forwardToOSTicket POSTs the payload to OS Ticket, trying each
-// comma-separated API key in OSTICKET_API_KEY in order. OS Ticket ties
-// keys to source IPs and pods can land on different nodes, so a 401 on
-// one key just means try the next; any other non-2xx aborts the loop.
+// forwardToOSTicket POSTs a ticket-create payload to OS Ticket via the
+// shared transport (postOSTicketJSON, below).
 //
 // Returns the ticket number on success along with nil error. osTicket's
 // REST API returns the bare ticket number as the response body on a
@@ -443,25 +441,45 @@ var (
 // answers 201 with no body — caller treats missing ticket numbers as
 // non-fatal (no draft will be created, but the ticket itself succeeded).
 func forwardToOSTicket(ctx context.Context, payload OSTicketPayload) (string, error) {
-	osTicketURL := os.Getenv("OSTICKET_URL")
-	apiKeysRaw := os.Getenv("OSTICKET_API_KEY")
-	if osTicketURL == "" || apiKeysRaw == "" {
-		log.Println("[Support] OSTICKET_URL or OSTICKET_API_KEY not configured")
-		return "", errOSTicketNotConfigured
-	}
-
-	ticketURL := strings.TrimSuffix(osTicketURL, "/") + "/api/tickets.json"
-
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		log.Printf("[Support] Failed to marshal OS Ticket payload: %v", err)
 		return "", fmt.Errorf("%w: %v", errOSTicketMarshal, err)
 	}
 
+	status, body, err := postOSTicketJSON(ctx, "/api/tickets.json", payloadBytes)
+	if err != nil {
+		return "", err
+	}
+	if status == http.StatusCreated || status == http.StatusOK {
+		return parseOSTicketNumber(body), nil
+	}
+	return "", fmt.Errorf("osticket: unexpected status %d", status)
+}
+
+// postOSTicketJSON is the shared transport for any osTicket REST call.
+// Tries each comma-separated API key in OSTICKET_API_KEY in order. OS
+// Ticket ties keys to source IPs and pods can land on different nodes,
+// so a 401 on one key just means try the next; any other non-2xx
+// aborts the loop and returns the status + body so the caller can
+// decide what to do with it.
+//
+// Used by both the create-ticket flow (forwardToOSTicket) and the
+// reply flow (postOSTicketReply in support_drafts.go).
+func postOSTicketJSON(ctx context.Context, path string, payloadBytes []byte) (int, []byte, error) {
+	osTicketURL := os.Getenv("OSTICKET_URL")
+	apiKeysRaw := os.Getenv("OSTICKET_API_KEY")
+	if osTicketURL == "" || apiKeysRaw == "" {
+		log.Println("[Support] OSTICKET_URL or OSTICKET_API_KEY not configured")
+		return 0, nil, errOSTicketNotConfigured
+	}
+
+	fullURL := strings.TrimSuffix(osTicketURL, "/") + path
 	apiKeys := strings.Split(apiKeysRaw, ",")
 	client := &http.Client{Timeout: 15 * time.Second}
+
 	var lastStatus int
-	var lastBody string
+	var lastBody []byte
 
 	for i, key := range apiKeys {
 		key = strings.TrimSpace(key)
@@ -469,7 +487,7 @@ func forwardToOSTicket(ctx context.Context, payload OSTicketPayload) (string, er
 			continue
 		}
 
-		httpReq, err := http.NewRequestWithContext(ctx, "POST", ticketURL, bytes.NewReader(payloadBytes))
+		httpReq, err := http.NewRequestWithContext(ctx, "POST", fullURL, bytes.NewReader(payloadBytes))
 		if err != nil {
 			log.Printf("[Support] Failed to create OS Ticket request: %v", err)
 			continue
@@ -486,10 +504,10 @@ func forwardToOSTicket(ctx context.Context, payload OSTicketPayload) (string, er
 		resp.Body.Close()
 
 		lastStatus = resp.StatusCode
-		lastBody = string(respBody)
+		lastBody = respBody
 
-		if resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusOK {
-			return parseOSTicketNumber(respBody), nil
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			return resp.StatusCode, respBody, nil
 		}
 
 		// 401 (wrong IP for this key) — try next key.
@@ -498,13 +516,13 @@ func forwardToOSTicket(ctx context.Context, payload OSTicketPayload) (string, er
 			continue
 		}
 
-		// Any other error — don't retry, it's not an IP issue.
-		log.Printf("[Support] OS Ticket returned %d: %s", resp.StatusCode, lastBody)
-		break
+		// Any other error — don't retry, return the status to the caller.
+		log.Printf("[Support] OS Ticket returned %d at %s: %s", resp.StatusCode, path, string(respBody))
+		return resp.StatusCode, respBody, fmt.Errorf("osticket: status %d", resp.StatusCode)
 	}
 
-	log.Printf("[Support] All API keys failed. Last status: %d, body: %s", lastStatus, lastBody)
-	return "", fmt.Errorf("%w: last status %d", errOSTicketAllKeysFailed, lastStatus)
+	log.Printf("[Support] All API keys failed at %s. Last status: %d, body: %s", path, lastStatus, string(lastBody))
+	return lastStatus, lastBody, fmt.Errorf("%w: last status %d", errOSTicketAllKeysFailed, lastStatus)
 }
 
 // parseOSTicketNumber returns the ticket number from a successful

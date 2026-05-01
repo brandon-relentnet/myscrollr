@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,8 +25,9 @@ import (
 // Each incoming support ticket spawns a `support_drafts` row holding the
 // AI-generated draft reply plus its triage metadata. The partner's
 // approval URL handlers (handlers_support_approval.go) load this row,
-// transition its status, and — on Send — kick off the outbound email
-// via Resend (sendApprovedReply, defined below in Phase 1D).
+// transition its status, and — on Send — post the approved reply
+// directly into osTicket via the scrollr-reply-api plugin
+// (doSendApprovedReply, below).
 
 // SupportDraft mirrors the support_drafts table.
 type SupportDraft struct {
@@ -182,121 +184,56 @@ func markDraftFailed(ctx context.Context, id int64) {
 	}
 }
 
-// recordOSTicketMessageID stores a Message-ID we captured from a
-// Resend webhook event so we can later set In-Reply-To when sending
-// our AI reply. Idempotent via the UNIQUE(message_id) index.
-func recordOSTicketMessageID(ctx context.Context, ticketNumber, messageID, recipient, direction string) error {
-	const q = `
-		INSERT INTO osticket_message_ids (ticket_number, message_id, recipient_email, direction)
-		VALUES ($1,$2,$3,$4)
-		ON CONFLICT (message_id) DO NOTHING
-	`
-	_, err := DBPool.Exec(ctx, q, ticketNumber, messageID, recipient, direction)
-	return err
-}
-
-// fetchOSTicketMessageIDForReply returns the Message-ID of the most
-// recent osTicket-originated email for this ticket. Used when sending
-// our AI reply to set In-Reply-To correctly. Returns "" if none
-// (which is fine — the reply will still send, just without threading).
-func fetchOSTicketMessageIDForReply(ctx context.Context, ticketNumber string) string {
-	const q = `
-		SELECT message_id FROM osticket_message_ids
-		WHERE ticket_number = $1 AND direction = 'outbound_osticket'
-		ORDER BY captured_at DESC LIMIT 1
-	`
-	var id string
-	if err := DBPool.QueryRow(ctx, q, ticketNumber).Scan(&id); err != nil {
-		if !errors.Is(err, pgx.ErrNoRows) {
-			log.Printf("[Drafts] fetchOSTicketMessageIDForReply: %v", err)
-		}
-		return ""
-	}
-	return id
-}
-
 // =============================================================================
-// Outbound replies + partner notifications via Resend
+// Outbound replies via the osTicket scrollr-reply-api plugin
 // =============================================================================
 
-// doSendApprovedReply sends the partner-approved reply email via
-// Resend with proper In-Reply-To and References headers so osTicket
-// can thread it back into the original ticket. Also BCCs the support@
-// address so osTicket has its own copy of the agent reply via inbound
-// piping.
+// doSendApprovedReply posts the partner-approved reply directly to
+// osTicket via the scrollr-reply-api plugin (POST
+// /api/tickets/{number}/reply.json). osTicket then:
+//   - Creates a thread entry of type='R' (Response — agent reply)
+//     attributed to the configured staff agent
+//   - Sends the user-notification email through Dept::getReplyEmail()
+//     using its own template set, signature, and from-address
+//   - Sets isanswered=1 and bumps lastupdate on the ticket
 //
-// We don't surface threading-failure as a hard error: if no
-// osTicket-side Message-ID has been captured yet, the reply still
-// goes out — the user just sees a fresh thread. Threading is
-// best-effort and depends on the Resend webhook having fired before
-// the partner clicks Send.
+// This replaces an earlier Resend-BCC pattern that tried to thread
+// replies into osTicket via inbound mail. That approach failed
+// architecturally: osTicket treats inbound mail from a staff address
+// as a NOTE (type='N'), not a reply, AND does NOT trigger an outbound
+// user notification. The plugin path is the only way to get a real
+// agent reply with a real outbound email through osTicket's mailer.
+// See osticket-plugins/scrollr-reply-api/README.md for the rationale.
 func doSendApprovedReply(ctx context.Context, draft *SupportDraft, body string) error {
-	resendKey := os.Getenv("RESEND_API_KEY")
-	if resendKey == "" {
-		return fmt.Errorf("RESEND_API_KEY not set")
-	}
-	from := os.Getenv("SUPPORT_REPLY_FROM_EMAIL")
-	if from == "" {
-		from = "support@myscrollr.com"
-	}
-	bcc := os.Getenv("OSTICKET_BCC_EMAIL")
-	if bcc == "" {
-		bcc = "support@myscrollr.com"
-	}
-
-	osticketMsgID := fetchOSTicketMessageIDForReply(ctx, draft.TicketNumber)
-
-	var headers []map[string]string
-	if osticketMsgID != "" {
-		// Email standard requires Message-IDs to be wrapped in <>
-		wrappedID := osticketMsgID
-		if !strings.HasPrefix(wrappedID, "<") {
-			wrappedID = "<" + wrappedID + ">"
-		}
-		headers = append(headers,
-			map[string]string{"name": "In-Reply-To", "value": wrappedID},
-			map[string]string{"name": "References", "value": wrappedID},
-		)
-	}
-
-	subject := "Re: [#" + draft.TicketNumber + "] " + draft.OriginalSubject
-
 	payload := map[string]interface{}{
-		"from":    from,
-		"to":      []string{draft.UserEmail},
-		"bcc":     []string{bcc},
-		"subject": subject,
-		"html":    body,
-	}
-	if len(headers) > 0 {
-		payload["headers"] = headers
+		"reply_html":   body,
+		"signal_alert": true, // ALWAYS true — that's the whole point of this path
 	}
 
-	bodyBytes, err := json.Marshal(payload)
+	// Optional: pin a specific staff agent. When unset, the plugin
+	// falls back to the ticket's currently-assigned agent (or returns
+	// 400 if the ticket has no assignee).
+	if staffIDStr := os.Getenv("SUPPORT_AGENT_STAFF_ID"); staffIDStr != "" {
+		if id, err := strconv.Atoi(strings.TrimSpace(staffIDStr)); err == nil && id > 0 {
+			payload["staff_id"] = id
+		} else {
+			log.Printf("[Drafts] SUPPORT_AGENT_STAFF_ID=%q is not a positive integer; falling back to ticket assignee", staffIDStr)
+		}
+	}
+
+	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("marshal: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.resend.com/emails", bytes.NewReader(bodyBytes))
+	path := "/api/tickets/" + draft.TicketNumber + "/reply.json"
+	status, respBody, err := postOSTicketJSON(ctx, path, payloadBytes)
 	if err != nil {
-		return fmt.Errorf("build request: %w", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+resendKey)
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{Timeout: 15 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("resend request: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= 400 {
-		respBytes, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("resend returned %d: %s", resp.StatusCode, string(respBytes))
+		return fmt.Errorf("osticket reply (status=%d body=%s): %w", status, string(respBody), err)
 	}
 
-	log.Printf("[Drafts] reply sent for ticket=%s to=%s in-reply-to-set=%v",
-		draft.TicketNumber, draft.UserEmail, osticketMsgID != "")
+	log.Printf("[Drafts] reply posted to osTicket for ticket=%s status=%d body=%s",
+		draft.TicketNumber, status, string(respBody))
 	return nil
 }
 
