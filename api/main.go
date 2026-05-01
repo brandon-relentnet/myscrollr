@@ -50,6 +50,10 @@ func main() {
 	// pods otherwise grow this table unboundedly between restarts.
 	core.StartWebhookEventsPruner(ctx)
 
+	// Register Discord slash commands (idempotent on every boot when
+	// configured). No-op if Discord env vars aren't set.
+	core.RegisterDiscordSlashCommandsAtBoot(ctx)
+
 	// Build and start the gateway server
 	srv := core.NewServer()
 	srv.Setup()

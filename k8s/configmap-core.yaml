@@ -94,3 +94,39 @@ data:
   # default Admin agent in the tiredofit/osticket image. Look up other
   # agent IDs in osTicket admin → Agents if you want a dedicated AI bot.
   SUPPORT_AGENT_STAFF_ID: "1"
+
+  # Support notification routing (Phase: discord-triage-integration)
+  #
+  # Controls where partner-approval notifications are sent for new
+  # AI-drafted replies and reply-loop drafts:
+  #   "email"   — only the existing Resend email path
+  #   "discord" — only the Discord-thread path
+  #   "both"    — both (default during rollout for graceful migration)
+  #
+  # When "both", every new draft creates a Discord thread AND sends an
+  # email. Once the team is confident in the Discord workflow, flip
+  # this to "discord" to suppress redundant emails.
+  #
+  # If Discord env vars below are unset, "discord" and "both" silently
+  # fall back to email-only — no error, no startup failure.
+  SUPPORT_NOTIFY: "both"
+
+  # Discord integration. The following secrets MUST be added manually
+  # to k8s/secrets.yaml (none are configmap-safe):
+  #   - DISCORD_BOT_TOKEN          (from Discord developer portal → Bot)
+  #   - DISCORD_PUBLIC_KEY         (from Discord developer portal → General Information)
+  #   - DISCORD_APPLICATION_ID     (from Discord developer portal → General Information)
+  #   - DISCORD_GUILD_ID           (right-click your server → Copy Server ID; needs Developer Mode)
+  #   - DISCORD_SUPPORT_CHANNEL_ID (right-click the support channel → Copy Channel ID)
+  #
+  # The bot must be installed in the server with these permissions:
+  #   View Channels, Send Messages, Embed Links, Create Public Threads,
+  #   Send Messages in Threads, Manage Threads, Read Message History,
+  #   Use Application Commands.
+  #
+  # Discord verifies the interactions endpoint via a signed PING during
+  # bot setup. Set the Interactions Endpoint URL in the Discord
+  # application config to:
+  #   https://api.myscrollr.com/webhooks/discord/interactions
+  # Discord will reject the URL if it doesn't get a valid PONG within
+  # ~3 seconds, so make sure the API is up and reachable when saving.
