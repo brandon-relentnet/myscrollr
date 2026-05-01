@@ -82,7 +82,7 @@ class ScrollrReplyController extends ApiController {
      * Endpoint handler. URL pattern in the dispatcher captures {number}
      * which is delivered through $args by the framework.
      */
-    function reply($args) {
+    function reply($number) {
         // 1. Auth — same as TicketApiController::create. Validates
         //    X-API-Key header AND the api key's bound IP. 401 on either
         //    failure.
@@ -100,10 +100,13 @@ class ScrollrReplyController extends ApiController {
         $this->validate($data, 'json');
 
         // 3. Look up the ticket by number from the URL.
-        if (!isset($args['number']) || !preg_match('/^[\w-]+$/', $args['number'])) {
+        // osTicket's UrlMatcher::dispatch strips named captures and passes
+        // remaining captures as positional args via call_user_func_array,
+        // so $number is the bare ticket-number string from the URL.
+        if (!is_string($number) || !preg_match('/^[\w-]+$/', $number)) {
             return $this->exerr(400, __('Invalid ticket number in URL'));
         }
-        $ticket = Ticket::lookupByNumber($args['number']);
+        $ticket = Ticket::lookupByNumber($number);
         if (!$ticket) {
             return $this->exerr(404, __('Ticket not found'));
         }
