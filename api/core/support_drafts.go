@@ -455,9 +455,18 @@ func SendPartnerNotification(ctx context.Context, draft *SupportDraft) error {
 // flow at deploy time.
 func init() {
 	sendApprovedReply = doSendApprovedReply
+	// notifyPartnerAfterDraft fires both the email path AND the Discord
+	// path, gated by SUPPORT_NOTIFY (defaults to "both"). Either or both
+	// can fail without preventing the other — fully fail-open.
 	notifyPartnerAfterDraft = func(ctx context.Context, draft *SupportDraft) {
-		if err := SendPartnerNotification(ctx, draft); err != nil {
-			log.Printf("[Drafts] SendPartnerNotification for ticket %s failed: %v", draft.TicketNumber, err)
+		if shouldNotifyEmail() {
+			if err := SendPartnerNotification(ctx, draft); err != nil {
+				log.Printf("[Drafts] SendPartnerNotification for ticket %s failed: %v",
+					draft.TicketNumber, err)
+			}
+		}
+		if shouldNotifyDiscord() {
+			notifyDiscordForDraft(ctx, draft)
 		}
 	}
 }

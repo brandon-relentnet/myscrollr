@@ -101,15 +101,17 @@ func (s *Server) setupMiddleware() {
 
 	// Core paths always exempt from rate limiting
 	coreExemptPaths := map[string]bool{
-		"/health":                  true,
-		"/events":                  true,
-		"/webhooks/sequin":         true,
-		"/webhooks/stripe":         true,
-		"/channels":                true,
-		"/tier-limits":             true,
-		"/extension/token":         true,
-		"/extension/token/refresh": true,
-		"/support/ticket":          true,
+		"/health":                           true,
+		"/events":                           true,
+		"/webhooks/sequin":                  true,
+		"/webhooks/stripe":                  true,
+		"/webhooks/osticket/thread-message": true,
+		"/webhooks/discord/interactions":    true, // Discord retries on rate-limit and we want them to succeed
+		"/channels":                         true,
+		"/tier-limits":                      true,
+		"/extension/token":                  true,
+		"/extension/token/refresh":          true,
+		"/support/ticket":                   true,
 	}
 
 	// Stricter rate limiter for OAuth initiation endpoints (e.g. /yahoo/start).
@@ -166,6 +168,7 @@ func (s *Server) setupRoutes() {
 	s.App.Post("/webhooks/sequin", HandleSequinWebhook)
 	s.App.Post("/webhooks/stripe", HandleStripeWebhook)
 	s.App.Post("/webhooks/osticket/thread-message", HandleOSTicketThreadMessage)
+	s.App.Post("/webhooks/discord/interactions", HandleDiscordInteractions)
 
 	// Extension auth proxy
 	s.App.Options("/extension/token", HandleExtensionAuthPreflight)
