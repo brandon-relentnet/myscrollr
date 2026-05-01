@@ -7,16 +7,19 @@
  * URL pattern that maps to ScrollrReplyController::reply().
  *
  * The plugin has no admin-configurable options for now — auth is the
- * same X-API-Key the rest of the API already uses. If you need to
- * configure a default staff agent here later (instead of resolving from
- * the request payload), add a getOptions() method and a config form.
+ * same X-API-Key the rest of the API already uses. We still must
+ * declare a config class because osTicket's PluginInstance::bootstrap()
+ * short-circuits when getConfig() returns null (the && chain at line
+ * ~1159 of class.plugin.php). See config.php for the stub class.
  */
 
 require_once INCLUDE_DIR . 'class.plugin.php';
+require_once dirname(__FILE__) . '/config.php';
 
 class ScrollrReplyPlugin extends Plugin {
 
-    var $config_class = null; // No config UI — auth + agent come from request
+    var $config_class = "ScrollrReplyPluginConfig";
+    var $config;
 
     function bootstrap() {
         // Load the controller class up-front so it's available when
