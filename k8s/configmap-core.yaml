@@ -59,6 +59,14 @@ data:
   # The following secrets MUST be added manually to k8s/secrets.yaml:
   #   - ANTHROPIC_API_KEY              (Claude Haiku for triage; sk-ant-...)
   #   - SUPPORT_APPROVAL_HMAC_SECRET   (any high-entropy string ≥32 chars)
+  #   - SCROLLR_WEBHOOK_SECRET         (any high-entropy string ≥32 chars)
+  #     used to authenticate the osTicket reply-loop webhook coming
+  #     INTO this API. The SAME value must also be set in the osTicket
+  #     container's environment (see Coolify dashboard → osTicket
+  #     service → Environment Variables) so the scrollr-reply-api
+  #     plugin can sign outbound webhooks. If they don't match, the
+  #     webhook handler returns 401 and reply-loop AI triage doesn't
+  #     run for follow-up user messages.
   #
   # Approved AI replies post directly to osTicket via the
   # scrollr-reply-api plugin (POST /api/tickets/{number}/reply.json).
@@ -66,6 +74,15 @@ data:
   # routes outbound user-notification emails through osTicket's own
   # mailer, so RESEND_API_KEY is no longer used for the reply leg
   # (only for the partner-notification email; that's still Resend).
+  #
+  # Reply-loop: when a user replies to an AI-sent support email, the
+  # email lands at osTicket via IMAP. The scrollr-reply-api plugin
+  # listens for thread.message.posted and POSTs to
+  # /webhooks/osticket/thread-message with X-Scrollr-Webhook-Secret
+  # header. Core API runs AI triage on the new message, creates a
+  # support_drafts row, and notifies the partner — same approval flow
+  # as initial-ticket triage. See osticket-plugins/scrollr-reply-api/
+  # README.md for plugin install + config.
   AI_TRIAGE_ENABLED: "true"                       # set "false" to bypass triage and fall back to legacy flow
   SUPPORT_AGENT_EMAIL: "doni@myscrollr.com"       # partner's email for approval notifications
   APPROVAL_BASE_URL: "https://api.myscrollr.com"  # base URL embedded in Send/Edit/Skip links

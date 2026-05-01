@@ -22,11 +22,13 @@ class ScrollrReplyPlugin extends Plugin {
     var $config;
 
     function bootstrap() {
-        // Load the controller class up-front so it's available when
-        // the route fires. We can't rely on url_post()'s file-loader
-        // syntax to resolve plugin paths cleanly across versions —
-        // safer to require_once explicitly here.
+        // Load the controller + notifier classes up-front so they're
+        // available when their respective signals fire. We can't rely
+        // on url_post()'s file-loader syntax to resolve plugin paths
+        // cleanly across versions — safer to require_once explicitly
+        // here.
         require_once dirname(__FILE__) . '/api.reply.php';
+        require_once dirname(__FILE__) . '/notify.message.php';
 
         // The 'api' signal in api/http.php fires once with the global
         // dispatcher. Plugins append their own routes here.
@@ -37,6 +39,17 @@ class ScrollrReplyPlugin extends Plugin {
                     array('ScrollrReplyController', 'reply')
                 )
             );
+        });
+
+        // 'threadentry.created' fires for EVERY new thread entry —
+        // user messages (type='M'), agent replies ('R'), notes ('N').
+        // The notifier filters to user messages on tickets and posts
+        // a webhook to the Scrollr core API so it can run AI triage
+        // on user follow-ups (the existing /support/ticket flow only
+        // triages the initial ticket creation; replies need this hook
+        // to keep the conversation going).
+        Signal::connect('threadentry.created', function ($entry, $data = null) {
+            ScrollrReplyNotify::notifyUserMessage($entry);
         });
     }
 }

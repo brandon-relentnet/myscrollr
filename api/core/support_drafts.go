@@ -31,23 +31,24 @@ import (
 
 // SupportDraft mirrors the support_drafts table.
 type SupportDraft struct {
-	ID              int64
-	TicketNumber    string
-	UserEmail       string
-	UserName        string
-	OriginalSubject string
-	DraftBodyHTML   string
-	AISummary       string
-	AICategory      string
-	AIPriority      string
-	AIChannel       string
-	AIDuplicateOf   string
-	AIConfidence    string
-	Status          string
-	EditedBodyHTML  string
-	DecidedAt       *time.Time
-	SentAt          *time.Time
-	CreatedAt       time.Time
+	ID                    int64
+	TicketNumber          string
+	UserEmail             string
+	UserName              string
+	OriginalSubject       string
+	DraftBodyHTML         string
+	AISummary             string
+	AICategory            string
+	AIPriority            string
+	AIChannel             string
+	AIDuplicateOf         string
+	AIConfidence          string
+	Status                string
+	EditedBodyHTML        string
+	OSTicketThreadEntryID int64 // 0 = unknown (legacy rows + initial /support/ticket flow)
+	DecidedAt             *time.Time
+	SentAt                *time.Time
+	CreatedAt             time.Time
 }
 
 // ErrAlreadyDecided indicates a draft was already actioned (single-use enforcement).
@@ -66,10 +67,17 @@ func createSupportDraft(ctx context.Context, draft *SupportDraft) (*SupportDraft
 		INSERT INTO support_drafts
 			(ticket_number, user_email, user_name, original_subject,
 			 draft_body_html, ai_summary, ai_category, ai_priority,
-			 ai_channel, ai_duplicate_of, ai_confidence, status)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending')
+			 ai_channel, ai_duplicate_of, ai_confidence, status,
+			 osticket_thread_entry_id)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending',$12)
 		RETURNING id, created_at
 	`
+	// 0 → NULL via NULLIF so the partial unique index doesn't reject
+	// the row (legacy / /support-ticket-flow rows have no entry id).
+	var entryID *int64
+	if draft.OSTicketThreadEntryID > 0 {
+		entryID = &draft.OSTicketThreadEntryID
+	}
 	err := DBPool.QueryRow(ctx, q,
 		draft.TicketNumber,
 		draft.UserEmail,
@@ -82,6 +90,7 @@ func createSupportDraft(ctx context.Context, draft *SupportDraft) (*SupportDraft
 		draft.AIChannel,
 		draft.AIDuplicateOf,
 		draft.AIConfidence,
+		entryID,
 	).Scan(&draft.ID, &draft.CreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("createSupportDraft: %w", err)
@@ -182,6 +191,46 @@ func markDraftFailed(ctx context.Context, id int64) {
 	if _, err := DBPool.Exec(ctx, `UPDATE support_drafts SET status='failed' WHERE id=$1`, id); err != nil {
 		log.Printf("[Drafts] markDraftFailed for %d failed: %v", id, err)
 	}
+}
+
+// loadLatestSentDraftBody returns the most recent SENT reply we've
+// posted on this ticket. Used by the reply-loop webhook to give the
+// AI continuity (so it doesn't repeat the same suggestion verbatim
+// when the user follows up). Returns "" when no sent draft exists or
+// on any DB error — the triage call still succeeds without it.
+func loadLatestSentDraftBody(ctx context.Context, ticketNumber string) string {
+	const q = `
+		SELECT COALESCE(NULLIF(edited_body_html, ''), draft_body_html)
+		FROM support_drafts
+		WHERE ticket_number = $1 AND status = 'sent'
+		ORDER BY sent_at DESC NULLS LAST, id DESC
+		LIMIT 1
+	`
+	var body string
+	if err := DBPool.QueryRow(ctx, q, ticketNumber).Scan(&body); err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("[Drafts] loadLatestSentDraftBody for ticket %s: %v", ticketNumber, err)
+		}
+		return ""
+	}
+	return body
+}
+
+// hasDraftForThreadEntry returns true if a support_drafts row already
+// exists for the given osTicket thread_entry_id. Used by the webhook
+// handler to dedupe (in case osTicket signals fire twice for the same
+// entry, or the plugin re-fires after a transient failure).
+func hasDraftForThreadEntry(ctx context.Context, threadEntryID int64) bool {
+	if threadEntryID <= 0 {
+		return false
+	}
+	var exists bool
+	const q = `SELECT EXISTS(SELECT 1 FROM support_drafts WHERE osticket_thread_entry_id = $1)`
+	if err := DBPool.QueryRow(ctx, q, threadEntryID).Scan(&exists); err != nil {
+		log.Printf("[Drafts] hasDraftForThreadEntry(%d): %v", threadEntryID, err)
+		return false
+	}
+	return exists
 }
 
 // =============================================================================

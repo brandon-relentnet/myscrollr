@@ -1,6 +1,8 @@
 # Scrollr Reply API plugin for osTicket
 
-A small osTicket plugin that exposes a single REST endpoint for posting agent replies to existing tickets via the standard `X-API-Key` auth.
+A small osTicket plugin that does two things:
+
+**1. REST endpoint for posting agent replies** — fixes osTicket's missing reply API, used by the Scrollr core API to deliver AI-drafted replies into existing tickets:
 
 ```
 POST /api/tickets/{number}/reply.json
@@ -10,6 +12,25 @@ Body:
     "reply_html":   "<p>Hi! Thanks for the report...</p>",
     "staff_id":     1,
     "signal_alert": true
+  }
+```
+
+**2. Outbound webhook on user follow-ups** — listens for osTicket's `threadentry.created` signal, filters to user messages on existing tickets (skipping the initial ticket creation), and POSTs to the Scrollr core API so it can run AI triage on the reply and notify the partner. Closes the conversation loop so users get continuous AI-assisted support instead of dead-ending after one round.
+
+```
+POST <SCROLLR_WEBHOOK_URL>     # default: https://api.myscrollr.com/webhooks/osticket/thread-message
+Headers: X-Scrollr-Webhook-Secret: <SCROLLR_WEBHOOK_SECRET>
+Body:
+  {
+    "event":            "thread.message",
+    "ticket_number":    "239171",
+    "ticket_id":        78,
+    "thread_entry_id":  95,
+    "user_email":       "user@example.com",
+    "user_name":        "User",
+    "subject":          "App crashes on startup",
+    "message_html":     "...the user's reply body...",
+    "created":          "2026-05-01 04:48:00"
   }
 ```
 
@@ -151,6 +172,53 @@ Then confirm in the agent UI:
 - `lastupdate` on the ticket should reflect the timestamp of the call
 
 If everything looks right, run a second test with `"signal_alert": true` to verify the outbound user-notification email actually sends.
+
+## Reply-loop webhook configuration (NEW)
+
+The plugin also fires an outbound webhook to the Scrollr core API when users reply to support emails, so AI triage runs on follow-up messages too. Two env vars on the **osTicket container** control it:
+
+| Env var | Required? | Default | Purpose |
+|---|---|---|---|
+| `SCROLLR_WEBHOOK_SECRET` | **Yes** | (none — webhook silently no-ops if unset) | Shared secret used to authenticate webhook requests to the Scrollr core API. Must match `SCROLLR_WEBHOOK_SECRET` on the core API side. |
+| `SCROLLR_WEBHOOK_URL` | No | `https://api.myscrollr.com/webhooks/osticket/thread-message` | Override only if your core API is on a different host. |
+
+### Setting the env vars on Coolify
+
+In Coolify dashboard → osTicket service → **Environment Variables**:
+
+```
+SCROLLR_WEBHOOK_SECRET=<paste the same secret you set on core API>
+```
+
+Save → Coolify recreates the container with the new env. The plugin reads via `getenv()` on every signal fire, so the change takes effect on the first user message after the restart.
+
+### Generating the shared secret
+
+```sh
+openssl rand -base64 48
+```
+
+Set the SAME value in both:
+1. Coolify → osTicket service → Environment Variables → `SCROLLR_WEBHOOK_SECRET`
+2. Kubernetes secret on the core API side (`kubectl patch secret scrollr-secrets ...` or via your secrets management process)
+
+### Verifying the webhook fires
+
+After installing/updating the plugin, send yourself a test ticket via the desktop app, get the AI reply, then reply to that AI reply email from your inbox. Within ~1 minute (osTicket cron interval permitting — see CRON_INTERVAL note below), the webhook fires and you should see a new partner-notification email arrive with a fresh AI draft for the follow-up.
+
+If nothing fires, check osTicket System Logs (Admin Panel → System Logs) for `scrollr-reply-api` warnings — that's where the plugin records webhook delivery failures.
+
+### CRON_INTERVAL gotcha
+
+osTicket's IMAP polling runs via cron. The default `CRON_INTERVAL` in the `tiredofit/osticket` image is **10 minutes**, which means user replies via email take up to 10 minutes to land in osTicket regardless of what you set the IMAP polling interval to in osTicket admin.
+
+Reduce by setting in your Coolify compose env:
+
+```yaml
+- 'CRON_INTERVAL=${CRON_INTERVAL:-1}'   # 1 minute
+```
+
+After this change, user replies arrive in osTicket within ~1 minute, and the plugin's reply-loop webhook fires immediately upon thread entry creation (no further delay).
 
 ## Request fields reference
 

@@ -56,6 +56,14 @@ type TriageInput struct {
 	Body            string
 	RecentSummaries []RecentTicketSummary
 	Channel         string // user-picked channel hint, if any
+
+	// Reply-loop fields. Populated when this triage is for a user's
+	// follow-up message on an existing ticket (via the osTicket
+	// thread-message webhook). The prompt uses these to skip the
+	// initial greeting and to thread responses correctly.
+	IsReply             bool
+	ReplyTicketNumber   string // existing ticket number (e.g. "716831")
+	PreviousAIReplyHTML string // most recent AI reply we sent on this ticket, if known
 }
 
 // RecentTicketSummary is what we cache in Redis for dupe-detection
@@ -185,7 +193,32 @@ func buildTriagePrompt(input TriageInput, body string) string {
 		channelHint = fmt.Sprintf("Channel hint from user: %s\n", input.Channel)
 	}
 
+	// Reply-context block. When this triage is for a user follow-up
+	// message on an existing ticket, prepend a framing block that
+	// changes the AI's voice (no opening greeting, treat as continued
+	// conversation) and gives it the previous AI response so it can
+	// build on prior advice instead of restarting.
+	replyContext := ""
+	if input.IsReply {
+		var prevReply string
+		if input.PreviousAIReplyHTML != "" {
+			prevReply = "\n\nYour previous reply on this ticket (for continuity — DO NOT repeat it verbatim):\n" + input.PreviousAIReplyHTML
+		}
+		replyContext = fmt.Sprintf(`REPLY CONTEXT — IMPORTANT:
+This message is the user's FOLLOW-UP reply on an existing ticket (ticket #%s, original subject: %q). Treat it as a continued conversation.
+
+- DO NOT open with a greeting like "Hi!" or "Thanks for reaching out!" — that's reserved for first contact.
+- Acknowledge what they said briefly (e.g. "Got it — ", "Thanks for the update — ", "Following up on that:") and move directly to the next action or answer.
+- If the user is reporting that your prior fix did NOT work, do not repeat the same suggestion — try a different angle or ask a clarifying question.
+- If the user says "thanks, that worked" or similar (resolution signal), acknowledge it warmly and indicate the ticket can be closed (1-2 sentences). Do not propose new steps.
+- If the user is asking a follow-up question, answer directly without re-introducing yourself.%s
+
+`, input.ReplyTicketNumber, input.Subject, prevReply)
+	}
+
 	return fmt.Sprintf(`You are a support triage assistant for Scrollr, a desktop ticker app for live financial markets, sports scores, news, and Yahoo Fantasy. Categorize incoming tickets and draft warm, direct replies grounded in the FAQ below.
+
+%s
 
 YOUR TASKS:
 1. Pick the best category. Definitions and examples below — match the user's actual problem, not just keywords.
@@ -258,6 +291,7 @@ User-picked category: %s
 Body:
 %s
 `,
+		replyContext,
 		string(recentJSON),
 		faqContextForTriage(),
 		input.UserEmail,
