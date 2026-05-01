@@ -67,7 +67,7 @@ data:
   # mailer, so RESEND_API_KEY is no longer used for the reply leg
   # (only for the partner-notification email; that's still Resend).
   AI_TRIAGE_ENABLED: "true"                       # set "false" to bypass triage and fall back to legacy flow
-  SUPPORT_AGENT_EMAIL: "phil@myscrollr.com"       # CHANGEME — partner's email for approval notifications
+  SUPPORT_AGENT_EMAIL: "doni@myscrollr.com"       # partner's email for approval notifications
   APPROVAL_BASE_URL: "https://api.myscrollr.com"  # base URL embedded in Send/Edit/Skip links
   SUPPORT_REPLY_FROM_EMAIL: "support@myscrollr.com"  # FROM address for partner-notification emails (Resend)
   # Optional: pin the staff agent who posts AI replies via the plugin.
