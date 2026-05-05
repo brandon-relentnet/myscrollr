@@ -67,6 +67,15 @@ data:
   #     plugin can sign outbound webhooks. If they don't match, the
   #     webhook handler returns 401 and reply-loop AI triage doesn't
   #     run for follow-up user messages.
+  #   - GITHUB_PR_WEBHOOK_SECRET       (any high-entropy string ≥32 chars)
+  #     used to authenticate the auto-close webhook from the
+  #     "Auto-close osTicket on merged PR" GitHub Action. The SAME
+  #     value must also be set as a GitHub repository secret named
+  #     OSTICKET_PR_WEBHOOK_SECRET (see
+  #     .github/workflows/auto-close-osticket.yml). If they don't
+  #     match, the workflow logs an unauthorized error and merged PRs
+  #     don't auto-close their referenced tickets — falls back to
+  #     manual close via the osTicket admin panel.
   #
   # Approved AI replies post directly to osTicket via the
   # scrollr-reply-api plugin (POST /api/tickets/{number}/reply.json).
