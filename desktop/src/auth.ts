@@ -216,7 +216,17 @@ export function getLastLoginError(): string | null {
 /**
  * Proactively refresh the access token before it expires.
  * Self-sustaining: on success, saveAuth() re-schedules the next refresh.
- * On network failure, retries every 30s until auth is cleared or refresh succeeds.
+ * On network failure, retries every 30s until auth is cleared or
+ * refresh succeeds.
+ *
+ * Per-window jitter: the desktop app runs two windows (main + ticker)
+ * each with its own JS context. Without jitter, both windows compute
+ * the same refresh-target time and fire setTimeout simultaneously,
+ * causing a refresh-token rotation race against Logto. Adding 0-15s
+ * of random jitter to the refresh moment makes the windows fire
+ * staggered, so when window A's refresh saves new tokens to the
+ * shared store, window B sees them via onStoreChange + the pre-send
+ * race check in doRefresh and skips its own (now-redundant) refresh.
  */
 function scheduleRefresh(): void {
   if (refreshTimer !== null) {
@@ -227,19 +237,26 @@ function scheduleRefresh(): void {
   const auth = loadAuth();
   if (!auth || !auth.refreshToken) return;
 
-  const msUntilRefresh = auth.expiresAt - Date.now() - REFRESH_BUFFER_MS;
+  const baseMs = auth.expiresAt - Date.now() - REFRESH_BUFFER_MS;
+  // Up to 15s of randomized jitter; keeps the two windows from firing
+  // their refresh setTimeout at the exact same wall-clock moment.
+  const jitterMs = Math.floor(Math.random() * 15_000);
+  const msUntilRefresh = baseMs + jitterMs;
 
   const performRefresh = async () => {
     const token = await getValidToken();
-    // If refresh failed but we still have a refresh token (network error), retry in 30s
+    // If refresh failed but we still have a refresh token (network
+    // error), retry in 30s.
     if (!token && loadAuth()?.refreshToken) {
       refreshTimer = setTimeout(performRefresh, 30_000);
     }
-    // If succeeded, saveAuth() → scheduleRefresh() was already called with new expiry
+    // If succeeded, saveAuth() → scheduleRefresh() was already
+    // called with the new expiry.
   };
 
   if (msUntilRefresh <= 0) {
     // Already past the refresh point — refresh immediately
+    // (no jitter when we're already late).
     performRefresh();
   } else {
     refreshTimer = setTimeout(performRefresh, msUntilRefresh);
@@ -429,6 +446,28 @@ export async function getValidToken(forceRefresh = false): Promise<string | null
 }
 
 async function doRefresh(refreshToken: string): Promise<string | null> {
+  // ── Pre-send race check ─────────────────────────────────────────
+  // Multiple Tauri windows share auth state via the store but each
+  // window has its own `refreshPromise` mutex. If both windows fire
+  // scheduleRefresh() at roughly the same time, they both end up here
+  // sending the SAME refresh token to Logto. Logto has
+  // rotateRefreshToken=true: the first request rotates, the second
+  // arrives with the now-invalidated token and gets 4xx.
+  //
+  // Before sending, re-read the store. If another window has already
+  // rotated to a fresh refresh token (and the access token is still
+  // valid for at least the buffer window), short-circuit and return
+  // the fresh access token without making the doomed network call.
+  const stored = loadAuth();
+  if (
+    stored &&
+    stored.refreshToken &&
+    stored.refreshToken !== refreshToken &&
+    stored.expiresAt - Date.now() > REFRESH_BUFFER_MS
+  ) {
+    return stored.accessToken;
+  }
+
   try {
     const tokenRes = await refreshTokenRequest(refreshToken);
 
@@ -442,10 +481,28 @@ async function doRefresh(refreshToken: string): Promise<string | null> {
     saveAuth(authState);
     return authState.accessToken;
   } catch (err) {
-    // Only clear auth if the refresh token was explicitly rejected (4xx).
-    // Network errors preserve state so the proactive timer can retry.
+    // Only clear auth if the refresh token was explicitly rejected
+    // (4xx). Network errors preserve state so the proactive timer
+    // can retry.
     const message = (err as Error).message ?? "";
     if (/Token refresh failed: 4\d\d/.test(message)) {
+      // ── Post-failure race check ─────────────────────────────────
+      // A 4xx here might mean a real auth failure (refresh token
+      // genuinely revoked / expired)... OR it might mean we lost the
+      // race against another window. Re-read the store: if a
+      // newer-than-ours refresh token exists AND the access token is
+      // currently valid, we lost the race and the user is still
+      // authenticated. Return the fresh access token instead of
+      // clearing auth.
+      const fresh = loadAuth();
+      if (
+        fresh &&
+        fresh.refreshToken &&
+        fresh.refreshToken !== refreshToken &&
+        fresh.expiresAt > Date.now()
+      ) {
+        return fresh.accessToken;
+      }
       clearAuth();
     }
     return null;
