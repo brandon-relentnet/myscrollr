@@ -67,7 +67,7 @@ pub fn run() {
         builder = builder.plugin(tauri_plugin_mcp_bridge::init());
     }
 
-    builder
+    let app = builder
         .manage(state::SseHandle(Mutex::new(None)))
         .manage(state::AuthServerRunning(Arc::new(Mutex::new(false))))
         .manage(state::AuthServerStop(Arc::new(AtomicBool::new(false))))
@@ -88,6 +88,8 @@ pub fn run() {
             commands::window::quit_app,
             commands::system_info::get_system_info,
             commands::diagnostics::collect_diagnostics,
+            commands::diagnostics::record_logout_event,
+            commands::diagnostics::read_logout_events,
             tray::sync_tray_pin,
         ])
         .on_window_event(|window, event| {
@@ -129,6 +131,27 @@ pub fn run() {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    // Run the app loop. We intercept RunEvent::Reopen (macOS only —
+    // fires when the user clicks the dock icon while no Scrollr windows
+    // are visible, e.g. after closing the main window via the red-X).
+    // This is what makes "click Scrollr in the dock = main window
+    // appears" Just Work on Mac. Windows/Linux equivalent is the
+    // tauri-plugin-single-instance handler registered above (a second
+    // launch attempt while the app is already running shows the main
+    // window).
+    app.run(|app_handle, event| {
+        if let tauri::RunEvent::Reopen {
+            has_visible_windows: false,
+            ..
+        } = event
+        {
+            if let Some(w) = app_handle.get_webview_window("main") {
+                let _ = w.show();
+                let _ = w.set_focus();
+            }
+        }
+    });
 }

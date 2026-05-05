@@ -74,12 +74,64 @@ function saveAuth(state: AuthState): void {
   scheduleRefresh();
 }
 
-function clearAuth(): void {
+// Logout-event paths. Every `clearAuth` call passes one. Used by the
+// diagnostics file to correlate observed logouts with the trigger
+// path. Add new path strings here as new caller sites land.
+//
+// - `refresh_4xx_no_recovery` — refresh-token request returned 4xx and
+//   the post-failure race-recovery check did NOT find a fresher token
+//   in the store. Genuine auth failure or a race we couldn't recover
+//   from. This is the path the v1.0.5 fix targets.
+// - `no_refresh_token` — getValidToken found auth state with no
+//   refresh token (shouldn't normally happen — defensive path).
+// - `explicit_signout` — user clicked Sign Out. Expected.
+type ClearAuthPath =
+  | "refresh_4xx_no_recovery"
+  | "no_refresh_token"
+  | "explicit_signout";
+
+function clearAuth(path: ClearAuthPath, context: Record<string, unknown> = {}): void {
   if (refreshTimer !== null) {
     clearTimeout(refreshTimer);
     refreshTimer = null;
   }
   removeStore(STORAGE_KEY);
+
+  // Best-effort instrumentation. Failures here must NOT block the
+  // logout itself — we wrap in try/catch and swallow. The events file
+  // is for our debugging only; if Tauri's command channel is broken or
+  // disk write fails, the user just doesn't get a record this time.
+  try {
+    void invoke("record_logout_event", {
+      event: {
+        timestamp: new Date().toISOString(),
+        path,
+        window: detectWindowLabel(),
+        context,
+      },
+    }).catch(() => {
+      // Tauri command failure — nothing actionable. Swallow.
+    });
+  } catch {
+    // synchronous throw (e.g. invoke not available outside Tauri) —
+    // also swallow.
+  }
+}
+
+function detectWindowLabel(): string {
+  // The Tauri window label is exposed via the WebviewWindow API. We
+  // require it dynamically so non-Tauri contexts (e.g. vitest) don't
+  // need to mock the import.
+  try {
+    const win = (
+      globalThis as unknown as {
+        __TAURI_INTERNALS__?: { metadata?: { currentWindow?: { label?: string } } };
+      }
+    ).__TAURI_INTERNALS__;
+    return win?.metadata?.currentWindow?.label ?? "unknown";
+  } catch {
+    return "unknown";
+  }
 }
 
 // ── PKCE helpers ─────────────────────────────────────────────────
@@ -432,7 +484,11 @@ export async function getValidToken(forceRefresh = false): Promise<string | null
 
   // Need to refresh
   if (!auth.refreshToken) {
-    clearAuth();
+    clearAuth("no_refresh_token", {
+      hadAccessToken: Boolean(auth.accessToken),
+      expiresAt: auth.expiresAt,
+      msUntilExpiry: auth.expiresAt - Date.now(),
+    });
     return null;
   }
 
@@ -503,7 +559,14 @@ async function doRefresh(refreshToken: string): Promise<string | null> {
       ) {
         return fresh.accessToken;
       }
-      clearAuth();
+      clearAuth("refresh_4xx_no_recovery", {
+        errorMessage: message.slice(0, 200),
+        hadFreshAuthInStore: Boolean(fresh),
+        freshHadDifferentRefreshToken: Boolean(
+          fresh && fresh.refreshToken && fresh.refreshToken !== refreshToken,
+        ),
+        freshAccessTokenStillValid: Boolean(fresh && fresh.expiresAt > Date.now()),
+      });
     }
     return null;
   }
@@ -536,7 +599,7 @@ export function getUserIdentity(): { email: string | null; name: string | null }
  * Clear all auth state (logout).
  */
 export function logout(): void {
-  clearAuth();
+  clearAuth("explicit_signout");
 }
 
 /**
