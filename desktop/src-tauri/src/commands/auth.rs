@@ -16,18 +16,30 @@ const AUTH_SERVER_POLL_INTERVAL: std::time::Duration = std::time::Duration::from
 // We TRY to auto-close the browser tab via window.close(), but every
 // modern browser blocks JS-initiated close on tabs that weren't opened
 // by JS — and OAuth redirect tabs are opened by the OS shell, not JS.
-// So the close usually fails silently. The visible "Return to Scrollr"
+// So the close usually fails silently. The visible "Close this tab"
 // button is the fallback: in browsers where window.close() is blocked,
 // the click is also blocked (same restriction), but at least the page
 // looks intentional rather than orphaned.
 //
-// Color palette matches the desktop app:
-//   #0a0a0a — background
-//   #bfff00 — accent green (success)
-//   #ef4444 — accent red (failure)
-//   #d4d4da — primary foreground
-//   #84848e — muted foreground
-//   #1a1a1f — surface (cards, buttons)
+// Palette mirrors `desktop/src/style.css` design tokens (the dark
+// theme that the rest of the desktop UI uses). Sources are the CSS
+// variables; the auth callback page can't reference them directly
+// (it's a freestanding HTML response served by the Rust HTTP server,
+// outside the Vite-bundled webview), so the values are duplicated
+// inline:
+//   --color-base-100   #141420   page background
+//   --color-base-200   #1c1c2a   card surface
+//   --color-edge       #282838   card border
+//   --color-fg         #e2e2ec   primary foreground
+//   --color-fg-2       #9494a0   muted foreground
+//   --color-fg-3       #5a5a6a   subtle foreground (countdown text)
+//   --color-accent     #34d399   mint emerald (success)
+//   --color-error      #ef4444   red (failure)
+//
+// Headings use #f5f5f7 (slightly brighter than --color-fg) for visual
+// emphasis on the card title. Button text on the mint accent uses
+// #0d2a20 (a very dark mint-tinted neutral) for AA contrast vs.
+// straight black, picking up a subtle warmth from the accent itself.
 const AUTH_SUCCESS_HTML: &str = r##"<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -36,26 +48,26 @@ const AUTH_SUCCESS_HTML: &str = r##"<!DOCTYPE html>
 <title>Signed in to Scrollr</title>
 <style>
   *,*::before,*::after{box-sizing:border-box}
-  html,body{margin:0;padding:0;height:100%;background:#0a0a0a;color:#d4d4da;
+  html,body{margin:0;padding:0;height:100%;background:#141420;color:#e2e2ec;
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif;
     -webkit-font-smoothing:antialiased}
   .stage{min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px}
-  .card{max-width:420px;text-align:center;padding:48px 32px;background:#0f0f12;
-    border:1px solid #1f1f24;border-radius:14px;box-shadow:0 24px 80px rgba(0,0,0,0.5)}
+  .card{max-width:420px;text-align:center;padding:48px 32px;background:#1c1c2a;
+    border:1px solid #282838;border-radius:14px;box-shadow:0 24px 80px rgba(0,0,0,0.45)}
   .check{margin:0 auto 24px;width:72px;height:72px;border-radius:50%;
-    background:rgba(191,255,0,0.10);display:flex;align-items:center;justify-content:center;
+    background:rgba(52,211,153,0.12);display:flex;align-items:center;justify-content:center;
     animation:pop 320ms cubic-bezier(0.34,1.56,0.64,1)}
-  .check svg{width:36px;height:36px;stroke:#bfff00;stroke-width:3;fill:none;
+  .check svg{width:36px;height:36px;stroke:#34d399;stroke-width:3;fill:none;
     stroke-linecap:round;stroke-linejoin:round;
     stroke-dasharray:48;stroke-dashoffset:48;
     animation:draw 460ms 220ms forwards cubic-bezier(0.65,0,0.35,1)}
   h1{margin:0 0 8px;font-size:22px;font-weight:600;letter-spacing:-0.01em;color:#f5f5f7}
-  p{margin:0 0 24px;font-size:14px;line-height:1.5;color:#84848e}
-  .btn{display:inline-block;padding:10px 20px;background:#bfff00;color:#0a0a0a;
+  p{margin:0 0 24px;font-size:14px;line-height:1.5;color:#9494a0}
+  .btn{display:inline-block;padding:10px 20px;background:#34d399;color:#0d2a20;
     border:none;border-radius:8px;font:inherit;font-size:14px;font-weight:600;
     cursor:pointer;text-decoration:none;transition:transform 100ms,background 100ms}
-  .btn:hover{background:#cfff33;transform:translateY(-1px)}
-  .countdown{margin-top:14px;font-size:12px;color:#5a5a64;letter-spacing:0.02em}
+  .btn:hover{background:#3ddba9;transform:translateY(-1px)}
+  .countdown{margin-top:14px;font-size:12px;color:#5a5a6a;letter-spacing:0.02em}
   @keyframes pop{0%{transform:scale(0)}60%{transform:scale(1.08)}100%{transform:scale(1)}}
   @keyframes draw{to{stroke-dashoffset:0}}
 </style>
@@ -102,26 +114,26 @@ const AUTH_FAILURE_HTML: &str = r##"<!DOCTYPE html>
 <title>Sign-in failed</title>
 <style>
   *,*::before,*::after{box-sizing:border-box}
-  html,body{margin:0;padding:0;height:100%;background:#0a0a0a;color:#d4d4da;
+  html,body{margin:0;padding:0;height:100%;background:#141420;color:#e2e2ec;
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif;
     -webkit-font-smoothing:antialiased}
   .stage{min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px}
-  .card{max-width:420px;text-align:center;padding:48px 32px;background:#0f0f12;
-    border:1px solid #1f1f24;border-radius:14px;box-shadow:0 24px 80px rgba(0,0,0,0.5)}
+  .card{max-width:420px;text-align:center;padding:48px 32px;background:#1c1c2a;
+    border:1px solid #282838;border-radius:14px;box-shadow:0 24px 80px rgba(0,0,0,0.45)}
   .x{margin:0 auto 24px;width:72px;height:72px;border-radius:50%;
-    background:rgba(239,68,68,0.10);display:flex;align-items:center;justify-content:center;
+    background:rgba(239,68,68,0.12);display:flex;align-items:center;justify-content:center;
     animation:pop 320ms cubic-bezier(0.34,1.56,0.64,1)}
   .x svg{width:36px;height:36px;stroke:#ef4444;stroke-width:3;fill:none;
     stroke-linecap:round;stroke-linejoin:round}
   h1{margin:0 0 8px;font-size:22px;font-weight:600;letter-spacing:-0.01em;color:#f5f5f7}
-  p{margin:0 0 16px;font-size:14px;line-height:1.5;color:#84848e}
+  p{margin:0 0 16px;font-size:14px;line-height:1.5;color:#9494a0}
   .actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-  .btn{display:inline-block;padding:10px 18px;background:#1a1a1f;color:#d4d4da;
-    border:1px solid #2a2a32;border-radius:8px;font:inherit;font-size:14px;font-weight:500;
+  .btn{display:inline-block;padding:10px 18px;background:#21212e;color:#e2e2ec;
+    border:1px solid #303040;border-radius:8px;font:inherit;font-size:14px;font-weight:500;
     cursor:pointer;text-decoration:none;transition:transform 100ms,background 100ms}
-  .btn:hover{background:#22222a;transform:translateY(-1px)}
-  .btn-primary{background:#bfff00;color:#0a0a0a;border-color:transparent}
-  .btn-primary:hover{background:#cfff33}
+  .btn:hover{background:#282838;transform:translateY(-1px)}
+  .btn-primary{background:#34d399;color:#0d2a20;border-color:transparent}
+  .btn-primary:hover{background:#3ddba9}
   @keyframes pop{0%{transform:scale(0)}60%{transform:scale(1.08)}100%{transform:scale(1)}}
 </style>
 </head>
