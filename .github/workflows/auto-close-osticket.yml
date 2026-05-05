@@ -1,0 +1,126 @@
+name: Auto-close osTicket on merged PR
+
+# When a PR is merged with a `[fixes #NNNNNN]` or `[closes #NNNNNN]`
+# tag in its title or body (case-insensitive), this workflow extracts
+# every referenced osTicket ticket number and POSTs them to the Scrollr
+# core API. The core API then proxies a templated reply through the
+# scrollr-reply-api plugin, which lands the reply in the user's inbox
+# AND closes the ticket.
+#
+# Why this hits core-api instead of osTicket directly: osTicket API
+# keys are bound to ONE IP each. GitHub Actions runners use hundreds
+# of rotating IPs. core-api has the right IP for the existing
+# OSTICKET_API_KEY, so we proxy.
+#
+# Auth: shared secret in `OSTICKET_PR_WEBHOOK_SECRET` GitHub Secret;
+# core-api validates with constant-time compare against
+# GITHUB_PR_WEBHOOK_SECRET env var.
+#
+# Strict syntax:
+#   [fixes #239171]      # case-insensitive
+#   [closes #716831]
+#
+# Loose mentions like `see #239171` or `(ref #239171)` are IGNORED to
+# avoid false-positive closes.
+#
+# Best-effort: if the close call fails (osTicket down, ticket not
+# found, etc.), the workflow logs and continues. Never blocks PR
+# merges.
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  close-tickets:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract ticket numbers from PR title + body
+        id: tickets
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          # Combine title + body, search for [fixes #N] or [closes #N]
+          # patterns. -P enables PCRE for the case-insensitive flag.
+          # -o prints just the matched text (one match per line).
+          PR_TEXT="${PR_TITLE}"$'\n'"${PR_BODY}"
+
+          # Two-step extract: first pull the bracketed expressions, then
+          # extract just the numbers. This way we ignore stray `#NNNNN`
+          # mentions that aren't inside the bracketed `[fixes/closes #...]`
+          # pattern.
+          #
+          # The regex matches `[fixes #N]` or `[closes #N]` with optional
+          # whitespace and case-insensitivity. Numbers must be 1-12 digits.
+          BRACKETED=$(printf '%s' "$PR_TEXT" | grep -oiP '\[\s*(fixes|closes)\s*#\s*[0-9]{1,12}\s*\]' || true)
+          if [ -z "$BRACKETED" ]; then
+            echo "No [fixes #N] or [closes #N] tags found in PR title/body. Skipping close."
+            echo "tickets=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Pull the numbers, dedup, comma-separate.
+          NUMBERS=$(printf '%s' "$BRACKETED" | grep -oP '[0-9]{1,12}' | sort -u | paste -sd, -)
+
+          echo "Found ticket numbers: $NUMBERS"
+          echo "tickets=$NUMBERS" >> "$GITHUB_OUTPUT"
+
+      - name: POST to Scrollr core API for ticket close
+        if: steps.tickets.outputs.tickets != ''
+        env:
+          TICKETS_CSV: ${{ steps.tickets.outputs.tickets }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          API_BASE: ${{ vars.SCROLLR_API_BASE_URL }}
+          WEBHOOK_SECRET: ${{ secrets.OSTICKET_PR_WEBHOOK_SECRET }}
+        run: |
+          if [ -z "$WEBHOOK_SECRET" ]; then
+            echo "::warning::OSTICKET_PR_WEBHOOK_SECRET not set as a repo/org secret; skipping close."
+            exit 0
+          fi
+
+          API="${API_BASE:-https://api.myscrollr.com}"
+
+          # Convert "239171,716831" to JSON array ["239171","716831"]
+          TICKETS_JSON=$(printf '%s' "$TICKETS_CSV" | jq -R -c 'split(",")')
+
+          # Build payload via jq to handle JSON escaping cleanly. Avoids
+          # bash quoting nightmares with PR titles containing quotes,
+          # backslashes, or newlines.
+          PAYLOAD=$(jq -n \
+            --argjson tickets "$TICKETS_JSON" \
+            --argjson pr_number "$PR_NUMBER" \
+            --arg pr_title "$PR_TITLE" \
+            --arg pr_url "$PR_URL" \
+            '{ticket_numbers: $tickets, pr_number: $pr_number, pr_title: $pr_title, pr_url: $pr_url}')
+
+          # Best-effort POST. We log + exit 0 on failure; the workflow
+          # should not block PR merges.
+          set +e
+          RESPONSE=$(curl -sS -w "\n%{http_code}" -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-GitHub-Webhook-Secret: $WEBHOOK_SECRET" \
+            -d "$PAYLOAD" \
+            "$API/webhooks/github/pr-closed")
+          CURL_EXIT=$?
+          set -e
+
+          BODY=$(printf '%s' "$RESPONSE" | sed '$d')
+          HTTP_CODE=$(printf '%s' "$RESPONSE" | tail -n1)
+
+          if [ "$CURL_EXIT" -ne 0 ]; then
+            echo "::warning::curl failed with exit code $CURL_EXIT — tickets not closed. PR merge unaffected."
+            exit 0
+          fi
+
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::warning::Core API returned HTTP $HTTP_CODE — tickets not closed. PR merge unaffected."
+            echo "Response: $BODY"
+            exit 0
+          fi
+
+          echo "Successfully queued $(printf '%s' "$TICKETS_CSV" | tr ',' '\n' | wc -l) ticket(s) for close:"
+          echo "Response: $BODY"

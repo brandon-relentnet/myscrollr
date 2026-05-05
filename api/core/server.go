@@ -107,6 +107,7 @@ func (s *Server) setupMiddleware() {
 		"/webhooks/stripe":                  true,
 		"/webhooks/osticket/thread-message": true,
 		"/webhooks/discord/interactions":    true, // Discord retries on rate-limit and we want them to succeed
+		"/webhooks/github/pr-closed":        true, // GitHub Action calls this when a PR with [fixes #N] tags merges
 		"/channels":                         true,
 		"/tier-limits":                      true,
 		"/extension/token":                  true,
@@ -169,6 +170,7 @@ func (s *Server) setupRoutes() {
 	s.App.Post("/webhooks/stripe", HandleStripeWebhook)
 	s.App.Post("/webhooks/osticket/thread-message", HandleOSTicketThreadMessage)
 	s.App.Post("/webhooks/discord/interactions", HandleDiscordInteractions)
+	s.App.Post("/webhooks/github/pr-closed", HandleGitHubPRClosed)
 
 	// Extension auth proxy
 	s.App.Options("/extension/token", HandleExtensionAuthPreflight)
