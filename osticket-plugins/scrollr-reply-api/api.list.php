@@ -221,18 +221,24 @@ class ScrollrListController extends ApiController {
      * GET /api/tickets/{number}.json
      *
      * Returns ticket metadata + full thread with HTML stripped.
+     *
+     * Note on the parameter: osTicket's UrlMatcher::dispatch() strips
+     * named captures from the regex and passes the values positionally
+     * via call_user_func_array. So we receive {number} as the first
+     * positional argument, not as $args['number']. Same convention as
+     * api.reply.php::reply() uses.
      */
-    function getTicket($args) {
+    function getTicket($number) {
         $key = $this->requireApiKey();
         if (!$key->canCreateTickets()) {
             return $this->exerr(403, __('API key not authorised'));
         }
 
-        if (!isset($args['number']) || !preg_match('/^[\w-]+$/', $args['number'])) {
+        if (empty($number) || !preg_match('/^[\w-]+$/', $number)) {
             return $this->exerr(400, __('Invalid ticket number in URL'));
         }
 
-        $ticket = Ticket::lookupByNumber($args['number']);
+        $ticket = Ticket::lookupByNumber($number);
         if (!$ticket) {
             return $this->exerr(404, __('Ticket not found'));
         }
@@ -271,8 +277,8 @@ class ScrollrListController extends ApiController {
                     'id'         => (int) $entry->getId(),
                     'type'       => $type,
                     'type_label' => $this->typeLabel($type),
-                    'poster'     => $entry->getPoster() ?: '',
-                    'created'    => $this->isoFormat($entry->getCreateDate()),
+                    'poster'     => method_exists($entry, 'getPoster') ? ($entry->getPoster() ?: '') : '',
+                    'created'    => $this->isoFormat($this->callFirstMethod($entry, ['getCreateDate', 'getCreated'])),
                     'body_plain' => $bodyText,
                 );
             }
@@ -284,12 +290,12 @@ class ScrollrListController extends ApiController {
             'topic'     => $topic ? (string) $topic->getName() : null,
             'status'    => $status ? (string) $status->getName() : null,
             'status_state' => $status ? (string) $status->getState() : null,
-            'priority'  => $priority ? (string) $priority->getName() : 'normal',
-            'created'   => $this->isoFormat($ticket->getCreateDate()),
-            'updated'   => $this->isoFormat($ticket->getLastUpdate()),
+            'priority'  => $this->priorityToString($priority),
+            'created'   => $this->isoFormat($this->callFirstMethod($ticket, ['getCreateDate', 'getCreated'])),
+            'updated'   => $this->isoFormat($this->callFirstMethod($ticket, ['getLastUpdate', 'getUpdateDate', 'getLastUpdated', 'getUpdated'])),
             'closed'    => $ticket->isClosed(),
-            'user_name' => $user ? (string) $user->getName() : '',
-            'user_email'=> $user ? (string) $user->getEmail() : '',
+            'user_name' => $user ? (string) $this->callFirstMethod($user, ['getName', 'getFullName']) : '',
+            'user_email'=> $user ? (string) $this->callFirstMethod($user, ['getEmail', 'getDefaultEmailAddress', 'getDefaultEmail']) : '',
             'assigned_to_id'   => $staff ? (int) $staff->getId() : null,
             'assigned_to_name' => $staff ? (string) $staff->getName() : null,
             'url'       => $scpUrl
@@ -311,6 +317,44 @@ class ScrollrListController extends ApiController {
     private function fetchSubject($ticketId) {
         $ticket = Ticket::lookup($ticketId);
         return $ticket ? (string) $ticket->getSubject() : '';
+    }
+
+    /**
+     * Try a list of method names on $obj; return the first non-empty
+     * result. Used to defend against osTicket version drift where
+     * field accessors get renamed (e.g. getLastUpdate vs getUpdated).
+     */
+    private function callFirstMethod($obj, $methods) {
+        if (!$obj) return null;
+        foreach ($methods as $m) {
+            if (method_exists($obj, $m)) {
+                $v = $obj->$m();
+                if ($v) return $v;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The Priority class in osTicket exposes the human-readable name
+     * via several method names depending on version: getDesc(),
+     * getDescription(), priority_desc(). Older variants don't have
+     * getName(). Probe in order; fall back to "normal".
+     */
+    private function priorityToString($priority) {
+        if (!$priority) return 'normal';
+        foreach (['getDesc', 'getDescription', 'getPriority', 'getName'] as $m) {
+            if (method_exists($priority, $m)) {
+                $v = $priority->$m();
+                if ($v) return (string) $v;
+            }
+        }
+        // Last-ditch: many Priority objects expose ->priority_desc as
+        // a public field (older builds).
+        if (isset($priority->priority_desc) && $priority->priority_desc) {
+            return (string) $priority->priority_desc;
+        }
+        return 'normal';
     }
 
     private function typeLabel($type) {
