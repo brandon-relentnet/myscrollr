@@ -21,11 +21,36 @@ spec:
   tls:
     - hosts:
         - myscrollr.com
+        - www.myscrollr.com
         - api.myscrollr.com
       secretName: scrollr-tls
   rules:
     # Marketing website
     - host: myscrollr.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: website
+                port:
+                  number: 3000
+
+    # www variant — same backend as apex. Required for cert-manager's
+    # HTTP-01 challenge to validate www.myscrollr.com (without a route
+    # for this hostname, Let's Encrypt cannot reach
+    # /.well-known/acme-challenge/... and the cert request would hang
+    # indefinitely, blocking renewal of the existing cert too).
+    #
+    # Visitors who hit www directly will see the same site as apex.
+    # If you'd prefer a 301 redirect www → apex at the K8s layer
+    # instead of serving content here, split this rule into a separate
+    # Ingress with the annotation:
+    #   nginx.ingress.kubernetes.io/permanent-redirect: https://myscrollr.com$request_uri
+    # (per-rule annotations are not supported by nginx-ingress, hence
+    # the need for a separate Ingress object if you want the redirect.)
+    - host: www.myscrollr.com
       http:
         paths:
           - path: /
