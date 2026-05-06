@@ -109,16 +109,19 @@ function InvitePage() {
 
       sessionStorage.setItem('scrollr:returnTo', '/account')
 
-      // The backend already consumed the one-time token during its
-      // /invite/complete verification, so we must NOT pass it to
-      // signIn here — Logto would reject it as already used. Instead
-      // we hand the user to Logto's hosted sign-in with login_hint
-      // so their email is pre-filled; they type the password they
-      // just chose.
+      // The backend now VERIFIES the one-time token without consuming
+      // it. That leaves the token still active so we can hand it to
+      // Logto's magic-link sign-in flow here. Logto's flow consumes
+      // the token AND signs the user in atomically — no password
+      // prompt, no second redirect, just land on /callback already
+      // authenticated.
+      // Reference: https://docs.logto.io/end-user-flows/one-time-token
       const callbackUrl = `${window.location.origin}/callback`
       await signIn({
         redirectUri: callbackUrl,
+        clearTokens: false,
         extraParams: {
+          one_time_token: token,
           login_hint: email,
         },
       })
@@ -141,8 +144,8 @@ function InvitePage() {
 
   if (state === 'signing-in') {
     return (
-      <div className="min-h-screen text-base-content flex items-center justify-center font-mono">
-        <div className="text-center space-y-4 px-4 max-w-sm">
+      <div className="min-h-screen text-base-content flex flex-col items-center justify-start pt-32 pb-16 px-4 font-mono">
+        <div className="text-center space-y-4 max-w-sm">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4" />
           <p className="uppercase tracking-[0.2em] text-primary animate-pulse">
             Redirecting to sign in...
@@ -157,7 +160,7 @@ function InvitePage() {
 
   if (!token || !email) {
     return (
-      <div className="min-h-screen text-base-content flex items-center justify-center p-4 font-sans">
+      <div className="min-h-screen text-base-content flex flex-col items-center justify-start pt-32 pb-16 px-4 font-sans">
         <div className="w-full max-w-md text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-error/10 border border-error/20 mb-4">
             <X className="w-8 h-8 text-error" />
@@ -173,7 +176,7 @@ function InvitePage() {
   }
 
   return (
-    <div className="min-h-screen text-base-content flex items-center justify-center p-4 font-sans">
+    <div className="min-h-screen text-base-content flex flex-col items-center justify-start pt-32 pb-16 px-4 font-sans">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">

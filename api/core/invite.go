@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -88,12 +90,15 @@ func HandleCompleteInvite(c *fiber.Ctx) error {
 
 	cfg := getM2MConfig()
 
-	// Server-side one-time token verification. This is the ONLY
-	// authorization gate that proves the caller actually received the
-	// emailed invite link for this address. The token is consumed by
-	// Logto on success — the frontend must sign the user in with their
-	// newly-set password afterward, NOT with signIn({one_time_token}).
-	if err := verifyOneTimeToken(cfg.Endpoint, m2mToken, req.Email, req.Token); err != nil {
+	// Server-side one-time token check. This is the ONLY authorization
+	// gate that proves the caller actually received the emailed invite
+	// link for this address. The token is NOT consumed here — we want
+	// it to stay active so the frontend can call signIn() with it
+	// immediately after account setup and have Logto's magic-link flow
+	// consume it as part of authentication. That gives a seamless
+	// "submit form → land on /account already signed in" UX, with no
+	// password re-entry.
+	if err := findActiveOneTimeToken(cfg.Endpoint, m2mToken, req.Email, req.Token); err != nil {
 		log.Printf("[Invite] Token verification failed for %s: %v", maskEmail(req.Email), err)
 		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
 			Error: "Invite link is invalid or has expired",
@@ -216,43 +221,73 @@ func HandleCheckUsernameAvailable(c *fiber.Ctx) error {
 
 // ── Logto Management API helpers ────────────────────────────────────
 
-// verifyOneTimeToken validates a Logto one-time token against the given
-// email and consumes it on success. A consumed token cannot be verified
-// again or used by signIn({extraParams:{one_time_token}}). The caller
-// must ensure the user signs in via a different credential afterward
-// (in the invite flow, the password they just set).
+// findActiveOneTimeToken validates a Logto one-time token against the
+// given email WITHOUT consuming it. The token stays active so the
+// frontend can immediately call signIn({extraParams:{one_time_token}})
+// and have Logto consume it during the magic-link sign-in flow. This
+// is the key piece that lets the invite UX skip the "type your
+// password again" step after account setup.
 //
-// Returns nil when the token is valid and consumed; a non-nil error
-// when it's expired, malformed, unknown, or bound to a different email.
-func verifyOneTimeToken(endpoint, token, email, ott string) error {
-	payload, _ := json.Marshal(map[string]string{
-		"email": email,
-		"token": ott,
-	})
-
-	req, err := http.NewRequest(
-		"POST",
-		fmt.Sprintf("%s/api/one-time-tokens/verify", endpoint),
-		bytes.NewReader(payload),
+// We use GET /api/one-time-tokens?email=...&status=active to list
+// candidate tokens, then check that our specific token value is among
+// the active ones and not expired.
+//
+// Returns nil when the token is active, valid, and bound to this
+// email; a non-nil error otherwise.
+func findActiveOneTimeToken(endpoint, m2mToken, email, ott string) error {
+	listURL := fmt.Sprintf(
+		"%s/api/one-time-tokens?email=%s&status=active&page_size=20",
+		endpoint, url.QueryEscape(email),
 	)
+	req, err := http.NewRequest("GET", listURL, nil)
 	if err != nil {
-		return fmt.Errorf("create verify request: %w", err)
+		return fmt.Errorf("create list request: %w", err)
 	}
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+m2mToken)
 
 	client := &http.Client{Timeout: LogtoM2MTokenTimeout}
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("verify request failed: %w", err)
+		return fmt.Errorf("list request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("list returned %d: %s", resp.StatusCode, string(body))
+	}
+
+	var tokens []struct {
+		ID        string `json:"id"`
+		Email     string `json:"email"`
+		Token     string `json:"token"`
+		Status    string `json:"status"`
+		ExpiresAt int64  `json:"expiresAt"`
+	}
+	if err := json.Unmarshal(body, &tokens); err != nil {
+		return fmt.Errorf("parse list response: %w", err)
+	}
+
+	now := time.Now().UnixMilli()
+	for _, t := range tokens {
+		if t.Token != ott {
+			continue
+		}
+		// Logto returned this filtered to status=active, but defense-
+		// in-depth: re-check status and expiry ourselves in case the
+		// filter is loose or the list is paginated stale.
+		if t.Status != "active" {
+			return fmt.Errorf("token status is %s, not active", t.Status)
+		}
+		if t.ExpiresAt > 0 && t.ExpiresAt < now {
+			return fmt.Errorf("token expired at %d (now %d)", t.ExpiresAt, now)
+		}
+		if !strings.EqualFold(t.Email, email) {
+			return fmt.Errorf("token bound to different email")
+		}
 		return nil
 	}
-	body, _ := io.ReadAll(resp.Body)
-	return fmt.Errorf("verify returned %d: %s", resp.StatusCode, string(body))
+	return fmt.Errorf("token not found among active tokens for this email")
 }
 
 // findUserByEmail searches for a user by primary email and returns (userID, username, error).
