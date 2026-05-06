@@ -203,7 +203,24 @@ export default function ScrollrTicker({
         //    players lead the fantasy bucket. They render even when
         //    the league-summary chips are gated off (the user
         //    explicitly opted in to per-player tracking).
+        // Pre-build a player → owning-league lookup so we can resolve
+        // each player's `game_code` (canonical Yahoo sport name like
+        // "nfl") for URL construction. Yahoo's `player_key` prefix is
+        // a numeric game id, not the sport name, so we MUST use the
+        // owning league's `game_code` field to build a working URL.
+        const playerToLeagueGameCode = new Map<string, string>();
+        for (const lg of leagues) {
+          if (!lg.rosters) continue;
+          for (const roster of lg.rosters) {
+            for (const player of roster.data.players) {
+              if (player.player_key) {
+                playerToLeagueGameCode.set(player.player_key, lg.game_code);
+              }
+            }
+          }
+        }
         for (const playerKey of fantasyPrefs.followedPlayerKeys ?? []) {
+          const playerGameCode = playerToLeagueGameCode.get(playerKey);
           bucket.push(
             wrap(`follow-${playerKey}`,
               <FollowedPlayerChip
@@ -211,7 +228,7 @@ export default function ScrollrTicker({
                 leagues={leagues}
                 comfort={comfort}
                 colorMode={chipColorMode}
-                onClick={() => onChipClick?.("fantasy", playerKey, buildYahooPlayerUrl(playerKey))}
+                onClick={() => onChipClick?.("fantasy", playerKey, buildYahooPlayerUrl(playerKey, playerGameCode))}
               />
             )
           );
@@ -226,7 +243,7 @@ export default function ScrollrTicker({
                 prefs={fantasyPrefs}
                 comfort={comfort}
                 colorMode={chipColorMode}
-                onClick={() => onChipClick?.("fantasy", league.league_key, buildYahooLeagueUrl(league.league_key))}
+                onClick={() => onChipClick?.("fantasy", league.league_key, buildYahooLeagueUrl(league.league_key, league.game_code))}
               />
             )
           );
