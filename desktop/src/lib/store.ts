@@ -65,10 +65,49 @@ export function setStore<T>(key: string, value: T): void {
   store.set(key, value as unknown).catch(logWriteError);
 }
 
+/**
+ * Update the cache, write to disk, AND wait for the on-disk save to
+ * complete before resolving. Use this for data where loss across a
+ * process exit is unacceptable — most importantly auth state.
+ *
+ * Why this exists: Tauri's LazyStore.set() doesn't immediately fsync;
+ * it batches writes via an internal autoSave debounce (~100ms). If the
+ * process exits, the laptop sleeps, or the OS terminates the app
+ * inside that window, the disk has the previous (stale) value while
+ * the in-memory cache had the new one. On next launch we read the
+ * stale value from disk and use it.
+ *
+ * For auth state, that pattern manifests as: refresh succeeds, Logto
+ * rotates R0 → R1 server-side, we get R1 in memory, app suspends
+ * before disk write, next launch reads R0 from disk, sends R0 to
+ * Logto, Logto detects refresh-token reuse → invalidates the entire
+ * token family → 400 → user logged out.
+ *
+ * setStorePersisted closes that window by awaiting both the set and
+ * the explicit save. Slower than setStore (one extra disk-flush round
+ * trip per call) — only use it where loss is genuinely unacceptable.
+ */
+export async function setStorePersisted<T>(key: string, value: T): Promise<void> {
+  cache.set(key, value);
+  await store.set(key, value as unknown);
+  await store.save();
+}
+
 /** Remove a key from both cache and disk. */
 export function removeStore(key: string): void {
   cache.delete(key);
   store.delete(key).catch(logWriteError);
+}
+
+/**
+ * Remove a key from cache + disk and wait for both to complete.
+ * Same rationale as setStorePersisted — use for auth-state clears
+ * where leaving stale data on disk is unacceptable.
+ */
+export async function removeStorePersisted(key: string): Promise<void> {
+  cache.delete(key);
+  await store.delete(key);
+  await store.save();
 }
 
 function logWriteError(err: unknown): void {

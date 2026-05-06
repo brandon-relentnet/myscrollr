@@ -14,7 +14,13 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { fetch } from "@tauri-apps/plugin-http";
 import { open } from "@tauri-apps/plugin-shell";
-import { getStore, setStore, removeStore } from "./lib/store";
+import {
+  getStore,
+  setStore,
+  removeStore,
+  setStorePersisted,
+  removeStorePersisted,
+} from "./lib/store";
 
 // ── Constants ────────────────────────────────────────────────────
 
@@ -69,8 +75,26 @@ function loadAuth(): AuthState | null {
   return getStore<AuthState | null>(STORAGE_KEY, null);
 }
 
-function saveAuth(state: AuthState): void {
-  setStore(STORAGE_KEY, state);
+/**
+ * Persist auth state and schedule the next refresh.
+ *
+ * Critically: awaits the disk write before returning. Used to be
+ * fire-and-forget via setStore, but that opened a window where a
+ * refresh response could update the in-memory cache while the disk
+ * still held the OLD refresh token. If the OS suspended the app or
+ * the process exited inside that window (~100ms autoSave debounce on
+ * Tauri's LazyStore), the next launch read the OLD R0 from disk and
+ * sent it to Logto — which had ALREADY rotated R0 → R1 in the lost
+ * response, so it now treated R0 as "reused" and invalidated the
+ * entire token family. Result: user logged out unexpectedly with the
+ * `refresh_4xx_no_recovery` diagnostic path firing on a 400
+ * `invalid_grant` from Logto.
+ *
+ * Always await this. Callers MUST handle the promise — silent failure
+ * here is exactly what we're trying to prevent.
+ */
+async function saveAuth(state: AuthState): Promise<void> {
+  await setStorePersisted(STORAGE_KEY, state);
   scheduleRefresh();
 }
 
@@ -90,17 +114,53 @@ type ClearAuthPath =
   | "no_refresh_token"
   | "explicit_signout";
 
-function clearAuth(path: ClearAuthPath, context: Record<string, unknown> = {}): void {
+/**
+ * The events file historically holds only logout (clearAuth) entries,
+ * which is why these path values describe HOW we got logged out. As
+ * of v1.0.7-patch we ALSO record successful refreshes via
+ * recordRefreshSuccess so the diagnostic file shows the full timeline
+ * — when refreshes succeeded vs. failed. Same file, same shape, just
+ * a richer set of `path` values.
+ */
+type RefreshSuccessPath = "refresh_succeeded";
+
+async function clearAuth(
+  path: ClearAuthPath,
+  context: Record<string, unknown> = {},
+): Promise<void> {
   if (refreshTimer !== null) {
     clearTimeout(refreshTimer);
     refreshTimer = null;
   }
-  removeStore(STORAGE_KEY);
+
+  // Persist the removal — fire-and-forget removeStore opened the same
+  // disk-write race that caused the original logout bug. Awaiting
+  // here means the next process restart definitely doesn't see stale
+  // tokens after a logout.
+  await removeStorePersisted(STORAGE_KEY);
 
   // Best-effort instrumentation. Failures here must NOT block the
   // logout itself — we wrap in try/catch and swallow. The events file
   // is for our debugging only; if Tauri's command channel is broken or
   // disk write fails, the user just doesn't get a record this time.
+  recordAuthEvent(path, context);
+}
+
+/**
+ * Record a successful refresh in the diagnostic events file. Same
+ * Tauri command, same file, but with `path: "refresh_succeeded"`.
+ * Lets us see the full refresh timeline in one place: we know when
+ * refreshes worked and when they failed, with timestamps and
+ * tokens-rotated context.
+ */
+function recordRefreshSuccess(context: Record<string, unknown>): void {
+  recordAuthEvent("refresh_succeeded" as RefreshSuccessPath, context);
+}
+
+function recordAuthEvent(
+  path: ClearAuthPath | RefreshSuccessPath,
+  context: Record<string, unknown>,
+): void {
   try {
     void invoke("record_logout_event", {
       event: {
@@ -190,7 +250,31 @@ async function refreshTokenRequest(
   });
 
   if (!res.ok) {
-    throw new Error(`Token refresh failed: ${res.status}`);
+    // Capture Logto's actual error body so the diagnostic events can
+    // tell us EXACTLY why the refresh failed. Logto returns standard
+    // OAuth error envelopes:
+    //   {"error":"invalid_grant","error_description":"refresh token expired"}
+    //   {"error":"invalid_grant","error_description":"refresh token has been revoked"}  ← reuse-detection
+    //   {"error":"invalid_client","error_description":"..."}
+    // The error code is the diagnostic gold — `invalid_grant` with
+    // a reuse-related description is the smoking gun for the
+    // disk-write-loss → reuse-detection class of bugs.
+    let errorBody = "";
+    try {
+      errorBody = await res.text();
+    } catch {
+      // body unreadable (network drop mid-read) — fine, status alone
+    }
+    // Cap at 400 chars to avoid runaway log sizes if Logto ever
+    // returns a huge HTML error page.
+    if (errorBody.length > 400) {
+      errorBody = errorBody.slice(0, 400) + "…";
+    }
+    throw new Error(
+      errorBody
+        ? `Token refresh failed: ${res.status} ${errorBody}`
+        : `Token refresh failed: ${res.status}`,
+    );
   }
 
   return res.json();
@@ -450,7 +534,10 @@ export async function login(): Promise<AuthState | null> {
       userSub: extractSub(tokenRes.access_token),
     };
 
-    saveAuth(authState);
+    // Await the disk write — same rationale as the refresh path.
+    // Sign-in tokens MUST be durable before we let the caller assume
+    // the user is signed in.
+    await saveAuth(authState);
     return authState;
   } catch (err) {
     if (hasPendingAuthCleanup) {
@@ -484,7 +571,7 @@ export async function getValidToken(forceRefresh = false): Promise<string | null
 
   // Need to refresh
   if (!auth.refreshToken) {
-    clearAuth("no_refresh_token", {
+    await clearAuth("no_refresh_token", {
       hadAccessToken: Boolean(auth.accessToken),
       expiresAt: auth.expiresAt,
       msUntilExpiry: auth.expiresAt - Date.now(),
@@ -534,7 +621,30 @@ async function doRefresh(refreshToken: string): Promise<string | null> {
       userSub: extractSub(tokenRes.access_token),
     };
 
-    saveAuth(authState);
+    // CRITICAL: await the persistence. Pre-fix this was fire-and-
+    // forget, which meant if the OS suspended the app inside Tauri's
+    // ~100ms LazyStore autoSave debounce window, the disk would still
+    // hold the OLD refresh token while in-memory had the new one. On
+    // next launch the stale on-disk token would be sent to Logto,
+    // tripping refresh-token reuse detection → 400 → forced logout.
+    // Awaiting setStorePersisted (inside saveAuth) closes that
+    // window: by the time this line returns, the disk fsync has
+    // completed and the new token is durably stored.
+    await saveAuth(authState);
+
+    // Record the successful refresh in the diagnostic events file so
+    // the timeline shows which refreshes actually persisted vs. ones
+    // that failed. If a logout fires after this, we can correlate it
+    // back to the LAST successful refresh and see exactly what gap
+    // we lost data in.
+    recordRefreshSuccess({
+      newRefreshTokenIssued: Boolean(tokenRes.refresh_token),
+      newRefreshTokenDifferent: Boolean(
+        tokenRes.refresh_token && tokenRes.refresh_token !== refreshToken,
+      ),
+      expiresInSec: tokenRes.expires_in,
+      newAccessTokenSub: authState.userSub,
+    });
     return authState.accessToken;
   } catch (err) {
     // Only clear auth if the refresh token was explicitly rejected
@@ -559,13 +669,33 @@ async function doRefresh(refreshToken: string): Promise<string | null> {
       ) {
         return fresh.accessToken;
       }
-      clearAuth("refresh_4xx_no_recovery", {
-        errorMessage: message.slice(0, 200),
+
+      // Detect whether this is reuse-detection from Logto vs. some
+      // other 400. Logto returns "invalid_grant" on reuse-detection
+      // (the refresh-token-rotation safety mechanism). Other errors
+      // could be invalid_client, invalid_request, etc. The error
+      // body is captured by refreshTokenRequest now, so the message
+      // string contains both the status AND the OAuth error code.
+      const isReuseDetection = /invalid_grant/.test(message);
+      const isExpiredToken = /(expired|expiration)/i.test(message);
+
+      await clearAuth("refresh_4xx_no_recovery", {
+        errorMessage: message.slice(0, 400),
         hadFreshAuthInStore: Boolean(fresh),
         freshHadDifferentRefreshToken: Boolean(
           fresh && fresh.refreshToken && fresh.refreshToken !== refreshToken,
         ),
         freshAccessTokenStillValid: Boolean(fresh && fresh.expiresAt > Date.now()),
+        // New diagnostic fields. Together with the captured Logto
+        // error body, these definitively identify the failure mode:
+        //   isReuseDetection=true  → disk-write-loss → reuse class
+        //                           (the v1.0.7-patch fix targets this)
+        //   isExpiredToken=true    → genuine expiry (refresh token
+        //                           outlived its server-side TTL)
+        //   neither                → some other Logto rejection;
+        //                           inspect errorMessage for details
+        isReuseDetection,
+        isExpiredToken,
       });
     }
     return null;
@@ -596,10 +726,16 @@ export function getUserIdentity(): { email: string | null; name: string | null }
 }
 
 /**
- * Clear all auth state (logout).
+ * Clear all auth state (logout). Returns the in-flight clearAuth
+ * promise so callers can await disk persistence — important when the
+ * UI immediately follows the logout with a sign-in (otherwise the
+ * sign-in's saveAuth could race with the logout's removeAuth and
+ * leave the disk in an inconsistent state). Existing call sites that
+ * don't await are still functionally correct because clearAuth
+ * synchronously updates the in-memory cache.
  */
-export function logout(): void {
-  clearAuth("explicit_signout");
+export function logout(): Promise<void> {
+  return clearAuth("explicit_signout");
 }
 
 /**
