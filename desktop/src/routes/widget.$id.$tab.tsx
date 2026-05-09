@@ -5,8 +5,10 @@
  *   - id: "clock" | "weather" | "sysmon" | "uptime" | "github"
  *   - tab: "feed" | "configuration"
  *
- * Source-level actions (ticker toggle, remove) are in the header bar.
- * Widgets have no Display tab — their Configure tab already has display settings.
+ * Source-level actions (remove with Undo toast) are in the header bar.
+ * Display preferences for widgets live as part of the Configure tab —
+ * the IA refactor (2026-05-09) made channel and widget pages share the
+ * same 2-tab structure (Feed / Configure).
  */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import RouteError from "../components/RouteError";
