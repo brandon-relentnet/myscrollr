@@ -1,13 +1,19 @@
 /**
- * Channel route — renders channel feed, configuration, or display prefs.
+ * Channel route — renders channel feed or configuration.
  *
  * URL: /channel/:type/:tab
  *   - type: "finance" | "sports" | "rss" | "fantasy"
- *   - tab: "feed" | "configuration" | "display"
+ *   - tab: "feed" | "configuration"
  *
- * Source-level actions (ticker toggle, remove) are in the header bar.
+ * Source-level actions (remove) are in the header bar.
+ *
+ * Display preferences live as a section inside the Configure tab —
+ * the IA refactor (2026-05-09) folded the old Display tab into
+ * Configure for symmetry with widgets and to reduce per-source
+ * cognitive overhead.
  */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 import RouteError from "../components/RouteError";
 import SourcePageLayout, { parseSourceTab, SourceNotFound } from "../components/SourcePageLayout";
 import { useQuery } from "@tanstack/react-query";
@@ -39,6 +45,19 @@ function ChannelRoute() {
   const navigate = useNavigate();
   const tab = parseSourceTab(rawTab);
 
+  // Migrate legacy /display URL — Display tab was folded into
+  // Configure as a section. Redirect so the URL matches what's shown
+  // and bookmarks/tray deeplinks heal themselves.
+  useEffect(() => {
+    if (rawTab === "display") {
+      navigate({
+        to: "/channel/$type/$tab",
+        params: { type, tab: "configuration" },
+        replace: true,
+      });
+    }
+  }, [rawTab, type, navigate]);
+
   const channel = getChannel(type);
   const { data: dashboard } = useQuery(dashboardQueryOptions());
   const { onDeleteChannel } = useShell();
@@ -69,8 +88,15 @@ function ChannelRoute() {
           onConfigure={() => navigate({ to: "/channel/$type/$tab", params: { type, tab: "configuration" } })}
         />
       )}
-      {tab === "configuration" && <ChannelConfigTab type={type} dashboard={dashboard} />}
-      {tab === "display" && <ChannelDisplayTab type={type} />}
+      {tab === "configuration" && (
+        <>
+          <ChannelConfigTab type={type} dashboard={dashboard} />
+          {/* Display section — only renders if the channel has
+              display preferences. Visually separated by the section
+              heading inside ChannelDisplayTab itself. */}
+          <ChannelDisplayTab type={type} />
+        </>
+      )}
     </SourcePageLayout>
   );
 }
@@ -138,6 +164,9 @@ function ChannelConfigTab({
 }
 
 function ChannelDisplayTab({ type }: { type: string }) {
+  // Rendered as a section beneath the Configure panel. Silently
+  // returns null for channels without display preferences so the
+  // Configure tab simply ends after the config section.
   switch (type) {
     case "finance":
       return <FinanceDisplay />;
@@ -148,14 +177,7 @@ function ChannelDisplayTab({ type }: { type: string }) {
     case "fantasy":
       return <FantasyDisplay />;
     default:
-      return (
-        <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto gap-3 p-6">
-          <h2 className="text-base font-semibold text-fg">No display settings</h2>
-          <p className="text-sm text-fg-3 leading-relaxed">
-            This channel does not have customizable display preferences.
-          </p>
-        </div>
-      );
+      return null;
   }
 }
 

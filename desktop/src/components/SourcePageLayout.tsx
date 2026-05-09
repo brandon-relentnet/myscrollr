@@ -13,11 +13,16 @@ import ConfirmDialog from "./ConfirmDialog";
 
 // ── Shared tab constants ────────────────────────────────────────
 
-export const VALID_TABS = ["feed", "configuration", "display"] as const;
+export const VALID_TABS = ["feed", "configuration"] as const;
 export type SourceTab = (typeof VALID_TABS)[number];
 
-/** Parse a raw tab parameter into a valid SourceTab, defaulting to "feed". */
+/** Parse a raw tab parameter into a valid SourceTab.
+ *  - "display" is migrated to "configuration" (Display tab was folded
+ *    into Configure as a section in the IA refactor). Old bookmarks
+ *    and tray deeplinks still work.
+ *  - Anything else falls back to "feed". */
 export function parseSourceTab(rawTab: string): SourceTab {
+  if (rawTab === "display") return "configuration";
   return (VALID_TABS as readonly string[]).includes(rawTab)
     ? (rawTab as SourceTab)
     : "feed";
@@ -48,13 +53,10 @@ interface Tab {
   label: string;
 }
 
-const CHANNEL_TABS: Tab[] = [
-  { key: "feed", label: "Feed" },
-  { key: "configuration", label: "Configure" },
-  { key: "display", label: "Display" },
-];
-
-const WIDGET_TABS: Tab[] = [
+// Channels and widgets share the same 2-tab structure now. Display
+// preferences for channels live as a "Display" section inside the
+// Configure tab — same chassis for both kinds.
+const SOURCE_TABS: Tab[] = [
   { key: "feed", label: "Feed" },
   { key: "configuration", label: "Configure" },
 ];
@@ -82,7 +84,7 @@ export default function SourcePageLayout({
   sourceKind,
 }: SourcePageLayoutProps) {
   const [confirmRemove, setConfirmRemove] = useState(false);
-  const tabs = sourceKind === "widget" ? WIDGET_TABS : CHANNEL_TABS;
+  const tabs = SOURCE_TABS;
 
   function handleRemove() {
     if (sourceKind === "channel") {
