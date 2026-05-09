@@ -3,86 +3,95 @@
 ## Repo State
 - Branch: `main`
 - Worktree: clean after this commit
-- Latest CI fix: `fix(ci): restore always-on Apple notarization, keep 25-min timeout guard`
+- Latest CI work: `ci(desktop): notarize and staple macOS DMG so Gatekeeper accepts the download silently`
 
-## What Happened (and What Got Reverted)
+## What This Session Resolved
 
-The notarize-toggle work in PR #151 was **wrong**. The diagnosis was right
-(macos-14 runner lost network mid-poll on run #25578604859, hung 51 min)
-but the fix broke notarization on push events.
+End-to-end macOS notarization, including the DMG container — not just the
+.app bundle inside it. Three sequential commits on `main`:
 
-### Why the toggle didn't work
+1. **`ca63e3d`** (PR #151 squash) — first attempt at a notarize toggle.
+   Broken: passed empty Apple secrets on push, which Tauri's bundler
+   accepted as "credentials present" then rejected at notarytool's Team ID
+   length validation. Run #25605423069 failed at 8m50s.
+2. **`80c0d43`** — reverted the toggle. Apple secrets unconditionally
+   passed; restored the working notarize path that predated the toggle.
+   Kept the 25-min job timeout as a hang guard.
+3. **`<this commit>`** — added a DMG notarize+staple step after
+   `Build Tauri app`. Closes the "DMG container itself isn't notarized"
+   gap that `spctl --assess --type install` flagged on the published
+   `Scrollr_1.0.9_aarch64.dmg`.
 
-Tauri's bundler decides whether to notarize by checking environment
-variable *presence*, not value:
+## What Was Verified Before Adding the DMG Step
 
-```rust
-// crates/tauri-bundler/src/bundle/macos/sign.rs::notarize_auth
-match (var_os("APPLE_ID"), var_os("APPLE_PASSWORD"), var_os("APPLE_TEAM_ID")) {
-    (Some(apple_id), Some(password), Some(team_id)) => Ok(...),
-    ...
-}
+Run #25607083776 (post-revert) on macos-14 produced:
+
+- Codesigning: `Scrollr.app` signed by `Developer ID Application: Scrollr, LLC (4S6F56VHMZ)`, Mach-O thin (arm64), hardened runtime enabled.
+- Notarization: submission `7848a385-feb2-431b-ae19-4e1e7eda0be1` accepted by Apple in 24.6 seconds.
+- Stapling: `xcrun stapler validate Scrollr.app` → `The validate action worked!`
+- Gatekeeper on the .app: `accepted, source=Notarized Developer ID`.
+
+The remaining gap surfaced by `spctl --assess --type install Scrollr_1.0.9_aarch64.dmg`:
+
+```
+rejected
+source=Unnotarized Developer ID
 ```
 
-`var_os()` returns `Some("")` for empty env vars — only `None` for unset.
-GitHub Actions' `env:` map sets variables even when the value is `''`,
-so the toggle's
+The .app inside was fully trusted, but the DMG wrapper triggered a
+one-time Gatekeeper warning when users double-clicked the download.
 
-```yaml
-APPLE_TEAM_ID: ${{ inputs.notarize && secrets.APPLE_TEAM_ID || '' }}
+## What the New Step Does
+
+After tauri-action finishes (which leaves the DMG signed but unnotarized):
+
+```sh
+xcrun notarytool submit <dmg> --apple-id ... --password ... --team-id ... --wait --timeout 15m
+xcrun stapler staple <dmg>
+xcrun stapler validate <dmg>
+gh release upload <tag> <dmg> --clobber
 ```
 
-passed an empty string on push events. Tauri saw "credentials present",
-attempted to notarize, and `notarytool` rejected it with
-`Team ID must be at least 3 characters` (run #25605423069, 8m50s fail).
+- Submits a second notarization request (DMG itself, ~25-90s typical).
+- Staples the ticket to the DMG.
+- Validates locally before uploading, so a silent stapling failure is loud.
+- Replaces the unstapled DMG that tauri-action just uploaded to the draft release.
 
-To actually skip notarize while keeping signing, the env vars would need
-to be **omitted entirely** from the action invocation — which requires
-two parallel build steps with `if:` guards or a conditional shell step
-that writes to `$GITHUB_ENV`. Not worth the complexity for a flake we
-can guard with a job-level timeout.
+Implementation choices:
 
-### What actually shipped
+- `if: matrix.platform == 'macos-14'` — only macOS gets a DMG.
+- `continue-on-error: true` — if Apple's notary or the runner network flakes,
+  the build still succeeds with an unstapled DMG. Self-heals on next push.
+  The .app and updater stream are unaffected.
+- `--timeout 15m` on `notarytool` — fires before the 25m job timeout, giving
+  a clean error rather than a hard kill.
+- No re-signing — the DMG is already Developer ID-signed; stapling adds the
+  notarization ticket without touching the signature.
 
-1. **Removed** the `notarize` workflow_dispatch input and the conditional
-   ternaries on `APPLE_ID` / `APPLE_PASSWORD` / `APPLE_TEAM_ID`. All Apple
-   secrets are unconditionally passed to `tauri-action`. Every build on
-   `main` is now signed AND notarized — same behavior as runs predating
-   the toggle (e.g. successful run #25440501573 on 2026-05-06, 10m19s).
-2. **Kept** `timeout-minutes: 25` on the build job. This caps the
-   notarize-poll hang documented in run #25578604859 to ~25 min instead
-   of consuming the GitHub default 6h. Healthy notarized builds finish
-   in ~10 min, so 25 leaves 2.5x headroom.
+## Cost
 
-### The macos-14 network-drop flake is still possible
+- ~25-90 extra seconds per macOS build (Apple's typical processing time).
+- 2 notarization submissions per macOS build (app + dmg) instead of 1. Apple
+  rate-limits at ~75/day per team; nowhere near it at our push frequency.
 
-`timeout-minutes: 25` doesn't prevent the flake — it bounds the cost.
-If the runner loses network mid-poll again, the job dies at 25 min and
-you re-run. ~10 min healthy retry vs. 50+ min stuck. Acceptable cost
-for a bug that's GitHub's, not ours.
+## Verification After Deploy
 
-### Why I (the agent) got this wrong the first time
+1. Wait for the next push-triggered `Desktop Release` run to finish.
+2. Download the DMG asset from the resulting release.
+3. Run:
+   ```sh
+   spctl --assess --type install --verbose=4 Scrollr_*_aarch64.dmg
+   ```
+   Expected: `accepted, source=Notarized Developer ID`.
+4. Optional double-check: `xcrun stapler validate Scrollr_*_aarch64.dmg` →
+   `The validate action worked!`.
 
-Phase 1 of systematic-debugging says "gather evidence at component
-boundaries before fixing." I had the evidence — the run #25578604859
-log clearly showed codesigning succeeded and the failure was a network
-poll, not a credential issue — but I designed a toggle to "skip
-notarize when convenient" without verifying Tauri's actual gating
-contract. The toggle was a solution looking for a problem. The real
-ask all along was: "make sure notarize works and doesn't hang
-forever." Two narrow changes, both delivered now: timeout cap +
-unconditional creds.
+## Known Limitations / Followups
 
-## Next Best Action
-1. The push-triggered `Desktop Release` build that follows this commit
-   should complete in ~10 min on all three runners with notarized macOS
-   artifacts. Watch it; if macOS finishes green, this is fully fixed.
-2. If the network-drop flake recurs, the build now fails at 25 min and
-   a re-run is cheap.
-
-## Reference
-- Failed runs:
-  - #25578604859 — runner network drop, 58m fail (the original problem)
-  - #25605423069 — `Team ID must be at least 3 characters`, 8m50s fail (caused by my broken toggle)
-- Tauri bundler notarize gating: https://github.com/tauri-apps/tauri/blob/dev/crates/tauri-bundler/src/bundle/macos/sign.rs (notarize_auth)
-- Tauri bundler call site: https://github.com/tauri-apps/tauri/blob/dev/crates/tauri-bundler/src/bundle/macos/app.rs#L135
+- **Existing release `desktop-v1.0.9`**: today's runs already replaced the
+  DMG asset's `.app` content with a notarized version, but the DMG container
+  itself on that release will only become stapled after the next push that
+  bumps the version OR a manual `workflow_dispatch` rebuild on the same
+  version (tauri-action will overwrite via the draft-release path).
+- **AppImage step is unchanged.** Linux flow already had its own
+  re-sign-and-upload pattern; the new macOS step uses the same shape.

@@ -233,6 +233,59 @@ jobs:
           releaseDraft: true
           prerelease: false
 
+      # ── Notarize and staple the macOS DMG ──────────────────────
+      # tauri-action only notarizes the .app bundle inside the DMG, leaving
+      # the DMG container itself signed-but-unnotarized. That gives users a
+      # "macOS cannot verify the developer of this disk image" warning when
+      # they double-click the downloaded DMG, even though the .app inside is
+      # fully trusted post-mount. This step closes that gap by submitting
+      # the DMG to Apple's notary service and stapling the resulting ticket
+      # to the disk image, so Gatekeeper accepts it silently on download.
+      #
+      # Verified gap: spctl --assess --type install on the unstapled DMG
+      # returned "rejected, source=Unnotarized Developer ID" against
+      # release Scrollr_1.0.9_aarch64.dmg before this step was added.
+      #
+      # continue-on-error: true so a runner-network flake during this
+      # second notary submission (see run #25578604859 — NSURLErrorDomain
+      # -1009 mid-poll) doesn't block the pipeline. The .app inside and the
+      # updater stream are unaffected; users who download mid-flake see one
+      # extra Gatekeeper prompt that self-heals on the next push.
+      #
+      # The DMG was already Developer ID-signed by tauri-action; stapling
+      # attaches the notarization ticket without re-signing.
+      - name: Notarize and staple DMG
+        if: matrix.platform == 'macos-14'
+        continue-on-error: true
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          DMG=$(find src-tauri/target/release/bundle/dmg -name '*.dmg' | head -1)
+          if [ -z "$DMG" ]; then
+            echo "::warning::No DMG found at src-tauri/target/release/bundle/dmg; skipping DMG notarization"
+            exit 0
+          fi
+
+          echo "Notarizing $DMG..."
+          xcrun notarytool submit "$DMG" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait \
+            --timeout 15m
+
+          echo "Stapling $DMG..."
+          xcrun stapler staple "$DMG"
+          xcrun stapler validate "$DMG"
+
+          echo "Re-uploading stapled DMG to release..."
+          TAG="desktop-v$(jq -r .version src-tauri/tauri.conf.json)"
+          gh release upload "$TAG" "$DMG" --clobber --repo "$GITHUB_REPOSITORY"
+
       # ── Fix AppImage for rolling-release distros ───────────────
       # Bundled Ubuntu 22.04 libwayland-* are ABI-incompatible with
       # newer Mesa on Arch, Fedora, etc. We repackage without them,
