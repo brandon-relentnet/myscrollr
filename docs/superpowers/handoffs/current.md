@@ -1,84 +1,88 @@
 # Current Session Handoff
 
 ## Repo State
-- Branch: `refactor/unify-ticker-rows-ux` (tracks `origin/refactor/unify-ticker-rows-ux`)
+- Branch: `main`
 - Worktree: clean after this commit
-- Last commit: `ci(desktop): add notarize toggle + 25-min job timeout to fence flaky macOS notarization`
+- Latest CI fix: `fix(ci): restore always-on Apple notarization, keep 25-min timeout guard`
 
-## Active Task
-Done. Two-part CI fix to `.github/workflows/desktop-release.yml`:
+## What Happened (and What Got Reverted)
 
-1. `notarize` workflow_dispatch input (boolean, default `false`) gating the
-   `APPLE_ID` / `APPLE_PASSWORD` / `APPLE_TEAM_ID` env vars. Codesigning
-   credentials (`APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`,
-   `APPLE_SIGNING_IDENTITY`) stay always-on so every macOS build still
-   produces a Developer ID-signed bundle.
-2. `timeout-minutes: 25` on the `build` job so a stuck `notarytool` poll
-   fails fast instead of burning the full 6h GitHub default.
+The notarize-toggle work in PR #151 was **wrong**. The diagnosis was right
+(macos-14 runner lost network mid-poll on run #25578604859, hung 51 min)
+but the fix broke notarization on push events.
 
-## What Actually Failed in Run #25578604859
+### Why the toggle didn't work
 
-Initially mis-diagnosed as an Apple notary flake. The real cause was the
-**macos-14 GitHub runner losing network connectivity** while polling
-notarytool, not anything Apple-side. Evidence from the log:
+Tauri's bundler decides whether to notarize by checking environment
+variable *presence*, not value:
 
-- `20:51:23.91` — submission accepted by Apple, UUID
-  `43b5a62e-ea70-4c70-b67b-97ad02303a11` returned. Codesigning fully
-  succeeded before this point (cert "Scrollr, LLC", `.app` and updater
-  `.zip` both signed).
-- `21:42:22.71` — fail. **51 minutes** later, Foundation raised:
-  ```
-  NSURLErrorDomain Code=-1009 "The Internet connection appears to be offline."
-    _NSURLErrorNWResolutionReportKey=Resolved 0 endpoints in 2ms using unknown from cache
-    _NSURLErrorNWPathKey=unsatisfied (No network route)
-    NSErrorFailingURLKey=https://appstoreconnect.apple.com/notary/v2/submissions/43b5a62e-…?
-  ```
-- `_NSURLErrorNWPathKey=unsatisfied (No network route)` is iOS/macOS's
-  "no network at all" error — DNS hit cache only because there was no
-  route. Not a 5xx, not auth, not credentials.
+```rust
+// crates/tauri-bundler/src/bundle/macos/sign.rs::notarize_auth
+match (var_os("APPLE_ID"), var_os("APPLE_PASSWORD"), var_os("APPLE_TEAM_ID")) {
+    (Some(apple_id), Some(password), Some(team_id)) => Ok(...),
+    ...
+}
+```
 
-The submission may have been **accepted on Apple's side** — the runner died
-polling for status, not on upload. Decided not to chase the staple via
-`xcrun notarytool log`: ~16h elapsed, the build was a draft release with
-no live artifact, cleanest path is a fresh release when ready.
+`var_os()` returns `Some("")` for empty env vars — only `None` for unset.
+GitHub Actions' `env:` map sets variables even when the value is `''`,
+so the toggle's
 
-## Why the Timeout Matters
+```yaml
+APPLE_TEAM_ID: ${{ inputs.notarize && secrets.APPLE_TEAM_ID || '' }}
+```
 
-Without it, tauri-action / `notarytool` retries quietly through transient
-network errors until the GitHub job-level default (6h) kills the runner.
-The May 8 run gave up at 58m only because tauri-action eventually
-surfaced the error itself; that's not guaranteed. `timeout-minutes: 25`
-puts a hard ceiling: healthy notarized builds finish in ~10 min, so 25
-gives 2.5x headroom while bounding the worst case.
+passed an empty string on push events. Tauri saw "credentials present",
+attempted to notarize, and `notarytool` rejected it with
+`Team ID must be at least 3 characters` (run #25605423069, 8m50s fail).
 
-## What Stays the Same
-- Push triggers (`push: branches: [main]`) skip notarize because
-  `inputs.notarize` is unset on push events and the ternary evaluates
-  to `''`. Day-to-day commits cut signed-but-not-notarized macOS builds
-  in ~10 min.
-- Public releases must be cut deliberately via `workflow_dispatch` with
-  `notarize=true`. First-launch Gatekeeper warnings on signed-only
-  bundles can be cleared with right-click → Open; acceptable for
-  internal iteration, not for public distribution.
+To actually skip notarize while keeping signing, the env vars would need
+to be **omitted entirely** from the action invocation — which requires
+two parallel build steps with `if:` guards or a conditional shell step
+that writes to `$GITHUB_ENV`. Not worth the complexity for a flake we
+can guard with a job-level timeout.
 
-## Risks / Open Questions
-- If the runner network drops on a public `notarize=true` release, the
-  job now fails at 25 min instead of 50+. You re-run, costing ~10 min on
-  a healthy runner. Long-term, splitting notarize into its own retryable
-  job (backlog item) makes that cheaper.
-- Submission `43b5a62e-…` is abandoned. If it was accepted by Apple,
-  no harm — the staple wasn't applied so the artifact wouldn't pass
-  Gatekeeper anyway, and there's no live release pointing at it.
+### What actually shipped
+
+1. **Removed** the `notarize` workflow_dispatch input and the conditional
+   ternaries on `APPLE_ID` / `APPLE_PASSWORD` / `APPLE_TEAM_ID`. All Apple
+   secrets are unconditionally passed to `tauri-action`. Every build on
+   `main` is now signed AND notarized — same behavior as runs predating
+   the toggle (e.g. successful run #25440501573 on 2026-05-06, 10m19s).
+2. **Kept** `timeout-minutes: 25` on the build job. This caps the
+   notarize-poll hang documented in run #25578604859 to ~25 min instead
+   of consuming the GitHub default 6h. Healthy notarized builds finish
+   in ~10 min, so 25 leaves 2.5x headroom.
+
+### The macos-14 network-drop flake is still possible
+
+`timeout-minutes: 25` doesn't prevent the flake — it bounds the cost.
+If the runner loses network mid-poll again, the job dies at 25 min and
+you re-run. ~10 min healthy retry vs. 50+ min stuck. Acceptable cost
+for a bug that's GitHub's, not ours.
+
+### Why I (the agent) got this wrong the first time
+
+Phase 1 of systematic-debugging says "gather evidence at component
+boundaries before fixing." I had the evidence — the run #25578604859
+log clearly showed codesigning succeeded and the failure was a network
+poll, not a credential issue — but I designed a toggle to "skip
+notarize when convenient" without verifying Tauri's actual gating
+contract. The toggle was a solution looking for a problem. The real
+ask all along was: "make sure notarize works and doesn't hang
+forever." Two narrow changes, both delivered now: timeout cap +
+unconditional creds.
 
 ## Next Best Action
-1. Trigger `desktop-release.yml` via Actions UI with `notarize=false`
-   and confirm the macOS build completes in ~10 min.
-2. Resume merging/pushing the work that was previously blocked by the
-   failing release pipeline.
-3. When ready to cut the next public macOS release, dispatch with
-   `notarize=true` to verify the "on" path end-to-end.
+1. The push-triggered `Desktop Release` build that follows this commit
+   should complete in ~10 min on all three runners with notarized macOS
+   artifacts. Watch it; if macOS finishes green, this is fully fixed.
+2. If the network-drop flake recurs, the build now fails at 25 min and
+   a re-run is cheap.
 
 ## Reference
-- Failed run: https://github.com/brandon-relentnet/myscrollr/actions/runs/25578604859
-- Workflow: `.github/workflows/desktop-release.yml`
-- Affected runner: `macos-14-arm64`, image `20260427.0019.1`, Azure region `westus`
+- Failed runs:
+  - #25578604859 — runner network drop, 58m fail (the original problem)
+  - #25605423069 — `Team ID must be at least 3 characters`, 8m50s fail (caused by my broken toggle)
+- Tauri bundler notarize gating: https://github.com/tauri-apps/tauri/blob/dev/crates/tauri-bundler/src/bundle/macos/sign.rs (notarize_auth)
+- Tauri bundler call site: https://github.com/tauri-apps/tauri/blob/dev/crates/tauri-bundler/src/bundle/macos/app.rs#L135
