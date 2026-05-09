@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-shell";
 import { toast } from "sonner";
-import { Check, KeyRound, Loader2 } from "lucide-react";
+import { Check, KeyRound, Loader2, Trash2, AlertTriangle } from "lucide-react";
 import { TIER_LABELS, getUserIdentity } from "../../auth";
 import {
   authFetch,
@@ -26,6 +26,12 @@ interface AccountSettingsProps {
   subscriptionInfo: SubscriptionInfo | null;
   onLogin: () => void;
   onLogout: () => void;
+  /**
+   * Reset all local preferences. Lives at the end of the Account tab
+   * (post-IA-refactor) since it's a destructive admin action that
+   * belongs alongside sign-out and data export.
+   */
+  onResetAll: () => void;
 }
 
 // ── Status helpers ──────────────────────────────────────────────
@@ -70,6 +76,7 @@ export default function AccountSettings({
   subscriptionInfo: sub,
   onLogin,
   onLogout,
+  onResetAll,
 }: AccountSettingsProps) {
   const [openingPortal, setOpeningPortal] = useState(false);
   const [portalError, setPortalError] = useState<string | null>(null);
@@ -83,6 +90,7 @@ export default function AccountSettings({
   // free tier reset). We gate on a ConfirmDialog with copy that
   // names the consequences.
   const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const [confirmResetAll, setConfirmResetAll] = useState(false);
   const identity = authenticated ? getUserIdentity() : null;
   const userLabel = identity?.email ?? identity?.name ?? null;
   const queryClient = useQueryClient();
@@ -417,6 +425,37 @@ export default function AccountSettings({
         </Section>
       )}
 
+      {/* ── Reset (destructive, footer) ─────────────────────── */}
+      {/* Lives at the end of Account because it's a local-only admin
+          action that sits naturally beside sign-out + data export.
+          Pre-refactor this was its own top-level Settings tab. */}
+      <Section title="Reset all settings">
+        <div className="px-3 py-2 flex flex-col gap-3">
+          <p className="text-[12px] text-fg-3 leading-relaxed">
+            Clear every local preference: theme, ticker layout, channel
+            display, followed players, and more. Your account, billing, and
+            channel data on the server is untouched.
+          </p>
+          <div className="flex flex-col gap-3 p-3 rounded-lg bg-error/5 border border-error/20">
+            <div className="flex items-start gap-2 text-[12px] text-error leading-relaxed">
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden />
+              <p>
+                This action is local-only and cannot be undone. You will be
+                asked to confirm before anything is reset.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setConfirmResetAll(true)}
+              className="self-start flex items-center gap-2 px-3 py-2 rounded-lg bg-error/10 text-error hover:bg-error/20 transition-colors cursor-pointer text-[12px] font-semibold"
+            >
+              <Trash2 className="w-4 h-4" aria-hidden />
+              <span>Reset all settings</span>
+            </button>
+          </div>
+        </div>
+      </Section>
+
       {/* Sign-out confirmation. Mounted unconditionally so the close
           animation runs even after `authenticated` flips false during
           the logout flow. */}
@@ -431,6 +470,20 @@ export default function AccountSettings({
           onLogout();
         }}
         onCancel={() => setConfirmSignOut(false)}
+      />
+
+      {/* Reset-all confirmation. */}
+      <ConfirmDialog
+        open={confirmResetAll}
+        title="Reset all settings?"
+        description="This will set everything back to the original settings. Your account and saved content won't change."
+        confirmLabel="Reset everything"
+        destructive
+        onConfirm={() => {
+          setConfirmResetAll(false);
+          onResetAll();
+        }}
+        onCancel={() => setConfirmResetAll(false)}
       />
     </div>
   );

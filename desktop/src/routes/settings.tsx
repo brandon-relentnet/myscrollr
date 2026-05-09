@@ -1,67 +1,70 @@
 /**
  * Settings route — consolidated settings page with tabs.
  *
- * Four tabs:
- *   General  — appearance, window, startup, updates
+ * Three tabs (post-IA-refactor 2026-05-09):
+ *   General  — appearance, window, startup, keyboard shortcuts, about,
+ *              updates  (URL slug stays "general" for stability of
+ *              billing-banner deeplinks and existing bookmarks; the
+ *              tab label is "Appearance" since that's the dominant
+ *              concern)
  *   Ticker   — ticker presentation settings with live preview
- *   Account  — profile, billing, plan, data export
- *   Reset    — destructive: reset all local preferences
+ *   Account  — profile, billing, plan, data export, reset all
  *
  * Tab state is persisted in the URL via ?tab= search param.
  */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { clsx } from "clsx";
-import { Settings, Sliders, User, RotateCcw } from "lucide-react";
+import { Settings, Sliders, User } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import RouteError from "../components/RouteError";
 import { useShell } from "../shell-context";
 import GeneralSettings from "../components/settings/GeneralSettings";
 import TickerSettings from "../components/settings/TickerSettings";
 import AccountSettings from "../components/settings/AccountSettings";
-import ResetSettings from "../components/settings/ResetSettings";
 import Tooltip from "../components/Tooltip";
 import { resetCategory, resetAll, type AppPreferences } from "../preferences";
 
 // ── Types ───────────────────────────────────────────────────────
 
-type SettingsTab = "general" | "ticker" | "account" | "reset";
+type SettingsTab = "general" | "ticker" | "account";
 
-const VALID_TABS: SettingsTab[] = ["general", "ticker", "account", "reset"];
+const VALID_TABS: SettingsTab[] = ["general", "ticker", "account"];
 
+// "general" slug retained for backward compatibility with billing
+// banners and existing routing. Display label is "Appearance" since
+// that's the dominant concern of the tab.
 const TAB_LABELS: Record<SettingsTab, string> = {
-  general: "General",
+  general: "Appearance",
   ticker: "Ticker",
   account: "Account",
-  reset: "Reset",
 };
 
-/**
- * Per-tab one-liner used as the tooltip when hovering a tab. Keeps
- * tabs themselves short while still explaining what each does to
- * first-time users — Phase 2 (Apr 26) tooltip-coverage audit.
- */
 const TAB_DESCRIPTIONS: Record<SettingsTab, string> = {
-  general: "Appearance, window, startup, and updates",
+  general: "Theme, scale, window, startup, and updates",
   ticker: "Ticker layout, style, and live preview",
-  account: "Profile, subscription, plan, and data",
-  reset: "Restore all preferences to defaults",
+  account: "Profile, subscription, plan, data, and reset",
 };
 
 const TAB_ICONS: Record<SettingsTab, LucideIcon> = {
   general: Settings,
   ticker: Sliders,
   account: User,
-  reset: RotateCcw,
 };
 
 // ── Route ───────────────────────────────────────────────────────
 
 export const Route = createFileRoute("/settings")({
-  validateSearch: (search: Record<string, unknown>): { tab: SettingsTab } => ({
-    tab: VALID_TABS.includes(search.tab as SettingsTab)
-      ? (search.tab as SettingsTab)
-      : "general",
-  }),
+  validateSearch: (search: Record<string, unknown>): { tab: SettingsTab } => {
+    const raw = search.tab as string | undefined;
+    // Migrate legacy ?tab=reset → account (Reset is now a section
+    // inside Account post-IA-refactor).
+    if (raw === "reset") return { tab: "account" };
+    return {
+      tab: VALID_TABS.includes(raw as SettingsTab)
+        ? (raw as SettingsTab)
+        : "general",
+    };
+  },
   component: SettingsRoute,
   errorComponent: RouteError,
 });
@@ -157,10 +160,9 @@ function SettingsRoute() {
             subscriptionInfo={shell.subscriptionInfo}
             onLogin={shell.onLogin}
             onLogout={shell.onLogout}
+            onResetAll={handleResetAll}
           />
         )}
-
-        {tab === "reset" && <ResetSettings onResetAll={handleResetAll} />}
       </div>
     </div>
   );

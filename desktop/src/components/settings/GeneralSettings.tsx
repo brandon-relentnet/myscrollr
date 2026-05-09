@@ -282,6 +282,10 @@ export default function GeneralSettings({
         />
       </Section>
 
+      <Section title="Keyboard shortcuts">
+        <ShortcutsList />
+      </Section>
+
       <Section title="About">
         <DisplayRow label="Version" value={appVersion ? `v${appVersion}` : "\u2014"} />
       </Section>
@@ -298,6 +302,41 @@ export default function GeneralSettings({
       <div className="flex items-center justify-end pt-2">
         <ResetButton label="Reset general settings" onClick={onReset} />
       </div>
+    </div>
+  );
+}
+
+// ── Keyboard shortcuts list (read-only) ─────────────────────────
+//
+// The desktop app already implements these shortcuts in __root.tsx —
+// this component just documents them where users can find them.
+// Customization is intentionally out of scope for now.
+
+const SHORTCUTS: { keys: string[]; label: string }[] = [
+  { keys: ["⌘/Ctrl", ","], label: "Open settings" },
+  { keys: ["⌘/Ctrl", "T"], label: "Toggle ticker visibility" },
+  { keys: ["⌘/Ctrl", "Shift", "T"], label: "Cycle theme (light → dark → auto)" },
+  { keys: ["Esc"], label: "Back / close current view" },
+];
+
+function ShortcutsList() {
+  return (
+    <div className="px-3 py-2 space-y-1.5">
+      {SHORTCUTS.map(({ keys, label }) => (
+        <div key={label} className="flex items-center justify-between py-1">
+          <span className="text-[12px] text-fg-3">{label}</span>
+          <div className="flex items-center gap-1">
+            {keys.map((k, i) => (
+              <span key={i} className="flex items-center gap-1">
+                {i > 0 && <span className="text-[10px] text-fg-4">+</span>}
+                <kbd className="px-1.5 py-0.5 rounded bg-base-250 border border-edge/40 text-[10px] font-mono font-medium text-fg-2 shadow-sm">
+                  {k}
+                </kbd>
+              </span>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
