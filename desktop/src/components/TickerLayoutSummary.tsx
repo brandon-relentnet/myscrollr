@@ -67,7 +67,7 @@ export default function TickerLayoutSummary({
   return (
     <section
       aria-label="Ticker layout summary"
-      className="mb-6 rounded-xl border border-edge/30 bg-base-150/50 px-4 py-3"
+      className="rounded-xl border border-edge/30 bg-base-150/50 px-4 py-3"
     >
       {/* Header row: count badge + CTAs */}
       <div className="flex items-center gap-3 mb-2">

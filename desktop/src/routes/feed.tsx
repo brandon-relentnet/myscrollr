@@ -11,8 +11,8 @@ import {
   Pencil,
   Check,
   ChevronRight,
-  Settings,
   Plus,
+  Settings,
   Sparkles,
 } from "lucide-react";
 import clsx from "clsx";
@@ -22,7 +22,6 @@ import Tooltip from "../components/Tooltip";
 import RowSelector from "../components/RowSelector";
 import TickerLayoutSummary from "../components/TickerLayoutSummary";
 import PageLayout from "../components/layout/PageLayout";
-import PageSection from "../components/layout/PageSection";
 import EmptySection from "../components/layout/EmptySection";
 import { useShell, useShellData } from "../shell-context";
 import { CHANNEL_ORDER } from "../channels/registry";
@@ -191,6 +190,10 @@ function HomePage() {
       subtitle="Your live feed at a glance"
       width="wide"
     >
+      {/* All children share a single `space-y-5` rhythm — 20px between
+          sections, no dangling margin on the last child. Section
+          components themselves no longer carry mb-6. */}
+      <div className="space-y-5">
       {/* Empty state — hero. Shown when the user has no channels and
           no enabled widgets. Disappears the moment they add their
           first source. This IS the post-wizard first-run experience —
@@ -222,33 +225,20 @@ function HomePage() {
       )}
 
       {/* Ticker preview — read-only summary of "what's on your radar".
-          The full row builder lives in Settings → Ticker. Manage CTA
-          on the right is the canonical path there. */}
+          TickerLayoutSummary draws its own card chrome, so we render
+          it directly instead of wrapping it in another PageSection
+          card (which would have nested two cards and doubled padding).
+          The "Manage" CTA already exists inside the summary's header. */}
       {hasAnySources && (
-        <PageSection
-          title="Ticker preview"
-          description="What's currently on your ticker rows."
-          variant="card"
-          sectionAction={
-            <button
-              onClick={openTickerSettings}
-              className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-fg-3 hover:text-fg-2 hover:bg-surface-hover rounded-md transition-colors"
-            >
-              <Settings size={12} />
-              <span>Manage</span>
-            </button>
-          }
-        >
-          <TickerLayoutSummary
-            rows={layoutRows}
-            tierMaxRows={tierMaxRows}
-            canAddRow={canAddRow}
-            onAddRow={handleAddEmptyRow}
-            onOpenSettings={openTickerSettings}
-            channelManifests={allChannelManifests}
-            widgetManifests={allWidgets}
-          />
-        </PageSection>
+        <TickerLayoutSummary
+          rows={layoutRows}
+          tierMaxRows={tierMaxRows}
+          canAddRow={canAddRow}
+          onAddRow={handleAddEmptyRow}
+          onOpenSettings={openTickerSettings}
+          channelManifests={allChannelManifests}
+          widgetManifests={allWidgets}
+        />
       )}
 
       {/* Channel sections — stagger in on first paint so the Home
@@ -337,6 +327,7 @@ function HomePage() {
           />
         </motion.div>
       )}
+      </div>
     </PageLayout>
   );
 }
@@ -436,7 +427,7 @@ function ChannelSection({
   }
 
   return (
-    <section className="mb-6">
+    <section>
       {/* Section header */}
       <div className="flex items-center gap-3 mb-3">
         <div
@@ -880,7 +871,7 @@ function WidgetStrip({
   onNavigate,
 }: WidgetStripProps) {
   return (
-    <section className="mb-6">
+    <section>
       <div className="flex items-center gap-3 mb-3">
         <h3 className="text-[11px] font-mono font-semibold text-fg-4 uppercase tracking-wider flex-1">
           Widgets
