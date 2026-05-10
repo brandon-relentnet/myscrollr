@@ -7,7 +7,7 @@
 - Worktree: **clean**
 - HEAD: `4eecc71` — `fix(desktop/sports): stable engagement sort to stop random ticker jank (#162)`
 - Desktop version: **1.0.12** (in `desktop/package.json`, `desktop/src-tauri/tauri.conf.json`, `desktop/src-tauri/Cargo.toml`, `Cargo.lock`)
-- Latest desktop tag: `desktop-v1.0.9`. **`desktop-v1.0.12` is NOT yet tagged** — pushing the tag triggers `.github/workflows/desktop-release.yml` to build/notarize cross-platform installers and `deploy.yml` (via the `release: types: [published]` hook) to refresh the marketing site's download link. Push when ready.
+- Latest **published** desktop release: `desktop-v1.0.9`. `desktop-v1.0.10`, `v1.0.11`, **and `v1.0.12` already exist as DRAFT releases** — `desktop-release.yml` auto-runs on every push to `main` with `desktop/**` paths, builds/notarizes cross-platform installers, and stages the artifacts as a draft GitHub release with the tag. **The release publication is what's still manual** — visit the GitHub Releases page and click "Publish release" on the v1.0.12 draft. That fires `deploy.yml`'s `release: types: [published]` hook, which rebuilds the marketing site so its download button advertises the new version. The 8 PRs merged tonight each ran the desktop-release workflow successfully (run #25627118... and earlier).
 - Server-side `/yahoo/start` JSON content negotiation (PR #155 / `4e6e804`) is **already deployed to production** via the K8s `deploy.yml` workflow. Verified live with a 200 + JSON `{"redirect_url"}` response when called with `Accept: application/json` + a Bearer token.
 
 ## Tonight's Shipped Stack (eight PRs, in chronological order)
@@ -74,7 +74,7 @@ The user's running `npm run tauri:dev:mcp` session has all eight PRs applied via
 
 ## Next Best Action
 
-Push the `desktop-v1.0.12` tag whenever you're ready to ship. That single command triggers the cross-platform release build (Linux/macOS/Windows + notarization) and the website's auto-rebuild for the new download link. Everything else is backlog.
+Two things outstanding: (1) **Publish the v1.0.12 draft release on GitHub** to put the new build in users' hands and refresh the website download link. (2) **Multi-monitor support** is the next feature the user wants — see backlog and the brainstorming session in progress.
 
 **Resume prompt for the next fresh chat:**
 
@@ -92,11 +92,14 @@ What's already shipped tonight (8 PRs, all squash-merged on main, HEAD = 4eecc71
   - #161 a8b8ad5  fix(desktop/fantasy): trim player-stat chip bottom row for tighter rail
   - #162 4eecc71  fix(desktop/sports): stable engagement sort to stop random ticker jank
 
-Desktop is at version 1.0.12 in package.json / tauri.conf.json / Cargo.toml / Cargo.lock,
-but `desktop-v1.0.12` is NOT yet git-tagged. Pushing the tag triggers
-.github/workflows/desktop-release.yml to build cross-platform installers
-(notarized macOS DMG, Windows MSI, Linux AppImage) and deploy.yml to refresh
-the marketing site's download button. Tag and push when the user gives the go.
+Desktop is at version 1.0.12 in package.json / tauri.conf.json / Cargo.toml / Cargo.lock.
+`desktop-release.yml` auto-runs on every push to main with `desktop/**` paths
+and HAS already built and staged a DRAFT GitHub release `desktop-v1.0.12` with
+the cross-platform installers (notarized macOS DMG, Windows MSI, Linux AppImage).
+The release publication is the remaining manual step — visit GitHub Releases
+and click "Publish release" on the v1.0.12 draft. That fires deploy.yml's
+`release: types: [published]` hook to rebuild the marketing site so its
+download button advertises the new version.
 
 Foundations available (DO NOT undo):
   - Text utilities: text-ui-title / -body / -muted / -meta / -chip / -section
