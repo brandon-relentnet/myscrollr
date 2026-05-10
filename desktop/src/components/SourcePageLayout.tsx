@@ -168,6 +168,12 @@ export default function SourcePageLayout({
     });
   }
 
+  // Feed view is data-dense (grids of trade cards, score cards, RSS
+  // articles, etc.) and should render flush to the content area at
+  // full width. Configure / Display are forms — they keep the
+  // narrow-column padded layout for legibility.
+  const isFeed = activeTab === "feed";
+
   return (
     <>
       <PageLayout
@@ -181,11 +187,16 @@ export default function SourcePageLayout({
         onTitleClick={
           activeTab !== "feed" ? () => onTabChange("feed") : undefined
         }
-        width="narrow"
+        width={isFeed ? "wide" : "narrow"}
         // Configure tab gets a fill-height shell so SymbolManager (and
         // future configure surfaces in other channels) can scroll its
         // own list within a fixed pane instead of growing the page.
         fillHeight={activeTab === "configuration"}
+        // Feed tab renders flush to the viewport edges (no PageLayout
+        // padding / max-width clamp). The feed's own components own
+        // their padding. Configure / Display keep the default padded
+        // narrow column.
+        noContentPadding={isFeed}
         // The TopBar renders the last breadcrumb segment as the menu
         // trigger when menuItems are present — no separate "Options"
         // button competing with the breadcrumb.
