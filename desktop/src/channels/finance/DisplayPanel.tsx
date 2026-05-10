@@ -235,52 +235,77 @@ export default function FinanceDisplayPanel() {
         </div>
       </Section>
 
-      {/* ── Display items (single row per metric) ──────────────────
-          Section header carries two surface buttons that double as
-          bulk toggles: pressing "Feed" flips every Feed chip in the
-          rows below (All when any are off, None when all are on).
-          Same for "Ticker". The same pattern as the per-row chips,
-          just operating on the whole list at once. */}
-      <Section
-        title="Display items"
-        action={
-          <div className="flex items-center gap-1.5">
-            <BulkSurfaceToggle
-              icon={Eye}
-              label="Feed"
-              // "All-on" reads as ON, anything else (mixed or all-off)
-              // reads as OFF so the press flips toward fully on.
-              active={allFeedOn}
-              onClick={() => bulkSurface("feed", !allFeedOn)}
-            />
-            <BulkSurfaceToggle
-              icon={Tv}
-              label="Ticker"
-              active={allTickerOn}
-              onClick={() => bulkSurface("ticker", !allTickerOn)}
-            />
-          </div>
-        }
-      >
-        <div className="rounded-lg border border-edge/40 overflow-hidden divide-y divide-edge/30 mx-3">
-          {METRICS.map((metric) => {
-            const bools = enumToBools(dp[metric.key]);
-            return (
-              <MetricRow
-                key={metric.key}
-                label={metric.label}
-                description={metric.description}
-                feedOn={bools.feed}
-                tickerOn={bools.ticker}
-                onToggleFeed={() =>
-                  setVenue(metric.key, "feed", !bools.feed)
-                }
-                onToggleTicker={() =>
-                  setVenue(metric.key, "ticker", !bools.ticker)
-                }
+      {/* ── Display items (column grid) ────────────────────────────
+          Single CSS grid: 1fr | 56px | 56px. The two narrow columns
+          are Feed / Ticker. Their column headers double as bulk
+          toggles — pressing the header flips every cell in that
+          column. The header sits directly above the per-row cells
+          so the column relationship is visually obvious. Cells are
+          minimal indicators (no labels) since the column header
+          carries the surface name. */}
+      <Section title="Display items">
+        <div className="mx-3 rounded-lg border border-edge/40 overflow-hidden">
+          <div
+            role="grid"
+            aria-label="Where each metric appears"
+            className="select-none"
+          >
+            {/* Column headers — also the bulk toggles. */}
+            <div
+              role="row"
+              className="grid items-stretch gap-x-2 px-3 py-1.5 bg-base-250/30 border-b border-edge/40 grid-cols-[1fr_56px_56px]"
+            >
+              <div role="columnheader" aria-hidden />
+              <ColumnHeaderToggle
+                icon={Eye}
+                label="Feed"
+                active={allFeedOn}
+                onClick={() => bulkSurface("feed", !allFeedOn)}
               />
-            );
-          })}
+              <ColumnHeaderToggle
+                icon={Tv}
+                label="Ticker"
+                active={allTickerOn}
+                onClick={() => bulkSurface("ticker", !allTickerOn)}
+              />
+            </div>
+
+            {/* Metric rows. */}
+            {METRICS.map((metric, idx) => {
+              const bools = enumToBools(dp[metric.key]);
+              const isLast = idx === METRICS.length - 1;
+              return (
+                <div
+                  key={metric.key}
+                  role="row"
+                  className={clsx(
+                    "grid items-center gap-x-2 px-3 py-2.5 hover:bg-base-250/20 transition-colors",
+                    !isLast && "border-b border-edge/30",
+                    "grid-cols-[1fr_56px_56px]",
+                  )}
+                >
+                  <div role="rowheader" className="flex flex-col gap-0.5 min-w-0">
+                    <span className="text-[12px] text-fg-2 leading-tight">
+                      {metric.label}
+                    </span>
+                    <span className="text-[11px] text-fg-4 leading-tight">
+                      {metric.description}
+                    </span>
+                  </div>
+                  <CellToggle
+                    active={bools.feed}
+                    onClick={() => setVenue(metric.key, "feed", !bools.feed)}
+                    ariaLabel={`${bools.feed ? "Hide" : "Show"} ${metric.label} on Feed`}
+                  />
+                  <CellToggle
+                    active={bools.ticker}
+                    onClick={() => setVenue(metric.key, "ticker", !bools.ticker)}
+                    ariaLabel={`${bools.ticker ? "Hide" : "Show"} ${metric.label} on Ticker`}
+                  />
+                </div>
+              );
+            })}
+          </div>
         </div>
       </Section>
 
@@ -326,124 +351,26 @@ export default function FinanceDisplayPanel() {
   );
 }
 
-// ── Metric row (one row per metric, two surface chips on the right) ──
-
-interface MetricRowProps {
-  label: string;
-  description: string;
-  feedOn: boolean;
-  tickerOn: boolean;
-  onToggleFeed: () => void;
-  onToggleTicker: () => void;
-}
-
-function MetricRow({
-  label,
-  description,
-  feedOn,
-  tickerOn,
-  onToggleFeed,
-  onToggleTicker,
-}: MetricRowProps) {
-  return (
-    <div className="flex items-center gap-3 px-3 py-2.5 hover:bg-base-250/30 transition-colors">
-      <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-        <span className="text-[12px] text-fg-2 leading-tight">{label}</span>
-        <span className="text-[11px] text-fg-4 leading-tight">{description}</span>
-      </div>
-      <div className="flex items-center gap-1.5 shrink-0">
-        <SurfaceChip
-          icon={Eye}
-          label="Feed"
-          active={feedOn}
-          onClick={onToggleFeed}
-        />
-        <SurfaceChip
-          icon={Tv}
-          label="Ticker"
-          active={tickerOn}
-          onClick={onToggleTicker}
-        />
-      </div>
-    </div>
-  );
-}
-
-// ── Surface chip ─────────────────────────────────────────────────
+// ── Column header (also a bulk toggle) ──────────────────────────
 //
-// Pill-shaped toggle with an icon, surface label, and a subtle
-// indicator. Active state tints accent and shows a check; inactive
-// shows muted with the surface icon only.
+// Sits at the top of the Feed / Ticker columns. Click to flip every
+// cell in that column. Active = every metric on for this surface;
+// the next press clears them all. Width matches the cells below
+// (56px) so the column relationship reads visually.
 
-interface SurfaceChipProps {
+interface ColumnHeaderToggleProps {
   icon: React.ComponentType<{ size?: number; className?: string }>;
   label: string;
   active: boolean;
   onClick: () => void;
 }
 
-function SurfaceChip({
+function ColumnHeaderToggle({
   icon: Icon,
   label,
   active,
   onClick,
-}: SurfaceChipProps) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={active}
-      aria-label={`${active ? "Hide from" : "Show on"} ${label}`}
-      onClick={onClick}
-      className={clsx(
-        "flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-[11px] font-medium",
-        "transition-all duration-150 active:scale-[0.93]",
-        active
-          ? "border-accent/50 bg-accent/10 text-accent"
-          : "border-edge/40 text-fg-4 hover:text-fg-3 hover:border-edge/60",
-      )}
-    >
-      <Icon size={11} />
-      <span>{label}</span>
-      <motion.span
-        key={active ? "on" : "off"}
-        initial={{ scale: 0.4, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 480, damping: 24 }}
-        className={clsx(
-          "flex items-center justify-center w-3 h-3 rounded-sm",
-          active
-            ? "bg-accent text-surface"
-            : "bg-base-300 text-fg-4/50 opacity-60",
-        )}
-      >
-        {active ? <Check size={9} strokeWidth={3.5} /> : null}
-      </motion.span>
-    </button>
-  );
-}
-
-// ── Bulk surface toggle (in the section header) ─────────────────
-//
-// Visually mirrors the per-row SurfaceChip but operates on every
-// metric in the section. Active = every metric on for this surface;
-// pressing flips toward whatever the row chips don't already have.
-// One button = one decision: "show all on Feed?" / "show all on
-// Ticker?".
-
-interface BulkSurfaceToggleProps {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}
-
-function BulkSurfaceToggle({
-  icon: Icon,
-  label,
-  active,
-  onClick,
-}: BulkSurfaceToggleProps) {
+}: ColumnHeaderToggleProps) {
   return (
     <button
       type="button"
@@ -452,30 +379,63 @@ function BulkSurfaceToggle({
       aria-label={`${active ? "Hide all from" : "Show all on"} ${label}`}
       onClick={onClick}
       className={clsx(
-        "flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-[11px] font-medium",
+        "flex flex-col items-center justify-center gap-0.5 py-1 rounded-md",
         "transition-all duration-150 active:scale-[0.93]",
         active
-          ? "border-accent/50 bg-accent/10 text-accent"
-          : "border-edge/40 text-fg-4 hover:text-fg-3 hover:border-edge/60",
+          ? "text-accent hover:bg-accent/5"
+          : "text-fg-4 hover:text-fg-2 hover:bg-base-250/40",
       )}
     >
-      <Icon size={11} />
-      <span>{label}</span>
-      <motion.span
-        key={active ? "on" : "off"}
-        initial={{ scale: 0.4, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 480, damping: 24 }}
+      <Icon size={12} />
+      <span className="text-[10px] font-mono font-semibold uppercase tracking-wider leading-none">
+        {label}
+      </span>
+    </button>
+  );
+}
+
+// ── Cell toggle (per-row indicator in the Feed / Ticker columns) ──
+//
+// Minimal: a single rounded square with a check when active. No
+// label — the column header above carries the surface name. Sits
+// in a 56px-wide grid cell, centered, so a vertical column of cells
+// reads as a single coherent column under the header above.
+
+interface CellToggleProps {
+  active: boolean;
+  ariaLabel: string;
+  onClick: () => void;
+}
+
+function CellToggle({ active, ariaLabel, onClick }: CellToggleProps) {
+  return (
+    <div role="gridcell" className="flex items-center justify-center">
+      <button
+        type="button"
+        role="checkbox"
+        aria-checked={active}
+        aria-label={ariaLabel}
+        onClick={onClick}
         className={clsx(
-          "flex items-center justify-center w-3 h-3 rounded-sm",
+          "w-[22px] h-[22px] rounded-md flex items-center justify-center",
+          "transition-all duration-150 active:scale-90",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
           active
-            ? "bg-accent text-surface"
-            : "bg-base-300 text-fg-4/50 opacity-60",
+            ? "bg-accent text-surface hover:bg-accent/90"
+            : "bg-base-300 hover:bg-base-350 border border-edge/40 text-transparent",
         )}
       >
-        {active ? <Check size={9} strokeWidth={3.5} /> : null}
-      </motion.span>
-    </button>
+        <motion.span
+          key={active ? "on" : "off"}
+          initial={{ scale: 0.4, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 500, damping: 24 }}
+          className="flex items-center justify-center"
+        >
+          <Check size={12} strokeWidth={3} />
+        </motion.span>
+      </button>
+    </div>
   );
 }
 
