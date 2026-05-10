@@ -21,6 +21,7 @@ import { dashboardQueryOptions } from "../api/queries";
 import ChannelConfigPanel from "../channels/ChannelConfigPanel";
 import FinanceDisplayPanel from "../channels/finance/DisplayPanel";
 import SportsDisplayPanel from "../channels/sports/DisplayPanel";
+import RssDisplayPanel from "../channels/rss/DisplayPanel";
 import { useShell } from "../shell-context";
 import { Section, ToggleRow, ResetButton, SegmentedRow } from "../components/settings/SettingsControls";
 import DisplayItemsGrid from "../components/settings/DisplayItemsGrid";
@@ -29,7 +30,7 @@ import FollowedPlayersPicker from "../components/settings/FollowedPlayersPicker"
 import { loadPref } from "../preferences";
 import type { Channel, ChannelType } from "../api/client";
 import type { DashboardResponse, DeliveryMode } from "../types";
-import type { RssDisplayPrefs, FantasyDisplayPrefs, Venue } from "../preferences";
+import type { FantasyDisplayPrefs, Venue } from "../preferences";
 
 export const Route = createFileRoute("/channel/$type/$tab")({
   loader: ({ context: { queryClient } }) =>
@@ -177,83 +178,12 @@ function ChannelDisplayTab({ type }: { type: string }) {
     case "sports":
       return <SportsDisplayPanel />;
     case "rss":
-      return <RssDisplay />;
+      return <RssDisplayPanel />;
     case "fantasy":
       return <FantasyDisplay />;
     default:
       return null;
   }
-}
-
-function RssDisplay() {
-  const { prefs, onPrefsChange } = useShell();
-  const dp = prefs.channelDisplay.rss;
-
-  function applyDisplayChanges(changes: Record<string, Venue>) {
-    onPrefsChange({
-      ...prefs,
-      channelDisplay: {
-        ...prefs.channelDisplay,
-        rss: { ...dp, ...(changes as Partial<RssDisplayPrefs>) },
-      },
-    });
-  }
-
-  function setArticlesPerSource(value: string) {
-    onPrefsChange({
-      ...prefs,
-      channelDisplay: {
-        ...prefs.channelDisplay,
-        rss: { ...dp, articlesPerSource: Number(value) },
-      },
-    });
-  }
-
-  function handleReset() {
-    onPrefsChange({
-      ...prefs,
-      channelDisplay: {
-        ...prefs.channelDisplay,
-        rss: { showDescription: "both", showSource: "both", showTimestamps: "both", articlesPerSource: 4 },
-      },
-    });
-  }
-
-  const ARTICLES_PER_SOURCE_OPTIONS = [
-    { value: "2", label: "2" },
-    { value: "4", label: "4" },
-    { value: "6", label: "6" },
-    { value: "10", label: "10" },
-    { value: "0", label: "All" },
-  ];
-
-  const sections: DisplayItemsSection[] = [
-    {
-      rows: [
-        { key: "showDescription", label: "Article description", description: "Snippet beneath the headline", value: dp.showDescription },
-        { key: "showSource", label: "Source name", description: "Publisher / feed name", value: dp.showSource },
-        { key: "showTimestamps", label: "Timestamps", description: "Relative publish time on each item", value: dp.showTimestamps },
-      ],
-    },
-  ];
-
-  return (
-    <div className="space-y-6 pb-8">
-      <DisplayItemsGrid sections={sections} onChange={applyDisplayChanges} />
-      <Section title="Feed behavior">
-        <SegmentedRow
-          label="Articles per source"
-          description="Limit how many articles appear from each feed"
-          value={String(dp.articlesPerSource)}
-          options={ARTICLES_PER_SOURCE_OPTIONS}
-          onChange={setArticlesPerSource}
-        />
-      </Section>
-      <div className="flex items-center justify-end pt-2">
-        <ResetButton label="Reset display settings" onClick={handleReset} />
-      </div>
-    </div>
-  );
 }
 
 // Keys on FantasyDisplayPrefs that are venue-typed. Drives the per-item
