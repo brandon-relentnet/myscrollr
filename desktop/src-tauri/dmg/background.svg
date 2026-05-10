@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Scrollr macOS DMG installer background.
+
+  Designed in *logical points* (660×400) so coordinates match
+  tauri.conf.json directly:
+
+    windowSize:                 { width: 660, height: 400 }
+    appPosition:                { x: 180,  y: 170 }
+    applicationFolderPosition:  { x: 480,  y: 170 }
+
+  At runtime macOS Finder draws this image at 1 image-pixel = 1 point,
+  so the PNG must be exported at the same pixel dimensions as the
+  window (660×400) to fill it. For retina sharpness we ALSO export at
+  2× (1320×800) and combine both reps into a single .tiff using
+  `tiffutil -cathidpicheck` so Finder picks the right one per display.
+
+  Finder draws icons at ICON_SIZE points (create-dmg default 128),
+  centered on each configured position, and renders the filename label
+  directly below each icon using the *system labelColor*. That color is
+  dark in light mode and near-white in dark mode and we cannot override
+  it from inside a DMG. The background is therefore designed *light*
+  so that:
+
+    - In light mode the Finder labels render dark on light — readable.
+    - In dark mode the Finder labels render near-white on light — still
+      readable (lower contrast than dark-on-light but the install path
+      is conveyed by the icons + arrow + our own copy anyway).
+
+  This is the same trade-off Slack, Notion, Linear, and most polished
+  macOS installers make.
+
+  Brand:
+    - Surface:        #fafafa  (zinc-50)
+    - Surface bottom: #f4f4f5  (zinc-100, vignette toward bottom)
+    - Foreground:     #18181b  (zinc-900)
+    - Muted:          #52525b  (zinc-600)
+    - Faint:          #a1a1aa  (zinc-400)
+    - Brand:          #10b981  (emerald-500, deeper than app's #34d399
+                                so it carries weight on a light surface)
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="660" height="400"
+     viewBox="0 0 660 400"
+     font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+     shape-rendering="geometricPrecision"
+     text-rendering="geometricPrecision">
+
+  <!-- ── Definitions ────────────────────────────────────────── -->
+  <defs>
+    <!-- Subtle radial glow behind the icons. Pure white at the top
+         to lift the icon row off the surface. -->
+    <radialGradient id="glow" cx="50%" cy="42%" r="55%">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.7"/>
+      <stop offset="60%"  stop-color="#ffffff" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Bottom vignette: settle the eye on the footer instruction. -->
+    <linearGradient id="vignette" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#fafafa" stop-opacity="0"/>
+      <stop offset="85%"  stop-color="#e4e4e7" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#d4d4d8" stop-opacity="0.7"/>
+    </linearGradient>
+
+    <!-- Arrow gradient (left→right fade for directionality) -->
+    <linearGradient id="arrowGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#10b981" stop-opacity="0.45"/>
+      <stop offset="50%"  stop-color="#10b981" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#10b981" stop-opacity="1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ── Background fill ─────────────────────────────────────── -->
+  <rect width="660" height="400" fill="#fafafa"/>
+
+  <!-- Glow behind the icon row -->
+  <rect width="660" height="400" fill="url(#glow)"/>
+
+  <!-- Bottom vignette -->
+  <rect width="660" height="400" fill="url(#vignette)"/>
+
+  <!-- ── Header: brand mark + wordmark ───────────────────────────
+       Top-left, tight (≈22pt total height) so the hero install
+       path owns the center of the window. -->
+  <g transform="translate(24, 22)">
+    <!-- Scrollr scroll-logo, scaled to 22×22 pt. Light-mode variant:
+         green S with dark circles. -->
+    <g transform="scale(0.03443)">
+      <g transform="translate(0,639) scale(0.1,-0.1)" fill="#10b981">
+        <path d="M4870 6321 c-100 -32 -157 -70 -215 -140 l-29 -36 41 37 c329 291
+807 -68 501 -375 -132 -132 -60 -130 -1750 -66 -1538 57 -1544 57 -1792 9
+-1687 -328 -1763 -2552 -101 -2980 253 -65 227 -64 1750 -65 1531 0 1427 4
+1568 -66 371 -184 376 -666 9 -858 -160 -83 43 -75 -2157 -81 -2131 -6 -2047
+-4 -2225 -61 -234 -74 -312 -243 -250 -539 54 -254 193 -701 256 -821 145
+-275 578 -316 759 -72 l28 38 -39 -36 c-279 -257 -732 -25 -564 289 84 158
+228 208 560 195 354 -13 3176 -93 3313 -93 895 0 1529 475 1690 1264 188 928
+-386 1701 -1383 1862 -108 18 -198 19 -1510 19 l-1395 0 -78 22 c-556 158
+-528 849 38 968 60 12 287 15 1525 15 1678 0 1780 4 1990 72 190 61 284 172
+283 333 -2 156 -215 857 -302 991 -105 164 -326 238 -521 175z"/>
+      </g>
+      <circle cx="492" cy="39"  r="20" fill="#18181b"/>
+      <circle cx="97"  cy="599" r="20" fill="#18181b"/>
+    </g>
+
+    <!-- Wordmark -->
+    <text x="30" y="15"
+          font-size="14"
+          font-weight="700"
+          letter-spacing="-0.2"
+          fill="#18181b">Scrollr</text>
+
+    <!-- Tagline -->
+    <text x="30" y="28"
+          font-size="6.5"
+          font-weight="700"
+          letter-spacing="1.2"
+          fill="#10b981">DESKTOP&#160;INSTALLER</text>
+  </g>
+
+  <!-- ── Step labels (above each drop zone) ─────────────────────
+       Icon centers (180,170) and (480,170). create-dmg's default
+       icon-size is 128pt, so each icon spans y=106..234, centered.
+       STEP labels sit at y=94, just above the drop-zone frame. -->
+  <g transform="translate(180, 94)" text-anchor="middle">
+    <text font-size="9"
+          font-weight="700"
+          letter-spacing="2"
+          fill="#10b981">STEP&#160;1</text>
+  </g>
+  <g transform="translate(480, 94)" text-anchor="middle">
+    <text font-size="9"
+          font-weight="700"
+          letter-spacing="2"
+          fill="#71717a">STEP&#160;2</text>
+  </g>
+
+  <!-- ── Icon "drop zone" hints ──────────────────────────────────
+       Dashed rounded rects framing each 128×128 icon with 8pt
+       padding on every side (144×144 total). Faint zinc-400 so they
+       read as scaffolding, not UI. -->
+  <g fill="none" stroke="#a1a1aa" stroke-width="0.85"
+     stroke-dasharray="2.5 5" stroke-linecap="round" opacity="0.8">
+    <rect x="108" y="98" width="144" height="144" rx="18"/>
+    <rect x="408" y="98" width="144" height="144" rx="18"/>
+  </g>
+
+  <!-- ── The arrow ────────────────────────────────────────────── -->
+  <!--
+    Scrollr.app icon: x=116..244 (centered on 180).
+    Applications:     x=416..544 (centered on 480).
+    Arrow runs in the 172pt gap between them at y≈170. Slight upward
+    arc keeps it from feeling generic.
+  -->
+  <g transform="translate(0, 170)">
+    <!-- Shaft -->
+    <path d="M 258 0
+             C 308 -12, 392 -12, 402 0"
+          fill="none"
+          stroke="url(#arrowGrad)"
+          stroke-width="2.6"
+          stroke-linecap="round"/>
+
+    <!-- Arrowhead, tangent-aligned with the curve endpoint -->
+    <path d="M 408 0
+             L 398 -6
+             M 408 0
+             L 398 6"
+          fill="none"
+          stroke="#10b981"
+          stroke-width="2.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"/>
+
+    <!-- "Drag to install" pill, centered above the arrow apex. The
+         pill has both a fill and a thin border so it reads as a
+         deliberate accent on the light surface. -->
+    <g transform="translate(330, -22)">
+      <rect x="-44" y="-11" width="88" height="22" rx="11"
+            fill="#10b981" fill-opacity="0.12"
+            stroke="#10b981" stroke-opacity="0.55" stroke-width="0.85"/>
+      <text x="0" y="4"
+            text-anchor="middle"
+            font-size="9"
+            font-weight="700"
+            letter-spacing="0.2"
+            fill="#047857">Drag&#160;to&#160;install</text>
+    </g>
+  </g>
+
+  <!-- ── Footer instruction ──────────────────────────────────────
+       Finder draws each icon's filename label below the icon at
+       roughly y=250..264 in the system label color. Our footer at
+       y=320 sits well below that. -->
+  <g transform="translate(330, 320)" text-anchor="middle">
+    <text font-size="12"
+          font-weight="500"
+          letter-spacing="-0.1"
+          fill="#18181b">
+      Drag <tspan font-weight="700" fill="#10b981">Scrollr</tspan>
+      into the <tspan font-weight="700" fill="#10b981">Applications</tspan>
+      folder.
+    </text>
+    <text y="18"
+          font-size="7.5"
+          font-weight="400"
+          fill="#71717a">
+      Then open it from Launchpad or Spotlight whenever you want a quiet ticker.
+    </text>
+  </g>
+
+  <!-- ── Bottom-right metadata ───────────────────────────────── -->
+  <g transform="translate(636, 386)" text-anchor="end">
+    <text font-size="6"
+          font-weight="500"
+          letter-spacing="0.8"
+          fill="#a1a1aa">myscrollr.com</text>
+  </g>
+</svg>

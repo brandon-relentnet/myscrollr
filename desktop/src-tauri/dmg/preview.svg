@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="1320" height="800" viewBox="0 0 1320 800">
+  <!-- Background -->
+  <image x="0" y="0" width="1320" height="800" xlink:href="background.png"/>
+
+  <!-- Mock Scrollr.app icon. The icns at 128×128@2x is 256×256 px,
+       which matches Finder's render size in this @2x SVG. Center
+       (360, 340) → top-left (232, 212). -->
+  <image x="232" y="212" width="256" height="256"
+         xlink:href="file:///Users/doni/code/myscrollr/desktop/src-tauri/icons/128x128@2x.png"/>
+  <text x="360" y="500" text-anchor="middle"
+        font-family="-apple-system, Helvetica" font-size="22" fill="#ffffff">Scrollr</text>
+
+  <!-- Mock Applications folder icon (we use a generic placeholder).
+       Apple's blue folder is at center (960, 340), 128×128 = 256×256 @2x. -->
+  <g transform="translate(832, 212)">
+    <rect width="256" height="256" rx="44" fill="#5b9bff"/>
+    <rect y="44" width="256" height="212" rx="32" fill="#3a7de0"/>
+    <text x="128" y="160" text-anchor="middle"
+          font-family="-apple-system" font-size="120"
+          fill="#ffffff" font-weight="700">A</text>
+  </g>
+  <text x="960" y="500" text-anchor="middle"
+        font-family="-apple-system, Helvetica" font-size="22" fill="#ffffff">Applications</text>
+</svg>
