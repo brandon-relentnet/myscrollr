@@ -247,8 +247,17 @@ function HomePage() {
           page reveals its data instead of slamming everything in
           at once. */}
       {orderedChannels.map(({ ch, manifest }, idx) => {
-        const channelData = dashboard?.data?.[ch.channel_type];
-        const hasData = Array.isArray(channelData) && channelData.length > 0;
+        // Normalize the dashboard payload to a flat array per channel.
+        // Most channels are already arrays; Fantasy is { leagues: [...] }
+        // because each league entry carries matchups/standings/rosters at
+        // the top level. Without this unwrap the Home dashboard would
+        // think Fantasy is empty even when leagues are imported, while
+        // the standalone Feed view (which unwraps correctly) shows them.
+        const channelData = normalizeChannelData(
+          ch.channel_type,
+          dashboard?.data?.[ch.channel_type],
+        );
+        const hasData = channelData.length > 0;
         const targetTab = hasData ? "feed" : "configuration";
         const currentRow = getChannelTickerRow(shell.prefs, ch);
         return (
@@ -334,6 +343,33 @@ function HomePage() {
   );
 }
 
+// ── Dashboard payload normalizer ────────────────────────────────
+
+/**
+ * Coerce a per-channel `/dashboard` payload to a flat array.
+ *
+ * Most channels (`finance`, `sports`, `rss`) return an array directly.
+ * Fantasy returns `{ leagues: [...] }` because each league entry
+ * carries matchups/standings/rosters/standings at the top level and
+ * the wrapper leaves room for additional sibling metadata in the
+ * future.
+ *
+ * Other Fantasy consumers (`ScrollrTicker`, `FantasyFeedTab`,
+ * `FollowedPlayersPicker`, `FantasyDisplayPanel`) already do this
+ * unwrap. The Home dashboard used to treat the payload as a flat
+ * array uniformly, which produced a "No leagues imported yet" empty
+ * state even when the user had connected leagues. Centralizing the
+ * unwrap here keeps all Home-side consumers (group extractors, row
+ * renderers, hasData checks) consistent.
+ */
+function normalizeChannelData(type: string, raw: unknown): unknown[] {
+  if (type === "fantasy") {
+    const obj = raw as { leagues?: unknown } | undefined;
+    return Array.isArray(obj?.leagues) ? (obj.leagues as unknown[]) : [];
+  }
+  return Array.isArray(raw) ? (raw as unknown[]) : [];
+}
+
 // ── Group key extractors ────────────────────────────────────────
 
 function getGroups(type: string, data: unknown): string[] {
@@ -416,7 +452,12 @@ function ChannelSection({
   const [editing, setEditing] = useState(false);
   const Icon = manifest.icon;
   const type = channel.channel_type;
-  const channelData = data?.[type];
+  // Same normalize as the home loop — Fantasy is `{ leagues: [...] }`,
+  // every other channel is a flat array. See normalizeChannelData.
+  const channelData = useMemo(
+    () => normalizeChannelData(type, data?.[type]),
+    [type, data],
+  );
   const groups = useMemo(() => getGroups(type, channelData), [type, channelData]);
   const hasSelections = selectedKeys.length > 0;
 
