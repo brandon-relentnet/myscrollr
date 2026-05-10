@@ -16,11 +16,12 @@
  * route's content area in a chunky 4-row header. It's now in the
  * TopBar, freeing the entire content area for actual content.
  */
-import { ArrowLeft, ArrowRight, Pin, Radio, RadioTower } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronDown, Pin, Radio, RadioTower } from "lucide-react";
 import clsx from "clsx";
 import Tooltip from "./Tooltip";
 import ConnectionIndicator from "./ConnectionIndicator";
 import ScrollLogo from "./ScrollLogo";
+import OverflowMenu from "./OverflowMenu";
 import { usePageIdentity } from "./layout/page-context";
 import type { DeliveryHealth } from "../hooks/useDeliveryHealth";
 
@@ -111,49 +112,93 @@ export default function TopBar({
 
       <div className="w-px h-5 bg-edge/40 mx-1 shrink-0" />
 
-      {/* ── Page identity (breadcrumb) ──────────────────────── */}
-      <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+      {/* ── Page identity (breadcrumb) ──────────────────────────
+          Layout: parentLabel / title / subtitle
+          The LAST segment (subtitle if any, otherwise title) becomes
+          the trigger for the page's contextual menu when menuItems is
+          provided. Breadcrumb segment IS the menu — no separate
+          "Options" button competing for attention. */}
+      <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden text-[12px]">
         {page && (
           <>
-            <div className="flex items-center gap-1.5 min-w-0 text-[12px]">
-              {page.parentLabel && page.onParentClick && (
-                <>
-                  <button
-                    onClick={page.onParentClick}
-                    className="text-fg-4 hover:text-fg-2 transition-colors shrink-0"
-                  >
-                    {page.parentLabel}
-                  </button>
-                  <span className="text-fg-4/50 shrink-0">/</span>
-                </>
-              )}
-              {page.onTitleClick ? (
+            {page.parentLabel && page.onParentClick && (
+              <>
                 <button
-                  onClick={page.onTitleClick}
-                  className="font-semibold text-fg-2 hover:text-fg truncate transition-colors"
+                  onClick={page.onParentClick}
+                  className="text-fg-4 hover:text-fg-2 transition-colors shrink-0"
                 >
-                  {page.title}
+                  {page.parentLabel}
                 </button>
-              ) : (
+                <span className="text-fg-4/50 shrink-0" aria-hidden>
+                  /
+                </span>
+              </>
+            )}
+
+            {/* Title segment — clickable when onTitleClick is set
+                AND it's not the last segment (which is reserved for
+                the menu trigger). */}
+            {(() => {
+              const titleIsLast = !page.subtitle;
+              const titleIsMenuTrigger =
+                titleIsLast && Boolean(page.menuItems?.length);
+
+              if (titleIsMenuTrigger) {
+                // Title is the menu trigger — render via OverflowMenu
+                // with a custom trigger that looks like a breadcrumb
+                // segment with a chevron.
+                return (
+                  <OverflowMenu
+                    items={page.menuItems!}
+                    triggerLabel={page.menuLabel ?? "Page options"}
+                    trigger={<BreadcrumbMenuTrigger label={page.title} />}
+                  />
+                );
+              }
+              if (page.onTitleClick) {
+                return (
+                  <button
+                    onClick={page.onTitleClick}
+                    className="font-semibold text-fg-2 hover:text-fg truncate transition-colors"
+                  >
+                    {page.title}
+                  </button>
+                );
+              }
+              return (
                 <span className="font-semibold text-fg truncate">
                   {page.title}
                 </span>
-              )}
-              {page.subtitle && (
-                <>
-                  <span className="text-fg-4/40 shrink-0" aria-hidden>
-                    /
-                  </span>
-                  <span className="text-fg-3 truncate">{page.subtitle}</span>
-                </>
-              )}
-            </div>
+              );
+            })()}
 
-            {/* Entity action (overflow menu / Trash) sits right after
-                the page identity, treated as a contextual tool that
-                belongs to this page entity. */}
-            {page.entityAction && (
-              <div className="shrink-0 flex items-center gap-1">
+            {page.subtitle && (
+              <>
+                <span className="text-fg-4/40 shrink-0" aria-hidden>
+                  /
+                </span>
+                {/* Subtitle segment — when menuItems are present this
+                    is the menu trigger; otherwise plain text. */}
+                {page.menuItems?.length ? (
+                  <OverflowMenu
+                    items={page.menuItems}
+                    triggerLabel={page.menuLabel ?? "Page options"}
+                    trigger={
+                      <BreadcrumbMenuTrigger
+                        label={page.subtitle}
+                        muted
+                      />
+                    }
+                  />
+                ) : (
+                  <span className="text-fg-3 truncate">{page.subtitle}</span>
+                )}
+              </>
+            )}
+
+            {/* Fallback non-menu action (rare). */}
+            {page.entityAction && !page.menuItems?.length && (
+              <div className="shrink-0 flex items-center gap-1 ml-1">
                 {page.entityAction}
               </div>
             )}
@@ -212,5 +257,58 @@ export default function TopBar({
         <ConnectionIndicator health={health} />
       </div>
     </div>
+  );
+}
+
+// ── Breadcrumb-as-menu-trigger ──────────────────────────────────
+//
+// Renders a breadcrumb segment that doubles as the OverflowMenu
+// trigger. Clicking the segment opens the menu. Visually it looks
+// like the segment with a small chevron suffix, so the menu's
+// existence is discoverable but the segment still reads as page
+// identity rather than a separate "Options" button.
+//
+// React forwards arbitrary props (including the ref injected by
+// floating-ui's cloneElement) so this component must be a plain
+// element receiver — we build it as a button.
+
+interface BreadcrumbMenuTriggerProps {
+  label: string;
+  /** When true, renders in subtitle (muted) styling instead of title. */
+  muted?: boolean;
+}
+
+function BreadcrumbMenuTrigger({
+  label,
+  muted = false,
+  ...rest
+}: BreadcrumbMenuTriggerProps & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  // floating-ui injects aria-expanded onto the trigger; we read it
+  // here to flip the chevron orientation so the trigger feels like a
+  // proper dropdown affordance.
+  const isOpen = rest["aria-expanded"] === true || rest["aria-expanded"] === "true";
+
+  return (
+    <button
+      type="button"
+      {...rest}
+      className={clsx(
+        "group flex items-center gap-1 px-1 -mx-1 rounded-md min-w-0 transition-colors",
+        "hover:bg-surface-hover",
+        isOpen && "bg-surface-hover",
+        muted ? "text-fg-3 hover:text-fg-2" : "font-semibold text-fg-2 hover:text-fg",
+      )}
+    >
+      <span className="truncate">{label}</span>
+      <ChevronDown
+        size={11}
+        className={clsx(
+          "shrink-0 transition-transform",
+          muted ? "text-fg-4" : "text-fg-3",
+          isOpen && "rotate-180",
+          "group-hover:text-fg-2",
+        )}
+      />
+    </button>
   );
 }

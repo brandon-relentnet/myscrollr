@@ -17,6 +17,7 @@
 import type { ReactNode } from "react";
 import clsx from "clsx";
 import { useRegisterPageIdentity } from "./page-context";
+import type { OverflowMenuItem } from "../OverflowMenu";
 
 // ── Tab type ────────────────────────────────────────────────────
 
@@ -45,9 +46,18 @@ interface PageLayoutProps {
   onTitleClick?: () => void;
 
   /**
-   * Destructive or contextual action tied to the page entity. Rendered
-   * in the TopBar on the right side of the breadcrumb. Source pages
-   * use this for Trash; most pages omit it.
+   * Contextual menu items for this page. When present, the last
+   * breadcrumb segment in the TopBar (subtitle if any, otherwise
+   * title) becomes the menu trigger.
+   */
+  menuItems?: OverflowMenuItem[];
+  /** Aria label for the menu trigger. Default: 'Page options'. */
+  menuLabel?: string;
+
+  /**
+   * Fallback non-menu action rendered after the breadcrumb. Use
+   * `menuItems` for the standard pattern; this is for pages that
+   * need a raw icon button without a menu.
    */
   entityAction?: ReactNode;
 
@@ -86,6 +96,8 @@ export default function PageLayout({
   parentLabel,
   onParentClick,
   onTitleClick,
+  menuItems,
+  menuLabel,
   entityAction,
   tabs,
   children,
@@ -100,6 +112,8 @@ export default function PageLayout({
     parentLabel,
     onParentClick,
     onTitleClick,
+    menuItems,
+    menuLabel,
     entityAction,
   });
 

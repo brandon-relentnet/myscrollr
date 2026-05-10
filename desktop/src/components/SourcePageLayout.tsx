@@ -4,12 +4,11 @@
  * Renders through the universal `PageLayout`. Source pages no longer
  * have a visible tab band — Feed is the single visible page. All
  * secondary actions (Configure, Display preferences, Manage on
- * ticker, Remove) live in a 3-dot OverflowMenu in the TopBar's
- * entityAction slot.
+ * ticker, Remove) live in a contextual menu whose trigger IS the
+ * last breadcrumb segment in the TopBar.
  *
- * The /feed and /configuration routes still exist (for direct
- * deeplinks, tray actions, and the Catalog "Open" → feed flow);
- * they're just no longer surfaced as competing tabs in the chrome.
+ * The /feed, /configuration, and /display routes all still exist for
+ * direct deeplinks, tray actions, and the Catalog "Open" → feed flow.
  *
  * IA refactor 2026-05-09 — see
  * docs/superpowers/specs/2026-05-09-desktop-ia-refactor-design.md
@@ -18,7 +17,7 @@ import { useState } from "react";
 import { Settings as SettingsIcon, SlidersHorizontal, Tv, Trash2 } from "lucide-react";
 import ConfirmDialog from "./ConfirmDialog";
 import PageLayout from "./layout/PageLayout";
-import OverflowMenu, { type OverflowMenuItem } from "./OverflowMenu";
+import { type OverflowMenuItem } from "./OverflowMenu";
 
 // ── Shared tab constants ────────────────────────────────────────
 //
@@ -169,13 +168,6 @@ export default function SourcePageLayout({
     });
   }
 
-  const entityAction = (
-    <OverflowMenu
-      items={menuItems}
-      triggerLabel={`${name} options`}
-    />
-  );
-
   return (
     <>
       <PageLayout
@@ -194,7 +186,11 @@ export default function SourcePageLayout({
         // future configure surfaces in other channels) can scroll its
         // own list within a fixed pane instead of growing the page.
         fillHeight={activeTab === "configuration"}
-        entityAction={entityAction}
+        // The TopBar renders the last breadcrumb segment as the menu
+        // trigger when menuItems are present — no separate "Options"
+        // button competing with the breadcrumb.
+        menuItems={menuItems}
+        menuLabel={`${name} options`}
       >
         {children}
       </PageLayout>
