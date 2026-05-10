@@ -1,90 +1,160 @@
 # Current Session Handoff
 
 ## Repo State
+
+- Repo: `/Users/doni/code/myscrollr` (single repo — monorepo for desktop + website + APIs + channels)
 - Branch: `main`
-- Worktree: clean
-- Last commits (most recent first):
-  - `<this PR>` — Desktop readability/contrast pass + MCP dev tooling + Yahoo OAuth desktop counterpart
-  - `4e6e804` — fix(fantasy): content-negotiate `/yahoo/start` so the desktop OAuth flow works (#155)
-  - `4d94862` — feat(desktop): live-preview Display panels for Sports, RSS, Fantasy (v1.0.11) (#154)
-- Version: **1.0.11** (`desktop/package.json`, `desktop/src-tauri/tauri.conf.json`, `desktop/src-tauri/Cargo.toml`)
+- Worktree: **clean**
+- HEAD: `4eecc71` — `fix(desktop/sports): stable engagement sort to stop random ticker jank (#162)`
+- Desktop version: **1.0.12** (in `desktop/package.json`, `desktop/src-tauri/tauri.conf.json`, `desktop/src-tauri/Cargo.toml`, `Cargo.lock`)
+- Latest desktop tag: `desktop-v1.0.9`. **`desktop-v1.0.12` is NOT yet tagged** — pushing the tag triggers `.github/workflows/desktop-release.yml` to build/notarize cross-platform installers and `deploy.yml` (via the `release: types: [published]` hook) to refresh the marketing site's download link. Push when ready.
+- Server-side `/yahoo/start` JSON content negotiation (PR #155 / `4e6e804`) is **already deployed to production** via the K8s `deploy.yml` workflow. Verified live with a 200 + JSON `{"redirect_url"}` response when called with `Accept: application/json` + a Bearer token.
 
-## What Just Shipped
+## Tonight's Shipped Stack (eight PRs, in chronological order)
 
-Three coherent pieces in one PR:
+1. **#155 `4e6e804`** — `fix(fantasy): content-negotiate /yahoo/start so the desktop OAuth flow works`. Server fix already deployed. Adds JSON response when `Accept: application/json` (or `?response=json`) is sent, otherwise unchanged 307 redirect.
+2. **#156 `4ff0d77`** — `chore(desktop): readability pass + MCP dev tooling + Yahoo desktop counterpart`. New `text-ui-*` utilities, brightened muted text tokens, scoped 9/10px → 11px fallback, ~25 component migrations. Plus `tauri.mcp.conf.json` and the `tauri:dev:mcp` script. Plus `ConfigPanel.tsx` calling `authFetch('/yahoo/start?response=json')` then `shell::open` on the returned URL.
+3. **#157 `096a773`** — `fix(desktop/fantasy): config panel scroll + home page leagues display`. ConfigPanel scroll wrapper for `fillHeight` mode + `normalizeChannelData` helper to unwrap `data.fantasy = { leagues: [...] }` on the Home page.
+4. **#158 `7d21ae8`** — `fix(desktop/fantasy): rebuild Display preview to be honest and legible`. Dropped the dishonest Feed preview and the clipped Ticker rail-mode preview. Single full-width comfort-mode preview that actually reacts to toggles. Defensive `overflow-x-auto` on PreviewSurface.
+5. **#159 `25c4a02`** — `chore(desktop): bump version to 1.0.12`.
+6. **#160 `d1190e7`** — `feat(desktop/fantasy): split player-stats into individual ticker chips`. Top-3 starters / worst / bench leader / injury report each spawn standalone `FollowedPlayerChip`s on the rail with accent badges (`↑` `↓` `BN` `🚨`). New `desktop/src/channels/fantasy/playerStats.ts` houses shared selection helpers. Critical bug discovered + fixed during MCP verification: Yahoo player_keys are GLOBAL (a player can sit in both of the user's MLB leagues), so `findPlayerByKey` got an optional `preferLeagueKey` constraint to attribute chips to the right league.
+7. **#161 `a8b8ad5`** — `fix(desktop/fantasy): trim player-stat chip bottom row for tighter rail`. When a `FollowedPlayerChip` has an `accent`, the bottom row shows `"Top scorer"` / `"Worst starter"` / `"Bench leader"` / `"Injured"` instead of the verbose `OwnerTeam · LeagueName · NFL Team Full Name`. Width drops 40-50% per chip. Legacy user-followed path (no accent) preserved unchanged.
+8. **#162 `4eecc71`** — `fix(desktop/sports): stable engagement sort to stop random ticker jank`. Removed `Date.now()` from `gameEngagement()` so the sort key doesn't flip on every refetch. Continuous time-of-day priority moved to a deterministic `start_time` tie-break in `selectSportsForTicker`. **Verified before/after with MCP-driven instrumentation: 68 transform jumps → 0**. Diagnostic technique used: `MutationObserver` on the chip set + `requestAnimationFrame` loop watching the marquee `<ul>` `transform` for >300px-in-<50ms discontinuities.
 
-### 1. Desktop readability / contrast pass
+## What's Live in the Dev MCP Build Right Now
 
-- New design tokens in `desktop/src/style.css`:
-  - Brightened muted text tiers (`--color-fg-2/3/4`) for the default dark theme so meaningful text stays readable at 100% UI scale.
-  - High-contrast theme tier bumped further.
-- New reusable type utilities (use these for any new desktop UI):
-  - `text-ui-title` — 14px / 600 / `var(--color-fg)`
-  - `text-ui-body` — 13px / `var(--color-fg)`
-  - `text-ui-muted` — 13px / `var(--color-fg-2)`
-  - `text-ui-meta` — 12px / `var(--color-fg-3)`
-  - `text-ui-chip` — 11px / `var(--color-fg-3)`
-  - `text-ui-section` — 11px / 600 / uppercase / 0.08em / `var(--color-fg-3)`
-- Scoped fallback inside `#desktop-shell` and `#app-shell`:
-  - Any legacy `text-[9px]` / `text-[10px]` arbitrary class is silently bumped to 11px / 16px line-height. No need to hand-patch every dense table or chip — they automatically meet the new floor.
-- ~25 desktop components migrated from `text-[Npx]` arbitrary sizes and faint `text-fg-*/40` shades to the new utilities and stronger fg tokens. Affected: chips (consolidated, fantasy, fantasy-stat, followed-player, game, rss, trade), settings (display items grid, general, controls, ticker), feeds (finance, rss, sports), managers (rss feed, sports league, finance symbol), Sidebar, TopBar, ScrollrTicker, FreshnessPill, RowSelector, TickerLayoutSummary, PageSection, fantasy ConfigPanel.
-- `chipColors.ts` — `textDim` / `textFaint` opacities raised; compact chip base text moved to `text-ui-body`.
+The user's running `npm run tauri:dev:mcp` session has all eight PRs applied via HMR. Verified end-to-end via MCP: ticker is stable, fantasy chips render correctly per league, Yahoo OAuth completes, configure page scrolls, home shows imported leagues, display preview reacts to toggles.
 
-**Verified visually via the MCP-driven dev session**: ticker compact view, settings page, fantasy configure page all render cleanly with no layout regressions.
+## Lessons / Gotchas Carried Forward (DO NOT RE-LEARN)
 
-### 2. MCP dev tooling
+1. **TanStack Router uses `createMemoryHistory`** in this app (see `desktop/src/router.ts`). The webview URL bar is decorative — `window.location.pathname` does NOT reflect the active route. To navigate via JS in MCP debugging, walk the React fiber to find the router prop, then call `router.navigate({ to, params })`. Setting `window.location.href` reloads the page; `window.history.pushState` + `popstate` does NOT trigger router navigation.
 
-- New `desktop/src-tauri/tauri.mcp.conf.json` — overlays `app.withGlobalTauri = true` so the MCP bridge can call into the webview.
-- `npm run tauri:dev:mcp` updated to pass `--config src-tauri/tauri.mcp.conf.json` alongside the existing `--features dev-mcp-bridge` flag.
-- Auto-regenerated Tauri ACL / schema files now include the `mcp-bridge` plugin permissions (`allow-execute-js`, `allow-emit-event`, `allow-list-windows`, etc.) — these are normal regen output from running with the new config.
+2. **The Tauri MCP bridge is opt-in.** Run `npm run tauri:dev:mcp` (NOT `tauri:dev`). That script passes `--config src-tauri/tauri.mcp.conf.json -- --features dev-mcp-bridge`. The config sets `app.withGlobalTauri=true`. WebSocket listens on `localhost:9223`. macOS resize behaves oddly with `logical:true` — pass physical pixels (`logical: false`, then 1920x1280 for ~960x640 logical at 2x retina).
 
-To use the MCP bridge in a future session:
+3. **`/dashboard` returns `data.fantasy = { leagues: [...] }`**, NOT a flat array. Every other channel returns a flat array. Home / dashboard consumers must unwrap via `normalizeChannelData(type, raw)` (now in `desktop/src/routes/feed.tsx`). Standalone consumers (`ScrollrTicker`, `FantasyFeedTab`, `FollowedPlayersPicker`, `FantasyDisplayPanel`) already unwrap correctly with `payload?.leagues ?? []`.
 
-```sh
-cd desktop && npm run tauri:dev:mcp
-# WebSocket server listens on localhost:9223
-```
+4. **Yahoo player_keys are global, not per-league.** The same MLB/NFL player can sit in BOTH of a user's leagues. `FollowedPlayerChip.findPlayerByKey()` walks leagues in array order — pass the optional `preferLeagueKey` to bias the lookup, otherwise the first match wins (which is wrong for per-league context chips). The user-followed path intentionally omits this (a followed player IS context-free).
 
-Then connect from your MCP-aware client (Claude Code, opencode, etc.) and drive the running app with the standard `webview_*` / `manage_window` / `read_logs` tools.
+5. **`/yahoo/start` is `Auth: true` on the gateway.** Browser navigation can't carry a Bearer header, so `shell::open()` of the URL fails with 401. The desktop client must `authFetch('/yahoo/start?response=json')` first to get the consent URL as JSON, then `shell::open` THAT URL externally. The server still 307-redirects for HTML / wildcard `Accept` headers (logged-in browser cookies path). If you ever revisit this, both halves must stay in lockstep.
 
-### 3. Yahoo OAuth desktop counterpart
+6. **`gameEngagement` MUST NOT depend on `Date.now()`.** PR #162 fixed exactly this. If you add a new factor to engagement, classify by state, not by clock thresholds. Continuous time priority belongs in the secondary `start_time` tie-break inside `selectSportsForTicker`. There's a regression test `is stable across simulated time drift` that asserts this — do not relax it.
 
-- Server-side fix already shipped to production via PR #155 (`4e6e804`).
-- Desktop side (`desktop/src/channels/fantasy/ConfigPanel.tsx`) now `authFetch`es `/yahoo/start?response=json` with `Accept: application/json` and then `shell::open`s the returned `redirect_url`. The system-browser approach (`shell::open` of the bare endpoint) was 401-ing because external nav can't carry the Bearer header — see PR #155 for full root cause.
-- `v1_checklist.md:271` toggled to `[x]`.
+7. **DO NOT undo:**
+   - The `text-ui-*` utility migration in PR #156 (multiple PRs depend on the new tokens)
+   - The `comfort` mode of FantasyStatChip in DisplayPanel preview (PR #158) — non-comfort overflows the 340px surface
+   - The `accent` prop on FollowedPlayerChip (PR #160) — ScrollrTicker.tsx fantasy bucket builder relies on it
+   - The `preferLeagueKey` parameter on `findPlayerByKey` (PR #160) — without it, per-league chips show wrong owner/score context
+   - The `normalizeChannelData` helper in `feed.tsx` (PR #157) — Home page Fantasy display depends on it
+   - The state-only `gameEngagement` (PR #162) — sports ticker stability depends on it; tests guard the invariant
 
-This change doesn't ship to users until the next desktop release tag (`desktop-vX.Y.Z`); the website auto-rebuilds via `release: types: [published]` in `.github/workflows/deploy.yml`.
+8. **MCP-driven diagnosis is the workflow when the user reports visual / runtime weirdness.** Don't guess. Inject a `MutationObserver` + a frame-by-frame transform sampler, watch silently for 60-120s without disturbing the system, then read the events back. Eight tonight's PRs were all verified or diagnosed this way. Probe pattern lives in commit `4eecc71`'s message body.
 
-## Verification Run This Session
-- `npm run build` — clean (typecheck + vite build, only the pre-existing `style-*.js` chunk-size warning).
-- `npm test` — 15 files, 249 tests passing.
-- MCP-driven visual check — ticker + settings + fantasy configure all render correctly in the live app.
+## Verification Status
+
+- All eight PRs squash-merged green via `gh pr merge --squash --delete-branch`.
+- `npm test` (desktop) — 250 tests pass (was 249 before #162; +3 new stability tests, -2 collapsed time-bucket tests in `view.test.ts`).
+- `npm run build` (desktop) — typecheck + vite build clean. Pre-existing `style-*.js` 580kb chunk-size warning is unchanged (backlog item).
+- `go test ./...` (channels/fantasy/api) — pass on PR #155 CI.
+- Live MCP-driven visual regression checks performed on PRs #156, #157, #158, #160, #161, #162.
 
 ## Risks / Follow-Ups
-- **Bundle size**: the `style-*.js` chunk is ~580 kB minified. Lower-priority code-splitting follow-up still open.
-- **Fantasy `.feed` venue plumbing**: `FantasyStatChip` honors `.ticker` venue booleans but `.feed` booleans are still ignored by the Fantasy Feed sub-views. Carried over from the previous handoff.
-- **Desktop release**: when ready to cut the next release, the Yahoo desktop counterpart shipped here will be in it. Tag with `desktop-v1.0.12` (or whatever the next version is) — `.github/workflows/desktop-release.yml` does the cross-platform builds and notarization.
-- **`tauri.mcp.conf.json` permissions**: dev-only by virtue of being applied via `npm run tauri:dev:mcp`. Production builds (`npm run tauri:build`) don't pull in the MCP bridge plugin (gated by `feature = "dev-mcp-bridge"` + `debug_assertions` in `lib.rs:61`).
 
-## Resume Prompt
+- **Bundle size**: `style-*.js` chunk ~580kb minified. Lower-priority follow-up. See backlog.
+- **Fantasy `.feed` venue plumbing**: still no-op. `MatchupHero`, `OverviewView`, `StandingsView`, `RosterView` ignore the `.feed` boolean. PR #158's helper text says "Display items currently affect the Ticker only" — that's the honest state. Backlog item.
+- **`tauri.mcp.conf.json` permissions**: dev-only by virtue of being applied via `npm run tauri:dev:mcp`. Production builds (`npm run tauri:build`) don't pull in the MCP bridge plugin (gated by `feature = "dev-mcp-bridge"` + `debug_assertions` + `not(target_os = "windows")` in `lib.rs:61`). Safe.
+- **Stale F1 race data observed during instrumentation**: F1 races at `state: "pre"` with `start_time` 28 days in the past keep showing up in the dashboard. `gameEngagement` returns 60 for them so they sort with all other pre-games — minor noise but not a regression. Backlog candidate if it bothers anyone.
+- **Open PR #104 — "Feature/favorite team selection"** by Enanimate, 5 weeks old, no description, mergeStateStatus=UNKNOWN, +521/-164 across 13 files. Almost certainly conflicts with this session's work. Triage before merging.
+
+## Operational Notes
+
+- The user is running `npm run tauri:dev:mcp` in the background. WebSocket on `localhost:9223`. Connect with `mcp_Tauri_driver_session({action: "start", port: 9223})`.
+- The user has 2 fantasy leagues imported: `Stanton Again A Fuck League` (MLB, mostly pre-game), `Scrollr League` (MLB, live data). Roster of ~30 players each.
+- The user's GitHub auth in this CLI is fine; `gh pr merge --squash --delete-branch` works without prompts.
+- The `desktop-release.yml` workflow has not been touched this session.
+
+## Next Best Action
+
+Push the `desktop-v1.0.12` tag whenever you're ready to ship. That single command triggers the cross-platform release build (Linux/macOS/Windows + notarization) and the website's auto-rebuild for the new download link. Everything else is backlog.
+
+**Resume prompt for the next fresh chat:**
 
 ```
 You're picking up `/Users/doni/code/myscrollr` on `main`. Worktree is clean.
-Read `docs/superpowers/handoffs/current.md` first.
+Read `docs/superpowers/handoffs/current.md` first for full context.
 
-Recent significant work:
-1. Yahoo OAuth desktop flow fixed end-to-end (PR #155 server-side, PR <this>
-   desktop-side). The `/yahoo/start` endpoint content-negotiates JSON when
-   `Accept: application/json` is sent.
-2. Desktop UI readability pass — new `text-ui-*` utilities live in
-   `desktop/src/style.css`. Use them for any new dense text rather than
-   `text-[Npx]` arbitrary sizes.
-3. MCP dev session is now `npm run tauri:dev:mcp` (uses `tauri.mcp.conf.json`
-   to enable `withGlobalTauri`, and the `dev-mcp-bridge` cargo feature).
-   WebSocket server on localhost:9223.
+What's already shipped tonight (8 PRs, all squash-merged on main, HEAD = 4eecc71):
+  - #155 4e6e804  fix(fantasy): /yahoo/start JSON content negotiation (server, deployed to prod)
+  - #156 4ff0d77  chore(desktop): readability pass + MCP dev tooling + Yahoo desktop counterpart
+  - #157 096a773  fix(desktop/fantasy): config panel scroll + home page leagues display
+  - #158 7d21ae8  fix(desktop/fantasy): rebuild Display preview to be honest and legible
+  - #159 25c4a02  chore(desktop): bump version to 1.0.12
+  - #160 d1190e7  feat(desktop/fantasy): split player-stats into individual ticker chips
+  - #161 a8b8ad5  fix(desktop/fantasy): trim player-stat chip bottom row for tighter rail
+  - #162 4eecc71  fix(desktop/sports): stable engagement sort to stop random ticker jank
 
-No active task. Open backlog in `v1_checklist.md`. Possible next pickups:
-- Fantasy Feed venue plumbing (mirror what FantasyStatChip ticker side does)
-- Bundle splitting for the 580 kB style chunk
-- Cut the next desktop release once you're ready
+Desktop is at version 1.0.12 in package.json / tauri.conf.json / Cargo.toml / Cargo.lock,
+but `desktop-v1.0.12` is NOT yet git-tagged. Pushing the tag triggers
+.github/workflows/desktop-release.yml to build cross-platform installers
+(notarized macOS DMG, Windows MSI, Linux AppImage) and deploy.yml to refresh
+the marketing site's download button. Tag and push when the user gives the go.
+
+Foundations available (DO NOT undo):
+  - Text utilities: text-ui-title / -body / -muted / -meta / -chip / -section
+    in desktop/src/style.css. Use these for new desktop UI; do NOT use
+    `text-[Npx]` arbitrary classes — there's a scoped fallback at #desktop-shell /
+    #app-shell that bumps 9/10px to 11px, but new code should use the utilities.
+  - normalizeChannelData(type, raw) in desktop/src/routes/feed.tsx unwraps the
+    `data.fantasy = { leagues: [...] }` dashboard payload. Apply at every Home /
+    ChannelSection consumer of `dashboard.data[type]`. Standalone consumers
+    already unwrap correctly with `payload?.leagues ?? []`.
+  - desktop/src/channels/fantasy/playerStats.ts: findTopN, findTopScorer,
+    findWorstStarter, findTopBench, findInjuredPlayers, isStrictBench,
+    isInjured, shortStatus, formatPts. Both FantasyStatChip and ScrollrTicker
+    consume these.
+  - FollowedPlayerChip accepts optional accent="top"|"worst"|"bench"|"injury"
+    and optional preferLeagueKey. ScrollrTicker's fantasy bucket builder passes
+    both for per-league player-stat chips. Yahoo player_keys are GLOBAL, so
+    leagueKey is required when picking a player in a per-league context;
+    omit it for the user-followed (context-free) path.
+  - /yahoo/start content-negotiates: Accept: application/json (or ?response=json)
+    returns 200 {"redirect_url"}. Otherwise 307 redirect (browser cookie path).
+    Desktop already uses the JSON path via authFetch in ConfigPanel.tsx.
+  - gameEngagement is state-only (live=80/100, pre=60, final=30). Do NOT add
+    Date.now()-dependent logic — there's a regression test asserting stability
+    under simulated time drift. Time-of-day priority lives in the start_time
+    tie-break inside selectSportsForTicker.
+
+Lessons (DO NOT re-learn):
+  - TanStack Router uses memory history. Webview URL bar is decorative.
+    Navigate via window.__router.navigate({to, params}) after walking the
+    React fiber to find it (one-time setup at session start).
+  - Tauri MCP dev session: `npm run tauri:dev:mcp` (NOT `tauri:dev`). Resize
+    macOS windows in PHYSICAL pixels with `logical: false` — logical resize
+    is unreliable on macOS at 2x retina.
+  - When the user reports visual / runtime weirdness, instrument first.
+    Pattern: MutationObserver + requestAnimationFrame transform sampler,
+    watch silently 60-120s, read events back. See PR #162 commit body for
+    the full probe code.
+  - Yahoo player_keys are global. Use preferLeagueKey when looking up a
+    player in a per-league context.
+  - `/dashboard` Fantasy payload is wrapped: `{leagues: [...]}`. Other
+    channels are flat arrays.
+  - `/yahoo/start` is Auth: true on the gateway — browser nav can't carry
+    Bearer header. Use the JSON path from authFetch.
+
+Environment:
+  - Single repo at /Users/doni/code/myscrollr (monorepo).
+  - User's dev MCP session is running in the background. Connect via
+    mcp_Tauri_driver_session(action: "start", port: 9223).
+  - User has 2 imported Yahoo leagues (Stanton Again A Fuck League, Scrollr League).
+  - GitHub `gh` CLI auth is configured. Squash-merge with --delete-branch.
+  - There is one open stranger PR #104 ("Feature/favorite team selection")
+    from Enanimate, 5 weeks old, almost certainly conflicts with this work.
+    Triage before touching.
+
+First concrete action:
+  Ask the user what they want next. The natural next step is tagging
+  `desktop-v1.0.12` and pushing it to cut the release. Other candidates
+  from the backlog: Fantasy `.feed` venue plumbing, bundle-size code-splitting,
+  PR #104 triage. Backlog: docs/superpowers/handoffs/backlog.md.
 ```
