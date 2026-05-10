@@ -22,8 +22,8 @@ import ChannelConfigPanel from "../channels/ChannelConfigPanel";
 import FinanceDisplayPanel from "../channels/finance/DisplayPanel";
 import { useShell, useShellData } from "../shell-context";
 import { Section, ToggleRow, ResetButton, SegmentedRow } from "../components/settings/SettingsControls";
-import { DisplayLocationGrid } from "../components/settings/DisplayLocationGrid";
-import type { DisplayGridSection } from "../components/settings/DisplayLocationGrid";
+import DisplayItemsGrid from "../components/settings/DisplayItemsGrid";
+import type { DisplayItemsSection } from "../components/settings/DisplayItemsGrid";
 import FollowedPlayersPicker from "../components/settings/FollowedPlayersPicker";
 import { useSportsConfig } from "../hooks/useSportsConfig";
 import { loadPref } from "../preferences";
@@ -189,8 +189,6 @@ function ChannelDisplayTab({ type }: { type: string }) {
 function SportsDisplay() {
   const { display, setDisplay } = useSportsConfig();
 
-  // setDisplay already accepts a Partial; the grid's batched changes
-  // spread cleanly into it.
   function applyDisplayChanges(changes: Record<string, Venue>) {
     setDisplay(changes as Partial<SportsDisplayPrefs>);
   }
@@ -204,9 +202,9 @@ function SportsDisplay() {
     });
   }
 
-  const sections: DisplayGridSection[] = [
+  const sections: DisplayItemsSection[] = [
     {
-      title: "Display items",
+      title: "Card chrome",
       rows: [
         { key: "showLogos", label: "Team logos", description: "Show team logos on cards and ticker chips", value: display.showLogos },
         { key: "showTimer", label: "Game clock / status", description: "Quarter, period, or final-time indicator", value: display.showTimer },
@@ -222,11 +220,11 @@ function SportsDisplay() {
   ];
 
   return (
-    <div>
-      <Section title="Display items">
-        <DisplayLocationGrid sections={sections} onChange={applyDisplayChanges} />
-      </Section>
-      <ResetButton label="Reset display settings" onClick={handleReset} />
+    <div className="space-y-6 pb-8">
+      <DisplayItemsGrid sections={sections} onChange={applyDisplayChanges} />
+      <div className="flex items-center justify-end pt-2">
+        <ResetButton label="Reset display settings" onClick={handleReset} />
+      </div>
     </div>
   );
 }
@@ -273,7 +271,7 @@ function RssDisplay() {
     { value: "0", label: "All" },
   ];
 
-  const sections: DisplayGridSection[] = [
+  const sections: DisplayItemsSection[] = [
     {
       rows: [
         { key: "showDescription", label: "Article description", description: "Snippet beneath the headline", value: dp.showDescription },
@@ -284,10 +282,8 @@ function RssDisplay() {
   ];
 
   return (
-    <div>
-      <Section title="Display items">
-        <DisplayLocationGrid sections={sections} onChange={applyDisplayChanges} />
-      </Section>
+    <div className="space-y-6 pb-8">
+      <DisplayItemsGrid sections={sections} onChange={applyDisplayChanges} />
       <Section title="Feed behavior">
         <SegmentedRow
           label="Articles per source"
@@ -297,7 +293,9 @@ function RssDisplay() {
           onChange={setArticlesPerSource}
         />
       </Section>
-      <ResetButton label="Reset display settings" onClick={handleReset} />
+      <div className="flex items-center justify-end pt-2">
+        <ResetButton label="Reset display settings" onClick={handleReset} />
+      </div>
     </div>
   );
 }
@@ -452,7 +450,7 @@ function FantasyDisplay() {
     { value: "roster", label: "Roster" },
   ];
 
-  const sections: DisplayGridSection[] = FANTASY_VENUE_GROUPS.map((group) => ({
+  const sections: DisplayItemsSection[] = FANTASY_VENUE_GROUPS.map((group) => ({
     title: group.title,
     rows: group.rows.map((row) => ({
       key: row.key,
@@ -462,19 +460,13 @@ function FantasyDisplay() {
     })),
   }));
 
-  // Apply ALL grid changes in a single patch — bulk All/None toggles
-  // emit a Record with every changed row in one shot, and per-row
-  // clicks emit a single-entry Record. Both spread cleanly into the
-  // fantasy slice via patch().
   function applyDisplayChanges(changes: Record<string, Venue>) {
     patch(changes as Partial<FantasyDisplayPrefs>);
   }
 
   return (
-    <div>
-      <Section title="Display items">
-        <DisplayLocationGrid sections={sections} onChange={applyDisplayChanges} />
-      </Section>
+    <div className="space-y-6 pb-8">
+      <DisplayItemsGrid sections={sections} onChange={applyDisplayChanges} />
       <Section title="Followed players">
         <p className="text-[11px] text-fg-4 px-3 pb-2 leading-snug">
           Pick specific players from your rosters to track on the ticker.
@@ -497,7 +489,9 @@ function FantasyDisplay() {
         <ToggleRow label="Show standings section" checked={dp.showStandings} onChange={() => toggle("showStandings")} />
         <ToggleRow label="Show matchups section" checked={dp.showMatchups} onChange={() => toggle("showMatchups")} />
       </Section>
-      <ResetButton label="Reset display settings" onClick={handleReset} />
+      <div className="flex items-center justify-end pt-2">
+        <ResetButton label="Reset display settings" onClick={handleReset} />
+      </div>
     </div>
   );
 }

@@ -1,8 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import MyFeeds from "./MyFeeds";
-import FeedCatalog from "./FeedCatalog";
+import FeedManager from "./FeedManager";
 import { rssCatalogOptions } from "../../api/queries";
 import { useChannelConfig } from "../../hooks/useChannelConfig";
 import { getLimit } from "../../tierLimits";
@@ -27,12 +26,10 @@ export default function RssConfigPanel({
     Array<{ name: string; url: string; is_custom?: boolean }>
   >("rss", "feeds");
 
-  // User's subscribed feeds from channel config
   const rssConfig = channel.config as RssChannelConfig;
   const feeds = Array.isArray(rssConfig?.feeds) ? rssConfig.feeds : [];
   const feedUrlSet = useMemo(() => new Set(feeds.map((f) => f.url)), [feeds]);
 
-  // Tier limits
   const maxFeeds = getLimit(subscriptionTier, "feeds");
   const maxCustomFeeds = getLimit(subscriptionTier, "customFeeds");
   const customFeedCount = useMemo(
@@ -40,7 +37,9 @@ export default function RssConfigPanel({
     [feeds],
   );
 
-  // Catalog queries — clean (for browsing) and full (for health data)
+  // Two catalogs: "clean" (curated, healthy feeds for browsing) and
+  // "all" (includes failing feeds + the user's customs, used for
+  // health badges on rows the user has already subscribed to).
   const {
     data: catalog = [],
     isLoading: catalogLoading,
@@ -51,12 +50,9 @@ export default function RssConfigPanel({
     rssCatalogOptions({ includeFailing: true }),
   );
 
-  // ── Handlers ───────────────────────────────────────────────────
-
   const addCatalogFeed = useCallback(
     (url: string) => {
       if (feeds.length >= maxFeeds) return;
-      // Look in both catalogs (clean + full) to find the feed
       const allFeeds = [...catalog, ...catalogAll];
       const feed = allFeeds.find((f) => f.url === url);
       if (!feed || feedUrlSet.has(url)) return;
@@ -85,13 +81,10 @@ export default function RssConfigPanel({
     [feeds, feedUrlSet, updateItems, maxFeeds, maxCustomFeeds, customFeedCount],
   );
 
-  // ── Render ─────────────────────────────────────────────────────
-
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-6 pb-8">
-      {/* Error banner */}
+    <div className="w-full max-w-2xl mx-auto h-full flex flex-col min-h-0 gap-3 pt-1">
       {error && (
-        <div className="px-3 py-2 rounded-lg bg-error/10 border border-error/20 text-[11px] text-error flex items-center justify-between">
+        <div className="shrink-0 px-3 py-2 rounded-lg bg-error/10 border border-error/20 text-[11px] text-error flex items-center justify-between">
           <span>{error}</span>
           <button
             onClick={() => setError(null)}
@@ -103,32 +96,23 @@ export default function RssConfigPanel({
         </div>
       )}
 
-      {/* Section 1: My Feeds */}
-      <MyFeeds
-        feeds={feeds}
-        catalogAll={catalogAll}
-        onRemove={removeFeed}
-        onAddCustom={addCustomFeed}
-        feedCount={feeds.length}
-        maxFeeds={maxFeeds}
-        customCount={customFeedCount}
-        maxCustomFeeds={maxCustomFeeds}
-        subscriptionTier={subscriptionTier}
-        saving={saving}
-      />
-
-      {/* Divider */}
-      <div className="h-px bg-edge/30" />
-
-      {/* Section 2: Add Feeds (Catalog) */}
-      <FeedCatalog
-        catalog={catalog}
-        subscribedUrls={feedUrlSet}
-        onAdd={addCatalogFeed}
-        loading={catalogLoading}
-        error={catalogError}
-        atLimit={feeds.length >= maxFeeds}
-      />
+      <div className="flex-1 min-h-0">
+        <FeedManager
+          feeds={feeds}
+          catalog={catalog}
+          catalogAll={catalogAll}
+          onAddCatalog={addCatalogFeed}
+          onAddCustom={addCustomFeed}
+          onRemove={removeFeed}
+          loading={catalogLoading}
+          error={catalogError}
+          maxFeeds={maxFeeds}
+          maxCustomFeeds={maxCustomFeeds}
+          customCount={customFeedCount}
+          subscriptionTier={subscriptionTier}
+          saving={saving}
+        />
+      </div>
     </div>
   );
 }
