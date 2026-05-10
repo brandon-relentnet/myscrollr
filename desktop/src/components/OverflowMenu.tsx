@@ -12,7 +12,7 @@
  * separator. Pressing Escape or clicking outside closes the menu;
  * Enter/Space activates an item.
  */
-import { useState, useRef, cloneElement } from "react";
+import { useState, useRef, cloneElement, useEffect } from "react";
 import type { ReactElement, ReactNode, Ref } from "react";
 import {
   useFloating,
@@ -32,7 +32,7 @@ import {
 } from "@floating-ui/react";
 import type { Placement } from "@floating-ui/react";
 import clsx from "clsx";
-import { MoreHorizontal } from "lucide-react";
+import { Settings2, ChevronDown } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 // ── Item types ──────────────────────────────────────────────────
@@ -66,7 +66,7 @@ interface OverflowMenuProps {
 
 export default function OverflowMenu({
   items,
-  triggerLabel = "More",
+  triggerLabel = "Options",
   trigger,
   placement = "bottom-end",
 }: OverflowMenuProps) {
@@ -76,6 +76,16 @@ export default function OverflowMenu({
   // and disabled rows have null refs so keyboard nav skips them.
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const listRef = useRef<Array<HTMLElement | null>>([]);
+
+  // Resolve the themed app shell as the portal root so the floating
+  // menu inherits the right CSS variables (light vs dark). Without
+  // this, the portal mounts at <body> — outside the
+  // #app-shell[data-theme="light"] selector — and the menu always
+  // looks dark even when the app is light.
+  const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setPortalRoot(document.getElementById("app-shell"));
+  }, []);
 
   const labels = items.map((it) =>
     "divider" in it ? null : it.label,
@@ -122,14 +132,30 @@ export default function OverflowMenu({
     open: { opacity: 1, transform: "translateY(0) scale(1)" },
   });
 
-  // Default trigger: a 28px square ghost button with a 3-dot icon.
+  // Default trigger: a small pill button with a Settings2 (sliders +
+  // gear) icon, a label, and a chevron-down to signal "this opens a
+  // menu". Reads as "Options" rather than "more stuff" — clearer
+  // affordance than a 3-dot button. Background tints when the menu is
+  // open so the trigger looks pressed.
   const defaultTrigger: ReactNode = (
     <button
       type="button"
       aria-label={triggerLabel}
-      className="w-7 h-7 flex items-center justify-center rounded-md text-fg-3 hover:text-fg hover:bg-surface-hover transition-colors"
+      aria-haspopup="menu"
+      aria-expanded={isOpen}
+      className={clsx(
+        "flex items-center gap-1.5 h-7 px-2 rounded-md text-[11px] font-medium transition-colors",
+        isOpen
+          ? "bg-accent/15 text-accent"
+          : "text-fg-3 hover:text-fg hover:bg-surface-hover",
+      )}
     >
-      <MoreHorizontal size={15} />
+      <Settings2 size={13} />
+      <span>Options</span>
+      <ChevronDown
+        size={11}
+        className={clsx("transition-transform", isOpen && "rotate-180")}
+      />
     </button>
   );
 
@@ -143,14 +169,18 @@ export default function OverflowMenu({
         },
       )}
 
-      <FloatingPortal>
+      {/* Portal root is #app-shell so the menu inherits the active
+          theme's CSS variables (the light-mode overrides are scoped to
+          that element via [data-theme="light"]). Falls back to body
+          when the shell isn't mounted yet (e.g. during initial render). */}
+      <FloatingPortal root={portalRoot}>
         {isMounted && (
           <FloatingFocusManager context={context} modal={false}>
             <div
               ref={refs.setFloating}
               style={{ ...floatingStyles, ...transitionStyles }}
               {...getFloatingProps()}
-              className="z-50 min-w-[200px] py-1 rounded-lg border border-edge/60 bg-surface-2 shadow-lg shadow-black/30 outline-none"
+              className="z-50 min-w-[220px] py-1 rounded-lg border border-edge bg-surface-2 shadow-lg shadow-black/20 outline-none"
             >
               {items.map((item, i) => {
                 if ("divider" in item) {
@@ -158,7 +188,7 @@ export default function OverflowMenu({
                     <div
                       key={item.key}
                       role="separator"
-                      className="my-1 h-px bg-edge/40"
+                      className="my-1 h-px bg-edge/60"
                     />
                   );
                 }
@@ -189,18 +219,20 @@ export default function OverflowMenu({
                           : "text-error hover:bg-error/10"
                         : isActive
                           ? "bg-accent/10 text-fg"
-                          : "text-fg-2 hover:bg-surface-hover",
+                          : "text-fg-2 hover:bg-surface-hover hover:text-fg",
                     )}
                   >
                     {Icon && (
                       <Icon
-                        size={13}
+                        size={14}
                         className="shrink-0"
                         aria-hidden
                       />
                     )}
                     <span className="flex-1 min-w-0">
-                      <span className="block truncate">{item.label}</span>
+                      <span className="block truncate font-medium">
+                        {item.label}
+                      </span>
                       {item.hint && (
                         <span className="block truncate text-[10px] text-fg-4 mt-0.5">
                           {item.hint}
