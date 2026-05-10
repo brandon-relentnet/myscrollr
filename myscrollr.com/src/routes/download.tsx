@@ -272,9 +272,13 @@ function PlatformCard({ platform, detected, index }: PlatformCardProps) {
 
   return (
     <motion.div
+      // The platform grid is above the fold on every viewport we care
+      // about, so use `animate` instead of `whileInView`. With
+      // `whileInView`, Motion mounts with the initial state (opacity 0),
+      // then runs an intersection-observer check on the next tick —
+      // that one-frame gap is what produced the visible flash.
       initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{
         duration: 0.4,
         ease: EASE,

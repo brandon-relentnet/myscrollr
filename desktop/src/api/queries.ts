@@ -60,6 +60,34 @@ async function fetchDashboard(): Promise<DashboardResponse> {
         channels?: DashboardResponse["channels"];
         preferences?: DashboardResponse["preferences"];
       }>("/dashboard");
+
+      // Signed-in user with zero channels installed: the authed response
+      // carries an empty `data` map, which leaves the ticker blank. To
+      // make the ticker feel alive (and act as a teaser for what they'll
+      // see once they install a channel), fall back to the public feed
+      // payload while preserving the authed `channels` + `preferences`.
+      // The moment they add their first channel, CDC + a refetch fill
+      // `data` and this branch stops triggering.
+      const hasAnyChannelData =
+        data.data && Object.keys(data.data).length > 0;
+      const hasInstalledChannels =
+        Array.isArray(data.channels) && data.channels.length > 0;
+
+      if (!hasAnyChannelData && !hasInstalledChannels) {
+        try {
+          const publicFeed = await request<{
+            data: DashboardResponse["data"];
+          }>("/public/feed");
+          return {
+            data: publicFeed.data,
+            channels: data.channels,
+            preferences: data.preferences,
+          } as DashboardResponse;
+        } catch {
+          // Public feed failed too — fall through with the empty authed payload.
+        }
+      }
+
       return {
         data: data.data,
         channels: data.channels,

@@ -14,22 +14,7 @@ function Callback() {
     navigate({ to: returnTo || '/account' })
   })
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen text-base-content flex items-center justify-center font-mono">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4" />
-          <p className="uppercase tracking-[0.2em] text-primary animate-pulse">
-            Establishing Secure Session...
-          </p>
-          <p className="text-[10px] opacity-40 uppercase">
-            Redirecting to master control
-          </p>
-        </div>
-      </div>
-    )
-  }
-
+  // Show the error UI only when the callback exchange itself failed.
   if (error) {
     return (
       <div className="min-h-screen text-base-content flex items-center justify-center font-mono">
@@ -52,5 +37,22 @@ function Callback() {
     )
   }
 
-  return null
+  // Loading covers both the in-flight exchange (isLoading=true) and the
+  // brief gap after success while `navigate()` is still being processed
+  // by the router — previously this returned `null`, which rendered the
+  // page as just header + footer with an empty body for ~1 frame to a
+  // few hundred ms depending on how the route transition was scheduled.
+  return (
+    <div className="min-h-screen text-base-content flex items-center justify-center font-mono">
+      <div className="text-center space-y-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4" />
+        <p className="uppercase tracking-[0.2em] text-primary animate-pulse">
+          {isLoading ? 'Establishing Secure Session...' : 'Redirecting...'}
+        </p>
+        <p className="text-[10px] opacity-40 uppercase">
+          Redirecting to master control
+        </p>
+      </div>
+    </div>
+  )
 }
