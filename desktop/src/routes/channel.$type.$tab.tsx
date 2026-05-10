@@ -19,6 +19,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getChannel, getAllChannels } from "../channels/registry";
 import { dashboardQueryOptions } from "../api/queries";
 import ChannelConfigPanel from "../channels/ChannelConfigPanel";
+import FinanceDisplayPanel from "../channels/finance/DisplayPanel";
 import { useShell, useShellData } from "../shell-context";
 import { Section, ToggleRow, ResetButton, SegmentedRow } from "../components/settings/SettingsControls";
 import { DisplayLocationGrid } from "../components/settings/DisplayLocationGrid";
@@ -28,7 +29,7 @@ import { useSportsConfig } from "../hooks/useSportsConfig";
 import { loadPref } from "../preferences";
 import type { Channel, ChannelType } from "../api/client";
 import type { DashboardResponse, DeliveryMode } from "../types";
-import type { FinanceDisplayPrefs, RssDisplayPrefs, FantasyDisplayPrefs, Venue } from "../preferences";
+import type { RssDisplayPrefs, FantasyDisplayPrefs, Venue } from "../preferences";
 import type { SportsDisplayPrefs } from "../hooks/useSportsConfig";
 
 export const Route = createFileRoute("/channel/$type/$tab")({
@@ -168,12 +169,12 @@ function ChannelConfigTab({
 }
 
 function ChannelDisplayTab({ type }: { type: string }) {
-  // Rendered as a section beneath the Configure panel. Silently
-  // returns null for channels without display preferences so the
-  // Configure tab simply ends after the config section.
+  // Per-channel display preferences. Finance has the new live-preview
+  // DisplayPanel (2026 polish); the others still use the old
+  // venue-grid layout pending the same treatment.
   switch (type) {
     case "finance":
-      return <FinanceDisplay />;
+      return <FinanceDisplayPanel />;
     case "sports":
       return <SportsDisplay />;
     case "rss":
@@ -183,80 +184,6 @@ function ChannelDisplayTab({ type }: { type: string }) {
     default:
       return null;
   }
-}
-
-function FinanceDisplay() {
-  const { prefs, onPrefsChange } = useShell();
-  const dp = prefs.channelDisplay.finance;
-
-  // Apply a batch of Venue changes from the grid in ONE state update.
-  // This is what makes bulk "All / None" toggles flip every row in a
-  // single render — calling per-row setters in a loop caused stale-
-  // state overwrites (each setter spread the same old prefs).
-  function applyDisplayChanges(changes: Record<string, Venue>) {
-    onPrefsChange({
-      ...prefs,
-      channelDisplay: {
-        ...prefs.channelDisplay,
-        finance: { ...dp, ...(changes as Partial<FinanceDisplayPrefs>) },
-      },
-    });
-  }
-
-  function setDefaultSort(value: string) {
-    onPrefsChange({
-      ...prefs,
-      channelDisplay: {
-        ...prefs.channelDisplay,
-        finance: { ...dp, defaultSort: value as FinanceDisplayPrefs["defaultSort"] },
-      },
-    });
-  }
-
-  function handleReset() {
-    onPrefsChange({
-      ...prefs,
-      channelDisplay: {
-        ...prefs.channelDisplay,
-        finance: { showChange: "both", showPrevClose: "both", showLastUpdated: "both", defaultSort: "alpha" },
-      },
-    });
-  }
-
-  const SORT_OPTIONS = [
-    { value: "alpha", label: "A–Z" },
-    { value: "price", label: "Price" },
-    { value: "change", label: "% Change" },
-    { value: "updated", label: "Updated" },
-  ];
-
-  const sections: DisplayGridSection[] = [
-    {
-      rows: [
-        { key: "showChange", label: "% change", description: "Daily price change percent", value: dp.showChange },
-        { key: "showPrevClose", label: "Previous close", description: "Last session's closing price", value: dp.showPrevClose },
-        { key: "showLastUpdated", label: "Last updated", description: "Relative time since the last tick", value: dp.showLastUpdated },
-      ],
-    },
-  ];
-
-  return (
-    <div>
-      <Section title="Display items">
-        <DisplayLocationGrid sections={sections} onChange={applyDisplayChanges} />
-      </Section>
-      <Section title="Feed behavior">
-        <SegmentedRow
-          label="Sort order"
-          description="Default sort for both feed and ticker"
-          value={dp.defaultSort}
-          options={SORT_OPTIONS}
-          onChange={setDefaultSort}
-        />
-      </Section>
-      <ResetButton label="Reset display settings" onClick={handleReset} />
-    </div>
-  );
 }
 
 function SportsDisplay() {

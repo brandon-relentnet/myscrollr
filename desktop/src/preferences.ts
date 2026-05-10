@@ -280,6 +280,20 @@ export interface FinanceDisplayPrefs {
   showPrevClose: Venue;
   showLastUpdated: Venue;
   defaultSort: "alpha" | "price" | "change" | "updated";
+  /**
+   * Feed density. "comfort" (default) renders the two-row card with
+   * symbol + category badge + price + change + relative timestamp.
+   * "compact" renders a single-row condensed view — symbol, price,
+   * percent only — and stacks roughly twice as many tickers per
+   * viewport. Drives the per-row component in FeedTab.
+   */
+  feedDensity: "compact" | "comfort";
+  /**
+   * Direction marker on the ticker chip. "arrow" uses ▲▼ glyphs,
+   * "sign" uses +/− text, "none" hides the marker entirely
+   * (% change still renders, just without the leading marker).
+   */
+  tickerDirectionMarker: "arrow" | "sign" | "none";
 }
 
 export interface RssDisplayPrefs {
@@ -489,6 +503,8 @@ const DEFAULT_CHANNEL_DISPLAY: ChannelDisplayPrefs = {
     showPrevClose: "both",
     showLastUpdated: "both",
     defaultSort: "alpha",
+    feedDensity: "comfort",
+    tickerDirectionMarker: "arrow",
   },
   rss: {
     showDescription: "both",
@@ -853,6 +869,16 @@ export function migrateFinanceDisplay(
   saved: Partial<FinanceDisplayPrefs> | undefined,
 ): FinanceDisplayPrefs {
   const raw = (saved ?? {}) as Record<string, unknown>;
+  const density =
+    raw.feedDensity === "compact" || raw.feedDensity === "comfort"
+      ? raw.feedDensity
+      : DEFAULT_CHANNEL_DISPLAY.finance.feedDensity;
+  const dirMarker =
+    raw.tickerDirectionMarker === "arrow" ||
+    raw.tickerDirectionMarker === "sign" ||
+    raw.tickerDirectionMarker === "none"
+      ? raw.tickerDirectionMarker
+      : DEFAULT_CHANNEL_DISPLAY.finance.tickerDirectionMarker;
   return {
     ...DEFAULT_CHANNEL_DISPLAY.finance,
     showChange: migrateVenue(raw.showChange),
@@ -861,6 +887,8 @@ export function migrateFinanceDisplay(
     defaultSort:
       (raw.defaultSort as FinanceDisplayPrefs["defaultSort"] | undefined) ??
       DEFAULT_CHANNEL_DISPLAY.finance.defaultSort,
+    feedDensity: density,
+    tickerDirectionMarker: dirMarker,
   };
 }
 
