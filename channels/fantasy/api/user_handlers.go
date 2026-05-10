@@ -29,6 +29,15 @@ import (
 // session before proxying here. The old `?logto_sub=` query fallback was
 // removed because it allowed an attacker to bind their own Yahoo
 // credentials to an arbitrary victim's Scrollr account.
+//
+// Response shape is content-negotiated:
+//   - `Accept: application/json` (or `?response=json`) → 200 with
+//     {"redirect_url": "<yahoo consent url>"}. The desktop app uses
+//     this so it can call /yahoo/start with a Bearer header (which the
+//     system browser cannot carry) and then `shell::open` the returned
+//     URL externally.
+//   - Otherwise (HTML / wildcard) → 307 redirect to Yahoo. Used when a
+//     logged-in browser session hits the URL directly.
 func (a *App) YahooStart(c *fiber.Ctx) error {
 	logtoSub := GetUserSub(c)
 	if logtoSub == "" {
@@ -63,6 +72,16 @@ func (a *App) YahooStart(c *fiber.Ctx) error {
 	// Force Yahoo to show the login screen every time so the user can pick
 	// the correct Yahoo account.
 	authURL := a.yahooConfig.AuthCodeURL(state, oauth2.SetAuthURLParam("prompt", "login"))
+
+	// Content negotiation: JSON for programmatic callers (desktop app),
+	// 307 redirect for browser navigations.
+	wantsJSON := c.Query("response") == "json" ||
+		strings.Contains(strings.ToLower(c.Get(fiber.HeaderAccept)), "application/json")
+	if wantsJSON {
+		log.Printf("[YahooStart] Returning JSON consent URL (state=%s…) redirect_uri=%s", state[:8], a.yahooConfig.RedirectURL)
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{"redirect_url": authURL})
+	}
+
 	log.Printf("[YahooStart] Redirecting to Yahoo OAuth (state=%s…) redirect_uri=%s", state[:8], a.yahooConfig.RedirectURL)
 	return c.Redirect(authURL, fiber.StatusTemporaryRedirect)
 }
