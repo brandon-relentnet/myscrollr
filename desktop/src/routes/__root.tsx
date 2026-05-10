@@ -31,7 +31,7 @@ import { Toaster, toast } from "sonner";
 import TitleBar from "../components/TitleBar";
 import Sidebar from "../components/Sidebar";
 import ConnectionBanner from "../components/ConnectionBanner";
-import ControlStrip from "../components/ControlStrip";
+import TopBar from "../components/TopBar";
 
 // Onboarding
 import AuthGate from "../components/onboarding/AuthGate";
@@ -72,6 +72,7 @@ import { useWidgetActions } from "../hooks/useWidgetActions";
 import { useDashboardCDC } from "../hooks/useDashboardCDC";
 import { useTauriListener } from "../hooks/useTauriListener";
 import { useDeliveryHealth } from "../hooks/useDeliveryHealth";
+import { useNavHistory } from "../hooks/useNavHistory";
 import { weatherQueryOptions } from "../api/queries";
 import { fetchSubscription } from "../api/client";
 import { getValidToken } from "../auth";
@@ -161,6 +162,7 @@ function parseRoute(pathname: string) {
 function RootLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const navHistory = useNavHistory();
   const route = parseRoute(location.pathname);
 
   // ── Auth (must be before dashboard query — tier drives refetchInterval) ──
@@ -745,16 +747,19 @@ function RootLayout() {
         <>
           {!IS_MACOS && <TitleBar />}
 
-          {/* Control strip — ambient ticker on/off + pin + connection
-              status. Sits between the OS title bar and the sidebar/
-              content split so it's always visible regardless of route.
-              Replaces the absolutely-positioned ConnectionIndicator
-              and gives ticker on/off a chrome-level home (was buried
-              in Settings → Ticker pre-refactor). */}
-          <ControlStrip
+          {/* TopBar — primary chrome row spanning the full window.
+              Houses the Scrollr brand mark, Spotify-style forward/back
+              navigation, and the ambient ticker/pin/connection
+              controls. Always visible regardless of route. */}
+          <TopBar
             tickerOn={prefs.ticker.showTicker}
             pinned={prefs.window.pinned}
             health={deliveryHealth}
+            canBack={navHistory.canBack}
+            canForward={navHistory.canForward}
+            onNavigateHome={handleNavigateToFeed}
+            onBack={navHistory.back}
+            onForward={navHistory.forward}
             onToggleTicker={handleTickerToggle}
             onTogglePin={handlePinToggle}
           />
@@ -767,7 +772,6 @@ function RootLayout() {
               isSupport={route.isSupport}
               activeItem={route.activeItem}
               sources={sidebarSources}
-              tickerAlive={prefs.ticker.showTicker}
               onNavigateToFeed={handleNavigateToFeed}
               onNavigateToSettings={handleNavigateToSettings}
               onNavigateToMarketplace={handleNavigateToMarketplace}

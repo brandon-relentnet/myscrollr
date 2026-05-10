@@ -1,11 +1,15 @@
 /**
  * PageLayout — universal page chassis used by every main-window route.
  *
- * Provides the four canonical regions every page shares:
- *   1. Header band     — breadcrumb + title + subtitle + entityAction
- *   2. Tab band        — optional sub-navigation
- *   3. Content stack   — children (typically <PageSection> blocks)
- *   4. Footer          — optional destructive/peripheral actions
+ * Provides three canonical regions:
+ *   1. Header band — title + subtitle (inline) + entityAction
+ *      + optional tab band on the same row
+ *   2. Content stack — children (typically <PageSection> blocks)
+ *   3. Footer — optional destructive/peripheral actions
+ *
+ * Back navigation does NOT live in the page header anymore — it's in
+ * the TopBar (always visible, Spotify-style forward/back). One
+ * canonical home for "go back" across the whole app.
  *
  * The chassis enforces consistent vertical rhythm, header height,
  * paddings, and action placement across every route. Distinctive
@@ -16,7 +20,6 @@
  * docs/superpowers/specs/2026-05-09-desktop-ia-refactor-design.md
  */
 import type { ReactNode } from "react";
-import { ChevronLeft } from "lucide-react";
 import clsx from "clsx";
 
 // ── Tab type ────────────────────────────────────────────────────
@@ -33,22 +36,10 @@ export interface PageTab {
 // ── Props ───────────────────────────────────────────────────────
 
 interface PageLayoutProps {
-  /** Page title — short, lowercased SaaS-y label rendered in mono uppercase. */
+  /** Page title — capitalized, normal-case. Sized for legibility, not stamped. */
   title: string;
   /** Single-line subtitle that explains the page. Optional. */
   subtitle?: string;
-
-  /**
-   * Breadcrumb back affordance — when present, renders a left chevron
-   * with parent-path label, click navigates back. Source pages use
-   * this; top-level pages (Home, Catalog, Settings, Support) don't.
-   */
-  breadcrumb?: {
-    /** Label of the parent (e.g. "Home"). */
-    parentLabel: string;
-    /** Click handler — typically navigates to the parent route. */
-    onBack: () => void;
-  };
 
   /**
    * Destructive or contextual action tied to the page entity.
@@ -81,7 +72,6 @@ interface PageLayoutProps {
 export default function PageLayout({
   title,
   subtitle,
-  breadcrumb,
   entityAction,
   tabs,
   children,
@@ -93,33 +83,23 @@ export default function PageLayout({
   return (
     <div className="flex flex-col h-full">
       {/* ── Header band ─────────────────────────────────────── */}
-      <header
-        className={clsx(
-          "shrink-0 border-b border-edge/40 bg-surface",
-          tabs ? "pb-0" : "pb-3",
-        )}
-      >
-        <div className={clsx("mx-auto px-5 pt-5", widthClass)}>
-          {/* Breadcrumb row (when present) */}
-          {breadcrumb && (
-            <button
-              onClick={breadcrumb.onBack}
-              aria-label={`Back to ${breadcrumb.parentLabel}`}
-              className="flex items-center gap-0.5 text-[11px] text-fg-4 hover:text-fg-2 transition-colors mb-1.5 -ml-1"
-            >
-              <ChevronLeft size={13} />
-              <span>{breadcrumb.parentLabel}</span>
-            </button>
-          )}
-
-          {/* Title + subtitle + entity action row */}
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <h1 className="text-[11px] font-mono font-semibold text-fg-4 uppercase tracking-wider mb-1">
+      <header className="shrink-0 border-b border-edge/30 bg-surface">
+        <div className={clsx("mx-auto px-5 pt-3.5 pb-0", widthClass)}>
+          {/* Single-line title row: title + subtitle inline + entityAction.
+              Subtitle is rendered next to the title with a divider so
+              the page header stays compact (one row instead of two). */}
+          <div className="flex items-center justify-between gap-4 min-h-[24px]">
+            <div className="flex items-baseline gap-2.5 min-w-0 flex-1">
+              <h1 className="text-[15px] font-semibold text-fg tracking-tight truncate">
                 {title}
               </h1>
               {subtitle && (
-                <p className="text-xs text-fg-4">{subtitle}</p>
+                <>
+                  <span className="text-fg-4/40 text-xs shrink-0" aria-hidden>
+                    ·
+                  </span>
+                  <p className="text-[12px] text-fg-4 truncate">{subtitle}</p>
+                </>
               )}
             </div>
             {entityAction && (
@@ -129,10 +109,11 @@ export default function PageLayout({
             )}
           </div>
 
-          {/* Tab band (optional) */}
+          {/* Tab band — sits flush against the bottom border of the
+              header so the active tab's accent line is the divider. */}
           {tabs && (
             <nav
-              className="flex flex-wrap gap-1 mt-4 -mb-px"
+              className="flex flex-wrap gap-0 mt-2.5 -mb-px"
               aria-label="Page sections"
             >
               {tabs.items.map((tab) => {
@@ -144,10 +125,10 @@ export default function PageLayout({
                     aria-current={isActive ? "page" : undefined}
                     title={tab.description}
                     className={clsx(
-                      "px-3 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px",
+                      "px-3 py-2 text-[12px] font-medium transition-colors border-b-2 -mb-px",
                       isActive
                         ? "text-accent border-accent"
-                        : "text-fg-3 border-transparent hover:text-fg-2 hover:border-edge",
+                        : "text-fg-3 border-transparent hover:text-fg-2",
                     )}
                   >
                     {tab.label}
@@ -156,6 +137,9 @@ export default function PageLayout({
               })}
             </nav>
           )}
+
+          {/* Bottom spacing when no tabs (so title doesn't kiss the border) */}
+          {!tabs && <div className="h-3.5" />}
         </div>
       </header>
 

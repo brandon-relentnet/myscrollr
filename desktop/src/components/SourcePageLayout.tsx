@@ -65,11 +65,14 @@ const SOURCE_TABS = [
 
 interface SourcePageLayoutProps {
   name: string;
-  /** Optional 1-line description rendered under the name. */
+  /** Optional 1-line description rendered next to the name. */
   description?: string;
   activeTab: string;
   onTabChange: (tab: string) => void;
-  onBack: () => void;
+  /** Kept for backward compat — unused now that back navigation lives
+   *  in the TopBar. Source pages still receive it so the channel/widget
+   *  routes can call it from other places (e.g. after Trash). */
+  onBack?: () => void;
   children: React.ReactNode;
 
   /** Source-level remove action. */
@@ -83,7 +86,6 @@ export default function SourcePageLayout({
   description,
   activeTab,
   onTabChange,
-  onBack,
   children,
   onRemove,
   sourceKind,
@@ -116,7 +118,6 @@ export default function SourcePageLayout({
         title={name}
         subtitle={description}
         width="narrow"
-        breadcrumb={{ parentLabel: "Home", onBack }}
         entityAction={entityAction}
         tabs={{
           items: SOURCE_TABS,
