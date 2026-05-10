@@ -319,8 +319,19 @@ export default function FantasyConfigPanel({
 
   // ── Render ─────────────────────────────────────────────────────
 
+  // Configure tab is rendered inside PageLayout's `fillHeight` mode,
+  // which disables outer scrolling and expects the child to provide
+  // its own scroll panel (see desktop/src/components/layout/PageLayout.tsx).
+  // Without this wrapper the page becomes uncroppable when the picker
+  // (or ConnectedView with several leagues) grows past the viewport.
+  // Mirrors the Finance/Sports/RSS Manager pattern.
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="h-full min-h-0 flex flex-col">
+    {/* Inner wrapper handles its own scroll because PageLayout is in
+        fillHeight mode (see comment block above). Indentation is
+        intentionally one level shallower to avoid re-indenting the
+        rest of this large render. */}
+    <div className="w-full max-w-2xl mx-auto flex-1 min-h-0 overflow-y-auto scrollbar-thin pb-5">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6 px-3">
         <div
@@ -488,6 +499,7 @@ export default function FantasyConfigPanel({
           onDisconnect={handleYahooDisconnect}
         />
       )}
+    </div>
     </div>
   );
 }
