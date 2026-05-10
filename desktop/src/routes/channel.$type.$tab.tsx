@@ -20,17 +20,16 @@ import { getChannel, getAllChannels } from "../channels/registry";
 import { dashboardQueryOptions } from "../api/queries";
 import ChannelConfigPanel from "../channels/ChannelConfigPanel";
 import FinanceDisplayPanel from "../channels/finance/DisplayPanel";
-import { useShell, useShellData } from "../shell-context";
+import SportsDisplayPanel from "../channels/sports/DisplayPanel";
+import { useShell } from "../shell-context";
 import { Section, ToggleRow, ResetButton, SegmentedRow } from "../components/settings/SettingsControls";
 import DisplayItemsGrid from "../components/settings/DisplayItemsGrid";
 import type { DisplayItemsSection } from "../components/settings/DisplayItemsGrid";
 import FollowedPlayersPicker from "../components/settings/FollowedPlayersPicker";
-import { useSportsConfig } from "../hooks/useSportsConfig";
 import { loadPref } from "../preferences";
 import type { Channel, ChannelType } from "../api/client";
 import type { DashboardResponse, DeliveryMode } from "../types";
 import type { RssDisplayPrefs, FantasyDisplayPrefs, Venue } from "../preferences";
-import type { SportsDisplayPrefs } from "../hooks/useSportsConfig";
 
 export const Route = createFileRoute("/channel/$type/$tab")({
   loader: ({ context: { queryClient } }) =>
@@ -176,7 +175,7 @@ function ChannelDisplayTab({ type }: { type: string }) {
     case "finance":
       return <FinanceDisplayPanel />;
     case "sports":
-      return <SportsDisplay />;
+      return <SportsDisplayPanel />;
     case "rss":
       return <RssDisplay />;
     case "fantasy":
@@ -184,49 +183,6 @@ function ChannelDisplayTab({ type }: { type: string }) {
     default:
       return null;
   }
-}
-
-function SportsDisplay() {
-  const { display, setDisplay } = useSportsConfig();
-
-  function applyDisplayChanges(changes: Record<string, Venue>) {
-    setDisplay(changes as Partial<SportsDisplayPrefs>);
-  }
-
-  function handleReset() {
-    setDisplay({
-      showUpcoming: "both",
-      showFinal: "both",
-      showLogos: "both",
-      showTimer: "both",
-    });
-  }
-
-  const sections: DisplayItemsSection[] = [
-    {
-      title: "Card chrome",
-      rows: [
-        { key: "showLogos", label: "Team logos", description: "Show team logos on cards and ticker chips", value: display.showLogos },
-        { key: "showTimer", label: "Game clock / status", description: "Quarter, period, or final-time indicator", value: display.showTimer },
-      ],
-    },
-    {
-      title: "Game filters",
-      rows: [
-        { key: "showUpcoming", label: "Upcoming games", description: "Pre-event games (scheduled but not yet started)", value: display.showUpcoming },
-        { key: "showFinal", label: "Final scores", description: "Completed games", value: display.showFinal },
-      ],
-    },
-  ];
-
-  return (
-    <div className="space-y-6 pb-8">
-      <DisplayItemsGrid sections={sections} onChange={applyDisplayChanges} />
-      <div className="flex items-center justify-end pt-2">
-        <ResetButton label="Reset display settings" onClick={handleReset} />
-      </div>
-    </div>
-  );
 }
 
 function RssDisplay() {
