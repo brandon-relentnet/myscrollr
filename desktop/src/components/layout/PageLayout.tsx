@@ -16,6 +16,7 @@
  */
 import type { ReactNode } from "react";
 import clsx from "clsx";
+import { motion, AnimatePresence } from "motion/react";
 import { useRegisterPageIdentity } from "./page-context";
 import type { OverflowMenuItem } from "../OverflowMenu";
 
@@ -153,20 +154,34 @@ export default function PageLayout({
         </div>
       )}
 
-      {/* ── Content stack ──────────────────────────────────── */}
+      {/* ── Content stack ────────────────────────────────────
+          Children are wrapped in an AnimatePresence + motion.div
+          keyed on title+subtitle so navigating between sub-routes
+          (e.g. Feed → Configure → Display on a source page) cross-
+          fades the content while the TopBar chrome and tab band
+          stay stable. The cross-fade uses 'wait' mode for a clean
+          one-at-a-time transition without overlap during route
+          changes. */}
       {fillHeight ? (
         // Fill-height mode: content area is a flex column with no
         // outer scroll. Children manage their own scrollable panel.
         // Used by Configure routes that have a long inner list.
         <div className="flex-1 min-h-0 flex flex-col">
-          <div
-            className={clsx(
-              "mx-auto px-5 pt-5 pb-0 w-full flex-1 min-h-0 flex flex-col",
-              widthClass,
-            )}
-          >
-            {children}
-          </div>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={`${title}::${subtitle ?? ""}`}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.18, ease: [0.22, 0.61, 0.36, 1] }}
+              className={clsx(
+                "mx-auto px-5 pt-5 pb-0 w-full flex-1 min-h-0 flex flex-col",
+                widthClass,
+              )}
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
           {footer && (
             <div className="border-t border-edge/40 shrink-0">
               <div className={clsx("mx-auto px-5 py-4", widthClass)}>
@@ -178,9 +193,18 @@ export default function PageLayout({
       ) : (
         // Default mode: content area scrolls; children stack vertically.
         <div className="flex-1 overflow-y-auto scrollbar-thin">
-          <div className={clsx("mx-auto px-5 py-5", widthClass)}>
-            {children}
-          </div>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={`${title}::${subtitle ?? ""}`}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.18, ease: [0.22, 0.61, 0.36, 1] }}
+              className={clsx("mx-auto px-5 py-5", widthClass)}
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
           {footer && (
             <div className="border-t border-edge/40">
               <div className={clsx("mx-auto px-5 py-4", widthClass)}>

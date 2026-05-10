@@ -18,6 +18,7 @@
  */
 import { ArrowLeft, ArrowRight, ChevronDown, Pin, Radio, RadioTower } from "lucide-react";
 import clsx from "clsx";
+import { motion, AnimatePresence } from "motion/react";
 import Tooltip from "./Tooltip";
 import ConnectionIndicator from "./ConnectionIndicator";
 import ScrollLogo from "./ScrollLogo";
@@ -84,7 +85,7 @@ export default function TopBar({
             disabled={!canBack}
             aria-label="Go back"
             className={clsx(
-              "flex items-center justify-center w-7 h-7 rounded-md transition-colors",
+              "flex items-center justify-center w-7 h-7 rounded-md transition-all duration-150 active:scale-90",
               canBack
                 ? "text-fg-2 hover:text-fg hover:bg-surface-hover"
                 : "text-fg-4/40 cursor-not-allowed",
@@ -99,7 +100,7 @@ export default function TopBar({
             disabled={!canForward}
             aria-label="Go forward"
             className={clsx(
-              "flex items-center justify-center w-7 h-7 rounded-md transition-colors",
+              "flex items-center justify-center w-7 h-7 rounded-md transition-all duration-150 active:scale-90",
               canForward
                 ? "text-fg-2 hover:text-fg hover:bg-surface-hover"
                 : "text-fg-4/40 cursor-not-allowed",
@@ -172,29 +173,39 @@ export default function TopBar({
               );
             })()}
 
-            {page.subtitle && (
-              <>
-                <span className="text-fg-4/40 shrink-0" aria-hidden>
-                  /
-                </span>
-                {/* Subtitle segment — when menuItems are present this
-                    is the menu trigger; otherwise plain text. */}
-                {page.menuItems?.length ? (
-                  <OverflowMenu
-                    items={page.menuItems}
-                    triggerLabel={page.menuLabel ?? "Page options"}
-                    trigger={
-                      <BreadcrumbMenuTrigger
-                        label={page.subtitle}
-                        muted
-                      />
-                    }
-                  />
-                ) : (
-                  <span className="text-fg-3 truncate">{page.subtitle}</span>
-                )}
-              </>
-            )}
+            {/* Subtitle segment — slides in when entering a sub-route
+                and out when leaving. Keyed on the subtitle text so
+                switching between Configure and Display also animates. */}
+            <AnimatePresence mode="popLayout" initial={false}>
+              {page.subtitle && (
+                <motion.div
+                  key={page.subtitle}
+                  initial={{ opacity: 0, x: -6, filter: "blur(2px)" }}
+                  animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, x: -6, filter: "blur(2px)" }}
+                  transition={{ duration: 0.22, ease: [0.22, 0.61, 0.36, 1] }}
+                  className="flex items-center gap-1.5 min-w-0"
+                >
+                  <span className="text-fg-4/40 shrink-0" aria-hidden>
+                    /
+                  </span>
+                  {page.menuItems?.length ? (
+                    <OverflowMenu
+                      items={page.menuItems}
+                      triggerLabel={page.menuLabel ?? "Page options"}
+                      trigger={
+                        <BreadcrumbMenuTrigger
+                          label={page.subtitle}
+                          muted
+                        />
+                      }
+                    />
+                  ) : (
+                    <span className="text-fg-3 truncate">{page.subtitle}</span>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Fallback non-menu action (rare). */}
             {page.entityAction && !page.menuItems?.length && (
@@ -218,7 +229,7 @@ export default function TopBar({
             aria-checked={tickerOn}
             onClick={onToggleTicker}
             className={clsx(
-              "flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[11px] font-medium transition-colors",
+              "flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[11px] font-medium transition-all duration-200 active:scale-95",
               tickerOn
                 ? "bg-accent/15 text-accent hover:bg-accent/20"
                 : "text-fg-4 hover:text-fg-2 hover:bg-surface-hover",
@@ -242,13 +253,19 @@ export default function TopBar({
             onClick={onTogglePin}
             aria-label={pinned ? "Unpin window" : "Pin window on top"}
             className={clsx(
-              "flex items-center justify-center w-7 h-7 rounded-md transition-colors",
+              "flex items-center justify-center w-7 h-7 rounded-md transition-all duration-200 active:scale-90",
               pinned
                 ? "bg-info/15 text-info hover:bg-info/20"
                 : "text-fg-4 hover:text-fg-2 hover:bg-surface-hover",
             )}
           >
-            <Pin size={12} className={clsx(pinned && "fill-current")} />
+            <Pin
+              size={12}
+              className={clsx(
+                "transition-transform duration-200",
+                pinned && "fill-current rotate-45",
+              )}
+            />
           </button>
         </Tooltip>
 
@@ -302,11 +319,16 @@ function BreadcrumbMenuTrigger({
       <span className="truncate">{label}</span>
       <ChevronDown
         size={11}
+        // 500ms calculated duration on a snap spring — feels more
+        // satisfying than the default linear flip without dragging.
+        style={{
+          transition: "transform 500ms var(--ease-snap)",
+          transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+        }}
         className={clsx(
-          "shrink-0 transition-transform",
+          "shrink-0",
           muted ? "text-fg-4" : "text-fg-3",
-          isOpen && "rotate-180",
-          "group-hover:text-fg-2",
+          "group-hover:text-fg-2 transition-colors",
         )}
       />
     </button>

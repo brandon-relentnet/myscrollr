@@ -127,9 +127,24 @@ export default function OverflowMenu({
   ]);
 
   const { isMounted, styles: transitionStyles } = useTransitionStyles(context, {
-    duration: 120,
-    initial: { opacity: 0, transform: "translateY(-4px) scale(0.97)" },
-    open: { opacity: 1, transform: "translateY(0) scale(1)" },
+    // Open uses the pop spring (slight overshoot). Close is a faster
+    // out-soft so dismissals don't feel sluggish.
+    duration: { open: 350, close: 140 },
+    common: ({ side }) => ({
+      transformOrigin: side === "top" ? "bottom" : "top",
+    }),
+    initial: {
+      opacity: 0,
+      transform: "translateY(-6px) scale(0.96)",
+      transition:
+        "opacity 140ms var(--ease-out-soft), transform 140ms var(--ease-out-soft)",
+    },
+    open: {
+      opacity: 1,
+      transform: "translateY(0) scale(1)",
+      transition:
+        "opacity 140ms var(--ease-out-soft), transform 350ms var(--ease-pop)",
+    },
   });
 
   // Default trigger: a small pill button with a Settings2 (sliders +
@@ -154,7 +169,10 @@ export default function OverflowMenu({
       <span>Options</span>
       <ChevronDown
         size={11}
-        className={clsx("transition-transform", isOpen && "rotate-180")}
+        style={{
+          transition: "transform 500ms var(--ease-snap)",
+          transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+        }}
       />
     </button>
   );
