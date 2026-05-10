@@ -280,6 +280,20 @@ export interface FinanceDisplayPrefs {
   showPrevClose: Venue;
   showLastUpdated: Venue;
   defaultSort: "alpha" | "price" | "change" | "updated";
+  /**
+   * Feed density. "comfort" (default) renders the two-row card with
+   * symbol + category badge + price + change + relative timestamp.
+   * "compact" renders a single-row condensed view — symbol, price,
+   * percent only — and stacks roughly twice as many tickers per
+   * viewport. Drives the per-row component in FeedTab.
+   */
+  feedDensity: "compact" | "comfort";
+  /**
+   * Direction marker on the ticker chip. "arrow" uses ▲▼ glyphs,
+   * "sign" uses +/− text, "none" hides the marker entirely
+   * (% change still renders, just without the leading marker).
+   */
+  tickerDirectionMarker: "arrow" | "sign" | "none";
 }
 
 export interface RssDisplayPrefs {
@@ -385,8 +399,6 @@ export interface AppPreferences {
   channelDisplay: ChannelDisplayPrefs;
   /** Per-channel homepage preview selections (up to 5 group keys). */
   homePreview: HomePreview;
-  /** Show the setup wizard when signing in. Users can disable this. */
-  showSetupOnLogin: boolean;
   /**
    * IDs of one-time discovery tips the user has already seen.
    *
@@ -409,7 +421,7 @@ const DEFAULT_TICKER_LAYOUT: TickerLayout = {
 };
 
 const DEFAULT_APPEARANCE: AppearancePrefs = {
-  theme: "dark",
+  theme: "system",
   uiScale: 100,
   tickerLayout: { rows: [{ sources: [] }] },
   fontWeight: "normal",
@@ -491,6 +503,8 @@ const DEFAULT_CHANNEL_DISPLAY: ChannelDisplayPrefs = {
     showPrevClose: "both",
     showLastUpdated: "both",
     defaultSort: "alpha",
+    feedDensity: "comfort",
+    tickerDirectionMarker: "arrow",
   },
   rss: {
     showDescription: "both",
@@ -568,7 +582,6 @@ const DEFAULT_PREFS: AppPreferences = {
   widgets: DEFAULT_WIDGETS,
   channelDisplay: DEFAULT_CHANNEL_DISPLAY,
   homePreview: {},
-  showSetupOnLogin: true,
   tipsShown: [],
 };
 
@@ -856,6 +869,16 @@ export function migrateFinanceDisplay(
   saved: Partial<FinanceDisplayPrefs> | undefined,
 ): FinanceDisplayPrefs {
   const raw = (saved ?? {}) as Record<string, unknown>;
+  const density =
+    raw.feedDensity === "compact" || raw.feedDensity === "comfort"
+      ? raw.feedDensity
+      : DEFAULT_CHANNEL_DISPLAY.finance.feedDensity;
+  const dirMarker =
+    raw.tickerDirectionMarker === "arrow" ||
+    raw.tickerDirectionMarker === "sign" ||
+    raw.tickerDirectionMarker === "none"
+      ? raw.tickerDirectionMarker
+      : DEFAULT_CHANNEL_DISPLAY.finance.tickerDirectionMarker;
   return {
     ...DEFAULT_CHANNEL_DISPLAY.finance,
     showChange: migrateVenue(raw.showChange),
@@ -864,6 +887,8 @@ export function migrateFinanceDisplay(
     defaultSort:
       (raw.defaultSort as FinanceDisplayPrefs["defaultSort"] | undefined) ??
       DEFAULT_CHANNEL_DISPLAY.finance.defaultSort,
+    feedDensity: density,
+    tickerDirectionMarker: dirMarker,
   };
 }
 
@@ -1026,7 +1051,6 @@ export function loadPrefs(): AppPreferences {
         source.homePreview && typeof source.homePreview === "object" && !Array.isArray(source.homePreview)
           ? (source.homePreview as HomePreview)
           : {},
-      showSetupOnLogin: typeof source.showSetupOnLogin === "boolean" ? source.showSetupOnLogin : true,
       // Tolerate older builds that didn't have `tipsShown`. Treat
       // missing/invalid as "no tips shown yet" so the user gets a
       // proper first-run experience after upgrading.
@@ -1093,7 +1117,6 @@ export function resetAll(): AppPreferences {
     widgets: { ...DEFAULT_WIDGETS },
     channelDisplay: { ...DEFAULT_CHANNEL_DISPLAY },
     homePreview: {},
-    showSetupOnLogin: true,
     // Reset clears tipsShown — the user explicitly asked for a clean
     // slate, so they'll re-experience first-run discovery hints.
     tipsShown: [],

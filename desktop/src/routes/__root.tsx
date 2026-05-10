@@ -22,17 +22,19 @@ import { getVersion } from "@tauri-apps/api/app";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import clsx from "clsx";
 import { Toaster, toast } from "sonner";
-import "sonner/dist/styles.css";
+// Note: sonner CSS is imported in src/app-main.tsx so it ships in the
+// entry bundle. Importing it here would put it in this route's
+// code-split chunk, causing toasts to appear unstyled until the chunk
+// CSS arrives (the original "unstyled until first Undo click" bug).
 
 // Shell components
 import TitleBar from "../components/TitleBar";
 import Sidebar from "../components/Sidebar";
 import ConnectionBanner from "../components/ConnectionBanner";
-import ConnectionIndicator from "../components/ConnectionIndicator";
+import TopBar from "../components/TopBar";
 
 // Onboarding
 import AuthGate from "../components/onboarding/AuthGate";
-import OnboardingWizard from "../components/onboarding/OnboardingWizard";
 
 // Registries
 import { getAllChannels } from "../channels/registry";
@@ -48,6 +50,7 @@ import {
   loadPrefs,
   savePrefs,
   consumeTickerLayoutChanged,
+  resolveTheme,
 } from "../preferences";
 import type { AppPreferences } from "../preferences";
 import {
@@ -69,6 +72,7 @@ import { useWidgetActions } from "../hooks/useWidgetActions";
 import { useDashboardCDC } from "../hooks/useDashboardCDC";
 import { useTauriListener } from "../hooks/useTauriListener";
 import { useDeliveryHealth } from "../hooks/useDeliveryHealth";
+import { useNavHistory } from "../hooks/useNavHistory";
 import { weatherQueryOptions } from "../api/queries";
 import { fetchSubscription } from "../api/client";
 import { getValidToken } from "../auth";
@@ -78,6 +82,7 @@ import { POLL_INTERVALS } from "../cdc";
 
 // Shell context
 import { ShellContext, ShellDataContext } from "../shell-context";
+import { PageIdentityProvider } from "../components/layout/page-context";
 
 // Store
 import { onStoreChange, setStore, removeStore } from "../lib/store";
@@ -158,6 +163,7 @@ function parseRoute(pathname: string) {
 function RootLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const navHistory = useNavHistory();
   const route = parseRoute(location.pathname);
 
   // ── Auth (must be before dashboard query — tier drives refetchInterval) ──
@@ -357,18 +363,11 @@ function RootLayout() {
   );
   const [billingBannerDismissed, setBillingBannerDismissed] = useState(false);
 
-  // ── Onboarding state ────────────────────────────────────────
-  // Session-local: once dismissed (skip or finish), stays dismissed until next sign-out.
-  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
-
-  // Reset on sign-out so the wizard shows again on next sign-in.
-  useEffect(() => {
-    if (!auth.authenticated) setOnboardingDismissed(false);
-  }, [auth.authenticated]);
-
+  // ── App / auth state ────────────────────────────────────────
+  // The wizard was removed in the IA refactor (2026-05-09). New
+  // users land directly on /feed which renders an empty hero card.
   const showAuthGate = !auth.authenticated;
-  const showOnboarding = auth.authenticated && prefs.showSetupOnLogin && !onboardingDismissed;
-  const showApp = auth.authenticated && !showOnboarding;
+  const showApp = auth.authenticated;
 
   // ── SSE status tracking ─────────────────────────────────────
   // Listen directly for SSE status events from the Rust backend.
@@ -659,12 +658,6 @@ function RootLayout() {
   // shell-context wiring further down continues to read naturally.
   const handlePrefsChange = persistPrefs;
 
-  const handleOnboardingComplete = useCallback((nextPrefs: AppPreferences) => {
-    setPrefs(nextPrefs);
-    savePrefs(nextPrefs);
-    setOnboardingDismissed(true);
-  }, []);
-
   const handleAutostartChange = useCallback(async (enabled: boolean) => {
     try {
       if (enabled) await enableAutostart();
@@ -675,6 +668,25 @@ function RootLayout() {
       toast.error("Couldn't update startup settings");
     }
   }, []);
+
+  // ── ControlStrip handlers ───────────────────────────────────
+  // Two ambient toggles always visible below the title bar so users
+  // never have to dig into Settings → Ticker to toggle the entire
+  // product on/off. Same prefs as Settings → Ticker top toggle and
+  // Settings → Appearance → Always on top — single source of truth.
+  const handleTickerToggle = useCallback(() => {
+    persistPrefs({
+      ...prefs,
+      ticker: { ...prefs.ticker, showTicker: !prefs.ticker.showTicker },
+    });
+  }, [prefs, persistPrefs]);
+
+  const handlePinToggle = useCallback(() => {
+    persistPrefs({
+      ...prefs,
+      window: { ...prefs.window, pinned: !prefs.window.pinned },
+    });
+  }, [prefs, persistPrefs]);
 
   // ── Shell context values (split: stable + volatile) ────────
 
@@ -716,10 +728,13 @@ function RootLayout() {
 
   // ── Render ──────────────────────────────────────────────────
 
+  // Resolve theme for portal-based components (Toaster) that don't
+  // inherit the shell's data-theme attribute.
+  const resolvedToasterTheme = resolveTheme(prefs.appearance.theme);
+
   return (
     <div
       id="app-shell"
-      data-theme="dark"
       className={clsx(
         "flex flex-col h-screen w-screen overflow-hidden bg-surface text-fg",
         !IS_MACOS && "custom-chrome",
@@ -728,44 +743,43 @@ function RootLayout() {
       {/* ── Auth gate: unauthenticated users ── */}
       {showAuthGate && <AuthGate onLogin={auth.handleLogin} />}
 
-      {/* ── Onboarding wizard: authenticated, not yet onboarded ── */}
-      {showOnboarding && (
-        <OnboardingWizard prefs={prefs} tier={auth.tier} onComplete={handleOnboardingComplete} />
-      )}
-
-      {/* ── Main app shell: authenticated + onboarded ── */}
+      {/* ── Main app shell: authenticated ── */}
       {showApp && (
-        <>
+        <PageIdentityProvider>
           {!IS_MACOS && <TitleBar />}
+
+          {/* TopBar — primary chrome row spanning the full window.
+              Houses the Scrollr brand mark, Spotify-style forward/back
+              navigation, page-identity breadcrumb (read from
+              PageContext), entityAction, and the ambient ticker/pin/
+              connection controls. Always visible regardless of route. */}
+          <TopBar
+            tickerOn={prefs.ticker.showTicker}
+            pinned={prefs.window.pinned}
+            health={deliveryHealth}
+            canBack={navHistory.canBack}
+            canForward={navHistory.canForward}
+            onNavigateHome={handleNavigateToFeed}
+            onBack={navHistory.back}
+            onForward={navHistory.forward}
+            onToggleTicker={handleTickerToggle}
+            onTogglePin={handlePinToggle}
+          />
 
           <div className="flex flex-1 min-h-0 overflow-hidden">
             <Sidebar
-              isFeed={route.isFeed}
               isSettings={route.isSettings}
               isMarketplace={route.isMarketplace}
               isSupport={route.isSupport}
               activeItem={route.activeItem}
               sources={sidebarSources}
-              deliveryMode={deliveryMode}
-              tickerAlive={prefs.ticker.showTicker}
-              onNavigateToFeed={handleNavigateToFeed}
-              onNavigateToSettings={handleNavigateToSettings}
               onNavigateToMarketplace={handleNavigateToMarketplace}
+              onNavigateToSettings={handleNavigateToSettings}
               onNavigateToSupport={handleNavigateToSupport}
               onSelectItem={handleSelectPinned}
             />
 
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-              {/* Connection indicator — pinned top-right so it's
-                  always visible without consuming layout. Hovers to
-                  reveal full state description. Phase 2 (Apr 26): the
-                  ConnectionBanner below still fires on actual outages,
-                  but THIS dot is the always-on signal. */}
-              <ConnectionIndicator
-                health={deliveryHealth}
-                className="absolute top-1 right-2 z-20"
-              />
-
               <ConnectionBanner deliveryMode={deliveryMode} tier={auth.tier} />
 
               {auth.sessionExpired && (
@@ -878,7 +892,10 @@ function RootLayout() {
                 return null;
               })()}
 
-              <div className="flex-1 overflow-y-auto scrollbar-thin" style={{ scrollbarGutter: "stable" }}>
+              {/* PageLayout (used by every route) owns its own scroll
+                  for its content area. The outer wrapper just provides
+                  the flex slot for it to fill. */}
+              <div className="flex-1 min-h-0 overflow-hidden">
                 <ShellContext.Provider value={shellStableValue}>
                   <ShellDataContext.Provider value={shellDataValue}>
                     <Outlet />
@@ -886,10 +903,10 @@ function RootLayout() {
                 </ShellContext.Provider>
               </div>
 
-              <Toaster theme="dark" richColors position="bottom-right" />
+              <Toaster theme={resolvedToasterTheme} richColors position="bottom-right" />
             </main>
           </div>
-        </>
+        </PageIdentityProvider>
       )}
 
       {/* Signing-in overlay — shows on ALL states (auth gate triggers login too) */}
@@ -919,7 +936,7 @@ function RootLayout() {
       )}
 
       {/* Toaster must be available in all states */}
-      {!showApp && <Toaster theme="dark" richColors position="bottom-right" />}
+      {!showApp && <Toaster theme={resolvedToasterTheme} richColors position="bottom-right" />}
     </div>
   );
 }

@@ -1,20 +1,29 @@
 import { clsx } from "clsx";
+import { motion } from "motion/react";
 import type { Venue } from "../../preferences";
 
 // ── Section heading ─────────────────────────────────────────────
 // Open layout: just a label + thin divider. No bordered card.
+// Optional `action` slot renders a small action affordance to the
+// right of the title (e.g. "All / None" bulk toggles on display
+// preferences).
 
 interface SectionProps {
   title: string;
   children: React.ReactNode;
+  /** Optional action element rendered top-right of the section title. */
+  action?: React.ReactNode;
 }
 
-export function Section({ title, children }: SectionProps) {
+export function Section({ title, children, action }: SectionProps) {
   return (
     <div className="mb-6 pb-5 border-b border-edge/30 last:border-b-0 last:mb-0 last:pb-0">
-      <h3 className="text-[11px] font-mono font-semibold uppercase tracking-wider text-fg-4 mb-3 px-3">
-        {title}
-      </h3>
+      <div className="flex items-center justify-between mb-3 px-3">
+        <h3 className="text-[11px] font-mono font-semibold uppercase tracking-wider text-fg-4">
+          {title}
+        </h3>
+        {action && <div className="shrink-0">{action}</div>}
+      </div>
       <div className="space-y-0.5">{children}</div>
     </div>
   );
@@ -59,12 +68,14 @@ export function ToggleRow({
           checked ? "bg-accent" : "bg-base-350",
         )}
       >
-        <div
+        {/* Thumb springs across with a slight overshoot so the toggle
+            feels physical rather than mechanical. */}
+        <motion.div
+          animate={{ x: checked ? 14 : 0 }}
+          transition={{ type: "spring", stiffness: 500, damping: 28 }}
           className={clsx(
-            "absolute top-[3px] left-[3px] h-3 w-3 rounded-full transition-transform duration-200",
-            checked
-              ? "translate-x-[14px] bg-surface"
-              : "translate-x-0 bg-fg-3",
+            "absolute top-[3px] left-[3px] h-3 w-3 rounded-full",
+            checked ? "bg-surface" : "bg-fg-3",
           )}
         />
       </div>
@@ -111,7 +122,7 @@ export function SegmentedRow<T extends string>({
             aria-checked={value === opt.value}
             onClick={() => onChange(opt.value)}
             className={clsx(
-              "px-2.5 py-1 text-[11px] font-medium rounded-md transition-all duration-200 cursor-pointer leading-none",
+              "px-2.5 py-1 text-[11px] font-medium rounded-md transition-all duration-200 active:scale-95 cursor-pointer leading-none",
               value === opt.value
                 ? "bg-base-300 text-fg shadow-sm"
                 : "text-fg-3 hover:text-fg-2",

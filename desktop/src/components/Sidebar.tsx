@@ -1,72 +1,35 @@
 /**
- * Sidebar — collapsible minimal navigation sidebar.
+ * Sidebar — collapsible source rail.
  *
- * Three nav items: Home, Catalog, Settings.
- * Channels and widgets are accessed from the dashboard cards.
+ * Post-polish-pass the sidebar is just a list of the user's enabled
+ * sources (channels + widgets). Home navigation lives on the Scrollr
+ * brand mark in the TopBar; Catalog navigation lives in the "+ Add
+ * source" button at the bottom of the source list. Settings + Support
+ * stay in the footer.
+ *
+ * Layout:
+ *   ┌──────────┐
+ *   │ SOURCES  │
+ *   │ Finance  │
+ *   │ Sports   │
+ *   │ Weather  │
+ *   │          │
+ *   │ + Add    │  ← drilled into Catalog
+ *   ├──────────┤
+ *   │ Settings │
+ *   │ Support  │
+ *   │ Collapse │
+ *   └──────────┘
+ *
  * Collapses to a 48px icon-only rail with tooltips.
  */
 import { useState } from "react";
-import { Home, LayoutGrid, Settings, LifeBuoy, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Settings, LifeBuoy, PanelLeftClose, PanelLeftOpen, Plus } from "lucide-react";
 import clsx from "clsx";
+import { motion } from "motion/react";
 import Tooltip from "./Tooltip";
-import type { DeliveryMode, ChannelManifest, WidgetManifest } from "../types";
+import type { ChannelManifest, WidgetManifest } from "../types";
 import { loadPref, savePref } from "../preferences";
-
-// ── Scroll S logo ───────────────────────────────────────────────
-// Solid mint when idle; animated channel-color gradient + glow when alive.
-
-const SCROLL_PATH =
-  "M4870 6321 c-100 -32 -157 -70 -215 -140 l-29 -36 41 37 c329 291 807 -68 501 -375 -132 -132 -60 -130 -1750 -66 -1538 57 -1544 57 -1792 9 -1687 -328 -1763 -2552 -101 -2980 253 -65 227 -64 1750 -65 1531 0 1427 4 1568 -66 371 -184 376 -666 9 -858 -160 -83 43 -75 -2157 -81 -2131 -6 -2047 -4 -2225 -61 -234 -74 -312 -243 -250 -539 54 -254 193 -701 256 -821 145 -275 578 -316 759 -72 l28 38 -39 -36 c-279 -257 -732 -25 -564 289 84 158 228 208 560 195 354 -13 3176 -93 3313 -93 895 0 1529 475 1690 1264 188 928 -386 1701 -1383 1862 -108 18 -198 19 -1510 19 l-1395 0 -78 22 c-556 158 -528 849 38 968 60 12 287 15 1525 15 1678 0 1780 4 1990 72 190 61 284 172 283 333 -2 156 -215 857 -302 991 -105 164 -326 238 -521 175z";
-
-function ScrollLogo({ alive }: { alive: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 639 639"
-      aria-hidden="true"
-      className={clsx("w-6 h-6 shrink-0", alive && "scroll-logo-alive")}
-    >
-      {alive && (
-        <defs>
-          <linearGradient id="sb-scroll-grad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%">
-              <animate
-                attributeName="stop-color"
-                values="#34d399;#ff4757;#00d4ff;#a855f7;#34d399"
-                dur="8s"
-                repeatCount="indefinite"
-              />
-            </stop>
-            <stop offset="50%">
-              <animate
-                attributeName="stop-color"
-                values="#00d4ff;#a855f7;#34d399;#ff4757;#00d4ff"
-                dur="8s"
-                repeatCount="indefinite"
-              />
-            </stop>
-            <stop offset="100%">
-              <animate
-                attributeName="stop-color"
-                values="#a855f7;#34d399;#ff4757;#00d4ff;#a855f7"
-                dur="8s"
-                repeatCount="indefinite"
-              />
-            </stop>
-          </linearGradient>
-        </defs>
-      )}
-      <g
-        transform="translate(0,639) scale(0.1,-0.1)"
-        fill={alive ? "url(#sb-scroll-grad)" : "var(--color-primary)"}
-        stroke="none"
-      >
-        <path d={SCROLL_PATH} />
-      </g>
-      <circle cx="492" cy="39" r="20" fill="var(--color-fg)" className={clsx(!alive && "opacity-60")} />
-      <circle cx="97" cy="599" r="20" fill="var(--color-fg)" className={clsx(!alive && "opacity-60")} />
-    </svg>
-  );
-}
 
 // ── Props ───────────────────────────────────────────────────────
 
@@ -79,31 +42,23 @@ interface SidebarSource {
 }
 
 interface SidebarProps {
-  /** Whether the home/dashboard page is active. */
-  isFeed: boolean;
   /** Whether the settings page is active. */
   isSettings: boolean;
-  /** Whether the catalog page is active. */
+  /** Whether the catalog page is active. Drives the "+ Add source"
+   *  button's active state. */
   isMarketplace: boolean;
   /** Whether the support page is active. */
   isSupport: boolean;
-  /** Currently active channel or widget ID (for pinned item highlighting). */
+  /** Currently active channel or widget ID (for highlighting). */
   activeItem: string;
 
   /** Resolved enabled-source manifest data, in canonical order. */
   sources: SidebarSource[];
 
-  /** Current data delivery mode for status footer. */
-  deliveryMode: DeliveryMode;
-  /** Whether the standalone ticker window is alive. */
-  tickerAlive: boolean;
-
-  /** Navigate to the home dashboard. */
-  onNavigateToFeed: () => void;
+  /** Navigate to the catalog page (used by "+ Add source"). */
+  onNavigateToMarketplace: () => void;
   /** Navigate to the settings page. */
   onNavigateToSettings: () => void;
-  /** Navigate to the catalog page. */
-  onNavigateToMarketplace: () => void;
   /** Navigate to the support page. */
   onNavigateToSupport: () => void;
   /** Navigate to a specific source (channel or widget) feed. */
@@ -113,17 +68,13 @@ interface SidebarProps {
 // ── Component ───────────────────────────────────────────────────
 
 export default function Sidebar({
-  isFeed,
   isSettings,
   isMarketplace,
   isSupport,
   activeItem,
   sources,
-  deliveryMode,
-  tickerAlive,
-  onNavigateToFeed,
-  onNavigateToSettings,
   onNavigateToMarketplace,
+  onNavigateToSettings,
   onNavigateToSupport,
   onSelectItem,
 }: SidebarProps) {
@@ -144,59 +95,32 @@ export default function Sidebar({
         collapsed ? "w-[48px]" : "w-[200px]",
       )}
     >
-      {/* App header — logo + name */}
-      <Tooltip content={collapsed ? "Home" : undefined} side="right">
-        <button
-          onClick={onNavigateToFeed}
-          aria-label="Scrollr — go to home"
-          className={clsx(
-            "flex items-center w-full h-12 shrink-0 transition-colors",
-            collapsed ? "justify-center px-0" : "gap-2.5 px-4",
-            isFeed
-              ? "border-b border-accent/30 bg-accent/5"
-              : tickerAlive
-                ? "border-b border-accent/15"
-                : "border-b border-edge",
-          )}
-        >
-          <ScrollLogo alive={tickerAlive} />
-          {!collapsed && (
-            <span className="text-sm font-semibold text-fg tracking-tight">Scrollr</span>
-          )}
-        </button>
-      </Tooltip>
-
-      {/* Navigation items */}
+      {/* Sources nav. Home is the Scrollr brand mark in the TopBar
+          (clickable). Catalog is reached via the "+ Add source" button
+          at the bottom of this list. So the sidebar is just sources. */}
       <nav
-        aria-label="Main navigation"
+        aria-label="Sources"
         className={clsx(
-          "flex-1 overflow-y-auto scrollbar-thin py-2",
+          "flex-1 overflow-y-auto scrollbar-thin py-3",
           collapsed ? "px-1" : "px-2",
         )}
       >
-        <NavItem
-          icon={<Home size={15} />}
-          label="Home"
-          active={isFeed}
-          collapsed={collapsed}
-          onClick={onNavigateToFeed}
-        />
+        {!collapsed && (
+          <h2 className="px-2.5 mb-2 text-[10px] font-semibold uppercase tracking-wider text-fg-4/70">
+            Sources
+          </h2>
+        )}
 
-        <NavItem
-          icon={<LayoutGrid size={15} />}
-          label="Catalog"
-          active={isMarketplace}
-          collapsed={collapsed}
-          onClick={onNavigateToMarketplace}
-        />
-
-        {/* Enabled channels + widgets */}
-        {sources.length > 0 && (
-          <div className="mt-2 pt-2 border-t border-edge/20 space-y-0.5">
+        {sources.length > 0 ? (
+          <div className="space-y-0.5">
             {sources.map((source) => (
               <NavItem
                 key={source.id}
-                icon={<span style={{ color: source.hex }}><source.icon size={15} /></span>}
+                icon={
+                  <span style={{ color: source.hex }}>
+                    <source.icon size={15} />
+                  </span>
+                }
                 label={source.name}
                 active={activeItem === source.id}
                 collapsed={collapsed}
@@ -204,7 +128,41 @@ export default function Sidebar({
               />
             ))}
           </div>
+        ) : (
+          !collapsed && (
+            <p className="px-2.5 text-[11px] text-fg-4/70 leading-snug">
+              No sources yet. Tap{" "}
+              <span className="font-medium text-accent">+ Add source</span>{" "}
+              below to get started.
+            </p>
+          )
         )}
+
+        {/* Add source — sits below the source list. Drilled into the
+            Catalog. Spec-aligned: '+ Add' is grouped with the
+            collection it adds to. */}
+        <Tooltip content={collapsed ? "Add source" : undefined} side="right">
+          <button
+            onClick={onNavigateToMarketplace}
+            aria-label="Add source"
+            aria-current={isMarketplace ? "page" : undefined}
+            className={clsx(
+              "flex items-center w-full rounded-lg font-medium mt-2",
+              "transition-all duration-150 active:scale-[0.97]",
+              isMarketplace
+                ? "bg-accent/15 text-accent"
+                : "text-accent/85 hover:bg-accent/10 hover:text-accent",
+              collapsed
+                ? "justify-center py-1.5 px-0"
+                : "gap-2.5 px-2.5 py-1.5 text-[13px]",
+            )}
+          >
+            <span className="shrink-0 flex items-center justify-center w-5 h-5">
+              <Plus size={15} strokeWidth={2.5} />
+            </span>
+            {!collapsed && <span className="truncate">Add source</span>}
+          </button>
+        </Tooltip>
       </nav>
 
       {/* Footer — settings, collapse toggle, status */}
@@ -230,13 +188,17 @@ export default function Sidebar({
           onClick={onNavigateToSupport}
         />
 
-        {/* Collapse toggle */}
+        {/* Collapse toggle. Connection status + ticker status are now
+            in the ControlStrip (always-visible chrome below the title
+            bar) — see components/ControlStrip.tsx. The sidebar footer
+            stays minimal. */}
         <Tooltip content={collapsed ? "Expand sidebar" : "Collapse sidebar"} side="right">
           <button
             onClick={toggleCollapsed}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             className={clsx(
-              "flex items-center w-full rounded-lg text-fg-4 hover:text-fg-2 hover:bg-surface-hover transition-colors",
+              "flex items-center w-full rounded-lg text-fg-4 hover:text-fg-2 hover:bg-surface-hover",
+              "transition-all duration-150 active:scale-[0.97]",
               collapsed
                 ? "justify-center py-1.5"
                 : "gap-2.5 px-2.5 py-1.5",
@@ -250,49 +212,6 @@ export default function Sidebar({
             )}
           </button>
         </Tooltip>
-
-        {/* Status footer — informational only */}
-        <div
-          className={clsx(
-            "flex items-center pt-2 mt-1 border-t border-edge/30",
-            collapsed ? "flex-col gap-1.5 px-0 justify-center" : "gap-3 px-2.5",
-          )}
-        >
-          <Tooltip content={deliveryMode === "sse" ? "Receiving updates live" : "Polling for updates"} side="right">
-            <div className="flex items-center gap-1.5">
-              <div
-                className={clsx(
-                  "w-1.5 h-1.5 rounded-full shrink-0",
-                  deliveryMode === "sse"
-                    ? "bg-info"
-                    : "bg-warn",
-                )}
-              />
-              {!collapsed && (
-                <span className="text-[10px] font-mono uppercase tracking-wider text-fg-4">
-                  {deliveryMode === "sse" ? "Live" : "Polling"}
-                </span>
-              )}
-            </div>
-          </Tooltip>
-          <Tooltip content={tickerAlive ? "Ticker is running" : "Ticker is off"} side="right">
-            <div className="flex items-center gap-1.5">
-              <div
-                className={clsx(
-                  "w-1.5 h-1.5 rounded-full shrink-0 transition-all duration-500",
-                  tickerAlive
-                    ? "bg-accent"
-                    : "bg-fg-4/30",
-                )}
-              />
-              {!collapsed && (
-                <span className="text-[10px] font-mono uppercase tracking-wider text-fg-4">
-                  {tickerAlive ? "Ticker" : "Off"}
-                </span>
-              )}
-            </div>
-          </Tooltip>
-        </div>
       </div>
     </aside>
   );
@@ -320,7 +239,8 @@ function NavItem({
         aria-current={active ? "page" : undefined}
         aria-label={collapsed ? label : undefined}
         className={clsx(
-          "relative flex items-center w-full rounded-lg font-medium transition-colors",
+          "relative flex items-center w-full rounded-lg font-medium",
+          "transition-all duration-150 active:scale-[0.97]",
           collapsed
             ? "justify-center py-1.5 px-0"
             : "gap-2.5 px-2.5 py-1.5 text-[13px]",
@@ -329,9 +249,13 @@ function NavItem({
             : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
         )}
       >
-        {/* Active indicator — left accent bar */}
+        {/* Active indicator — left accent bar. Uses motion's
+            layoutId so it slides between nav items when the active
+            page changes, instead of popping in/out. */}
         {active && (
-          <span
+          <motion.span
+            layoutId="sidebar-active-indicator"
+            transition={{ type: "spring", stiffness: 380, damping: 30 }}
             className="absolute left-0 top-1.5 bottom-1.5 w-[2.5px] rounded-full bg-accent"
           />
         )}

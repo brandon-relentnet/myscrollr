@@ -69,9 +69,16 @@ const PAGE_SIZE = 20;
 
 // ── FeedTab ──────────────────────────────────────────────────────
 
-function FinanceFeedTab({ mode, feedContext, onConfigure }: FeedTabProps) {
+function FinanceFeedTab({ mode: callerMode, feedContext, onConfigure }: FeedTabProps) {
   const { prefs } = useShell();
   const dp = prefs.channelDisplay.finance;
+
+  // The caller (Home or Source page) hints at a default mode, but
+  // the user's per-channel feedDensity pref wins when set. This
+  // means the same channel can render compact on Home (caller hint
+  // wins for the small preview) and comfort on the Source page
+  // when the user prefers it, controlled from one Display setting.
+  const mode = dp.feedDensity ?? callerMode;
 
   const { data: dashboard } = useQuery(dashboardQueryOptions());
   const { data: catalog } = useQuery(financeCatalogOptions());

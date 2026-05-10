@@ -56,8 +56,6 @@ interface GeneralSettingsProps {
   onReset: () => void;
   autostartEnabled: boolean;
   onAutostartChange: (enabled: boolean) => void;
-  showSetupOnLogin: boolean;
-  onShowSetupChange: (enabled: boolean) => void;
   appVersion: string;
 }
 
@@ -92,8 +90,6 @@ export default function GeneralSettings({
   onReset,
   autostartEnabled,
   onAutostartChange,
-  showSetupOnLogin,
-  onShowSetupChange,
   appVersion,
 }: GeneralSettingsProps) {
   const [status, setStatus] = useState<UpdateStatus>({ step: "idle" });
@@ -284,12 +280,10 @@ export default function GeneralSettings({
           checked={autostartEnabled}
           onChange={onAutostartChange}
         />
-        <ToggleRow
-          label="Show setup wizard on login"
-          description="Walk through channel and widget setup after signing in"
-          checked={showSetupOnLogin}
-          onChange={onShowSetupChange}
-        />
+      </Section>
+
+      <Section title="Keyboard shortcuts">
+        <ShortcutsList />
       </Section>
 
       <Section title="About">
@@ -312,6 +306,41 @@ export default function GeneralSettings({
   );
 }
 
+// ── Keyboard shortcuts list (read-only) ─────────────────────────
+//
+// The desktop app already implements these shortcuts in __root.tsx —
+// this component just documents them where users can find them.
+// Customization is intentionally out of scope for now.
+
+const SHORTCUTS: { keys: string[]; label: string }[] = [
+  { keys: ["⌘/Ctrl", ","], label: "Open settings" },
+  { keys: ["⌘/Ctrl", "T"], label: "Toggle ticker visibility" },
+  { keys: ["⌘/Ctrl", "Shift", "T"], label: "Cycle theme (light → dark → auto)" },
+  { keys: ["Esc"], label: "Back / close current view" },
+];
+
+function ShortcutsList() {
+  return (
+    <div className="px-3 py-2 space-y-1.5">
+      {SHORTCUTS.map(({ keys, label }) => (
+        <div key={label} className="flex items-center justify-between py-1">
+          <span className="text-[12px] text-fg-3">{label}</span>
+          <div className="flex items-center gap-1">
+            {keys.map((k, i) => (
+              <span key={i} className="flex items-center gap-1">
+                {i > 0 && <span className="text-[10px] text-fg-4">+</span>}
+                <kbd className="px-1.5 py-0.5 rounded bg-base-250 border border-edge/40 text-[10px] font-mono font-medium text-fg-2 shadow-sm">
+                  {k}
+                </kbd>
+              </span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Update row component ────────────────────────────────────────
 
 interface UpdateRowProps {
@@ -329,7 +358,7 @@ function UpdateRow({ status, onCheck, onDownload, onRelaunch }: UpdateRowProps) 
           <span className="text-[12px] text-fg-3">Check for new versions</span>
           <button
             onClick={onCheck}
-            className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-base-250 text-fg-3 hover:text-fg-2 hover:bg-base-300 transition-colors cursor-pointer"
+            className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-base-250 text-fg-3 hover:text-fg-2 hover:bg-base-300 transition-all duration-150 active:scale-95 cursor-pointer"
           >
             Check for updates
           </button>
@@ -354,7 +383,7 @@ function UpdateRow({ status, onCheck, onDownload, onRelaunch }: UpdateRowProps) 
           </div>
           <button
             onClick={onCheck}
-            className="text-[11px] font-medium px-2.5 py-1 rounded-md text-fg-4 hover:text-fg-2 hover:bg-base-250/50 transition-colors cursor-pointer"
+            className="text-[11px] font-medium px-2.5 py-1 rounded-md text-fg-4 hover:text-fg-2 hover:bg-base-250/50 transition-all duration-150 active:scale-95 cursor-pointer"
           >
             Check again
           </button>
@@ -372,7 +401,7 @@ function UpdateRow({ status, onCheck, onDownload, onRelaunch }: UpdateRowProps) 
             </div>
             <button
               onClick={onDownload}
-              className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-accent text-surface hover:bg-accent/90 transition-colors cursor-pointer shrink-0 ml-4"
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-accent text-surface hover:bg-accent/90 transition-all duration-150 active:scale-95 cursor-pointer shrink-0 ml-4"
             >
               Download & install
             </button>
@@ -434,7 +463,7 @@ function UpdateRow({ status, onCheck, onDownload, onRelaunch }: UpdateRowProps) 
           </div>
           <button
             onClick={onRelaunch}
-            className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-accent text-surface hover:bg-accent/90 transition-colors cursor-pointer"
+            className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-accent text-surface hover:bg-accent/90 transition-all duration-150 active:scale-95 cursor-pointer"
           >
             Restart now
           </button>
@@ -454,7 +483,7 @@ function UpdateRow({ status, onCheck, onDownload, onRelaunch }: UpdateRowProps) 
           </div>
           <button
             onClick={onCheck}
-            className="text-[11px] font-medium px-2.5 py-1 rounded-md text-fg-4 hover:text-fg-2 hover:bg-base-250/50 transition-colors cursor-pointer"
+            className="text-[11px] font-medium px-2.5 py-1 rounded-md text-fg-4 hover:text-fg-2 hover:bg-base-250/50 transition-all duration-150 active:scale-95 cursor-pointer"
           >
             Retry
           </button>

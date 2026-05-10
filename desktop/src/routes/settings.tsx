@@ -1,67 +1,64 @@
 /**
- * Settings route — consolidated settings page with tabs.
+ * Settings route — consolidated settings page.
  *
- * Four tabs:
- *   General  — appearance, window, startup, updates
- *   Ticker   — ticker presentation settings with live preview
- *   Account  — profile, billing, plan, data export
- *   Reset    — destructive: reset all local preferences
+ * Three tab-like areas (Appearance / Ticker / Account) but no in-page
+ * tab band — the active area's name renders as the last breadcrumb
+ * segment in the TopBar, and clicking it opens a dropdown to switch.
+ * Mirrors the source-page Options pattern so Settings, Catalog, and
+ * channel/widget pages all share one navigation idiom.
  *
- * Tab state is persisted in the URL via ?tab= search param.
+ * URL slug "general" retained for backward compat with billing
+ * banners and existing routing; the user-facing label is "Appearance".
  */
+import { useMemo } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { clsx } from "clsx";
-import { Settings, Sliders, User, RotateCcw } from "lucide-react";
+import { Settings as SettingsIcon, Sliders, User } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import RouteError from "../components/RouteError";
 import { useShell } from "../shell-context";
 import GeneralSettings from "../components/settings/GeneralSettings";
 import TickerSettings from "../components/settings/TickerSettings";
 import AccountSettings from "../components/settings/AccountSettings";
-import ResetSettings from "../components/settings/ResetSettings";
-import Tooltip from "../components/Tooltip";
+import PageLayout from "../components/layout/PageLayout";
+import type { OverflowMenuItem } from "../components/OverflowMenu";
 import { resetCategory, resetAll, type AppPreferences } from "../preferences";
 
 // ── Types ───────────────────────────────────────────────────────
 
-type SettingsTab = "general" | "ticker" | "account" | "reset";
+type SettingsTab = "general" | "ticker" | "account";
 
-const VALID_TABS: SettingsTab[] = ["general", "ticker", "account", "reset"];
+const VALID_TABS: SettingsTab[] = ["general", "ticker", "account"];
 
 const TAB_LABELS: Record<SettingsTab, string> = {
-  general: "General",
+  general: "Appearance",
   ticker: "Ticker",
   account: "Account",
-  reset: "Reset",
 };
 
-/**
- * Per-tab one-liner used as the tooltip when hovering a tab. Keeps
- * tabs themselves short while still explaining what each does to
- * first-time users — Phase 2 (Apr 26) tooltip-coverage audit.
- */
 const TAB_DESCRIPTIONS: Record<SettingsTab, string> = {
-  general: "Appearance, window, startup, and updates",
+  general: "Theme, scale, window, startup, and updates",
   ticker: "Ticker layout, style, and live preview",
-  account: "Profile, subscription, plan, and data",
-  reset: "Restore all preferences to defaults",
+  account: "Profile, subscription, plan, data, and reset",
 };
 
 const TAB_ICONS: Record<SettingsTab, LucideIcon> = {
-  general: Settings,
+  general: SettingsIcon,
   ticker: Sliders,
   account: User,
-  reset: RotateCcw,
 };
 
 // ── Route ───────────────────────────────────────────────────────
 
 export const Route = createFileRoute("/settings")({
-  validateSearch: (search: Record<string, unknown>): { tab: SettingsTab } => ({
-    tab: VALID_TABS.includes(search.tab as SettingsTab)
-      ? (search.tab as SettingsTab)
-      : "general",
-  }),
+  validateSearch: (search: Record<string, unknown>): { tab: SettingsTab } => {
+    const raw = search.tab as string | undefined;
+    if (raw === "reset") return { tab: "account" };
+    return {
+      tab: VALID_TABS.includes(raw as SettingsTab)
+        ? (raw as SettingsTab)
+        : "general",
+    };
+  },
   component: SettingsRoute,
   errorComponent: RouteError,
 });
@@ -75,7 +72,11 @@ function SettingsRoute() {
   const { prefs, onPrefsChange } = shell;
 
   const setTab = (next: SettingsTab) => {
-    navigate({ to: "/settings", search: { tab: next }, replace: true });
+    navigate({
+      to: "/settings",
+      search: { tab: next },
+      replace: true,
+    });
   };
 
   const handleResetAll = () => {
@@ -83,89 +84,68 @@ function SettingsRoute() {
     onPrefsChange(next);
   };
 
+  // The dropdown menu items are the OTHER tabs — clicking one
+  // switches. The currently-active tab is hidden from the menu since
+  // its label is already rendered as the trigger itself.
+  const menuItems: OverflowMenuItem[] = useMemo(() => {
+    const items: OverflowMenuItem[] = [];
+    for (const t of VALID_TABS) {
+      if (t === tab) continue;
+      items.push({
+        key: t,
+        label: TAB_LABELS[t],
+        hint: TAB_DESCRIPTIONS[t],
+        icon: TAB_ICONS[t],
+        onSelect: () => setTab(t),
+      });
+    }
+    return items;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
   return (
-    <div className="p-5 max-w-6xl mx-auto">
-      {/* ── Header ─────────────────────────────────────────────── */}
-      <div className="mb-5">
-        <h1 className="text-[11px] font-mono font-semibold text-fg-4 uppercase tracking-wider mb-1">
-          Settings
-        </h1>
-        <p className="text-xs text-fg-4">
-          Appearance, ticker, and account preferences
-        </p>
-      </div>
+    <PageLayout
+      title="Settings"
+      subtitle={TAB_LABELS[tab]}
+      width="narrow"
+      menuItems={menuItems}
+      menuLabel="Settings sections"
+    >
+      {tab === "general" && (
+        <GeneralSettings
+          appearance={prefs.appearance}
+          window_={prefs.window}
+          onAppearanceChange={(appearance) =>
+            onPrefsChange({ ...prefs, appearance })
+          }
+          onWindowChange={(window_) =>
+            onPrefsChange({ ...prefs, window: window_ })
+          }
+          onReset={() => {
+            let next: AppPreferences = resetCategory(prefs, "appearance");
+            next = resetCategory(next, "window");
+            onPrefsChange(next);
+          }}
+          autostartEnabled={shell.autostartEnabled}
+          onAutostartChange={shell.onAutostartChange}
+          appVersion={shell.appVersion}
+        />
+      )}
 
-      {/* ── Tabs ───────────────────────────────────────────────── */}
-      <nav className="flex flex-wrap gap-2 mb-6" aria-label="Settings sections">
-        {VALID_TABS.map((t) => {
-          const Icon = TAB_ICONS[t];
-          const isActive = tab === t;
-          return (
-            <Tooltip key={t} content={TAB_DESCRIPTIONS[t]} side="bottom">
-              <button
-                onClick={() => setTab(t)}
-                aria-current={isActive ? "page" : undefined}
-                className={clsx(
-                  "flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer border",
-                  isActive
-                    ? "bg-accent/15 text-accent border-accent/30"
-                    : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover border-transparent",
-                )}
-              >
-                <Icon className="w-4 h-4" aria-hidden />
-                <span>{TAB_LABELS[t]}</span>
-              </button>
-            </Tooltip>
-          );
-        })}
-      </nav>
+      {tab === "ticker" && (
+        <TickerSettings prefs={prefs} onPrefsChange={onPrefsChange} />
+      )}
 
-      {/* ── Tab content ────────────────────────────────────────── */}
-      <div className="max-w-2xl">
-        {tab === "general" && (
-          <GeneralSettings
-            appearance={prefs.appearance}
-            window_={prefs.window}
-            onAppearanceChange={(appearance) =>
-              onPrefsChange({ ...prefs, appearance })
-            }
-            onWindowChange={(window_) =>
-              onPrefsChange({ ...prefs, window: window_ })
-            }
-            onReset={() => {
-              let next: AppPreferences = resetCategory(prefs, "appearance");
-              next = resetCategory(next, "window");
-              onPrefsChange(next);
-            }}
-            autostartEnabled={shell.autostartEnabled}
-            onAutostartChange={shell.onAutostartChange}
-            showSetupOnLogin={prefs.showSetupOnLogin}
-            onShowSetupChange={(enabled) =>
-              onPrefsChange({ ...prefs, showSetupOnLogin: enabled })
-            }
-            appVersion={shell.appVersion}
-          />
-        )}
-
-        {tab === "ticker" && (
-          <TickerSettings
-            prefs={prefs}
-            onPrefsChange={onPrefsChange}
-          />
-        )}
-
-        {tab === "account" && (
-          <AccountSettings
-            authenticated={shell.authenticated}
-            tier={shell.tier}
-            subscriptionInfo={shell.subscriptionInfo}
-            onLogin={shell.onLogin}
-            onLogout={shell.onLogout}
-          />
-        )}
-
-        {tab === "reset" && <ResetSettings onResetAll={handleResetAll} />}
-      </div>
-    </div>
+      {tab === "account" && (
+        <AccountSettings
+          authenticated={shell.authenticated}
+          tier={shell.tier}
+          subscriptionInfo={shell.subscriptionInfo}
+          onLogin={shell.onLogin}
+          onLogout={shell.onLogout}
+          onResetAll={handleResetAll}
+        />
+      )}
+    </PageLayout>
   );
 }

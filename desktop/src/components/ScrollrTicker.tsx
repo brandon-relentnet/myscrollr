@@ -274,6 +274,7 @@ export default function ScrollrTicker({
                   comfort={comfort}
                   colorMode={chipColorMode}
                   showChange={shouldShowOnTicker(financePrefs.showChange)}
+                  directionMarker={financePrefs.tickerDirectionMarker ?? "arrow"}
                   onClick={() => onChipClick?.("finance", trade.symbol, chipUrlForFinance(trade))}
                 />
               )

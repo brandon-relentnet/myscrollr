@@ -1,8 +1,9 @@
 import { useState, useMemo, useCallback } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { LayoutGrid } from "lucide-react";
-import clsx from "clsx";
+import { LayoutGrid, Search, Radio, Boxes } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 
 import { getCatalogItems, CATEGORY_LABELS, CANONICAL_ORDER } from "../marketplace";
@@ -14,6 +15,10 @@ import { useShell, useShellData } from "../shell-context";
 import CatalogCard from "../components/marketplace/CatalogCard";
 import QueryErrorBanner from "../components/QueryErrorBanner";
 import RouteError from "../components/RouteError";
+import PageLayout from "../components/layout/PageLayout";
+import PageSection from "../components/layout/PageSection";
+import EmptySection from "../components/layout/EmptySection";
+import type { OverflowMenuItem } from "../components/OverflowMenu";
 
 export const Route = createFileRoute("/catalog")({
   component: CatalogPage,
@@ -24,15 +29,21 @@ export const Route = createFileRoute("/catalog")({
 
 type FilterTab = "all" | CatalogCategory;
 
-const FILTER_TABS: { key: FilterTab; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "channel", label: CATEGORY_LABELS["channel"] },
-  { key: "widget", label: CATEGORY_LABELS["widget"] },
+const FILTER_TABS: { key: FilterTab; label: string; icon: LucideIcon; hint: string }[] = [
+  { key: "all", label: "All", icon: LayoutGrid, hint: "Show every channel and widget" },
+  { key: "channel", label: CATEGORY_LABELS["channel"], icon: Radio, hint: "Show only data channels" },
+  { key: "widget", label: CATEGORY_LABELS["widget"], icon: Boxes, hint: "Show only utility widgets" },
 ];
 
+const TAB_BY_KEY: Record<FilterTab, (typeof FILTER_TABS)[number]> = FILTER_TABS.reduce(
+  (acc, t) => {
+    acc[t.key] = t;
+    return acc;
+  },
+  {} as Record<FilterTab, (typeof FILTER_TABS)[number]>,
+);
+
 // ── Sort order: enabled first, then canonical order ─────────────
-// (CANONICAL_ORDER is exported from marketplace.ts; we import it
-//  alongside the other catalog primitives below.)
 
 function sortItems(items: CatalogItem[], enabledIds: Set<string>): CatalogItem[] {
   return [...items].sort((a, b) => {
@@ -54,10 +65,8 @@ function CatalogPage() {
 
   const [filter, setFilter] = useState<FilterTab>("all");
 
-  // All catalog items (static, computed once)
   const allItems = useMemo(() => getCatalogItems(), []);
 
-  // Enabled IDs
   const enabledChannelIds = useMemo(
     () => new Set(channels.map((ch) => ch.channel_type)),
     [channels],
@@ -71,7 +80,6 @@ function CatalogPage() {
     [enabledChannelIds, enabledWidgetIds],
   );
 
-  // Filtered + sorted items
   const visibleItems = useMemo(() => {
     const filtered = filter === "all"
       ? allItems
@@ -102,89 +110,90 @@ function CatalogPage() {
     [navigate, queryClient, prefs, onPrefsChange],
   );
 
-  // ── Remove handler ──────────────────────────────────────────
+  // ── Breadcrumb dropdown — switch the active filter ───────────
 
-  const handleRemove = useCallback(
-    async (item: CatalogItem) => {
-      if (item.kind === "channel") {
-        await channelsApi.delete(item.id as ChannelType);
-        await queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
-        toast.success(`${item.name} removed`);
-      } else {
-        const nextEnabled = prefs.widgets.enabledWidgets.filter((id) => id !== item.id);
-        const nextOnTicker = prefs.widgets.widgetsOnTicker.filter((id) => id !== item.id);
-        onPrefsChange({
-          ...prefs,
-          widgets: { ...prefs.widgets, enabledWidgets: nextEnabled, widgetsOnTicker: nextOnTicker },
-        });
-        toast.success(`${item.name} removed`);
-      }
-    },
-    [queryClient, prefs, onPrefsChange],
-  );
+  const menuItems: OverflowMenuItem[] = useMemo(() => {
+    const items: OverflowMenuItem[] = [];
+    for (const t of FILTER_TABS) {
+      if (t.key === filter) continue;
+      items.push({
+        key: t.key,
+        label: t.label,
+        hint: t.hint,
+        icon: t.icon,
+        onSelect: () => setFilter(t.key),
+      });
+    }
+    return items;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter]);
 
   // ── Render ──────────────────────────────────────────────────
 
   return (
-    <div className="p-5 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="mb-5">
-        <h1 className="text-[11px] font-mono font-semibold text-fg-4 uppercase tracking-wider mb-1">
-          Catalog
-        </h1>
-        <p className="text-xs text-fg-4">
-          Add channels and widgets to your ticker
-        </p>
-      </div>
-
-      {/* Dashboard error banner */}
+    <PageLayout
+      title="Catalog"
+      subtitle={TAB_BY_KEY[filter].label}
+      width="wide"
+      menuItems={menuItems}
+      menuLabel="Catalog filter"
+    >
       {dashboardError && (
         <div className="mb-4">
           <QueryErrorBanner error={dashboardError} />
         </div>
       )}
 
-      {/* Category filter tabs */}
-      <div className="flex items-center gap-1 mb-5">
-        {FILTER_TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setFilter(tab.key)}
-            className={clsx(
-              "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
-              filter === tab.key
-                ? "bg-accent/10 text-accent"
-                : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Card grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-        {visibleItems.map((item) => (
-          <CatalogCard
-            key={item.id}
-            item={item}
-            enabled={allEnabledIds.has(item.id)}
-            tier={tier}
-            authenticated={authenticated}
-            dashboardLoading={isLoading}
-            onAdd={handleAdd}
-            onRemove={handleRemove}
-            onLogin={onLogin}
-            onOpen={(it) => {
-              if (it.kind === "channel") {
-                navigate({ to: "/channel/$type/$tab", params: { type: it.id, tab: "feed" } });
-              } else {
-                navigate({ to: "/widget/$id/$tab", params: { id: it.id, tab: "feed" } });
-              }
-            }}
-          />
-        ))}
-      </div>
-    </div>
+      {visibleItems.length === 0 ? (
+        <EmptySection
+          icon={Search}
+          title="Nothing here"
+          description="No items match this filter. Try a different category."
+        />
+      ) : (
+        <PageSection variant="grid">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={filter}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="grid grid-cols-2 lg:grid-cols-3 gap-3"
+            >
+              {visibleItems.map((item, i) => (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    duration: 0.22,
+                    delay: Math.min(i * 0.018, 0.25),
+                    ease: [0.22, 0.61, 0.36, 1],
+                  }}
+                >
+                  <CatalogCard
+                    item={item}
+                    enabled={allEnabledIds.has(item.id)}
+                    tier={tier}
+                    authenticated={authenticated}
+                    dashboardLoading={isLoading}
+                    onAdd={handleAdd}
+                    onLogin={onLogin}
+                    onOpen={(it) => {
+                      if (it.kind === "channel") {
+                        navigate({ to: "/channel/$type/$tab", params: { type: it.id, tab: "feed" } });
+                      } else {
+                        navigate({ to: "/widget/$id/$tab", params: { id: it.id, tab: "feed" } });
+                      }
+                    }}
+                  />
+                </motion.div>
+              ))}
+            </motion.div>
+          </AnimatePresence>
+        </PageSection>
+      )}
+    </PageLayout>
   );
 }

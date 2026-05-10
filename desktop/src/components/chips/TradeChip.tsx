@@ -5,19 +5,43 @@ import type { ChipColorMode } from "../../preferences";
 import { getChipColors, chipBaseClasses } from "./chipColors";
 import { formatPrice, formatChange, formatPriceChange } from "../../utils/format";
 
+export type TickerDirectionMarker = "arrow" | "sign" | "none";
+
 interface TradeChipProps {
   trade: Trade;
   comfort?: boolean;
   colorMode?: ChipColorMode;
   /** Hide percentage change indicator (default: shown) */
   showChange?: boolean;
+  /** How to render the up/down marker. Defaults to "arrow" (▲▼). */
+  directionMarker?: TickerDirectionMarker;
   onClick?: () => void;
 }
 
-const TradeChip = memo(function TradeChip({ trade, comfort, colorMode = "channel", showChange = true, onClick }: TradeChipProps) {
+const TradeChip = memo(function TradeChip({
+  trade,
+  comfort,
+  colorMode = "channel",
+  showChange = true,
+  directionMarker = "arrow",
+  onClick,
+}: TradeChipProps) {
   const c = getChipColors(colorMode, "finance");
   const isUp = trade.direction === "up";
   const changeStr = showChange ? formatChange(trade.percentage_change) : null;
+
+  // Pick the marker glyph per user preference. Empty string = no
+  // marker rendered (the % itself still carries the sign).
+  const marker =
+    directionMarker === "arrow"
+      ? isUp
+        ? "\u25B2"
+        : "\u25BC"
+      : directionMarker === "sign"
+        ? isUp
+          ? "+"
+          : "\u2212"
+        : "";
 
   return (
     <button
@@ -35,7 +59,7 @@ const TradeChip = memo(function TradeChip({ trade, comfort, colorMode = "channel
               isUp ? "text-up" : "text-down"
             )}
           >
-            {isUp ? "\u25B2" : "\u25BC"}
+            {marker}
             {changeStr}
           </span>
         )}
@@ -62,6 +86,7 @@ const TradeChip = memo(function TradeChip({ trade, comfort, colorMode = "channel
   prev.comfort === next.comfort &&
   prev.colorMode === next.colorMode &&
   prev.showChange === next.showChange &&
+  prev.directionMarker === next.directionMarker &&
   prev.onClick === next.onClick &&
   prev.trade.symbol === next.trade.symbol &&
   prev.trade.price === next.trade.price &&
