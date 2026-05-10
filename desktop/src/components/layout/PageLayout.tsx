@@ -66,6 +66,16 @@ interface PageLayoutProps {
 
   /** Constrain content width. Defaults to "narrow". */
   width?: "narrow" | "wide";
+
+  /**
+   * When true, the content area becomes a flex container that fills
+   * the viewport (and does NOT scroll itself). Children are expected
+   * to manage their own scrolling region with `min-h-0` + a flex-1
+   * scroll panel inside. Used for routes like Configure where a long
+   * list should scroll within a fixed pane instead of growing the
+   * entire page.
+   */
+  fillHeight?: boolean;
 }
 
 // ── Component ───────────────────────────────────────────────────
@@ -81,6 +91,7 @@ export default function PageLayout({
   children,
   footer,
   width = "narrow",
+  fillHeight = false,
 }: PageLayoutProps) {
   // Publish this page's identity to the TopBar.
   useRegisterPageIdentity({
@@ -129,20 +140,42 @@ export default function PageLayout({
       )}
 
       {/* ── Content stack ──────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin">
-        <div className={clsx("mx-auto px-5 py-5", widthClass)}>
-          {children}
-        </div>
-
-        {/* ── Footer band (optional) ──────────────────────── */}
-        {footer && (
-          <div className="border-t border-edge/40">
-            <div className={clsx("mx-auto px-5 py-4", widthClass)}>
-              {footer}
-            </div>
+      {fillHeight ? (
+        // Fill-height mode: content area is a flex column with no
+        // outer scroll. Children manage their own scrollable panel.
+        // Used by Configure routes that have a long inner list.
+        <div className="flex-1 min-h-0 flex flex-col">
+          <div
+            className={clsx(
+              "mx-auto px-5 pt-5 pb-0 w-full flex-1 min-h-0 flex flex-col",
+              widthClass,
+            )}
+          >
+            {children}
           </div>
-        )}
-      </div>
+          {footer && (
+            <div className="border-t border-edge/40 shrink-0">
+              <div className={clsx("mx-auto px-5 py-4", widthClass)}>
+                {footer}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        // Default mode: content area scrolls; children stack vertically.
+        <div className="flex-1 overflow-y-auto scrollbar-thin">
+          <div className={clsx("mx-auto px-5 py-5", widthClass)}>
+            {children}
+          </div>
+          {footer && (
+            <div className="border-t border-edge/40">
+              <div className={clsx("mx-auto px-5 py-4", widthClass)}>
+                {footer}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

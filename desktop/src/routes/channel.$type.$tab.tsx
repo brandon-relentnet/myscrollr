@@ -13,7 +13,6 @@
  * cognitive overhead.
  */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
 import RouteError from "../components/RouteError";
 import SourcePageLayout, { parseSourceTab, SourceNotFound } from "../components/SourcePageLayout";
 import { useQuery } from "@tanstack/react-query";
@@ -45,19 +44,6 @@ function ChannelRoute() {
   const navigate = useNavigate();
   const tab = parseSourceTab(rawTab);
 
-  // Migrate legacy /display URL — Display tab was folded into
-  // Configure as a section. Redirect so the URL matches what's shown
-  // and bookmarks/tray deeplinks heal themselves.
-  useEffect(() => {
-    if (rawTab === "display") {
-      navigate({
-        to: "/channel/$type/$tab",
-        params: { type, tab: "configuration" },
-        replace: true,
-      });
-    }
-  }, [rawTab, type, navigate]);
-
   const channel = getChannel(type);
   const { data: dashboard } = useQuery(dashboardQueryOptions());
   const { onDeleteChannel } = useShell();
@@ -66,9 +52,8 @@ function ChannelRoute() {
     return <SourceNotFound kind="Channel" name={type} />;
   }
 
-  // Channels have a Display section inside their Configure tab —
-  // expose the dedicated menu entry. Per channel type:
-  // finance/sports/rss/fantasy all render display prefs.
+  // Channels with display preferences. Drives the OverflowMenu's
+  // "Display preferences" entry and the /display route's content.
   const HAS_DISPLAY: Record<string, boolean> = {
     finance: true,
     sports: true,
@@ -76,10 +61,21 @@ function ChannelRoute() {
     fantasy: true,
   };
 
+  // Subtitle reflects the current sub-route in the breadcrumb:
+  //   Home / Sports                   (feed — no subtitle)
+  //   Home / Sports / Configure       (configuration tab)
+  //   Home / Sports / Display         (display tab)
+  const subtitle =
+    tab === "configuration"
+      ? "Configure"
+      : tab === "display"
+        ? "Display preferences"
+        : undefined;
+
   return (
     <SourcePageLayout
       name={channel.name}
-      description={tab === "configuration" ? "Configure" : undefined}
+      description={subtitle}
       activeTab={tab}
       onTabChange={(t) =>
         navigate({ to: "/channel/$type/$tab", params: { type, tab: t } })
@@ -104,14 +100,9 @@ function ChannelRoute() {
         />
       )}
       {tab === "configuration" && (
-        <>
-          <ChannelConfigTab type={type} dashboard={dashboard} />
-          {/* Display section — only renders if the channel has
-              display preferences. Visually separated by the section
-              heading inside ChannelDisplayTab itself. */}
-          <ChannelDisplayTab type={type} />
-        </>
+        <ChannelConfigTab type={type} dashboard={dashboard} />
       )}
+      {tab === "display" && <ChannelDisplayTab type={type} />}
     </SourcePageLayout>
   );
 }

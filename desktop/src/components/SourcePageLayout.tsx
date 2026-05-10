@@ -22,20 +22,17 @@ import OverflowMenu, { type OverflowMenuItem } from "./OverflowMenu";
 
 // ── Shared tab constants ────────────────────────────────────────
 //
-// SourceTab is still part of the URL contract — channels can be
-// deeplinked to /channel/$type/feed or /channel/$type/configuration.
-// We just don't render a visible tab band anymore.
+// SourceTab is part of the URL contract — channels can be deeplinked
+// to /channel/$type/feed, /configuration, or /display. We don't render
+// a visible tab band; users navigate via the OverflowMenu in the
+// TopBar entityAction slot.
 
-export const VALID_TABS = ["feed", "configuration"] as const;
+export const VALID_TABS = ["feed", "configuration", "display"] as const;
 export type SourceTab = (typeof VALID_TABS)[number];
 
 /** Parse a raw tab parameter into a valid SourceTab.
- *  - "display" is migrated to "configuration" (Display tab was folded
- *    into Configure as a section in the IA refactor). Old bookmarks
- *    and tray deeplinks still work.
- *  - Anything else falls back to "feed". */
+ *  Falls back to "feed" for anything unrecognised. */
 export function parseSourceTab(rawTab: string): SourceTab {
-  if (rawTab === "display") return "configuration";
   return (VALID_TABS as readonly string[]).includes(rawTab)
     ? (rawTab as SourceTab)
     : "feed";
@@ -109,21 +106,26 @@ export default function SourcePageLayout({
     }
   }
 
-  // Build the menu items list. Order is intentional: most common
-  // first (Configure), then Display, then ticker management, then
+  // Build the menu items list. Order is intentional: when away from
+  // Feed, "Back to feed" goes first so the menu always offers a
+  // canonical way out. Then Configure → Display → Manage on ticker,
   // a divider, then destructive Remove at the bottom.
   const menuItems: OverflowMenuItem[] = [];
 
-  // Configure entry — when on /configuration it acts as "back to
-  // Feed" so the menu is dual-purpose; otherwise it opens Configure.
-  if (activeTab === "configuration") {
+  // Always offer "Back to feed" when not on the feed already. This
+  // is the canonical way to escape Configure / Display.
+  if (activeTab !== "feed") {
     menuItems.push({
       key: "feed",
       label: "Back to feed",
       icon: Tv,
       onSelect: () => onTabChange("feed"),
     });
-  } else {
+    menuItems.push({ key: "div-back", divider: true });
+  }
+
+  // Configure — always present except when already there.
+  if (activeTab !== "configuration") {
     menuItems.push({
       key: "configure",
       label: sourceKind === "widget" ? "Configure widget" : "Configure source",
@@ -136,17 +138,15 @@ export default function SourcePageLayout({
     });
   }
 
-  // Display preferences — only for channels (widgets don't have a
-  // separate display section). Jumping to Configure with a focus
-  // hint is the natural place; we just rely on Configure showing
-  // the Display section near the bottom.
-  if (hasDisplayPreferences && activeTab !== "configuration") {
+  // Display preferences — channels only, on its own /display route.
+  // Hidden when already on Display.
+  if (hasDisplayPreferences && activeTab !== "display") {
     menuItems.push({
       key: "display",
       label: "Display preferences",
       hint: "Choose what shows on Home and the ticker",
       icon: SlidersHorizontal,
-      onSelect: () => onTabChange("configuration"),
+      onSelect: () => onTabChange("display"),
     });
   }
 
@@ -183,13 +183,17 @@ export default function SourcePageLayout({
         subtitle={description}
         parentLabel="Home"
         onParentClick={onBack}
-        // When on Configure, clicking the source name in the breadcrumb
-        // returns to the source's Feed view. On Feed itself the title
-        // is plain text (no-op click would be confusing).
+        // When on a sub-route (Configure or Display), clicking the
+        // source name in the breadcrumb returns to the source's Feed
+        // view. On Feed itself the title is plain text.
         onTitleClick={
-          activeTab === "configuration" ? () => onTabChange("feed") : undefined
+          activeTab !== "feed" ? () => onTabChange("feed") : undefined
         }
         width="narrow"
+        // Configure tab gets a fill-height shell so SymbolManager (and
+        // future configure surfaces in other channels) can scroll its
+        // own list within a fixed pane instead of growing the page.
+        fillHeight={activeTab === "configuration"}
         entityAction={entityAction}
       >
         {children}

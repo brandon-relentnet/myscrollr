@@ -240,9 +240,13 @@ export default function SymbolManager({
   const showAtLimitWarning = atLimit;
 
   return (
-    <div className="space-y-3">
+    // Fill the available height. Header / controls are pinned via
+    // shrink-0; only the list panel scrolls. PageLayout's fillHeight
+    // mode disables outer page scroll on the configure route, so this
+    // is the single scrollable region for the user.
+    <div className="h-full flex flex-col gap-3 pb-5 min-h-0">
       {/* ── Header ─────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="shrink-0 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <h3 className="text-sm font-semibold text-fg">Symbols</h3>
           <span
@@ -263,17 +267,19 @@ export default function SymbolManager({
       </div>
 
       {showAtLimitWarning && (
-        <UpgradePrompt
-          current={symbols.length}
-          max={maxSymbols}
-          noun="symbols"
-          tier={subscriptionTier}
-        />
+        <div className="shrink-0">
+          <UpgradePrompt
+            current={symbols.length}
+            max={maxSymbols}
+            noun="symbols"
+            tier={subscriptionTier}
+          />
+        </div>
       )}
 
       {/* ── Quick-add chips (only on near-empty watchlist) ────── */}
       {quickAddChips.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 px-3 py-2.5 rounded-lg border border-edge/30 bg-base-200/30">
+        <div className="shrink-0 flex flex-wrap items-center gap-1.5 px-3 py-2.5 rounded-lg border border-edge/30 bg-base-200/30">
           <span className="text-[10px] font-mono uppercase tracking-wider text-fg-4 mr-1">
             Quick add
           </span>
@@ -296,7 +302,7 @@ export default function SymbolManager({
       )}
 
       {/* ── Controls: search, category filter, tracked toggle, sort ── */}
-      <div className="flex items-center gap-2">
+      <div className="shrink-0 flex items-center gap-2">
         <div className="relative flex-1 min-w-0">
           <SearchIcon
             size={12}
@@ -368,7 +374,7 @@ export default function SymbolManager({
 
       {/* ── Active filter chips ───────────────────────────────── */}
       {selectedCategories.size > 0 && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="shrink-0 flex flex-wrap gap-1.5">
           {Array.from(selectedCategories).map((cat) => (
             <button
               key={cat}
@@ -388,28 +394,30 @@ export default function SymbolManager({
         </div>
       )}
 
-      {/* ── Unified list ──────────────────────────────────────── */}
+      {/* ── Unified list (only this region scrolls) ───────────── */}
       {loading ? (
-        <div className="text-center py-8">
+        <div className="shrink-0 text-center py-8">
           <p className="text-[11px] text-fg-4 animate-pulse">
             Loading catalog...
           </p>
         </div>
       ) : filtered.length === 0 ? (
-        <EmptySection
-          icon={SearchIcon}
-          title={trackedOnly ? "No tracked symbols match" : "No matches"}
-          description={
-            trackedOnly
-              ? "Try clearing the tracked-only filter or your search."
-              : "Try a different search or category."
-          }
-          compact
-        />
+        <div className="shrink-0">
+          <EmptySection
+            icon={SearchIcon}
+            title={trackedOnly ? "No tracked symbols match" : "No matches"}
+            description={
+              trackedOnly
+                ? "Try clearing the tracked-only filter or your search."
+                : "Try a different search or category."
+            }
+            compact
+          />
+        </div>
       ) : (
         <div
           role="list"
-          className="border border-edge/30 rounded-lg overflow-hidden divide-y divide-edge/20"
+          className="flex-1 min-h-0 overflow-y-auto scrollbar-thin border border-edge/30 rounded-lg divide-y divide-edge/20"
         >
           {filtered.map((sym) => (
             <SymbolRow
