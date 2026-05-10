@@ -1,23 +1,30 @@
 /**
  * SourcePageLayout — page chassis for channel and widget routes.
  *
- * Renders through the universal `PageLayout` so source pages share
- * the same header band, tab bar, and content stack as every other
- * route. Adds the source-specific breadcrumb (Home / Name) and the
- * Trash entity-action.
+ * Renders through the universal `PageLayout`. Source pages no longer
+ * have a visible tab band — Feed is the single visible page. All
+ * secondary actions (Configure, Display preferences, Manage on
+ * ticker, Remove) live in a 3-dot OverflowMenu in the TopBar's
+ * entityAction slot.
  *
- * IA refactor 2026-05-09 — channels and widgets now share a 2-tab
- * structure (Feed / Configure). The legacy Display tab folded into
- * Configure as a section. See
+ * The /feed and /configuration routes still exist (for direct
+ * deeplinks, tray actions, and the Catalog "Open" → feed flow);
+ * they're just no longer surfaced as competing tabs in the chrome.
+ *
+ * IA refactor 2026-05-09 — see
  * docs/superpowers/specs/2026-05-09-desktop-ia-refactor-design.md
  */
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
-import Tooltip from "./Tooltip";
+import { Settings as SettingsIcon, SlidersHorizontal, Tv, Trash2 } from "lucide-react";
 import ConfirmDialog from "./ConfirmDialog";
 import PageLayout from "./layout/PageLayout";
+import OverflowMenu, { type OverflowMenuItem } from "./OverflowMenu";
 
 // ── Shared tab constants ────────────────────────────────────────
+//
+// SourceTab is still part of the URL contract — channels can be
+// deeplinked to /channel/$type/feed or /channel/$type/configuration.
+// We just don't render a visible tab band anymore.
 
 export const VALID_TABS = ["feed", "configuration"] as const;
 export type SourceTab = (typeof VALID_TABS)[number];
@@ -55,29 +62,29 @@ export function SourceNotFound({
 
 // ── Layout ──────────────────────────────────────────────────────
 
-// Channels and widgets share the same 2-tab structure now. Display
-// preferences for channels live as a "Display" section inside the
-// Configure tab — same chassis for both kinds.
-const SOURCE_TABS = [
-  { key: "feed", label: "Feed" },
-  { key: "configuration", label: "Configure" },
-];
-
 interface SourcePageLayoutProps {
   name: string;
   /** Optional 1-line description rendered next to the name. */
   description?: string;
-  activeTab: string;
-  onTabChange: (tab: string) => void;
+  /** Current tab — "feed" or "configuration". */
+  activeTab: SourceTab;
+  /** Navigate to a different tab (used by menu items + Configure CTAs). */
+  onTabChange: (tab: SourceTab) => void;
   /** Click handler for the parent breadcrumb in the TopBar
    *  (typically navigates back to /feed). */
   onBack: () => void;
+  /** Click handler for "Manage on ticker" — opens Settings → Ticker. */
+  onManageTicker: () => void;
   children: React.ReactNode;
 
   /** Source-level remove action. */
   onRemove?: () => void;
   /** "channel" triggers a ConfirmDialog before removal; "widget" removes immediately. */
   sourceKind?: "channel" | "widget";
+  /** Whether this source has display preferences. Channels: true.
+   *  Widgets: their display options live alongside config; we don't
+   *  surface a separate "Display" menu item for them. */
+  hasDisplayPreferences?: boolean;
 }
 
 export default function SourcePageLayout({
@@ -86,9 +93,11 @@ export default function SourcePageLayout({
   activeTab,
   onTabChange,
   onBack,
+  onManageTicker,
   children,
   onRemove,
   sourceKind,
+  hasDisplayPreferences = false,
 }: SourcePageLayoutProps) {
   const [confirmRemove, setConfirmRemove] = useState(false);
 
@@ -100,17 +109,72 @@ export default function SourcePageLayout({
     }
   }
 
-  const entityAction = onRemove ? (
-    <Tooltip content="Remove">
-      <button
-        onClick={handleRemove}
-        aria-label={`Remove ${name}`}
-        className="w-7 h-7 flex items-center justify-center rounded-lg text-fg-4 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-      >
-        <Trash2 size={14} />
-      </button>
-    </Tooltip>
-  ) : undefined;
+  // Build the menu items list. Order is intentional: most common
+  // first (Configure), then Display, then ticker management, then
+  // a divider, then destructive Remove at the bottom.
+  const menuItems: OverflowMenuItem[] = [];
+
+  // Configure entry — when on /configuration it acts as "back to
+  // Feed" so the menu is dual-purpose; otherwise it opens Configure.
+  if (activeTab === "configuration") {
+    menuItems.push({
+      key: "feed",
+      label: "Back to feed",
+      icon: Tv,
+      onSelect: () => onTabChange("feed"),
+    });
+  } else {
+    menuItems.push({
+      key: "configure",
+      label: sourceKind === "widget" ? "Configure widget" : "Configure source",
+      hint:
+        sourceKind === "widget"
+          ? "Pick what to track and how it renders"
+          : "Pick what to track",
+      icon: SettingsIcon,
+      onSelect: () => onTabChange("configuration"),
+    });
+  }
+
+  // Display preferences — only for channels (widgets don't have a
+  // separate display section). Jumping to Configure with a focus
+  // hint is the natural place; we just rely on Configure showing
+  // the Display section near the bottom.
+  if (hasDisplayPreferences && activeTab !== "configuration") {
+    menuItems.push({
+      key: "display",
+      label: "Display preferences",
+      hint: "Choose what shows on Home and the ticker",
+      icon: SlidersHorizontal,
+      onSelect: () => onTabChange("configuration"),
+    });
+  }
+
+  menuItems.push({
+    key: "ticker",
+    label: "Manage on ticker",
+    hint: "Set rows, speed, and style",
+    icon: Tv,
+    onSelect: onManageTicker,
+  });
+
+  if (onRemove) {
+    menuItems.push({ key: "div-1", divider: true });
+    menuItems.push({
+      key: "remove",
+      label: `Remove ${name}`,
+      icon: Trash2,
+      destructive: true,
+      onSelect: handleRemove,
+    });
+  }
+
+  const entityAction = (
+    <OverflowMenu
+      items={menuItems}
+      triggerLabel={`${name} options`}
+    />
+  );
 
   return (
     <>
@@ -119,18 +183,20 @@ export default function SourcePageLayout({
         subtitle={description}
         parentLabel="Home"
         onParentClick={onBack}
+        // When on Configure, clicking the source name in the breadcrumb
+        // returns to the source's Feed view. On Feed itself the title
+        // is plain text (no-op click would be confusing).
+        onTitleClick={
+          activeTab === "configuration" ? () => onTabChange("feed") : undefined
+        }
         width="narrow"
         entityAction={entityAction}
-        tabs={{
-          items: SOURCE_TABS,
-          activeKey: activeTab,
-          onChange: onTabChange,
-        }}
       >
         {children}
       </PageLayout>
 
-      {/* Channel removal confirmation */}
+      {/* Channel removal confirmation. Widgets remove immediately
+          via the useUndoableAction toast (see widget route). */}
       <ConfirmDialog
         open={confirmRemove}
         title={`Remove ${name}?`}

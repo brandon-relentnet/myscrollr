@@ -25,7 +25,14 @@ export interface PageIdentity {
   /** Click handler for the parent breadcrumb (e.g. navigate to /feed). */
   onParentClick?: () => void;
   /**
-   * Optional contextual action (Trash on source pages, etc.)
+   * Optional click handler for the title itself. Used when the page
+   * has sub-routes (e.g. on `/channel/sports/configuration`, clicking
+   * "Sports" should go back to `/channel/sports/feed`). When omitted,
+   * the title is plain text.
+   */
+  onTitleClick?: () => void;
+  /**
+   * Optional contextual action (overflow menu, Trash button, etc.)
    * rendered after the title in the TopBar.
    */
   entityAction?: ReactNode;
@@ -73,5 +80,10 @@ export function useRegisterPageIdentity(identity: PageIdentity) {
     ctx?.setIdentity(identity);
     return () => ctx?.setIdentity(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, identity.entityAction, identity.onParentClick]);
+  }, [
+    key,
+    identity.entityAction,
+    identity.onParentClick,
+    identity.onTitleClick,
+  ]);
 }

@@ -66,19 +66,34 @@ function ChannelRoute() {
     return <SourceNotFound kind="Channel" name={type} />;
   }
 
+  // Channels have a Display section inside their Configure tab —
+  // expose the dedicated menu entry. Per channel type:
+  // finance/sports/rss/fantasy all render display prefs.
+  const HAS_DISPLAY: Record<string, boolean> = {
+    finance: true,
+    sports: true,
+    rss: true,
+    fantasy: true,
+  };
+
   return (
     <SourcePageLayout
       name={channel.name}
+      description={tab === "configuration" ? "Configure" : undefined}
       activeTab={tab}
       onTabChange={(t) =>
         navigate({ to: "/channel/$type/$tab", params: { type, tab: t } })
       }
       onBack={() => navigate({ to: "/feed" })}
+      onManageTicker={() =>
+        navigate({ to: "/settings", search: { tab: "ticker" } })
+      }
       onRemove={() => {
         onDeleteChannel(type as ChannelType);
         navigate({ to: "/feed" });
       }}
       sourceKind="channel"
+      hasDisplayPreferences={HAS_DISPLAY[type] ?? false}
     >
       {tab === "feed" && (
         <ChannelFeedTab

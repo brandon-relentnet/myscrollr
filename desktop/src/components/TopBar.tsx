@@ -127,23 +127,30 @@ export default function TopBar({
                   <span className="text-fg-4/50 shrink-0">/</span>
                 </>
               )}
-              <span className="font-semibold text-fg truncate">
-                {page.title}
-              </span>
+              {page.onTitleClick ? (
+                <button
+                  onClick={page.onTitleClick}
+                  className="font-semibold text-fg-2 hover:text-fg truncate transition-colors"
+                >
+                  {page.title}
+                </button>
+              ) : (
+                <span className="font-semibold text-fg truncate">
+                  {page.title}
+                </span>
+              )}
               {page.subtitle && (
                 <>
                   <span className="text-fg-4/40 shrink-0" aria-hidden>
-                    ·
+                    /
                   </span>
-                  <span className="text-fg-4 truncate hidden lg:inline">
-                    {page.subtitle}
-                  </span>
+                  <span className="text-fg-3 truncate">{page.subtitle}</span>
                 </>
               )}
             </div>
 
-            {/* Entity action (e.g. Trash on source pages) sits right
-                after the page title, treated as a contextual tool that
+            {/* Entity action (overflow menu / Trash) sits right after
+                the page identity, treated as a contextual tool that
                 belongs to this page entity. */}
             {page.entityAction && (
               <div className="shrink-0 flex items-center gap-1">

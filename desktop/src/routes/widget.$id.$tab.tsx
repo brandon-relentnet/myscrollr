@@ -47,11 +47,15 @@ function WidgetRoute() {
   return (
     <SourcePageLayout
       name={widget.name}
+      description={tab === "configuration" ? "Configure" : undefined}
       activeTab={tab}
       onTabChange={(t) =>
         navigate({ to: "/widget/$id/$tab", params: { id, tab: t } })
       }
       onBack={() => navigate({ to: "/feed" })}
+      onManageTicker={() =>
+        navigate({ to: "/settings", search: { tab: "ticker" } })
+      }
       onRemove={() => {
         undoable(
           {

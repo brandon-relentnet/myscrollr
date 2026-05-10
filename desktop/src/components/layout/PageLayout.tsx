@@ -40,6 +40,9 @@ interface PageLayoutProps {
   parentLabel?: string;
   /** Click handler for the parent breadcrumb. */
   onParentClick?: () => void;
+  /** Optional click handler for the title (e.g. on sub-routes,
+   *  clicking the title returns to the primary route). */
+  onTitleClick?: () => void;
 
   /**
    * Destructive or contextual action tied to the page entity. Rendered
@@ -72,6 +75,7 @@ export default function PageLayout({
   subtitle,
   parentLabel,
   onParentClick,
+  onTitleClick,
   entityAction,
   tabs,
   children,
@@ -84,6 +88,7 @@ export default function PageLayout({
     subtitle,
     parentLabel,
     onParentClick,
+    onTitleClick,
     entityAction,
   });
 
