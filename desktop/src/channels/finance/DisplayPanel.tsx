@@ -1,24 +1,31 @@
 /**
  * Finance display preferences — the "/channel/finance/display" page.
  *
- * Replaces the old DisplayLocationGrid (a 3-row × 2-checkbox abstract
- * grid forcing users to mentally simulate "show % change in Ticker").
- * The new design pairs each control with a LIVE preview of the actual
- * surface (Feed row + Ticker chip) using either the user's first
- * tracked symbol or a sample, so toggling immediately reflects the
- * visual outcome.
+ * Layout:
+ *   1. Live preview        — Feed row + Ticker chip side by side, both
+ *                            update in real time as toggles change.
+ *   2. Display items       — one row per metric with two surface chips
+ *                            (Feed / Ticker) on the right. Each chip
+ *                            shows whether the metric appears there.
+ *                            Click a chip to toggle that surface only.
+ *                            Section header has bulk All / None
+ *                            controls per surface.
+ *   3. Layout & order      — feed density, ticker direction marker,
+ *                            default sort order.
+ *   4. Footer reset        — restore defaults.
  *
- * Structure:
- *   1. Live preview            — mini Feed row + Ticker chip side by side
- *   2. On the Feed section     — 3 toggles + Sort order
- *   3. On the Ticker section   — 3 toggles
- *   4. Reset                   — restore defaults
+ * Why one row per metric (not duplicated by surface):
+ *   The earlier draft had two parallel sections "On the Feed" and
+ *   "On the Ticker" with the same three toggles in each. That doubled
+ *   the visual surface for what is conceptually one decision per
+ *   metric ("where should this show up?"). Folding back to a single
+ *   row per metric keeps the matrix structure of the original
+ *   DisplayLocationGrid but replaces the abstract checkbox columns
+ *   with labeled surface chips paired with the live preview, so the
+ *   user always sees the visual outcome of their choices.
  *
- * The persisted enum (`off | feed | ticker | both`) is unchanged — we
- * just split it into two booleans at the UI boundary, same as the
- * grid did, but presented as side-anchored controls instead of a
- * matrix. Bulk "show all on Feed / Ticker" lives as small inline
- * "All / None" links in each section header.
+ * Persisted shape unchanged: `off | feed | ticker | both` enum
+ * converted at the UI boundary via enumToBools / boolsToEnum.
  */
 import { useMemo } from "react";
 import {
@@ -28,6 +35,7 @@ import {
   Tv,
   Clock,
   History,
+  Check,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { motion } from "motion/react";
@@ -40,7 +48,11 @@ import {
   type Venue,
   type FinanceDisplayPrefs,
 } from "../../preferences";
-import { Section, ToggleRow, SegmentedRow, ResetButton } from "../../components/settings/SettingsControls";
+import {
+  Section,
+  SegmentedRow,
+  ResetButton,
+} from "../../components/settings/SettingsControls";
 import { formatPrice, formatChange, relativeTime } from "../../utils/format";
 import type { Trade } from "../../types";
 import { useNow } from "../../hooks/useNow";
@@ -74,9 +86,36 @@ const MARKER_OPTIONS = [
   { value: "none", label: "None" },
 ];
 
+// Metric definitions drive the unified Display items section. Each
+// row binds one prefs field to its label, description, and chip
+// labels. Adding a new metric = one entry here.
+type MetricKey = "showChange" | "showPrevClose" | "showLastUpdated";
+
+interface MetricDef {
+  key: MetricKey;
+  label: string;
+  description: string;
+}
+
+const METRICS: MetricDef[] = [
+  {
+    key: "showChange",
+    label: "% change",
+    description: "Daily price change percentage with up/down marker",
+  },
+  {
+    key: "showPrevClose",
+    label: "Previous close",
+    description: "Last session's closing price",
+  },
+  {
+    key: "showLastUpdated",
+    label: "Last updated",
+    description: "Relative time since the last tick",
+  },
+];
+
 // Sample trade used for the preview when no real symbol is tracked.
-// Up direction so the preview shows the up-color (most users will
-// have at least one positive mover, but a fresh install has nothing).
 function buildSampleTrade(): Trade {
   return {
     symbol: "AAPL",
@@ -118,7 +157,7 @@ export default function FinanceDisplayPanel() {
   }
 
   function setVenue(
-    key: "showChange" | "showPrevClose" | "showLastUpdated",
+    key: MetricKey,
     surface: "feed" | "ticker",
     on: boolean,
   ) {
@@ -131,15 +170,10 @@ export default function FinanceDisplayPanel() {
   }
 
   function bulkSurface(surface: "feed" | "ticker", on: boolean) {
-    const keys: Array<"showChange" | "showPrevClose" | "showLastUpdated"> = [
-      "showChange",
-      "showPrevClose",
-      "showLastUpdated",
-    ];
     const next: Partial<FinanceDisplayPrefs> = {};
-    for (const k of keys) {
-      const bools = enumToBools(dp[k]);
-      next[k] = boolsToEnum(
+    for (const m of METRICS) {
+      const bools = enumToBools(dp[m.key]);
+      next[m.key] = boolsToEnum(
         surface === "feed" ? on : bools.feed,
         surface === "ticker" ? on : bools.ticker,
       );
@@ -151,7 +185,7 @@ export default function FinanceDisplayPanel() {
     patch(DEFAULTS);
   }
 
-  // ── Booleans the preview / toggles read from ──────────────────
+  // ── Booleans the preview reads from ───────────────────────────
 
   const feedShowChange = enumToBools(dp.showChange).feed;
   const feedShowPrevClose = enumToBools(dp.showPrevClose).feed;
@@ -160,10 +194,10 @@ export default function FinanceDisplayPanel() {
   const tickerShowPrevClose = enumToBools(dp.showPrevClose).ticker;
   const tickerShowLastUpdated = enumToBools(dp.showLastUpdated).ticker;
 
-  const allFeedOn = feedShowChange && feedShowPrevClose && feedShowLastUpdated;
-  const allFeedOff = !feedShowChange && !feedShowPrevClose && !feedShowLastUpdated;
-  const allTickerOn = tickerShowChange && tickerShowPrevClose && tickerShowLastUpdated;
-  const allTickerOff = !tickerShowChange && !tickerShowPrevClose && !tickerShowLastUpdated;
+  const allFeedOn = METRICS.every((m) => enumToBools(dp[m.key]).feed);
+  const allFeedOff = METRICS.every((m) => !enumToBools(dp[m.key]).feed);
+  const allTickerOn = METRICS.every((m) => enumToBools(dp[m.key]).ticker);
+  const allTickerOff = METRICS.every((m) => !enumToBools(dp[m.key]).ticker);
 
   // ── Render ─────────────────────────────────────────────────────
 
@@ -173,7 +207,7 @@ export default function FinanceDisplayPanel() {
       <Section title="Live preview">
         <div className="px-3 pb-1 space-y-3">
           <p className="text-[11px] text-fg-4 leading-snug">
-            Toggling the controls below updates these previews in real time.
+            Toggle items below to see the Feed and Ticker update in real time.
           </p>
 
           <div className="grid grid-cols-2 gap-3">
@@ -199,68 +233,51 @@ export default function FinanceDisplayPanel() {
         </div>
       </Section>
 
-      {/* ── On the Feed ──────────────────────────────────────────── */}
+      {/* ── Display items (single row per metric) ────────────────── */}
       <Section
-        title="On the Feed"
+        title="Display items"
         action={
-          <BulkToggle
-            allOn={allFeedOn}
-            allOff={allFeedOff}
-            onAll={() => bulkSurface("feed", true)}
-            onNone={() => bulkSurface("feed", false)}
-          />
+          <div className="flex items-center gap-3">
+            <BulkSurfaceToggle
+              icon={Eye}
+              label="Feed"
+              allOn={allFeedOn}
+              allOff={allFeedOff}
+              onAll={() => bulkSurface("feed", true)}
+              onNone={() => bulkSurface("feed", false)}
+            />
+            <span aria-hidden className="w-px h-3 bg-edge/40" />
+            <BulkSurfaceToggle
+              icon={Tv}
+              label="Ticker"
+              allOn={allTickerOn}
+              allOff={allTickerOff}
+              onAll={() => bulkSurface("ticker", true)}
+              onNone={() => bulkSurface("ticker", false)}
+            />
+          </div>
         }
       >
-        <ToggleRow
-          label="% change"
-          description="Daily price change percentage"
-          checked={feedShowChange}
-          onChange={(v) => setVenue("showChange", "feed", v)}
-        />
-        <ToggleRow
-          label="Previous close"
-          description="Last session's closing price"
-          checked={feedShowPrevClose}
-          onChange={(v) => setVenue("showPrevClose", "feed", v)}
-        />
-        <ToggleRow
-          label="Last updated"
-          description="Relative time since the last tick"
-          checked={feedShowLastUpdated}
-          onChange={(v) => setVenue("showLastUpdated", "feed", v)}
-        />
-      </Section>
-
-      {/* ── On the Ticker ────────────────────────────────────────── */}
-      <Section
-        title="On the Ticker"
-        action={
-          <BulkToggle
-            allOn={allTickerOn}
-            allOff={allTickerOff}
-            onAll={() => bulkSurface("ticker", true)}
-            onNone={() => bulkSurface("ticker", false)}
-          />
-        }
-      >
-        <ToggleRow
-          label="% change"
-          description="Compact arrow + percent next to the symbol"
-          checked={tickerShowChange}
-          onChange={(v) => setVenue("showChange", "ticker", v)}
-        />
-        <ToggleRow
-          label="Previous close"
-          description="Adds 'Prev $X' on the comfort row"
-          checked={tickerShowPrevClose}
-          onChange={(v) => setVenue("showPrevClose", "ticker", v)}
-        />
-        <ToggleRow
-          label="Last updated"
-          description="Tiny 'Xs ago' next to the chip"
-          checked={tickerShowLastUpdated}
-          onChange={(v) => setVenue("showLastUpdated", "ticker", v)}
-        />
+        <div className="rounded-lg border border-edge/40 overflow-hidden divide-y divide-edge/30 mx-3">
+          {METRICS.map((metric) => {
+            const bools = enumToBools(dp[metric.key]);
+            return (
+              <MetricRow
+                key={metric.key}
+                label={metric.label}
+                description={metric.description}
+                feedOn={bools.feed}
+                tickerOn={bools.ticker}
+                onToggleFeed={() =>
+                  setVenue(metric.key, "feed", !bools.feed)
+                }
+                onToggleTicker={() =>
+                  setVenue(metric.key, "ticker", !bools.ticker)
+                }
+              />
+            );
+          })}
+        </div>
       </Section>
 
       {/* ── Layout & order ───────────────────────────────────────── */}
@@ -270,21 +287,30 @@ export default function FinanceDisplayPanel() {
           description="Comfort shows two-row cards; Compact stacks more per screen"
           value={dp.feedDensity}
           options={DENSITY_OPTIONS}
-          onChange={(v) => patch({ feedDensity: v as FinanceDisplayPrefs["feedDensity"] })}
+          onChange={(v) =>
+            patch({ feedDensity: v as FinanceDisplayPrefs["feedDensity"] })
+          }
         />
         <SegmentedRow
           label="Ticker direction marker"
           description="How up/down moves are flagged next to the percentage"
           value={dp.tickerDirectionMarker}
           options={MARKER_OPTIONS}
-          onChange={(v) => patch({ tickerDirectionMarker: v as FinanceDisplayPrefs["tickerDirectionMarker"] })}
+          onChange={(v) =>
+            patch({
+              tickerDirectionMarker:
+                v as FinanceDisplayPrefs["tickerDirectionMarker"],
+            })
+          }
         />
         <SegmentedRow
           label="Default sort"
           description="How symbols are ordered on the Feed and the Ticker"
           value={dp.defaultSort}
           options={SORT_OPTIONS}
-          onChange={(v) => patch({ defaultSort: v as FinanceDisplayPrefs["defaultSort"] })}
+          onChange={(v) =>
+            patch({ defaultSort: v as FinanceDisplayPrefs["defaultSort"] })
+          }
         />
       </Section>
 
@@ -292,6 +318,157 @@ export default function FinanceDisplayPanel() {
       <div className="flex items-center justify-end pt-2">
         <ResetButton label="Reset display settings" onClick={handleReset} />
       </div>
+    </div>
+  );
+}
+
+// ── Metric row (one row per metric, two surface chips on the right) ──
+
+interface MetricRowProps {
+  label: string;
+  description: string;
+  feedOn: boolean;
+  tickerOn: boolean;
+  onToggleFeed: () => void;
+  onToggleTicker: () => void;
+}
+
+function MetricRow({
+  label,
+  description,
+  feedOn,
+  tickerOn,
+  onToggleFeed,
+  onToggleTicker,
+}: MetricRowProps) {
+  return (
+    <div className="flex items-center gap-3 px-3 py-2.5 hover:bg-base-250/30 transition-colors">
+      <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+        <span className="text-[12px] text-fg-2 leading-tight">{label}</span>
+        <span className="text-[11px] text-fg-4 leading-tight">{description}</span>
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0">
+        <SurfaceChip
+          icon={Eye}
+          label="Feed"
+          active={feedOn}
+          onClick={onToggleFeed}
+        />
+        <SurfaceChip
+          icon={Tv}
+          label="Ticker"
+          active={tickerOn}
+          onClick={onToggleTicker}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── Surface chip ─────────────────────────────────────────────────
+//
+// Pill-shaped toggle with an icon, surface label, and a subtle
+// indicator. Active state tints accent and shows a check; inactive
+// shows muted with the surface icon only.
+
+interface SurfaceChipProps {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}
+
+function SurfaceChip({
+  icon: Icon,
+  label,
+  active,
+  onClick,
+}: SurfaceChipProps) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={active}
+      aria-label={`${active ? "Hide from" : "Show on"} ${label}`}
+      onClick={onClick}
+      className={clsx(
+        "flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-[11px] font-medium",
+        "transition-all duration-150 active:scale-[0.93]",
+        active
+          ? "border-accent/50 bg-accent/10 text-accent"
+          : "border-edge/40 text-fg-4 hover:text-fg-3 hover:border-edge/60",
+      )}
+    >
+      <Icon size={11} />
+      <span>{label}</span>
+      <motion.span
+        key={active ? "on" : "off"}
+        initial={{ scale: 0.4, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 480, damping: 24 }}
+        className={clsx(
+          "flex items-center justify-center w-3 h-3 rounded-sm",
+          active
+            ? "bg-accent text-surface"
+            : "bg-base-300 text-fg-4/50 opacity-60",
+        )}
+      >
+        {active ? <Check size={9} strokeWidth={3.5} /> : null}
+      </motion.span>
+    </button>
+  );
+}
+
+// ── Bulk surface toggle (in the section header) ─────────────────
+
+interface BulkSurfaceToggleProps {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  label: string;
+  allOn: boolean;
+  allOff: boolean;
+  onAll: () => void;
+  onNone: () => void;
+}
+
+function BulkSurfaceToggle({
+  icon: Icon,
+  label,
+  allOn,
+  allOff,
+  onAll,
+  onNone,
+}: BulkSurfaceToggleProps) {
+  return (
+    <div className="flex items-center gap-1 text-[10px] text-fg-4">
+      <Icon size={10} className="text-fg-4 shrink-0" />
+      <span className="font-mono uppercase tracking-wider mr-0.5">{label}</span>
+      <button
+        type="button"
+        onClick={onAll}
+        disabled={allOn}
+        className={clsx(
+          "px-1.5 py-0.5 rounded transition-all duration-150 active:scale-90",
+          allOn
+            ? "opacity-30 cursor-default"
+            : "hover:text-fg-2 hover:bg-base-250/50 cursor-pointer",
+        )}
+      >
+        All
+      </button>
+      <span aria-hidden className="text-fg-4/50">·</span>
+      <button
+        type="button"
+        onClick={onNone}
+        disabled={allOff}
+        className={clsx(
+          "px-1.5 py-0.5 rounded transition-all duration-150 active:scale-90",
+          allOff
+            ? "opacity-30 cursor-default"
+            : "hover:text-fg-2 hover:bg-base-250/50 cursor-pointer",
+        )}
+      >
+        None
+      </button>
     </div>
   );
 }
@@ -320,7 +497,7 @@ function PreviewSurface({ label, icon: Icon, children }: PreviewSurfaceProps) {
   );
 }
 
-// ── Feed preview — mini comfort-row ─────────────────────────────
+// ── Feed preview — mini comfort/compact row ─────────────────────
 
 interface FeedPreviewProps {
   trade: Trade;
@@ -389,11 +566,13 @@ function FeedPreview({
         <span className="font-mono font-bold text-[12px] text-fg tracking-wide">
           {trade.symbol}
         </span>
-        {showPrevClose && trade.previous_close != null && Number(trade.previous_close) > 0 && (
-          <span className="text-[9px] font-mono text-fg-3 tabular-nums">
-            Prev {formatPrice(trade.previous_close)}
-          </span>
-        )}
+        {showPrevClose &&
+          trade.previous_close != null &&
+          Number(trade.previous_close) > 0 && (
+            <span className="text-[9px] font-mono text-fg-3 tabular-nums">
+              Prev {formatPrice(trade.previous_close)}
+            </span>
+          )}
       </div>
       <div className="flex flex-col items-end gap-0.5">
         <span className="text-[12px] font-mono font-medium text-fg tabular-nums">
@@ -442,8 +621,6 @@ function TickerPreview({
   const isUp = trade.direction === "up";
   const ArrowIcon = isUp ? TrendingUp : TrendingDown;
 
-  // Render the direction marker according to the user's choice. The
-  // % itself stays — only the lead-in changes.
   const marker =
     directionMarker === "arrow" ? (
       <ArrowIcon size={9} />
@@ -476,14 +653,18 @@ function TickerPreview({
       </div>
       {(showPrevClose || showLastUpdated) && (
         <div className="flex items-center gap-1.5 text-[9px] text-fg-4">
-          {showPrevClose && trade.previous_close != null && Number(trade.previous_close) > 0 && (
-            <span className="flex items-center gap-0.5">
-              <History size={8} />
-              Prev {formatPrice(trade.previous_close)}
-            </span>
-          )}
+          {showPrevClose &&
+            trade.previous_close != null &&
+            Number(trade.previous_close) > 0 && (
+              <span className="flex items-center gap-0.5">
+                <History size={8} />
+                Prev {formatPrice(trade.previous_close)}
+              </span>
+            )}
           {showPrevClose && showLastUpdated && (
-            <span aria-hidden className="text-fg-4/50">·</span>
+            <span aria-hidden className="text-fg-4/50">
+              ·
+            </span>
           )}
           {showLastUpdated && trade.last_updated && (
             <span className="flex items-center gap-0.5">
@@ -496,48 +677,3 @@ function TickerPreview({
     </motion.div>
   );
 }
-
-// ── Bulk toggle (All / None) ────────────────────────────────────
-
-interface BulkToggleProps {
-  allOn: boolean;
-  allOff: boolean;
-  onAll: () => void;
-  onNone: () => void;
-}
-
-function BulkToggle({ allOn, allOff, onAll, onNone }: BulkToggleProps) {
-  return (
-    <div className="flex items-center gap-1 text-[10px]">
-      <button
-        type="button"
-        onClick={onAll}
-        disabled={allOn}
-        className={clsx(
-          "px-1.5 py-0.5 rounded text-fg-4 transition-all duration-150 active:scale-90",
-          allOn
-            ? "opacity-30 cursor-default"
-            : "hover:text-fg-2 hover:bg-base-250/50 cursor-pointer",
-        )}
-      >
-        All
-      </button>
-      <span aria-hidden className="text-fg-4/50">·</span>
-      <button
-        type="button"
-        onClick={onNone}
-        disabled={allOff}
-        className={clsx(
-          "px-1.5 py-0.5 rounded text-fg-4 transition-all duration-150 active:scale-90",
-          allOff
-            ? "opacity-30 cursor-default"
-            : "hover:text-fg-2 hover:bg-base-250/50 cursor-pointer",
-        )}
-      >
-        None
-      </button>
-    </div>
-  );
-}
-
-
