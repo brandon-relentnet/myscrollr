@@ -4,6 +4,7 @@ import { usePageMeta } from '@/lib/usePageMeta'
 import { HeroSection } from '@/components/landing/HeroSection'
 import { HowItWorks } from '@/components/landing/HowItWorks'
 import { ChannelsShowcase } from '@/components/landing/ChannelsShowcase'
+import { CustomizationShowcase } from '@/components/landing/CustomizationShowcase'
 import { BenefitsSection } from '@/components/landing/BenefitsSection'
 import { TrustSection } from '@/components/landing/TrustSection'
 
@@ -46,6 +47,8 @@ function HomePage() {
       <HowItWorks />
 
       <ChannelsShowcase />
+
+      <CustomizationShowcase />
 
       <BenefitsSection />
 

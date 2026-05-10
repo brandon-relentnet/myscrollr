@@ -42,10 +42,13 @@ const ACCENT_GLOW: Record<Channel, string> = {
 // actually shows for screen-reader users and as fallback when images
 // fail to load.
 const ALT_TEXT: Record<Channel, string> = {
-  sports: 'Scrollr desktop app showing live sports scores feed.',
-  finance: 'Scrollr desktop app showing live stock prices and crypto markets.',
-  news: 'Scrollr desktop app showing the latest RSS news headlines.',
-  fantasy: 'Scrollr desktop app showing a Yahoo Fantasy matchup view.',
+  sports:
+    'Scrollr desktop app showing live MLB scores with team logos, status pills, and tabs for Schedule and Standings.',
+  finance:
+    'Scrollr desktop app showing live stock and crypto prices with category tags, percent change, and Gainers/Losers filters.',
+  news: 'Scrollr desktop app showing the latest news headlines from custom RSS sources, with recency indicators.',
+  fantasy:
+    'Scrollr desktop app showing Yahoo Fantasy league overview cards with a live matchup score, win probability, and league standings context.',
 }
 
 interface HeroProductShowcaseProps {
@@ -93,7 +96,7 @@ export function HeroProductShowcase({ activeIndex }: HeroProductShowcaseProps) {
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.6, ease: 'easeOut' }}
-      className="relative w-[360px] sm:w-[480px] lg:w-[500px] xl:w-[640px] 2xl:w-[780px] aspect-[1600/1055]"
+      className="relative w-[360px] sm:w-[480px] lg:w-[500px] xl:w-[640px] 2xl:w-[780px] aspect-[1600/1134]"
     >
       {/* Ambient glow tinted by the active channel's accent color. */}
       <div
@@ -128,7 +131,7 @@ export function HeroProductShowcase({ activeIndex }: HeroProductShowcaseProps) {
                 src={`${base}@1x.webp`}
                 alt={isActive ? ALT_TEXT[channel] : ''}
                 width={1600}
-                height={1055}
+                height={1134}
                 loading={isActive ? 'eager' : 'lazy'}
                 decoding="async"
                 fetchPriority={isActive ? 'high' : 'auto'}

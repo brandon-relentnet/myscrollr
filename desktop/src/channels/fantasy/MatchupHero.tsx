@@ -238,11 +238,11 @@ function TeamSide({
       )}
       <div
         className={clsx(
-          "flex min-w-0 flex-col leading-tight",
+          "flex min-w-0 max-w-full overflow-hidden flex-col leading-tight",
           align === "right" ? "items-end text-right" : "items-start text-left",
         )}
       >
-        <span className={clsx("truncate text-[12px] font-semibold", colorClass)}>
+        <span className={clsx("block max-w-full truncate text-[12px] font-semibold", colorClass)}>
           {team.name}
           {isUser && (
             <span className="ml-1 rounded bg-accent/20 px-1 py-[1px] font-mono text-[8px] uppercase tracking-wider text-accent">
@@ -251,7 +251,7 @@ function TeamSide({
           )}
         </span>
         {team.manager_name && (
-          <span className="truncate text-[10px] text-fg-3">
+          <span className="block max-w-full truncate text-[10px] text-fg-3">
             {team.manager_name}
           </span>
         )}
