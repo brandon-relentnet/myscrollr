@@ -22,15 +22,11 @@ import ChannelConfigPanel from "../channels/ChannelConfigPanel";
 import FinanceDisplayPanel from "../channels/finance/DisplayPanel";
 import SportsDisplayPanel from "../channels/sports/DisplayPanel";
 import RssDisplayPanel from "../channels/rss/DisplayPanel";
+import FantasyDisplayPanel from "../channels/fantasy/DisplayPanel";
 import { useShell } from "../shell-context";
-import { Section, ToggleRow, ResetButton, SegmentedRow } from "../components/settings/SettingsControls";
-import DisplayItemsGrid from "../components/settings/DisplayItemsGrid";
-import type { DisplayItemsSection } from "../components/settings/DisplayItemsGrid";
-import FollowedPlayersPicker from "../components/settings/FollowedPlayersPicker";
 import { loadPref } from "../preferences";
 import type { Channel, ChannelType } from "../api/client";
 import type { DashboardResponse, DeliveryMode } from "../types";
-import type { FantasyDisplayPrefs, Venue } from "../preferences";
 
 export const Route = createFileRoute("/channel/$type/$tab")({
   loader: ({ context: { queryClient } }) =>
@@ -180,206 +176,10 @@ function ChannelDisplayTab({ type }: { type: string }) {
     case "rss":
       return <RssDisplayPanel />;
     case "fantasy":
-      return <FantasyDisplay />;
+      return <FantasyDisplayPanel />;
     default:
       return null;
   }
-}
-
-// Keys on FantasyDisplayPrefs that are venue-typed. Drives the per-item
-// rows below — adding a new venue-typed field here and in the interface
-// is all it takes to expose it on the Display page.
-type FantasyVenueKey =
-  | "matchupScore"
-  | "winProbability"
-  | "matchupStatus"
-  | "projectedPoints"
-  | "week"
-  | "record"
-  | "standingsPosition"
-  | "streak"
-  | "injuryCount"
-  | "topScorer"
-  // Phase 1 player-stats (2026-04-25):
-  | "topThreeScorers"
-  | "worstStarter"
-  | "benchOpportunity"
-  | "injuryDetail";
-
-interface FantasyVenueRow {
-  key: FantasyVenueKey;
-  label: string;
-  description: string;
-}
-
-interface FantasyVenueGroup {
-  title: string;
-  rows: FantasyVenueRow[];
-}
-
-// Visual sub-grouping inside the grid. The Display tab has 10 venue
-// items; flat-listing them is overwhelming. Three groups (Score &
-// status / Standings / Roster) match the user's mental model of which
-// feeds are about live game state, season-wide rank, and roster health.
-const FANTASY_VENUE_GROUPS: FantasyVenueGroup[] = [
-  {
-    title: "Score & status",
-    rows: [
-      { key: "matchupScore", label: "Matchup score", description: "Your team vs. opponent, live or final" },
-      { key: "winProbability", label: "Win probability", description: "62% chance to win" },
-      { key: "matchupStatus", label: "Matchup status", description: "LIVE / FINAL / PRE badge" },
-      { key: "projectedPoints", label: "Projected points", description: "Your projected total this week" },
-      { key: "week", label: "Week number", description: "Current matchup week label" },
-    ],
-  },
-  {
-    title: "Standings",
-    rows: [
-      { key: "record", label: "Team record", description: "Season wins / losses (optionally ties)" },
-      { key: "standingsPosition", label: "Standings position", description: "3rd of 10" },
-      { key: "streak", label: "Current streak", description: "W3 / L2 badge" },
-    ],
-  },
-  {
-    title: "Roster",
-    rows: [
-      { key: "injuryCount", label: "Injury count", description: "Count of IR / DTD players on your roster" },
-      { key: "topScorer", label: "Top scorer", description: "Highest-scoring active player on your team" },
-    ],
-  },
-  {
-    title: "Player stats",
-    rows: [
-      {
-        key: "topThreeScorers",
-        label: "Top 3 starters",
-        description: "Mahomes 32, Hill 18, CMC 14 — each as its own segment",
-      },
-      {
-        key: "worstStarter",
-        label: "Lowest starter",
-        description: "↓ Andrews 0 — the dud you couldn't sit (red)",
-      },
-      {
-        key: "benchOpportunity",
-        label: "Bench leader",
-        description: "BN Pacheco 18 — points your bench is producing",
-      },
-      {
-        key: "injuryDetail",
-        label: "Injury report",
-        description: "🚨 Saquon OUT, Mixon DTD — names + status (max 2 + overflow)",
-      },
-    ],
-  },
-];
-
-function FantasyDisplay() {
-  const { prefs, onPrefsChange } = useShell();
-  const dp = prefs.channelDisplay.fantasy;
-
-  function patch(next: Partial<FantasyDisplayPrefs>) {
-    onPrefsChange({
-      ...prefs,
-      channelDisplay: {
-        ...prefs.channelDisplay,
-        fantasy: { ...dp, ...next },
-      },
-    });
-  }
-
-  function toggle(key: keyof Pick<FantasyDisplayPrefs, "showStandings" | "showMatchups">) {
-    patch({ [key]: !dp[key] } as Partial<FantasyDisplayPrefs>);
-  }
-
-  function handleReset() {
-    onPrefsChange({
-      ...prefs,
-      channelDisplay: {
-        ...prefs.channelDisplay,
-        fantasy: {
-          matchupScore: "both",
-          winProbability: "both",
-          matchupStatus: "both",
-          projectedPoints: "both",
-          week: "both",
-          record: "both",
-          standingsPosition: "both",
-          streak: "both",
-          injuryCount: "both",
-          topScorer: "both",
-          // Phase 1 player-stats — same default as the rest.
-          topThreeScorers: "both",
-          worstStarter: "both",
-          benchOpportunity: "both",
-          injuryDetail: "both",
-          // Phase 2 followed players — reset clears the list.
-          // Users explicitly picked these; resetting display settings
-          // shouldn't preserve them, otherwise "reset" wouldn't fully
-          // restore defaults.
-          followedPlayerKeys: [],
-          showStandings: true,
-          showMatchups: true,
-          defaultSort: "name",
-          defaultSubTab: "overview",
-          primaryLeagueKey: null,
-          enabledLeagueKeys: [],
-        },
-      },
-    });
-  }
-
-  const SUB_TAB_OPTIONS = [
-    { value: "overview", label: "Overview" },
-    { value: "matchup", label: "Matchup" },
-    { value: "standings", label: "Standings" },
-    { value: "roster", label: "Roster" },
-  ];
-
-  const sections: DisplayItemsSection[] = FANTASY_VENUE_GROUPS.map((group) => ({
-    title: group.title,
-    rows: group.rows.map((row) => ({
-      key: row.key,
-      label: row.label,
-      description: row.description,
-      value: dp[row.key],
-    })),
-  }));
-
-  function applyDisplayChanges(changes: Record<string, Venue>) {
-    patch(changes as Partial<FantasyDisplayPrefs>);
-  }
-
-  return (
-    <div className="space-y-6 pb-8">
-      <DisplayItemsGrid sections={sections} onChange={applyDisplayChanges} />
-      <Section title="Followed players">
-        <p className="text-[11px] text-fg-4 px-3 pb-2 leading-snug">
-          Pick specific players from your rosters to track on the ticker.
-          Each player gets their own chip showing their name, team, and
-          current points.
-        </p>
-        <FollowedPlayersPicker
-          followedPlayerKeys={dp.followedPlayerKeys}
-          onChange={(next) => patch({ followedPlayerKeys: next })}
-        />
-      </Section>
-      <Section title="Feed layout">
-        <SegmentedRow
-          label="Default view"
-          description="Which sub-tab opens when you enter the Fantasy feed"
-          value={dp.defaultSubTab}
-          options={SUB_TAB_OPTIONS}
-          onChange={(value) => patch({ defaultSubTab: value as FantasyDisplayPrefs["defaultSubTab"] })}
-        />
-        <ToggleRow label="Show standings section" checked={dp.showStandings} onChange={() => toggle("showStandings")} />
-        <ToggleRow label="Show matchups section" checked={dp.showMatchups} onChange={() => toggle("showMatchups")} />
-      </Section>
-      <div className="flex items-center justify-end pt-2">
-        <ResetButton label="Reset display settings" onClick={handleReset} />
-      </div>
-    </div>
-  );
 }
 
 function ChannelPending() {
