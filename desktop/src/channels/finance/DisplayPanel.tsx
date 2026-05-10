@@ -194,10 +194,12 @@ export default function FinanceDisplayPanel() {
   const tickerShowPrevClose = enumToBools(dp.showPrevClose).ticker;
   const tickerShowLastUpdated = enumToBools(dp.showLastUpdated).ticker;
 
+  // The header buttons are themselves the bulk toggles. They light up
+  // when EVERY metric is enabled for that surface; otherwise (mixed
+  // or all-off) the next press fills them all in. Press again to
+  // clear them all.
   const allFeedOn = METRICS.every((m) => enumToBools(dp[m.key]).feed);
-  const allFeedOff = METRICS.every((m) => !enumToBools(dp[m.key]).feed);
   const allTickerOn = METRICS.every((m) => enumToBools(dp[m.key]).ticker);
-  const allTickerOff = METRICS.every((m) => !enumToBools(dp[m.key]).ticker);
 
   // ── Render ─────────────────────────────────────────────────────
 
@@ -233,27 +235,29 @@ export default function FinanceDisplayPanel() {
         </div>
       </Section>
 
-      {/* ── Display items (single row per metric) ────────────────── */}
+      {/* ── Display items (single row per metric) ──────────────────
+          Section header carries two surface buttons that double as
+          bulk toggles: pressing "Feed" flips every Feed chip in the
+          rows below (All when any are off, None when all are on).
+          Same for "Ticker". The same pattern as the per-row chips,
+          just operating on the whole list at once. */}
       <Section
         title="Display items"
         action={
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
             <BulkSurfaceToggle
               icon={Eye}
               label="Feed"
-              allOn={allFeedOn}
-              allOff={allFeedOff}
-              onAll={() => bulkSurface("feed", true)}
-              onNone={() => bulkSurface("feed", false)}
+              // "All-on" reads as ON, anything else (mixed or all-off)
+              // reads as OFF so the press flips toward fully on.
+              active={allFeedOn}
+              onClick={() => bulkSurface("feed", !allFeedOn)}
             />
-            <span aria-hidden className="w-px h-3 bg-edge/40" />
             <BulkSurfaceToggle
               icon={Tv}
               label="Ticker"
-              allOn={allTickerOn}
-              allOff={allTickerOff}
-              onAll={() => bulkSurface("ticker", true)}
-              onNone={() => bulkSurface("ticker", false)}
+              active={allTickerOn}
+              onClick={() => bulkSurface("ticker", !allTickerOn)}
             />
           </div>
         }
@@ -420,56 +424,58 @@ function SurfaceChip({
 }
 
 // ── Bulk surface toggle (in the section header) ─────────────────
+//
+// Visually mirrors the per-row SurfaceChip but operates on every
+// metric in the section. Active = every metric on for this surface;
+// pressing flips toward whatever the row chips don't already have.
+// One button = one decision: "show all on Feed?" / "show all on
+// Ticker?".
 
 interface BulkSurfaceToggleProps {
   icon: React.ComponentType<{ size?: number; className?: string }>;
   label: string;
-  allOn: boolean;
-  allOff: boolean;
-  onAll: () => void;
-  onNone: () => void;
+  active: boolean;
+  onClick: () => void;
 }
 
 function BulkSurfaceToggle({
   icon: Icon,
   label,
-  allOn,
-  allOff,
-  onAll,
-  onNone,
+  active,
+  onClick,
 }: BulkSurfaceToggleProps) {
   return (
-    <div className="flex items-center gap-1 text-[10px] text-fg-4">
-      <Icon size={10} className="text-fg-4 shrink-0" />
-      <span className="font-mono uppercase tracking-wider mr-0.5">{label}</span>
-      <button
-        type="button"
-        onClick={onAll}
-        disabled={allOn}
+    <button
+      type="button"
+      role="switch"
+      aria-checked={active}
+      aria-label={`${active ? "Hide all from" : "Show all on"} ${label}`}
+      onClick={onClick}
+      className={clsx(
+        "flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-[11px] font-medium",
+        "transition-all duration-150 active:scale-[0.93]",
+        active
+          ? "border-accent/50 bg-accent/10 text-accent"
+          : "border-edge/40 text-fg-4 hover:text-fg-3 hover:border-edge/60",
+      )}
+    >
+      <Icon size={11} />
+      <span>{label}</span>
+      <motion.span
+        key={active ? "on" : "off"}
+        initial={{ scale: 0.4, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 480, damping: 24 }}
         className={clsx(
-          "px-1.5 py-0.5 rounded transition-all duration-150 active:scale-90",
-          allOn
-            ? "opacity-30 cursor-default"
-            : "hover:text-fg-2 hover:bg-base-250/50 cursor-pointer",
+          "flex items-center justify-center w-3 h-3 rounded-sm",
+          active
+            ? "bg-accent text-surface"
+            : "bg-base-300 text-fg-4/50 opacity-60",
         )}
       >
-        All
-      </button>
-      <span aria-hidden className="text-fg-4/50">·</span>
-      <button
-        type="button"
-        onClick={onNone}
-        disabled={allOff}
-        className={clsx(
-          "px-1.5 py-0.5 rounded transition-all duration-150 active:scale-90",
-          allOff
-            ? "opacity-30 cursor-default"
-            : "hover:text-fg-2 hover:bg-base-250/50 cursor-pointer",
-        )}
-      >
-        None
-      </button>
-    </div>
+        {active ? <Check size={9} strokeWidth={3.5} /> : null}
+      </motion.span>
+    </button>
   );
 }
 
