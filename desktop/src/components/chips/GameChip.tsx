@@ -14,6 +14,13 @@ interface GameChipProps {
   comfort?: boolean;
   colorMode?: ChipColorMode;
   showLogos?: boolean;
+  /**
+   * Hide the per-game status (Q3 4:32, Final, in 2h) when false.
+   * Matches the ticker-side `showTimer` Venue toggle. Defaults to
+   * true to preserve existing behavior for callers that don't pass
+   * the prop explicitly.
+   */
+  showTimer?: boolean;
   onClick?: () => void;
 }
 
@@ -24,6 +31,7 @@ const GameChip = memo(function GameChip({
   comfort,
   colorMode = "channel",
   showLogos = true,
+  showTimer = true,
   onClick,
 }: GameChipProps) {
   const c = getChipColors(colorMode, "sports");
@@ -116,7 +124,7 @@ const GameChip = memo(function GameChip({
         )}
 
         {/* Status (compact only) */}
-        {!comfort && status && (
+        {!comfort && showTimer && status && (
           <span
             className={clsx(
               "flex items-center gap-1 text-[11px] uppercase tracking-wider ml-0.5",
@@ -142,7 +150,7 @@ const GameChip = memo(function GameChip({
           {game.league && (
             <span className="uppercase font-semibold">{game.league}</span>
           )}
-          {status && (
+          {showTimer && status && (
             <>
               <span className="text-fg-4">&middot;</span>
               <span
@@ -172,6 +180,7 @@ const GameChip = memo(function GameChip({
   prev.comfort === next.comfort &&
   prev.colorMode === next.colorMode &&
   prev.showLogos === next.showLogos &&
+  prev.showTimer === next.showTimer &&
   prev.onClick === next.onClick &&
   prev.game.id === next.game.id &&
   prev.game.sport === next.game.sport &&

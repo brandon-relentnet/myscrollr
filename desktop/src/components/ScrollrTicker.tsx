@@ -289,6 +289,7 @@ export default function ScrollrTicker({
           // only channels; read each field through shouldShowOnTicker.
           const sportsConfig = getSportsDisplayConfig(dashboard);
           const showLogos = shouldShowOnTicker(sportsConfig.showLogos ?? "both");
+          const showTimer = shouldShowOnTicker(sportsConfig.showTimer ?? "both");
           const sorted = selectSportsForTicker(data as Game[], sportsConfig);
           for (const game of sorted) {
             bucket.push(
@@ -298,6 +299,7 @@ export default function ScrollrTicker({
                   comfort={comfort}
                   colorMode={chipColorMode}
                   showLogos={showLogos}
+                  showTimer={showTimer}
                   onClick={() => onChipClick?.("sports", game.id, chipUrlForSports(game))}
                 />
               )
