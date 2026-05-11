@@ -69,7 +69,12 @@ async fn test_cleanup_per_state_thresholds() {
         .execute(&*pool).await.unwrap();
     }
 
-    cleanup_old_games(&pool).await.unwrap();
+    // 4 rows in `cases` are marked `should_survive = false` — assert the
+    // returned count matches so a regression where the query under-deletes
+    // but happens to clean up the rows we check would still fail the test.
+    let deleted = cleanup_old_games(&pool).await.unwrap();
+    let expected_deleted = cases.iter().filter(|(_, _, _, _, s)| !s).count() as u64;
+    assert_eq!(deleted, expected_deleted, "cleanup_old_games deleted {} rows, expected {}", deleted, expected_deleted);
 
     for (id, _, _, _, should_survive) in cases {
         let row: (i64,) = sqlx::query_as(
