@@ -16,7 +16,7 @@
  * route's content area in a chunky 4-row header. It's now in the
  * TopBar, freeing the entire content area for actual content.
  */
-import { ArrowLeft, ArrowRight, ChevronDown, Pin, Radio, RadioTower } from "lucide-react";
+import { ArrowLeft, ArrowRight, Pin, Radio, RadioTower } from "lucide-react";
 import clsx from "clsx";
 import { motion, AnimatePresence } from "motion/react";
 import Tooltip from "./Tooltip";
@@ -116,18 +116,15 @@ export default function TopBar({
       {/* ── Page identity (breadcrumb) ──────────────────────────
           Layout: parentLabel / title / subtitle
 
-          Two menu patterns coexist:
-           - menuKind="tabs" (Settings, Catalog): the breadcrumb's last
-             segment IS the menu trigger — clicking it opens an
-             OverflowMenu of sibling tabs. The breadcrumb name is the
-             active tab; the menu lists the others. No separate pill
-             because the breadcrumb already carries the affordance.
-           - menuKind="actions" (source pages): the breadcrumb is plain
-             navigation text (clickable to go back on sub-routes); the
-             menu is opened by a dedicated "Options" pill rendered
-             after the breadcrumb. Walkthrough fix 2026-05-11 round 2 —
-             testers found the dual-trigger arrangement confusing and
-             preferred the pill as the single, obvious entry point. */}
+          Breadcrumb segments are plain navigation text. Sub-route
+          titles become back-link buttons via onTitleClick. Page-level
+          menus are opened by the explicit "Options" pill at the end of
+          the breadcrumb area — the breadcrumb itself is never a menu
+          trigger. Walkthrough fix 2026-05-11: testers found the old
+          hidden chevron pattern undiscoverable. Pages with sibling
+          tabs (Settings, Catalog, Support sections) now use the
+          PageLayout `tabs` prop to render a visible in-page tab band
+          instead of hiding sibling navigation in a dropdown. */}
       <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden text-ui-meta">
         {page && (
           <>
@@ -145,52 +142,22 @@ export default function TopBar({
               </>
             )}
 
-            {/* Title segment.
-                - For "tabs" menus when title is the last breadcrumb
-                  segment AND there are menu items, render as the
-                  breadcrumb-menu trigger.
-                - Otherwise render as plain text (or as a back-link
-                  button when onTitleClick is set, e.g. on sub-routes
-                  of a source page). */}
-            {(() => {
-              const titleIsLast = !page.subtitle;
-              const titleIsTabsMenuTrigger =
-                titleIsLast &&
-                Boolean(page.menuItems?.length) &&
-                page.menuKind === "tabs";
-
-              if (titleIsTabsMenuTrigger) {
-                return (
-                  <OverflowMenu
-                    items={page.menuItems!}
-                    triggerLabel={page.menuLabel ?? "Page options"}
-                    trigger={<BreadcrumbMenuTrigger label={page.title} />}
-                  />
-                );
-              }
-              if (page.onTitleClick) {
-                return (
-                  <button
-                    onClick={page.onTitleClick}
-                    className="font-semibold text-fg-2 hover:text-fg truncate transition-colors"
-                  >
-                    {page.title}
-                  </button>
-                );
-              }
-              return (
-                <span className="font-semibold text-fg truncate">
-                  {page.title}
-                </span>
-              );
-            })()}
+            {page.onTitleClick ? (
+              <button
+                onClick={page.onTitleClick}
+                className="font-semibold text-fg-2 hover:text-fg truncate transition-colors"
+              >
+                {page.title}
+              </button>
+            ) : (
+              <span className="font-semibold text-fg truncate">
+                {page.title}
+              </span>
+            )}
 
             {/* Subtitle segment — slides in when entering a sub-route
                 and out when leaving. Keyed on the subtitle text so
-                switching between Configure and Display also animates.
-
-                For "tabs" menus, the subtitle IS the menu trigger.
-                For "actions" menus, the subtitle is plain text. */}
+                switching between Configure and Display also animates. */}
             <AnimatePresence mode="popLayout" initial={false}>
               {page.subtitle && (
                 <motion.div
@@ -204,36 +171,20 @@ export default function TopBar({
                   <span className="text-fg-4 shrink-0" aria-hidden>
                     /
                   </span>
-                  {page.menuItems?.length && page.menuKind === "tabs" ? (
-                    <OverflowMenu
-                      items={page.menuItems}
-                      triggerLabel={page.menuLabel ?? "Page options"}
-                      trigger={
-                        <BreadcrumbMenuTrigger
-                          label={page.subtitle}
-                          muted
-                        />
-                      }
-                    />
-                  ) : (
-                    <span className="text-fg-3 truncate">{page.subtitle}</span>
-                  )}
+                  <span className="text-fg-3 truncate">{page.subtitle}</span>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* "Options" pill — the sole trigger for action menus.
-                Renders ONLY when menuKind === "actions" so Settings /
-                Catalog don't get a redundant pill alongside their
-                breadcrumb-as-trigger. */}
-            {page.menuItems?.length && page.menuKind === "actions" && (
+            {/* "Options" pill — the sole trigger for page-level menus. */}
+            {page.menuItems?.length ? (
               <div className="shrink-0 ml-1">
                 <OverflowMenu
                   items={page.menuItems}
                   triggerLabel={page.menuLabel ?? "Page options"}
                 />
               </div>
-            )}
+            ) : null}
 
             {/* Fallback non-menu action (rare). */}
             {page.entityAction && !page.menuItems?.length && (
@@ -305,60 +256,4 @@ export default function TopBar({
   );
 }
 
-// ── Breadcrumb-as-menu-trigger ──────────────────────────────────
-//
-// Renders a breadcrumb segment that doubles as the OverflowMenu
-// trigger. Clicking the segment opens the menu. Visually it looks
-// like the segment with a small chevron suffix, so the menu's
-// existence is discoverable but the segment still reads as page
-// identity rather than a separate "Options" button.
-//
-// React forwards arbitrary props (including the ref injected by
-// floating-ui's cloneElement) so this component must be a plain
-// element receiver — we build it as a button.
 
-interface BreadcrumbMenuTriggerProps {
-  label: string;
-  /** When true, renders in subtitle (muted) styling instead of title. */
-  muted?: boolean;
-}
-
-function BreadcrumbMenuTrigger({
-  label,
-  muted = false,
-  ...rest
-}: BreadcrumbMenuTriggerProps & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  // floating-ui injects aria-expanded onto the trigger; we read it
-  // here to flip the chevron orientation so the trigger feels like a
-  // proper dropdown affordance.
-  const isOpen = rest["aria-expanded"] === true || rest["aria-expanded"] === "true";
-
-  return (
-    <button
-      type="button"
-      {...rest}
-      className={clsx(
-        "group flex items-center gap-1 px-1 -mx-1 rounded-md min-w-0 transition-colors",
-        "hover:bg-surface-hover",
-        isOpen && "bg-surface-hover",
-        muted ? "text-fg-3 hover:text-fg-2" : "font-semibold text-fg-2 hover:text-fg",
-      )}
-    >
-      <span className="truncate">{label}</span>
-      <ChevronDown
-        size={11}
-        // 500ms calculated duration on a snap spring — feels more
-        // satisfying than the default linear flip without dragging.
-        style={{
-          transition: "transform 500ms var(--ease-snap)",
-          transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
-        }}
-        className={clsx(
-          "shrink-0",
-          "text-fg-3",
-          "group-hover:text-fg-2 transition-colors",
-        )}
-      />
-    </button>
-  );
-}

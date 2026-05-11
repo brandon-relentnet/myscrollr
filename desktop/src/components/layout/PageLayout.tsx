@@ -54,12 +54,6 @@ interface PageLayoutProps {
   menuItems?: OverflowMenuItem[];
   /** Aria label for the menu trigger. Default: 'Page options'. */
   menuLabel?: string;
-  /**
-   * Kind of menu. "actions" (default) renders a visible Options pill in
-   * the TopBar; "tabs" relies on the breadcrumb-as-trigger pattern.
-   * See PageContext for the full rationale.
-   */
-  menuKind?: "actions" | "tabs";
 
   /**
    * Fallback non-menu action rendered after the breadcrumb. Use
@@ -114,7 +108,6 @@ export default function PageLayout({
   onTitleClick,
   menuItems,
   menuLabel,
-  menuKind,
   entityAction,
   tabs,
   children,
@@ -132,7 +125,6 @@ export default function PageLayout({
     onTitleClick,
     menuItems,
     menuLabel,
-    menuKind,
     entityAction,
   });
 

@@ -20,7 +20,7 @@ import RouteError from "../components/RouteError";
 import PageLayout from "../components/layout/PageLayout";
 import PageSection from "../components/layout/PageSection";
 import EmptySection from "../components/layout/EmptySection";
-import type { OverflowMenuItem } from "../components/OverflowMenu";
+
 
 export const Route = createFileRoute("/catalog")({
   component: CatalogPage,
@@ -36,14 +36,6 @@ const FILTER_TABS: { key: FilterTab; label: string; icon: LucideIcon; hint: stri
   { key: "channel", label: CATEGORY_LABELS["channel"], icon: Radio, hint: "Show only data channels" },
   { key: "widget", label: CATEGORY_LABELS["widget"], icon: Boxes, hint: "Show only utility widgets" },
 ];
-
-const TAB_BY_KEY: Record<FilterTab, (typeof FILTER_TABS)[number]> = FILTER_TABS.reduce(
-  (acc, t) => {
-    acc[t.key] = t;
-    return acc;
-  },
-  {} as Record<FilterTab, (typeof FILTER_TABS)[number]>,
-);
 
 // ── Sort order: enabled first, then canonical order ─────────────
 
@@ -214,34 +206,25 @@ function CatalogPage() {
     [navigate, queryClient, prefs, onPrefsChange],
   );
 
-  // ── Breadcrumb dropdown — switch the active filter ───────────
-
-  const menuItems: OverflowMenuItem[] = useMemo(() => {
-    const items: OverflowMenuItem[] = [];
-    for (const t of FILTER_TABS) {
-      if (t.key === filter) continue;
-      items.push({
-        key: t.key,
-        label: t.label,
-        hint: t.hint,
-        icon: t.icon,
-        onSelect: () => setFilter(t.key),
-      });
-    }
-    return items;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter]);
-
   // ── Render ──────────────────────────────────────────────────
+  //
+  // Catalog uses an in-page tab band (All / Channels / Widgets) at the
+  // top of the content. Pre-2026-05-11 this lived in a hidden
+  // breadcrumb dropdown — testers couldn't find the filter switcher.
 
   return (
     <PageLayout
       title="Catalog"
-      subtitle={TAB_BY_KEY[filter].label}
       width="wide"
-      menuItems={menuItems}
-      menuLabel="Catalog filter"
-      menuKind="tabs"
+      tabs={{
+        items: FILTER_TABS.map((t) => ({
+          key: t.key,
+          label: t.label,
+          description: t.hint,
+        })),
+        activeKey: filter,
+        onChange: (key) => setFilter(key as FilterTab),
+      }}
     >
       {dashboardError && (
         <div className="mb-4">

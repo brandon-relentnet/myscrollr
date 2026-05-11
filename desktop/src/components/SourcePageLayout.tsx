@@ -198,13 +198,11 @@ export default function SourcePageLayout({
         // narrow column.
         noContentPadding={isFeed}
         // Source pages use the "Options" pill in the TopBar as the
-        // sole menu trigger. menuKind="actions" tells TopBar to render
-        // the pill and leave the breadcrumb as plain navigation text.
+        // sole menu trigger; the breadcrumb is plain navigation text.
         // Walkthrough fix 2026-05-11 — testers preferred the explicit
-        // pill over the discoverability-poor breadcrumb dropdown.
+        // pill over the hidden breadcrumb dropdown.
         menuItems={menuItems}
         menuLabel={`${name} options`}
-        menuKind="actions"
       >
         {children}
       </PageLayout>

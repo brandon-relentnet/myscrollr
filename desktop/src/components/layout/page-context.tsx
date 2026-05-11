@@ -39,26 +39,17 @@ export interface PageIdentity {
    */
   onTitleClick?: () => void;
   /**
-   * Optional contextual menu items. When provided, the LAST breadcrumb
-   * segment (subtitle if present, otherwise title) becomes the menu
-   * trigger — clicking it opens an OverflowMenu with these items.
+   * Optional contextual menu items. When provided, the TopBar renders
+   * an "Options" pill button after the breadcrumb. Clicking the pill
+   * opens an OverflowMenu of these items. The breadcrumb itself is
+   * never a menu trigger — it's always plain navigation text. Pages
+   * that need sibling-tab navigation should use PageLayout's `tabs`
+   * prop to render a visible in-page tab band instead of hiding it in
+   * a dropdown.
    */
   menuItems?: OverflowMenuItem[];
   /** Aria label for the menu trigger. Default: 'Page options'. */
   menuLabel?: string;
-  /**
-   * Kind of menu this is. Controls which trigger TopBar renders.
-   *  - "actions": page-scoped actions like Configure, Remove on
-   *    source pages. The TopBar renders a visible "Options" pill
-   *    button as the SOLE menu trigger. Breadcrumb segments stay
-   *    plain navigation text.
-   *  - "tabs": the menu is a sibling-tab switcher (Settings,
-   *    Catalog). The last breadcrumb segment IS the trigger —
-   *    clicking it opens a menu of the OTHER tabs. No separate pill,
-   *    because the breadcrumb already names the active section and
-   *    the chevron signals "switch."
-   */
-  menuKind?: "actions" | "tabs";
   /**
    * Optional non-menu action rendered after the breadcrumb (e.g. a
    * raw Trash button on routes that don't otherwise have a menu).
@@ -115,7 +106,6 @@ export function useRegisterPageIdentity(identity: PageIdentity) {
     subtitle: identity.subtitle,
     parentLabel: identity.parentLabel,
     menuLabel: identity.menuLabel,
-    menuKind: identity.menuKind,
     menuKey,
   });
   useEffect(() => {
