@@ -444,10 +444,12 @@ async fn process_single_trade(trade: TradeData, trades_map: Arc<HashMap<String, 
             }
         }
 
-        if determined_previous_close.is_none() {
-            warn!("Quote unavailable for {}, using live price fallback", symbol);
-            determined_previous_close = Some(price);
-        }
+        // Intentionally NO fallback to the current live price. Using the
+        // live tick as "previous close" produces a permanently-incorrect
+        // baseline that polluted change/percentage calculations for the
+        // lifetime of the pod. If TwelveData can't give us a real previous
+        // close right now, skip this trade — the daily refresh task in
+        // lib.rs::update_all_previous_closes will fill it in on its next run.
 
         if let Some(pc) = determined_previous_close {
             current_record.previous_close = pc;
