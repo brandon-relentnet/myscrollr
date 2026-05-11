@@ -22,7 +22,12 @@
     "tauri:build": "tauri build",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "screenshots:test": "node scripts/capture-screenshots.mjs test",
+    "screenshots:routes": "node scripts/capture-screenshots.mjs routes",
+    "screenshots:page": "node scripts/capture-screenshots.mjs page",
+    "screenshots:themes": "node scripts/capture-screenshots.mjs themes",
+    "screenshots:crop": "node scripts/capture-screenshots.mjs crop"
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.19",
