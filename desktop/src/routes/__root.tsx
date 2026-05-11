@@ -73,6 +73,7 @@ import { useDashboardCDC } from "../hooks/useDashboardCDC";
 import { useTauriListener } from "../hooks/useTauriListener";
 import { useDeliveryHealth } from "../hooks/useDeliveryHealth";
 import { useNavHistory } from "../hooks/useNavHistory";
+import { useStartupUpdateCheck } from "../hooks/useStartupUpdateCheck";
 import { weatherQueryOptions } from "../api/queries";
 import { fetchSubscription } from "../api/client";
 import { getValidToken } from "../auth";
@@ -274,6 +275,13 @@ function RootLayout() {
   useEffect(() => {
     getVersion().then(setAppVersion).catch(() => {});
   }, []);
+
+  // Silent update check on startup — toasts only if a real update is
+  // available. The user opts out via Settings → General → Updates.
+  useStartupUpdateCheck({
+    enabled: prefs.startup.autoCheckUpdates,
+    appVersion,
+  });
 
   // ── Undo snapshot GC ───────────────────────────────────────
   // Snapshots pushed by `useUndoableAction` live in a module-level
