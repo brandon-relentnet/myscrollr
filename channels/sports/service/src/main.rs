@@ -45,6 +45,12 @@ const MAX_POLL_STALENESS_SECS: u64 = LIVE_POLL_MAX_INTERVAL_SECS * 2;
 /// it to the readiness gate. Cheap, runs on a tight interval.
 const READINESS_BRIDGE_INTERVAL: Duration = Duration::from_secs(10);
 
+/// Daily request budget per api-sports.io sport host (Pro plan, 7,500/day).
+/// Used by both the initial budget allocation and the UTC-midnight daily
+/// reset. Keep these in lockstep — drift between them would silently corrupt
+/// the per-league budget allocation.
+const SPORTS_DAILY_QUOTA: u32 = 7500;
+
 #[tokio::main]
 async fn main() {
     dotenv().ok();
@@ -123,7 +129,7 @@ async fn main() {
         // in-season league can borrow from when its reserved budget is
         // exhausted. Prevents Champions League knockout nights from starving
         // Premier League polls.
-        let rate_limiter = Arc::new(RateLimiter::new_per_league(&leagues, 7500));
+        let rate_limiter = Arc::new(RateLimiter::new_per_league(&leagues, SPORTS_DAILY_QUOTA));
 
         let client = Arc::new(client);
         let leagues = Arc::new(leagues);
@@ -281,7 +287,7 @@ async fn main() {
                         break;
                     }
                     _ = tokio::time::sleep(std::time::Duration::from_secs(wait_secs)) => {
-                        rl_reset.reset_daily(&leagues_reset, 7500);
+                        rl_reset.reset_daily(&leagues_reset, SPORTS_DAILY_QUOTA);
                         println!("[Rate Budget] Daily reset completed at UTC midnight");
                     }
                 }
