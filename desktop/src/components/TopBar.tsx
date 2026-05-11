@@ -23,7 +23,7 @@ import Tooltip from "./Tooltip";
 import ConnectionIndicator from "./ConnectionIndicator";
 import ScrollLogo from "./ScrollLogo";
 import OverflowMenu from "./OverflowMenu";
-import { usePageIdentity } from "./layout/page-context";
+import { usePageIdentity, type PageTabStrip } from "./layout/page-context";
 import type { DeliveryHealth } from "../hooks/useDeliveryHealth";
 
 // ── Props ───────────────────────────────────────────────────────
@@ -113,72 +113,87 @@ export default function TopBar({
 
       <div className="w-px h-5 bg-edge/40 mx-1 shrink-0" />
 
-      {/* ── Page identity (breadcrumb) ──────────────────────────
-          Layout: parentLabel / title / subtitle
-
-          Breadcrumb segments are plain navigation text. Sub-route
-          titles become back-link buttons via onTitleClick. Page-level
-          menus are opened by the explicit "Options" pill at the end of
-          the breadcrumb area — the breadcrumb itself is never a menu
-          trigger. Walkthrough fix 2026-05-11: testers found the old
-          hidden chevron pattern undiscoverable. Pages with sibling
-          tabs (Settings, Catalog, Support sections) now use the
-          PageLayout `tabs` prop to render a visible in-page tab band
-          instead of hiding sibling navigation in a dropdown. */}
-      <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden text-ui-meta">
+      {/* ── Page identity + inline tab strip ────────────────────
+          Layout in this row:
+            [parentLabel / title (/ subtitle)]  [tab pills]  [Options]
+          Breadcrumb segments are plain navigation text (sub-route
+          titles are back-link buttons via onTitleClick). Sibling-tab
+          nav is a compact segmented pill control inline in the bar
+          — no full-width tab band wasting vertical space. The
+          "Options" pill is the sole page-menu trigger. When tabs are
+          present, subtitle is suppressed (the active pill conveys the
+          same info). Walkthrough fix 2026-05-11 round 3. */}
+      <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden text-ui-meta">
         {page && (
           <>
-            {page.parentLabel && page.onParentClick && (
-              <>
-                <button
-                  onClick={page.onParentClick}
-                  className="text-fg-3 hover:text-fg-2 transition-colors shrink-0"
-                >
-                  {page.parentLabel}
-                </button>
-                <span className="text-fg-4 shrink-0" aria-hidden>
-                  /
-                </span>
-              </>
-            )}
-
-            {page.onTitleClick ? (
-              <button
-                onClick={page.onTitleClick}
-                className="font-semibold text-fg-2 hover:text-fg truncate transition-colors"
-              >
-                {page.title}
-              </button>
-            ) : (
-              <span className="font-semibold text-fg truncate">
-                {page.title}
-              </span>
-            )}
-
-            {/* Subtitle segment — slides in when entering a sub-route
-                and out when leaving. Keyed on the subtitle text so
-                switching between Configure and Display also animates. */}
-            <AnimatePresence mode="popLayout" initial={false}>
-              {page.subtitle && (
-                <motion.div
-                  key={page.subtitle}
-                  initial={{ opacity: 0, x: -6, filter: "blur(2px)" }}
-                  animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
-                  exit={{ opacity: 0, x: -6, filter: "blur(2px)" }}
-                  transition={{ duration: 0.22, ease: [0.22, 0.61, 0.36, 1] }}
-                  className="flex items-center gap-1.5 min-w-0"
-                >
+            {/* Breadcrumb — always shrink-friendly. */}
+            <div className="flex items-center gap-1.5 min-w-0 shrink">
+              {page.parentLabel && page.onParentClick && (
+                <>
+                  <button
+                    onClick={page.onParentClick}
+                    className="text-fg-3 hover:text-fg-2 transition-colors shrink-0"
+                  >
+                    {page.parentLabel}
+                  </button>
                   <span className="text-fg-4 shrink-0" aria-hidden>
                     /
                   </span>
-                  <span className="text-fg-3 truncate">{page.subtitle}</span>
-                </motion.div>
+                </>
               )}
-            </AnimatePresence>
+
+              {page.onTitleClick ? (
+                <button
+                  onClick={page.onTitleClick}
+                  className="font-semibold text-fg-2 hover:text-fg truncate transition-colors"
+                >
+                  {page.title}
+                </button>
+              ) : (
+                <span className="font-semibold text-fg truncate">
+                  {page.title}
+                </span>
+              )}
+
+              {/* Subtitle slot — suppressed when tab pills are
+                  showing (the active pill is the subtitle). */}
+              <AnimatePresence mode="popLayout" initial={false}>
+                {page.subtitle && !page.tabs && (
+                  <motion.div
+                    key={page.subtitle}
+                    initial={{ opacity: 0, x: -6, filter: "blur(2px)" }}
+                    animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+                    exit={{ opacity: 0, x: -6, filter: "blur(2px)" }}
+                    transition={{ duration: 0.22, ease: [0.22, 0.61, 0.36, 1] }}
+                    className="flex items-center gap-1.5 min-w-0"
+                  >
+                    <span className="text-fg-4 shrink-0" aria-hidden>
+                      /
+                    </span>
+                    <span className="text-fg-3 truncate">
+                      {page.subtitle}
+                    </span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Inline tab strip — sibling navigation as a segmented
+                pill control. Renders only when the page publishes
+                `tabs`. Scrolls horizontally if it overflows so the
+                breadcrumb on the left and ambient toggles on the
+                right stay anchored. */}
+            {page.tabs && (
+              <InlineTabStrip tabs={page.tabs} />
+            )}
+
+            {/* Spacer pushes Options/entityAction to the right edge
+                of the breadcrumb area regardless of tab presence. */}
+            <div className="flex-1 min-w-0" aria-hidden />
 
             {/* "Options" pill — the sole trigger for page-level menus. */}
             {page.menuItems?.length ? (
-              <div className="shrink-0 ml-1">
+              <div className="shrink-0">
                 <OverflowMenu
                   items={page.menuItems}
                   triggerLabel={page.menuLabel ?? "Page options"}
@@ -188,7 +203,7 @@ export default function TopBar({
 
             {/* Fallback non-menu action (rare). */}
             {page.entityAction && !page.menuItems?.length && (
-              <div className="shrink-0 flex items-center gap-1 ml-1">
+              <div className="shrink-0 flex items-center gap-1">
                 {page.entityAction}
               </div>
             )}
@@ -256,4 +271,53 @@ export default function TopBar({
   );
 }
 
+// ── Inline tab strip ─────────────────────────────────────────────
+//
+// Compact segmented pill control that lives inline in the TopBar to
+// expose sibling-tab navigation (Settings: Appearance/Ticker/Account,
+// Catalog: All/Channels/Widgets, Support sections, etc.). Replaces the
+// full-width content-area tab band that wasted vertical space.
+//
+// The active pill renders with an animated background via shared
+// layoutId so switching tabs slides the highlight rather than fading
+// in place.
+
+function InlineTabStrip({ tabs }: { tabs: PageTabStrip }) {
+  return (
+    <nav
+      aria-label={tabs.ariaLabel ?? "Page sections"}
+      className="flex items-center gap-0.5 h-7 px-0.5 rounded-md bg-surface-1/60 border border-edge/40 shrink-0 overflow-x-auto scrollbar-none"
+    >
+      {tabs.items.map((tab) => {
+        const isActive = tab.key === tabs.activeKey;
+        return (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => tabs.onChange(tab.key)}
+            aria-current={isActive ? "page" : undefined}
+            title={tab.description}
+            className={clsx(
+              "relative h-6 px-2.5 rounded text-[11px] font-medium transition-colors whitespace-nowrap",
+              isActive
+                ? "text-fg"
+                : "text-fg-3 hover:text-fg-2",
+            )}
+          >
+            {/* Sliding background — shared layoutId animates the
+                highlight between pills instead of fading in place. */}
+            {isActive && (
+              <motion.span
+                layoutId="topbar-tab-active"
+                transition={{ type: "spring", stiffness: 500, damping: 38 }}
+                className="absolute inset-0 rounded bg-surface-3 shadow-sm"
+              />
+            )}
+            <span className="relative">{tab.label}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
 
