@@ -16,6 +16,7 @@ import {
   X,
   Star,
   Trophy,
+  AlertTriangle,
 } from "lucide-react";
 import clsx from "clsx";
 import { motion } from "motion/react";
@@ -472,6 +473,23 @@ function LeagueLogo({ url }: { url?: string }) {
 // ── League status ────────────────────────────────────────────────
 
 function LeagueStatus({ league }: { league: TrackedLeague }) {
+  // Polling-stale takes precedence over every other state — if we can't
+  // get fresh data, the live/game counts shown below could be hours old.
+  // Off-season leagues are exempt: we don't poll them, so they can't be
+  // "stale" in a meaningful sense (the backend already marks them healthy=true).
+  if (!league.polling_healthy) {
+    const tooltipText = league.last_poll_success_at
+      ? `Last successful update: ${new Date(league.last_poll_success_at).toLocaleString()}`
+      : "This league has not polled successfully yet";
+    return (
+      <Tooltip content={tooltipText}>
+        <span className="flex items-center justify-end gap-1 text-ui-chip text-amber-400">
+          <AlertTriangle size={10} />
+          Stale
+        </span>
+      </Tooltip>
+    );
+  }
   if (league.live_count > 0) {
     return (
       <span className="flex items-center justify-end gap-1 text-ui-chip text-live tabular-nums">

@@ -18,10 +18,13 @@ pub mod database;
 pub mod init;
 pub mod types;
 
-/// Number of days ahead to poll in the schedule task.
-/// Set to 1 to capture midnight crossover games (games that are evening local
-/// time but fall on the next UTC date).
-const SCHEDULE_DAYS_AHEAD: i64 = 1;
+/// Number of days ahead to poll in the schedule task. 7 days covers a full
+/// week of fixtures — Premier League Saturday matches show up Monday morning.
+///
+/// Rate-budget impact (worst case, 4 in-season football leagues): 4 leagues
+/// × 8 dates × 48 polls/day = 1,536 calls/day on the football host, well
+/// under the 7,500/day quota.
+const SCHEDULE_DAYS_AHEAD: i64 = 7;
 
 /// Delay between league requests on startup burst to avoid rate limits.
 /// 200ms spacing between requests spreads ~60 requests across ~12 seconds.
@@ -156,9 +159,11 @@ pub async fn poll_live(
     let mut leagues_with_live = 0u32;
 
     for league in leagues {
-        if !rate_limiter.has_budget(&league.sport_api) {
-            warn!("[{}] Skipping live poll — rate limit budget low for {} ({})",
-                league.name, league.sport_api, rate_limiter.remaining(&league.sport_api));
+        if !rate_limiter.try_consume(&league.name) {
+            warn!("[{}] Skipping live poll — per-league budget exhausted (reserved={}, shared={})",
+                league.name,
+                rate_limiter.reserved(&league.name),
+                rate_limiter.shared_remaining(&league.sport_api));
             continue;
         }
 
@@ -171,17 +176,19 @@ pub async fn poll_live(
                 }
                 total_upserted += upserted;
                 total_failed += failed;
+                crate::database::record_poll_success(pool, &league.name).await;
             }
             Err(e) => {
                 error!("[{}] Live poll error: {}", league.name, e);
                 health_state.lock().await.record_error(e.to_string());
+                crate::database::record_poll_error(pool, &league.name, &e.to_string()).await;
             }
         }
 
         // Also poll yesterday if this league has live games from yesterday
         if yesterday_set.contains(league.name.as_str()) {
-            if !rate_limiter.has_budget(&league.sport_api) {
-                warn!("[{}] Skipping yesterday poll — rate limit budget low", league.name);
+            if !rate_limiter.try_consume(&league.name) {
+                warn!("[{}] Skipping yesterday poll — per-league budget exhausted", league.name);
                 continue;
             }
             match poll_league(client, league, &yesterday, rate_limiter).await {
@@ -192,10 +199,12 @@ pub async fn poll_live(
                     }
                     total_upserted += upserted;
                     total_failed += failed;
+                    crate::database::record_poll_success(pool, &league.name).await;
                 }
                 Err(e) => {
                     error!("[{}] Yesterday poll error: {}", league.name, e);
                     health_state.lock().await.record_error(e.to_string());
+                    crate::database::record_poll_error(pool, &league.name, &e.to_string()).await;
                 }
             }
         }
@@ -214,13 +223,10 @@ pub async fn poll_live(
 // Schedule polling (slow — today + 7 days ahead, every 30 min)
 // =============================================================================
 
-/// Poll today's games to populate the upcoming schedule.
-/// Also cleans up finished games older than 12 hours.
-///
-/// When querying future dates (tomorrow), games are filtered to only include
-/// those starting within 12 hours from now. This captures midnight crossover
-/// games (evening US time that falls on the next UTC date) without prematurely
-/// fetching mid-day tomorrow games.
+/// Poll today + SCHEDULE_DAYS_AHEAD upcoming dates to populate the schedule.
+/// Each polled league records `last_polled_at` / `last_poll_success_at` so
+/// the API can surface a `polling_healthy` indicator. Cleanup of stale games
+/// runs at the end of every cycle (per-state thresholds in cleanup_old_games).
 pub async fn poll_schedule(
     pool: &Arc<PgPool>,
     client: &Client,
@@ -228,8 +234,6 @@ pub async fn poll_schedule(
     rate_limiter: &Arc<RateLimiter>,
 ) {
     let now = Utc::now();
-    let today = now.format("%Y-%m-%d").to_string();
-    let cutoff = now + Duration::hours(12);
 
     // Build list of dates: today, +1 ... +SCHEDULE_DAYS_AHEAD
     let mut dates = Vec::with_capacity((SCHEDULE_DAYS_AHEAD + 1) as usize);
@@ -259,26 +263,29 @@ pub async fn poll_schedule(
         }
 
         for date in &dates {
-            if !rate_limiter.has_budget(&league.sport_api) {
-                warn!("[{}] Skipping schedule poll — rate limit budget low for {} ({})",
-                    league.name, league.sport_api, rate_limiter.remaining(&league.sport_api));
+            if !rate_limiter.try_consume(&league.name) {
+                warn!("[{}] Skipping schedule poll — per-league budget exhausted (reserved={}, shared={})",
+                    league.name,
+                    rate_limiter.reserved(&league.name),
+                    rate_limiter.shared_remaining(&league.sport_api));
                 break;
             }
 
+            // Bookkeeping is called once per (league, date). The "latest call
+            // wins" semantics in `record_poll_success` / `record_poll_error`
+            // are intentional: across an 8-date cycle, the final tracked_leagues
+            // state reflects the most-recent poll outcome. Do not deduplicate
+            // to once-per-league or `last_poll_error` will lag a recovered poll.
             match poll_league(client, league, date, rate_limiter).await {
                 Ok(games) => {
-                    // Filter future dates to only include games within 12 hours
-                    let filtered = if date != &today {
-                        games.into_iter().filter(|g| g.start_time <= cutoff).collect()
-                    } else {
-                        games
-                    };
-                    let (upserted, failed, _) = upsert_games(pool, league, filtered).await;
+                    let (upserted, failed, _) = upsert_games(pool, league, games).await;
                     total_upserted += upserted;
                     total_failed += failed;
+                    crate::database::record_poll_success(pool, &league.name).await;
                 }
                 Err(e) => {
                     error!("[{}] Schedule poll error for {}: {}", league.name, date, e);
+                    crate::database::record_poll_error(pool, &league.name, &e.to_string()).await;
                 }
             }
 

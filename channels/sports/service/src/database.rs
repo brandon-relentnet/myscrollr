@@ -295,6 +295,70 @@ pub async fn disable_stale_leagues(pool: &Arc<PgPool>, active_names: &[String]) 
     Ok(())
 }
 
+/// Record a successful poll. Updates `last_polled_at` and `last_poll_success_at`
+/// to NOW(), and clears any previous error.
+///
+/// Errors are logged but not returned — polling-health bookkeeping must
+/// never block the actual data ingestion. If the bookkeeping update fails,
+/// the league will appear stale to the API; on the next successful poll
+/// it will recover.
+pub async fn record_poll_success(pool: &Arc<PgPool>, league_name: &str) {
+    let res = async {
+        let mut conn = pool.acquire().await?;
+        query(
+            "UPDATE tracked_leagues
+             SET last_polled_at = NOW(),
+                 last_poll_success_at = NOW(),
+                 last_poll_error = NULL
+             WHERE name = $1"
+        )
+        .bind(league_name)
+        .execute(&mut *conn)
+        .await?;
+        Ok::<_, sqlx::Error>(())
+    }.await;
+    if let Err(e) = res {
+        log::warn!("Failed to record poll success for {}: {}", league_name, e);
+    }
+}
+
+/// Record a failed poll. Updates `last_polled_at` and `last_poll_error`,
+/// but does NOT touch `last_poll_success_at` — that timestamp must only
+/// move forward on actual successes so staleness detection works.
+pub async fn record_poll_error(pool: &Arc<PgPool>, league_name: &str, err_msg: &str) {
+    // Truncate excessively long error messages to keep the row small.
+    // 1 KiB is plenty to see what went wrong; anything longer is noise.
+    // Walk char boundaries so we never split a multi-byte UTF-8 sequence —
+    // panicking inside error-handling code would lose the original failure.
+    let truncated: &str = if err_msg.len() > 1024 {
+        let mut end = 1024;
+        while end > 0 && !err_msg.is_char_boundary(end) {
+            end -= 1;
+        }
+        &err_msg[..end]
+    } else {
+        err_msg
+    };
+
+    let res = async {
+        let mut conn = pool.acquire().await?;
+        query(
+            "UPDATE tracked_leagues
+             SET last_polled_at = NOW(),
+                 last_poll_error = $2
+             WHERE name = $1"
+        )
+        .bind(league_name)
+        .bind(truncated)
+        .execute(&mut *conn)
+        .await?;
+        Ok::<_, sqlx::Error>(())
+    }.await;
+    if let Err(e) = res {
+        log::warn!("Failed to record poll error for {}: {}", league_name, e);
+    }
+}
+
 /// Return distinct league names that have live games from yesterday (UTC).
 /// Used by poll_live to decide whether to also query yesterday's date.
 pub async fn get_live_yesterday_leagues(pool: &Arc<PgPool>) -> Vec<String> {
@@ -324,19 +388,21 @@ pub async fn get_live_yesterday_leagues(pool: &Arc<PgPool>) -> Vec<String> {
     }
 }
 
-/// Delete stale games. Final/postponed/pre games older than 12h past start time,
-/// and live games not seen in 24h (API stopped returning them).
+/// Delete stale games using per-state thresholds.
 ///
-/// The 24h threshold for `state = 'in'` is deliberate: a legitimately long
-/// game (MLB extra innings, delayed NFL, F1 red-flag rain delay) can
-/// easily exceed 4h. Pruning at 4h was deleting live games from the UI
-/// while they were still in progress; 24h is slack enough that only
-/// genuinely abandoned games get swept.
+/// - `final` / `postponed`: 12 hours past `start_time` — they're done.
+/// - `pre`:  7 days past `start_time` — survives short polling outages.
+///           A `pre` row this old means the API stopped returning the fixture
+///           entirely; safe to prune.
+/// - `in`:   24 hours since `updated_at`. A legitimately long game (MLB
+///           extras, NFL weather delay, F1 red-flag) can exceed 4h, so we
+///           prune only after a full day of no updates.
 pub async fn cleanup_old_games(pool: &Arc<PgPool>) -> Result<u64> {
     let mut connection = pool.acquire().await?;
     let result = query(
         "DELETE FROM games WHERE
-            (state IN ('final', 'postponed', 'pre') AND start_time < NOW() - INTERVAL '12 hours')
+            (state IN ('final', 'postponed') AND start_time < NOW() - INTERVAL '12 hours')
+            OR (state = 'pre' AND start_time < NOW() - INTERVAL '7 days')
             OR (state = 'in' AND updated_at < NOW() - INTERVAL '24 hours')"
     )
     .execute(&mut *connection)

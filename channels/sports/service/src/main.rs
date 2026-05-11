@@ -45,6 +45,12 @@ const MAX_POLL_STALENESS_SECS: u64 = LIVE_POLL_MAX_INTERVAL_SECS * 2;
 /// it to the readiness gate. Cheap, runs on a tight interval.
 const READINESS_BRIDGE_INTERVAL: Duration = Duration::from_secs(10);
 
+/// Daily request budget per api-sports.io sport host (Pro plan, 7,500/day).
+/// Used by both the initial budget allocation and the UTC-midnight daily
+/// reset. Keep these in lockstep — drift between them would silently corrupt
+/// the per-league budget allocation.
+const SPORTS_DAILY_QUOTA: u32 = 7500;
+
 #[tokio::main]
 async fn main() {
     dotenv().ok();
@@ -117,15 +123,13 @@ async fn main() {
             }
         };
 
-        // Pro plan: 7,500 requests/day per sport API. Each sport host
-        // (basketball, football, hockey, etc.) has its own independent budget.
-        let sports: Vec<String> = leagues
-            .iter()
-            .map(|l| l.sport_api.clone())
-            .collect::<std::collections::HashSet<_>>()
-            .into_iter()
-            .collect();
-        let rate_limiter = Arc::new(RateLimiter::new(&sports, 7500));
+        // Pro plan: 7,500 requests/day per sport host. Each league on a host
+        // gets a reserved share of host_budget / N_leagues_on_host. Off-season
+        // leagues donate their share to a per-host shared pool that any
+        // in-season league can borrow from when its reserved budget is
+        // exhausted. Prevents Champions League knockout nights from starving
+        // Premier League polls.
+        let rate_limiter = Arc::new(RateLimiter::new_per_league(&leagues, SPORTS_DAILY_QUOTA));
 
         let client = Arc::new(client);
         let leagues = Arc::new(leagues);
@@ -257,6 +261,35 @@ async fn main() {
                         tokio::time::sleep(std::time::Duration::from_secs(604800)).await;
                         poll_teams(&pool_teams, &client_teams, &leagues_teams, &rl_teams).await;
                     } => {}
+                }
+            }
+        });
+
+        // ── Daily reset: rate budgets at UTC midnight ─────────────────────
+        let leagues_reset = leagues.clone();
+        let rl_reset = rate_limiter.clone();
+        let cancel_reset = cancel_bg.clone();
+        spawn_supervised("sports-budget-reset", async move {
+            println!("Starting daily rate-budget reset loop (UTC midnight)...");
+            loop {
+                // Sleep until next UTC midnight
+                let now = chrono::Utc::now();
+                let tomorrow = (now + chrono::Duration::days(1))
+                    .date_naive()
+                    .and_hms_opt(0, 0, 0)
+                    .expect("midnight is a valid time")
+                    .and_utc();
+                let wait_secs = (tomorrow - now).num_seconds().max(60) as u64;
+
+                tokio::select! {
+                    _ = cancel_reset.cancelled() => {
+                        println!("Budget reset loop shutting down...");
+                        break;
+                    }
+                    _ = tokio::time::sleep(std::time::Duration::from_secs(wait_secs)) => {
+                        rl_reset.reset_daily(&leagues_reset, SPORTS_DAILY_QUOTA);
+                        println!("[Rate Budget] Daily reset completed at UTC midnight");
+                    }
                 }
             }
         });

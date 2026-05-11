@@ -100,6 +100,29 @@ export interface TrackedLeague {
   live_count: number;
   next_game: string | null;
   is_offseason: boolean;
+  /** ISO timestamp of the most recent poll attempt (success or failure). */
+  last_polled_at?: string | null;
+  /** ISO timestamp of the most recent successful poll. */
+  last_poll_success_at?: string | null;
+  /** True if last_poll_success_at is recent OR the league is off-season. */
+  polling_healthy: boolean;
+}
+
+/**
+ * Per-league meta attached to the dashboard + public sports responses.
+ * Lets the empty-state component explain WHY a league has no games.
+ */
+export interface LeagueMeta {
+  name: string;
+  is_offseason: boolean;
+  /** ISO timestamp of the earliest upcoming game, or null if none. */
+  next_game: string | null;
+  polling_healthy: boolean;
+}
+
+/** Wrapper around the meta payload returned alongside sports games. */
+export interface SportsMeta {
+  leagues: LeagueMeta[];
 }
 
 export interface TrackedSymbol {

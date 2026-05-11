@@ -6,6 +6,7 @@
  * The desktop is a standalone codebase — no cross-project imports.
  */
 import type { Channel } from "../api/client";
+import type { SportsMeta } from "../api/queries";
 
 // ── Finance ──────────────────────────────────────────────────────
 
@@ -70,6 +71,7 @@ export interface DashboardResponse {
   data: {
     finance?: Trade[];
     sports?: Game[];
+    sports_meta?: SportsMeta;
     rss?: RssItem[];
     [key: string]: unknown;
   };

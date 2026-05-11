@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
@@ -50,6 +51,12 @@ const (
 
 	// DashboardSportsLimit caps the number of games returned for dashboard.
 	DashboardSportsLimit = 20
+
+	// PollingStaleThreshold is the maximum acceptable age of the last
+	// successful poll before a league is marked polling_healthy: false.
+	// Set to 3× the schedule poll cadence (30 min × 3 = 90 min) — enough
+	// slack for transient failures without hiding a real outage.
+	PollingStaleThreshold = 90 * time.Minute
 )
 
 // =============================================================================
@@ -77,14 +84,15 @@ func (a *App) getSports(c *fiber.Ctx) error {
 		return a.getUserGames(c, userSub, DefaultSportsLimit)
 	}
 
-	// Public: return all games (no favorites)
-	var games []Game
-	if GetCache(a.rdb, CacheKeySports, &games) {
+	// Public: return all games + meta for every enabled league.
+	var resp SportsResponse
+	if GetCache(a.rdb, CacheKeySports, &resp) {
 		c.Set("X-Cache", "HIT")
-		return c.JSON(games)
+		return c.JSON(resp)
 	}
 
-	games, err := a.queryGames(context.Background(), DefaultSportsLimit, nil)
+	ctx := context.Background()
+	games, err := a.queryGames(ctx, DefaultSportsLimit, nil)
 	if err != nil {
 		log.Printf("[Sports] getSports query failed: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
@@ -92,10 +100,164 @@ func (a *App) getSports(c *fiber.Ctx) error {
 			Error:  "Internal server error",
 		})
 	}
+	meta := a.loadLeagueMeta(ctx, a.allEnabledLeagueNames(ctx))
 
-	SetCache(a.rdb, CacheKeySports, games, SportsCacheTTL)
+	resp = SportsResponse{Sports: games, Meta: SportsMeta{Leagues: meta}}
+	SetCache(a.rdb, CacheKeySports, resp, SportsCacheTTL)
 	c.Set("X-Cache", "MISS")
-	return c.JSON(games)
+	return c.JSON(resp)
+}
+
+// leagueStatus holds the per-league activity computed from the games table.
+// Used by both the catalog endpoint and the dashboard meta payload.
+type leagueStatus struct {
+	GameCount int
+	LiveCount int
+	NextGame  *time.Time
+}
+
+// loadLeagueStatus returns activity counts and the next upcoming game per
+// league. If `names` is empty, returns stats for every league that appears
+// in the games table. If `names` is non-empty, the result is restricted to
+// just those leagues (LEFT JOIN semantics in spirit — leagues with no games
+// simply don't appear in the map).
+//
+// The query is intentionally batched so we run one round-trip per call,
+// not one query per league.
+func (a *App) loadLeagueStatus(ctx context.Context, names []string) (map[string]leagueStatus, error) {
+	statusMap := make(map[string]leagueStatus)
+
+	var rows pgx.Rows
+	var err error
+	if len(names) == 0 {
+		rows, err = a.db.Query(ctx, `
+			SELECT league,
+			       COUNT(*) AS game_count,
+			       COUNT(*) FILTER (WHERE state = 'in') AS live_count,
+			       MIN(start_time) FILTER (WHERE state = 'pre') AS next_game
+			FROM games
+			GROUP BY league`)
+	} else {
+		rows, err = a.db.Query(ctx, `
+			SELECT league,
+			       COUNT(*) AS game_count,
+			       COUNT(*) FILTER (WHERE state = 'in') AS live_count,
+			       MIN(start_time) FILTER (WHERE state = 'pre') AS next_game
+			FROM games
+			WHERE league = ANY($1)
+			GROUP BY league`, names)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("load league status: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var league string
+		var s leagueStatus
+		if err := rows.Scan(&league, &s.GameCount, &s.LiveCount, &s.NextGame); err != nil {
+			log.Printf("[Sports] loadLeagueStatus scan error: %v", err)
+			continue
+		}
+		statusMap[league] = s
+	}
+	return statusMap, nil
+}
+
+// loadLeagueMeta builds the per-league meta array attached to dashboard +
+// public sports responses. `names` is the set of leagues to include —
+// typically the user's selected leagues for /dashboard, or every enabled
+// league for the public endpoint.
+//
+// For each league:
+//   - is_offseason: derived from offseason_months and the current UTC month.
+//   - next_game:    earliest start_time of any pre-state game.
+//   - polling_healthy: same rule as catalog (90-min staleness threshold,
+//     exempt for off-season leagues).
+//
+// Returns an empty slice (never nil) so callers can JSON-encode cleanly.
+func (a *App) loadLeagueMeta(ctx context.Context, names []string) []LeagueMeta {
+	if len(names) == 0 {
+		return []LeagueMeta{}
+	}
+
+	currentMonth := int32(time.Now().Month())
+
+	// Query tracked_leagues for off-season + polling-health columns.
+	rows, err := a.db.Query(ctx, `
+		SELECT name, offseason_months, last_poll_success_at
+		FROM tracked_leagues
+		WHERE name = ANY($1)`, names)
+	if err != nil {
+		log.Printf("[Sports] loadLeagueMeta tracked_leagues query failed: %v", err)
+		return []LeagueMeta{}
+	}
+	defer rows.Close()
+
+	type leagueRow struct {
+		Name              string
+		OffseasonMonths   []int32
+		LastPollSuccessAt *time.Time
+	}
+	leagueRows := make([]leagueRow, 0, len(names))
+	for rows.Next() {
+		var r leagueRow
+		if err := rows.Scan(&r.Name, &r.OffseasonMonths, &r.LastPollSuccessAt); err != nil {
+			log.Printf("[Sports] loadLeagueMeta scan error: %v", err)
+			continue
+		}
+		leagueRows = append(leagueRows, r)
+	}
+
+	// Pull next_game alongside in a single batched query. Log on failure
+	// so operators see when next_game enrichment is broken; the function
+	// continues with nil statusMap (every league's next_game stays nil).
+	statusMap, statusErr := a.loadLeagueStatus(ctx, names)
+	if statusErr != nil {
+		log.Printf("[Sports] loadLeagueMeta: next_game enrichment failed: %v", statusErr)
+	}
+
+	meta := make([]LeagueMeta, 0, len(leagueRows))
+	for _, r := range leagueRows {
+		isOffseason := containsMonth(r.OffseasonMonths, currentMonth)
+		var nextGame *time.Time
+		if s, ok := statusMap[r.Name]; ok {
+			nextGame = s.NextGame
+		}
+		pollingHealthy := isOffseason ||
+			(r.LastPollSuccessAt != nil && time.Since(*r.LastPollSuccessAt) < PollingStaleThreshold)
+		meta = append(meta, LeagueMeta{
+			Name:           r.Name,
+			IsOffseason:    isOffseason,
+			NextGame:       nextGame,
+			PollingHealthy: pollingHealthy,
+		})
+	}
+	return meta
+}
+
+// allEnabledLeagueNames returns the names of every enabled tracked league.
+// Used by the public /sports endpoint where there is no per-user filter.
+// Errors are logged and a nil slice is returned so the public endpoint
+// degrades to an empty meta rather than 500-ing.
+func (a *App) allEnabledLeagueNames(ctx context.Context) []string {
+	rows, err := a.db.Query(ctx,
+		`SELECT name FROM tracked_leagues WHERE is_enabled = true ORDER BY name`)
+	if err != nil {
+		log.Printf("[Sports] allEnabledLeagueNames query failed: %v", err)
+		return nil
+	}
+	defer rows.Close()
+	names := make([]string, 0)
+	for rows.Next() {
+		var n string
+		if err := rows.Scan(&n); err != nil {
+			log.Printf("[Sports] allEnabledLeagueNames scan error: %v", err)
+			continue
+		}
+		names = append(names, n)
+	}
+	return names
 }
 
 // getLeagueCatalog returns all enabled tracked leagues for the dashboard
@@ -111,7 +273,8 @@ func (a *App) getLeagueCatalog(c *fiber.Ctx) error {
 	currentMonth := int32(time.Now().Month())
 
 	rows, err := a.db.Query(ctx,
-		`SELECT name, COALESCE(sport_api, ''), COALESCE(category, 'Other'), COALESCE(country, ''), COALESCE(logo_url, ''), offseason_months
+		`SELECT name, COALESCE(sport_api, ''), COALESCE(category, 'Other'), COALESCE(country, ''), COALESCE(logo_url, ''),
+		        offseason_months, last_polled_at, last_poll_success_at
 		 FROM tracked_leagues WHERE is_enabled = true ORDER BY category, name`)
 	if err != nil {
 		log.Printf("[Sports] Catalog query failed: %v", err)
@@ -125,46 +288,28 @@ func (a *App) getLeagueCatalog(c *fiber.Ctx) error {
 	catalog = make([]TrackedLeague, 0)
 	for rows.Next() {
 		var l TrackedLeague
-		if err := rows.Scan(&l.Name, &l.SportAPI, &l.Category, &l.Country, &l.LogoURL, &l.OffseasonMonths); err != nil {
+		if err := rows.Scan(
+			&l.Name, &l.SportAPI, &l.Category, &l.Country, &l.LogoURL,
+			&l.OffseasonMonths, &l.LastPolledAt, &l.LastPollSuccessAt,
+		); err != nil {
 			log.Printf("[Sports] Catalog scan error: %v", err)
 			continue
 		}
 		// Compute is_offseason from offseason_months (default false if nil/empty)
 		l.IsOffseason = containsMonth(l.OffseasonMonths, currentMonth)
+		// Compute polling_healthy: last_poll_success_at is non-null AND within threshold.
+		// Off-season leagues are exempt — we don't poll them, so they can't be "stale".
+		l.PollingHealthy = l.IsOffseason ||
+			(l.LastPollSuccessAt != nil && time.Since(*l.LastPollSuccessAt) < PollingStaleThreshold)
 		catalog = append(catalog, l)
 	}
 
 	// Enrich with per-league game activity counts.
-	type leagueStatus struct {
-		GameCount int
-		LiveCount int
-		NextGame  *time.Time
-	}
-	statusMap := make(map[string]leagueStatus)
-
-	statusRows, err := a.db.Query(ctx,
-		`SELECT league,
-		        COUNT(*) AS game_count,
-		        COUNT(*) FILTER (WHERE state = 'in') AS live_count,
-		        MIN(start_time) FILTER (WHERE state = 'pre') AS next_game
-		 FROM games
-		 GROUP BY league`)
-	if err != nil {
-		log.Printf("[Sports] League status query failed (non-fatal): %v", err)
+	statusMap, statusErr := a.loadLeagueStatus(ctx, nil)
+	if statusErr != nil {
+		log.Printf("[Sports] League status query failed (non-fatal): %v", statusErr)
 		// Continue without enrichment — the catalog is still useful.
-	} else {
-		defer statusRows.Close()
-		for statusRows.Next() {
-			var league string
-			var s leagueStatus
-			if err := statusRows.Scan(&league, &s.GameCount, &s.LiveCount, &s.NextGame); err != nil {
-				log.Printf("[Sports] League status scan error: %v", err)
-				continue
-			}
-			statusMap[league] = s
-		}
 	}
-
 	for i := range catalog {
 		if s, ok := statusMap[catalog[i].Name]; ok {
 			catalog[i].GameCount = s.GameCount
@@ -255,31 +400,50 @@ func (a *App) handleInternalCDC(c *fiber.Ctx) error {
 func (a *App) handleInternalDashboard(c *fiber.Ctx) error {
 	userSub := c.Query("user")
 	if userSub == "" {
-		return c.JSON(fiber.Map{"sports": []Game{}})
+		return c.JSON(fiber.Map{
+			"sports":      []Game{},
+			"sports_meta": SportsMeta{Leagues: []LeagueMeta{}},
+		})
 	}
 
-	// Check per-user cache first
 	cacheKey := CacheKeySportsPrefix + userSub
-	var games []Game
-	if GetCache(a.rdb, cacheKey, &games) {
-		return c.JSON(fiber.Map{"sports": games})
+	var resp SportsResponse
+	if GetCache(a.rdb, cacheKey, &resp) {
+		return c.JSON(fiber.Map{
+			"sports":      resp.Sports,
+			"sports_meta": resp.Meta,
+		})
 	}
 
-	// Get user's selected leagues from their channel config
+	ctx := context.Background()
 	leagues := a.getUserSportsLeagues(userSub)
 	if len(leagues) == 0 {
-		return c.JSON(fiber.Map{"sports": []Game{}})
+		return c.JSON(fiber.Map{
+			"sports":      []Game{},
+			"sports_meta": SportsMeta{Leagues: []LeagueMeta{}},
+		})
 	}
 
 	favoriteTeams := a.getUserFavoriteTeams(userSub)
-	games, err := a.queryGamesByLeagues(context.Background(), leagues, DashboardSportsLimit, favoriteTeams)
+	games, err := a.queryGamesByLeagues(ctx, leagues, DashboardSportsLimit, favoriteTeams)
 	if err != nil {
 		log.Printf("[Sports] Dashboard query failed: %v", err)
-		return c.JSON(fiber.Map{"sports": []Game{}})
+		return c.JSON(fiber.Map{
+			"sports":      []Game{},
+			"sports_meta": SportsMeta{Leagues: []LeagueMeta{}},
+		})
 	}
+	meta := a.loadLeagueMeta(ctx, leagues)
 
-	SetCache(a.rdb, cacheKey, games, SportsCacheTTL)
-	return c.JSON(fiber.Map{"sports": games})
+	resp = SportsResponse{Sports: games, Meta: SportsMeta{Leagues: meta}}
+	SetCache(a.rdb, cacheKey, resp, SportsCacheTTL)
+
+	// Dashboard envelope uses sibling key `sports_meta` (not nested `meta`)
+	// so the core gateway can merge multi-channel responses cleanly.
+	return c.JSON(fiber.Map{
+		"sports":      resp.Sports,
+		"sports_meta": resp.Meta,
+	})
 }
 
 // handleInternalHealth is the endpoint the core gateway and k8s probes hit.
@@ -517,22 +681,24 @@ func (a *App) queryGamesByLeagues(ctx context.Context, leagues []string, limit i
 	return games, nil
 }
 
-// getUserGames returns per-user filtered games (used by authenticated getSports).
+// getUserGames returns per-user filtered games + meta (used by authenticated getSports).
 func (a *App) getUserGames(c *fiber.Ctx, userSub string, limit int) error {
 	cacheKey := CacheKeySportsPrefix + userSub
-	var games []Game
-	if GetCache(a.rdb, cacheKey, &games) {
+	var resp SportsResponse
+	if GetCache(a.rdb, cacheKey, &resp) {
 		c.Set("X-Cache", "HIT")
-		return c.JSON(games)
+		return c.JSON(resp)
 	}
 
+	ctx := context.Background()
 	leagues := a.getUserSportsLeagues(userSub)
 	if len(leagues) == 0 {
-		return c.JSON([]Game{})
+		// Even with no leagues, return the new shape — empty arrays both sides.
+		return c.JSON(SportsResponse{Sports: []Game{}, Meta: SportsMeta{Leagues: []LeagueMeta{}}})
 	}
 
 	favoriteTeams := a.getUserFavoriteTeams(userSub)
-	games, err := a.queryGamesByLeagues(context.Background(), leagues, limit, favoriteTeams)
+	games, err := a.queryGamesByLeagues(ctx, leagues, limit, favoriteTeams)
 	if err != nil {
 		log.Printf("[Sports] getUserGames query failed: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
@@ -540,10 +706,12 @@ func (a *App) getUserGames(c *fiber.Ctx, userSub string, limit int) error {
 			Error:  "Internal server error",
 		})
 	}
+	meta := a.loadLeagueMeta(ctx, leagues)
 
-	SetCache(a.rdb, cacheKey, games, SportsCacheTTL)
+	resp = SportsResponse{Sports: games, Meta: SportsMeta{Leagues: meta}}
+	SetCache(a.rdb, cacheKey, resp, SportsCacheTTL)
 	c.Set("X-Cache", "MISS")
-	return c.JSON(games)
+	return c.JSON(resp)
 }
 
 // getUserSportsLeagues extracts the league list from a user's sports channel config.
