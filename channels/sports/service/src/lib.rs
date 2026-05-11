@@ -267,6 +267,11 @@ pub async fn poll_schedule(
                 break;
             }
 
+            // Bookkeeping is called once per (league, date). The "latest call
+            // wins" semantics in `record_poll_success` / `record_poll_error`
+            // are intentional: across an 8-date cycle, the final tracked_leagues
+            // state reflects the most-recent poll outcome. Do not deduplicate
+            // to once-per-league or `last_poll_error` will lag a recovered poll.
             match poll_league(client, league, date, rate_limiter).await {
                 Ok(games) => {
                     let (upserted, failed, _) = upsert_games(pool, league, games).await;
