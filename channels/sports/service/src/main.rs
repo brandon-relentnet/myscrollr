@@ -117,15 +117,13 @@ async fn main() {
             }
         };
 
-        // Pro plan: 7,500 requests/day per sport API. Each sport host
-        // (basketball, football, hockey, etc.) has its own independent budget.
-        let sports: Vec<String> = leagues
-            .iter()
-            .map(|l| l.sport_api.clone())
-            .collect::<std::collections::HashSet<_>>()
-            .into_iter()
-            .collect();
-        let rate_limiter = Arc::new(RateLimiter::new(&sports, 7500));
+        // Pro plan: 7,500 requests/day per sport host. Each league on a host
+        // gets a reserved share of host_budget / N_leagues_on_host. Off-season
+        // leagues donate their share to a per-host shared pool that any
+        // in-season league can borrow from when its reserved budget is
+        // exhausted. Prevents Champions League knockout nights from starving
+        // Premier League polls.
+        let rate_limiter = Arc::new(RateLimiter::new_per_league(&leagues, 7500));
 
         let client = Arc::new(client);
         let leagues = Arc::new(leagues);

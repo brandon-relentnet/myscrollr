@@ -156,9 +156,11 @@ pub async fn poll_live(
     let mut leagues_with_live = 0u32;
 
     for league in leagues {
-        if !rate_limiter.has_budget(&league.sport_api) {
-            warn!("[{}] Skipping live poll — rate limit budget low for {} ({})",
-                league.name, league.sport_api, rate_limiter.remaining(&league.sport_api));
+        if !rate_limiter.try_consume(&league.name) {
+            warn!("[{}] Skipping live poll — per-league budget exhausted (reserved={}, shared={})",
+                league.name,
+                rate_limiter.reserved(&league.name),
+                rate_limiter.shared_remaining(&league.sport_api));
             continue;
         }
 
@@ -180,8 +182,8 @@ pub async fn poll_live(
 
         // Also poll yesterday if this league has live games from yesterday
         if yesterday_set.contains(league.name.as_str()) {
-            if !rate_limiter.has_budget(&league.sport_api) {
-                warn!("[{}] Skipping yesterday poll — rate limit budget low", league.name);
+            if !rate_limiter.try_consume(&league.name) {
+                warn!("[{}] Skipping yesterday poll — per-league budget exhausted", league.name);
                 continue;
             }
             match poll_league(client, league, &yesterday, rate_limiter).await {
@@ -259,9 +261,11 @@ pub async fn poll_schedule(
         }
 
         for date in &dates {
-            if !rate_limiter.has_budget(&league.sport_api) {
-                warn!("[{}] Skipping schedule poll — rate limit budget low for {} ({})",
-                    league.name, league.sport_api, rate_limiter.remaining(&league.sport_api));
+            if !rate_limiter.try_consume(&league.name) {
+                warn!("[{}] Skipping schedule poll — per-league budget exhausted (reserved={}, shared={})",
+                    league.name,
+                    rate_limiter.reserved(&league.name),
+                    rate_limiter.shared_remaining(&league.sport_api));
                 break;
             }
 
