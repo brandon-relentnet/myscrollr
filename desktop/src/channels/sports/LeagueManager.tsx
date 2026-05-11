@@ -483,7 +483,7 @@ function LeagueStatus({ league }: { league: TrackedLeague }) {
       : "This league has not polled successfully yet";
     return (
       <Tooltip content={tooltipText}>
-        <span className="flex items-center gap-1 text-ui-chip text-amber-400">
+        <span className="flex items-center justify-end gap-1 text-ui-chip text-amber-400">
           <AlertTriangle size={10} />
           Stale
         </span>
