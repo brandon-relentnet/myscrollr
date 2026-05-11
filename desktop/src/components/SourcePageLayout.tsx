@@ -4,9 +4,9 @@
  * Renders through the universal `PageLayout`. Source pages no longer
  * have a visible tab band — Feed is the single visible page. All
  * secondary actions (Configure, Display preferences, Remove) live in
- * a contextual menu surfaced two ways in the TopBar: a visible
- * "Options" pill button AND the last breadcrumb segment (both open
- * the same menu).
+ * a contextual menu opened by the "Options" pill button in the
+ * TopBar. The breadcrumb segments are plain navigation text — the
+ * pill is the single, explicit menu trigger.
  *
  * The /feed, /configuration, and /display routes all still exist for
  * direct deeplinks, tray actions, and the Catalog "Open" → feed flow.
@@ -197,11 +197,11 @@ export default function SourcePageLayout({
         // their padding. Configure / Display keep the default padded
         // narrow column.
         noContentPadding={isFeed}
-        // Source pages get BOTH a discoverable "Options" pill in the
-        // TopBar AND the breadcrumb-as-trigger, both opening the same
-        // menu. menuKind="actions" tells TopBar to render the pill.
-        // Walkthrough fix 2026-05-11 — testers couldn't find the
-        // breadcrumb-only trigger.
+        // Source pages use the "Options" pill in the TopBar as the
+        // sole menu trigger. menuKind="actions" tells TopBar to render
+        // the pill and leave the breadcrumb as plain navigation text.
+        // Walkthrough fix 2026-05-11 — testers preferred the explicit
+        // pill over the discoverability-poor breadcrumb dropdown.
         menuItems={menuItems}
         menuLabel={`${name} options`}
         menuKind="actions"

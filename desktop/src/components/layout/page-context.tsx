@@ -47,15 +47,16 @@ export interface PageIdentity {
   /** Aria label for the menu trigger. Default: 'Page options'. */
   menuLabel?: string;
   /**
-   * Kind of menu this is.
-   *  - "actions" (default): page-scoped actions like Configure, Remove
-   *    on source pages. The TopBar renders a visible "Options" pill
-   *    button in addition to the (still-clickable) breadcrumb so the
-   *    menu is discoverable.
-   *  - "tabs": the menu is a sibling-tab switcher (Settings, Catalog)
-   *    where the breadcrumb segment IS the affordance — no extra pill
-   *    needed because the user already sees the active section name
-   *    with a chevron, and the menu items are the other sections.
+   * Kind of menu this is. Controls which trigger TopBar renders.
+   *  - "actions": page-scoped actions like Configure, Remove on
+   *    source pages. The TopBar renders a visible "Options" pill
+   *    button as the SOLE menu trigger. Breadcrumb segments stay
+   *    plain navigation text.
+   *  - "tabs": the menu is a sibling-tab switcher (Settings,
+   *    Catalog). The last breadcrumb segment IS the trigger —
+   *    clicking it opens a menu of the OTHER tabs. No separate pill,
+   *    because the breadcrumb already names the active section and
+   *    the chevron signals "switch."
    */
   menuKind?: "actions" | "tabs";
   /**

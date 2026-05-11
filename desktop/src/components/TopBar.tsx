@@ -115,10 +115,19 @@ export default function TopBar({
 
       {/* ── Page identity (breadcrumb) ──────────────────────────
           Layout: parentLabel / title / subtitle
-          The LAST segment (subtitle if any, otherwise title) becomes
-          the trigger for the page's contextual menu when menuItems is
-          provided. Breadcrumb segment IS the menu — no separate
-          "Options" button competing for attention. */}
+
+          Two menu patterns coexist:
+           - menuKind="tabs" (Settings, Catalog): the breadcrumb's last
+             segment IS the menu trigger — clicking it opens an
+             OverflowMenu of sibling tabs. The breadcrumb name is the
+             active tab; the menu lists the others. No separate pill
+             because the breadcrumb already carries the affordance.
+           - menuKind="actions" (source pages): the breadcrumb is plain
+             navigation text (clickable to go back on sub-routes); the
+             menu is opened by a dedicated "Options" pill rendered
+             after the breadcrumb. Walkthrough fix 2026-05-11 round 2 —
+             testers found the dual-trigger arrangement confusing and
+             preferred the pill as the single, obvious entry point. */}
       <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden text-ui-meta">
         {page && (
           <>
@@ -136,18 +145,21 @@ export default function TopBar({
               </>
             )}
 
-            {/* Title segment — clickable when onTitleClick is set
-                AND it's not the last segment (which is reserved for
-                the menu trigger). */}
+            {/* Title segment.
+                - For "tabs" menus when title is the last breadcrumb
+                  segment AND there are menu items, render as the
+                  breadcrumb-menu trigger.
+                - Otherwise render as plain text (or as a back-link
+                  button when onTitleClick is set, e.g. on sub-routes
+                  of a source page). */}
             {(() => {
               const titleIsLast = !page.subtitle;
-              const titleIsMenuTrigger =
-                titleIsLast && Boolean(page.menuItems?.length);
+              const titleIsTabsMenuTrigger =
+                titleIsLast &&
+                Boolean(page.menuItems?.length) &&
+                page.menuKind === "tabs";
 
-              if (titleIsMenuTrigger) {
-                // Title is the menu trigger — render via OverflowMenu
-                // with a custom trigger that looks like a breadcrumb
-                // segment with a chevron.
+              if (titleIsTabsMenuTrigger) {
                 return (
                   <OverflowMenu
                     items={page.menuItems!}
@@ -175,7 +187,10 @@ export default function TopBar({
 
             {/* Subtitle segment — slides in when entering a sub-route
                 and out when leaving. Keyed on the subtitle text so
-                switching between Configure and Display also animates. */}
+                switching between Configure and Display also animates.
+
+                For "tabs" menus, the subtitle IS the menu trigger.
+                For "actions" menus, the subtitle is plain text. */}
             <AnimatePresence mode="popLayout" initial={false}>
               {page.subtitle && (
                 <motion.div
@@ -189,7 +204,7 @@ export default function TopBar({
                   <span className="text-fg-4 shrink-0" aria-hidden>
                     /
                   </span>
-                  {page.menuItems?.length ? (
+                  {page.menuItems?.length && page.menuKind === "tabs" ? (
                     <OverflowMenu
                       items={page.menuItems}
                       triggerLabel={page.menuLabel ?? "Page options"}
@@ -207,19 +222,10 @@ export default function TopBar({
               )}
             </AnimatePresence>
 
-            {/* Discoverable "Options" pill for action menus (source
-                pages). Renders ONLY when menuKind === "actions" so the
-                Settings / Catalog tab switchers don't get a redundant
-                pill (their menu IS the breadcrumb-as-trigger).
-
-                The breadcrumb segment is ALSO still a menu trigger via
-                BreadcrumbMenuTrigger above — both open the same menu.
-                Two affordances, one menu. Discoverability + muscle
-                memory.
-
-                Walkthrough fix 2026-05-11: super-user testers couldn't
-                find the 11px-chevron-on-breadcrumb trigger; the pill
-                with "Options" label resolves that. */}
+            {/* "Options" pill — the sole trigger for action menus.
+                Renders ONLY when menuKind === "actions" so Settings /
+                Catalog don't get a redundant pill alongside their
+                breadcrumb-as-trigger. */}
             {page.menuItems?.length && page.menuKind === "actions" && (
               <div className="shrink-0 ml-1">
                 <OverflowMenu
