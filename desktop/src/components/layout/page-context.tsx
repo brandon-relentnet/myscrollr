@@ -42,11 +42,22 @@ export interface PageIdentity {
    * Optional contextual menu items. When provided, the LAST breadcrumb
    * segment (subtitle if present, otherwise title) becomes the menu
    * trigger — clicking it opens an OverflowMenu with these items.
-   * Replaces the earlier separate "Options" button.
    */
   menuItems?: OverflowMenuItem[];
   /** Aria label for the menu trigger. Default: 'Page options'. */
   menuLabel?: string;
+  /**
+   * Kind of menu this is.
+   *  - "actions" (default): page-scoped actions like Configure, Remove
+   *    on source pages. The TopBar renders a visible "Options" pill
+   *    button in addition to the (still-clickable) breadcrumb so the
+   *    menu is discoverable.
+   *  - "tabs": the menu is a sibling-tab switcher (Settings, Catalog)
+   *    where the breadcrumb segment IS the affordance — no extra pill
+   *    needed because the user already sees the active section name
+   *    with a chevron, and the menu items are the other sections.
+   */
+  menuKind?: "actions" | "tabs";
   /**
    * Optional non-menu action rendered after the breadcrumb (e.g. a
    * raw Trash button on routes that don't otherwise have a menu).
@@ -103,6 +114,7 @@ export function useRegisterPageIdentity(identity: PageIdentity) {
     subtitle: identity.subtitle,
     parentLabel: identity.parentLabel,
     menuLabel: identity.menuLabel,
+    menuKind: identity.menuKind,
     menuKey,
   });
   useEffect(() => {

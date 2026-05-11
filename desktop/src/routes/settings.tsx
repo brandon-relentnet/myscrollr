@@ -110,6 +110,7 @@ function SettingsRoute() {
       width="narrow"
       menuItems={menuItems}
       menuLabel="Settings sections"
+      menuKind="tabs"
     >
       {tab === "general" && (
         <GeneralSettings

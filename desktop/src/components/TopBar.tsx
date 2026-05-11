@@ -207,6 +207,28 @@ export default function TopBar({
               )}
             </AnimatePresence>
 
+            {/* Discoverable "Options" pill for action menus (source
+                pages). Renders ONLY when menuKind === "actions" so the
+                Settings / Catalog tab switchers don't get a redundant
+                pill (their menu IS the breadcrumb-as-trigger).
+
+                The breadcrumb segment is ALSO still a menu trigger via
+                BreadcrumbMenuTrigger above — both open the same menu.
+                Two affordances, one menu. Discoverability + muscle
+                memory.
+
+                Walkthrough fix 2026-05-11: super-user testers couldn't
+                find the 11px-chevron-on-breadcrumb trigger; the pill
+                with "Options" label resolves that. */}
+            {page.menuItems?.length && page.menuKind === "actions" && (
+              <div className="shrink-0 ml-1">
+                <OverflowMenu
+                  items={page.menuItems}
+                  triggerLabel={page.menuLabel ?? "Page options"}
+                />
+              </div>
+            )}
+
             {/* Fallback non-menu action (rare). */}
             {page.entityAction && !page.menuItems?.length && (
               <div className="shrink-0 flex items-center gap-1 ml-1">

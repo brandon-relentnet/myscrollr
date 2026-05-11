@@ -6,6 +6,7 @@ import type { LucideIcon } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 
+import { defaultPinForNewWidget } from "../preferences";
 import { getCatalogItems, CATEGORY_LABELS, CANONICAL_ORDER } from "../marketplace";
 import type { CatalogCategory, CatalogItem } from "../marketplace";
 import { channelsApi } from "../api/client";
@@ -188,9 +189,23 @@ function CatalogPage() {
       } else {
         const nextEnabled = [...prefs.widgets.enabledWidgets, item.id];
         const nextOnTicker = [...prefs.widgets.widgetsOnTicker, item.id];
+        // Auto-pin newly added widgets to the right side so they land
+        // in the static pinned zone instead of disappearing into the
+        // scrolling tape. Preserve any existing pin config (re-adding
+        // a previously-removed widget honors the user's last choice).
+        // Walkthrough fix 2026-05-11 — see preferences.ts:defaultPinForNewWidget.
+        const nextPinned = { ...prefs.widgets.pinnedWidgets };
+        if (!nextPinned[item.id]) {
+          nextPinned[item.id] = defaultPinForNewWidget();
+        }
         onPrefsChange({
           ...prefs,
-          widgets: { ...prefs.widgets, enabledWidgets: nextEnabled, widgetsOnTicker: nextOnTicker },
+          widgets: {
+            ...prefs.widgets,
+            enabledWidgets: nextEnabled,
+            widgetsOnTicker: nextOnTicker,
+            pinnedWidgets: nextPinned,
+          },
         });
         toast.success(`${item.name} added`);
         navigate({ to: "/widget/$id/$tab", params: { id: item.id, tab: "feed" } });
@@ -226,6 +241,7 @@ function CatalogPage() {
       width="wide"
       menuItems={menuItems}
       menuLabel="Catalog filter"
+      menuKind="tabs"
     >
       {dashboardError && (
         <div className="mb-4">
