@@ -151,10 +151,17 @@ export interface TickerPrefs {
   stepPause: number; // seconds between transitions (1–10)
 }
 
-interface StartupPrefs {
+export interface StartupPrefs {
   defaultView: DefaultView;
   refreshInterval: number;
   autostart: boolean;
+  /**
+   * When true, the main window runs a single update check shortly after
+   * launch and surfaces a toast if a new version is available. The user
+   * confirms before any download happens — we never auto-install.
+   * Defaults to true; opt out via Settings → General → Updates.
+   */
+  autoCheckUpdates: boolean;
 }
 
 export type TickerPosition = "top" | "bottom";
@@ -525,6 +532,7 @@ const DEFAULT_STARTUP: StartupPrefs = {
   defaultView: "last",
   refreshInterval: 60_000,
   autostart: false,
+  autoCheckUpdates: true,
 };
 
 const DEFAULT_WINDOW: WindowPrefs = {
@@ -679,6 +687,7 @@ function migrateV1(saved: Record<string, unknown>): Partial<AppPreferences> {
       defaultView: general.defaultView ?? DEFAULT_STARTUP.defaultView,
       refreshInterval: general.refreshInterval ?? DEFAULT_STARTUP.refreshInterval,
       autostart: general.autostart ?? DEFAULT_STARTUP.autostart,
+      autoCheckUpdates: DEFAULT_STARTUP.autoCheckUpdates,
     };
     // smoothScroll and scrollSmoothness are dropped (removed)
   }

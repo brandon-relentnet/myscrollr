@@ -25,6 +25,7 @@ interface PendingUpdate {
 import type {
   AppearancePrefs,
   WindowPrefs,
+  StartupPrefs,
   ThemeMode,
   ThemeFamily,
 } from "../../preferences";
@@ -54,8 +55,10 @@ type UpdateStatus =
 interface GeneralSettingsProps {
   appearance: AppearancePrefs;
   window_: WindowPrefs;
+  startup: StartupPrefs;
   onAppearanceChange: (prefs: AppearancePrefs) => void;
   onWindowChange: (prefs: WindowPrefs) => void;
+  onStartupChange: (prefs: StartupPrefs) => void;
   onReset: () => void;
   autostartEnabled: boolean;
   onAutostartChange: (enabled: boolean) => void;
@@ -94,8 +97,10 @@ const FONT_WEIGHT_OPTIONS: { value: string; label: string }[] = [
 export default function GeneralSettings({
   appearance,
   window_,
+  startup,
   onAppearanceChange,
   onWindowChange,
+  onStartupChange,
   onReset,
   autostartEnabled,
   onAutostartChange,
@@ -307,6 +312,12 @@ export default function GeneralSettings({
       </Section>
 
       <Section title="Updates">
+        <ToggleRow
+          label="Check for updates on startup"
+          description="Notify me when a new version is available shortly after launch"
+          checked={startup.autoCheckUpdates}
+          onChange={(v) => onStartupChange({ ...startup, autoCheckUpdates: v })}
+        />
         <UpdateRow
           status={status}
           onCheck={handleCheckForUpdates}
