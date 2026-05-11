@@ -50,6 +50,12 @@ const (
 
 	// DashboardSportsLimit caps the number of games returned for dashboard.
 	DashboardSportsLimit = 20
+
+	// PollingStaleThreshold is the maximum acceptable age of the last
+	// successful poll before a league is marked polling_healthy: false.
+	// Set to 3× the schedule poll cadence (30 min × 3 = 90 min) — enough
+	// slack for transient failures without hiding a real outage.
+	PollingStaleThreshold = 90 * time.Minute
 )
 
 // =============================================================================
@@ -111,7 +117,8 @@ func (a *App) getLeagueCatalog(c *fiber.Ctx) error {
 	currentMonth := int32(time.Now().Month())
 
 	rows, err := a.db.Query(ctx,
-		`SELECT name, COALESCE(sport_api, ''), COALESCE(category, 'Other'), COALESCE(country, ''), COALESCE(logo_url, ''), offseason_months
+		`SELECT name, COALESCE(sport_api, ''), COALESCE(category, 'Other'), COALESCE(country, ''), COALESCE(logo_url, ''),
+		        offseason_months, last_polled_at, last_poll_success_at
 		 FROM tracked_leagues WHERE is_enabled = true ORDER BY category, name`)
 	if err != nil {
 		log.Printf("[Sports] Catalog query failed: %v", err)
@@ -125,12 +132,19 @@ func (a *App) getLeagueCatalog(c *fiber.Ctx) error {
 	catalog = make([]TrackedLeague, 0)
 	for rows.Next() {
 		var l TrackedLeague
-		if err := rows.Scan(&l.Name, &l.SportAPI, &l.Category, &l.Country, &l.LogoURL, &l.OffseasonMonths); err != nil {
+		if err := rows.Scan(
+			&l.Name, &l.SportAPI, &l.Category, &l.Country, &l.LogoURL,
+			&l.OffseasonMonths, &l.LastPolledAt, &l.LastPollSuccessAt,
+		); err != nil {
 			log.Printf("[Sports] Catalog scan error: %v", err)
 			continue
 		}
 		// Compute is_offseason from offseason_months (default false if nil/empty)
 		l.IsOffseason = containsMonth(l.OffseasonMonths, currentMonth)
+		// Compute polling_healthy: last_poll_success_at is non-null AND within threshold.
+		// Off-season leagues are exempt — we don't poll them, so they can't be "stale".
+		l.PollingHealthy = l.IsOffseason ||
+			(l.LastPollSuccessAt != nil && time.Since(*l.LastPollSuccessAt) < PollingStaleThreshold)
 		catalog = append(catalog, l)
 	}
 

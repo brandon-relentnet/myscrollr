@@ -28,18 +28,21 @@ type Game struct {
 }
 
 // TrackedLeague represents a league entry from the catalog, enriched with
-// current game activity counts for the dashboard league browser.
+// current game activity counts and polling-health for the dashboard league browser.
 type TrackedLeague struct {
-	Name            string     `json:"name"`
-	SportAPI        string     `json:"sport_api"`
-	Category        string     `json:"category"`
-	Country         string     `json:"country"`
-	LogoURL         string     `json:"logo_url"`
-	GameCount       int        `json:"game_count"`
-	LiveCount       int        `json:"live_count"`
-	NextGame        *time.Time `json:"next_game,omitempty"`
-	IsOffseason     bool       `json:"is_offseason"`
-	OffseasonMonths []int32    `json:"-"` // internal, not serialized
+	Name              string     `json:"name"`
+	SportAPI          string     `json:"sport_api"`
+	Category          string     `json:"category"`
+	Country           string     `json:"country"`
+	LogoURL           string     `json:"logo_url"`
+	GameCount         int        `json:"game_count"`
+	LiveCount         int        `json:"live_count"`
+	NextGame          *time.Time `json:"next_game,omitempty"`
+	IsOffseason       bool       `json:"is_offseason"`
+	LastPolledAt      *time.Time `json:"last_polled_at,omitempty"`
+	LastPollSuccessAt *time.Time `json:"last_poll_success_at,omitempty"`
+	PollingHealthy    bool       `json:"polling_healthy"`
+	OffseasonMonths   []int32    `json:"-"` // internal, not serialized
 }
 
 // CDCRecord represents a Change Data Capture record from Sequin.
