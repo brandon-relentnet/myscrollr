@@ -388,19 +388,21 @@ pub async fn get_live_yesterday_leagues(pool: &Arc<PgPool>) -> Vec<String> {
     }
 }
 
-/// Delete stale games. Final/postponed/pre games older than 12h past start time,
-/// and live games not seen in 24h (API stopped returning them).
+/// Delete stale games using per-state thresholds.
 ///
-/// The 24h threshold for `state = 'in'` is deliberate: a legitimately long
-/// game (MLB extra innings, delayed NFL, F1 red-flag rain delay) can
-/// easily exceed 4h. Pruning at 4h was deleting live games from the UI
-/// while they were still in progress; 24h is slack enough that only
-/// genuinely abandoned games get swept.
+/// - `final` / `postponed`: 12 hours past `start_time` — they're done.
+/// - `pre`:  7 days past `start_time` — survives short polling outages.
+///           A `pre` row this old means the API stopped returning the fixture
+///           entirely; safe to prune.
+/// - `in`:   24 hours since `updated_at`. A legitimately long game (MLB
+///           extras, NFL weather delay, F1 red-flag) can exceed 4h, so we
+///           prune only after a full day of no updates.
 pub async fn cleanup_old_games(pool: &Arc<PgPool>) -> Result<u64> {
     let mut connection = pool.acquire().await?;
     let result = query(
         "DELETE FROM games WHERE
-            (state IN ('final', 'postponed', 'pre') AND start_time < NOW() - INTERVAL '12 hours')
+            (state IN ('final', 'postponed') AND start_time < NOW() - INTERVAL '12 hours')
+            OR (state = 'pre' AND start_time < NOW() - INTERVAL '7 days')
             OR (state = 'in' AND updated_at < NOW() - INTERVAL '24 hours')"
     )
     .execute(&mut *connection)
