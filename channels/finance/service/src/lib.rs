@@ -1,5 +1,6 @@
 use std::{sync::Arc, time::Duration, fs};
 
+use chrono::{Timelike, Utc};
 use futures_util::future::join_all;
 use reqwest::Client;
 use tokio::{sync::Mutex, time::{self, sleep}};
@@ -50,6 +51,20 @@ pub async fn start_finance_services(pool: Arc<PgPool>, health_state: Arc<Mutex<F
             sleep(Duration::from_secs(86400)).await; // 24 hours
             info!("[ TwelveData ] Running background exchange metadata verification...");
             verify_exchange_metadata(bg_state.clone()).await;
+        }
+    });
+
+    // Spawn background task to refresh previous closes daily, shortly after
+    // the US market closes. We target 21:30 UTC (~16:30 ET / 17:30 EDT), which
+    // is comfortably after the 4:00pm ET close and after TwelveData's official
+    // previous_close values have settled. Without this, previous_close only
+    // refreshes when the pod restarts, causing the stale numbers users see.
+    let prev_close_state = state.clone();
+    tokio::spawn(async move {
+        loop {
+            sleep(duration_until_next_utc(21, 30)).await;
+            info!("[ TwelveData ] Running daily previous close refresh...");
+            update_all_previous_closes(prev_close_state.clone()).await;
         }
     });
 
@@ -129,6 +144,21 @@ pub async fn update_all_previous_closes(state: FinanceState) {
         join_all(futures).await;
     }
     info!("[ TwelveData ] Previous closes update complete.");
+}
+
+/// Returns the `Duration` until the next occurrence of `hour:minute` UTC.
+/// If the target time has already passed today, returns the duration until
+/// that time tomorrow.
+fn duration_until_next_utc(hour: u32, minute: u32) -> Duration {
+    let now = Utc::now();
+    let target_secs_of_day = (hour * 3600 + minute * 60) as i64;
+    let now_secs_of_day =
+        (now.hour() * 3600 + now.minute() * 60 + now.second()) as i64;
+    let mut delta = target_secs_of_day - now_secs_of_day;
+    if delta <= 0 {
+        delta += 86_400;
+    }
+    Duration::from_secs(delta as u64)
 }
 
 pub(crate) async fn get_quote(symbol: String, client: Arc<Client>, api_key: &str) -> anyhow::Result<QuoteResponse> {
