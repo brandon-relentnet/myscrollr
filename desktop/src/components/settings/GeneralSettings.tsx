@@ -19,17 +19,15 @@ import type {
   WindowPrefs,
   StartupPrefs,
   ThemeMode,
-  ThemeFamily,
 } from "../../preferences";
-import { THEME_FAMILIES, THEME_FAMILY_LABELS } from "../../preferences";
 import {
   Section,
   ToggleRow,
   SegmentedRow,
-  SelectRow,
   DisplayRow,
   ResetButton,
 } from "./SettingsControls";
+import ThemeSwatchPicker from "./ThemeSwatchPicker";
 
 // ── Update state machine ────────────────────────────────────────
 
@@ -64,12 +62,6 @@ const THEME_MODE_OPTIONS: { value: ThemeMode; label: string }[] = [
   { value: "dark", label: "Dark" },
   { value: "system", label: "Auto" },
 ];
-
-const THEME_FAMILY_OPTIONS: { value: ThemeFamily; label: string }[] =
-  THEME_FAMILIES.map((family) => ({
-    value: family,
-    label: THEME_FAMILY_LABELS[family],
-  }));
 
 const FONT_WEIGHT_OPTIONS: { value: string; label: string }[] = [
   { value: "normal", label: "Normal" },
@@ -204,11 +196,8 @@ export default function GeneralSettings({
       <div className="grid gap-4 grid-cols-2 items-start">
         <div className="space-y-4">
           <Section title="Appearance" variant="card">
-            <SelectRow
-              label="Theme"
-              description="Pick a color palette"
+            <ThemeSwatchPicker
               value={appearance.themeFamily}
-              options={THEME_FAMILY_OPTIONS}
               onChange={(v) => setApp("themeFamily", v)}
             />
             <SegmentedRow
