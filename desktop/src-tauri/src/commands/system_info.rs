@@ -16,6 +16,8 @@ use crate::state::{GpuDynamic, StaticSystemInfo, SysInfoInner, SysInfoState};
 /// only exists in `std::os::windows::process::CommandExt` so the
 /// import + call is gated on `cfg(windows)`. On macOS/Linux the
 /// returned Command is identical to `Command::new(name)`.
+pub(crate) fn system_info_quiet_command(name: &str) -> std::process::Command { quiet_command(name) }
+
 fn quiet_command(name: &str) -> std::process::Command {
     // The `mut` is only needed on Windows where we call
     // `cmd.creation_flags(...)` below. The `#[allow(unused_mut)]`
@@ -276,6 +278,20 @@ fn get_system_info_blocking(inner: &SysInfoInner) -> Result<serde_json::Value, S
         let hostname = sysinfo::System::host_name().unwrap_or_default();
         let (gpu_sysfs_device, gpu_name, gpu_vram_total, has_nvidia_smi) = probe_gpu_static();
 
+        // On Windows, if neither sysfs (n/a) nor nvidia-smi populated
+        // gpu info, fall back to WMI for AMD/Intel GPUs (or NVIDIA
+        // users who don't have nvidia-smi on PATH). The WMI probe also
+        // gives us the LUID we need to filter perf counters.
+        #[cfg(windows)]
+        let (gpu_name, gpu_vram_total, gpu_luid) = {
+            if gpu_name.is_none() && !has_nvidia_smi {
+                let g = crate::commands::gpu_win::probe_static();
+                (g.name, g.vram_total, g.luid)
+            } else {
+                (gpu_name, gpu_vram_total, None)
+            }
+        };
+
         StaticSystemInfo {
             cpu_name,
             cpu_cores,
@@ -285,6 +301,8 @@ fn get_system_info_blocking(inner: &SysInfoInner) -> Result<serde_json::Value, S
             gpu_vram_total,
             gpu_sysfs_device,
             has_nvidia_smi,
+            #[cfg(windows)]
+            gpu_luid,
         }
     });
     let st = cached.clone();
@@ -305,7 +323,16 @@ fn get_system_info_blocking(inner: &SysInfoInner) -> Result<serde_json::Value, S
     } else if st.has_nvidia_smi {
         read_gpu_dynamic_nvidia()
     } else {
-        GpuDynamic::default()
+        #[cfg(windows)]
+        {
+            // AMD/Intel on Windows (or NVIDIA without nvidia-smi):
+            // pull utilization + VRAM from WMI perf counters.
+            crate::commands::gpu_win::read_dynamic(st.gpu_luid.as_deref())
+        }
+        #[cfg(not(windows))]
+        {
+            GpuDynamic::default()
+        }
     };
 
     // ── Temperatures ─────────────────────────────────────────────

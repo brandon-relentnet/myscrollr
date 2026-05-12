@@ -29,6 +29,12 @@ pub struct StaticSystemInfo {
     pub gpu_sysfs_device: Option<std::path::PathBuf>,
     /// Whether nvidia-smi is available (checked once).
     pub has_nvidia_smi: bool,
+    /// Windows: the LUID string of the primary GPU adapter
+    /// (e.g. "luid_0x00000000_0x00017BAA_phys_0"). Used to filter
+    /// the per-process perf counters down to the discrete GPU.
+    /// Set on first poll, then reused.
+    #[cfg(windows)]
+    pub gpu_luid: Option<String>,
 }
 
 /// Dynamic GPU values read each poll.

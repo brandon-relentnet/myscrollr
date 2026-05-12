@@ -172,6 +172,15 @@ export interface WindowPrefs {
   narrowWidth: number;
   skipTaskbar: boolean;
   tickerPosition: TickerPosition;
+  /**
+   * Windows-only. When true (default), hides the ticker when any
+   * fullscreen application appears so the fullscreen content isn't
+   * clipped (matches taskbar behavior). When false, ticker stays
+   * visible on top of fullscreen apps — content under the ticker
+   * gets visually clipped, which is the user's chosen tradeoff.
+   * No effect on macOS / Linux.
+   */
+  hideOnFullscreen: boolean;
 }
 
 interface TaskbarPrefs {
@@ -541,6 +550,7 @@ const DEFAULT_WINDOW: WindowPrefs = {
   narrowWidth: 800,
   skipTaskbar: true,
   tickerPosition: "top",
+  hideOnFullscreen: true,
 };
 
 const DEFAULT_TASKBAR: TaskbarPrefs = {

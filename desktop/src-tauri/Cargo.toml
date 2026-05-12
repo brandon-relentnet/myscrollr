@@ -1,6 +1,6 @@
 [package]
 name = "scrollr-desktop"
-version = "1.0.13"
+version = "1.0.14"
 edition = "2021"
 description = "Scrollr desktop app — pinned live ticker for sports, finance, RSS, and Yahoo Fantasy."
 authors = ["Brandon Ruth <brandon@myscrollr.com>"]
@@ -44,7 +44,19 @@ log = "0.4"
 sysinfo = "0.33"
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.59", features = ["Win32_System_Com"] }
+windows-sys = { version = "0.59", features = [
+    "Win32_System_Com",
+    "Win32_Foundation",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_Graphics_Gdi",
+    "Win32_Graphics_Dwm",
+] }
+# wmi: queries Windows Management Instrumentation. Used by the System
+# Monitor widget to read GPU utilization and VRAM from
+# Win32_PerfFormattedData_GPUPerformanceCounters_* on Windows (where
+# nvidia-smi isn't available for AMD/Intel GPUs).
+wmi = "0.14"
 
 [profile.release]
 lto = true

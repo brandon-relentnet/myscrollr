@@ -69,11 +69,31 @@ pub fn position_ticker(
             compositor::kwin::position(&window, monitor_x, new_y, screen_width, win_height, qdbus)
         }
         Compositor::Fallback => {
-            // GTK (macOS, Windows, X11, GNOME)
-            let _ = window.set_size(tauri::LogicalSize::new(screen_width, win_height));
-            window
-                .set_position(tauri::LogicalPosition::new(monitor_x, new_y))
-                .map_err(|e| format!("set_position failed: {e}"))
+            // -- Windows AppBar POC -----------------------------------
+            // Always-on. Registers the ticker as a Shell AppBar so
+            // maximized windows respect its space. To be gated
+            // behind a user preference in the productionized version.
+            #[cfg(target_os = "windows")]
+            {
+                use crate::commands::appbar_win;
+                appbar_win::register(&window)?;
+                let phys_x = (monitor_x * scale).round() as i32;
+                let phys_y = (new_y * scale).round() as i32;
+                let phys_w = (screen_width * scale).round() as i32;
+                let phys_h = (win_height * scale).round() as i32;
+                return appbar_win::set_position(
+                    &window, &position, phys_x, phys_y, phys_w, phys_h,
+                );
+            }
+
+            // GTK (macOS, X11, GNOME) + Windows non-AppBar fallback
+            #[allow(unreachable_code)]
+            {
+                let _ = window.set_size(tauri::LogicalSize::new(screen_width, win_height));
+                window
+                    .set_position(tauri::LogicalPosition::new(monitor_x, new_y))
+                    .map_err(|e| format!("set_position failed: {e}"))
+            }
         }
     }
 }
@@ -112,4 +132,15 @@ pub fn show_app_window(app: tauri::AppHandle) -> Result<(), String> {
 #[tauri::command]
 pub fn quit_app(app: tauri::AppHandle) {
     app.exit(0);
+}
+
+/// Toggle the "hide ticker when a fullscreen app appears" preference.
+/// Windows-only. On non-Windows this is a no-op.
+#[tauri::command]
+pub fn set_hide_on_fullscreen(_value: bool) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        crate::commands::appbar_win::set_hide_on_fullscreen(_value);
+    }
+    Ok(())
 }
