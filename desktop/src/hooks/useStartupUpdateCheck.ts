@@ -19,7 +19,7 @@ import { useEffect, useRef } from "react";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { toast } from "sonner";
-import { getStore, setStore } from "../lib/store";
+import { getStore, removeStore, setStore } from "../lib/store";
 
 const STARTUP_DELAY_MS = 4_000;
 const TOAST_ID = "scrollr-startup-update";
@@ -57,6 +57,26 @@ export function useStartupUpdateCheck({ enabled, appVersion }: Options) {
 
     const timer = setTimeout(async () => {
       try {
+        // Reconcile pending → lastUpdateDate. When the user installs
+        // via the startup toast, we record KEY_PENDING_UPDATE before
+        // the relaunch. On the next launch (now), if the running
+        // version matches what's pending, promote that pub_date to
+        // KEY_LAST_UPDATE_DATE so subsequent checks know we're up to
+        // date for this pub_date. If versions don't match, drop the
+        // pending record so it doesn't poison future reconciles.
+        //
+        // This used to only run inside GeneralSettings.tsx — but
+        // users who never opened Settings after an update never got
+        // the promotion, which made the "update available" toast
+        // fire on EVERY launch indefinitely.
+        const pending = getStore<PendingUpdate | null>(KEY_PENDING_UPDATE, null);
+        if (pending) {
+          if (pending.version === appVersion) {
+            setStore(KEY_LAST_UPDATE_DATE, pending.date);
+          }
+          removeStore(KEY_PENDING_UPDATE);
+        }
+
         const update = await check();
         if (cancelled || !update) return;
 
@@ -68,10 +88,15 @@ export function useStartupUpdateCheck({ enabled, appVersion }: Options) {
         if (update.version === appVersion) {
           const storedDate = getStore<string | null>(KEY_LAST_UPDATE_DATE, null);
           if (storedDate === null) {
+            // First in-app check on a build the in-app updater never
+            // installed (e.g. manual download, or pre-reconcile build).
+            // Trust the remote pub_date and seed.
             setStore(KEY_LAST_UPDATE_DATE, update.date);
             return;
           }
           if (update.date === storedDate) return;
+          // Stored date differs from remote: a genuine same-version
+          // patched rebuild has shipped. Fall through to the toast.
         }
 
         showUpdateToast(update, appVersion);
@@ -106,7 +131,7 @@ function showUpdateToast(update: Update, appVersion: string) {
     ? "A patched build of your current version is ready."
     : `Version ${update.version} is ready to download.`;
 
-  toast.message("Update available", {
+  toast.info("Update available", {
     id: TOAST_ID,
     description,
     duration: Infinity,

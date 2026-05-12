@@ -157,9 +157,6 @@ function SysmonFeedTab({ mode: feedMode }: FeedTabProps) {
           <span className="text-xs font-mono text-widget-sysmon/70 uppercase tracking-wider">
             CPU
           </span>
-          <div className="text-[10px] font-mono text-fg-3 uppercase tracking-wider -mt-1">
-            Usage
-          </div>
           <div
             className={`text-xl font-mono font-bold tabular-nums ${usageColorClass(info.cpuUsage)}`}
           >
@@ -215,9 +212,6 @@ function SysmonFeedTab({ mode: feedMode }: FeedTabProps) {
           </span>
           {info.gpuUsage !== null ? (
             <>
-              <div className="text-[10px] font-mono text-fg-3 uppercase tracking-wider -mt-1">
-                Usage
-              </div>
               <div
                 className={`text-xl font-mono font-bold tabular-nums ${usageColorClass(info.gpuUsage)}`}
               >
