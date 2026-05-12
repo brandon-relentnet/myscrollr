@@ -46,24 +46,24 @@ export default function BillingHelpSection() {
           <button
             onClick={handleManageSubscription}
             disabled={portalLoading}
-            className="flex items-start gap-3 rounded-lg border border-edge/30 p-4 text-left transition-colors hover:bg-surface-2/50 disabled:opacity-50"
+            className="flex items-start gap-3 rounded-xl border border-edge/35 bg-base-150/35 p-4 text-left transition-colors hover:bg-base-150/55 disabled:opacity-50"
           >
             <Settings size={18} className="mt-0.5 shrink-0 text-accent" />
             <div className="min-w-0">
-              <p className="text-sm font-bold text-fg">
+              <p className="text-ui-body font-semibold">
                 {portalLoading ? "Opening..." : "Manage Subscription"}
               </p>
-              <p className="mt-0.5 text-xs text-fg-3">
+              <p className="mt-0.5 text-ui-meta">
                 Update payment, cancel, or change plan
               </p>
             </div>
           </button>
         ) : (
-          <div className="flex items-start gap-3 rounded-lg border border-edge/30 p-4">
+          <div className="flex items-start gap-3 rounded-xl border border-edge/35 bg-base-150/35 p-4">
             <Settings size={18} className="mt-0.5 shrink-0 text-fg-3" />
             <div className="min-w-0">
-              <p className="text-sm font-bold text-fg">Manage Subscription</p>
-              <p className="mt-0.5 text-xs text-fg-3">
+              <p className="text-ui-body font-semibold">Manage Subscription</p>
+              <p className="mt-0.5 text-ui-meta">
                 Sign in to manage your subscription
               </p>
             </div>
@@ -73,31 +73,33 @@ export default function BillingHelpSection() {
         {/* View Plans */}
         <button
           onClick={handleViewPlans}
-          className="flex items-start gap-3 rounded-lg border border-edge/30 p-4 text-left transition-colors hover:bg-surface-2/50"
+          className="flex items-start gap-3 rounded-xl border border-edge/35 bg-base-150/35 p-4 text-left transition-colors hover:bg-base-150/55"
         >
           <ExternalLink size={18} className="mt-0.5 shrink-0 text-accent" />
           <div className="min-w-0">
-            <p className="text-sm font-bold text-fg">View Plans</p>
-            <p className="mt-0.5 text-xs text-fg-3">Compare Uplink tiers</p>
+            <p className="text-ui-body font-semibold">View Plans</p>
+            <p className="mt-0.5 text-ui-meta">Compare Uplink tiers</p>
           </div>
         </button>
       </div>
 
-      {/* Billing FAQ */}
+      {/* Billing FAQ — wrapped in a single dense panel to match the
+          FAQ section's chrome. */}
       <div>
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-fg-3">
-          Common Questions
-        </p>
-        <div className="space-y-0">
+        <p className="mb-3 text-ui-section">Common Questions</p>
+        <div className="rounded-xl border border-edge/35 bg-base-150/35 overflow-hidden">
           {BILLING_FAQ.map((item, i) => {
             const isOpen = expandedIndex === i;
             return (
-              <div key={i} className="border-b border-edge/30">
+              <div
+                key={i}
+                className={clsx(i > 0 && "border-t border-edge/35")}
+              >
                 <button
                   onClick={() => toggleFaq(i)}
-                  className="flex w-full items-center justify-between gap-3 px-1 py-3 text-left hover:bg-surface-2/50"
+                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-base-150/50"
                 >
-                  <span className="text-sm font-medium text-fg">
+                  <span className="text-ui-body font-medium">
                     {item.question}
                   </span>
                   <ChevronDown
@@ -116,7 +118,7 @@ export default function BillingHelpSection() {
                       : "max-h-0 opacity-0",
                   )}
                 >
-                  <p className="px-1 pb-4 pt-1 text-sm text-fg-3">
+                  <p className="px-4 pb-4 pt-1 text-ui-meta">
                     {item.answer}
                   </p>
                 </div>

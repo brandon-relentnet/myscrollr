@@ -25,9 +25,7 @@ export default function FeatureGuidesSection() {
     <div className="space-y-6">
       {/* Channels */}
       <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-fg-3">
-          Channels
-        </p>
+        <p className="mb-2 text-ui-section">Channels</p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {channels.map((ch) => (
             <GuideCard
@@ -43,9 +41,7 @@ export default function FeatureGuidesSection() {
 
       {/* Widgets */}
       <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-fg-3">
-          Widgets
-        </p>
+        <p className="mb-2 text-ui-section">Widgets</p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {widgets.map((w) => (
             <GuideCard
@@ -76,20 +72,20 @@ function GuideCard({
   const Icon = manifest.icon;
 
   return (
-    <div className="overflow-hidden rounded-lg border border-edge/30">
+    <div className="overflow-hidden rounded-xl border border-edge/35 bg-base-150/35">
       <button
         onClick={onToggle}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2/50"
+        className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-base-150/50"
       >
         <span className="shrink-0" style={{ color: manifest.hex }}>
           <Icon size={18} />
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-fg">{manifest.name}</span>
+            <span className="text-ui-body font-semibold">{manifest.name}</span>
             <span
               className={clsx(
-                "rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-none",
+                "rounded-full px-1.5 py-0.5 text-ui-chip font-medium leading-none",
                 tier === "Free"
                   ? "bg-accent/10 text-accent"
                   : "bg-amber-500/10 text-amber-400",
@@ -98,7 +94,7 @@ function GuideCard({
               {tier === "Free" ? "Free" : "Uplink required"}
             </span>
           </div>
-          <p className="mt-0.5 truncate text-xs text-fg-3">
+          <p className="mt-0.5 truncate text-ui-meta">
             {manifest.description}
           </p>
         </div>
@@ -117,12 +113,10 @@ function GuideCard({
         )}
       >
         <div className="space-y-3 px-4 pb-4 pt-1">
-          <p className="text-sm text-fg-3">{manifest.info.about}</p>
+          <p className="text-ui-meta">{manifest.info.about}</p>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-fg-3">
-              How to use
-            </p>
-            <ul className="mt-1.5 list-inside list-disc space-y-1 text-sm text-fg-3">
+            <p className="text-ui-section">How to use</p>
+            <ul className="mt-1.5 list-inside list-disc space-y-1 text-ui-meta">
               {manifest.info.usage.map((step, j) => (
                 <li key={j}>{step}</li>
               ))}
