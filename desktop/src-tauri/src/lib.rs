@@ -28,14 +28,19 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
         ))
-        .plugin(
-            tauri_plugin_updater::Builder::new()
-                // Allow same-version updates so patched rebuilds (same version,
-                // new binary) are detected. The JS side filters out false
-                // positives by comparing pub_date against a stored value.
-                .default_version_comparator(|current, remote| remote.version >= current)
-                .build(),
-        )
+        // Use the plugin's default version comparator (`remote.version >
+        // current_version`). An earlier build overrode this with `>=` so that
+        // same-version patched rebuilds would be detected, with the JS side
+        // suppressing false positives via pub_date comparison. That design
+        // was fundamentally fragile: any drift between server and stored
+        // pub_date (re-uploaded asset, regenerated latest.json, formatter
+        // differences) caused the "Update available" toast to fire on every
+        // launch, and on Windows the resulting `downloadAndInstall` re-ran
+        // the MSI/NSIS installer for an already-installed version and
+        // crashed the app. To ship a patched rebuild now, bump the patch
+        // version (e.g. 1.0.15 -> 1.0.16) — that's how every other Tauri
+        // app handles it. See PR replacing commits 30d7bdd and 2479de3.
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(
