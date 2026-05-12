@@ -19,7 +19,7 @@ function AccountRoute() {
   };
 
   return (
-    <PageLayout title="Account" width="narrow">
+    <PageLayout title="Account" width="wide">
       <AccountSettings
         authenticated={shell.authenticated}
         tier={shell.tier}

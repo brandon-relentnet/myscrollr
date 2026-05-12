@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { open } from "@tauri-apps/plugin-shell";
 import { toast } from "sonner";
-import { Check, KeyRound, Loader2, Trash2, AlertTriangle } from "lucide-react";
+import clsx from "clsx";
 import { TIER_LABELS, getUserIdentity } from "../../auth";
 import {
   authFetch,
@@ -174,34 +174,70 @@ export default function AccountSettings({
       ? trialDaysRemaining(sub.trial_end)
       : null;
 
+  const passwordResetLabel =
+    resetState === "sending"
+      ? "Sending…"
+      : resetState === "sent"
+        ? "Email sent"
+        : "Send reset email";
+
+  const billingActionLabel =
+    status === "past_due"
+      ? openingPortal
+        ? "Opening…"
+        : "Update payment"
+      : status === "canceled"
+        ? "See plans"
+        : status === "trialing"
+          ? openingPortal
+            ? "Opening…"
+            : "Manage trial"
+          : openingPortal
+            ? "Opening…"
+            : "Manage subscription";
+
+  const showBillingAction =
+    status === "past_due" ||
+    status === "canceled" ||
+    ((status === "active" || status === "trialing" || status === "canceling") && !isLifetime);
+
+  const handleBillingAction =
+    status === "canceled"
+      ? () => open("https://myscrollr.com/uplink")
+      : handleOpenPortal;
+
   return (
     <div>
+      <div className="grid gap-4 grid-cols-2 items-start">
+        <div className="space-y-4 min-w-0">
       {/* ── Account ──────────────────────────────────────────── */}
-      <Section title="Account">
+      <Section title="Account" variant="card">
         {authenticated ? (
           <>
             {userLabel && (
               <DisplayRow
                 label="Signed in as"
                 value={userLabel}
-                valueClass="text-xs text-fg-2 truncate max-w-[180px]"
+                valueClass="text-ui-muted text-fg-2 truncate max-w-[200px]"
               />
             )}
             <DisplayRow
               label="Plan"
               value={TIER_LABELS[displayTier]}
-              valueClass="text-xs text-accent font-semibold"
+              valueClass="text-ui-muted text-accent font-semibold"
             />
             <ActionRow
-              label=""
+              label="Sign out"
+              description="Sign out of this device. Local preferences stay intact."
               action="Sign out"
-              actionClass="text-fg-4 hover:text-error hover:bg-error/10"
+              actionClass="bg-error/10 text-error hover:bg-error/20"
               onClick={() => setConfirmSignOut(true)}
             />
           </>
         ) : (
           <ActionRow
             label="Not signed in"
+            description="Sign in to sync subscription, profile, and saved data."
             action="Sign in"
             actionClass="bg-accent text-surface font-semibold hover:bg-accent/90"
             onClick={onLogin}
@@ -211,7 +247,7 @@ export default function AccountSettings({
 
       {/* ── Profile (inline edit) ────────────────────────────── */}
       {authenticated && (
-        <Section title="Profile">
+        <Section title="Profile" variant="card">
           <ProfileField
             label="Display name"
             value={overview?.identity.name ?? ""}
@@ -230,231 +266,154 @@ export default function AccountSettings({
           <DisplayRow
             label="Username"
             value={overview?.identity.username || "—"}
-            valueClass="text-xs text-fg-3 font-mono truncate max-w-[180px]"
+            valueClass="text-ui-muted text-fg-3 font-mono truncate max-w-[200px]"
           />
         </Section>
       )}
 
       {/* ── Security ─────────────────────────────────────────── */}
       {authenticated && (
-        <Section title="Security">
-          <div className="px-3 py-2.5 flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <div className="text-[12px] text-fg-2 leading-tight">
-                Password
-              </div>
-              <div className="text-[11px] text-fg-4 leading-snug mt-0.5">
-                We&apos;ll email you a reset link.
-              </div>
-            </div>
-            <button
-              onClick={handleSendReset}
-              disabled={resetState !== "idle"}
-              className="shrink-0 flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-md bg-base-250 text-fg-3 hover:text-fg-2 hover:bg-base-300 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-            >
-              {resetState === "sending" ? (
-                <>
-                  <Loader2 size={11} className="animate-spin" /> Sending…
-                </>
-              ) : resetState === "sent" ? (
-                <>
-                  <Check size={11} /> Email sent
-                </>
-              ) : (
-                <>
-                  <KeyRound size={11} /> Send reset email
-                </>
-              )}
-            </button>
-          </div>
+        <Section title="Security" variant="card">
+          <ActionRow
+            label="Password"
+            description="We'll email you a reset link."
+            action={passwordResetLabel}
+            actionClass={clsx(
+              "flex items-center gap-1 bg-base-250 text-fg-3 hover:text-fg-2 hover:bg-base-300",
+              resetState !== "idle" && "opacity-60 cursor-not-allowed",
+            )}
+            onClick={() => {
+              if (resetState === "idle") handleSendReset();
+            }}
+          />
         </Section>
       )}
+        </div>
 
+        <div className="space-y-4 min-w-0">
       {/* ── Subscription ─────────────────────────────────────── */}
       {authenticated && hasSub && (
-        <Section title={status === "trialing" ? "Free Trial" : "Subscription"}>
-          <div className="px-3 py-2 space-y-3">
-            {/* Status badge + billing amount */}
-            <div className="flex items-center justify-between">
-              <span
-                className={`text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full ${statusCfg.color} ${statusCfg.bg}`}
-              >
-                {statusCfg.label}
-              </span>
-              {sub.amount && sub.currency && !isLifetime ? (
-                <span className="text-sm text-fg-3 tabular-nums">
-                  {formatAmount(sub.amount, sub.currency)}
-                  {sub.interval === "month" ? "/mo" : sub.interval === "year" ? "/yr" : ""}
-                  {status === "trialing" && sub.trial_end
-                    ? ` starting ${new Date(sub.trial_end * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
-                    : ""}
-                </span>
-              ) : isLifetime ? (
-                <span className="text-sm text-fg-3">Lifetime access</span>
-              ) : null}
-            </div>
-
-            {/* Trial: consolidated days remaining + Ultimate access note */}
-            {status === "trialing" && sub.trial_end && (
-              <p className="text-xs text-fg-4">
-                Your trial includes full{" "}
-                <span className="font-semibold text-fg-3">Uplink Ultimate</span>{" "}
-                access
-                {trialDays !== null && (
-                  <>
-                    {" · "}
-                    <span className="font-medium text-info">
-                      {trialDays} day{trialDays !== 1 ? "s" : ""} remaining
-                    </span>
-                  </>
-                )}
-              </p>
-            )}
-
-            {/* Next billing date */}
-            {status === "active" && sub.current_period_end && !isLifetime && (
-              <p className="text-xs text-fg-4">
-                Renews {formatDate(sub.current_period_end)}
-              </p>
-            )}
-
-            {/* Canceling notice */}
-            {status === "canceling" && sub.current_period_end && (
-              <p className="text-xs text-warn">
-                Access until {formatDate(sub.current_period_end)}. After that,
-                you&apos;ll be on the Free plan.
-              </p>
-            )}
-
-            {/* Past due warning */}
-            {status === "past_due" && (
-              <p className="text-xs text-error">
-                Your payment failed. Update your payment method to keep your
-                plan active.
-              </p>
-            )}
-
-            {/* Canceled notice */}
-            {status === "canceled" && (
-              <p className="text-xs text-fg-4">
-                Your subscription has ended. Resubscribe to regain access to
-                paid features.
-              </p>
-            )}
-
-            {/* Pending downgrade */}
-            {sub.pending_downgrade_plan && sub.scheduled_change_at && (
-              <p className="text-xs text-warn">
-                Switching to{" "}
-                <span className="font-semibold">
-                  {sub.pending_downgrade_plan}
-                </span>{" "}
-                on {formatDate(sub.scheduled_change_at)}.
-              </p>
-            )}
-
-            {/* Action buttons */}
-            <div className="flex gap-2 pt-0.5">
-              {status === "past_due" && (
-                <button
-                  onClick={handleOpenPortal}
-                  disabled={openingPortal}
-                  className="flex-1 py-2 text-xs font-semibold rounded-lg bg-error/10 text-error hover:bg-error/20 transition-all duration-150 active:scale-[0.97] disabled:opacity-50"
-                >
-                  {openingPortal ? "Opening..." : "Update Payment"}
-                </button>
-              )}
-              {(status === "active" || status === "trialing" || status === "canceling") &&
-                !isLifetime && (
-                  <button
-                    onClick={handleOpenPortal}
-                    disabled={openingPortal}
-                    className="flex-1 py-2 text-xs font-semibold rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition-all duration-150 active:scale-[0.97] disabled:opacity-50"
-                  >
-                    {openingPortal
-                      ? "Opening..."
-                      : status === "trialing"
-                        ? "Manage Trial"
-                        : "Manage Subscription"}
-                  </button>
-                )}
-              {status === "canceled" && (
-                <button
-                  onClick={() => open("https://myscrollr.com/uplink")}
-                  className="flex-1 py-2 text-xs font-semibold rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition-all duration-150 active:scale-[0.97]"
-                >
-                  See Plans
-                </button>
-              )}
-            </div>
-
-            {portalError && (
-              <span className="text-xs text-error px-1">
-                {portalError}
-              </span>
-            )}
+        <Section title="Subscription" variant="card">
+          <div className="flex items-center justify-between px-3 py-2 rounded-lg">
+            <span className="text-ui-muted leading-tight">Status</span>
+            <span
+              className={`text-ui-chip font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full ${statusCfg.color} ${statusCfg.bg}`}
+            >
+              {statusCfg.label}
+            </span>
           </div>
+
+          {sub.amount && sub.currency && !isLifetime && (
+            <DisplayRow
+              label="Billing"
+              value={`${formatAmount(sub.amount, sub.currency)}${
+                sub.interval === "month" ? "/mo" : sub.interval === "year" ? "/yr" : ""
+              }`}
+              valueClass="text-ui-muted text-fg-2 tabular-nums"
+            />
+          )}
+
+          {isLifetime && (
+            <DisplayRow label="Billing" value="Lifetime access" />
+          )}
+
+          {status === "active" && sub.current_period_end && !isLifetime && (
+            <DisplayRow label="Renews" value={formatDate(sub.current_period_end)} />
+          )}
+
+          {status === "trialing" && sub.trial_end && trialDays !== null && (
+            <DisplayRow
+              label="Trial"
+              value={`${trialDays} day${trialDays !== 1 ? "s" : ""} remaining`}
+              valueClass="text-ui-muted text-info"
+            />
+          )}
+
+          {status === "canceling" && sub.current_period_end && (
+            <DisplayRow
+              label="Cancels on"
+              value={formatDate(sub.current_period_end)}
+              valueClass="text-ui-muted text-warn"
+            />
+          )}
+
+          {sub.pending_downgrade_plan && sub.scheduled_change_at && (
+            <DisplayRow
+              label="Scheduled change"
+              value={`${sub.pending_downgrade_plan} on ${formatDate(sub.scheduled_change_at)}`}
+              valueClass="text-ui-muted text-warn"
+            />
+          )}
+
+          {showBillingAction && (
+            <ActionRow
+              label={
+                status === "past_due"
+                  ? "Update payment method"
+                  : status === "canceled"
+                    ? "Plans"
+                    : "Manage"
+              }
+              description={
+                status === "past_due"
+                  ? "Your last payment failed. Update your card to keep your plan."
+                  : status === "canceled"
+                    ? "Browse plans and resubscribe."
+                    : "Open the Stripe billing portal."
+              }
+              action={billingActionLabel}
+              actionClass={
+                status === "past_due"
+                  ? "bg-error/10 text-error hover:bg-error/20"
+                  : "bg-accent/10 text-accent hover:bg-accent/20"
+              }
+              onClick={handleBillingAction}
+            />
+          )}
+
+          {portalError && (
+            <div className="px-3 pb-2 text-ui-meta text-error">{portalError}</div>
+          )}
         </Section>
       )}
 
       {/* ── Your Plan ────────────────────────────────────────── */}
       {authenticated && (
-        <Section title="Your Plan">
+        <Section title="Plan limits" variant="card">
           <TierLimitsTable tier={tier} />
           {tier !== "uplink_ultimate" && tier !== "super_user" && !isLifetime && (
-            <div className="px-3 pb-2">
-              <button
-                onClick={() => open("https://myscrollr.com/uplink")}
-                className="w-full py-2 text-xs font-semibold rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition-all duration-150 active:scale-[0.98]"
-              >
-                {tier === "free"
-                  ? "Upgrade to Uplink"
-                  : "Upgrade Plan"}
-              </button>
-            </div>
+            <ActionRow
+              label={tier === "free" ? "Upgrade to Uplink" : "Upgrade plan"}
+              description="See plan details and pricing on the web."
+              action="Upgrade"
+              actionClass="bg-accent/10 text-accent hover:bg-accent/20"
+              onClick={() => open("https://myscrollr.com/uplink")}
+            />
           )}
         </Section>
       )}
 
       {/* ── Your Data ────────────────────────────────────────── */}
       {authenticated && (
-        <Section title="Your Data">
+        <Section title="Data" variant="card">
           <div className="px-3 py-2">
             <AccountExportButton />
           </div>
         </Section>
       )}
 
-      {/* ── Reset (destructive, footer) ─────────────────────── */}
-      {/* Lives at the end of Account because it's a local-only admin
-          action that sits naturally beside sign-out + data export.
-          Pre-refactor this was its own top-level Settings tab. */}
-      <Section title="Reset all settings">
-        <div className="px-3 py-2 flex flex-col gap-3">
-          <p className="text-[12px] text-fg-3 leading-relaxed">
-            Clear every local preference: theme, ticker layout, channel
-            display, followed players, and more. Your account, billing, and
-            channel data on the server is untouched.
-          </p>
-          <div className="flex flex-col gap-3 p-3 rounded-lg bg-error/5 border border-error/20">
-            <div className="flex items-start gap-2 text-[12px] text-error leading-relaxed">
-              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden />
-              <p>
-                This action is local-only and cannot be undone. You will be
-                asked to confirm before anything is reset.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setConfirmResetAll(true)}
-              className="self-start flex items-center gap-2 px-3 py-2 rounded-lg bg-error/10 text-error hover:bg-error/20 transition-all duration-150 active:scale-[0.97] cursor-pointer text-[12px] font-semibold"
-            >
-              <Trash2 className="w-4 h-4" aria-hidden />
-              <span>Reset all settings</span>
-            </button>
-          </div>
-        </div>
+      {/* ── Danger zone ─────────────────────────────────────── */}
+      <Section title="Danger zone" variant="card">
+        <ActionRow
+          label="Reset all settings"
+          description="Clear every local preference. Your account, billing, and server data are untouched."
+          action="Reset"
+          actionClass="bg-error/10 text-error hover:bg-error/20"
+          onClick={() => setConfirmResetAll(true)}
+        />
       </Section>
+        </div>
+      </div>
 
       {/* Sign-out confirmation. Mounted unconditionally so the close
           animation runs even after `authenticated` flips false during
