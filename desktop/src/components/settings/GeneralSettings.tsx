@@ -281,7 +281,7 @@ export default function GeneralSettings({
         </div>
       </div>
 
-      <div className="flex items-center justify-end pt-2">
+      <div className="flex items-center justify-end pt-3">
         <ResetButton label="Reset general settings" onClick={onReset} />
       </div>
     </div>
