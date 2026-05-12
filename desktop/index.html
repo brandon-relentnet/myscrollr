@@ -66,13 +66,26 @@
       })();
     </script>
     <style>
-      /* Prevent white flash on load — paint a sane mode-aware background.
-         The per-family styles in style.css take over once it loads. */
+      /* Prevent white flash on load AND prevent WebView2 from showing
+         its default white backdrop in the area outside the body content.
+         html/body must fill the full window or the webview's own bg
+         (white) bleeds through above/below the ticker rows. */
       html, body {
         margin: 0;
         padding: 0;
         overflow: hidden;
+        width: 100%;
+        height: 100%;
+        /* Default dark — overridden by theme system once it loads.
+           Using a dark default prevents the white flash regardless
+           of system theme. */
+        background: #141420;
       }
+      #root {
+        width: 100%;
+        height: 100%;
+      }
+      /* Theme-aware override once data-mode is set. */
       html[data-mode="dark"], html[data-mode="dark"] body { background: #141420; }
       html[data-mode="light"], html[data-mode="light"] body { background: #ffffff; }
     </style>

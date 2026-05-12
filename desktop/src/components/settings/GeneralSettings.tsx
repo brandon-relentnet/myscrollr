@@ -292,6 +292,12 @@ export default function GeneralSettings({
           checked={window_.pinned}
           onChange={(v) => onWindowChange({ ...window_, pinned: v })}
         />
+        <ToggleRow
+          label="Hide when an app goes fullscreen"
+          description="Hides the ticker when YouTube, games, or other apps enter fullscreen so they aren't visually clipped. Windows only."
+          checked={window_.hideOnFullscreen}
+          onChange={(v) => onWindowChange({ ...window_, hideOnFullscreen: v })}
+        />
       </Section>
 
       <Section title="Startup">

@@ -318,6 +318,13 @@ export default function App() {
         invoke("sync_tray_pin", { pinned: next.window.pinned }).catch(() => {});
       }
 
+      // Side effects: hide-on-fullscreen toggle (Windows AppBar)
+      if (next.window.hideOnFullscreen !== prev.window.hideOnFullscreen) {
+        invoke("set_hide_on_fullscreen", {
+          value: next.window.hideOnFullscreen,
+        }).catch(() => {});
+      }
+
       // Side effects: ticker position
       if (next.window.tickerPosition !== prev.window.tickerPosition) {
         setTickerPosition(next.window.tickerPosition);
@@ -364,6 +371,10 @@ export default function App() {
     // The tray is built with checked=false by default; mirror the stored
     // pref so the checkmark is accurate on app launch.
     invoke("sync_tray_pin", { pinned }).catch(() => {});
+    // Initial sync for the Windows AppBar hide-on-fullscreen behavior.
+    invoke("set_hide_on_fullscreen", {
+      value: prefs.window.hideOnFullscreen,
+    }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -378,6 +389,37 @@ export default function App() {
     const tickerH = prefs.ticker.showTicker
       ? Math.round(TICKER_HEIGHTS[prefs.ticker.tickerMode] * rowCount * (prefs.appearance.uiScale / 100))
       : 0;
+    console.log("[Scrollr][position_ticker]",
+      "mode=", prefs.ticker.tickerMode,
+      "rowCount=", rowCount,
+      "uiScale=", prefs.appearance.uiScale,
+      "TICKER_HEIGHTS[mode]=", TICKER_HEIGHTS[prefs.ticker.tickerMode],
+      "=> tickerH=", tickerH);
+    // POC DEBUG: dump actual DOM layout after a brief delay so React rendered.
+    setTimeout(() => {
+      const shell = document.getElementById("desktop-shell");
+      const containers = document.querySelectorAll(".ticker-container");
+      const body = document.body;
+      const html = document.documentElement;
+      const dump = {
+        windowInner: `${window.innerWidth}x${window.innerHeight}`,
+        windowOuter: `${window.outerWidth}x${window.outerHeight}`,
+        htmlRect: html.getBoundingClientRect(),
+        bodyRect: body.getBoundingClientRect(),
+        bodyBg: getComputedStyle(body).backgroundColor,
+        htmlBg: getComputedStyle(html).backgroundColor,
+        shellRect: shell?.getBoundingClientRect(),
+        shellBg: shell ? getComputedStyle(shell).backgroundColor : "no-shell",
+        shellHeight: shell ? getComputedStyle(shell).height : "no-shell",
+        containerCount: containers.length,
+        firstContainerRect: containers[0]?.getBoundingClientRect(),
+        firstContainerBg: containers[0] ? getComputedStyle(containers[0]).backgroundColor : "no-container",
+        firstContainerHeight: containers[0] ? getComputedStyle(containers[0]).height : "no-container",
+        dataTheme: html.getAttribute("data-theme"),
+        dataMode: html.getAttribute("data-mode"),
+      };
+      console.log("[Scrollr][DOM-DEBUG]", JSON.stringify(dump, null, 2));
+    }, 500);
     if (tickerH > 0) {
       invoke("position_ticker", { position: tickerPosition, height: tickerH }).catch(() => {});
     }

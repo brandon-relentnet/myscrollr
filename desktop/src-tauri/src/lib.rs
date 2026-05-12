@@ -80,6 +80,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::window::position_ticker,
             commands::window::pin_window,
+            commands::window::set_hide_on_fullscreen,
             commands::auth::start_auth_server,
             commands::auth::stop_auth_server,
             commands::sse::start_sse,
@@ -114,6 +115,9 @@ pub fn run() {
                     let screen_width = monitor.size().width as f64 / scale;
                     let _ = ticker.set_size(tauri::LogicalSize::new(screen_width, 200.0));
                 }
+                // Force WebView2 surface background to dark so the
+                // area outside the HTML body doesn't show as white.
+                let _ = ticker.set_background_color(Some(tauri::webview::Color(20, 20, 32, 255)));
             } else {
                 log::error!("Failed to create ticker window — continuing without it");
             }
@@ -162,6 +166,21 @@ pub fn run() {
                 }
             }
         }
+        // Windows AppBar cleanup. MUST call ABM_REMOVE before the
+        // process exits or the work area stays shrunk until logout
+        // or explorer restart.
+        #[cfg(target_os = "windows")]
+        {
+            if matches!(
+                &event,
+                tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit
+            ) {
+                if let Some(ticker) = app_handle.get_webview_window("ticker") {
+                    let _ = crate::commands::appbar_win::unregister(&ticker.as_ref().window());
+                }
+            }
+        }
+
         // Silence unused-variable warnings on non-Apple platforms.
         #[cfg(not(any(target_os = "macos", target_os = "ios")))]
         {
