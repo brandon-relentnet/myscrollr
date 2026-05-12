@@ -31,19 +31,3 @@ export function normalizeUpdateDate(value: string | null | undefined): string | 
   if (Number.isNaN(ms)) return null;
   return new Date(ms).toISOString();
 }
-
-/**
- * True when both arguments parse to the same instant. Mismatched
- * formats ("...Z" vs "...+00:00") and small precision changes all
- * compare equal. Either side being null/undefined/unparseable yields
- * false — the caller is responsible for the "no record yet" path.
- */
-export function sameUpdateInstant(
-  a: string | null | undefined,
-  b: string | null | undefined,
-): boolean {
-  const na = normalizeUpdateDate(a);
-  const nb = normalizeUpdateDate(b);
-  if (na === null || nb === null) return false;
-  return na === nb;
-}

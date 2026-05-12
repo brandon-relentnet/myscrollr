@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { getStore, setStore } from "../../lib/store";
-import { normalizeUpdateDate, sameUpdateInstant } from "../../lib/updaterDate";
+import { normalizeUpdateDate } from "../../lib/updaterDate";
 import clsx from "clsx";
 
 // ── Updater storage keys ────────────────────────────────────────
@@ -164,7 +164,11 @@ export default function GeneralSettings({
           setStatus({ step: "up-to-date" });
           return;
         }
-        if (sameUpdateInstant(update.date, storedDate)) {
+        // Compare normalized forms directly. `normalizedRemote` is
+        // already canonical; only the stored value needs a round-trip
+        // in case it was seeded by an older build.
+        const normalizedStored = normalizeUpdateDate(storedDate);
+        if (normalizedStored === normalizedRemote) {
           // Heal a stored value that wasn't normalized by a prior
           // build (e.g. seeded from the server's raw `...Z` string).
           if (storedDate !== normalizedRemote) {
