@@ -1,28 +1,19 @@
 import { useState, useCallback, useRef } from "react";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
-import { getStore, setStore } from "../../lib/store";
-import { normalizeUpdateDate } from "../../lib/updaterDate";
+import {
+  tryAcquireUpdateLock,
+  releaseUpdateLock,
+  isUpdateInProgress,
+} from "../../lib/updateState";
 import clsx from "clsx";
 
-// ── Updater storage keys ────────────────────────────────────────
-//
-// `lastUpdateDate` is the pub_date of the currently running build, used
-// to distinguish "up to date" from "same version, different pub_date"
-// (rebuild without version bump).
-//
-// `pendingUpdate` is written when `downloadAndInstall` completes but
-// BEFORE the new build is actually running (the user still needs to
-// relaunch). On next mount we promote it to `lastUpdateDate` only
-// when the running version matches — otherwise we know the download
-// never took effect (user dismissed relaunch, app crashed, etc.).
-const KEY_LAST_UPDATE_DATE = "scrollr:lastUpdateDate";
-const KEY_PENDING_UPDATE = "scrollr:pendingUpdate";
+// Same-version detection + pub_date suppression were removed in v1.0.16.
+// The Rust updater plugin uses its default comparator
+// (`remote.version > current_version`) so `check()` no longer returns
+// a same-version "update". See `desktop/src-tauri/src/lib.rs` near the
+// updater plugin init for the full rationale.
 
-interface PendingUpdate {
-  version: string;
-  date: string;
-}
 import type {
   AppearancePrefs,
   WindowPrefs,
@@ -119,6 +110,14 @@ export default function GeneralSettings({
   };
 
   const handleCheckForUpdates = useCallback(async () => {
+    if (isUpdateInProgress()) {
+      setStatus({
+        step: "error",
+        message: "Another update is already in progress.",
+      });
+      return;
+    }
+
     setStatus({ step: "checking" });
     try {
       const update = await check();
@@ -128,68 +127,11 @@ export default function GeneralSettings({
         return;
       }
 
-      // Same-version patch detection: when the remote version matches
-      // the installed version, we suppress the "update available" UI
-      // unless the remote pub_date has changed since we last recorded
-      // it. KEY_LAST_UPDATE_DATE is normally seeded by the startup
-      // reconcile in `hooks/useStartupUpdateCheck.ts`. For users who
-      // installed via a manual download (Windows MSI in particular),
-      // that reconcile never has a pending row to promote, so the
-      // store stays empty and every check used to false-positive.
-      // The empty-store branch below seeds the date once on first
-      // check, then the existing match-suppression takes over on
-      // subsequent checks.
-      //
-      // Dates are normalized through `normalizeUpdateDate` before
-      // compare/store. The server emits `...Z` but the Rust updater
-      // plugin reformats to `...+00:00` — without normalization the
-      // strict equality ALWAYS fails. See `lib/updaterDate.ts`.
-      if (update.version === appVersion) {
-        const normalizedRemote = normalizeUpdateDate(update.date);
-        // No usable pub_date from the server: nothing to compare
-        // against. Trust the same-version response as up-to-date.
-        if (normalizedRemote === null) {
-          pendingUpdate.current = null;
-          setStatus({ step: "up-to-date" });
-          return;
-        }
-
-        const storedDate = getStore<string | null>(KEY_LAST_UPDATE_DATE, null);
-        if (storedDate === null) {
-          // First in-app check on a build the in-app updater never
-          // installed. Trust the remote pub_date and seed in
-          // normalized form.
-          setStore(KEY_LAST_UPDATE_DATE, normalizedRemote);
-          pendingUpdate.current = null;
-          setStatus({ step: "up-to-date" });
-          return;
-        }
-        // Compare normalized forms directly. `normalizedRemote` is
-        // already canonical; only the stored value needs a round-trip
-        // in case it was seeded by an older build.
-        const normalizedStored = normalizeUpdateDate(storedDate);
-        if (normalizedStored === normalizedRemote) {
-          // Heal a stored value that wasn't normalized by a prior
-          // build (e.g. seeded from the server's raw `...Z` string).
-          if (storedDate !== normalizedRemote) {
-            setStore(KEY_LAST_UPDATE_DATE, normalizedRemote);
-          }
-          pendingUpdate.current = null;
-          setStatus({ step: "up-to-date" });
-          return;
-        }
-        // Stored date differs from remote: a genuine same-version
-        // patched rebuild has shipped. Fall through to "available".
-      }
-
-      const isPatch = update.version === appVersion;
       pendingUpdate.current = update;
       setStatus({
         step: "available",
         version: update.version,
-        body: isPatch
-          ? "A patched build of your current version is available."
-          : (update.body ?? ""),
+        body: update.body ?? "",
       });
     } catch (err) {
       setStatus({
@@ -197,12 +139,23 @@ export default function GeneralSettings({
         message: err instanceof Error ? err.message : String(err),
       });
     }
-  }, [appVersion]);
+  }, []);
 
   const handleDownloadAndInstall = useCallback(async () => {
     const update = pendingUpdate.current;
     if (!update) {
       setStatus({ step: "error", message: "No update available. Try checking again." });
+      return;
+    }
+
+    // Refuse to start if the startup auto-check is already downloading.
+    // Two concurrent downloads against the same plugin can put it in a
+    // state where the install spawn crashes the app on Windows.
+    if (!tryAcquireUpdateLock()) {
+      setStatus({
+        step: "error",
+        message: "Another update is already in progress.",
+      });
       return;
     }
 
@@ -224,30 +177,14 @@ export default function GeneralSettings({
         }
       });
 
-      // The new build is downloaded but NOT YET RUNNING — the user still
-      // has to relaunch. Write to `pendingUpdate` instead of `lastUpdateDate`
-      // so that if the user never relaunches we don't falsely report the
-      // new build as installed on the next check. The reconcile in
-      // `hooks/useStartupUpdateCheck.ts` promotes pending → lastUpdateDate
-      // once a later session is actually running at `update.version`.
-      //
-      // Date is normalized so the promoted value compares cleanly on
-      // future launches — see `lib/updaterDate.ts`.
-      const normalizedDate = normalizeUpdateDate(update.date);
-      if (normalizedDate && update.version) {
-        const pending: PendingUpdate = {
-          version: update.version,
-          date: normalizedDate,
-        };
-        setStore(KEY_PENDING_UPDATE, pending);
-      }
-
       setStatus({ step: "ready" });
     } catch (err) {
       setStatus({
         step: "error",
         message: err instanceof Error ? err.message : String(err),
       });
+    } finally {
+      releaseUpdateLock();
     }
   }, []);
 
