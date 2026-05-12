@@ -330,7 +330,7 @@ export default function App() {
         setTickerPosition(next.window.tickerPosition);
         savePref("tickerPosition", next.window.tickerPosition);
         const rowCount = next.appearance.tickerLayout.rows.length;
-        const h = Math.round(TICKER_HEIGHTS[next.ticker.tickerMode] * rowCount * (next.appearance.uiScale / 100));
+        const h = Math.round(TICKER_HEIGHTS[next.ticker.tickerMode] * rowCount * (next.appearance.tickerScale / 100));
         invoke("position_ticker", { position: next.window.tickerPosition, height: h }).catch(() => {});
       }
 
@@ -338,11 +338,13 @@ export default function App() {
   }, []);
 
   // ── Theme + UI scale (shared hook) ────────────────────────────
+  // The ticker window uses its own `tickerScale` so resizing the
+  // ticker chips doesn't change the main app and vice versa.
   useTheme({
     shellId: "desktop-shell",
     themeFamily: prefs.appearance.themeFamily,
     themeMode: prefs.appearance.themeMode,
-    uiScale: prefs.appearance.uiScale,
+    uiScale: prefs.appearance.tickerScale,
     fontWeight: prefs.appearance.fontWeight,
     highContrast: prefs.appearance.highContrast,
   });
@@ -358,7 +360,7 @@ export default function App() {
   useEffect(() => {
     const rowCount = prefs.appearance.tickerLayout.rows.length;
     const tickerH = prefs.ticker.showTicker
-      ? Math.round(TICKER_HEIGHTS[prefs.ticker.tickerMode] * rowCount * (prefs.appearance.uiScale / 100))
+      ? Math.round(TICKER_HEIGHTS[prefs.ticker.tickerMode] * rowCount * (prefs.appearance.tickerScale / 100))
       : 0;
     if (tickerH > 0) {
       // position_ticker sets size + position atomically via compositor
@@ -387,7 +389,7 @@ export default function App() {
   useEffect(() => {
     const rowCount = prefs.appearance.tickerLayout.rows.length;
     const tickerH = prefs.ticker.showTicker
-      ? Math.round(TICKER_HEIGHTS[prefs.ticker.tickerMode] * rowCount * (prefs.appearance.uiScale / 100))
+      ? Math.round(TICKER_HEIGHTS[prefs.ticker.tickerMode] * rowCount * (prefs.appearance.tickerScale / 100))
       : 0;
     if (tickerH > 0) {
       invoke("position_ticker", { position: tickerPosition, height: tickerH }).catch(() => {});
@@ -395,7 +397,7 @@ export default function App() {
   }, [
     prefs.ticker.tickerMode,
     prefs.appearance.tickerLayout.rows.length,
-    prefs.appearance.uiScale,
+    prefs.appearance.tickerScale,
     prefs.ticker.showTicker,
     tickerPosition,
   ]);
@@ -421,7 +423,7 @@ export default function App() {
           const h = Math.round(
             TICKER_HEIGHTS[prefsRef.current.ticker.tickerMode] *
               rowCount *
-              (prefsRef.current.appearance.uiScale / 100),
+              (prefsRef.current.appearance.tickerScale / 100),
           );
           if (h > 0) {
             invoke("position_ticker", {
@@ -557,7 +559,7 @@ export default function App() {
     setPrefs(updated);
     savePrefs(updated);
     const rowCount = updated.appearance.tickerLayout.rows.length;
-    const h = Math.round(TICKER_HEIGHTS[updated.ticker.tickerMode] * rowCount * (updated.appearance.uiScale / 100));
+    const h = Math.round(TICKER_HEIGHTS[updated.ticker.tickerMode] * rowCount * (updated.appearance.tickerScale / 100));
     invoke("position_ticker", { position: next, height: h }).catch(() => {});
   }, [tickerPosition]);
 
@@ -789,7 +791,7 @@ export default function App() {
           text: "Customize Ticker",
           action: () => {
             invoke("show_app_window").catch(() => {});
-            setStore("scrollr:navigate", "/settings?tab=ticker");
+            setStore("scrollr:navigate", "/ticker");
           },
         }),
       );

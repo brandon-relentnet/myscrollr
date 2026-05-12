@@ -25,15 +25,15 @@ export default function TroubleshootingSection() {
         return (
           <div
             key={i}
-            className="overflow-hidden rounded-lg border border-edge/30"
+            className="overflow-hidden rounded-xl border border-edge/35 bg-base-150/35"
           >
             <button
               onClick={() => toggle(i)}
               aria-expanded={isOpen}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2/50 cursor-pointer"
+              className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-base-150/50 cursor-pointer"
             >
               <AlertCircle size={16} className="shrink-0 text-accent" />
-              <span className="flex-1 text-sm font-bold text-fg">
+              <span className="flex-1 text-ui-body font-semibold">
                 {article.title}
               </span>
               <ChevronDown
@@ -52,20 +52,16 @@ export default function TroubleshootingSection() {
             >
               <div className="space-y-4 px-4 pb-4 pt-1">
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-fg-3">
-                    Symptoms
-                  </p>
-                  <ul className="mt-1.5 list-inside list-disc space-y-1 text-sm text-fg-3">
+                  <p className="text-ui-section">Symptoms</p>
+                  <ul className="mt-1.5 list-inside list-disc space-y-1 text-ui-meta">
                     {article.symptoms.map((symptom, j) => (
                       <li key={j}>{symptom}</li>
                     ))}
                   </ul>
                 </div>
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-fg-3">
-                    Steps to fix
-                  </p>
-                  <ol className="mt-1.5 list-inside list-decimal space-y-1 text-sm text-fg-2">
+                  <p className="text-ui-section">Steps to fix</p>
+                  <ol className="mt-1.5 list-inside list-decimal space-y-1 text-ui-muted">
                     {article.steps.map((step, j) => (
                       <li key={j}>{step}</li>
                     ))}

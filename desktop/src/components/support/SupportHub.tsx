@@ -169,30 +169,30 @@ export default function SupportHub({ onSelectSection }: SupportHubProps) {
                 <button
                   key={`${result.section}-${result.index}-${i}`}
                   onClick={() => onSelectSection(result.section as SectionId)}
-                  className="flex flex-col gap-1.5 p-3 rounded-lg text-left hover:bg-surface-2/50 transition-all duration-150 active:scale-[0.99] cursor-pointer"
+                  className="flex flex-col gap-1.5 p-3 rounded-lg text-left hover:bg-base-150/50 transition-all duration-150 active:scale-[0.99] cursor-pointer"
                 >
                   <div className="flex items-center gap-2">
                     <span
                       className={clsx(
-                        "text-[10px] font-medium px-1.5 py-0.5 rounded-full",
+                        "text-ui-chip font-medium px-1.5 py-0.5 rounded-full",
                         SECTION_BADGE_COLORS[result.section],
                       )}
                     >
                       {SECTION_LABELS[result.section]}
                     </span>
-                    <span className="text-sm font-semibold text-fg">
+                    <span className="text-ui-body font-semibold">
                       {result.title}
                     </span>
                   </div>
-                  <p className="text-xs text-fg-3 line-clamp-2">{result.preview}</p>
+                  <p className="text-ui-meta line-clamp-2">{result.preview}</p>
                 </button>
               ))}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-16 text-fg-3">
               <Search size={24} className="mb-3 opacity-40" />
-              <p className="text-sm">No results found</p>
-              <p className="text-xs mt-1">Try a different search term</p>
+              <p className="text-ui-body">No results found</p>
+              <p className="text-ui-meta mt-1">Try a different search term</p>
             </div>
           )
         ) : (
@@ -211,11 +211,14 @@ export default function SupportHub({ onSelectSection }: SupportHubProps) {
                     ease: [0.22, 0.61, 0.36, 1],
                   }}
                   whileHover={{ y: -2 }}
-                  className="border border-edge/30 rounded-lg p-4 text-left hover:border-accent/40 hover:bg-surface-2/50 hover:shadow-soft-sm transition-[border-color,background-color,box-shadow] duration-200 active:scale-[0.98] cursor-pointer"
+                  // Matches the dense Section card chrome on Settings,
+                  // Ticker, Account, and Catalog so the support hub
+                  // reads as part of the same surface vocabulary.
+                  className="rounded-xl border border-edge/35 bg-base-150/35 p-4 text-left hover:border-accent/40 hover:bg-base-150/55 hover:shadow-soft-sm transition-[border-color,background-color,box-shadow] duration-200 active:scale-[0.98] cursor-pointer"
                 >
                   <Icon size={18} className="text-accent mb-2.5" />
-                  <h3 className="text-sm font-bold text-fg mb-1">{cat.label}</h3>
-                  <p className="text-sm text-fg-3">{cat.description}</p>
+                  <h3 className="text-ui-body font-semibold mb-1">{cat.label}</h3>
+                  <p className="text-ui-meta">{cat.description}</p>
                 </motion.button>
               );
             })}

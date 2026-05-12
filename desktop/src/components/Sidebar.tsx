@@ -1,30 +1,38 @@
 /**
- * Sidebar — collapsible source rail.
+ * Sidebar — collapsible navigation rail.
  *
- * Post-polish-pass the sidebar is just a list of the user's enabled
- * sources (channels + widgets). Home navigation lives on the Scrollr
- * brand mark in the TopBar; Catalog navigation lives in the "+ Add
- * source" button at the bottom of the source list. Settings + Support
- * stay in the footer.
+ * The rail is split into three labeled groups so a long list of
+ * unrelated nav items doesn't read as a single undifferentiated
+ * column:
  *
- * Layout:
  *   ┌──────────┐
  *   │ SOURCES  │
  *   │ Finance  │
  *   │ Sports   │
  *   │ Weather  │
- *   │          │
- *   │ + Add    │  ← drilled into Catalog
  *   ├──────────┤
+ *   │ WORKSPACE│
+ *   │ + Add    │  ← drilled into Catalog
  *   │ Settings │
+ *   │ Ticker   │
+ *   ├──────────┤
+ *   │ ACCOUNT  │
+ *   │ Account  │
  *   │ Support  │
+ *   ├──────────┤
  *   │ Collapse │
  *   └──────────┘
  *
- * Collapses to a 48px icon-only rail with tooltips.
+ * Home navigation lives on the Scrollr brand mark in the TopBar;
+ * connection/ticker status lives in the TopBar too. The sidebar
+ * stays minimal and navigational.
+ *
+ * Collapses to a 48px icon-only rail with tooltips. Group headings
+ * are hidden in the collapsed state (they'd just be empty rows) but
+ * the divider lines stay so the grouping survives visually.
  */
 import { useState } from "react";
-import { Settings, LifeBuoy, PanelLeftClose, PanelLeftOpen, Plus } from "lucide-react";
+import { Settings, LifeBuoy, PanelLeftClose, PanelLeftOpen, Plus, RadioTower, UserCircle } from "lucide-react";
 import clsx from "clsx";
 import { motion } from "motion/react";
 import Tooltip from "./Tooltip";
@@ -44,6 +52,10 @@ interface SidebarSource {
 interface SidebarProps {
   /** Whether the settings page is active. */
   isSettings: boolean;
+  /** Whether the ticker settings page is active. */
+  isTicker: boolean;
+  /** Whether the account page is active. */
+  isAccount: boolean;
   /** Whether the catalog page is active. Drives the "+ Add source"
    *  button's active state. */
   isMarketplace: boolean;
@@ -59,6 +71,10 @@ interface SidebarProps {
   onNavigateToMarketplace: () => void;
   /** Navigate to the settings page. */
   onNavigateToSettings: () => void;
+  /** Navigate to the ticker page. */
+  onNavigateToTicker: () => void;
+  /** Navigate to the account page. */
+  onNavigateToAccount: () => void;
   /** Navigate to the support page. */
   onNavigateToSupport: () => void;
   /** Navigate to a specific source (channel or widget) feed. */
@@ -69,12 +85,16 @@ interface SidebarProps {
 
 export default function Sidebar({
   isSettings,
+  isTicker,
+  isAccount,
   isMarketplace,
   isSupport,
   activeItem,
   sources,
   onNavigateToMarketplace,
   onNavigateToSettings,
+  onNavigateToTicker,
+  onNavigateToAccount,
   onNavigateToSupport,
   onSelectItem,
 }: SidebarProps) {
@@ -95,83 +115,56 @@ export default function Sidebar({
         collapsed ? "w-[48px]" : "w-[200px]",
       )}
     >
-      {/* Sources nav. Home is the Scrollr brand mark in the TopBar
-          (clickable). Catalog is reached via the "+ Add source" button
-          at the bottom of this list. So the sidebar is just sources. */}
-      <nav
-        aria-label="Sources"
-        className={clsx(
-          "flex-1 overflow-y-auto scrollbar-thin py-3",
-          collapsed ? "px-1" : "px-2",
-        )}
+      {/* ── Sources ─────────────────────────────────────────────
+          The user's enabled channels and widgets in canonical
+          order. Scrollable when long. */}
+      <NavGroup
+        ariaLabel="Sources"
+        heading="Sources"
+        collapsed={collapsed}
+        className="flex-1 overflow-y-auto scrollbar-thin"
       >
-        {!collapsed && (
-          <h2 className="px-2.5 mb-2 text-ui-section">
-            Sources
-          </h2>
-        )}
-
         {sources.length > 0 ? (
-          <div className="space-y-0.5">
-            {sources.map((source) => (
-              <NavItem
-                key={source.id}
-                icon={
-                  <span style={{ color: source.hex }}>
-                    <source.icon size={15} />
-                  </span>
-                }
-                label={source.name}
-                active={activeItem === source.id}
-                collapsed={collapsed}
-                onClick={() => onSelectItem(source.id, source.kind)}
-              />
-            ))}
-          </div>
+          sources.map((source) => (
+            <NavItem
+              key={source.id}
+              icon={
+                <span style={{ color: source.hex }}>
+                  <source.icon size={15} />
+                </span>
+              }
+              label={source.name}
+              active={activeItem === source.id}
+              collapsed={collapsed}
+              onClick={() => onSelectItem(source.id, source.kind)}
+            />
+          ))
         ) : (
           !collapsed && (
             <p className="px-2.5 text-ui-meta leading-snug">
-              No sources yet. Tap{" "}
-              <span className="font-medium text-accent">+ Add source</span>{" "}
-              below to get started.
+              No sources yet. Use{" "}
+              <span className="font-medium text-accent">Add source</span>{" "}
+              to get started.
             </p>
           )
         )}
+      </NavGroup>
 
-        {/* Add source — sits below the source list. Drilled into the
-            Catalog. Spec-aligned: '+ Add' is grouped with the
-            collection it adds to. */}
-        <Tooltip content={collapsed ? "Add source" : undefined} side="right">
-          <button
-            onClick={onNavigateToMarketplace}
-            aria-label="Add source"
-            aria-current={isMarketplace ? "page" : undefined}
-            className={clsx(
-              "flex items-center w-full rounded-lg font-medium mt-2",
-              "transition-all duration-150 active:scale-[0.97]",
-              isMarketplace
-                ? "bg-accent/15 text-accent"
-                : "text-accent/85 hover:bg-accent/10 hover:text-accent",
-              collapsed
-                ? "justify-center py-1.5 px-0"
-                : "gap-2.5 px-2.5 py-1.5 text-ui-body",
-            )}
-          >
-            <span className="shrink-0 flex items-center justify-center w-5 h-5">
-              <Plus size={15} strokeWidth={2.5} />
-            </span>
-            {!collapsed && <span className="truncate">Add source</span>}
-          </button>
-        </Tooltip>
-      </nav>
-
-      {/* Footer — settings, collapse toggle, status */}
-      <div
-        className={clsx(
-          "shrink-0 border-t border-edge py-2 space-y-0.5",
-          collapsed ? "px-1" : "px-2",
-        )}
+      {/* ── Workspace ─────────────────────────────────────────── */}
+      <NavGroup
+        ariaLabel="Workspace"
+        heading="Workspace"
+        collapsed={collapsed}
+        bordered
       >
+        <NavItem
+          icon={<Plus size={15} strokeWidth={2.5} />}
+          label="Add source"
+          active={isMarketplace}
+          collapsed={collapsed}
+          accent
+          onClick={onNavigateToMarketplace}
+        />
         <NavItem
           icon={<Settings size={15} />}
           label="Settings"
@@ -179,7 +172,29 @@ export default function Sidebar({
           collapsed={collapsed}
           onClick={onNavigateToSettings}
         />
+        <NavItem
+          icon={<RadioTower size={15} />}
+          label="Ticker"
+          active={isTicker}
+          collapsed={collapsed}
+          onClick={onNavigateToTicker}
+        />
+      </NavGroup>
 
+      {/* ── Account ───────────────────────────────────────────── */}
+      <NavGroup
+        ariaLabel="Account"
+        heading="Account"
+        collapsed={collapsed}
+        bordered
+      >
+        <NavItem
+          icon={<UserCircle size={15} />}
+          label="Account"
+          active={isAccount}
+          collapsed={collapsed}
+          onClick={onNavigateToAccount}
+        />
         <NavItem
           icon={<LifeBuoy size={15} />}
           label="Support"
@@ -187,11 +202,18 @@ export default function Sidebar({
           collapsed={collapsed}
           onClick={onNavigateToSupport}
         />
+      </NavGroup>
 
-        {/* Collapse toggle. Connection status + ticker status are now
-            in the TopBar (always-visible chrome at the top of the
-            window) — see components/TopBar.tsx. The sidebar footer
-            stays minimal. */}
+      {/* ── Collapse toggle ───────────────────────────────────────
+          Lives outside the three labeled groups because it's chrome,
+          not navigation. Connection status + ticker status live in
+          the TopBar — see components/TopBar.tsx. */}
+      <div
+        className={clsx(
+          "shrink-0 border-t border-edge py-2",
+          collapsed ? "px-1" : "px-2",
+        )}
+      >
         <Tooltip content={collapsed ? "Expand sidebar" : "Collapse sidebar"} side="right">
           <button
             onClick={toggleCollapsed}
@@ -217,6 +239,46 @@ export default function Sidebar({
   );
 }
 
+// ── Nav group ───────────────────────────────────────────────────
+// A labeled section of nav items. Hides the heading when collapsed
+// (a single-character label looks like a glyph). The optional
+// `bordered` flag adds a top divider so visually distinct groups
+// don't blur into each other. Sources is the only group that scrolls
+// — the rest stay shrink-0 so they always sit at their natural size.
+
+function NavGroup({
+  ariaLabel,
+  heading,
+  collapsed,
+  bordered = false,
+  className,
+  children,
+}: {
+  ariaLabel: string;
+  heading: string;
+  collapsed: boolean;
+  bordered?: boolean;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <nav
+      aria-label={ariaLabel}
+      className={clsx(
+        "shrink-0 py-2 space-y-0.5",
+        collapsed ? "px-1" : "px-2",
+        bordered && "border-t border-edge",
+        className,
+      )}
+    >
+      {!collapsed && (
+        <h2 className="px-2.5 mb-1 text-ui-section">{heading}</h2>
+      )}
+      {children}
+    </nav>
+  );
+}
+
 // ── Nav item ────────────────────────────────────────────────────
 
 function NavItem({
@@ -224,12 +286,15 @@ function NavItem({
   label,
   active,
   collapsed,
+  accent = false,
   onClick,
 }: {
   icon: React.ReactNode;
   label: string;
   active: boolean;
   collapsed?: boolean;
+  /** Accent variant for CTA-like items (currently "Add source"). */
+  accent?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -245,14 +310,20 @@ function NavItem({
             ? "justify-center py-1.5 px-0"
             : "gap-2.5 px-2.5 py-1.5 text-ui-body",
           active
-            ? "bg-accent/10 text-fg"
-            : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
+            ? accent
+              ? "bg-accent/15 text-accent"
+              : "bg-accent/10 text-fg"
+            : accent
+              ? "text-accent/85 hover:bg-accent/10 hover:text-accent"
+              : "text-fg-3 hover:text-fg-2 hover:bg-surface-hover",
         )}
       >
         {/* Active indicator — left accent bar. Uses motion's
             layoutId so it slides between nav items when the active
-            page changes, instead of popping in/out. */}
-        {active && (
+            page changes, instead of popping in/out. The accent CTA
+            already carries its own active treatment so we suppress
+            the bar there to avoid double-emphasis. */}
+        {active && !accent && (
           <motion.span
             layoutId="sidebar-active-indicator"
             transition={{ type: "spring", stiffness: 380, damping: 30 }}

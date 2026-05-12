@@ -342,23 +342,28 @@ export default function ContactForm({ onBack }: ContactFormProps) {
 
   // ── Render helpers ──────────────────────────────────────────────
 
+  // PageLayout already renders the page title (via the route), so we
+  // drop the duplicate title banner. The per-category hint stays as
+  // a short subtitle inside the card so users still see context for
+  // the current category they picked. The form body lives inside a
+  // dense card to match the surface chrome used everywhere else.
   const header = HEADER_CONFIG[category];
   const inputClass =
-    "w-full bg-surface-2 border border-edge/30 rounded-lg px-3 py-2 text-sm text-fg resize-none focus:border-accent/60 focus:outline-none placeholder:text-fg-4";
+    "w-full bg-base-200 border border-edge/40 rounded-lg px-3 py-2 text-ui-body text-fg resize-none focus:border-accent/60 focus:outline-none placeholder:text-fg-4";
+  const labelClass = "block text-ui-meta font-medium text-fg-2 mb-1.5";
 
   // ── Render ──────────────────────────────────────────────────────
 
   return (
-    <form onSubmit={handleSubmit} className="p-5 max-w-2xl mx-auto">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-sm font-semibold text-fg">{header.title}</h1>
-        <p className="text-xs text-fg-4">{header.subtitle}</p>
-      </div>
+    <form
+      onSubmit={handleSubmit}
+      className="rounded-xl border border-edge/35 bg-base-150/35 p-5 max-w-2xl mx-auto"
+    >
+      <p className="text-ui-meta mb-5">{header.subtitle}</p>
 
       <div className="space-y-5">
         {/* Category picker */}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {CATEGORY_OPTIONS.map((opt) => {
             const Icon = opt.icon;
             return (
@@ -367,10 +372,10 @@ export default function ContactForm({ onBack }: ContactFormProps) {
                 type="button"
                 onClick={() => setCategory(opt.value)}
                 className={clsx(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer border",
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-ui-chip font-medium transition-colors cursor-pointer border",
                   category === opt.value
                     ? "bg-accent/15 text-accent border-accent/30"
-                    : "bg-surface-2 text-fg-3 border-edge/30 hover:text-fg-2",
+                    : "bg-base-200 text-fg-3 border-edge/40 hover:text-fg-2",
                 )}
               >
                 <Icon size={13} />
@@ -383,15 +388,13 @@ export default function ContactForm({ onBack }: ContactFormProps) {
         {/* Email (only if not authenticated) */}
         {!authenticated && (
           <div>
-            <label className="block text-xs font-medium text-fg-2 mb-1.5">
-              Email address
-            </label>
+            <label className={labelClass}>Email address</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
-              className="w-full bg-surface-2 border border-edge/30 rounded-lg px-3 py-2 text-sm text-fg focus:border-accent/60 focus:outline-none placeholder:text-fg-4"
+              className={inputClass}
             />
           </div>
         )}
@@ -400,7 +403,7 @@ export default function ContactForm({ onBack }: ContactFormProps) {
         {category === "bug" && (
           <>
             <div>
-              <label className="block text-xs font-medium text-fg-2 mb-1.5">
+              <label className={labelClass}>
                 What were you trying to do?
               </label>
               <textarea
@@ -414,9 +417,7 @@ export default function ContactForm({ onBack }: ContactFormProps) {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-fg-2 mb-1.5">
-                What went wrong?
-              </label>
+              <label className={labelClass}>What went wrong?</label>
               <textarea
                 value={whatWentWrong}
                 onChange={(e) => setWhatWentWrong(e.target.value)}
@@ -428,7 +429,7 @@ export default function ContactForm({ onBack }: ContactFormProps) {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-fg-2 mb-1.5">
+              <label className={labelClass}>
                 What did you expect to happen instead?
               </label>
               <textarea
@@ -442,7 +443,7 @@ export default function ContactForm({ onBack }: ContactFormProps) {
 
             {/* Frequency */}
             <div>
-              <label className="block text-xs font-medium text-fg-2 mb-1.5">
+              <label className={labelClass}>
                 Does this happen every time?
               </label>
               <div className="flex gap-2">
@@ -466,9 +467,7 @@ export default function ContactForm({ onBack }: ContactFormProps) {
 
             {/* Attachments */}
             <div>
-              <label className="block text-xs font-medium text-fg-2 mb-1.5">
-                Attachments
-              </label>
+              <label className={labelClass}>Attachments</label>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -549,7 +548,7 @@ export default function ContactForm({ onBack }: ContactFormProps) {
         {category === "feature" && (
           <>
             <div>
-              <label className="block text-xs font-medium text-fg-2 mb-1.5">
+              <label className={labelClass}>
                 What feature would you like?
               </label>
               <textarea
@@ -563,7 +562,7 @@ export default function ContactForm({ onBack }: ContactFormProps) {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-fg-2 mb-1.5">
+              <label className={labelClass}>
                 Why is this important to you?
               </label>
               <textarea
@@ -577,9 +576,7 @@ export default function ContactForm({ onBack }: ContactFormProps) {
 
             {/* Priority */}
             <div>
-              <label className="block text-xs font-medium text-fg-2 mb-1.5">
-                How important is this to you?
-              </label>
+              <label className={labelClass}>How important is this to you?</label>
               <div className="flex gap-2">
                 {PRIORITY_OPTIONS.map((opt) => (
                   <button
@@ -604,9 +601,7 @@ export default function ContactForm({ onBack }: ContactFormProps) {
         {/* ── General Feedback fields ───────────────────────────── */}
         {category === "feedback" && (
           <div>
-            <label className="block text-xs font-medium text-fg-2 mb-1.5">
-              Your feedback
-            </label>
+            <label className={labelClass}>Your feedback</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -624,9 +619,7 @@ export default function ContactForm({ onBack }: ContactFormProps) {
         {/* ── Billing fields ────────────────────────────────── */}
         {category === "billing" && (
           <div>
-            <label className="block text-xs font-medium text-fg-2 mb-1.5">
-              Describe your billing question
-            </label>
+            <label className={labelClass}>Describe your billing question</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -641,9 +634,7 @@ export default function ContactForm({ onBack }: ContactFormProps) {
         {/* ── Account fields ────────────────────────────────── */}
         {category === "account" && (
           <div>
-            <label className="block text-xs font-medium text-fg-2 mb-1.5">
-              Describe your account issue
-            </label>
+            <label className={labelClass}>Describe your account issue</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -659,13 +650,11 @@ export default function ContactForm({ onBack }: ContactFormProps) {
         {category === "channel" && (
           <>
             <div>
-              <label className="block text-xs font-medium text-fg-2 mb-1.5">
-                Which channel?
-              </label>
+              <label className={labelClass}>Which channel?</label>
               <select
                 value={channelSelection}
                 onChange={(e) => setChannelSelection(e.target.value)}
-                className="w-full bg-surface-2 border border-edge/30 rounded-lg px-3 py-2 text-sm text-fg focus:border-accent/60 focus:outline-none"
+                className={inputClass}
               >
                 <option value="">Select a channel...</option>
                 <option value="Finance">Finance</option>
@@ -675,9 +664,7 @@ export default function ContactForm({ onBack }: ContactFormProps) {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-fg-2 mb-1.5">
-                Describe your issue
-              </label>
+              <label className={labelClass}>Describe your issue</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}

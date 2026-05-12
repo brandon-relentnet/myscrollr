@@ -18,18 +18,26 @@ export default function FAQSection() {
     });
   }
 
+  // Wraps the question rows in the shared dense-card chrome used
+  // by Settings/Catalog so the FAQ list reads as a single panel
+  // instead of a flat divider stack.
   return (
-    <div className="space-y-0">
+    <div className="rounded-xl border border-edge/35 bg-base-150/35 overflow-hidden">
       {FAQ_ITEMS.map((item, i) => {
         const isOpen = expanded.has(i);
         return (
-          <div key={i} className="border-b border-edge/30">
+          <div
+            key={i}
+            className={clsx(
+              i > 0 && "border-t border-edge/35",
+            )}
+          >
             <button
               onClick={() => toggle(i)}
               aria-expanded={isOpen}
-              className="flex w-full items-center justify-between gap-3 px-1 py-3 text-left hover:bg-surface-2/50 cursor-pointer"
+              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-base-150/50 cursor-pointer"
             >
-              <span className="text-sm font-medium text-fg">
+              <span className="text-ui-body font-medium">
                 {item.question}
               </span>
               <ChevronDown
@@ -46,7 +54,7 @@ export default function FAQSection() {
                 isOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0",
               )}
             >
-              <p className="px-1 pb-4 pt-1 text-sm text-fg-3">{item.answer}</p>
+              <p className="px-4 pb-4 pt-1 text-ui-meta">{item.answer}</p>
             </div>
           </div>
         );
