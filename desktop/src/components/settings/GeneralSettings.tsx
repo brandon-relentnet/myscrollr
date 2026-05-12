@@ -71,17 +71,17 @@ const THEME_FAMILY_OPTIONS: { value: ThemeFamily; label: string }[] =
     label: THEME_FAMILY_LABELS[family],
   }));
 
-const SCALE_PRESETS: { value: string; label: string }[] = [
-  { value: "85", label: "85%" },
-  { value: "100", label: "100%" },
-  { value: "115", label: "115%" },
-  { value: "130", label: "130%" },
-];
-
 const FONT_WEIGHT_OPTIONS: { value: string; label: string }[] = [
   { value: "normal", label: "Normal" },
   { value: "medium", label: "Medium" },
   { value: "bold", label: "Bold" },
+];
+
+const APP_SCALE_PRESETS: { value: string; label: string }[] = [
+  { value: "85", label: "85%" },
+  { value: "100", label: "100%" },
+  { value: "115", label: "115%" },
+  { value: "130", label: "130%" },
 ];
 
 // ── Component ───────────────────────────────────────────────────
@@ -200,90 +200,97 @@ export default function GeneralSettings({
   }, []);
 
   return (
-    <div>
-      <Section title="Appearance">
-        <SelectRow
-          label="Theme"
-          description="Pick a color palette"
-          value={appearance.themeFamily}
-          options={THEME_FAMILY_OPTIONS}
-          onChange={(v) => setApp("themeFamily", v)}
-        />
-        <SegmentedRow
-          label="Color mode"
-          description="Light, dark, or follow the system"
-          value={appearance.themeMode}
-          options={THEME_MODE_OPTIONS}
-          onChange={(v) => setApp("themeMode", v)}
-        />
-        <SegmentedRow
-          label="Display size"
-          description="Make everything bigger or smaller"
-          value={String(appearance.uiScale)}
-          options={SCALE_PRESETS}
-          onChange={(v) => setApp("uiScale", Number(v) as AppearancePrefs["uiScale"])}
-        />
-        <SegmentedRow
-          label="Font weight"
-          description="Increase text thickness for readability"
-          value={appearance.fontWeight}
-          options={FONT_WEIGHT_OPTIONS}
-          onChange={(v) => setApp("fontWeight", v as AppearancePrefs["fontWeight"])}
-        />
-        <ToggleRow
-          label="High contrast text"
-          description="Brighten muted text for easier reading"
-          checked={appearance.highContrast}
-          onChange={(v) => setApp("highContrast", v)}
-        />
-      </Section>
+    <div className="space-y-4">
+      <div className="grid gap-4 grid-cols-2 items-start">
+        <div className="space-y-4">
+          <Section title="Appearance" variant="card">
+            <SelectRow
+              label="Theme"
+              description="Pick a color palette"
+              value={appearance.themeFamily}
+              options={THEME_FAMILY_OPTIONS}
+              onChange={(v) => setApp("themeFamily", v)}
+            />
+            <SegmentedRow
+              label="Color mode"
+              description="Light, dark, or follow the system"
+              value={appearance.themeMode}
+              options={THEME_MODE_OPTIONS}
+              onChange={(v) => setApp("themeMode", v)}
+            />
+            <SegmentedRow
+              label="Display size"
+              description="Resize the main app window. Ticker has its own scale."
+              value={String(appearance.uiScale)}
+              options={APP_SCALE_PRESETS}
+              onChange={(v) => setApp("uiScale", Number(v) as AppearancePrefs["uiScale"])}
+            />
+            <SegmentedRow
+              label="Font weight"
+              description="Increase text thickness for readability"
+              value={appearance.fontWeight}
+              options={FONT_WEIGHT_OPTIONS}
+              onChange={(v) => setApp("fontWeight", v as AppearancePrefs["fontWeight"])}
+            />
+            <ToggleRow
+              label="High contrast text"
+              description="Brighten muted text for easier reading"
+              checked={appearance.highContrast}
+              onChange={(v) => setApp("highContrast", v)}
+            />
+          </Section>
 
-      <Section title="Window">
-        <ToggleRow
-          label="Always on top"
-          description="Keep the ticker above all other windows"
-          checked={window_.pinned}
-          onChange={(v) => onWindowChange({ ...window_, pinned: v })}
-        />
-        <ToggleRow
-          label="Hide when an app goes fullscreen"
-          description="Hides the ticker when YouTube, games, or other apps enter fullscreen so they aren't visually clipped. Windows only."
-          checked={window_.hideOnFullscreen}
-          onChange={(v) => onWindowChange({ ...window_, hideOnFullscreen: v })}
-        />
-      </Section>
+          <Section title="Window" variant="card">
+            <ToggleRow
+              label="Always on top"
+              description="Keep the ticker above all other windows"
+              checked={window_.pinned}
+              onChange={(v) => onWindowChange({ ...window_, pinned: v })}
+            />
+            <ToggleRow
+              label="Hide when an app goes fullscreen"
+              description="Hides the ticker when YouTube, games, or other apps enter fullscreen so they aren't visually clipped. Windows only."
+              checked={window_.hideOnFullscreen}
+              onChange={(v) => onWindowChange({ ...window_, hideOnFullscreen: v })}
+            />
+          </Section>
 
-      <Section title="Startup">
-        <ToggleRow
-          label="Launch on system startup"
-          description="Automatically open Scrollr when you start your computer"
-          checked={autostartEnabled}
-          onChange={onAutostartChange}
-        />
-      </Section>
+          <Section title="Startup" variant="card">
+            <ToggleRow
+              label="Launch on system startup"
+              description="Automatically open Scrollr when you start your computer"
+              checked={autostartEnabled}
+              onChange={onAutostartChange}
+            />
+          </Section>
+        </div>
 
-      <Section title="Keyboard shortcuts">
-        <ShortcutsList />
-      </Section>
+        <div className="space-y-4">
 
-      <Section title="About">
-        <DisplayRow label="Version" value={appVersion ? `v${appVersion}` : "\u2014"} />
-      </Section>
+          <Section title="In-app shortcuts" variant="card">
+            <ShortcutsList />
+          </Section>
 
-      <Section title="Updates">
-        <ToggleRow
-          label="Check for updates on startup"
-          description="Notify me when a new version is available shortly after launch"
-          checked={startup.autoCheckUpdates}
-          onChange={(v) => onStartupChange({ ...startup, autoCheckUpdates: v })}
-        />
-        <UpdateRow
-          status={status}
-          onCheck={handleCheckForUpdates}
-          onDownload={handleDownloadAndInstall}
-          onRelaunch={handleRelaunch}
-        />
-      </Section>
+          <Section title="Updates" variant="card">
+            <ToggleRow
+              label="Check for updates on startup"
+              description="Notify me when a new version is available shortly after launch"
+              checked={startup.autoCheckUpdates}
+              onChange={(v) => onStartupChange({ ...startup, autoCheckUpdates: v })}
+            />
+            <UpdateRow
+              status={status}
+              onCheck={handleCheckForUpdates}
+              onDownload={handleDownloadAndInstall}
+              onRelaunch={handleRelaunch}
+            />
+          </Section>
+
+          <Section title="About" variant="card">
+            <DisplayRow label="Version" value={appVersion ? `v${appVersion}` : "\u2014"} />
+          </Section>
+        </div>
+      </div>
 
       <div className="flex items-center justify-end pt-2">
         <ResetButton label="Reset general settings" onClick={onReset} />
@@ -305,12 +312,21 @@ const SHORTCUTS: { keys: string[]; label: string }[] = [
   { keys: ["Esc"], label: "Back / close current view" },
 ];
 
+
 function ShortcutsList() {
   return (
-    <div className="px-3 py-2 space-y-1.5">
+    <div className="px-3 py-2 space-y-2">
+      <div className="flex items-center justify-between gap-3 pb-1">
+        <p className="text-ui-meta leading-snug">
+          Available while Scrollr is the focused app.
+        </p>
+        <span className="shrink-0 rounded-full border border-edge/40 bg-base-200/70 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wide text-fg-4">
+          Focused
+        </span>
+      </div>
       {SHORTCUTS.map(({ keys, label }) => (
-        <div key={label} className="flex items-center justify-between py-1">
-          <span className="text-ui-meta">{label}</span>
+        <div key={label} className="flex items-center justify-between gap-4 rounded-lg py-1.5">
+          <span className="text-ui-muted leading-tight">{label}</span>
           <div className="flex items-center gap-1">
             {keys.map((k, i) => (
               <span key={i} className="flex items-center gap-1">

@@ -162,7 +162,7 @@ function HomePage() {
   }, [tickerLayout]);
 
   const openTickerSettings = useCallback(() => {
-    navigate({ to: "/settings", search: { tab: "ticker" } });
+    navigate({ to: "/ticker" });
   }, [navigate]);
 
   const orderedChannels = useMemo(

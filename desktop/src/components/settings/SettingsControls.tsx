@@ -1,5 +1,6 @@
 import { clsx } from "clsx";
 import { motion } from "motion/react";
+import Tooltip from "../Tooltip";
 import type { Venue } from "../../preferences";
 
 // ── Section heading ─────────────────────────────────────────────
@@ -13,9 +14,25 @@ interface SectionProps {
   children: React.ReactNode;
   /** Optional action element rendered top-right of the section title. */
   action?: React.ReactNode;
+  /** Card sections are used by the compact flat Settings page. */
+  variant?: "open" | "card";
 }
 
-export function Section({ title, children, action }: SectionProps) {
+export function Section({ title, children, action, variant = "open" }: SectionProps) {
+  if (variant === "card") {
+    return (
+      <section className="rounded-xl border border-edge/35 bg-base-150/35 overflow-hidden">
+        <div className="flex items-center justify-between px-4 pt-3.5 pb-2">
+          <h3 className="text-ui-section font-mono">
+            {title}
+          </h3>
+          {action && <div className="shrink-0">{action}</div>}
+        </div>
+        <div className="px-1 pb-2">{children}</div>
+      </section>
+    );
+  }
+
   return (
     <div className="mb-6 pb-5 border-b border-edge/30 last:border-b-0 last:mb-0 last:pb-0">
       <div className="flex items-center justify-between mb-3 px-3">
@@ -26,6 +43,23 @@ export function Section({ title, children, action }: SectionProps) {
       </div>
       <div className="space-y-0.5">{children}</div>
     </div>
+  );
+}
+
+function SettingLabel({ label, description }: { label: string; description?: string }) {
+  const className = clsx(
+    "text-ui-muted leading-tight group-hover:text-fg",
+    description && "cursor-help",
+  );
+
+  if (!description) {
+    return <span className={className}>{label}</span>;
+  }
+
+  return (
+    <Tooltip content={description} side="top">
+      <span className={className}>{label}</span>
+    </Tooltip>
   );
 }
 
@@ -50,17 +84,10 @@ export function ToggleRow({
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg hover:bg-base-250/50 transition-colors cursor-pointer group"
+      className="flex items-center justify-between w-full px-3 py-2 rounded-lg hover:bg-base-250/45 transition-colors cursor-pointer group"
     >
-      <div className="flex flex-col gap-0.5 text-left">
-        <span className="text-ui-muted group-hover:text-fg leading-tight">
-          {label}
-        </span>
-        {description && (
-          <span className="text-ui-meta leading-tight">
-            {description}
-          </span>
-        )}
+      <div className="flex flex-col gap-0.5 text-left group-hover:text-fg">
+        <SettingLabel label={label} description={description} />
       </div>
       <div
         className={clsx(
@@ -101,14 +128,9 @@ export function SegmentedRow<T extends string>({
   onChange,
 }: SegmentedRowProps<T>) {
   return (
-    <div className="flex items-center justify-between px-3 py-2.5 rounded-lg">
+    <div className="flex items-center justify-between px-3 py-2 rounded-lg">
       <div className="flex flex-col gap-0.5">
-        <span className="text-ui-muted leading-tight">{label}</span>
-        {description && (
-          <span className="text-ui-meta leading-tight">
-            {description}
-          </span>
-        )}
+        <SettingLabel label={label} description={description} />
       </div>
       <div
         role="radiogroup"
@@ -157,12 +179,9 @@ export function SelectRow<T extends string>({
   onChange,
 }: SelectRowProps<T>) {
   return (
-    <div className="flex items-center justify-between px-3 py-2.5 rounded-lg">
+    <div className="flex items-center justify-between px-3 py-2 rounded-lg">
       <div className="flex flex-col gap-0.5">
-        <span className="text-ui-muted leading-tight">{label}</span>
-        {description && (
-          <span className="text-ui-meta leading-tight">{description}</span>
-        )}
+        <SettingLabel label={label} description={description} />
       </div>
       <select
         aria-label={label}
@@ -215,14 +234,9 @@ interface VenueRowProps {
 
 export function VenueRow({ label, description, value, onChange }: VenueRowProps) {
   return (
-    <div className="flex items-center justify-between px-3 py-2.5 rounded-lg">
+    <div className="flex items-center justify-between px-3 py-2 rounded-lg">
       <div className="flex flex-col gap-0.5">
-        <span className="text-ui-muted leading-tight">{label}</span>
-        {description && (
-          <span className="text-ui-meta leading-tight">
-            {description}
-          </span>
-        )}
+        <SettingLabel label={label} description={description} />
       </div>
       <div
         role="radiogroup"
@@ -282,14 +296,9 @@ export function SliderRow({
   const pct = ((value - min) / (max - min)) * 100;
 
   return (
-    <div className="flex items-center justify-between px-3 py-2.5 rounded-lg">
+    <div className="flex items-center justify-between px-3 py-2 rounded-lg">
       <div className="flex flex-col gap-0.5">
-        <span className="text-ui-muted leading-tight">{label}</span>
-        {description && (
-          <span className="text-ui-meta leading-tight">
-            {description}
-          </span>
-        )}
+        <SettingLabel label={label} description={description} />
       </div>
       <div className="flex items-center gap-2.5 shrink-0 ml-4">
         <div className="relative w-24 h-5 flex items-center">
@@ -334,7 +343,7 @@ interface DisplayRowProps {
 
 export function DisplayRow({ label, value, valueClass }: DisplayRowProps) {
   return (
-    <div className="flex items-center justify-between px-3 py-2.5 rounded-lg">
+    <div className="flex items-center justify-between px-3 py-2 rounded-lg">
       <span className="text-ui-meta">{label}</span>
       <span className={valueClass ?? "text-ui-muted"}>{value}</span>
     </div>
@@ -380,14 +389,9 @@ export function ActionRow({
   onClick,
 }: ActionRowProps) {
   return (
-    <div className="flex items-center justify-between px-3 py-2.5 rounded-lg">
+    <div className="flex items-center justify-between px-3 py-2 rounded-lg">
       <div className="flex flex-col gap-0.5">
-        <span className="text-ui-muted leading-tight">{label}</span>
-        {description && (
-          <span className="text-ui-meta leading-tight">
-            {description}
-          </span>
-        )}
+        <SettingLabel label={label} description={description} />
       </div>
       <button
         onClick={onClick}

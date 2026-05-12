@@ -114,48 +114,62 @@ function parseRoute(pathname: string) {
     return {
       activeItem: "",
       isChannel: false, isWidget: false, isFeed: true,
-      isSettings: false, isMarketplace: false, isSupport: false,
+      isSettings: false, isTicker: false, isAccount: false, isMarketplace: false, isSupport: false,
     };
   }
   if (kind === "channel" && itemId) {
     return {
       activeItem: itemId,
       isChannel: true, isWidget: false, isFeed: false,
-      isSettings: false, isMarketplace: false, isSupport: false,
+      isSettings: false, isTicker: false, isAccount: false, isMarketplace: false, isSupport: false,
     };
   }
   if (kind === "widget" && itemId) {
     return {
       activeItem: itemId,
       isChannel: false, isWidget: true, isFeed: false,
-      isSettings: false, isMarketplace: false, isSupport: false,
+      isSettings: false, isTicker: false, isAccount: false, isMarketplace: false, isSupport: false,
     };
   }
   if (kind === "catalog") {
     return {
       activeItem: "",
       isChannel: false, isWidget: false, isFeed: false,
-      isSettings: false, isMarketplace: true, isSupport: false,
+      isSettings: false, isTicker: false, isAccount: false, isMarketplace: true, isSupport: false,
     };
   }
   if (kind === "settings") {
     return {
       activeItem: "settings",
       isChannel: false, isWidget: false, isFeed: false,
-      isSettings: true, isMarketplace: false, isSupport: false,
+      isSettings: true, isTicker: false, isAccount: false, isMarketplace: false, isSupport: false,
+    };
+  }
+  if (kind === "ticker") {
+    return {
+      activeItem: "ticker",
+      isChannel: false, isWidget: false, isFeed: false,
+      isSettings: false, isTicker: true, isAccount: false, isMarketplace: false, isSupport: false,
+    };
+  }
+  if (kind === "account") {
+    return {
+      activeItem: "account",
+      isChannel: false, isWidget: false, isFeed: false,
+      isSettings: false, isTicker: false, isAccount: true, isMarketplace: false, isSupport: false,
     };
   }
   if (kind === "support") {
     return {
       activeItem: "",
       isChannel: false, isWidget: false, isFeed: false,
-      isSettings: false, isMarketplace: false, isSupport: true,
+      isSettings: false, isTicker: false, isAccount: false, isMarketplace: false, isSupport: true,
     };
   }
   return {
     activeItem: "",
     isChannel: false, isWidget: false, isFeed: true,
-    isSettings: false, isMarketplace: false, isSupport: false,
+    isSettings: false, isTicker: false, isAccount: false, isMarketplace: false, isSupport: false,
   };
 }
 
@@ -526,7 +540,7 @@ function RootLayout() {
   const handleSelectItem = useCallback(
     (id: string) => {
       if (id === "settings") {
-        navigate({ to: "/settings", search: { tab: "general" } });
+        navigate({ to: "/settings" });
         return;
       }
       if (channelsRef.current.some((ch) => ch.channel_type === id)) {
@@ -543,7 +557,9 @@ function RootLayout() {
   );
 
   const handleNavigateToFeed = useCallback(() => navigate({ to: "/feed" }), [navigate]);
-  const handleNavigateToSettings = useCallback(() => navigate({ to: "/settings", search: { tab: "general" } }), [navigate]);
+  const handleNavigateToSettings = useCallback(() => navigate({ to: "/settings" }), [navigate]);
+  const handleNavigateToTicker = useCallback(() => navigate({ to: "/ticker" }), [navigate]);
+  const handleNavigateToAccount = useCallback(() => navigate({ to: "/account" }), [navigate]);
   const handleNavigateToMarketplace = useCallback(() => navigate({ to: "/catalog" }), [navigate]);
   const handleNavigateToSupport = useCallback(() => navigate({ to: "/support" }), [navigate]);
 
@@ -604,7 +620,7 @@ function RootLayout() {
       // Ctrl+, → open settings
       if ((e.ctrlKey || e.metaKey) && e.key === ",") {
         e.preventDefault();
-        navigate({ to: "/settings", search: { tab: "general" } });
+        navigate({ to: "/settings" });
         return;
       }
 
@@ -786,12 +802,16 @@ function RootLayout() {
           <div className="flex flex-1 min-h-0 overflow-hidden">
             <Sidebar
               isSettings={route.isSettings}
+              isTicker={route.isTicker}
+              isAccount={route.isAccount}
               isMarketplace={route.isMarketplace}
               isSupport={route.isSupport}
               activeItem={route.activeItem}
               sources={sidebarSources}
               onNavigateToMarketplace={handleNavigateToMarketplace}
               onNavigateToSettings={handleNavigateToSettings}
+              onNavigateToTicker={handleNavigateToTicker}
+              onNavigateToAccount={handleNavigateToAccount}
               onNavigateToSupport={handleNavigateToSupport}
               onSelectItem={handleSelectPinned}
             />
@@ -838,7 +858,7 @@ function RootLayout() {
                         </span>
                         <div className="flex items-center gap-2 shrink-0 ml-4">
                           <button
-                            onClick={() => navigate({ to: "/settings", search: { tab: "account" } })}
+                            onClick={() => navigate({ to: "/account" })}
                             className="text-xs font-medium text-info hover:text-fg transition-colors"
                           >
                             View plan
@@ -864,7 +884,7 @@ function RootLayout() {
                       </span>
                       <div className="flex items-center gap-2 shrink-0 ml-4">
                         <button
-                          onClick={() => navigate({ to: "/settings", search: { tab: "account" } })}
+                          onClick={() => navigate({ to: "/account" })}
                           className="text-xs font-medium text-error hover:text-fg transition-colors"
                         >
                           Fix payment
@@ -890,7 +910,7 @@ function RootLayout() {
                       </span>
                       <div className="flex items-center gap-2 shrink-0 ml-4">
                         <button
-                          onClick={() => navigate({ to: "/settings", search: { tab: "account" } })}
+                          onClick={() => navigate({ to: "/account" })}
                           className="text-xs font-medium text-warn hover:text-fg transition-colors"
                         >
                           Manage

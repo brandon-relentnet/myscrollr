@@ -441,6 +441,19 @@ export default function TickerSettings({ prefs, onPrefsChange }: TickerSettingsP
           />
         </SettingGroup>
 
+        {/* ── Scale ─────────────────────────────────────────── */}
+        <SettingGroup label="Scale">
+          <ScaleSlider
+            value={prefs.appearance.tickerScale}
+            onChange={(next) =>
+              onPrefsChange({
+                ...prefs,
+                appearance: { ...prefs.appearance, tickerScale: next },
+              })
+            }
+          />
+        </SettingGroup>
+
         {/* ── Style ─────────────────────────────────────────── */}
         <SettingGroup label="Style">
           {/* Spacing */}
@@ -916,6 +929,50 @@ function SpeedSlider({ value, onChange }: { value: number; onChange: (v: number)
       <div className="flex justify-between text-ui-chip font-mono text-fg-3 uppercase tracking-wider px-0.5">
         <span>Slow</span>
         <span>Fast</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Scale slider ────────────────────────────────────────────────
+//
+// Independent ticker zoom (75%–150%, 5% step). Writes directly to
+// `appearance.tickerScale`; the ticker window's `useTheme` reads
+// that field and resizes the chips via the native webview zoom API.
+// The main app window keeps its own scale on /settings.
+
+function ScaleSlider({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const min = 75;
+  const max = 150;
+  const pct = ((value - min) / (max - min)) * 100;
+
+  return (
+    <div className="space-y-2">
+      <div className="relative h-8 flex items-center">
+        <div className="absolute inset-x-0 h-1.5 rounded-full bg-base-300" />
+        <div
+          className="absolute left-0 h-1.5 rounded-full bg-accent/50"
+          style={{ width: `${pct}%` }}
+        />
+        <input
+          type="range"
+          aria-label="Ticker scale"
+          min={min}
+          max={max}
+          step={5}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="absolute inset-0 w-full opacity-0 cursor-pointer"
+        />
+        <div
+          className="absolute w-4 h-4 rounded-full bg-fg-2 border-2 border-surface shadow-md pointer-events-none"
+          style={{ left: `calc(${pct}% - 8px)` }}
+        />
+      </div>
+      <div className="flex justify-between text-ui-chip font-mono text-fg-3 uppercase tracking-wider px-0.5">
+        <span>75%</span>
+        <span className="tabular-nums text-fg-2">{value}%</span>
+        <span>150%</span>
       </div>
     </div>
   );

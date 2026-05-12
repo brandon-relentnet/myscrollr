@@ -122,7 +122,14 @@ export interface AppearancePrefs {
    * `data-theme="catppuccin-dark"`.
    */
   themeFamily: ThemeFamily;
-  uiScale: number; // 75–150, default 100
+  uiScale: number; // 75–150, default 100 — app window only
+  /**
+   * Independent zoom for the ticker window (75–150, default 100). Lets
+   * users size the ticker chips without affecting the main app, and
+   * vice versa. Seeded from `uiScale` on first load after upgrade so
+   * existing users keep their current scale.
+   */
+  tickerScale: number;
   /**
    * Source of truth for the multi-row ticker layout. The number of
    * rows visible on the ticker is `tickerLayout.rows.length`; per-row
@@ -514,6 +521,7 @@ const DEFAULT_APPEARANCE: AppearancePrefs = {
   themeFamily: "scrollr",
   themeMode: "system",
   uiScale: 100,
+  tickerScale: 100,
   tickerLayout: { rows: [{ sources: [] }] },
   fontWeight: "normal",
   highContrast: false,
@@ -1138,9 +1146,16 @@ export function loadPrefs(): AppPreferences {
     const { themeFamily, themeMode } = migrateAppearanceTheme(
       savedAppearance as Record<string, unknown> | undefined,
     );
+    // Seed `tickerScale` from `uiScale` when missing/invalid so the
+    // ticker keeps the same scale users had before the split.
+    const savedUiScale = typeof appearanceRest.uiScale === "number" ? appearanceRest.uiScale : 100;
+    const savedTickerScale = typeof appearanceRest.tickerScale === "number"
+      ? appearanceRest.tickerScale
+      : savedUiScale;
     const mergedAppearance: AppearancePrefs = {
       ...DEFAULT_APPEARANCE,
       ...appearanceRest,
+      tickerScale: savedTickerScale,
       themeFamily,
       themeMode,
       tickerLayout: layoutResult.layout,

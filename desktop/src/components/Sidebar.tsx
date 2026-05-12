@@ -24,7 +24,7 @@
  * Collapses to a 48px icon-only rail with tooltips.
  */
 import { useState } from "react";
-import { Settings, LifeBuoy, PanelLeftClose, PanelLeftOpen, Plus } from "lucide-react";
+import { Settings, LifeBuoy, PanelLeftClose, PanelLeftOpen, Plus, RadioTower, UserCircle } from "lucide-react";
 import clsx from "clsx";
 import { motion } from "motion/react";
 import Tooltip from "./Tooltip";
@@ -44,6 +44,10 @@ interface SidebarSource {
 interface SidebarProps {
   /** Whether the settings page is active. */
   isSettings: boolean;
+  /** Whether the ticker settings page is active. */
+  isTicker: boolean;
+  /** Whether the account page is active. */
+  isAccount: boolean;
   /** Whether the catalog page is active. Drives the "+ Add source"
    *  button's active state. */
   isMarketplace: boolean;
@@ -59,6 +63,10 @@ interface SidebarProps {
   onNavigateToMarketplace: () => void;
   /** Navigate to the settings page. */
   onNavigateToSettings: () => void;
+  /** Navigate to the ticker page. */
+  onNavigateToTicker: () => void;
+  /** Navigate to the account page. */
+  onNavigateToAccount: () => void;
   /** Navigate to the support page. */
   onNavigateToSupport: () => void;
   /** Navigate to a specific source (channel or widget) feed. */
@@ -69,12 +77,16 @@ interface SidebarProps {
 
 export default function Sidebar({
   isSettings,
+  isTicker,
+  isAccount,
   isMarketplace,
   isSupport,
   activeItem,
   sources,
   onNavigateToMarketplace,
   onNavigateToSettings,
+  onNavigateToTicker,
+  onNavigateToAccount,
   onNavigateToSupport,
   onSelectItem,
 }: SidebarProps) {
@@ -178,6 +190,22 @@ export default function Sidebar({
           active={isSettings}
           collapsed={collapsed}
           onClick={onNavigateToSettings}
+        />
+
+        <NavItem
+          icon={<RadioTower size={15} />}
+          label="Ticker"
+          active={isTicker}
+          collapsed={collapsed}
+          onClick={onNavigateToTicker}
+        />
+
+        <NavItem
+          icon={<UserCircle size={15} />}
+          label="Account"
+          active={isAccount}
+          collapsed={collapsed}
+          onClick={onNavigateToAccount}
         />
 
         <NavItem
