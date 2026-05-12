@@ -337,7 +337,12 @@ export function SliderRow({
 
 interface DisplayRowProps {
   label: string;
-  value: string;
+  /**
+   * Plain string or arbitrary node. Strings are wrapped in a `<span>`
+   * so existing rows keep the same chrome; nodes render inline so
+   * callers can pass a chip/pill/etc. without bespoke row markup.
+   */
+  value: string | React.ReactNode;
   valueClass?: string;
 }
 
@@ -345,7 +350,11 @@ export function DisplayRow({ label, value, valueClass }: DisplayRowProps) {
   return (
     <div className="flex items-center justify-between px-3 py-2 rounded-lg">
       <span className="text-ui-meta">{label}</span>
-      <span className={valueClass ?? "text-ui-muted"}>{value}</span>
+      {typeof value === "string" ? (
+        <span className={valueClass ?? "text-ui-muted"}>{value}</span>
+      ) : (
+        value
+      )}
     </div>
   );
 }

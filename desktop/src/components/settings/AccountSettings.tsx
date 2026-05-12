@@ -6,6 +6,7 @@ import clsx from "clsx";
 import { TIER_LABELS, getUserIdentity } from "../../auth";
 import {
   authFetch,
+  exportUserData,
   requestPasswordReset,
   updateProfile,
 } from "../../api/client";
@@ -14,7 +15,6 @@ import { TIER_LIMITS, isUnlimited, type NumericLimitKey } from "../../tierLimits
 import type { SubscriptionTier } from "../../auth";
 import type { SubscriptionInfo } from "../../api/client";
 import { Section, DisplayRow, ActionRow } from "./SettingsControls";
-import AccountExportButton from "./AccountExportButton";
 import ProfileField from "./ProfileField";
 import ConfirmDialog from "../ConfirmDialog";
 
@@ -83,6 +83,12 @@ export default function AccountSettings({
   const [resetState, setResetState] = useState<
     "idle" | "sending" | "sent"
   >("idle");
+  // Export-data state lives here (rather than in AccountExportButton)
+  // so the Data card can use the standard ActionRow chrome and match
+  // every other action row on the page. AccountExportButton still
+  // exists for its own tests; the underlying `exportUserData()` is
+  // the source of truth for the download flow.
+  const [exportState, setExportState] = useState<"idle" | "loading">("idle");
   // Phase 1 (Apr 26): sign-out used to be one-click. Reset, channel
   // delete, and other destructive actions all confirm — sign-out
   // shouldn't be the odd one out, especially given how disruptive
@@ -129,6 +135,31 @@ export default function AccountSettings({
       );
     }
   }, []);
+
+  // Trigger a data-export download. Errors surface via toast so the
+  // ActionRow stays visually identical to every other row on the page
+  // (no inline error blocks, no hidden expansion).
+  const handleExport = useCallback(async () => {
+    if (exportState === "loading") return;
+    try {
+      setExportState("loading");
+      const blob = await exportUserData();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `myscrollr-export-${new Date().toISOString().slice(0, 10)}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to export your data",
+      );
+    } finally {
+      setExportState("idle");
+    }
+  }, [exportState]);
 
   // Clear the "Email sent" sticky state after 30s so the user can re-trigger
   // a reset if they didn't receive it. The button stays disabled while
@@ -180,6 +211,8 @@ export default function AccountSettings({
       : resetState === "sent"
         ? "Email sent"
         : "Send reset email";
+
+  const exportActionLabel = exportState === "loading" ? "Exporting…" : "Export";
 
   const billingActionLabel =
     status === "past_due"
@@ -291,17 +324,34 @@ export default function AccountSettings({
         </div>
 
         <div className="space-y-4 min-w-0">
+      {/* ── Welcome (unauthenticated only) ───────────────────── */}
+      {/* Keeps the two-column grid balanced when logged out so the */}
+      {/* Account card never sits alone next to an empty column.    */}
+      {!authenticated && (
+        <Section title="Welcome" variant="card">
+          <ActionRow
+            label="Sign in to Scrollr"
+            description="Signing in syncs your subscription, profile, and channel preferences across devices and unlocks billing management."
+            action="Sign in"
+            actionClass="bg-accent text-surface font-semibold hover:bg-accent/90"
+            onClick={onLogin}
+          />
+        </Section>
+      )}
+
       {/* ── Subscription ─────────────────────────────────────── */}
       {authenticated && hasSub && (
         <Section title="Subscription" variant="card">
-          <div className="flex items-center justify-between px-3 py-2 rounded-lg">
-            <span className="text-ui-muted leading-tight">Status</span>
-            <span
-              className={`text-ui-chip font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full ${statusCfg.color} ${statusCfg.bg}`}
-            >
-              {statusCfg.label}
-            </span>
-          </div>
+          <DisplayRow
+            label="Status"
+            value={
+              <span
+                className={`text-ui-chip font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full ${statusCfg.color} ${statusCfg.bg}`}
+              >
+                {statusCfg.label}
+              </span>
+            }
+          />
 
           {sub.amount && sub.currency && !isLifetime && (
             <DisplayRow
@@ -396,9 +446,16 @@ export default function AccountSettings({
       {/* ── Your Data ────────────────────────────────────────── */}
       {authenticated && (
         <Section title="Data" variant="card">
-          <div className="px-3 py-2">
-            <AccountExportButton />
-          </div>
+          <ActionRow
+            label="Export your data"
+            description="Download your channels, preferences, and account metadata as JSON."
+            action={exportActionLabel}
+            actionClass={clsx(
+              "bg-accent/10 text-accent hover:bg-accent/20",
+              exportState === "loading" && "opacity-60 cursor-not-allowed",
+            )}
+            onClick={handleExport}
+          />
         </Section>
       )}
 
@@ -461,15 +518,15 @@ const LIMIT_ROWS: { label: string; key: NumericLimitKey }[] = [
 function TierLimitsTable({ tier }: { tier: SubscriptionTier }) {
   const limits = TIER_LIMITS[tier];
   return (
-    <div className="px-3 py-1.5 space-y-1">
+    <>
       {LIMIT_ROWS.map(({ label, key }) => (
-        <div key={key} className="flex items-center justify-between py-1">
-          <span className="text-xs text-fg-3">{label}</span>
-          <span className="text-xs font-medium text-fg-2 tabular-nums">
-            {isUnlimited(tier, key) ? "Unlimited" : limits[key]}
-          </span>
-        </div>
+        <DisplayRow
+          key={key}
+          label={label}
+          value={isUnlimited(tier, key) ? "Unlimited" : String(limits[key])}
+          valueClass="text-ui-muted text-fg-2 tabular-nums"
+        />
       ))}
-    </div>
+    </>
   );
 }
