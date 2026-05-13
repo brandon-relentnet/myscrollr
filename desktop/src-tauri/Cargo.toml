@@ -43,6 +43,22 @@ tauri-plugin-log = "2"
 log = "0.4"
 sysinfo = "0.33"
 
+# Sentry — error monitoring for the native (Rust) process.
+# DSN is read at COMPILE TIME via option_env!("SENTRY_DSN_RUST"). The
+# release workflow exports this before `cargo build`; local dev builds
+# leave it unset and Sentry is a no-op. See lib.rs `run()` for init.
+sentry = { version = "0.42", default-features = false, features = [
+    "backtrace",
+    "contexts",
+    "panic",
+    "reqwest",
+    "rustls",
+    "release-health",
+] }
+# Used to resolve $HOME for scrubbing it from stack-frame filenames before
+# events are sent. Small, well-maintained dependency.
+dirs = "5"
+
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = [
     "Win32_System_Com",
