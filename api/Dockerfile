@@ -23,9 +23,15 @@ RUN go mod download
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 
 ######## Start a new stage from scratch #######
-FROM alpine:latest  
+FROM alpine:latest
 
 WORKDIR /root/
+
+# Sentry release tagging — the runtime reads GIT_SHA via os.Getenv. Pass
+# COOLIFY_GIT_COMMIT (or equivalent) as a build arg at image-build time.
+# Defaults to "unknown" so local builds still work.
+ARG GIT_SHA=unknown
+ENV GIT_SHA=${GIT_SHA}
 
 # All URL env vars (API_URL, LOGTO_URL, LOGTO_JWKS_URL, YAHOO_CALLBACK_URL)
 # are supplied at runtime via K8s ConfigMap and Secrets.

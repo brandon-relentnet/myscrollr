@@ -8,6 +8,10 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o finance-api .
 
 FROM alpine:latest
 
+# Sentry release tagging — the runtime reads GIT_SHA via os.Getenv.
+ARG GIT_SHA=unknown
+ENV GIT_SHA=${GIT_SHA}
+
 RUN apk --no-cache add ca-certificates
 WORKDIR /app
 COPY --from=builder /app/finance-api .

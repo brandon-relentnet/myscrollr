@@ -18,6 +18,11 @@ RUN cargo build --release --bin finance_service
 FROM debian:trixie-slim
 WORKDIR /app
 
+# Sentry release tagging — the runtime reads GIT_SHA via std::env::var and
+# attaches it as a Sentry scope tag. Set via Coolify build args.
+ARG GIT_SHA=unknown
+ENV GIT_SHA=${GIT_SHA}
+
 RUN apt-get update && apt-get install -y ca-certificates curl && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/target/release/finance_service .
 COPY --from=builder /app/configs ./configs
