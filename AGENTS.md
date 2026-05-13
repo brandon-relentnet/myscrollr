@@ -4,7 +4,7 @@ Operational guide for AI coding agents working in this repository.
 
 ## Project Overview
 
-MyScrollr aggregates financial market data, sports scores, RSS feeds, and Yahoo Fantasy Sports. Tauri desktop app (primary product), React marketing website, Go gateway API, and independent channel services. Infrastructure: PostgreSQL, Redis, Logto (auth), Sequin (CDC), Stripe (billing). Deployed on Coolify.
+MyScrollr aggregates financial market data, sports scores, RSS feeds, and Yahoo Fantasy Sports. Tauri desktop app (primary product), React marketing website, Go gateway API, and independent channel services. Infrastructure: PostgreSQL, Redis, Logto (auth), Sequin (CDC), Stripe (billing). Deployed on DigitalOcean Kubernetes (DOKS) with images stored in DigitalOcean Container Registry (DOCR). See `k8s/` for manifests and `.github/workflows/deploy.yml` for the build-and-deploy pipeline.
 
 ## Repository Layout
 
@@ -277,7 +277,7 @@ Each service has a `tests/migration_versions.rs` that asserts every on-disk migr
 
 ## Docker & Deployment
 
-Each channel has its own `docker-compose.yml` (api + service containers). Core API and website have standalone Dockerfiles. All deployed via Coolify.
+Each channel has its own `docker-compose.yml` (api + service containers) for local dev only. Production uses standalone Dockerfiles built and pushed to DigitalOcean Container Registry (`registry.digitalocean.com/scrollr/*`) by `.github/workflows/deploy.yml`, then rolled out to a DigitalOcean Kubernetes cluster (`scrollr-cluster`) via `kubectl apply -f k8s/`. Secrets live in the `scrollr-secrets` Kubernetes Secret (template in `k8s/secrets.yaml.template`). ConfigMaps in `k8s/configmap-*.yaml` hold non-sensitive runtime config. Ingress + TLS via nginx-ingress + cert-manager.
 
 ## Git Workflow
 

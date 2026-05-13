@@ -34,6 +34,21 @@ spec:
                   key: TWELVEDATA_API_KEY
             - name: PORT
               value: "3001"
+            # Sentry — per-service DSN inlined (ingestion-only, not a leak).
+            - name: SENTRY_DSN
+              value: "https://417c34bda8a4da7bc50b5c7dc5318e17@o4511384091033600.ingest.us.sentry.io/4511384412487680"
+            - name: ENVIRONMENT
+              valueFrom:
+                secretKeyRef:
+                  name: scrollr-secrets
+                  key: ENVIRONMENT
+                  optional: true
+            - name: GIT_SHA
+              valueFrom:
+                secretKeyRef:
+                  name: scrollr-secrets
+                  key: GIT_SHA
+                  optional: true
           resources:
             requests:
               cpu: 100m

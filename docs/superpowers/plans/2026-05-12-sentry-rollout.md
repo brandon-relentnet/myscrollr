@@ -2,6 +2,15 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **⚠️ INFRASTRUCTURE NOTE (added 2026-05-13):** This plan was written assuming **Coolify** deployment. Scrollr migrated to **DigitalOcean Kubernetes (DOKS) + DOCR** before this plan was executed. Every reference to "Coolify env config" / "Coolify deploy" / `COOLIFY_GIT_SHA` should be read as:
+>
+> - **Per-service `SENTRY_DSN`** → inlined directly into each k8s Deployment manifest in `k8s/<service>.yaml` as an `env:` entry (ingestion-only credential, safe to commit).
+> - **Shared `SENTRY_USER_SALT` / `ENVIRONMENT` / `GIT_SHA`** → stored in the `scrollr-secrets` Kubernetes Secret (`k8s/secrets.yaml.template` for the schema). Each Deployment references them via `valueFrom: secretKeyRef`.
+> - **`GIT_SHA`** → patched into `scrollr-secrets` on every deploy by the `.github/workflows/deploy.yml` "Update GIT_SHA" step (runs after `kubectl apply`, before rollout).
+> - **Source-map upload secrets** (`SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `VITE_SENTRY_DSN`) → GitHub Actions repo secrets, consumed as Docker build args by the website build in deploy.yml; the desktop release workflow consumes them directly.
+>
+> The rest of the plan — env var names, code patterns, scrubbing test, privacy invariants — remains valid as written. Skip Tasks 3/9/11/13/14 verification + Dockerfile `ARG GIT_SHA` steps (no-ops in the k8s model); the equivalent wiring is already in `k8s/` and `.github/workflows/deploy.yml`.
+
 **Goal:** Add error monitoring (Sentry) to every Scrollr component — marketing site, desktop app (JS + Rust), core API, 4 channel APIs, 3 Rust ingestion services — with strict privacy defaults aligned with the Scrollr brand promise of zero personal data collection.
 
 **Architecture:** Each component initializes the appropriate Sentry SDK at startup. All sensitive data (IPs, request bodies, cookies, query strings, user identifiers) is scrubbed via `BeforeSend` hooks before transmission. User identity, when set, is a salted SHA-256 hash of the Logto subject — irreversibly anonymous. Tauri uses two SDKs (one per process) sharing a single DSN, distinguished by `runtime` tags.
