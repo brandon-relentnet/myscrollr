@@ -156,7 +156,7 @@ Every tier includes live scores from the NFL, NBA, MLB, NHL, MLS, and Premier Le
 
 #### How many fantasy leagues can I connect?
 
-Scrollr syncs with Yahoo Fantasy Sports to show your standings, matchups, and roster updates. Free accounts cannot connect Yahoo leagues. Uplink supports up to 1. Pro gives you 3 — enough for multi-sport managers. Ultimate connects every league across every sport with no restrictions.
+Scrollr syncs with Yahoo Fantasy Sports to show your standings, matchups, and roster updates. Free accounts cannot connect Yahoo leagues. Uplink supports up to 1. Pro gives you 3 — enough for multi-sport managers. Ultimate raises the cap to 10 leagues across every sport.
 
 #### What are custom alerts?
 

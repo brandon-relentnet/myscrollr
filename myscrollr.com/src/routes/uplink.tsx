@@ -136,7 +136,7 @@ const STATIC_TIERS = [
   {
     name: 'Ultimate',
     description:
-      'No caps. Server-Sent Events delivery, unlimited fantasy leagues, webhooks, data export, and API access.',
+      'No caps on symbols, RSS feeds, or sports leagues. Up to 10 Yahoo fantasy leagues. Server-Sent Events delivery, webhooks, data export, and API access.',
     priceMonthly: 49.99,
     priceAnnual: 399.99,
   },
@@ -171,7 +171,7 @@ const STATIC_FAQ = [
   {
     question: 'How many fantasy leagues can I connect?',
     answer:
-      'Scrollr syncs with Yahoo Fantasy Sports to show your standings, matchups, and roster updates. Free accounts cannot connect Yahoo leagues. Uplink supports up to 1. Pro gives you 3 — enough for multi-sport managers. Ultimate connects every league across every sport with no restrictions.',
+      'Scrollr syncs with Yahoo Fantasy Sports to show your standings, matchups, and roster updates. Free accounts cannot connect Yahoo leagues. Uplink supports up to 1. Pro gives you 3 — enough for multi-sport managers. Ultimate raises the cap to 10 leagues across every sport.',
   },
   {
     question: 'What are custom alerts?',
@@ -695,12 +695,17 @@ function buildUplinkFAQ(limits: TierLimitsResponse): Array<FAQItem> {
   const free = limits.tiers.free
   const uplink = limits.tiers.uplink
   const pro = limits.tiers.uplink_pro
+  const ult = limits.tiers.uplink_ultimate
 
   // "Connect N league" — "None" when free has zero fantasy leagues.
   const freeFantasyCopy =
     free.fantasy === 0
       ? 'No Yahoo leagues'
       : `${free.fantasy} Yahoo league${free.fantasy === 1 ? '' : 's'}`
+
+  // Render an Ultimate-tier cap value: numbers stay numbers, null = "unlimited".
+  const ultimateCopy = (n: number | null): string =>
+    n === null ? 'unlimited' : `${n}`
 
   return [
     {
@@ -745,8 +750,8 @@ function buildUplinkFAQ(limits: TierLimitsResponse): Array<FAQItem> {
     {
       icon: Crown,
       question: 'How many fantasy leagues can I connect?',
-      highlight: `${freeFantasyCopy} on free, ${uplink.fantasy} with Uplink, ${pro.fantasy} with Pro, or every league with Ultimate.`,
-      answer: `Scrollr syncs with Yahoo Fantasy Sports to show your standings, matchups, and roster updates. Free accounts ${free.fantasy === 0 ? 'cannot connect Yahoo leagues' : `connect ${free.fantasy} league${free.fantasy === 1 ? '' : 's'}`}. Uplink supports up to ${uplink.fantasy}. Pro gives you ${pro.fantasy} — enough for multi-sport managers. Ultimate connects every league across every sport with no restrictions.`,
+      highlight: `${freeFantasyCopy} on free, ${uplink.fantasy} with Uplink, ${pro.fantasy} with Pro, or ${ultimateCopy(ult.fantasy)} with Ultimate.`,
+      answer: `Scrollr syncs with Yahoo Fantasy Sports to show your standings, matchups, and roster updates. Free accounts ${free.fantasy === 0 ? 'cannot connect Yahoo leagues' : `connect ${free.fantasy} league${free.fantasy === 1 ? '' : 's'}`}. Uplink supports up to ${uplink.fantasy}. Pro gives you ${pro.fantasy} — enough for multi-sport managers. Ultimate raises the cap to ${ultimateCopy(ult.fantasy)} leagues across every sport.`,
       accent: 'rose',
     },
     {
