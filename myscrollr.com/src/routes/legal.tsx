@@ -5,6 +5,8 @@ import { AlertTriangle, BookOpen, ChevronDown, Info, List } from 'lucide-react'
 
 import type { LegalDocument, LegalSection } from '@/components/legal/documents'
 import { usePageMeta } from '@/lib/usePageMeta'
+import { seo } from '@/lib/seo'
+import { breadcrumbs } from '@/lib/structured-data'
 import { itemVariants, pageVariants, sectionVariants } from '@/lib/animations'
 import {
   LEGAL_DOCUMENTS,
@@ -17,31 +19,17 @@ import {
 type LegalSearch = { doc?: string }
 
 export const Route = createFileRoute('/legal')({
-  head: () => ({
-    meta: [
-      { title: 'Legal — Scrollr' },
-      {
-        name: 'description',
-        content:
-          'Terms of Service, Privacy Policy, License, and Cookie Policy for the Scrollr desktop app and myscrollr.com.',
-      },
-      { property: 'og:title', content: 'Legal — Scrollr' },
-      {
-        property: 'og:description',
-        content:
-          'Terms of Service, Privacy Policy, License, and Cookie Policy for the Scrollr desktop app and myscrollr.com.',
-      },
-      { property: 'og:url', content: 'https://myscrollr.com/legal' },
-      { property: 'og:type', content: 'website' },
-      { name: 'twitter:title', content: 'Legal — Scrollr' },
-      {
-        name: 'twitter:description',
-        content:
-          'Terms of Service, Privacy Policy, License, and Cookie Policy for the Scrollr desktop app and myscrollr.com.',
-      },
-    ],
-    links: [{ rel: 'canonical', href: 'https://myscrollr.com/legal' }],
-  }),
+  head: () =>
+    seo({
+      title: 'Legal — Scrollr',
+      description:
+        'Terms of Service, Privacy Policy, License, and Cookie Policy for the Scrollr desktop app and myscrollr.com.',
+      path: '/legal',
+      jsonLd: breadcrumbs([
+        { name: 'Home', path: '/' },
+        { name: 'Legal', path: '/legal' },
+      ]),
+    }),
   validateSearch: (search: Record<string, unknown>): LegalSearch => ({
     doc: typeof search.doc === 'string' ? search.doc : undefined,
   }),

@@ -39,7 +39,8 @@ import type { BackdropBeam } from '@/components/landing/_ConvergenceBackdrop'
 import { businessApi } from '@/api/client'
 import { FAQSection } from '@/components/landing/FAQSection'
 import { ConvergenceBackdrop } from '@/components/landing/_ConvergenceBackdrop'
-import { usePageMeta } from '@/lib/usePageMeta'
+import { seo } from '@/lib/seo'
+import { breadcrumbs } from '@/lib/structured-data'
 import { seededRandom } from '@/lib/seededRandom'
 import { useGitHubStats } from '@/hooks/useGitHubStats'
 
@@ -52,6 +53,17 @@ const REPO = 'brandon-relentnet/myscrollr'
 // ── Route ───────────────────────────────────────────────────────
 
 export const Route = createFileRoute('/business')({
+  head: () =>
+    seo({
+      title: 'Scrollr for Business — Branded Desktop Deployments',
+      description:
+        'Custom-branded Scrollr deployments for brokerages, sports venues, fantasy platforms, crypto exchanges, and news publishers. Multi-display, self-hosted, dedicated support. Starts at $500/mo.',
+      path: '/business',
+      jsonLd: breadcrumbs([
+        { name: 'Home', path: '/' },
+        { name: 'Business', path: '/business' },
+      ]),
+    }),
   component: BusinessPage,
 })
 
@@ -1781,13 +1793,6 @@ function BottomCTA() {
    ══════════════════════════════════════════════════════════════════ */
 
 function BusinessPage() {
-  usePageMeta({
-    title: 'Business — Scrollr',
-    description:
-      'Scrollr for business: branded desktop deployments for teams, brokerages, sports venues, fantasy platforms, crypto exchanges, and news publishers. Custom branding, multi-display, self-hosted, dedicated support. Starts at $500/mo.',
-    canonicalUrl: 'https://myscrollr.com/business',
-  })
-
   return (
     <div className="min-h-screen">
       <BusinessHero />

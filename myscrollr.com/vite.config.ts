@@ -76,9 +76,19 @@ export default defineConfig({
       },
       prerender: {
         enabled: true,
-        crawlLinks: false,
-        filter: ({ path }: { path: string }) =>
-          path === '/' || path === '/legal' || path === '/uplink',
+        crawlLinks: true, // discover any internal links we forgot
+        filter: ({ path }: { path: string }) => {
+          // Auth/dynamic routes — stay client-rendered (SPA fallback)
+          const excluded = [
+            '/account',
+            '/callback',
+            '/invite',
+            '/status', // live data, no value prerendering
+          ]
+          if (excluded.includes(path)) return false
+          if (path.startsWith('/u/')) return false // dynamic profile pages
+          return true
+        },
       },
     }),
     viteReact(),
