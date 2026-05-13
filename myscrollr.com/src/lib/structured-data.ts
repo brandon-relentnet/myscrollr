@@ -16,7 +16,7 @@ export const organization = {
   '@type': 'Organization',
   name: 'Scrollr',
   url: BASE_URL,
-  logo: `${BASE_URL}/icon-512.png`,
+  logo: `${BASE_URL}/icon-128.png`,
   description:
     'Scrollr is a quiet desktop ticker for live finance, sports, news, and fantasy data. Open source and privacy-first.',
   sameAs: ['https://github.com/brandon-relentnet/myscrollr'],
