@@ -16,7 +16,7 @@
   "scripts": {
     "predev": "node scripts/fetch-latest-version.mjs",
     "dev": "vite --port 3000",
-    "prebuild": "node scripts/fetch-latest-version.mjs",
+    "prebuild": "node scripts/fetch-latest-version.mjs && node scripts/generate-sitemap.mjs",
     "build": "vite build && tsc",
     "serve": "vite preview",
     "lint": "eslint",
