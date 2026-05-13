@@ -9,7 +9,7 @@ type SeoInput = {
   jsonLd?: object | Array<object>
 }
 
-const BASE_URL = 'https://myscrollr.com'
+export const BASE_URL = 'https://myscrollr.com'
 
 type MetaTag =
   | { title: string }
