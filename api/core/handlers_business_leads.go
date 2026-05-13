@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/mail"
 	"os"
 	"strings"
 	"time"
@@ -42,6 +43,18 @@ const (
 	businessLeadCompanyMax = 200
 	businessLeadMessageMin = 10
 	businessLeadMessageMax = 5000
+
+	// companySubjectMax caps how much of the (200-char) Company string
+	// we splice into email subject lines. 80 keeps subjects readable
+	// in most mail clients without truncating mid-word on legitimate
+	// names like "Goldman Sachs Asset Management & Co." (38 chars).
+	companySubjectMax = 80
+
+	// businessLeadSideEffectsTimeout bounds the detached context used
+	// for the post-rate-limit DB insert AND both Resend dispatches.
+	// Two Resend calls at 15s apiece + a fast Postgres write leaves
+	// headroom; 45s avoids the worst-case 30s cliff.
+	businessLeadSideEffectsTimeout = 45 * time.Second
 )
 
 // allowedBusinessUseCases mirrors the dropdown options on the marketing
@@ -97,7 +110,19 @@ func HandleSubmitBusinessLead(c *fiber.Ctx) error {
 			Error:  "Name required (max 120 chars)",
 		})
 	}
-	if req.Email == "" || !strings.Contains(req.Email, "@") || len(req.Email) > businessLeadEmailMax {
+	if len(req.Email) == 0 || len(req.Email) > businessLeadEmailMax {
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
+			Status: "error",
+			Error:  "Valid email required",
+		})
+	}
+	// net/mail.ParseAddress catches the obvious garbage that
+	// `strings.Contains("@")` lets through ("a@b", "foo @ bar", names
+	// without local parts, etc.). It accepts RFC 5322 forms including
+	// the "Name <addr>" variant, so we narrow to the bare address by
+	// reading parsed.Address and requiring it equals the trimmed input.
+	parsedEmail, err := mail.ParseAddress(req.Email)
+	if err != nil || parsedEmail.Address != req.Email {
 		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
 			Status: "error",
 			Error:  "Valid email required",
@@ -133,7 +158,13 @@ func HandleSubmitBusinessLead(c *fiber.Ctx) error {
 		count, err := Rdb.Incr(c.Context(), key).Result()
 		if err == nil {
 			if count == 1 {
-				_ = Rdb.Expire(c.Context(), key, businessLeadRateWindow).Err()
+				if expErr := Rdb.Expire(c.Context(), key, businessLeadRateWindow).Err(); expErr != nil {
+					// If TTL set fails, the key has no expiry and will
+					// permanently block submissions from this IP until
+					// manually cleared. Log loudly so we notice.
+					log.Printf("[BusinessLeads] Redis EXPIRE failed for key=%s (key has no TTL): %v",
+						key, expErr)
+				}
 			}
 			if count > businessLeadMaxPerHour {
 				return c.Status(fiber.StatusTooManyRequests).JSON(ErrorResponse{
@@ -152,18 +183,26 @@ func HandleSubmitBusinessLead(c *fiber.Ctx) error {
 		userAgent = userAgent[:500]
 	}
 
+	// ── Persist + side effects under a detached context ───────────
+	// `bg` outlives the request scope so a fast client disconnect
+	// doesn't cancel the durable INSERT or the post-insert Resend
+	// dispatches. The user already submitted the form — finish what
+	// we promised them. 45s budget covers a fast Postgres write plus
+	// both 15s Resend timeouts with headroom.
+	bg, cancel := context.WithTimeout(context.Background(), businessLeadSideEffectsTimeout)
+	defer cancel()
+
 	// ── Persist (must succeed) ────────────────────────────────────
 	// DBPool is the durable record. Email dispatches that come next
 	// are best-effort and don't roll back this row.
 	var leadID int64
-	err := DBPool.QueryRow(c.Context(), `
+	if err := DBPool.QueryRow(bg, `
 		INSERT INTO business_leads
 		  (name, email, company, use_case, message, ip_redacted, user_agent)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id
 	`, req.Name, req.Email, req.Company, req.UseCase, req.Message, ipRedacted, userAgent).
-		Scan(&leadID)
-	if err != nil {
+		Scan(&leadID); err != nil {
 		log.Printf("[BusinessLeads] DB insert failed for email=%s company=%s: %v",
 			redactEmail(req.Email), req.Company, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
@@ -174,13 +213,6 @@ func HandleSubmitBusinessLead(c *fiber.Ctx) error {
 
 	log.Printf("[BusinessLeads] Lead #%d captured ip=%s email=%s company=%q use_case=%s",
 		leadID, ipRedacted, redactEmail(req.Email), req.Company, req.UseCase)
-
-	// ── Email dispatches (best-effort) ────────────────────────────
-	// Use a detached context so a fast client disconnect doesn't
-	// cancel the Resend calls mid-flight. We've already promised the
-	// user a response — finish the side effects.
-	bg, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
 
 	if err := sendBusinessLeadNotification(bg, leadID, req, useCaseLabel, ipRedacted); err != nil {
 		log.Printf("[BusinessLeads] Notification email failed for lead #%d: %v", leadID, err)
@@ -269,7 +301,7 @@ func sendBusinessLeadNotification(
 		return fmt.Errorf("RESEND_API_KEY not configured")
 	}
 
-	subject := fmt.Sprintf("New business lead: %s", req.Company)
+	subject := fmt.Sprintf("New business lead: %s", truncateForSubject(req.Company))
 
 	htmlBody := fmt.Sprintf(`<!DOCTYPE html>
 <html>
@@ -332,7 +364,7 @@ func sendBusinessLeadAutoReply(
 		return fmt.Errorf("RESEND_API_KEY not configured")
 	}
 
-	subject := fmt.Sprintf("Thanks — we got your note about %s", req.Company)
+	subject := fmt.Sprintf("Thanks — we got your note about %s", truncateForSubject(req.Company))
 
 	htmlBody := fmt.Sprintf(`<!DOCTYPE html>
 <html>
@@ -381,6 +413,23 @@ func sendBusinessLeadAutoReply(
 	}
 
 	return postToResend(ctx, apiKey, payload)
+}
+
+// truncateForSubject trims a user-supplied string down to a length
+// that reads cleanly as part of an email subject. The DB allows up
+// to 200 characters of Company, but pasting all 200 into the subject
+// produces unreadable headers in most mail clients. We chop at a word
+// boundary when possible and append an ellipsis so the truncation is
+// visible to the recipient.
+func truncateForSubject(s string) string {
+	if len(s) <= companySubjectMax {
+		return s
+	}
+	cut := s[:companySubjectMax]
+	if idx := strings.LastIndexByte(cut, ' '); idx > companySubjectMax/2 {
+		cut = cut[:idx]
+	}
+	return cut + "\u2026"
 }
 
 // postToResend is the shared POST helper for the two senders above.

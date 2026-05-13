@@ -1267,7 +1267,11 @@ function LeadForm() {
       setError('Please enter your name.')
       return
     }
-    if (!trimmedEmail || !trimmedEmail.includes('@')) {
+    // Frontend email check mirrors the backend's net/mail.ParseAddress
+    // gate: catch obvious garbage before the round-trip. The backend
+    // is still authoritative — this just saves a network roundtrip
+    // for "a@b" / "foo @ bar" / unfinished input.
+    if (!trimmedEmail || !/^\S+@\S+\.\S+$/.test(trimmedEmail)) {
       setError('Please enter a valid email address.')
       return
     }
