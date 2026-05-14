@@ -25,6 +25,14 @@ spec:
                 name: core-config
             - secretRef:
                 name: scrollr-secrets
+          env:
+            # Sentry — per-service DSN. SENTRY_USER_SALT, ENVIRONMENT,
+            # and GIT_SHA come from scrollr-secrets (via envFrom above)
+            # because they're shared across all services. DSNs are
+            # ingestion-only (not data-exfil) so inlining in git is
+            # acceptable; rotate via Sentry UI if compromised.
+            - name: SENTRY_DSN
+              value: "https://2cb3c4a8a71b52241c127bc46495a070@o4511384091033600.ingest.us.sentry.io/4511384381554688"
           resources:
             requests:
               cpu: 100m

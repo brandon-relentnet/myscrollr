@@ -51,6 +51,29 @@ spec:
                 secretKeyRef:
                   name: scrollr-secrets
                   key: ENCRYPTION_KEY
+            # Sentry — per-service DSN inlined (ingestion-only, not a leak).
+            - name: SENTRY_DSN
+              value: "https://1fe6d97731f2f049b6bed79af12553cd@o4511384091033600.ingest.us.sentry.io/4511384397086720"
+            # Shared Sentry config from scrollr-secrets (optional=true so
+            # the Deployment doesn't fail if the keys aren't populated yet).
+            - name: SENTRY_USER_SALT
+              valueFrom:
+                secretKeyRef:
+                  name: scrollr-secrets
+                  key: SENTRY_USER_SALT
+                  optional: true
+            - name: ENVIRONMENT
+              valueFrom:
+                secretKeyRef:
+                  name: scrollr-secrets
+                  key: ENVIRONMENT
+                  optional: true
+            - name: GIT_SHA
+              valueFrom:
+                secretKeyRef:
+                  name: scrollr-secrets
+                  key: GIT_SHA
+                  optional: true
           resources:
             requests:
               cpu: 50m

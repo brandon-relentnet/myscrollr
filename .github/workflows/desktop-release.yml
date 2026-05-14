@@ -238,6 +238,16 @@ jobs:
           VITE_API_URL: ${{ secrets.DESKTOP_VITE_API_URL }}
           VITE_AUTH_ENDPOINT: ${{ secrets.DESKTOP_VITE_AUTH_ENDPOINT }}
           VITE_LOGTO_APP_ID: ${{ secrets.DESKTOP_VITE_LOGTO_APP_ID }}
+          # Sentry — error monitoring. All four are optional: when any is
+          # unset, the corresponding integration becomes a no-op (the Vite
+          # plugin skips source map upload; the Rust binary's option_env!
+          # returns None and the SDK is disabled). The JS-side DSN is the
+          # same project as the Rust DSN — split into two env vars so each
+          # is grep-able and CI can wire them independently.
+          VITE_SENTRY_DSN: ${{ secrets.SENTRY_DSN_DESKTOP_WEBVIEW }}
+          SENTRY_DSN_RUST: ${{ secrets.SENTRY_DSN_DESKTOP_RUST }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           # Apple code-signing (macOS only; ignored on other runners).
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -254,6 +264,25 @@ jobs:
           releaseBody: "See the [full changelog](https://github.com/brandon-relentnet/myscrollr/commits/desktop-v__VERSION__) for details."
           releaseDraft: true
           prerelease: false
+
+      # ── Register the release in Sentry ─────────────────────────
+      # Tells Sentry the release exists so events get clustered correctly.
+      # Source map upload itself happens inside `npm run build` (via the
+      # @sentry/vite-plugin); this step just registers the release name.
+      # Runs only on Linux to avoid three duplicate registrations across
+      # the matrix. continue-on-error keeps a Sentry-side flake from
+      # failing the whole release pipeline.
+      - name: Register Sentry release
+        if: matrix.platform == 'ubuntu-22.04' && env.SENTRY_AUTH_TOKEN != '' && env.SENTRY_ORG != ''
+        uses: getsentry/action-release@v3
+        continue-on-error: true
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: scrollr-desktop
+        with:
+          environment: production
+          version: scrollr-desktop@${{ github.ref_name }}
 
       # ── Notarize and staple the macOS DMG ──────────────────────
       # tauri-action only notarizes the .app bundle inside the DMG, leaving

@@ -6,7 +6,71 @@ mod tray;
 use std::sync::{atomic::AtomicBool, Arc, Mutex};
 use tauri::Manager;
 
+/// Initialize the Sentry client for the Rust process. Returns a guard
+/// that flushes events on drop — the caller MUST keep it alive for the
+/// lifetime of the program (i.e. bind it to a local in `run()`).
+///
+/// Privacy: send_default_pii=false, all user info stripped in before_send,
+/// home directory paths scrubbed from stack frame filenames.
+///
+/// DSN is read at COMPILE TIME via option_env!. If not set (local dev,
+/// debug builds), Sentry is effectively disabled — the guard is still
+/// returned to keep the call site uniform, but no events are sent.
+fn init_sentry() -> sentry::ClientInitGuard {
+    sentry::init(sentry::ClientOptions {
+        dsn: option_env!("SENTRY_DSN_RUST").and_then(|s| s.parse().ok()),
+        release: Some(format!("scrollr-desktop@{}", env!("CARGO_PKG_VERSION")).into()),
+        environment: Some(
+            if cfg!(debug_assertions) {
+                "development"
+            } else {
+                "production"
+            }
+            .into(),
+        ),
+
+        send_default_pii: false,
+        attach_stacktrace: true,
+        max_breadcrumbs: 50,
+
+        traces_sample_rate: 0.1,
+
+        before_send: Some(std::sync::Arc::new(|mut event| {
+            // Strip the user's home directory from stack frame filenames.
+            let home = dirs::home_dir()
+                .map(|h| h.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            for exc in event.exception.iter_mut() {
+                if let Some(st) = exc.stacktrace.as_mut() {
+                    for frame in st.frames.iter_mut() {
+                        if let Some(filename) = frame.filename.as_mut() {
+                            if !home.is_empty() {
+                                let s: String = filename.to_string();
+                                *filename = s.replace(&home, "~").into();
+                            }
+                        }
+                    }
+                }
+            }
+            event.user = None;
+            Some(event)
+        })),
+
+        ..Default::default()
+    })
+}
+
 pub fn run() {
+    // Sentry init MUST happen before any plugin or async runtime starts.
+    // The returned guard flushes events on Drop — keep it alive for the
+    // whole function.
+    let _sentry_guard = init_sentry();
+
+    sentry::configure_scope(|scope| {
+        scope.set_tag("runtime", "rust-core");
+        scope.set_tag("platform", std::env::consts::OS);
+    });
+
     // Windows: claim the main thread for STA (Single-Threaded Apartment)
     // mode before any plugin can initialize COM in MTA mode. Plugins like
     // tauri-plugin-http (via native-tls/WinHTTP) and tauri-plugin-mcp-bridge

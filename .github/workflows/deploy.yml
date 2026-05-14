@@ -263,6 +263,13 @@ jobs:
           VITE_STRIPE_PRICE_PRO_ANNUAL: ${{ secrets.VITE_STRIPE_PRICE_PRO_ANNUAL }}
           VITE_STRIPE_PRICE_ULTIMATE_MONTHLY: ${{ secrets.VITE_STRIPE_PRICE_ULTIMATE_MONTHLY }}
           VITE_STRIPE_PRICE_ULTIMATE_ANNUAL: ${{ secrets.VITE_STRIPE_PRICE_ULTIMATE_ANNUAL }}
+          # Sentry — used at WEBSITE BUILD TIME so the Vite plugin can
+          # upload source maps. VITE_SENTRY_DSN is baked into the bundle.
+          # SENTRY_AUTH_TOKEN + SENTRY_ORG let @sentry/vite-plugin upload
+          # to api.sentry.io. All three are no-op if unset.
+          VITE_SENTRY_DSN: ${{ secrets.SENTRY_DSN_WEB }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
         run: |
           IMAGE="${REGISTRY}/${{ matrix.service }}"
           SHA_TAG="sha-${GITHUB_SHA::7}"
@@ -280,7 +287,10 @@ jobs:
               "VITE_STRIPE_PRICE_PRO_MONTHLY=$VITE_STRIPE_PRICE_PRO_MONTHLY" \
               "VITE_STRIPE_PRICE_PRO_ANNUAL=$VITE_STRIPE_PRICE_PRO_ANNUAL" \
               "VITE_STRIPE_PRICE_ULTIMATE_MONTHLY=$VITE_STRIPE_PRICE_ULTIMATE_MONTHLY" \
-              "VITE_STRIPE_PRICE_ULTIMATE_ANNUAL=$VITE_STRIPE_PRICE_ULTIMATE_ANNUAL"; do
+              "VITE_STRIPE_PRICE_ULTIMATE_ANNUAL=$VITE_STRIPE_PRICE_ULTIMATE_ANNUAL" \
+              "VITE_SENTRY_DSN=$VITE_SENTRY_DSN" \
+              "SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN" \
+              "SENTRY_ORG=$SENTRY_ORG"; do
               BUILD_ARGS="$BUILD_ARGS --build-arg $arg"
             done
           fi
@@ -327,6 +337,23 @@ jobs:
           kubectl apply -f k8s/core-api.yaml
           kubectl apply -f k8s/website.yaml
           kubectl apply -f k8s/ingress.yaml
+
+      # Patch the GIT_SHA key in scrollr-secrets so the next pod restart
+      # picks up the deployed commit's SHA as the Sentry release tag.
+      # Done with kubectl patch so the rest of the secret is untouched.
+      # Runs on every deploy (independent of K8S_CHANGED) so a Go/Rust
+      # service rollout always sees the right SHA.
+      - name: Update GIT_SHA in scrollr-secrets
+        run: |
+          SHA="${GITHUB_SHA::7}"
+          SHA_B64=$(printf '%s' "$SHA" | base64)
+          kubectl patch secret scrollr-secrets -n scrollr \
+            --type='json' \
+            -p="[{\"op\":\"replace\",\"path\":\"/data/GIT_SHA\",\"value\":\"${SHA_B64}\"}]" \
+          || kubectl patch secret scrollr-secrets -n scrollr \
+            --type='json' \
+            -p="[{\"op\":\"add\",\"path\":\"/data/GIT_SHA\",\"value\":\"${SHA_B64}\"}]"
+          echo "Set GIT_SHA=${SHA} in scrollr-secrets"
 
       - name: Roll out updated images
         run: |

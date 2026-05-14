@@ -29,6 +29,21 @@ spec:
                   key: DATABASE_URL
             - name: PORT
               value: "3004"
+            # Sentry — per-service DSN inlined (ingestion-only, not a leak).
+            - name: SENTRY_DSN
+              value: "https://62cf3908dc4be27fb6e14f04fb77d035@o4511384091033600.ingest.us.sentry.io/4511384416550912"
+            - name: ENVIRONMENT
+              valueFrom:
+                secretKeyRef:
+                  name: scrollr-secrets
+                  key: ENVIRONMENT
+                  optional: true
+            - name: GIT_SHA
+              valueFrom:
+                secretKeyRef:
+                  name: scrollr-secrets
+                  key: GIT_SHA
+                  optional: true
           resources:
             requests:
               cpu: 100m

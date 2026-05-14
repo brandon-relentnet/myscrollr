@@ -34,6 +34,21 @@ spec:
                   key: API_SPORTS_KEY
             - name: PORT
               value: "3002"
+            # Sentry — per-service DSN inlined (ingestion-only, not a leak).
+            - name: SENTRY_DSN
+              value: "https://e23940f923c6d8ff5d27c022de6c5a21@o4511384091033600.ingest.us.sentry.io/4511384414584832"
+            - name: ENVIRONMENT
+              valueFrom:
+                secretKeyRef:
+                  name: scrollr-secrets
+                  key: ENVIRONMENT
+                  optional: true
+            - name: GIT_SHA
+              valueFrom:
+                secretKeyRef:
+                  name: scrollr-secrets
+                  key: GIT_SHA
+                  optional: true
           resources:
             requests:
               cpu: 100m
