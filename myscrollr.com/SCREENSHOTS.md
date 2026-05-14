@@ -11,21 +11,27 @@ rendered through the shared `<ProductScreenshot>` component.
 
 ## Source of truth
 
-Raw, full-resolution PNGs live at the **repo root** under `ss/cropped/`:
+Raw, full-resolution PNGs live inside `myscrollr.com/` so the Docker build
+context (which only copies `myscrollr.com/`) can access them:
 
 ```
-ss/cropped/
+myscrollr.com/screenshot-sources/
   darkmode/       dark-<slug>.png            ← every dark-mode capture
   lightmode/      light-<slug>.png           ← every light-mode capture
   themes/dark/    theme-<name>-dark-settings.png
   themes/light/   theme-<name>-light-settings.png
+
+myscrollr.com/screenshot-sources-ticker/
+  compact/<theme>/<channel>-<theme>-compact.png
+  detailed/<theme>/<channel>-<theme>-detailed.png
 ```
 
 All sources are **2478×1478** (aspect ≈ `1600 / 954`, i.e. 1.677). Keep this
 size locked when adding new captures so the optimize script and the
 `<ProductScreenshot>` aspect-ratio defaults stay aligned.
 
-`ss/cropped/` is committed so screenshots regenerate deterministically on CI.
+`screenshot-sources/` and `screenshot-sources-ticker/` are committed so the
+optimize script can regenerate WebPs deterministically on any machine.
 
 ---
 
@@ -46,13 +52,13 @@ size locked when adding new captures so the optimize script and the
 - Don't capture PII. If the in-app data shows friend names or private league
   titles, switch to a different league or scrub before committing.
 - Crop to exactly 2478×1478. If your tool produces a different output, batch
-  through ImageMagick / sips before dropping into `ss/cropped/`.
+  through ImageMagick / sips before dropping into `myscrollr.com/screenshot-sources/`.
 
 ### Adding a new screenshot
 
 1. Capture the new dark + light PNGs.
-2. Drop them in `ss/cropped/darkmode/dark-<slug>.png` and
-   `ss/cropped/lightmode/light-<slug>.png`.
+2. Drop them in `myscrollr.com/screenshot-sources/darkmode/dark-<slug>.png` and
+   `myscrollr.com/screenshot-sources/lightmode/light-<slug>.png`.
 3. Add an entry to the `FEED_MAP` table in
    `myscrollr.com/scripts/optimize-screenshots.mjs`, picking a category
    (`channels`, `widgets`, `configure`, `display`, `overview`, `support`)

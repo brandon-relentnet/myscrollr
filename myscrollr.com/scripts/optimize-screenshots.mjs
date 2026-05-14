@@ -6,12 +6,12 @@
  * using a normalized basename/theme/density layout that matches the
  * `<ProductScreenshot>` component's expectations.
  *
- * Source layout (input):
- *   ss/cropped/darkmode/dark-<slug>.png
- *   ss/cropped/lightmode/light-<slug>.png
- *   ss/cropped/themes/dark/theme-<name>-dark-settings.png
- *   ss/cropped/themes/light/theme-<name>-light-settings.png
- *   ss/cropped-ticker/<density>/<theme>/<channel>-<theme>-<density>.png
+ * Source layout (input — all under myscrollr.com/ so Docker can copy them):
+ *   screenshot-sources/darkmode/dark-<slug>.png
+ *   screenshot-sources/lightmode/light-<slug>.png
+ *   screenshot-sources/themes/dark/theme-<name>-dark-settings.png
+ *   screenshot-sources/themes/light/theme-<name>-light-settings.png
+ *   screenshot-sources-ticker/<density>/<theme>/<channel>-<theme>-<density>.png
  *
  * Output layout (public):
  *   public/screenshots/<category>/<basename>-<theme>@1x.webp
@@ -44,9 +44,11 @@ import sharp from 'sharp'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = join(__dirname, '..')
-const repoRoot = join(root, '..')
-const srcRoot = join(repoRoot, 'ss', 'cropped')
-const tickerSrcRoot = join(repoRoot, 'ss', 'cropped-ticker')
+// Source PNGs live inside myscrollr.com/ so Docker's build context
+// (which copies only myscrollr.com/) has access to them. The previous
+// location at the repo root was outside the Docker context and broke CI.
+const srcRoot = join(root, 'screenshot-sources')
+const tickerSrcRoot = join(root, 'screenshot-sources-ticker')
 const outRoot = join(root, 'public', 'screenshots')
 
 const FORCE = process.argv.includes('--force')
@@ -358,7 +360,8 @@ async function verifySources() {
     console.error(
       '\nFix the FEED_MAP / SINGLE_THEME_MAP / THEME_NAMES / TICKER_*\n' +
         'tables in this script, or add the missing PNGs under\n' +
-        'ss/cropped/ or ss/cropped-ticker/.\n',
+        'myscrollr.com/screenshot-sources/ or\n' +
+        'myscrollr.com/screenshot-sources-ticker/.\n',
     )
     process.exit(1)
   }
