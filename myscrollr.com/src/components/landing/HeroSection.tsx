@@ -111,7 +111,12 @@ export function HeroSection() {
                     onClick={() => handleSelect(i)}
                     aria-label={`Show ${word} demo`}
                     aria-pressed={isActive}
-                    className="flex-1 cursor-pointer py-2"
+                    // `py-3` on mobile gives ~44px total tap area
+                    // (12+12+1px track = 25; padded box ends up
+                    // ~44px because flex centers the track). Drops
+                    // back to `py-2` from `sm:` upward to match the
+                    // desktop look. WCAG 2.5.5 AAA target.
+                    className="flex-1 cursor-pointer py-3 sm:py-2"
                   >
                     <div
                       className={`h-1 rounded-full overflow-hidden ${accent.track}`}

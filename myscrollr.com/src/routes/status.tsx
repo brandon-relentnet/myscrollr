@@ -224,7 +224,7 @@ function StatusPage() {
   }
 
   return (
-    <div className="min-h-screen pt-20">
+    <div className="min-h-dvh pt-20">
       {/* ── Hero ── */}
       <section className="relative pt-24 pb-20 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-base-200/20 to-transparent pointer-events-none" />

@@ -137,7 +137,7 @@ function ProfilePage() {
   // ── Loading state ──
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-dvh flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="animate-spin h-12 w-12 text-base-content/30 mx-auto" />
           <p className="text-xs text-base-content/30">Loading profile...</p>
@@ -149,7 +149,7 @@ function ProfilePage() {
   // ── Sign-in prompt for unauthenticated /u/me ──
   if (username === 'me' && !isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
+      <div className="min-h-dvh flex items-center justify-center p-6">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -185,7 +185,7 @@ function ProfilePage() {
   // ── Profile not found ──
   if (!profile) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
+      <div className="min-h-dvh flex items-center justify-center p-6">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -214,7 +214,7 @@ function ProfilePage() {
   // ── Main profile view ──
   return (
     <motion.div
-      className="min-h-screen pt-20"
+      className="min-h-dvh pt-20"
       variants={pageVariants}
       initial="hidden"
       animate="visible"

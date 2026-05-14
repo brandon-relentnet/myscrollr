@@ -98,7 +98,7 @@ function LifetimePage() {
   }
 
   return (
-    <div className="min-h-screen pt-20">
+    <div className="min-h-dvh pt-20">
       {/* ── Checkout Modal ──────────────────────────────────── */}
       {showCheckout && (
         <Suspense

@@ -17,7 +17,7 @@ function Callback() {
   // Show the error UI only when the callback exchange itself failed.
   if (error) {
     return (
-      <div className="min-h-screen text-base-content flex items-center justify-center font-mono">
+      <div className="min-h-dvh text-base-content flex items-center justify-center font-mono">
         <div className="text-center space-y-4 max-w-md">
           <div className="h-12 w-12 rounded-full border-2 border-error flex items-center justify-center mx-auto mb-4">
             <span className="text-error text-xl">!</span>
@@ -43,7 +43,7 @@ function Callback() {
   // page as just header + footer with an empty body for ~1 frame to a
   // few hundred ms depending on how the route transition was scheduled.
   return (
-    <div className="min-h-screen text-base-content flex items-center justify-center font-mono">
+    <div className="min-h-dvh text-base-content flex items-center justify-center font-mono">
       <div className="text-center space-y-4">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4" />
         <p className="uppercase tracking-[0.2em] text-primary animate-pulse">

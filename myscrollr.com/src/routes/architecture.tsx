@@ -294,7 +294,7 @@ const TECH_STACK: Array<TechGroup> = [
 
 function ArchitecturePage() {
   return (
-    <div className="min-h-screen pt-20">
+    <div className="min-h-dvh pt-20">
       {/* ── HERO ─────────────────────────────────────────────── */}
       <section className="relative pt-28 pb-20 overflow-hidden">
         {/* Background grid */}

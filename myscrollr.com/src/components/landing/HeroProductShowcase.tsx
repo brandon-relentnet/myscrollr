@@ -102,7 +102,11 @@ export function HeroProductShowcase({ activeIndex }: HeroProductShowcaseProps) {
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.6, ease: 'easeOut' }}
-      className="relative w-[360px] sm:w-[480px] lg:w-[500px] xl:w-[640px] 2xl:w-[780px] aspect-[1600/954]"
+      // `w-full max-w-[360px]` lets the showcase shrink with the
+      // viewport down to ~320px (iPhone SE 1st gen) without
+      // overflowing the column. Above `sm:`, fixed widths take over
+      // (desktop visual unchanged).
+      className="relative w-full max-w-[360px] sm:w-[480px] sm:max-w-none lg:w-[500px] xl:w-[640px] 2xl:w-[780px] aspect-[1600/954]"
     >
       {/* Ambient glow tinted by the active channel's accent color. */}
       <div

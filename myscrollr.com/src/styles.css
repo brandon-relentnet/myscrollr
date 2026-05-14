@@ -319,6 +319,12 @@ body::before {
     font-weight: 700;
     line-height: 1.15;
     letter-spacing: -0.02em;
+    /* Defense-in-depth: prevent very long single words (e.g. brand
+       names, technical terms, animated word swaps in the hero) from
+       overflowing their container on narrow viewports. `break-word`
+       only breaks when there's no other option, so normal headlines
+       wrap naturally at word boundaries. */
+    overflow-wrap: break-word;
   }
 
   h1 {
@@ -757,17 +763,17 @@ pre,
    ========================================================================== */
 
 .container {
-  @apply mx-auto px-5 sm:px-6 lg:px-8 py-16 lg:py-24;
+  @apply mx-auto px-5 sm:px-6 lg:px-8 py-10 sm:py-14 lg:py-24;
   max-width: 1400px;
 }
 
 .container-sm {
-  @apply mx-auto px-5 sm:px-6 lg:px-8 py-12 lg:py-16;
+  @apply mx-auto px-5 sm:px-6 lg:px-8 py-8 sm:py-10 lg:py-16;
   max-width: 800px;
 }
 
 .container-lg {
-  @apply mx-auto px-5 sm:px-6 lg:px-10 py-16 lg:py-32;
+  @apply mx-auto px-5 sm:px-6 lg:px-10 py-12 sm:py-16 lg:py-32;
   max-width: 1600px;
 }
 

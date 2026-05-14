@@ -110,7 +110,7 @@ function DownloadPage() {
   const recommended = PLATFORMS.find((p) => p.id === detected) ?? PLATFORMS[0]
 
   return (
-    <div className="min-h-screen bg-base-100">
+    <div className="min-h-dvh bg-base-100">
       {/* ── Hero ─────────────────────────────────────────────── */}
       <section className="relative overflow-hidden py-24 sm:py-32">
         <div className="mx-auto max-w-4xl px-6 text-center">
