@@ -1,83 +1,40 @@
-import { motion } from 'motion/react'
-
 /**
- * PULSE Logo - Abstract EKG/Heartbeat Line
- * Fits the trading terminal aesthetic
+ * ScrollrSVG — Scrollr brand glyph.
+ *
+ * Static rendering of the same scroll-logo path used by the desktop app
+ * (see `desktop/src/components/ScrollLogo.tsx` and
+ * `desktop/public/scroll-logo-light.svg`). The marketing site doesn't
+ * have a concept of "ticker alive", so we always render the idle state:
+ * solid mint glyph with two dark end-dots.
+ *
+ * The path coordinates use the original SVG digitization with a flipped
+ * Y-axis, which is why the inner `<g>` applies
+ * `transform="translate(0,639) scale(0.1,-0.1)"`. Don't touch the
+ * numbers — they came straight from the desktop asset.
  */
+
+const SCROLL_PATH =
+  'M4870 6321 c-100 -32 -157 -70 -215 -140 l-29 -36 41 37 c329 291 807 -68 501 -375 -132 -132 -60 -130 -1750 -66 -1538 57 -1544 57 -1792 9 -1687 -328 -1763 -2552 -101 -2980 253 -65 227 -64 1750 -65 1531 0 1427 4 1568 -66 371 -184 376 -666 9 -858 -160 -83 43 -75 -2157 -81 -2131 -6 -2047 -4 -2225 -61 -234 -74 -312 -243 -250 -539 54 -254 193 -701 256 -821 145 -275 578 -316 759 -72 l28 38 -39 -36 c-279 -257 -732 -25 -564 289 84 158 228 208 560 195 354 -13 3176 -93 3313 -93 895 0 1529 475 1690 1264 188 928 -386 1701 -1383 1862 -108 18 -198 19 -1510 19 l-1395 0 -78 22 c-556 158 -528 849 38 968 60 12 287 15 1525 15 1678 0 1780 4 1990 72 190 61 284 172 283 333 -2 156 -215 857 -302 991 -105 164 -326 238 -521 175z'
+
 function ScrollrSVG({ width = 48, height = 48, className = '' }) {
   return (
     <svg
       width={width}
       height={height}
-      viewBox="0 0 100 100"
+      viewBox="0 0 639 639"
       className={className}
-      style={{ overflow: 'visible' }}
       aria-hidden="true"
       focusable="false"
     >
-      <defs>
-        {/* Gradient for the pulse line */}
-        <linearGradient id="pulseGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="var(--color-primary, #34d399)" />
-          <stop offset="50%" stopColor="var(--color-info, #00d4ff)" />
-          <stop offset="100%" stopColor="var(--color-secondary, #ff4757)" />
-        </linearGradient>
-
-        {/* Glow filter */}
-        <filter id="pulseGlow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="2" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-
-      {/* Background circle (optional - subtle) */}
-      <circle
-        cx="50"
-        cy="50"
-        r="45"
-        fill="none"
-        stroke="var(--color-base-300, #1e1e28)"
-        strokeWidth="1"
-        opacity="0.5"
-      />
-
-      {/* Pulse/EKG Line */}
-      <motion.path
-        d="M10 50 L25 50 L30 35 L40 65 L45 40 L50 50 L60 50 L70 30 L80 70 L85 45 L90 50 L95 50"
-        fill="none"
-        stroke="url(#pulseGradient)"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        filter="url(#pulseGlow)"
-        initial={{ pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: 1 }}
-        transition={{
-          duration: 1.5,
-          ease: 'easeInOut',
-        }}
-      />
-
-      {/* Animated pulse dot at the end */}
-      <motion.circle
-        cx="95"
-        cy="50"
-        r="4"
+      <g
+        transform="translate(0,639) scale(0.1,-0.1)"
         fill="var(--color-primary, #34d399)"
-        filter="url(#pulseGlow)"
-        animate={{
-          scale: [1, 1.5, 1],
-          opacity: [0.7, 1, 0.7],
-        }}
-        transition={{
-          duration: 1,
-          repeat: Infinity,
-          ease: 'easeInOut',
-        }}
-      />
+        stroke="none"
+      >
+        <path d={SCROLL_PATH} />
+      </g>
+      <circle cx="492" cy="39" r="20" fill="#141420" />
+      <circle cx="97" cy="599" r="20" fill="#141420" />
     </svg>
   )
 }
