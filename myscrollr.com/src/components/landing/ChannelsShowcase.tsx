@@ -182,14 +182,14 @@ function TickerChipItem({ chip }: { chip: TickerChip }) {
   const c = chipColors[chip.channel]
   return (
     <div
-      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${c.border} ${c.bg} shrink-0`}
+      className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border ${c.border} ${c.bg} shrink-0`}
     >
       <span
-        className={`text-[11px] font-bold font-mono ${c.text} whitespace-nowrap`}
+        className={`text-[10px] sm:text-[11px] font-bold font-mono ${c.text} whitespace-nowrap`}
       >
         {chip.label}
       </span>
-      <span className={`text-[10px] font-mono ${c.sub} whitespace-nowrap`}>
+      <span className={`text-[9px] sm:text-[10px] font-mono ${c.sub} whitespace-nowrap`}>
         {chip.value}
       </span>
     </div>
@@ -452,7 +452,7 @@ export function ChannelsShowcase() {
 
       {/* Header area — container-width but custom vertical padding */}
       <div
-        className="mx-auto px-5 sm:px-6 lg:px-8 pt-16 lg:pt-24 relative"
+        className="mx-auto px-5 sm:px-6 lg:px-8 pt-14 sm:pt-16 lg:pt-24 relative"
         style={{ maxWidth: 1400 }}
       >
         <motion.div
@@ -461,7 +461,7 @@ export function ChannelsShowcase() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.6, ease: EASE }}
-          className="flex flex-col items-center text-center mb-10 lg:mb-14"
+          className="flex flex-col items-center text-center mb-7 sm:mb-10 lg:mb-14"
         >
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-5 text-center">
             Everything You Follow.{' '}
@@ -480,7 +480,7 @@ export function ChannelsShowcase() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.15, duration: 0.5, ease: EASE }}
-          className="flex flex-wrap justify-center gap-2.5 mb-10 lg:mb-14"
+          className="-mx-5 flex flex-nowrap justify-center gap-1.5 overflow-x-auto px-3 pb-1 mb-5 sm:mx-0 sm:flex-wrap sm:gap-2.5 sm:overflow-visible sm:px-0 sm:pb-0 sm:mb-10 lg:mb-14"
         >
           {CHANNELS.map((stream) => {
             const isActive = activeChannels.has(stream.key)
@@ -490,7 +490,7 @@ export function ChannelsShowcase() {
                 key={stream.key}
                 type="button"
                 onClick={() => handleFilterClick(stream.key)}
-                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-[color,background-color,border-color,box-shadow] duration-300 cursor-pointer ${
+                  className={`inline-flex shrink-0 items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold border transition-[color,background-color,border-color,box-shadow] duration-300 cursor-pointer ${
                   isActive
                     ? `${stream.activeBg} ${stream.activeText} border-transparent shadow-md`
                     : 'bg-base-200/50 text-base-content/35 border-base-300/30 hover:text-base-content/55 hover:bg-base-200/70'
@@ -506,16 +506,17 @@ export function ChannelsShowcase() {
 
       {/* Full-bleed Motion+ Ticker */}
       <motion.div
+        data-channel-ticker-band
         style={{ opacity: 0 }}
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true }}
         transition={{ delay: 0.3, duration: 0.6, ease: EASE }}
-        className="relative bg-base-200/60 border-y border-base-300/30 py-3"
+        className="relative bg-base-200/60 border-y border-base-300/30 py-2 sm:py-3"
       >
         {/* Left/Right fade masks */}
-        <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-r from-base-100 to-transparent z-10 pointer-events-none" />
-        <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-l from-base-100 to-transparent z-10 pointer-events-none" />
+        <div className="absolute left-0 top-0 bottom-0 w-8 sm:w-24 bg-gradient-to-r from-base-100 to-transparent z-10 pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-8 sm:w-24 bg-gradient-to-l from-base-100 to-transparent z-10 pointer-events-none" />
 
         <AnimatedTicker
           chips={visibleChips}
@@ -533,14 +534,20 @@ export function ChannelsShowcase() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-40px' }}
         transition={{ delay: 0.1, duration: 0.5, ease: EASE }}
-        className="flex items-center justify-center gap-3 mt-4 mb-2 px-5"
+        data-channel-ticker-caption
+        className="flex items-center justify-center gap-3 mt-3 sm:mt-4 mb-2 px-5"
       >
         <span className="relative flex h-1.5 w-1.5">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
           <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
         </span>
-        <span className="text-[11px] text-base-content/30 font-medium">
-          Your desktop, right now — hover to slow, click to explore.
+        <span className="text-[11px] text-base-content/30 font-medium text-center">
+          <span className="sm:hidden">
+            Tap filters to shape the ticker in real time.
+          </span>
+          <span className="hidden sm:inline">
+            Your desktop, right now — hover to slow, click to explore.
+          </span>
         </span>
       </motion.div>
 

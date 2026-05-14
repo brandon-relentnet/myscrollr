@@ -151,7 +151,7 @@ function RootLayout() {
   return (
     <RootDocument>
       <MotionConfig reducedMotion="user">
-        <div className="min-h-screen relative overflow-x-clip">
+        <div className="min-h-dvh relative overflow-x-clip">
           {/* Skip to main content — first focusable element */}
           <a
             href="#main-content"

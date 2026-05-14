@@ -99,10 +99,14 @@ export function HeroProductShowcase({ activeIndex }: HeroProductShowcaseProps) {
 
   return (
     <motion.div
+      data-hero-showcase
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.6, ease: 'easeOut' }}
-      className="relative w-[360px] sm:w-[480px] lg:w-[500px] xl:w-[640px] 2xl:w-[780px] aspect-[1600/954]"
+      // Mobile sits between the hero headline and switch bars with
+      // narrow viewport gutters. Above `sm:`, fixed widths take over
+      // so the desktop visual remains unchanged.
+      className="relative left-1/2 w-[calc(100vw-24px)] max-w-none -translate-x-1/2 sm:left-auto sm:w-[480px] sm:translate-x-0 lg:w-[500px] xl:w-[640px] 2xl:w-[780px] aspect-[1600/954]"
     >
       {/* Ambient glow tinted by the active channel's accent color. */}
       <div
@@ -133,7 +137,7 @@ export function HeroProductShowcase({ activeIndex }: HeroProductShowcaseProps) {
                 alt={isActive ? ALT_TEXT[channel] : ''}
                 priority={isActive}
                 pictureClassName="absolute inset-0"
-                imgClassName="block h-full w-full rounded-xl object-cover shadow-xl"
+                imgClassName="block h-full w-full rounded-xl object-cover shadow-lg sm:shadow-xl"
               />
             </div>
           )

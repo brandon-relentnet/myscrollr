@@ -29,7 +29,7 @@ export const Route = createFileRoute('/support')({
 
 function SupportPage() {
   return (
-    <main className="min-h-screen bg-base-100">
+    <main className="min-h-dvh bg-base-100">
       <SupportHero />
       <SupportGettingStarted />
       <SupportFAQ />

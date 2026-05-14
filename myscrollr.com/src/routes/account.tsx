@@ -161,7 +161,7 @@ function AccountHub() {
 
   return (
     <motion.main
-      className="min-h-screen pt-20"
+      className="min-h-dvh pt-20"
       variants={pageVariants}
       initial="hidden"
       animate="visible"

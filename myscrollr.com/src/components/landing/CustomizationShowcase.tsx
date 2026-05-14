@@ -223,22 +223,32 @@ function CardMediaArea({ media }: { media: CardMedia }) {
   // as the single variant; vertical padding gives the strips breathing
   // room since their content is dense.
   return (
-    <div className="relative w-full overflow-hidden border-b border-base-300/40 bg-base-100/40 px-5 py-6 sm:px-7 sm:py-8 flex flex-col gap-4">
+    <div
+      data-customization-ticker-media
+      className="relative w-full min-w-0 overflow-hidden border-b border-base-300/40 bg-base-100/40 py-5 sm:px-7 sm:py-8 flex flex-col gap-4"
+    >
       {media.rows.map((row) => (
-        <figure key={row.basename} className="flex flex-col gap-1.5">
-          <figcaption className="text-[10px] font-mono uppercase tracking-[0.18em] text-base-content/40">
+        <figure key={row.basename} className="flex min-w-0 flex-col gap-1.5">
+          <figcaption className="px-5 text-[10px] font-mono uppercase tracking-[0.18em] text-base-content/40 sm:px-0">
             {row.densityLabel}
           </figcaption>
           <div
-            className="overflow-hidden rounded-md border border-base-300/40 bg-base-100/60 shadow-sm"
-            style={{ aspectRatio: row.aspect }}
+            data-customization-ticker-strip
+            className="relative h-[var(--mobile-ticker-height)] w-full min-w-0 overflow-hidden border-y border-base-300/40 bg-base-100/60 shadow-sm sm:h-auto sm:rounded-md sm:border sm:[aspect-ratio:var(--ticker-aspect)]"
+            style={
+              {
+                '--mobile-ticker-height':
+                  row.aspect === '2930 / 80' ? '32px' : '48px',
+                '--ticker-aspect': row.aspect,
+              } as React.CSSProperties
+            }
           >
             <ProductScreenshot
               basename={row.basename}
               alt={row.alt}
               aspect={row.aspect}
-              pictureClassName="block w-full h-full"
-              imgClassName="block h-full w-full object-cover"
+              pictureClassName="absolute -inset-y-px left-0 w-[240vw] -translate-x-20 sm:inset-0 sm:h-full sm:w-full sm:translate-x-0"
+              imgClassName="block h-full w-[240vw] max-w-none object-cover sm:w-full"
             />
           </div>
         </figure>

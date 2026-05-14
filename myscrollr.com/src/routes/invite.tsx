@@ -144,7 +144,7 @@ function InvitePage() {
 
   if (state === 'signing-in') {
     return (
-      <div className="min-h-screen text-base-content flex flex-col items-center justify-start pt-32 pb-16 px-4 font-mono">
+      <div className="min-h-dvh text-base-content flex flex-col items-center justify-start pt-32 pb-16 px-4 font-mono">
         <div className="text-center space-y-4 max-w-sm">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4" />
           <p className="uppercase tracking-[0.2em] text-primary animate-pulse">
@@ -160,7 +160,7 @@ function InvitePage() {
 
   if (!token || !email) {
     return (
-      <div className="min-h-screen text-base-content flex flex-col items-center justify-start pt-32 pb-16 px-4 font-sans">
+      <div className="min-h-dvh text-base-content flex flex-col items-center justify-start pt-32 pb-16 px-4 font-sans">
         <div className="w-full max-w-md text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-error/10 border border-error/20 mb-4">
             <X className="w-8 h-8 text-error" />
@@ -176,7 +176,7 @@ function InvitePage() {
   }
 
   return (
-    <div className="min-h-screen text-base-content flex flex-col items-center justify-start pt-32 pb-16 px-4 font-sans">
+    <div className="min-h-dvh text-base-content flex flex-col items-center justify-start pt-32 pb-16 px-4 font-sans">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">

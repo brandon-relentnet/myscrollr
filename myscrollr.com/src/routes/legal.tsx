@@ -69,7 +69,7 @@ function LegalPage() {
       variants={pageVariants}
       initial="hidden"
       animate="visible"
-      className="min-h-screen pt-20"
+      className="min-h-dvh pt-20"
     >
       {/* ── Hero ────────────────────────────────────────────── */}
       <section className="relative pt-24 pb-12 overflow-hidden">

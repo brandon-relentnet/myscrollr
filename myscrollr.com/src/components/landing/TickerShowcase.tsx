@@ -103,7 +103,7 @@ export function TickerShowcase() {
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-base-300/40 to-transparent" />
 
       <div
-        className="mx-auto px-5 sm:px-6 lg:px-8 py-20 lg:py-28 relative"
+        className="mx-auto px-5 sm:px-6 lg:px-8 py-14 sm:py-20 lg:py-28 relative"
         style={{ maxWidth: 1400 }}
       >
         {/* Section header ───────────────────────────────────── */}
@@ -112,7 +112,7 @@ export function TickerShowcase() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.6, ease: EASE }}
-          className="flex flex-col items-center text-center mb-12 lg:mb-16"
+          className="flex flex-col items-center text-center mb-8 sm:mb-12 lg:mb-16"
         >
           <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-base-200/60 text-base-content/60 text-[10px] font-bold rounded-lg border border-base-300/40 uppercase tracking-wide mb-6">
             The ticker, not another window
@@ -128,7 +128,7 @@ export function TickerShowcase() {
         </motion.div>
 
         {/* Ticker stack ──────────────────────────────────────── */}
-        <div className="flex flex-col gap-4 sm:gap-5">
+        <div data-ticker-stack className="flex flex-col gap-3 sm:gap-5">
           {ROWS.map((row, idx) => (
             <TickerRowCard key={row.basename} row={row} index={idx} />
           ))}
@@ -157,7 +157,7 @@ function TickerRowCard({ row, index }: TickerRowCardProps) {
       whileInView={{ opacity: 1, x: 0 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.5, ease: EASE, delay: index * 0.06 }}
-      className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-center gap-3 sm:gap-6"
+      className="grid grid-cols-1 sm:grid-cols-[160px_1fr] items-center gap-1.5 sm:gap-6"
     >
       {/* Eyebrow ─────────────────────────────────────────── */}
       <figcaption className="flex sm:flex-col sm:items-start items-center gap-2 sm:gap-1 text-left">
@@ -171,15 +171,16 @@ function TickerRowCard({ row, index }: TickerRowCardProps) {
 
       {/* Ticker strip ────────────────────────────────────── */}
       <div
-        className="relative w-full overflow-hidden rounded-lg border border-base-300/40 bg-base-200/30 shadow-sm"
-        style={{ aspectRatio: row.aspect }}
+        data-ticker-strip
+        className="relative ml-[calc(50%_-_50vw)] w-screen overflow-hidden border-y border-base-300/40 bg-base-200/30 shadow-sm sm:ml-0 sm:w-full sm:rounded-lg sm:border sm:[aspect-ratio:var(--ticker-aspect)]"
+        style={{ '--ticker-aspect': row.aspect } as React.CSSProperties}
       >
         <ProductScreenshot
           basename={row.basename}
           alt={row.alt}
           aspect={row.aspect}
-          pictureClassName="absolute inset-0"
-          imgClassName="block h-full w-full object-cover"
+          pictureClassName="block w-[200vw] -translate-x-20 sm:absolute sm:inset-0 sm:h-full sm:w-full sm:translate-x-0"
+          imgClassName="block h-auto w-[200vw] max-w-none sm:h-full sm:w-full sm:object-cover"
         />
       </div>
     </motion.figure>

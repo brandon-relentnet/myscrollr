@@ -13,7 +13,7 @@ export default function LoadingSpinner({
 }: LoadingSpinnerProps) {
   if (variant === 'spin') {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-dvh flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary/20 border-t-primary mx-auto" />
           {label && (
@@ -27,7 +27,7 @@ export default function LoadingSpinner({
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="min-h-dvh flex items-center justify-center">
       <motion.div
         animate={{ opacity: [0.5, 1, 0.5] }}
         transition={{ duration: 1.5, repeat: Infinity }}

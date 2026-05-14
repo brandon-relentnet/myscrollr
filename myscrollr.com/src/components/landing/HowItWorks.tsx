@@ -513,15 +513,26 @@ export function HowItWorks() {
       {/* Subtle background band — signals a new "room" */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-base-200/20 to-transparent pointer-events-none" />
 
-      <div className="container relative py-24 lg:py-32">
-        {/* Section Header — centered */}
+      <div className="container relative py-10 sm:py-14 lg:py-32">
+        {/* Mobile header — static to avoid observer-related invisible states. */}
+        <div className="flex flex-col items-center text-center mb-8 lg:hidden">
+          <h2 className="text-4xl sm:text-5xl font-black tracking-tight leading-[0.95] mb-4 text-center">
+            Ready in{' '}
+            <span className="text-gradient-primary">Under a Minute</span>
+          </h2>
+          <p className="text-base text-base-content/50 leading-relaxed text-center max-w-lg">
+            Three steps between you and live data on your desktop.
+          </p>
+        </div>
+
+        {/* Desktop section header — keeps the existing motion treatment. */}
         <motion.div
           style={{ opacity: 0 }}
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-200px' }}
           transition={{ duration: 0.6, ease: VISUAL_EASE }}
-          className="flex flex-col items-center text-center mb-12 lg:mb-16"
+          className="hidden lg:flex flex-col items-center text-center mb-16"
         >
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.95] mb-4 text-center">
             Ready in{' '}
@@ -533,70 +544,28 @@ export function HowItWorks() {
         </motion.div>
 
         {/* ── Mobile layout ── */}
-        <div className="lg:hidden">
-          {/* Tab pills */}
-          <motion.div
-            style={{ opacity: 0 }}
-            initial={{ opacity: 0, y: 15 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-200px' }}
-            transition={{ delay: 0.1, duration: 0.5, ease: VISUAL_EASE }}
-            className="flex gap-2 mb-5"
-          >
-            {STEPS.map((step, i) => {
-              const isActive = activeStep === i
-              return (
-                <button
-                  key={step.id}
-                  type="button"
-                  onClick={() => handleSelect(i)}
-                  className={`relative flex-1 py-2.5 px-3 rounded-xl text-xs font-semibold transition-all duration-300 cursor-pointer overflow-hidden ${
-                    isActive
-                      ? 'bg-primary text-primary-content shadow-md shadow-primary/15'
-                      : 'bg-base-200/50 text-base-content/40 border border-base-300/30 hover:text-base-content/60'
-                  }`}
-                >
-                  {step.title}
-                  {/* Progress bar at bottom of active tab */}
-                  {isActive && (
-                    <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary-content/15">
-                      <motion.div
-                        key={`mob-progress-${cycleKey}`}
-                        initial={{ scaleX: 0 }}
-                        animate={{ scaleX: 1 }}
-                        transition={{
-                          duration: CYCLE_MS / 1000,
-                          ease: 'linear',
-                        }}
-                        className="h-full bg-primary-content/40 origin-left"
-                      />
-                    </div>
-                  )}
-                </button>
-              )
-            })}
-          </motion.div>
-
-          {/* Visual stage */}
-          <div className="rounded-2xl bg-base-200/40 border border-base-300/40 overflow-hidden min-h-[320px] sm:min-h-[360px] flex flex-col [&>*]:flex-1 [&>*]:flex [&>*]:flex-col">
-            <AnimatePresence mode="wait">
-              <ActiveVisual key={`mobile-${activeStep}-${cycleKey}`} />
-            </AnimatePresence>
-          </div>
-
-          {/* Description */}
-          <AnimatePresence mode="wait">
-            <motion.p
-              key={`desc-${activeStep}`}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.25, ease: VISUAL_EASE }}
-              className="text-sm text-base-content/50 text-center mt-5 px-2 leading-relaxed"
+        <div className="lg:hidden space-y-3">
+          {STEPS.map((step, i) => (
+            <article
+              key={step.id}
+              data-mobile-step-card
+              className="rounded-2xl border border-base-300/40 bg-base-200/35 p-4 shadow-sm"
             >
-              {STEPS[activeStep].description}
-            </motion.p>
-          </AnimatePresence>
+              <div className="flex items-start gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-black text-primary border border-primary/15">
+                  {i + 1}
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-base-content">
+                    {step.title}
+                  </h3>
+                  <p className="mt-1 text-sm leading-relaxed text-base-content/50">
+                    {step.description}
+                  </p>
+                </div>
+              </div>
+            </article>
+          ))}
         </div>
 
         {/* ── Desktop layout ── */}

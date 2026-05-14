@@ -286,7 +286,7 @@ const WIDGETS: Array<WidgetDef> = [
 
 function ChannelsPage() {
   return (
-    <div className="min-h-screen pt-20">
+    <div className="min-h-dvh pt-20">
       {/* ── HERO ─────────────────────────────────────────────── */}
       <section className="relative pt-28 pb-20 overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">

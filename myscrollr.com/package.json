@@ -19,7 +19,7 @@
     "prebuild": "node scripts/fetch-latest-version.mjs && node scripts/generate-sitemap.mjs && node scripts/optimize-screenshots.mjs",
     "optimize:screenshots": "node scripts/optimize-screenshots.mjs",
     "build": "vite build && tsc",
-    "postbuild": "node scripts/check-sentry-tunnel.mjs && node scripts/check-prerender.mjs",
+    "postbuild": "node scripts/check-sentry-tunnel.mjs && node scripts/check-prerender.mjs && node scripts/check-mobile-viewport.mjs",
     "serve": "vite preview",
     "lint": "eslint",
     "format": "prettier",

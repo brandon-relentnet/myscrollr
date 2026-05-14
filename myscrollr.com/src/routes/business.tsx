@@ -1795,7 +1795,7 @@ function BottomCTA() {
 
 function BusinessPage() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-dvh">
       <BusinessHero />
       <AudiencesSection />
       <CapabilitiesSection />
