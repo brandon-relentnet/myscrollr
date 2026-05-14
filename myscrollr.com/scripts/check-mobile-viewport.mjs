@@ -244,6 +244,278 @@ try {
       } else {
         console.log(`✓ ${route.path} @ ${viewport.name} (${viewport.width}px)`)
       }
+
+      if (route.path === '/' && viewport.width < 768) {
+        const heroMobileLayout = await page.evaluate(() => {
+          const header = document.querySelector('header')
+          const heading = document.querySelector('h1')
+          const heroSection = heading?.closest('section')
+          const screenshot = Array.from(
+            document.querySelectorAll('[data-hero-showcase]'),
+          ).find((el) => el.getBoundingClientRect().width > 0)
+          const progressButton = document.querySelector(
+            'button[aria-label^="Show "]',
+          )
+          const heroCopy = Array.from(heroSection?.querySelectorAll('p') ?? []).find((p) =>
+            p.textContent?.includes('A quiet ticker at the edge of your screen'),
+          )
+          const downloadLink = Array.from(heroSection?.querySelectorAll('a') ?? []).find((a) =>
+            a.textContent?.includes('Download'),
+          )
+          if (!header || !heading || !screenshot || !progressButton) return null
+
+          const headerRect = header.getBoundingClientRect()
+          const headingRect = heading.getBoundingClientRect()
+          const screenshotRect = screenshot.getBoundingClientRect()
+          const progressRect = progressButton.getBoundingClientRect()
+          const clientWidth = document.documentElement.clientWidth
+          return {
+            headerBottom: Math.round(headerRect.bottom),
+            headingTop: Math.round(headingRect.top),
+            headingBottom: Math.round(headingRect.bottom),
+            screenshotTop: Math.round(screenshotRect.top),
+            screenshotBottom: Math.round(screenshotRect.bottom),
+            screenshotLeft: Math.round(screenshotRect.left),
+            screenshotRight: Math.round(screenshotRect.right),
+            progressTop: Math.round(progressRect.top),
+            clientWidth,
+            hasHeroCopy: Boolean(heroCopy),
+            hasDownloadLink: Boolean(downloadLink),
+          }
+        })
+
+        if (!heroMobileLayout) {
+          console.error(
+            `✗ ${route.path} @ ${viewport.name} (${viewport.width}px): missing hero mobile layout elements`,
+          )
+          failures += 1
+        } else {
+          if (heroMobileLayout.headingTop < heroMobileLayout.headerBottom + 12) {
+            console.error(
+              `✗ ${route.path} @ ${viewport.name} (${viewport.width}px): ` +
+                `hero heading starts under fixed header — headingTop=${heroMobileLayout.headingTop}, ` +
+                `headerBottom=${heroMobileLayout.headerBottom}`,
+            )
+            failures += 1
+          }
+
+          if (
+            heroMobileLayout.screenshotTop < heroMobileLayout.headingBottom ||
+            heroMobileLayout.screenshotBottom > heroMobileLayout.progressTop
+          ) {
+            console.error(
+              `✗ ${route.path} @ ${viewport.name} (${viewport.width}px): ` +
+                `hero screenshot is not between heading and switch bars — ` +
+                `headingBottom=${heroMobileLayout.headingBottom}, ` +
+                `screenshotTop=${heroMobileLayout.screenshotTop}, ` +
+                `screenshotBottom=${heroMobileLayout.screenshotBottom}, ` +
+                `progressTop=${heroMobileLayout.progressTop}`,
+            )
+            failures += 1
+          }
+
+          if (
+            Math.abs(heroMobileLayout.screenshotLeft - 12) > 1 ||
+            Math.abs(heroMobileLayout.screenshotRight - (heroMobileLayout.clientWidth - 12)) > 1
+          ) {
+            console.error(
+              `✗ ${route.path} @ ${viewport.name} (${viewport.width}px): ` +
+                `hero screenshot does not use 12px mobile gutters — left=${heroMobileLayout.screenshotLeft}, ` +
+                `right=${heroMobileLayout.screenshotRight}, clientWidth=${heroMobileLayout.clientWidth}`,
+            )
+            failures += 1
+          }
+
+          if (!heroMobileLayout.hasHeroCopy || heroMobileLayout.hasDownloadLink) {
+            console.error(
+              `✗ ${route.path} @ ${viewport.name} (${viewport.width}px): ` +
+                `hero copy/download CTA state is wrong — ` +
+                `hasHeroCopy=${heroMobileLayout.hasHeroCopy}, ` +
+                `hasDownloadLink=${heroMobileLayout.hasDownloadLink}`,
+            )
+            failures += 1
+          }
+        }
+
+        await page.locator('#ticker').scrollIntoViewIfNeeded()
+        await page.waitForTimeout(900)
+
+        const mobileFlow = await page.evaluate(() => {
+          const header = document.querySelector('header')
+          const ticker = document.querySelector('#ticker')
+          const how = document.querySelector('#how-it-works')
+          const tickerStack = ticker?.querySelector('[data-ticker-stack]')
+          const lastTicker = tickerStack?.lastElementChild
+          const howHeader = how?.querySelector('h2')
+          const howCards = how?.querySelectorAll('[data-mobile-step-card]')
+          const tickerStrip = ticker?.querySelector('[data-ticker-strip]')
+          const tickerStrips = Array.from(
+            ticker?.querySelectorAll('[data-ticker-strip]') ?? [],
+          )
+          const tickerImage = tickerStrip?.querySelector('img')
+
+          if (
+            !header ||
+            !ticker ||
+            !how ||
+            !lastTicker ||
+            !howHeader ||
+            !howCards ||
+            !tickerStrip ||
+            !tickerImage
+          ) {
+            return null
+          }
+
+          const tickerRect = ticker.getBoundingClientRect()
+          const howRect = how.getBoundingClientRect()
+          const lastTickerRect = lastTicker.getBoundingClientRect()
+          const howHeaderRect = howHeader.getBoundingClientRect()
+          const tickerStripRect = tickerStrip.getBoundingClientRect()
+          const tickerImageRect = tickerImage.getBoundingClientRect()
+          const secondTickerStripRect = tickerStrips[1]?.getBoundingClientRect()
+          const compactStripRect = tickerStrips[1]?.getBoundingClientRect()
+          const howHeaderStyle = getComputedStyle(howHeader)
+          const clientWidth = document.documentElement.clientWidth
+
+          return {
+            tickerTop: Math.round(tickerRect.top),
+            howTop: Math.round(howRect.top),
+            lastTickerBottom: Math.round(lastTickerRect.bottom),
+            howHeaderTop: Math.round(howHeaderRect.top),
+            howHeaderOpacity: Number(howHeaderStyle.opacity),
+            mobileStepCardCount: howCards.length,
+            tickerStripTop: Math.round(tickerStripRect.top),
+            tickerStripBottom: Math.round(tickerStripRect.bottom),
+            tickerStripLeft: Math.round(tickerStripRect.left),
+            tickerStripRight: Math.round(tickerStripRect.right),
+            tickerStripHeight: Math.round(tickerStripRect.height),
+            compactTickerStripHeight: compactStripRect
+              ? Math.round(compactStripRect.height)
+              : null,
+            tickerImageTop: Math.round(tickerImageRect.top),
+            tickerImageBottom: Math.round(tickerImageRect.bottom),
+            nextTickerGap: secondTickerStripRect
+              ? Math.round(secondTickerStripRect.top - tickerStripRect.bottom)
+              : null,
+            clientWidth,
+          }
+        })
+
+        if (!mobileFlow) {
+          console.error(
+            `✗ ${route.path} @ ${viewport.name} (${viewport.width}px): missing mobile flow elements`,
+          )
+          failures += 1
+        } else {
+          const contentGap = mobileFlow.howHeaderTop - mobileFlow.lastTickerBottom
+          if (contentGap > 120) {
+            console.error(
+              `✗ ${route.path} @ ${viewport.name} (${viewport.width}px): ` +
+                `gap between ticker stack and How It Works header is too large — gap=${contentGap}`,
+            )
+            failures += 1
+          }
+
+          if (mobileFlow.howHeaderOpacity < 0.95) {
+            console.error(
+              `✗ ${route.path} @ ${viewport.name} (${viewport.width}px): ` +
+                `How It Works mobile header is not visible — opacity=${mobileFlow.howHeaderOpacity}`,
+            )
+            failures += 1
+          }
+
+          if (mobileFlow.mobileStepCardCount !== 3) {
+            console.error(
+              `✗ ${route.path} @ ${viewport.name} (${viewport.width}px): ` +
+                `How It Works mobile layout should show three stable step cards — found=${mobileFlow.mobileStepCardCount}`,
+            )
+            failures += 1
+          }
+
+          if (
+            mobileFlow.tickerStripLeft > 1 ||
+            mobileFlow.tickerStripRight < mobileFlow.clientWidth - 1 ||
+            mobileFlow.tickerStripHeight < 24
+          ) {
+            console.error(
+              `✗ ${route.path} @ ${viewport.name} (${viewport.width}px): ` +
+                `ticker strip should read as a full-width enlarged mobile strip — ` +
+                `left=${mobileFlow.tickerStripLeft}, right=${mobileFlow.tickerStripRight}, ` +
+                `height=${mobileFlow.tickerStripHeight}, clientWidth=${mobileFlow.clientWidth}`,
+            )
+            failures += 1
+          }
+
+          if (
+            mobileFlow.compactTickerStripHeight === null ||
+            mobileFlow.compactTickerStripHeight >= mobileFlow.tickerStripHeight - 4
+          ) {
+            console.error(
+              `✗ ${route.path} @ ${viewport.name} (${viewport.width}px): ` +
+                `compact ticker strip should be visibly shorter than detailed strip — ` +
+                `detailedHeight=${mobileFlow.tickerStripHeight}, ` +
+                `compactHeight=${mobileFlow.compactTickerStripHeight}`,
+            )
+            failures += 1
+          }
+
+          if (
+            Math.abs(mobileFlow.tickerImageTop - mobileFlow.tickerStripTop) > 1 ||
+            Math.abs(mobileFlow.tickerImageBottom - mobileFlow.tickerStripBottom) > 1
+          ) {
+            console.error(
+              `✗ ${route.path} @ ${viewport.name} (${viewport.width}px): ` +
+                `ticker image is vertically scaled/cropped inside its strip — ` +
+                `stripTop=${mobileFlow.tickerStripTop}, stripBottom=${mobileFlow.tickerStripBottom}, ` +
+                `imageTop=${mobileFlow.tickerImageTop}, imageBottom=${mobileFlow.tickerImageBottom}`,
+            )
+            failures += 1
+          }
+
+          if (
+            mobileFlow.nextTickerGap !== null &&
+            mobileFlow.nextTickerGap > 56
+          ) {
+            console.error(
+              `✗ ${route.path} @ ${viewport.name} (${viewport.width}px): ` +
+                `gap between mobile ticker strips is too large — gap=${mobileFlow.nextTickerGap}`,
+            )
+            failures += 1
+          }
+        }
+
+        await page.evaluate(() => window.scrollTo(0, 0))
+        await page.locator('section').first().getByRole('button', {
+          name: 'How It Works',
+        }).click()
+        await page.waitForTimeout(900)
+        const scrollTarget = await page.evaluate(() => {
+          const header = document.querySelector('header')
+          const ticker = document.querySelector('#ticker')
+          if (!header || !ticker) return null
+          const headerRect = header.getBoundingClientRect()
+          const tickerRect = ticker.getBoundingClientRect()
+          return {
+            headerBottom: Math.round(headerRect.bottom),
+            tickerTop: Math.round(tickerRect.top),
+          }
+        })
+
+        if (!scrollTarget) {
+          console.error(
+            `✗ ${route.path} @ ${viewport.name} (${viewport.width}px): missing scroll target elements`,
+          )
+          failures += 1
+        } else if (Math.abs(scrollTarget.tickerTop - scrollTarget.headerBottom) > 8) {
+          console.error(
+            `✗ ${route.path} @ ${viewport.name} (${viewport.width}px): ` +
+              `hero How It Works button should scroll to ticker section — ` +
+              `tickerTop=${scrollTarget.tickerTop}, headerBottom=${scrollTarget.headerBottom}`,
+          )
+          failures += 1
+        }
+      }
     }
 
     await context.close()

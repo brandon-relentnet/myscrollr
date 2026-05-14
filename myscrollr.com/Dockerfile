@@ -10,6 +10,7 @@ COPY myscrollr.com/package.json myscrollr.com/package-lock.json* ./myscrollr.com
 
 # Install dependencies
 WORKDIR /app/myscrollr.com
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 RUN npm ci
 
 # Copy the rest of the frontend source
@@ -48,6 +49,7 @@ ENV VITE_STRIPE_PRICE_ULTIMATE_ANNUAL=${VITE_STRIPE_PRICE_ULTIMATE_ANNUAL}
 ENV VITE_SENTRY_DSN=${VITE_SENTRY_DSN}
 ENV SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}
 ENV SENTRY_ORG=${SENTRY_ORG}
+ENV SKIP_MOBILE_VIEWPORT_CHECK=1
 
 # Build (vite build + tsc)
 WORKDIR /app/myscrollr.com

@@ -36,7 +36,7 @@ const ROUTES = [
     path: '/',
     file: 'index.html',
     minJsonLd: 3, // Org, WebSite, SoftwareApp
-    expectedBody: 'A quiet ticker at the edge of your screen',
+    expectedBody: 'What actually sits',
   },
   {
     path: '/channels',

@@ -3,7 +3,6 @@ import { motion } from 'motion/react'
 import { wrap } from 'motion'
 import HeroTextSwap, { WORDS } from '@/components/Typewriter'
 import { HeroProductShowcase } from '@/components/landing/HeroProductShowcase'
-import { DownloadButton } from '@/components/DownloadButton'
 
 const CYCLE_MS = 4000
 
@@ -73,11 +72,11 @@ export function HeroSection() {
   }
 
   return (
-    <section className="relative min-h-dvh flex items-center overflow-hidden">
+    <section className="relative min-h-dvh flex items-start lg:items-center overflow-hidden pt-20 lg:pt-0">
       <div className="container relative">
         <div className="flex lg:flex-row flex-col justify-center items-center gap-12 lg:gap-12 xl:gap-16">
           {/* Desktop App Preview */}
-          <div className="relative order-2 lg:order-1">
+          <div className="relative order-2 hidden lg:block lg:order-1">
             <HeroProductShowcase
               activeIndex={activeWordIndex}
               onSelect={handleSelect}
@@ -92,6 +91,13 @@ export function HeroSection() {
             className="w-full lg:w-fit lg:min-w-80 xl:min-w-100 2xl:min-w-120 order-1 lg:order-2"
           >
             <HeroTextSwap activeIndex={activeWordIndex} />
+
+            <div className="mt-8 lg:hidden">
+              <HeroProductShowcase
+                activeIndex={activeWordIndex}
+                onSelect={handleSelect}
+              />
+            </div>
 
             {/* Progress indicators */}
             <motion.div
@@ -143,7 +149,7 @@ export function HeroSection() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 1 }}
-              className="text-base text-base-content/50 max-w-md leading-relaxed"
+              className="text-base text-center lg:text-left text-base-content/50 max-w-md mx-auto lg:mx-0 leading-relaxed"
             >
               A quiet ticker at the edge of your screen. Scores update, prices
               move, headlines arrive &mdash; all while you stay focused on
@@ -154,9 +160,8 @@ export function HeroSection() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 1.2 }}
-              className="flex flex-wrap gap-4 mt-10"
+              className="flex justify-center lg:justify-start mt-10"
             >
-              <DownloadButton />
               <motion.button
                 type="button"
                 whileHover={{
@@ -165,7 +170,7 @@ export function HeroSection() {
                 }}
                 whileTap={{ y: 0 }}
                 className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-base-300 bg-base-200/50 px-6 py-3 text-sm font-semibold text-base-content hover:bg-base-300 transition-colors backdrop-blur-sm"
-                onClick={() => scrollToSection('how-it-works')}
+                onClick={() => scrollToSection('ticker')}
               >
                 How It Works
               </motion.button>
