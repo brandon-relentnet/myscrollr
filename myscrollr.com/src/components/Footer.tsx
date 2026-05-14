@@ -2,8 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { motion } from 'motion/react'
 import { ArrowUpRight, Github, Mail } from 'lucide-react'
 import ScrollrSVG from '@/components/ScrollrSVG'
-
-declare const __APP_VERSION__: string
+import { LATEST_DESKTOP_VERSION } from '@/lib/latestVersion.generated'
 
 const isExternalHref = (href: string) =>
   href.startsWith('http') ||
@@ -83,7 +82,7 @@ export default function Footer() {
                   Scrollr
                 </span>
                 <span className="text-[10px] text-primary/40">
-                  v{__APP_VERSION__}
+                  v{LATEST_DESKTOP_VERSION}
                 </span>
               </div>
             </div>
