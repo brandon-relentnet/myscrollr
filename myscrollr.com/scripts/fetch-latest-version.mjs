@@ -38,7 +38,7 @@ const REPO = 'brandon-relentnet/myscrollr'
 // Updated whenever we bump in production. Used only as a last-resort
 // fallback for local dev when the network is unavailable; CI builds
 // hard-fail instead of falling back.
-const FALLBACK_VERSION = '1.0.9'
+const FALLBACK_VERSION = '1.0.18'
 const OUTPUT_PATH = new URL(
   '../src/lib/latestVersion.generated.ts',
   import.meta.url,
