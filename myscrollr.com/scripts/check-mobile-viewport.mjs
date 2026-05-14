@@ -485,6 +485,143 @@ try {
           }
         }
 
+        await page.locator('#channels').scrollIntoViewIfNeeded()
+        await page.waitForTimeout(900)
+
+        const channelsMobileLayout = await page.evaluate(() => {
+          const channels = document.querySelector('#channels')
+          const buttons = Array.from(
+            channels?.querySelectorAll('button') ?? [],
+          ).filter((button) =>
+            ['Finance', 'Sports', 'News', 'Fantasy'].includes(
+              button.textContent?.trim() ?? '',
+            ),
+          )
+          const filterRow = buttons[0]?.parentElement
+          const tickerBand = channels?.querySelector('[data-channel-ticker-band]')
+          const caption = channels?.querySelector('[data-channel-ticker-caption]')
+
+          if (!channels || buttons.length !== 4 || !filterRow || !tickerBand || !caption) {
+            return null
+          }
+
+          const buttonTops = buttons.map((button) =>
+            Math.round(button.getBoundingClientRect().top),
+          )
+          const headerRect = channels.querySelector('h2')?.getBoundingClientRect()
+          const filterRect = filterRow.getBoundingClientRect()
+          const tickerRect = tickerBand.getBoundingClientRect()
+
+          return {
+            buttonRowCount: new Set(buttonTops).size,
+            filterCenter: Math.round(
+              (buttons[0].getBoundingClientRect().left +
+                buttons[buttons.length - 1].getBoundingClientRect().right) /
+                2,
+            ),
+            filterBottom: Math.round(filterRect.bottom),
+            headerBottom: Math.round(headerRect?.bottom ?? 0),
+            tickerTop: Math.round(tickerRect.top),
+            captionText: Array.from(caption.querySelectorAll('span'))
+              .filter(
+                (child) =>
+                  child.children.length === 0 &&
+                  child.getBoundingClientRect().width > 0,
+              )
+              .map((child) => child.textContent?.trim() ?? '')
+              .join(' '),
+          }
+        })
+
+        if (!channelsMobileLayout) {
+          console.error(
+            `✗ ${route.path} @ ${viewport.name} (${viewport.width}px): missing channels mobile layout elements`,
+          )
+          failures += 1
+        } else {
+          if (
+            channelsMobileLayout.buttonRowCount !== 1 ||
+            Math.abs(channelsMobileLayout.filterCenter - viewport.width / 2) > 2
+          ) {
+            console.error(
+              `✗ ${route.path} @ ${viewport.name} (${viewport.width}px): ` +
+                `channel filters should be a single centered mobile row — ` +
+                `rows=${channelsMobileLayout.buttonRowCount}, ` +
+                `center=${channelsMobileLayout.filterCenter}`,
+            )
+            failures += 1
+          }
+
+          if (channelsMobileLayout.tickerTop - channelsMobileLayout.filterBottom > 32) {
+            console.error(
+              `✗ ${route.path} @ ${viewport.name} (${viewport.width}px): ` +
+                `channel ticker should sit close to mobile filters — ` +
+                `gap=${channelsMobileLayout.tickerTop - channelsMobileLayout.filterBottom}`,
+            )
+            failures += 1
+          }
+
+          if (/hover/i.test(channelsMobileLayout.captionText)) {
+            console.error(
+              `✗ ${route.path} @ ${viewport.name} (${viewport.width}px): ` +
+                `channel ticker caption should not mention hover on touch devices — ` +
+                `caption="${channelsMobileLayout.captionText}"`,
+            )
+            failures += 1
+          }
+        }
+
+        await page.locator('#customize').scrollIntoViewIfNeeded()
+        await page.waitForTimeout(900)
+
+        const customizeTickerLayout = await page.evaluate(() => {
+          const customize = document.querySelector('#customize')
+          const media = customize?.querySelector('[data-customization-ticker-media]')
+          const strips = Array.from(
+            customize?.querySelectorAll('[data-customization-ticker-strip]') ?? [],
+          )
+
+          if (!customize || !media || strips.length < 2) return null
+
+          const mediaRect = media.getBoundingClientRect()
+          const stripRects = strips.map((strip) => strip.getBoundingClientRect())
+
+          return {
+            mediaLeft: Math.round(mediaRect.left),
+            mediaRight: Math.round(mediaRect.right),
+            strips: stripRects.map((rect) => ({
+              left: Math.round(rect.left),
+              right: Math.round(rect.right),
+              height: Math.round(rect.height),
+            })),
+          }
+        })
+
+        if (!customizeTickerLayout) {
+          console.error(
+            `✗ ${route.path} @ ${viewport.name} (${viewport.width}px): missing customization ticker layout elements`,
+          )
+          failures += 1
+        } else {
+          const expectedStripHeights = [32, 48]
+          for (const [index, strip] of customizeTickerLayout.strips.entries()) {
+            if (
+              Math.abs(strip.left - customizeTickerLayout.mediaLeft) > 1 ||
+              Math.abs(strip.right - customizeTickerLayout.mediaRight) > 1 ||
+              Math.abs(strip.height - expectedStripHeights[index]) > 1
+            ) {
+              console.error(
+                `✗ ${route.path} @ ${viewport.name} (${viewport.width}px): ` +
+                  `customization ticker strip ${index + 1} should be edge-to-edge inside its card media — ` +
+                  `mediaLeft=${customizeTickerLayout.mediaLeft}, mediaRight=${customizeTickerLayout.mediaRight}, ` +
+                  `stripLeft=${strip.left}, stripRight=${strip.right}, stripHeight=${strip.height}, ` +
+                  `expectedHeight=${expectedStripHeights[index]}`,
+              )
+              failures += 1
+            }
+          }
+        }
+
         await page.evaluate(() => window.scrollTo(0, 0))
         await page.locator('section').first().getByRole('button', {
           name: 'How It Works',
