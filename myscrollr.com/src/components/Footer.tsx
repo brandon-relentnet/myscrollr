@@ -103,9 +103,12 @@ export default function Footer() {
           <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-8 lg:gap-12">
             {/* Product */}
             <div className="space-y-5">
-              <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-primary/80">
+              {/* h3 (not h4) so the document outline stays valid —
+                  marketing pages reach h3 in main content, so jumping
+                  to h4 here trips Lighthouse's heading-order audit. */}
+              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-primary/80">
                 Product
-              </h4>
+              </h3>
               <ul className="space-y-3">
                 {links.product.map((link) => (
                   <li key={link.label}>
@@ -142,9 +145,9 @@ export default function Footer() {
 
             {/* Resources */}
             <div className="space-y-5">
-              <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-primary/80">
+              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-primary/80">
                 Resources
-              </h4>
+              </h3>
               <ul className="space-y-3">
                 {links.resources.map((link) => (
                   <li key={link.label}>
@@ -181,9 +184,9 @@ export default function Footer() {
 
             {/* Company */}
             <div className="space-y-5">
-              <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-primary/80">
+              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-primary/80">
                 Company
-              </h4>
+              </h3>
               <ul className="space-y-3">
                 {links.company.map((link) => (
                   <li key={link.label}>
