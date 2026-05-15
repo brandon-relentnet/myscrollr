@@ -28,7 +28,7 @@ export function seo(input: SeoInput): RouteHead {
   const url = `${BASE_URL}${input.path}`
   const image = input.image ?? `${BASE_URL}/og/default.png`
   const imageAlt =
-    input.imageAlt ?? 'Scrollr — a quiet ticker at the edge of your screen.'
+    input.imageAlt ?? 'Scrollr: a quiet ticker at the edge of your screen.'
   const type = input.type ?? 'website'
 
   const meta: Array<MetaTag> = [

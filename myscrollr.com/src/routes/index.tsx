@@ -2,6 +2,8 @@ import { Suspense, lazy } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { seo } from '@/lib/seo'
 import {
+  HOMEPAGE_FAQ_ITEMS,
+  faqPage,
   organization,
   softwareApplication,
   website,
@@ -39,12 +41,18 @@ export const Route = createFileRoute('/')({
   component: HomePage,
   head: () =>
     seo({
-      title: 'Scrollr — Live Data on Your Desktop',
+      title: 'Scrollr: Live Data Ticker for Desktop',
       description:
-        'A quiet ticker at the edge of your screen with live sports, markets, news, and fantasy data. Free and open source. macOS, Windows, Linux.',
+        'A quiet desktop ticker for live sports, markets, news, and fantasy data. Free and open source. macOS, Windows, Linux.',
       path: '/',
+      image: 'https://myscrollr.com/og/home.png',
       imageAlt: 'Scrollr desktop ticker showing live market and sports data.',
-      jsonLd: [organization, website, softwareApplication],
+      jsonLd: [
+        organization,
+        website,
+        softwareApplication,
+        faqPage(HOMEPAGE_FAQ_ITEMS),
+      ],
     }),
 })
 

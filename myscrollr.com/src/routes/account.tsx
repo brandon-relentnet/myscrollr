@@ -29,7 +29,7 @@ import { seo } from '@/lib/seo'
 export const Route = createFileRoute('/account')({
   head: () =>
     seo({
-      title: 'Account — Scrollr',
+      title: 'Account | Scrollr',
       description:
         'Manage your Scrollr account, subscription, and connected services.',
       path: '/account',

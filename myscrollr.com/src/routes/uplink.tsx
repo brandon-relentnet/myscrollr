@@ -49,7 +49,12 @@ import type { SubscriptionStatus, TierLimitsResponse } from '@/api/client'
 import type { BackdropBeam } from '@/components/landing/_ConvergenceBackdrop'
 import { ConvergenceBackdrop } from '@/components/landing/_ConvergenceBackdrop'
 import { seo } from '@/lib/seo'
-import { breadcrumbs, faqPage, productOffers } from '@/lib/structured-data'
+import {
+  breadcrumbs,
+  faqPage,
+  organization,
+  productOffers,
+} from '@/lib/structured-data'
 import { seededRandom } from '@/lib/seededRandom'
 import { useScrollrAuth } from '@/hooks/useScrollrAuth'
 import { useGetToken } from '@/hooks/useGetToken'
@@ -209,13 +214,14 @@ export const Route = createFileRoute('/uplink')({
   validateSearch: () => ({}),
   head: () =>
     seo({
-      title: 'Uplink — Pricing for Scrollr',
+      title: 'Scrollr Uplink: Pricing & Plans',
       description:
-        'Unlock unlimited tracking, real-time data delivery, and early access to new channels. Plans from $9.99/month with annual savings.',
+        'Scrollr Uplink unlocks unlimited tracking, real-time data delivery, and early access to new channels. Plans from $9.99/month with annual savings.',
       path: '/uplink',
       image: 'https://myscrollr.com/og/uplink.png',
       type: 'product',
       jsonLd: [
+        organization,
         productOffers(STATIC_TIERS),
         faqPage(STATIC_FAQ),
         breadcrumbs([

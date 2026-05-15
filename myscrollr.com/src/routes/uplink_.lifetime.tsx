@@ -15,7 +15,7 @@ import {
 
 import type { SubscriptionStatus } from '@/api/client'
 import { seo } from '@/lib/seo'
-import { breadcrumbs } from '@/lib/structured-data'
+import { breadcrumbs, organization } from '@/lib/structured-data'
 import { useScrollrAuth } from '@/hooks/useScrollrAuth'
 import { useGetToken } from '@/hooks/useGetToken'
 import { billingApi } from '@/api/client'
@@ -32,17 +32,20 @@ export const Route = createFileRoute('/uplink_/lifetime')({
   validateSearch: () => ({}),
   head: () =>
     seo({
-      title: 'Lifetime Uplink — Scrollr Founding Members',
+      title: 'Scrollr Lifetime Uplink: Founding Members',
       description:
         'One payment, forever access to all Scrollr Uplink features. Only 128 founding member slots available.',
       path: '/uplink/lifetime',
       image: 'https://myscrollr.com/og/uplink.png',
       type: 'product',
-      jsonLd: breadcrumbs([
-        { name: 'Home', path: '/' },
-        { name: 'Uplink', path: '/uplink' },
-        { name: 'Lifetime', path: '/uplink/lifetime' },
-      ]),
+      jsonLd: [
+        organization,
+        breadcrumbs([
+          { name: 'Home', path: '/' },
+          { name: 'Uplink', path: '/uplink' },
+          { name: 'Lifetime', path: '/uplink/lifetime' },
+        ]),
+      ],
     }),
   // Lifetime is auth/subscription-aware throughout — wrap in ClientOnly
   // so the route still prerenders correct <head> meta and JSON-LD,

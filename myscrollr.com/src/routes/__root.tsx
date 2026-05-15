@@ -185,45 +185,57 @@ export const Route = createRootRoute({
   component: RootLayout,
   notFoundComponent: NotFound,
   errorComponent: RootErrorDocument,
+  // Root fallback head. In practice every marketing route overrides
+  // these via its own `Route.head = () => seo({...})`, so this set is
+  // only visible on routes that forget to define their own. Kept in
+  // sync with the homepage rewrite (em-dash free, ≤60 char title).
   head: () => ({
     meta: [
-      { title: 'Scrollr — Live Data on Your Desktop' },
+      { title: 'Scrollr: Live Data Ticker for Desktop' },
       {
         name: 'description',
         content:
-          'Finance, sports, news & fantasy scores — one live ticker on your desktop. Download the Scrollr desktop app and never miss a signal.',
+          'Live finance, sports, news, and fantasy scores in one quiet desktop ticker. Free and open source. macOS, Windows, Linux.',
       },
       {
         property: 'og:title',
-        content: 'Scrollr — Live Data on Your Desktop',
+        content: 'Scrollr: Live Data Ticker for Desktop',
       },
       {
         property: 'og:description',
         content:
-          'Finance, sports, news & fantasy scores — one live ticker on your desktop. Download the Scrollr desktop app and never miss a signal.',
+          'Live finance, sports, news, and fantasy scores in one quiet desktop ticker. Free and open source. macOS, Windows, Linux.',
       },
       { property: 'og:type', content: 'website' },
       { property: 'og:url', content: 'https://myscrollr.com' },
       { property: 'og:site_name', content: 'Scrollr' },
       {
         property: 'og:image',
-        content: 'https://myscrollr.com/og/default.png',
+        content: 'https://myscrollr.com/og/home.png',
       },
       { property: 'og:image:width', content: '1200' },
       { property: 'og:image:height', content: '630' },
+      {
+        property: 'og:image:alt',
+        content: 'Scrollr: a quiet ticker at the edge of your screen.',
+      },
       { name: 'twitter:card', content: 'summary_large_image' },
       {
         name: 'twitter:title',
-        content: 'Scrollr — Live Data on Your Desktop',
+        content: 'Scrollr: Live Data Ticker for Desktop',
       },
       {
         name: 'twitter:description',
         content:
-          'Finance, sports, news & fantasy scores — one live ticker on your desktop. Download the Scrollr desktop app and never miss a signal.',
+          'Live finance, sports, news, and fantasy scores in one quiet desktop ticker. Free and open source. macOS, Windows, Linux.',
       },
       {
         name: 'twitter:image',
-        content: 'https://myscrollr.com/og/default.png',
+        content: 'https://myscrollr.com/og/home.png',
+      },
+      {
+        name: 'twitter:image:alt',
+        content: 'Scrollr: a quiet ticker at the edge of your screen.',
       },
     ],
   }),

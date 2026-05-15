@@ -19,7 +19,10 @@ export const organization = {
   logo: `${BASE_URL}/icon-128.png`,
   description:
     'Scrollr is a quiet desktop ticker for live finance, sports, news, and fantasy data. Open source and privacy-first.',
-  sameAs: ['https://github.com/brandon-relentnet/myscrollr'],
+  sameAs: [
+    'https://github.com/brandon-relentnet/myscrollr',
+    'https://discord.gg/85b49TcGJa',
+  ],
 }
 
 export const website = {
@@ -29,22 +32,61 @@ export const website = {
   url: BASE_URL,
 }
 
+// SoftwareApplication: describes the Scrollr desktop app for rich-result
+// surfaces (Google "App" cards, AI crawlers). `screenshot` references the
+// channel hero screenshots that ship in /public/screenshots/ and are
+// already visible on /channels. The `offers` array reflects the live
+// pricing tiers from /uplink (Free + the three paid Uplink tiers); keep
+// in sync with PRICING in routes/uplink.tsx.
 export const softwareApplication = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
   name: 'Scrollr',
-  operatingSystem: 'macOS, Windows, Linux',
-  applicationCategory: 'ProductivityApplication',
+  operatingSystem: ['macOS', 'Windows', 'Linux'],
+  applicationCategory: 'DesktopApplication',
   description:
     'A quiet desktop ticker for live finance, sports, news, and fantasy data. Open source and privacy-first.',
   url: BASE_URL,
   downloadUrl: `${BASE_URL}/download`,
   softwareVersion: __APP_VERSION__,
-  offers: {
-    '@type': 'Offer',
-    price: '0',
-    priceCurrency: 'USD',
-  },
+  publisher: { '@type': 'Organization', name: 'Scrollr', url: BASE_URL },
+  author: { '@type': 'Organization', name: 'Scrollr', url: BASE_URL },
+  screenshot: [
+    `${BASE_URL}/screenshots/channels/finance-dark@2x.webp`,
+    `${BASE_URL}/screenshots/channels/sports-dark@2x.webp`,
+    `${BASE_URL}/screenshots/channels/news-dark@2x.webp`,
+    `${BASE_URL}/screenshots/channels/fantasy-dark@2x.webp`,
+  ],
+  offers: [
+    {
+      '@type': 'Offer',
+      name: 'Free',
+      price: '0',
+      priceCurrency: 'USD',
+      url: `${BASE_URL}/download`,
+    },
+    {
+      '@type': 'Offer',
+      name: 'Uplink',
+      price: '9.99',
+      priceCurrency: 'USD',
+      url: `${BASE_URL}/uplink`,
+    },
+    {
+      '@type': 'Offer',
+      name: 'Uplink Pro',
+      price: '24.99',
+      priceCurrency: 'USD',
+      url: `${BASE_URL}/uplink`,
+    },
+    {
+      '@type': 'Offer',
+      name: 'Uplink Ultimate',
+      price: '49.99',
+      priceCurrency: 'USD',
+      url: `${BASE_URL}/uplink`,
+    },
+  ],
 }
 
 type Tier = {
@@ -60,7 +102,7 @@ export function productOffers(tiers: Array<Tier>) {
     '@type': 'Product',
     name: 'Scrollr Uplink',
     description:
-      'Premium subscription tiers for the Scrollr desktop app — unlimited tracking, real-time delivery, and early access to new channels.',
+      'Premium subscription tiers for the Scrollr desktop app: unlimited tracking, real-time delivery, and early access to new channels.',
     brand: { '@type': 'Brand', name: 'Scrollr' },
     offers: tiers.flatMap((t) => [
       {
@@ -99,7 +141,7 @@ export function productOffers(tiers: Array<Tier>) {
 
 type FaqEntry = { question: string; answer: string }
 
-export function faqPage(items: Array<FaqEntry>) {
+export function faqPage(items: ReadonlyArray<FaqEntry>) {
   return {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
@@ -113,6 +155,63 @@ export function faqPage(items: Array<FaqEntry>) {
     })),
   }
 }
+
+/**
+ * Homepage FAQ items — kept in lockstep with the 8 questions in
+ * `components/landing/FAQSection.tsx`. Answers MUST match the rendered
+ * `answer` text exactly, per Google's FAQPage rich-result policy:
+ * https://developers.google.com/search/docs/appearance/structured-data/faqpage
+ *
+ * When you change a FAQSection answer, change the matching entry here
+ * (and vice versa). The shape diverges from FAQSection.FAQItem because
+ * the section adds visual fields (icon, highlight, accent) that don't
+ * belong in JSON-LD.
+ */
+export const HOMEPAGE_FAQ_ITEMS: ReadonlyArray<{
+  question: string
+  answer: string
+}> = [
+  {
+    question: 'Is Scrollr free?',
+    answer:
+      'The free tier gives you real-time data across all four channels with no ads or tracking. Uplink plans unlock higher limits, faster polling, custom RSS feeds, and fantasy league tracking. The entire codebase is open source under the AGPL-3.0 license.',
+  },
+  {
+    question: 'Does it affect performance?',
+    answer:
+      'Not noticeably. All data flows through a single connection in the background. The ticker overlay is hardware-accelerated with minimal CPU and memory usage, and it never interferes with your other applications.',
+  },
+  {
+    question: 'Is my data private?',
+    answer:
+      'Scrollr contains zero analytics, zero tracking pixels, and zero telemetry. Your preferences are stored locally on your device and never transmitted anywhere. The only network requests go to the Scrollr API to fetch your feed data.',
+  },
+  {
+    question: 'What platforms are supported?',
+    answer:
+      'Scrollr runs natively on macOS (Apple Silicon), Windows (x64), and Linux (x64). Download the app for your platform from our download page.',
+  },
+  {
+    question: 'Do I need an account?',
+    answer:
+      'A free Scrollr account is required to stream live channel data. Signing up takes under a minute, secures your config via our hosted auth, and unlocks all four channels (finance, sports, news, and fantasy), the web dashboard, and preference sync across devices.',
+  },
+  {
+    question: 'What data does Scrollr show?',
+    answer:
+      'Four channels: real-time stock and crypto prices, live sports scores across major leagues, RSS news headlines from hundreds of sources, and Yahoo Fantasy league updates including standings and matchups.',
+  },
+  {
+    question: 'Can I customize the feed?',
+    answer:
+      'Position the ticker at the top or bottom of your screen, drag to resize, switch between comfort and compact modes, choose overlay or push behavior, and pick which channels appear as tabs.',
+  },
+  {
+    question: 'Is Scrollr open source?',
+    answer:
+      'Every component, from the desktop application and web dashboard to the API and integration services, is publicly available on GitHub under the GNU Affero General Public License v3.0. You can inspect, fork, or contribute to any part of it.',
+  },
+] as const
 
 type BreadcrumbItem = { name: string; path: string }
 

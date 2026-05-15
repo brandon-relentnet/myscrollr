@@ -11,7 +11,11 @@ import {
 import { AnimatePresence, motion } from 'motion/react'
 import type { LinuxFormat } from '@/lib/getDownloadInfo'
 import { seo } from '@/lib/seo'
-import { breadcrumbs, softwareApplication } from '@/lib/structured-data'
+import {
+  breadcrumbs,
+  organization,
+  softwareApplication,
+} from '@/lib/structured-data'
 import { DownloadButton } from '@/components/DownloadButton'
 import { ProductScreenshot } from '@/components/ProductScreenshot'
 import { detectIsIntelMac, detectPlatform } from '@/lib/detectPlatform'
@@ -20,12 +24,13 @@ import { triggerDownload } from '@/lib/getDownloadInfo'
 export const Route = createFileRoute('/download')({
   head: () =>
     seo({
-      title: 'Download Scrollr — Free Desktop App',
+      title: 'Download Scrollr for macOS, Windows, Linux',
       description:
-        'Download Scrollr for macOS, Windows, or Linux. A quiet ticker at the edge of your screen with live sports, markets, news, and fantasy data. Free and open source.',
+        'Free download of Scrollr, the quiet desktop ticker for live finance, sports, news, and fantasy data. Native builds for macOS, Windows, and Linux.',
       path: '/download',
       image: 'https://myscrollr.com/og/download.png',
       jsonLd: [
+        organization,
         softwareApplication,
         breadcrumbs([
           { name: 'Home', path: '/' },
@@ -95,18 +100,27 @@ const PLATFORMS: Array<Platform> = [
 
 // ── OS detection ───────────────────────────────────────────────
 
-function useDetectedPlatform(): PlatformId {
-  const [detected, setDetected] = useState<PlatformId>('linux')
+function useDetectedPlatform(forced?: PlatformId): PlatformId {
+  const [detected, setDetected] = useState<PlatformId>(forced ?? 'linux')
   useEffect(() => {
+    // If the route forces a platform (per-OS deep link), skip detection
+    // entirely so the page is deterministic for crawlers and shareable
+    // URLs.
+    if (forced) {
+      setDetected(forced)
+      return
+    }
     setDetected(detectPlatform().platform)
-  }, [])
+  }, [forced])
   return detected
 }
 
 // ── Component ──────────────────────────────────────────────────
 
-function DownloadPage() {
-  const detected = useDetectedPlatform()
+export function DownloadPage({
+  forcedPlatform,
+}: { forcedPlatform?: PlatformId } = {}) {
+  const detected = useDetectedPlatform(forcedPlatform)
   const recommended = PLATFORMS.find((p) => p.id === detected) ?? PLATFORMS[0]
 
   return (
@@ -140,7 +154,7 @@ function DownloadPage() {
             transition={{ duration: 0.5, ease: EASE, delay: 0.2 }}
             className="mt-10 flex flex-col items-center gap-3"
           >
-            <DownloadButton />
+            <DownloadButton forcedPlatform={forcedPlatform} />
             <p className="text-sm text-base-content/40">
               {recommended.arch} &middot; Free &middot; Open source
             </p>

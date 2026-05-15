@@ -1,4 +1,6 @@
+import { Link } from '@tanstack/react-router'
 import { motion } from 'motion/react'
+import { Download as DownloadIcon } from 'lucide-react'
 import { GETTING_STARTED_STEPS } from './support-content'
 import { SupportSection } from './SupportSection'
 
@@ -43,6 +45,19 @@ export function SupportGettingStarted() {
           </motion.li>
         ))}
       </ol>
+
+      {/* Internal CTA: visitors arriving at /support without the app
+          installed need a direct path to /download. The 5-step list
+          above implies it, but a discrete button makes it actionable. */}
+      <div className="mt-6 flex justify-start">
+        <Link
+          to="/download"
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-content shadow-sm hover:brightness-110 transition-[filter]"
+        >
+          <DownloadIcon size={14} aria-hidden="true" />
+          Download Scrollr
+        </Link>
+      </div>
     </SupportSection>
   )
 }

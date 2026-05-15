@@ -5,7 +5,7 @@ import { AlertTriangle, BookOpen, ChevronDown, Info, List } from 'lucide-react'
 
 import type { LegalDocument, LegalSection } from '@/components/legal/documents'
 import { seo } from '@/lib/seo'
-import { breadcrumbs } from '@/lib/structured-data'
+import { breadcrumbs, organization } from '@/lib/structured-data'
 import { itemVariants, pageVariants, sectionVariants } from '@/lib/animations'
 import {
   LEGAL_DOCUMENTS,
@@ -20,14 +20,17 @@ type LegalSearch = { doc?: string }
 export const Route = createFileRoute('/legal')({
   head: () =>
     seo({
-      title: 'Legal — Scrollr',
+      title: 'Scrollr Legal: Terms, Privacy, License',
       description:
         'Terms of Service, Privacy Policy, License, and Cookie Policy for the Scrollr desktop app and myscrollr.com.',
       path: '/legal',
-      jsonLd: breadcrumbs([
-        { name: 'Home', path: '/' },
-        { name: 'Legal', path: '/legal' },
-      ]),
+      jsonLd: [
+        organization,
+        breadcrumbs([
+          { name: 'Home', path: '/' },
+          { name: 'Legal', path: '/legal' },
+        ]),
+      ],
     }),
   validateSearch: (search: Record<string, unknown>): LegalSearch => ({
     doc: typeof search.doc === 'string' ? search.doc : undefined,
@@ -47,11 +50,12 @@ function LegalPage() {
   const categories = useMemo(() => getDocumentsByCategory(), [])
 
   // Reflect the active legal doc in the browser tab title. The prerendered
-  // <title> stays "Legal — Scrollr" (correct for crawlers; canonical is /legal
-  // for all ?doc= variants). Each route owns its head() — we only write here,
-  // never restore, so a route transition's head() update is authoritative.
+  // <title> stays "Scrollr Legal: Terms, Privacy, License" (correct for
+  // crawlers; canonical is /legal for all ?doc= variants). Each route owns
+  // its head() — we only write here, never restore, so a route transition's
+  // head() update is authoritative.
   useEffect(() => {
-    document.title = `${activeDoc.title} — Scrollr`
+    document.title = `${activeDoc.title} | Scrollr`
   }, [activeDoc.title])
 
   // Scroll content to top when doc changes

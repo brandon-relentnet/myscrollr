@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
 import { motion, useInView, useMotionValue } from 'motion/react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import {
@@ -40,7 +40,7 @@ import { businessApi } from '@/api/client'
 import { FAQSection } from '@/components/landing/FAQSection'
 import { ConvergenceBackdrop } from '@/components/landing/_ConvergenceBackdrop'
 import { seo } from '@/lib/seo'
-import { breadcrumbs } from '@/lib/structured-data'
+import { breadcrumbs, organization } from '@/lib/structured-data'
 import { seededRandom } from '@/lib/seededRandom'
 import { useGitHubStats } from '@/hooks/useGitHubStats'
 
@@ -55,15 +55,18 @@ const REPO = 'brandon-relentnet/myscrollr'
 export const Route = createFileRoute('/business')({
   head: () =>
     seo({
-      title: 'Scrollr for Business — Branded Desktop Deployments',
+      title: 'Scrollr for Business: Branded Desktop Deployments',
       description:
-        'Custom-branded Scrollr deployments for brokerages, sports venues, fantasy platforms, crypto exchanges, and news publishers. Multi-display, self-hosted, dedicated support. Starts at $500/mo.',
+        'Custom-branded Scrollr deployments for brokerages, sports venues, fantasy platforms, crypto exchanges, and news publishers. From $500/mo.',
       path: '/business',
       image: 'https://myscrollr.com/og/business.png',
-      jsonLd: breadcrumbs([
-        { name: 'Home', path: '/' },
-        { name: 'Business', path: '/business' },
-      ]),
+      jsonLd: [
+        organization,
+        breadcrumbs([
+          { name: 'Home', path: '/' },
+          { name: 'Business', path: '/business' },
+        ]),
+      ],
     }),
   component: BusinessPage,
 })
@@ -867,6 +870,25 @@ function CapabilitiesSection() {
             <CapabilityRow key={cap.title} capability={cap} index={i} />
           ))}
         </div>
+
+        {/* Architecture link for technical buyers — quietly anchors the
+            "self-hosted, your stack" claim above to the public deep-dive. */}
+        <motion.div
+          style={{ opacity: 0 }}
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.5, duration: 0.5, ease: EASE }}
+          className="mt-10 flex justify-center"
+        >
+          <Link
+            to="/architecture"
+            className="inline-flex items-center gap-2 text-sm text-base-content/40 hover:text-primary transition-colors"
+          >
+            See the full architecture
+            <ArrowRight size={14} className="opacity-60" aria-hidden="true" />
+          </Link>
+        </motion.div>
       </div>
     </section>
   )
