@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
 import { motion } from 'motion/react'
 import {
   Activity,
@@ -10,8 +10,10 @@ import {
   Cloud,
   Cpu,
   Database,
+  Download as DownloadIcon,
   Globe,
   MonitorSmartphone,
+  Puzzle,
   Radio,
   RefreshCw,
   Server,
@@ -20,22 +22,49 @@ import {
 } from 'lucide-react'
 import type { ComponentType } from 'react'
 
-import { seo } from '@/lib/seo'
-import { breadcrumbs } from '@/lib/structured-data'
+import { BASE_URL, seo } from '@/lib/seo'
+import { breadcrumbs, organization } from '@/lib/structured-data'
+
+// TechArticle JSON-LD for the architecture deep-dive page.
+// Per Google: TechArticle requires `headline`, `image`, `datePublished`.
+// We don't have a stable publish date for this evergreen page, so we
+// use the build date — accepted by validators and refreshed each deploy.
+const ARCHITECTURE_TECH_ARTICLE = {
+  '@context': 'https://schema.org',
+  '@type': 'TechArticle',
+  headline: 'Scrollr Architecture: How Real-Time Data Reaches Your Desktop',
+  description:
+    'Behind the scenes: how Scrollr delivers real-time finance, sports, news, and fantasy data from source APIs through CDC PubSub to your desktop.',
+  image: `${BASE_URL}/og/architecture.png`,
+  author: { '@type': 'Organization', name: 'Scrollr', url: BASE_URL },
+  publisher: {
+    '@type': 'Organization',
+    name: 'Scrollr',
+    url: BASE_URL,
+    logo: { '@type': 'ImageObject', url: `${BASE_URL}/icon-128.png` },
+  },
+  datePublished: '2025-01-01',
+  dateModified: new Date().toISOString().slice(0, 10),
+  mainEntityOfPage: { '@type': 'WebPage', '@id': `${BASE_URL}/architecture` },
+}
 
 export const Route = createFileRoute('/architecture')({
   head: () =>
     seo({
-      title: 'How Scrollr Works — Architecture Deep-Dive',
+      title: 'Scrollr Architecture: How Real-Time Data Reaches You',
       description:
         'Behind the scenes: how Scrollr delivers real-time finance, sports, news, and fantasy data from source APIs through CDC PubSub to your desktop. Built with Go, Rust, React, PostgreSQL, and Redis.',
       path: '/architecture',
       image: 'https://myscrollr.com/og/architecture.png',
       type: 'article',
-      jsonLd: breadcrumbs([
-        { name: 'Home', path: '/' },
-        { name: 'Architecture', path: '/architecture' },
-      ]),
+      jsonLd: [
+        organization,
+        ARCHITECTURE_TECH_ARTICLE,
+        breadcrumbs([
+          { name: 'Home', path: '/' },
+          { name: 'Architecture', path: '/architecture' },
+        ]),
+      ],
     }),
   component: ArchitecturePage,
 })
@@ -1044,6 +1073,34 @@ function ArchitecturePage() {
               Built and deployed on self-hosted infrastructure
             </span>
             <span className="h-px w-8 bg-base-300/30" />
+          </motion.div>
+
+          {/* ── Next steps ───────────────────────────────────────
+              Internal-link CTA pair. Keeps technical readers on the
+              site after they've finished the deep-dive: explore the
+              channel catalog or just install the app. */}
+          <motion.div
+            style={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.4, duration: 0.5, ease: EASE }}
+            className="mt-10 flex flex-wrap items-center justify-center gap-3"
+          >
+            <Link
+              to="/channels"
+              className="inline-flex items-center gap-2 rounded-lg border border-base-300/40 bg-base-200/40 px-4 py-2 text-sm font-semibold text-base-content/70 hover:border-primary/30 hover:text-primary transition-colors"
+            >
+              <Puzzle size={14} aria-hidden="true" />
+              Browse channels
+            </Link>
+            <Link
+              to="/download"
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-content shadow-sm hover:brightness-110 transition-[filter]"
+            >
+              <DownloadIcon size={14} aria-hidden="true" />
+              Download Scrollr
+            </Link>
           </motion.div>
         </div>
       </section>

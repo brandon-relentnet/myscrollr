@@ -23,20 +23,23 @@ import {
 import { motion } from 'motion/react'
 import type { ComponentType } from 'react'
 import { seo } from '@/lib/seo'
-import { breadcrumbs } from '@/lib/structured-data'
+import { breadcrumbs, organization } from '@/lib/structured-data'
 import { ProductScreenshot } from '@/components/ProductScreenshot'
 
 export const Route = createFileRoute('/channels')({
   head: () =>
     seo({
-      title: 'Channels — Scrollr',
+      title: 'Scrollr Channels: Live Sports, Finance, News, Fantasy',
       description:
-        'Browse the channels and widgets available in the Scrollr desktop app: Finance, Sports, News, Fantasy, Clock, Timer, Weather, and System Monitor. Plus upcoming integrations.',
+        'Browse the channels and widgets in the Scrollr desktop app: Finance, Sports, News, Fantasy, Clock, Timer, Weather, and System Monitor.',
       path: '/channels',
-      jsonLd: breadcrumbs([
-        { name: 'Home', path: '/' },
-        { name: 'Channels', path: '/channels' },
-      ]),
+      jsonLd: [
+        organization,
+        breadcrumbs([
+          { name: 'Home', path: '/' },
+          { name: 'Channels', path: '/channels' },
+        ]),
+      ],
     }),
   component: ChannelsPage,
 })
@@ -669,10 +672,7 @@ function ConfigureAnythingSection() {
                       boxShadow: `0 0 0 1px ${channel.hex}20`,
                     }}
                   >
-                    <channel.Icon
-                      size={14}
-                      className="text-base-content/80"
-                    />
+                    <channel.Icon size={14} className="text-base-content/80" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-base-content truncate">

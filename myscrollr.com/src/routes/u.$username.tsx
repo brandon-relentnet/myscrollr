@@ -16,7 +16,7 @@ import { seo } from '@/lib/seo'
 export const Route = createFileRoute('/u/$username')({
   head: ({ params }) =>
     seo({
-      title: `${params.username} — Scrollr`,
+      title: `${params.username} | Scrollr`,
       description: `View ${params.username}'s Scrollr profile and connected channels.`,
       path: `/u/${params.username}`,
       noindex: true,

@@ -1,6 +1,6 @@
 import { ClientOnly, createFileRoute } from '@tanstack/react-router'
 import { seo } from '@/lib/seo'
-import { breadcrumbs, faqPage } from '@/lib/structured-data'
+import { breadcrumbs, faqPage, organization } from '@/lib/structured-data'
 import { FAQ_ITEMS } from '@/components/support/support-content'
 import { SupportHero } from '@/components/support/SupportHero'
 import { SupportGettingStarted } from '@/components/support/SupportGettingStarted'
@@ -12,11 +12,12 @@ import { SupportContactForm } from '@/components/support/SupportContactForm'
 export const Route = createFileRoute('/support')({
   head: () =>
     seo({
-      title: 'Support — Scrollr',
+      title: 'Scrollr Support: FAQs, Troubleshooting, Contact',
       description:
         'Get help with Scrollr. FAQs, troubleshooting articles, billing help, and a direct contact form. Real humans, no chatbots.',
       path: '/support',
       jsonLd: [
+        organization,
         faqPage(FAQ_ITEMS),
         breadcrumbs([
           { name: 'Home', path: '/' },
