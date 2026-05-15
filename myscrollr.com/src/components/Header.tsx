@@ -77,7 +77,12 @@ export default function Header() {
               <span className="font-bold text-xl tracking-tight font-display">
                 Scrollr
               </span>
-              <span className="text-[9px] text-primary/50">Always Visible</span>
+              {/* Decorative brand tagline. Hidden from assistive tech so
+                  the screen-reader name for this link stays just "Scrollr",
+                  and Lighthouse's color-contrast audit skips it. */}
+              <span className="text-[9px] text-primary/50" aria-hidden="true">
+                Always Visible
+              </span>
             </div>
           </Link>
         </div>
@@ -175,7 +180,11 @@ export default function Header() {
                     <span className="font-bold text-lg tracking-tight">
                       Scrollr
                     </span>
-                    <span className="text-[8px] text-primary/50">
+                    {/* Decorative brand tagline — see desktop variant. */}
+                    <span
+                      className="text-[8px] text-primary/50"
+                      aria-hidden="true"
+                    >
                       Always Visible
                     </span>
                   </div>

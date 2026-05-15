@@ -2529,7 +2529,10 @@ function UplinkPage() {
                     }}
                     role="button"
                     tabIndex={isTierDisabled('uplink') ? -1 : 0}
-                    aria-label={`Select Uplink ${BILLING_LABELS[billingPeriod]} plan`}
+                    // Accessible name leads with visible text "Uplink" so
+                    // screen-reader output matches what sighted users see
+                    // (Lighthouse label-content-name-mismatch).
+                    aria-label={`Uplink ${BILLING_LABELS[billingPeriod]} plan`}
                     onClick={() =>
                       !isTierDisabled('uplink') &&
                       handleSelectPlan(billingPeriod, 'uplink')
@@ -2681,7 +2684,7 @@ function UplinkPage() {
                     }}
                     role="button"
                     tabIndex={isTierDisabled('pro') ? -1 : 0}
-                    aria-label={`Select Pro ${BILLING_LABELS[billingPeriod]} plan`}
+                    aria-label={`Pro ${BILLING_LABELS[billingPeriod]} plan`}
                     onClick={() =>
                       !isTierDisabled('pro') &&
                       handleSelectPlan(billingPeriod, 'pro')
@@ -2835,7 +2838,7 @@ function UplinkPage() {
                     }}
                     role="button"
                     tabIndex={isTierDisabled('ultimate') ? -1 : 0}
-                    aria-label={`Select Ultimate ${BILLING_LABELS[billingPeriod]} plan`}
+                    aria-label={`Ultimate ${BILLING_LABELS[billingPeriod]} plan`}
                     onClick={() =>
                       !isTierDisabled('ultimate') &&
                       handleSelectPlan(billingPeriod, 'ultimate')
