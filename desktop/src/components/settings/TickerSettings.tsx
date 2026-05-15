@@ -9,7 +9,7 @@ import { useCallback, useMemo } from "react";
 import { motion } from "motion/react";
 import { clsx } from "clsx";
 import { Plus, Trash2, Lock } from "lucide-react";
-import { resetCategory, removeTickerRow } from "../../preferences";
+import { resetCategory, removeTickerRow, setTickerRowSourceMembership } from "../../preferences";
 import {
   Section,
   SegmentedRow,
@@ -93,7 +93,6 @@ export default function TickerSettings({ prefs, onPrefsChange }: TickerSettingsP
     canAddRow,
     canCustomize,
     addRow: addRowFromHook,
-    setSourceRow,
   } = tickerLayout;
 
   // Undoable destructive-action wrapper. Every "the user might regret
@@ -118,12 +117,9 @@ export default function TickerSettings({ prefs, onPrefsChange }: TickerSettingsP
 
   // ── Row mutations ─────────────────────────────────────────────
   // Thin wrappers around the hook so the JSX below stays readable.
-  // Note: the toggle is now `setSourceRow(id, row | null)` — moving a
-  // source into a row implicitly removes it from any other row, which
-  // matches the Home-page RowSelector semantics. Pre-refactor the
-  // Settings checkbox grid had its own custom multi-row toggle logic
-  // that duplicated `setSourceTickerRow`; collapsing them removes a
-  // class of "Settings says X, Home says Y" bugs.
+  // Ticker settings edits row membership only. Removing a widget from a
+  // row must not remove it from `widgetsOnTicker`; otherwise returning a
+  // row to the empty "all sources" state would still hide that widget.
   const addRow = useCallback(() => {
     addRowFromHook();
   }, [addRowFromHook]);
@@ -132,12 +128,14 @@ export default function TickerSettings({ prefs, onPrefsChange }: TickerSettingsP
     (rowIndex: number, sourceId: string) => {
       const row = rows[rowIndex];
       const isInTarget = row.sources.includes(sourceId);
-      // Toggling ON in row N moves the source there (and out of any
-      // other row). Toggling OFF removes it entirely (Off everywhere).
-      // This mirrors Home's [Off][Row 1]…[Row N] semantics exactly.
-      setSourceRow(sourceId, isInTarget ? null : rowIndex);
+      onPrefsChange(setTickerRowSourceMembership(
+        prefs,
+        sourceId,
+        rowIndex,
+        !isInTarget,
+      ));
     },
-    [rows, setSourceRow],
+    [prefs, rows, onPrefsChange],
   );
 
   const deleteRow = useCallback(

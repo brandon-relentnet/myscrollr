@@ -1741,3 +1741,49 @@ export function setWidgetTickerRow(
   };
 }
 
+/**
+ * Toggle a source's membership in one ticker row without treating removal
+ * from that row as a global ticker-off action.
+ *
+ * Settings → Ticker uses this for its per-row source grid. If a user removes
+ * the last explicit source from a row, the row becomes "all sources" again;
+ * widgets must stay in `widgetsOnTicker` so they can reappear in that all-row
+ * state. Explicitly assigning a widget to a row still adds it to
+ * `widgetsOnTicker`, matching the real ticker's activeTabs gate.
+ */
+export function setTickerRowSourceMembership(
+  prefs: AppPreferences,
+  sourceId: string,
+  rowIndex: number,
+  selected: boolean,
+): AppPreferences {
+  const rows = prefs.appearance.tickerLayout?.rows ?? [];
+  if (rowIndex < 0 || rowIndex >= rows.length) return prefs;
+
+  const cleanedRows: TickerRowConfig[] = rows.map((row) => ({
+    ...row,
+    sources: (row.sources ?? []).filter((id) => id !== sourceId),
+  }));
+
+  if (selected) {
+    cleanedRows[rowIndex] = {
+      ...cleanedRows[rowIndex],
+      sources: [...cleanedRows[rowIndex].sources, sourceId],
+    };
+  }
+
+  const withLayout = setTickerLayout(prefs, { rows: cleanedRows });
+  const isWidget = withLayout.widgets.enabledWidgets.includes(sourceId);
+  if (!selected || !isWidget || withLayout.widgets.widgetsOnTicker.includes(sourceId)) {
+    return withLayout;
+  }
+
+  return {
+    ...withLayout,
+    widgets: {
+      ...withLayout.widgets,
+      widgetsOnTicker: [...withLayout.widgets.widgetsOnTicker, sourceId],
+    },
+  };
+}
+

@@ -28,6 +28,7 @@ import {
   setSourceTickerRow,
   setChannelTickerRow,
   setWidgetTickerRow,
+  setTickerRowSourceMembership,
   migrateAppearanceTheme,
   resolveThemeName,
   isThemeFamily,
@@ -522,6 +523,45 @@ describe("setSourceTickerRow / setChannelTickerRow / setWidgetTickerRow", () => 
     const prefs = makePrefs([{ sources: ["finance"] }]);
     const next = setSourceTickerRow(prefs, "finance", null);
     expect(next.appearance.tickerLayout.rows.length).toBe(1);
+  });
+});
+
+describe("setTickerRowSourceMembership", () => {
+  it("keeps widgets globally ticker-enabled when removing row membership", () => {
+    const prefs = {
+      appearance: {
+        tickerLayout: { rows: [{ sources: ["timer"] }] },
+      },
+      widgets: {
+        enabledWidgets: ["timer"],
+        widgetsOnTicker: ["timer"],
+      },
+    } as unknown as AppPreferences;
+
+    const next = setTickerRowSourceMembership(prefs, "timer", 0, false);
+
+    expect(next.appearance.tickerLayout.rows[0].sources).toEqual([]);
+    expect(next.widgets.widgetsOnTicker).toEqual(["timer"]);
+  });
+
+  it("adds widgets to widgetsOnTicker when assigning them to a row", () => {
+    const prefs = {
+      appearance: {
+        tickerLayout: { rows: [{ sources: ["finance"] }] },
+      },
+      widgets: {
+        enabledWidgets: ["timer"],
+        widgetsOnTicker: [],
+      },
+    } as unknown as AppPreferences;
+
+    const next = setTickerRowSourceMembership(prefs, "timer", 0, true);
+
+    expect(next.appearance.tickerLayout.rows[0].sources).toEqual([
+      "finance",
+      "timer",
+    ]);
+    expect(next.widgets.widgetsOnTicker).toEqual(["timer"]);
   });
 });
 
