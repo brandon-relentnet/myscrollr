@@ -605,6 +605,7 @@ export default function ScrollrTicker({
 
   for (const [widgetId, pin] of Object.entries(pinnedWidgets)) {
     if ((pin.row ?? 0) !== rowIndex) continue;
+    if (!activeTabs.includes(widgetId)) continue;
     const target = pin.side === "left" ? pinnedLeft : pinnedRight;
 
     if (WIDGET_TYPES.includes(widgetId as WidgetType)) {

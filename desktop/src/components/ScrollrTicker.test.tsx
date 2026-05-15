@@ -54,4 +54,34 @@ describe("ScrollrTicker", () => {
     expect(screen.getByText("Timer")).toBeInTheDocument();
     expect(screen.getByText("01:05")).toBeInTheDocument();
   });
+
+  it("does not render pinned widgets filtered out of the current row", () => {
+    render(
+      <ScrollrTicker
+        dashboard={null}
+        activeTabs={["finance"]}
+        widgetData={widgetData}
+        pinnedWidgets={{ timer: { side: "right", row: 0 } }}
+        rowIndex={0}
+      />,
+    );
+
+    expect(screen.queryByText("Timer")).not.toBeInTheDocument();
+    expect(screen.queryByText("01:05")).not.toBeInTheDocument();
+  });
+
+  it("renders pinned widgets included in the current row", () => {
+    render(
+      <ScrollrTicker
+        dashboard={null}
+        activeTabs={["timer"]}
+        widgetData={widgetData}
+        pinnedWidgets={{ timer: { side: "right", row: 0 } }}
+        rowIndex={0}
+      />,
+    );
+
+    expect(screen.getByText("Timer")).toBeInTheDocument();
+    expect(screen.getByText("01:05")).toBeInTheDocument();
+  });
 });

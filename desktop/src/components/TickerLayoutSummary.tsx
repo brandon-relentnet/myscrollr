@@ -9,16 +9,14 @@
  *   each, and how to grow/shrink the structure. Users had to leave Home
  *   for Settings → Ticker just to see "do I currently have 1 row or 2?"
  *
- *   This strip surfaces the layout summary inline, with affordances to
- *   add a row (when under the tier cap) or jump straight into the full
- *   editor for power-user changes (per-row scroll overrides, mix mode).
+ *   This strip surfaces the layout summary inline and links to the full
+ *   editor for power-user changes (source assignment, per-row scroll
+ *   overrides, mix mode).
  *
- *   Contract: read-only diagnostics + two CTA buttons. All actual
- *   mutations route through the same `useTickerLayout` hook the
- *   row-pickers use, so this component cannot get out of sync with the
- *   per-source pickers below it.
+ *   Contract: read-only diagnostics + a Manage CTA. Home intentionally
+ *   does not mutate ticker layout; Settings → Ticker is the sole editor.
  */
-import { Plus, Settings as SettingsIcon } from "lucide-react";
+import { Settings as SettingsIcon } from "lucide-react";
 import clsx from "clsx";
 import Tooltip from "./Tooltip";
 import type { TickerRowConfig } from "../preferences";
@@ -31,8 +29,6 @@ interface TickerLayoutSummaryProps {
   tierMaxRows: number;
   /** Whether the layout has room for another row. */
   canAddRow: boolean;
-  /** Append an empty row. No-op when `canAddRow` is false. */
-  onAddRow: () => void;
   /** Open the full Settings → Ticker editor. */
   onOpenSettings: () => void;
   /** Channel manifests, used to color the per-row source bars. */
@@ -45,7 +41,6 @@ export default function TickerLayoutSummary({
   rows,
   tierMaxRows,
   canAddRow,
-  onAddRow,
   onOpenSettings,
   channelManifests,
   widgetManifests,
@@ -64,6 +59,14 @@ export default function TickerLayoutSummary({
     return "#6b7280"; // neutral gray-500 fallback
   };
 
+  const sourceLabel = (id: string): string => {
+    const ch = channelManifests.find((c) => c.id === id);
+    if (ch) return ch.tabLabel || ch.name || id;
+    const w = widgetManifests.find((mf) => mf.id === id);
+    if (w) return w.tabLabel || w.name || id;
+    return id;
+  };
+
   return (
     <section
       aria-label="Ticker layout summary"
@@ -80,20 +83,6 @@ export default function TickerLayoutSummary({
         </span>
 
         <div className="flex-1" />
-
-        {canAddRow && (
-          <Tooltip content="Add an empty row to your ticker" side="top">
-            <button
-              type="button"
-              onClick={onAddRow}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-dashed border-edge/60 text-ui-meta font-medium text-fg-3 hover:text-accent hover:border-accent/60 transition-colors"
-              aria-label="Add a new ticker row"
-            >
-              <Plus size={11} />
-              Add row
-            </button>
-          </Tooltip>
-        )}
 
         <Tooltip content="Open the full ticker editor in Settings" side="top">
           <button
@@ -122,7 +111,7 @@ export default function TickerLayoutSummary({
             </span>
             {row.sources.length === 0 ? (
               <span className="italic text-fg-3">
-                shows all enabled sources
+                All ticker-enabled sources
               </span>
             ) : (
               <div className="flex items-center gap-1 flex-wrap">
@@ -139,7 +128,7 @@ export default function TickerLayoutSummary({
                       className="w-1.5 h-1.5 rounded-full"
                       style={{ backgroundColor: sourceColor(id) }}
                     />
-                    {id}
+                    {sourceLabel(id)}
                   </span>
                 ))}
               </div>

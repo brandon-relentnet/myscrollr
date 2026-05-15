@@ -20,7 +20,6 @@ import { motion, AnimatePresence } from "motion/react";
 import SportsEmptyState from "../channels/sports/EmptyState";
 import RouteError from "../components/RouteError";
 import Tooltip from "../components/Tooltip";
-import RowSelector from "../components/RowSelector";
 import TickerLayoutSummary from "../components/TickerLayoutSummary";
 import PageLayout from "../components/layout/PageLayout";
 import EmptySection from "../components/layout/EmptySection";
@@ -39,12 +38,14 @@ import {
   LS_WEATHER_UNIT,
   LS_SYSMON_DATA,
 } from "../constants";
-import {
-  getChannelTickerRow,
-  getWidgetTickerRow,
-} from "../preferences";
 import { useTickerLayout } from "../hooks/useTickerLayout";
-import type { ChannelType, Channel } from "../api/client";
+import {
+  formatEffectiveWidgetTickerStatus,
+  formatTickerStatus,
+  getEffectiveChannelTickerRow,
+  getEffectiveWidgetTickerStatus,
+} from "../utils/tickerStatus";
+import type { Channel } from "../api/client";
 import type { LeagueMeta } from "../api/queries";
 import type {
   ChannelManifest,
@@ -105,7 +106,6 @@ function HomePage() {
     allChannelManifests,
     allWidgets,
     authenticated,
-    onToggleChannelTicker,
     onLogin,
   } = shell;
 
@@ -125,12 +125,6 @@ function HomePage() {
   );
   const { rows: layoutRows, tierMaxRows, canAddRow } = tickerLayout;
 
-  // RowSelector buttons collapse to [Off][On] when only one row exists,
-  // and expand to [Off][Row 1]…[Row N] otherwise. The picker reflects
-  // the *actual* layout (not the tier cap) so users don't see ghost
-  // rows; the +Add affordance below grows the layout in-place.
-  const pickerRows = Math.max(1, layoutRows.length);
-
   const setHomePreview = useCallback(
     (channelType: string, keys: string[]) => {
       const next: HomePreview = { ...homePreview, [channelType]: keys };
@@ -138,60 +132,6 @@ function HomePage() {
     },
     [homePreview, shell],
   );
-
-  // ── Unified ticker row selector handlers ────────────────────────
-  // Channel row change updates BOTH layers atomically:
-  //   1. tickerLayout.rows[i].sources[]   (client-side prefs)
-  //   2. Channel.ticker_enabled            (server-side master gate)
-  // See preferences.ts §"Unified ticker row selector helpers".
-  const handleChannelRowChange = useCallback(
-    (channelType: ChannelType, row: number | null) => {
-      tickerLayout.setSourceRow(channelType, row);
-      // Server-side flag: enable when assigned to any row, disable for "off".
-      // onToggleChannelTicker is async but fire-and-forget here — the existing
-      // handler shows a toast on failure and re-syncs from the dashboard refetch.
-      onToggleChannelTicker(channelType, row !== null);
-    },
-    [tickerLayout, onToggleChannelTicker],
-  );
-
-  const handleWidgetRowChange = useCallback(
-    (widgetId: string, row: number | null) => {
-      tickerLayout.setSourceRow(widgetId, row);
-    },
-    [tickerLayout],
-  );
-
-  // ── +Add row handlers ────────────────────────────────────────
-  // Single-click flow: create a new row AND assign the source to it,
-  // so Home users never have to leave the page to grow the ticker.
-  // A no-op (returns null) when the layout is at the tier cap.
-  const handleChannelAddRow = useCallback(
-    (channelType: ChannelType) => {
-      const newRow = tickerLayout.addRow(channelType);
-      if (newRow !== null) {
-        // The source might have been off-ticker before (server flag
-        // false). Flip it on alongside the layout change so both layers
-        // stay consistent.
-        onToggleChannelTicker(channelType, true);
-      }
-    },
-    [tickerLayout, onToggleChannelTicker],
-  );
-
-  const handleWidgetAddRow = useCallback(
-    (widgetId: string) => {
-      tickerLayout.addRow(widgetId);
-    },
-    [tickerLayout],
-  );
-
-  // Plain "add an empty row" handler used by the layout summary strip.
-  // No source seeding — useful when the user just wants a second row
-  // and will populate it later.
-  const handleAddEmptyRow = useCallback(() => {
-    tickerLayout.addRow();
-  }, [tickerLayout]);
 
   const openTickerSettings = useCallback(() => {
     navigate({ to: "/ticker" });
@@ -270,7 +210,6 @@ function HomePage() {
           rows={layoutRows}
           tierMaxRows={tierMaxRows}
           canAddRow={canAddRow}
-          onAddRow={handleAddEmptyRow}
           onOpenSettings={openTickerSettings}
           channelManifests={allChannelManifests}
           widgetManifests={allWidgets}
@@ -293,7 +232,6 @@ function HomePage() {
         );
         const hasData = channelData.length > 0;
         const targetTab = hasData ? "feed" : "configuration";
-        const currentRow = getChannelTickerRow(shell.prefs, ch);
         return (
           <motion.div
             key={ch.channel_type}
@@ -309,15 +247,10 @@ function HomePage() {
               channel={ch}
               manifest={manifest}
               data={dashboard?.data}
-              currentRow={currentRow}
-              maxRows={pickerRows}
-              canAddRow={canAddRow}
-              onAddRow={() =>
-                handleChannelAddRow(ch.channel_type as ChannelType)
-              }
-              onRowChange={(next) =>
-                handleChannelRowChange(ch.channel_type as ChannelType, next)
-              }
+              tickerStatus={formatTickerStatus(
+                getEffectiveChannelTickerRow(shell.prefs, ch),
+                layoutRows.length,
+              )}
               selectedKeys={homePreview[ch.channel_type] ?? []}
               onSelectionChange={(keys) =>
                 setHomePreview(ch.channel_type, keys)
@@ -358,11 +291,12 @@ function HomePage() {
         >
           <WidgetStrip
             widgets={orderedWidgets}
-            maxRows={pickerRows}
-            canAddRow={canAddRow}
-            onWidgetAddRow={handleWidgetAddRow}
-            getWidgetRow={(id) => getWidgetTickerRow(shell.prefs, id)}
-            onWidgetRowChange={handleWidgetRowChange}
+            getTickerStatus={(id) =>
+              formatEffectiveWidgetTickerStatus(
+                getEffectiveWidgetTickerStatus(shell.prefs, id),
+                layoutRows.length,
+              )
+            }
             onNavigate={(id) =>
               navigate({
                 to: "/widget/$id/$tab",
@@ -444,23 +378,7 @@ interface ChannelSectionProps {
   channel: Channel;
   manifest: ChannelManifest;
   data: Record<string, unknown> | undefined;
-  /** Currently assigned ticker row, or null for off. */
-  currentRow: number | null;
-  /**
-   * Number of rows currently in the layout (reflects what the user has
-   * built, not the tier cap). Drives the RowSelector's button count.
-   */
-  maxRows: number;
-  /** Whether the layout has room for another row at the user's tier. */
-  canAddRow: boolean;
-  /**
-   * Single-click handler: create a new row in the layout AND assign
-   * this channel to it. Called from the RowSelector's trailing
-   * `[+ Add]` button.
-   */
-  onAddRow: () => void;
-  /** Called when the user picks a different row or "Off". */
-  onRowChange: (row: number | null) => void;
+  tickerStatus: string;
   selectedKeys: string[];
   onSelectionChange: (keys: string[]) => void;
   onViewAll: () => void;
@@ -472,11 +390,7 @@ function ChannelSection({
   channel,
   manifest,
   data,
-  currentRow,
-  maxRows,
-  canAddRow,
-  onAddRow,
-  onRowChange,
+  tickerStatus,
   selectedKeys,
   onSelectionChange,
   onViewAll,
@@ -516,6 +430,7 @@ function ChannelSection({
         <span className="text-sm font-semibold text-fg flex-1">
           {manifest.name}
         </span>
+        <TickerStatusBadge label={tickerStatus} />
 
         {/* Edit toggle */}
         {groups.length > 0 && (
@@ -543,25 +458,6 @@ function ChannelSection({
             </button>
           </Tooltip>
         )}
-
-        {/* Row selector — replaces the legacy Eye/EyeOff toggle so users
-            can pick exactly which ticker row a channel appears on (Off /
-            Row 1 / 2 / 3) instead of a binary visibility flip that
-            silently fought with the Settings source picker.
-            The trailing `[+ Add]` button (when canAddRow) creates a
-            new row and assigns this channel to it in a single click. */}
-        <RowSelector
-          value={currentRow}
-          maxRows={maxRows}
-          disabled={!channel.enabled}
-          disabledHint={
-            !channel.enabled ? "Enable from the Catalog first" : undefined
-          }
-          onChange={onRowChange}
-          ariaLabel={`${manifest.name} ticker row`}
-          canAddRow={canAddRow}
-          onAddRow={onAddRow}
-        />
 
         {/* View all */}
         {!editing && (
@@ -951,26 +847,13 @@ function EmptyDataRow({
 
 interface WidgetStripProps {
   widgets: WidgetManifest[];
-  /** Number of rows currently in the layout. */
-  maxRows: number;
-  /** Whether the layout has room for another row at the user's tier. */
-  canAddRow: boolean;
-  /** Read the row a widget is currently assigned to (null = off). */
-  getWidgetRow: (id: string) => number | null;
-  /** Move a widget to the given row (null = off). */
-  onWidgetRowChange: (id: string, row: number | null) => void;
-  /** Create a new row and assign this widget to it. */
-  onWidgetAddRow: (id: string) => void;
+  getTickerStatus: (id: string) => string;
   onNavigate: (id: string) => void;
 }
 
 function WidgetStrip({
   widgets,
-  maxRows,
-  canAddRow,
-  getWidgetRow,
-  onWidgetRowChange,
-  onWidgetAddRow,
+  getTickerStatus,
   onNavigate,
 }: WidgetStripProps) {
   return (
@@ -986,11 +869,7 @@ function WidgetStrip({
           <WidgetChip
             key={widget.id}
             widget={widget}
-            currentRow={getWidgetRow(widget.id)}
-            maxRows={maxRows}
-            canAddRow={canAddRow}
-            onAddRow={() => onWidgetAddRow(widget.id)}
-            onRowChange={(row) => onWidgetRowChange(widget.id, row)}
+            tickerStatus={getTickerStatus(widget.id)}
             onClick={() => onNavigate(widget.id)}
           />
         ))}
@@ -1001,31 +880,18 @@ function WidgetStrip({
 
 interface WidgetChipProps {
   widget: WidgetManifest;
-  currentRow: number | null;
-  maxRows: number;
-  canAddRow: boolean;
-  onAddRow: () => void;
-  onRowChange: (row: number | null) => void;
+  tickerStatus: string;
   onClick: () => void;
 }
 
 function WidgetChip({
   widget,
-  currentRow,
-  maxRows,
-  canAddRow,
-  onAddRow,
-  onRowChange,
+  tickerStatus,
   onClick,
 }: WidgetChipProps) {
   const Icon = widget.icon;
   const value = getWidgetValue(widget.id);
 
-  // Note: this used to be a single <button> wrapping the whole chip, but
-  // the RowSelector is a radiogroup of <button>s — nesting buttons is
-  // invalid HTML. The outer container is now a div with role="button"
-  // + tabIndex so the chip body still acts as a click target while the
-  // RowSelector renders cleanly inside it.
   return (
     <div
       role="button"
@@ -1046,27 +912,29 @@ function WidgetChip({
         <span className="text-xs font-medium text-fg truncate flex-1">
           {widget.tabLabel}
         </span>
+        <TickerStatusBadge label={tickerStatus} />
       </div>
 
-      <p className="text-sm font-medium text-fg-2 tabular-nums truncate mb-2">
+      <p className="text-sm font-medium text-fg-2 tabular-nums truncate">
         {value}
       </p>
-
-      {/* Row selector — replaces the legacy Eye/EyeOff toggle. Click events
-          inside the radiogroup are stopPropagation'd by RowSelector itself
-          so they don't trigger the chip's navigate-on-click. The
-          trailing `[+ Add]` button creates a new row and assigns the
-          widget to it in a single tap (when the layout isn't already
-          at the tier cap). */}
-      <RowSelector
-        value={currentRow}
-        maxRows={maxRows}
-        onChange={onRowChange}
-        ariaLabel={`${widget.tabLabel} ticker row`}
-        canAddRow={canAddRow}
-        onAddRow={onAddRow}
-      />
     </div>
+  );
+}
+
+function TickerStatusBadge({ label }: { label: string }) {
+  const isOff = label === "Not on ticker";
+  return (
+    <span
+      className={clsx(
+        "shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-medium",
+        isOff
+          ? "border-edge/30 text-fg-4 bg-base-200/40"
+          : "border-accent/25 text-accent bg-accent/10",
+      )}
+    >
+      {label}
+    </span>
   );
 }
 
