@@ -3,6 +3,7 @@ import { motion } from 'motion/react'
 import { wrap } from 'motion'
 import HeroTextSwap, { WORDS } from '@/components/Typewriter'
 import { HeroProductShowcase } from '@/components/landing/HeroProductShowcase'
+import { DownloadButton } from '@/components/DownloadButton'
 
 const CYCLE_MS = 4000
 
@@ -160,8 +161,15 @@ export function HeroSection() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 1.2 }}
-              className="flex justify-center lg:justify-start mt-10"
+              className="flex flex-wrap items-center justify-center lg:justify-start gap-4 mt-10"
             >
+              {/* Desktop-only auto-detected download CTA. Hidden on mobile
+                  because the mobile rework intentionally drops the picker
+                  here — visitors on phones can't install a desktop app
+                  anyway, and the hero stays focused on the product demo. */}
+              <div className="hidden lg:block">
+                <DownloadButton />
+              </div>
               <motion.button
                 type="button"
                 whileHover={{
