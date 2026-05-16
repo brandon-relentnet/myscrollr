@@ -104,9 +104,11 @@ export function HeroProductShowcase({ activeIndex }: HeroProductShowcaseProps) {
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.6, ease: 'easeOut' }}
       // Mobile sits between the hero headline and switch bars with
-      // narrow viewport gutters. Above `sm:`, fixed widths take over
-      // so the desktop visual remains unchanged.
-      className="relative left-1/2 w-[calc(100vw-24px)] max-w-none -translate-x-1/2 sm:left-auto sm:w-[480px] sm:translate-x-0 lg:w-[500px] xl:w-[640px] 2xl:w-[780px] aspect-[1600/954]"
+      // narrow viewport gutters. Above `sm:`, fixed widths take over;
+      // the desktop sizes were bumped (Nov 2026) to give the product
+      // image more presence next to the hero copy. The @2x source is
+      // 2478px wide so we have plenty of headroom before upscaling.
+      className="relative left-1/2 w-[calc(100vw-24px)] max-w-none -translate-x-1/2 sm:left-auto sm:w-[480px] sm:translate-x-0 lg:w-[620px] xl:w-[780px] 2xl:w-[940px] aspect-[1600/954]"
     >
       {/* Ambient glow tinted by the active channel's accent color. */}
       <div
