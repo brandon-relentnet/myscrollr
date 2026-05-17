@@ -85,19 +85,22 @@ const ULTIMATE_PRICE_IDS = {
 type PlanKey = 'monthly' | 'annual'
 type TierKey = 'uplink' | 'pro' | 'ultimate'
 
-// Animates the displayed integer toward `value` using a spring. This
+// Animates the displayed price toward `value` using a spring. This
 // replaces `motion-plus`'s `<AnimateNumber>` (524 KB on disk) for the
 // only place we used it: the per-tier monthly-price flip when the
 // billing toggle changes. We lose `motion-plus`'s per-digit slot
 // animation, but the prices are 2-3 digits so the simpler counter
 // reads cleanly. Pattern mirrors `useAnimatedCounter` in CallToAction.
+//
+// Renders to 2 decimal places so cent values (e.g. 9.99, 6.67) stay
+// intact through the toggle animation.
 function AnimatedPrice({ value }: { value: number }) {
   const [display, setDisplay] = useState(value)
   const motionVal = useMotionValue(value)
   const spring = useSpring(motionVal, {
     stiffness: 90,
     damping: 22,
-    restSpeed: 0.5,
+    restSpeed: 0.01,
   })
 
   useEffect(() => {
@@ -106,12 +109,12 @@ function AnimatedPrice({ value }: { value: number }) {
 
   useEffect(() => {
     const unsub = spring.on('change', (v) => {
-      setDisplay(Math.round(v))
+      setDisplay(Math.round(v * 100) / 100)
     })
     return unsub
   }, [spring])
 
-  return <>{display}</>
+  return <>{display.toFixed(2)}</>
 }
 
 // Static JSON-LD source data for the /uplink route. Kept module-scope
