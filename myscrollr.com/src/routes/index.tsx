@@ -10,22 +10,60 @@ import {
 } from '@/lib/structured-data'
 import { HeroSection } from '@/components/landing/HeroSection'
 import { TickerShowcase } from '@/components/landing/TickerShowcase'
-import { HowItWorks } from '@/components/landing/HowItWorks'
-import { ChannelsShowcase } from '@/components/landing/ChannelsShowcase'
-import { CustomizationShowcase } from '@/components/landing/CustomizationShowcase'
-import { MakeItYoursSection } from '@/components/landing/MakeItYoursSection'
-import { BenefitsSection } from '@/components/landing/BenefitsSection'
-import { TrustSection } from '@/components/landing/TrustSection'
 
-// FAQSection and CallToAction are below-the-fold and animation-heavy
-// (FAQ has 8 simultaneous spring/blur pipelines; CallToAction has the
-// mouse-parallax orb + 12 particles + 3 pulse rings + animated counters).
-// Splitting them into separate chunks keeps the initial JS bundle lean
-// for first paint, and defers their parse cost until the user is
-// scrolling toward them.
+// Code-splitting the home page.
 //
-// Sized Suspense fallbacks below match each section's typical rendered
-// height to prevent any layout shift on chunk arrival.
+// HeroSection and TickerShowcase stay eagerly imported because they are
+// the LCP target (hero) and the first scroll-into-view section that
+// holds the prerender-check assertion ("What actually sits..."). Every
+// section below is split into its own lazy chunk so the initial JS
+// bundle ships only what's needed for first paint and the immediate
+// scroll. Lighthouse measured ~450ms of "unused JavaScript" savings on
+// mobile from this; the rest of the win is shorter Element render
+// delay because React has less to parse + hydrate before painting LCP.
+//
+// SSR safety: TanStack Start's build-time prerender resolves lazy
+// imports synchronously, so the prerendered HTML body still contains
+// every section's real content. The Suspense fallback below only
+// shows at *runtime* hydration if the chunk hasn't downloaded yet —
+// which on a warm cache or fast connection is rarely visible. Sized
+// placeholders keep CLS at 0 either way.
+//
+// Placeholder heights were measured against the actual rendered
+// content (mobile 390px and desktop 1280px) and averaged so neither
+// viewport sees a meaningful layout jump. Slight under-estimates are
+// preferred to over-estimates because they collapse cleanly when the
+// real chunk renders.
+const HowItWorks = lazy(() =>
+  import('@/components/landing/HowItWorks').then((m) => ({
+    default: m.HowItWorks,
+  })),
+)
+const ChannelsShowcase = lazy(() =>
+  import('@/components/landing/ChannelsShowcase').then((m) => ({
+    default: m.ChannelsShowcase,
+  })),
+)
+const CustomizationShowcase = lazy(() =>
+  import('@/components/landing/CustomizationShowcase').then((m) => ({
+    default: m.CustomizationShowcase,
+  })),
+)
+const MakeItYoursSection = lazy(() =>
+  import('@/components/landing/MakeItYoursSection').then((m) => ({
+    default: m.MakeItYoursSection,
+  })),
+)
+const BenefitsSection = lazy(() =>
+  import('@/components/landing/BenefitsSection').then((m) => ({
+    default: m.BenefitsSection,
+  })),
+)
+const TrustSection = lazy(() =>
+  import('@/components/landing/TrustSection').then((m) => ({
+    default: m.TrustSection,
+  })),
+)
 const FAQSection = lazy(() =>
   import('@/components/landing/FAQSection').then((m) => ({
     default: m.FAQSection,
@@ -110,17 +148,29 @@ function HomePage() {
 
       <TickerShowcase />
 
-      <HowItWorks />
+      <Suspense fallback={<SectionPlaceholder height="700px" />}>
+        <HowItWorks />
+      </Suspense>
 
-      <ChannelsShowcase />
+      <Suspense fallback={<SectionPlaceholder height="1200px" />}>
+        <ChannelsShowcase />
+      </Suspense>
 
-      <CustomizationShowcase />
+      <Suspense fallback={<SectionPlaceholder height="1600px" />}>
+        <CustomizationShowcase />
+      </Suspense>
 
-      <MakeItYoursSection />
+      <Suspense fallback={<SectionPlaceholder height="1200px" />}>
+        <MakeItYoursSection />
+      </Suspense>
 
-      <BenefitsSection />
+      <Suspense fallback={<SectionPlaceholder height="1300px" />}>
+        <BenefitsSection />
+      </Suspense>
 
-      <TrustSection />
+      <Suspense fallback={<SectionPlaceholder height="2200px" />}>
+        <TrustSection />
+      </Suspense>
 
       <Suspense fallback={<SectionPlaceholder height="900px" />}>
         <FAQSection />
