@@ -235,9 +235,31 @@ const TICKER_QUALITY_2X = 76
 
 // ── Encoding parameters ───────────────────────────────────────────
 
-// 1x is the default delivery for non-retina displays. Quality 78 is
-// the sweet spot for product screenshots (text stays crisp, gradients
-// don't band visibly).
+// Dashboard screenshots are emitted at four widths so the browser can
+// pick the right rendition via the width-descriptor `srcset` in
+// `<ProductScreenshot>`. The smaller widths exist specifically to fix
+// LCP on mobile — PSI flagged ~568 KiB of wasted image bytes on the
+// home page because the @1x/@2x variants were both 2-3x larger than
+// the displayed dimensions on phones.
+//
+// Quality ladder is tuned so each rendition looks crisp at its target
+// CSS width. Higher densities use slightly lower quality because the
+// extra pixels mask compression artifacts.
+
+// @sm: phones and small tablets. ~640 CSS px at 1x DPR, or ~320 CSS px
+// at 2x DPR. Used by phones where the home hero renders at ~388 CSS px.
+const WIDTH_SM = 800
+const QUALITY_SM = 76
+
+// @md: medium screens / tablets. Bridges the gap between @sm and @1x
+// so the browser doesn't have to upscale @sm or download @1x for a
+// ~700 CSS px display.
+const WIDTH_MD = 1200
+const QUALITY_MD = 76
+
+// 1x is the default delivery for non-retina desktop displays. Quality
+// 78 is the sweet spot for product screenshots (text stays crisp,
+// gradients don't band visibly).
 const WIDTH_1X = 1600
 const QUALITY_1X = 78
 
@@ -273,17 +295,35 @@ async function encode(srcPath, outPath, width, quality) {
 }
 
 /**
- * Encode a (1x, 2x) pair from a single source PNG.
+ * Encode the four-width dashboard set from a single source PNG.
+ *
+ * Emits `@sm`, `@md`, `@1x`, and `@2x` so the browser can pick the
+ * right rendition via width-descriptor `srcset`. The legacy `@1x` and
+ * `@2x` files are preserved so existing consumers (OG image script,
+ * any hardcoded references, prefetch hints) keep working.
  */
 async function encodePair(srcPath, outPrefix) {
+  const outSm = `${outPrefix}@sm.webp`
+  const outMd = `${outPrefix}@md.webp`
   const out1x = `${outPrefix}@1x.webp`
   const out2x = `${outPrefix}@2x.webp`
 
-  const [r1, r2] = await Promise.all([
+  const [rSm, rMd, r1, r2] = await Promise.all([
+    encode(srcPath, outSm, WIDTH_SM, QUALITY_SM),
+    encode(srcPath, outMd, WIDTH_MD, QUALITY_MD),
     encode(srcPath, out1x, WIDTH_1X, QUALITY_1X),
     encode(srcPath, out2x, WIDTH_2X, QUALITY_2X),
   ])
-  return { out1x, out2x, skipped1: r1.skipped, skipped2: r2.skipped }
+  return {
+    outSm,
+    outMd,
+    out1x,
+    out2x,
+    skippedSm: rSm.skipped,
+    skippedMd: rMd.skipped,
+    skipped1: r1.skipped,
+    skipped2: r2.skipped,
+  }
 }
 
 /**
@@ -390,18 +430,18 @@ async function main() {
 
     jobs.push(
       encodePair(darkSrc, join(outDir, `${basename}-dark`)).then((r) => {
-        if (r.skipped1) skipped++
-        else written++
-        if (r.skipped2) skipped++
-        else written++
+        for (const s of [r.skippedSm, r.skippedMd, r.skipped1, r.skipped2]) {
+          if (s) skipped++
+          else written++
+        }
       }),
     )
     jobs.push(
       encodePair(lightSrc, join(outDir, `${basename}-light`)).then((r) => {
-        if (r.skipped1) skipped++
-        else written++
-        if (r.skipped2) skipped++
-        else written++
+        for (const s of [r.skippedSm, r.skippedMd, r.skipped1, r.skipped2]) {
+          if (s) skipped++
+          else written++
+        }
       }),
     )
   }
@@ -413,10 +453,10 @@ async function main() {
     const outDir = join(outRoot, category)
     jobs.push(
       encodePair(src, join(outDir, `${basename}-${theme}`)).then((r) => {
-        if (r.skipped1) skipped++
-        else written++
-        if (r.skipped2) skipped++
-        else written++
+        for (const s of [r.skippedSm, r.skippedMd, r.skipped1, r.skipped2]) {
+          if (s) skipped++
+          else written++
+        }
       }),
     )
   }
@@ -438,18 +478,18 @@ async function main() {
     const outDir = join(outRoot, 'themes')
     jobs.push(
       encodePair(darkSrc, join(outDir, `${name}-dark`)).then((r) => {
-        if (r.skipped1) skipped++
-        else written++
-        if (r.skipped2) skipped++
-        else written++
+        for (const s of [r.skippedSm, r.skippedMd, r.skipped1, r.skipped2]) {
+          if (s) skipped++
+          else written++
+        }
       }),
     )
     jobs.push(
       encodePair(lightSrc, join(outDir, `${name}-light`)).then((r) => {
-        if (r.skipped1) skipped++
-        else written++
-        if (r.skipped2) skipped++
-        else written++
+        for (const s of [r.skippedSm, r.skippedMd, r.skipped1, r.skipped2]) {
+          if (s) skipped++
+          else written++
+        }
       }),
     )
   }

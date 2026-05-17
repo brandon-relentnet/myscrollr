@@ -7,6 +7,16 @@ type SeoInput = {
   type?: 'website' | 'article' | 'product'
   noindex?: boolean
   jsonLd?: object | Array<object>
+  /**
+   * Extra `<link>` tags to inject into the route's `<head>`. Used by the
+   * home route to add a responsive `rel="preload"` for the LCP product
+   * screenshot so the browser can fetch it in parallel with the JS
+   * bundle (the image URL is otherwise only discoverable after React
+   * mounts `HeroProductShowcase`). The wider type covers preload
+   * attributes that aren't on the default `<link>` shape — `as`,
+   * `imagesrcset`, `imagesizes`, `fetchpriority`, `media`, etc.
+   */
+  extraLinks?: Array<LinkTag>
 }
 
 export const BASE_URL = 'https://myscrollr.com'
@@ -15,7 +25,21 @@ type MetaTag =
   | { title: string }
   | { name: string; content: string }
   | { property: string; content: string }
-type LinkTag = { rel: string; href: string; type?: string }
+// Wide link shape so consumers can emit any well-formed `<link>` tag,
+// including `rel="preload"` variants with responsive image hints. The
+// keys mirror the HTML attribute names (lowercase) because TanStack
+// Start serializes them verbatim into the prerendered HTML.
+type LinkTag = {
+  rel: string
+  href?: string
+  type?: string
+  as?: string
+  media?: string
+  crossorigin?: string
+  fetchpriority?: 'high' | 'low' | 'auto'
+  imagesrcset?: string
+  imagesizes?: string
+}
 type ScriptTag = { type: string; children: string }
 
 export type RouteHead = {
@@ -55,6 +79,9 @@ export function seo(input: SeoInput): RouteHead {
   }
 
   const links: Array<LinkTag> = [{ rel: 'canonical', href: url }]
+  if (input.extraLinks) {
+    links.push(...input.extraLinks)
+  }
 
   const scripts: Array<ScriptTag> = []
   if (input.jsonLd) {

@@ -37,6 +37,35 @@ const CallToAction = lazy(() =>
   })),
 )
 
+// Hero LCP preload. The browser otherwise can't discover the image URL
+// from the initial HTML — `HeroProductShowcase` only renders its
+// `<picture>` after React mounts, which Lighthouse measured as ~700ms
+// of "Element render delay" on mobile. Preloading from the head lets
+// the image fetch run in parallel with the JS bundle.
+//
+// Theme handling: the SSR pass renders the dark variant (because
+// `useTheme()` defaults to 'dark' on the server), but the theme inline
+// script in __root.tsx can flip the document to light before React
+// hydrates. We avoid wasting a preload on the wrong variant by
+// scoping each preload with a `media` query keyed on the OS color
+// scheme. Users with a stored theme that contradicts their OS will
+// get a wasted ~30KB preload — an acceptable trade since they're a
+// small minority and the "correct" image still loads through React.
+//
+// The srcset and sizes attributes mirror `ProductScreenshot` exactly
+// so the browser picks the same rendition the React component would
+// have requested. Keeping these in sync is important: a mismatch
+// means the preloaded file is unused and a second fetch happens.
+const HERO_PRELOAD_SIZES =
+  '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 800px'
+const heroPreloadSrcSet = (theme: 'dark' | 'light') =>
+  [
+    `/screenshots/channels/sports-${theme}@sm.webp 800w`,
+    `/screenshots/channels/sports-${theme}@md.webp 1200w`,
+    `/screenshots/channels/sports-${theme}@1x.webp 1600w`,
+    `/screenshots/channels/sports-${theme}@2x.webp 3200w`,
+  ].join(', ')
+
 export const Route = createFileRoute('/')({
   component: HomePage,
   head: () =>
@@ -52,6 +81,24 @@ export const Route = createFileRoute('/')({
         website,
         softwareApplication,
         faqPage(HOMEPAGE_FAQ_ITEMS),
+      ],
+      extraLinks: [
+        {
+          rel: 'preload',
+          as: 'image',
+          imagesrcset: heroPreloadSrcSet('dark'),
+          imagesizes: HERO_PRELOAD_SIZES,
+          fetchpriority: 'high',
+          media: '(prefers-color-scheme: dark)',
+        },
+        {
+          rel: 'preload',
+          as: 'image',
+          imagesrcset: heroPreloadSrcSet('light'),
+          imagesizes: HERO_PRELOAD_SIZES,
+          fetchpriority: 'high',
+          media: '(prefers-color-scheme: light)',
+        },
       ],
     }),
 })
